@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - GeoPulse</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/dashboard.js" defer></script>
+    <script src="js/theme.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="nav compact-nav">
+                <a href="dashboard.html" class="nav-brand">GeoPulse</a>
+                <div class="nav-links">
+                    <button id="export-csv" class="btn btn-export btn-sm">Export CSV</button>
+                    <button id="export-json" class="btn btn-export btn-sm">Export JSON</button>
+                    <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode">
+                        <span class="theme-toggle-icon light-icon">☀️</span>
+                        <span class="theme-toggle-icon dark-icon">🌙</span>
+                    </button>
+                    <a href="#" id="logout-link" class="nav-link">Logout</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="content">
+            <h2>Your Location Path</h2>
+
+            <div id="alert-container"></div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading location data...</p>
+            </div>
+
+            <!-- Map container moved to the top for mobile-friendliness -->
+            <div id="map-container" class="map-container"></div>
+
+            <div id="no-data" style="display: none;" class="alert alert-warning">
+                No location data found for the selected time period.
+            </div>
+
+            <!-- Controls and statistics after the map -->
+            <div class="date-selector">
+                <button id="today-btn" class="btn">Today</button>
+                <button id="yesterday-btn" class="btn">Yesterday</button>
+                <button id="week-btn" class="btn">Last 7 Days</button>
+                <button id="month-btn" class="btn">Last 30 Days</button>
+                <button id="custom-btn" class="btn">Custom Range</button>
+            </div>
+
+            <div id="custom-date-range" style="display: none;" class="form-container">
+                <div class="form-group">
+                    <label for="start-date">Start Date</label>
+                    <input type="datetime-local" id="start-date" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="end-date">End Date</label>
+                    <input type="datetime-local" id="end-date" class="form-control">
+                </div>
+                <button id="apply-custom-date" class="btn">Apply</button>
+            </div>
+
+            <div id="path-info" class="path-info" style="display: none;">
+                <h3>Path Information</h3>
+                <div class="path-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="point-count">0</div>
+                        <div class="stat-label">Data Points</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="time-span">0h 0m</div>
+                        <div class="stat-label">Time Span</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="avg-speed">0 km/h</div>
+                        <div class="stat-label">Avg. Speed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-distance">0 km</div>
+                        <div class="stat-label">Total Distance</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline section -->
+            <div id="timeline-container" class="timeline-container" style="display: none;">
+                <h3>Movement Timeline</h3>
+                <div class="timeline">
+                    <!-- Mock timeline data -->
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">08:30 AM</div>
+                            <div class="timeline-location">Home</div>
+                            <div class="timeline-details">Started the day at home</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">09:15 AM</div>
+                            <div class="timeline-location">Coffee Shop</div>
+                            <div class="timeline-details">Morning coffee stop</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">10:00 AM</div>
+                            <div class="timeline-location">Office</div>
+                            <div class="timeline-details">Arrived at work</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">12:30 PM</div>
+                            <div class="timeline-location">Restaurant</div>
+                            <div class="timeline-details">Lunch break</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">01:30 PM</div>
+                            <div class="timeline-location">Office</div>
+                            <div class="timeline-details">Back to work</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">05:45 PM</div>
+                            <div class="timeline-location">Gym</div>
+                            <div class="timeline-details">Evening workout</div>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-point"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">07:30 PM</div>
+                            <div class="timeline-location">Home</div>
+                            <div class="timeline-details">Returned home</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>&copy; 2025 GeoPulse. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
