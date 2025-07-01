@@ -1,0 +1,252 @@
+/**
+ * Shared Friend Popup Styles
+ * 
+ * Common styling for friend popups across different components
+ */
+
+/* Base popup styles */
+.friend-popup,
+.friend-marker-popup {
+  font-family: var(--font-family, system-ui);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  min-width: 200px;
+}
+
+.friend-marker-popup {
+  max-width: 280px;
+}
+
+/* Header */
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gp-border-light, #e2e8f0);
+}
+
+.friend-popup .popup-header {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Avatar */
+.popup-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gp-primary, #1a56db);
+}
+
+.friend-popup .popup-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.popup-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--gp-surface-light, #f8fafc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gp-text-muted, #94a3b8);
+  border: 2px solid var(--gp-border-light, #e2e8f0);
+}
+
+/* Info */
+.popup-info {
+  flex: 1;
+}
+
+.popup-name {
+  font-weight: 600;
+  color: var(--gp-text-primary, #1e293b);
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.popup-username {
+  color: var(--gp-text-muted, #94a3b8);
+  font-size: 0.8rem;
+}
+
+/* Status */
+.popup-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--gp-radius-small, 4px);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.popup-status.online {
+  background: var(--gp-success-light, #f0fdf4);
+  color: var(--gp-success-dark, #15803d);
+}
+
+.popup-status.away {
+  background: var(--gp-warning-light, #fffbeb);
+  color: var(--gp-warning-dark, #d97706);
+}
+
+.popup-status.offline {
+  background: var(--gp-surface-light, #f8fafc);
+  color: var(--gp-text-muted, #94a3b8);
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Last seen */
+.popup-last-seen {
+  color: var(--gp-text-secondary, #64748b);
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.friend-popup .popup-last-seen {
+  margin-bottom: 0.25rem;
+}
+
+/* Location */
+.popup-location {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--gp-text-secondary, #64748b);
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.friend-popup .popup-location {
+  margin-bottom: 0.25rem;
+}
+
+.popup-location i {
+  color: var(--gp-primary, #1a56db);
+}
+
+/* Actions */
+.popup-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--gp-border-light, #e2e8f0);
+}
+
+.popup-button {
+  flex: 1;
+  padding: 0.5rem;
+  border: none;
+  border-radius: var(--gp-radius-small, 4px);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.popup-button.message {
+  background: var(--gp-primary, #1a56db);
+  color: white;
+}
+
+.popup-button.message:hover {
+  background: var(--gp-primary-dark, #1e40af);
+}
+
+.popup-button.locate {
+  background: var(--gp-surface-light, #f8fafc);
+  color: var(--gp-text-primary, #1e293b);
+  border: 1px solid var(--gp-border-light, #e2e8f0);
+}
+
+.popup-button.locate:hover {
+  background: var(--gp-surface-gray, #f1f5f9);
+}
+
+/* Dark mode */
+.p-dark .friend-popup,
+.p-dark .friend-marker-popup {
+  background: var(--gp-surface-dark, #1e293b);
+}
+
+.p-dark .popup-header {
+  border-bottom-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
+}
+
+.p-dark .popup-name {
+  color: var(--gp-text-primary, #f1f5f9);
+}
+
+.p-dark .popup-avatar-placeholder {
+  background: var(--gp-surface-darker, #0f172a);
+  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
+}
+
+.p-dark .popup-actions {
+  border-top-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
+}
+
+.p-dark .popup-button.locate {
+  background: var(--gp-surface-darker, #0f172a);
+  color: var(--gp-text-primary, #f1f5f9);
+  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
+}
+
+.p-dark .popup-button.locate:hover {
+  background: var(--gp-surface-dark, #1e293b);
+}
+
+/* Legacy class names for backward compatibility */
+.friend-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--gp-border-light, #e2e8f0);
+}
+
+.friend-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gp-primary, #1a56db);
+}
+
+.friend-name {
+  font-weight: 600;
+  color: var(--gp-text-primary, #1e293b);
+  font-size: 1rem;
+}
+
+.friend-last-seen {
+  color: var(--gp-text-secondary, #64748b);
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.friend-location {
+  color: var(--gp-text-secondary, #64748b);
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.friend-status {
+  color: var(--gp-success, #10b981);
+  font-size: 0.8rem;
+  font-weight: 500;
+}

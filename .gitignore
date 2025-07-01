@@ -37,3 +37,6 @@ build/
 ### Mac OS ###
 .DS_Store
 /.idea/
+/frontend/dist/
+/.claude/
+/backend/.claude/

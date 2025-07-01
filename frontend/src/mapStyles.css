@@ -1,0 +1,556 @@
+/**
+ * Enhanced styles for map markers and components
+ * Uses GeoPulse design system variables
+ */
+
+/* ================================
+   MAP ANIMATIONS
+   ================================ */
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 0 0 0 var(--gp-map-accent-light);
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.9;
+        box-shadow: 0 0 0 10px var(--gp-map-accent-bg);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+        box-shadow: 0 0 0 20px transparent;
+    }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-8px);
+    }
+    60% {
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes bounceIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ================================
+   MARKER BASE STYLES
+   ================================ */
+
+.custom-marker {
+    cursor: pointer;
+    position: relative !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.custom-marker div {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+    transition: none;
+}
+
+/* Disable transitions during zoom/pan operations */
+.leaflet-zoom-anim .custom-marker,
+.leaflet-dragging .custom-marker,
+.leaflet-touching .custom-marker {
+    transition: none !important;
+    animation: none !important;
+}
+
+.leaflet-zoom-anim .custom-marker div,
+.leaflet-dragging .custom-marker div,
+.leaflet-touching .custom-marker div {
+    transition: none !important;
+    transform: none !important;
+    animation: none !important;
+}
+
+/* ================================
+   MARKER SHAPE STYLES
+   ================================ */
+
+.marker-pin {
+    transform-origin: center bottom;
+    filter: drop-shadow(3px 3px 6px rgba(0,0,0,0.4));
+}
+
+.marker-pin:hover {
+    filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5)) brightness(1.1) saturate(1.2);
+}
+
+.marker-circle {
+    transform-origin: center center;
+    box-shadow: var(--gp-shadow-medium);
+}
+
+.marker-square {
+    transform-origin: center center;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.25);
+}
+
+/* ================================
+   MARKER TYPE STYLES
+   ================================ */
+
+.last-marker {
+    animation: pulse 2s infinite;
+    z-index: 1000;
+}
+
+.highlight-start-marker {
+    animation: bounceIn 0.3s ease-out;
+}
+
+.highlight-start-marker:hover {
+    animation: bounce 0.6s ease-in-out infinite;
+}
+
+.highlight-end-marker {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.friend-marker {
+    animation: slideUp 0.4s ease-out;
+}
+
+.friend-marker:hover {
+    animation: pulse 1.5s infinite;
+    transform: scale(1.2);
+}
+
+.favorite-location-marker {
+    animation: slideUp 0.5s ease-out;
+}
+
+.favorite-location-marker:hover {
+    transform: scale(1.2) rotate(15deg);
+    filter: brightness(1.2) saturate(1.3);
+}
+
+.stay-marker {
+    transition: all 0.3s ease;
+}
+
+.stay-marker:hover {
+    filter: brightness(1.2) saturate(1.1);
+    transform: scale(1.2);
+    box-shadow: 0 6px 12px rgba(96, 125, 139, 0.4);
+}
+
+.transit-marker {
+    transition: all 0.3s ease;
+}
+
+.transit-marker:hover {
+    filter: brightness(1.2) saturate(1.1);
+    transform: scale(1.2) rotate(5deg);
+    box-shadow: 0 5px 10px rgba(0, 51, 102, 0.4);
+}
+
+/* Instant appearance for highlighted markers */
+.highlight-start-marker.instant,
+.highlight-end-marker.instant {
+    animation: none !important;
+}
+
+/* ================================
+   HOVER EFFECTS
+   ================================ */
+
+.custom-marker:hover:not(.leaflet-zoom-anim *) {
+    transform: scale(1.15);
+    z-index: 1000;
+    filter: brightness(1.1) saturate(1.2);
+}
+
+.custom-marker.marker-pin:hover:not(.leaflet-zoom-anim *) {
+    transform: scale(1.15);
+    transform-origin: center bottom;
+}
+
+/* ================================
+   LEAFLET OVERRIDES
+   ================================ */
+
+.leaflet-marker-icon {
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+}
+
+.leaflet-div-icon {
+    background: transparent !important;
+    border: none !important;
+    overflow: visible;
+    transform: none !important;
+}
+
+.leaflet-zoom-anim .leaflet-div-icon {
+    transform: none !important;
+    transition: none !important;
+}
+
+.leaflet-zoom-anim .leaflet-div-icon > div {
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
+}
+
+/* ================================
+   MAP CONTAINER
+   ================================ */
+
+/* Removed problematic CSS - let Leaflet handle its own styling */
+
+/* ================================
+   MAP CONTROLS
+   ================================ */
+
+.leaflet-control-zoom {
+    border: none !important;
+    border-radius: 10px !important;
+    overflow: hidden;
+    box-shadow: var(--gp-shadow-medium) !important;
+}
+
+.leaflet-control-zoom a {
+    background: linear-gradient(135deg, var(--gp-surface-white), var(--gp-surface-light)) !important;
+    border: 1px solid var(--gp-border-medium) !important;
+    color: var(--gp-text-secondary) !important;
+    transition: all 0.3s ease !important;
+    font-weight: bold !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-dark)) !important;
+    color: white !important;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px var(--gp-map-accent-bg) !important;
+}
+
+.leaflet-control-attribution {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: var(--gp-radius-small) !important;
+    font-size: 10px !important;
+    padding: 4px 8px !important;
+    backdrop-filter: blur(5px);
+}
+
+/* ================================
+   TOOLTIPS
+   ================================ */
+
+.leaflet-tooltip {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.92), rgba(33, 33, 33, 0.97)) !important;
+    border: none !important;
+    border-radius: var(--gp-radius-medium) !important;
+    color: rgba(255, 255, 255, 0.98) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+    padding: 10px 14px !important;
+    box-shadow: var(--gp-shadow-medium) !important;
+    backdrop-filter: blur(10px);
+    max-width: 250px !important;
+}
+
+.leaflet-tooltip::before {
+    border-top-color: rgba(0, 0, 0, 0.92) !important;
+}
+
+/* ================================
+   CONTEXT MENU
+   ================================ */
+
+.p-contextmenu {
+    border-radius: var(--gp-radius-large) !important;
+    box-shadow: var(--gp-shadow-medium) !important;
+    border: 1px solid var(--gp-border-medium) !important;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.p-contextmenu .p-menuitem-link {
+    transition: all 0.2s ease !important;
+    padding: 12px 16px !important;
+}
+
+.p-contextmenu .p-menuitem-link:hover {
+    background: linear-gradient(135deg, var(--gp-surface-light), var(--gp-surface-gray)) !important;
+    transform: translateX(4px);
+}
+
+/* ================================
+   AVATAR MARKERS
+   ================================ */
+
+.avatar-marker {
+    background: none !important;
+    border: none !important;
+}
+
+.avatar-marker .marker-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background-color: var(--gp-surface-white);
+    box-shadow: var(--gp-shadow-medium);
+    transition: all 0.2s ease-in-out;
+}
+
+.avatar-marker .marker-container.circle {
+    border-radius: 50%;
+}
+
+.avatar-marker .marker-container.square {
+    border-radius: var(--gp-radius-small);
+}
+
+.avatar-marker:hover .marker-container {
+    transform: scale(1.05);
+    box-shadow: var(--gp-shadow-medium), 0 0 0 3px var(--gp-map-accent-bg);
+}
+
+.avatar-marker.selected .marker-container {
+    animation: pulse 1.5s infinite;
+}
+
+.avatar-marker .status-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid white;
+}
+
+.avatar-marker .status-badge.online {
+    background-color: var(--gp-success);
+}
+
+.avatar-marker .status-badge.offline {
+    background-color: var(--gp-text-muted);
+}
+
+/* ================================
+   MARKER CLUSTERING
+   ================================ */
+
+.marker-cluster-small {
+    background-color: rgba(66, 165, 245, 0.8);
+    border: 2px solid rgba(66, 165, 245, 1);
+}
+
+.marker-cluster-medium {
+    background-color: rgba(255, 152, 0, 0.8);
+    border: 2px solid rgba(255, 152, 0, 1);
+}
+
+.marker-cluster-large {
+    background-color: rgba(244, 67, 54, 0.8);
+    border: 2px solid rgba(244, 67, 54, 1);
+}
+
+.marker-cluster {
+    border-radius: 50%;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* ================================
+   POLYLINES
+   ================================ */
+
+.leaflet-interactive {
+    transition: all 0.3s ease;
+}
+
+.leaflet-interactive:hover {
+    filter: brightness(1.2) saturate(1.1);
+    stroke-width: 6 !important;
+}
+
+/* ================================
+   LOADING STATES
+   ================================ */
+
+.loading-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    color: var(--gp-text-secondary);
+    font-size: 16px;
+    text-align: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--gp-surface-light), var(--gp-surface-gray));
+    border-radius: var(--gp-radius-medium);
+    backdrop-filter: blur(5px);
+}
+
+.loading-messages .p-progressspinner {
+    margin-bottom: 1rem;
+}
+
+/* ================================
+   RESPONSIVE DESIGN
+   ================================ */
+
+@media (max-width: 768px) {
+    .leaflet-tooltip {
+        font-size: 11px !important;
+        padding: 8px 10px !important;
+        max-width: 200px !important;
+    }
+
+    .custom-marker {
+        transform-origin: center;
+    }
+
+    .custom-marker:hover {
+        transform: scale(1.3);
+    }
+
+    .marker-pin {
+        filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+    }
+}
+
+/* ================================
+   DARK MODE
+   ================================ */
+
+.p-dark .leaflet-container {
+    background: linear-gradient(135deg, var(--gp-surface-light) 0%, var(--gp-surface-gray) 100%);
+}
+
+.p-dark .leaflet-control-zoom a {
+    background: linear-gradient(135deg, var(--gp-surface-white), var(--gp-surface-light)) !important;
+    border-color: var(--gp-border-medium) !important;
+    color: var(--gp-text-primary) !important;
+}
+
+.p-dark .leaflet-control-zoom a:hover {
+    background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-dark)) !important;
+    color: white !important;
+}
+
+.p-dark .leaflet-control-attribution {
+    background: rgba(30, 41, 59, 0.95) !important;
+    color: var(--gp-text-primary) !important;
+}
+
+.p-dark .leaflet-tooltip {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(71, 85, 105, 0.3) !important;
+}
+
+.p-dark .leaflet-tooltip::before {
+    border-top-color: rgba(15, 23, 42, 0.95) !important;
+}
+
+/* ================================
+   ACCESSIBILITY
+   ================================ */
+
+@media (prefers-contrast: high) {
+    .custom-marker div {
+        border-width: 4px !important;
+        border-color: black !important;
+    }
+
+    .leaflet-tooltip {
+        background: black !important;
+        color: white !important;
+        border: 3px solid white !important;
+    }
+
+    .marker-pin {
+        filter: drop-shadow(2px 2px 0 black);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .custom-marker,
+    .leaflet-interactive,
+    .leaflet-control-zoom a {
+        transition: none !important;
+        animation: none !important;
+    }
+
+    .last-marker,
+    .highlight-start-marker,
+    .highlight-end-marker,
+    .friend-marker:hover,
+    .favorite-location-marker {
+        animation: none !important;
+    }
+
+    .custom-marker:hover {
+        transform: none !important;
+    }
+}
+
+/* ================================
+   TEXT AND ICON ENHANCEMENTS
+   ================================ */
+
+.custom-marker i {
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.custom-marker span {
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+}

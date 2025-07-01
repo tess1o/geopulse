@@ -1,158 +1,208 @@
 # GeoPulse
 
-A Quarkus application for tracking and storing location data from OwnTracks. This application demonstrates the integration of Quarkus with PostgreSQL and PostGIS for spatial data storage and querying.
+<div align="center">
+  <img src="frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="200"/>
+  
+  **Turn Your GPS Data Into Rich Insights**
+  
+  A self-hosted location tracking and analysis platform with intelligent timeline generation, social features, and comprehensive privacy controls.
 
-## Prerequisites
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+  [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docs/DEPLOYMENT_GUIDE.md)
+  [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-✓-green.svg)](#)
+  [![Privacy First](https://img.shields.io/badge/Privacy-First-green.svg)](#)
+</div>
 
-For running with Docker (recommended):
-- Docker
-- Docker Compose
+---
 
-For local development:
-- JDK 23 or later
-- Maven 3.8.1+
-- Docker (for running PostgreSQL with PostGIS)
-- GraalVM (optional, for native image compilation)
+## 🎯 What is GeoPulse?
 
-## Docker Setup
+GeoPulse transforms raw GPS data from tracking apps like **OwnTracks** and **Overland** into meaningful insights about your movement patterns, places you visit, and journeys you take. It automatically categorizes your location data into **stays** and **trips**, providing an intelligent timeline of your daily activities while keeping your data completely under your control.
 
-### Running with Docker Compose
+### 🗺️ See It In Action
+<div align="center">
+  <img src="docs/images/timeline.png" alt="GeoPulse Interactive Timeline" width="800"/>
+  <p><em>Smart timeline automatically categorizes your GPS data into meaningful stays and trips with interactive map visualization</em></p>
+</div>
 
-The application can be run completely in Docker using the provided Docker Compose configuration:
+## 🚀 Quick Start
+📖 **For detailed deployment instructions, see [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)**
 
+## ✨ Key Features
+
+### 📱 **GPS Data Integration**
+- **OwnTracks & Overland Support** - Direct integration with popular tracking apps
+- **Flexible Authentication** - Username/password or token-based connection
+- **Import/Export** - Full OwnTracks format compatibility for data portability
+- **Real-time Updates** - Automatic data synchronization from connected sources
+
+### 🗺️ **Interactive Timeline & Maps**
+- **Smart Timeline** - Automatically categorize GPS data into meaningful stays and trips
+- **Interactive Maps** - Visualize your complete movement history with detailed routes
+- **Date Range Flexibility** - View any time period from a single day to months of history
+- **Real-time Tracking** - See current location when viewing today's data
+
+### 📊 **Rich Analytics & Insights**
+- **Dashboard Metrics** - Distance traveled, places visited, trip statistics
+- **Journey Insights** - Countries and cities explored with achievement tracking
+- **Movement Patterns** - Activity levels, streaks, and behavioral analysis
+- **Top Places** - Most visited locations with detailed visit counts
+
+### 👥 **Social Features**
+- **Friend Network** - Connect with friends to share locations
+- **Real-time Sharing** - See friends' current locations on the map
+- **Privacy Controls** - Full control over what and when you share
+- **Invitation System** - Email-based friend invitations and management
+
+### 🔗 **Flexible Sharing**
+- **Public Share Links** - Share your location with anyone, even non-registered users
+- **Time-limited Access** - Set expiration dates for shared links
+- **Password Protection** - Optional password protection for sensitive shares
+- **Temporary Links** - Create secure, revocable sharing links
+
+### ⭐ **Places & Favorites**
+- **Favorite Locations** - Save important places and areas
+- **Map Integration** - Add favorites directly from the map interface
+- **Search & Management** - Organize and find your saved places easily
+
+### ⚙️ **Customization & Control**
+- **Timeline Preferences** - Adjust sensitivity settings for stay/trip detection
+- **Data Export/Import** - Full control over your data with multiple export formats
+- **Theme Support** - Dark and light mode with system preference detection
+- **Mobile Optimized** - Fully responsive design for all devices
+
+## 🏗️ Architecture
+
+GeoPulse is built with a modern, scalable architecture designed for performance and maintainability:
+
+- **Backend**: Java with Quarkus framework for high-performance REST APIs
+- **Database**: PostGIS (PostgreSQL + Geographic Extensions) for spatial data
+- **Frontend**: Vue.js 3 with Composition API, PrimeVue UI components
+- **Maps**: Leaflet with OpenStreetMap for interactive mapping
+- **State Management**: Pinia for reactive data management
+- **Authentication**: Dual-mode JWT (localStorage for cross-domain, cookies for production)
+- **Deployment**: Docker Compose with PostgreSQL, full containerization
+
+## 📱 Compatible GPS Tracking Apps
+
+### OwnTracks
+- **Platform**: iOS, Android, Desktop
+- **Authentication**: Username/Password
+- **Features**: High-precision tracking, offline support, encryption
+- **Setup**: Configure HTTP endpoint in OwnTracks settings
+
+### Overland  
+- **Platform**: iOS
+- **Authentication**: Token-based
+- **Features**: Battery-efficient tracking, background sync
+- **Setup**: Add GeoPulse endpoint URL in Overland app
+
+## 🛡️ Privacy & Security
+
+GeoPulse is designed with **privacy-first principles**:
+
+- ✅ **Self-Hosted** - Your data never leaves your server
+- ✅ **No Third-Party Tracking** - No analytics, ads, or external data sharing
+- ✅ **Secure Authentication** - JWT tokens with automatic refresh
+- ✅ **HTTPS Required** - Encrypted connections for all communications
+- ✅ **Granular Controls** - Choose exactly what to share and when
+- ✅ **Data Ownership** - Export your data anytime in standard formats
+- ✅ **CSRF Protection** - Comprehensive security against common attacks
+
+### Authentication Modes
+- **Cookie Mode (Production)**: Secure HttpOnly cookies with CSRF protection
+- **localStorage Mode (Development/Cross-domain)**: JWT tokens in browser storage
+
+
+## 📊 More Screenshots
+
+### 🏠 Welcome Page
+<div align="center">
+  <img src="docs/images/home_page.png" alt="GeoPulse Home Page" width="800"/>
+  <p><em>Beautiful landing page with feature overview and easy navigation</em></p>
+</div>
+
+### 📊 Analytics & Insights
+
+<details>
+<summary>📈 <strong>Dashboard Overview</strong> (Click to expand)</summary>
+
+![GeoPulse Dashboard](docs/images/dashboard.png)
+*Comprehensive dashboard with activity statistics, distance traveled, and movement insights*
+
+</details>
+
+<details>
+<summary>🎯 <strong>Journey Insights & Achievements</strong> (Click to expand)</summary>
+
+![Journey Insights](docs/images/journey_insights.png)
+*Explore countries visited, activity streaks, and personal achievements with beautiful visual displays*
+
+</details>
+
+### ⚙️ Configuration & Setup
+
+<details>
+<summary>📱 <strong>GPS Source Configuration</strong> (Click to expand)</summary>
+
+![Location Sources](docs/images/location_sources.png)
+*Easy setup for OwnTracks, Overland, and other GPS tracking apps with connection testing*
+
+</details>
+
+<details>
+<summary>🎛️ <strong>Timeline Preferences</strong> (Click to expand)</summary>
+
+![Timeline Preferences](docs/images/timeline_preferences.png)
+*Fine-tune timeline generation algorithms with customizable sensitivity settings*
+
+</details>
+
+### 🔗 Sharing & Data Management
+
+<details>
+<summary>🔗 <strong>Share Links Management</strong> (Click to expand)</summary>
+
+![Share Links](docs/images/share_links.png)
+*Create secure, time-limited sharing links with password protection for non-GeoPulse users*
+
+</details>
+
+### 📊 Data Export & Import
+
+<details>
+<summary>📤 <strong>Data Export Options</strong> (Click to expand)</summary>
+
+![Export Page](docs/images/export_page.png)
+*Export your location data in multiple formats with flexible date range and data type selection*
+
+</details>
+
+<details>
+<summary>📥 <strong>Data Import Interface</strong> (Click to expand)</summary>
+
+![Import Page](docs/images/import_page.png)
+*Import existing GPS data from OwnTracks or Overland other sources with progress tracking*
+
+</details>
+
+
+### Development Setup
 ```bash
-# Build and start both the application and database
-docker-compose up -d
+# Clone repository
+git clone https://github.com/tess1o/geopulse
+cd geopulse
+
+# Backend development
+cd backend
+./mvnw quarkus:dev
+
+# Frontend development  
+cd frontend
+npm install
+npm run dev
 ```
 
-This will:
-1. Build the application using the multistage Dockerfile
-2. Create a minimal runtime image based on Alpine Linux
-3. Start the PostgreSQL database with PostGIS extension
-4. Start the GeoPulse application
-5. Start the GeoPulse Dashboard for visualizing location data
+## 📄 License
 
-The application will be accessible at `http://localhost:8080/pub`, the dashboard at `http://localhost:3000`, and the database at `localhost:5432`.
-
-You can stop all services when you're done:
-
-```bash
-docker-compose down
-```
-
-If you want to remove the persisted data as well:
-
-```bash
-docker-compose down -v
-```
-
-### Docker Image Details
-
-The Docker image is built in two stages:
-
-1. **Build Stage**:
-   - Uses Maven 3.9 with Eclipse Temurin 23 (JDK)
-   - Compiles the application
-   - Packages the application with Quarkus
-
-2. **Runtime Stage**:
-   - Uses Eclipse Temurin 23 JRE Alpine (minimal size)
-   - Runs as a non-root user
-   - Contains only the necessary files to run the application
-
-### Setting up the Database Only
-
-If you want to run only the database and run the application locally:
-
-```bash
-# Start only the PostgreSQL database with PostGIS
-docker-compose up -d geopulse-postgres
-```
-
-This will create a PostgreSQL database with the PostGIS extension installed. The database will be accessible at `localhost:5432` with the following credentials:
-- Username: postgres
-- Password: postgres
-- Database: geopulse
-
-## Configuration
-
-The application is configured in `src/main/resources/application.properties`. You may need to adjust the database connection settings to match your environment.
-
-## Running the Application in Development Mode
-
-```bash
-./mvnw compile quarkus:dev
-```
-
-This will start the application in development mode with hot reload enabled.
-
-## Packaging and Running the Application
-
-### JVM Mode
-
-```bash
-./mvnw package
-java -jar target/quarkus-app/quarkus-run.jar
-```
-
-### Native Mode
-
-To build a native executable:
-
-```bash
-./mvnw package -Pnative
-```
-
-Or, if you don't have GraalVM installed, you can use a container build:
-
-```bash
-./mvnw package -Pnative -Dquarkus.native.container-build=true
-```
-
-Then, you can run the native executable:
-
-```bash
-./target/geopulse-1.0-SNAPSHOT-runner
-```
-
-## API Endpoints
-
-### POST /pub
-
-Accepts OwnTracks JSON payloads and stores location data in the database.
-
-Example payload:
-
-```json
-{
-  "_type": "location",
-  "tid": "device1",
-  "lat": 51.5074,
-  "lon": -0.1278,
-  "tst": 1609459200,
-  "acc": 10,
-  "batt": 95,
-  "vel": 0,
-  "alt": 20
-}
-```
-
-## Features
-
-- Stores location data from OwnTracks in PostgreSQL with PostGIS
-- Supports spatial queries for finding locations within areas
-- Optimized for native compilation with GraalVM
-- Minimal resource usage thanks to Quarkus
-
-## Project Structure
-
-- `src/main/java/org/github/tess1o/geopulse/Application.java`: Main application class with REST endpoint
-- `src/main/java/org/github/tess1o/geopulse/model/entity/LocationEntity.java`: JPA entity for location data
-- `src/main/java/org/github/tess1o/geopulse/repository/LocationRepository.java`: Repository for database operations
-- `src/main/resources/application.properties`: Application configuration
-- `src/main/resources/reflection-config.json`: GraalVM native image configuration
-- `docker-compose.yml`: Docker Compose configuration for PostgreSQL with PostGIS
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+GeoPulse is open source software released under the [MIT License](LICENSE).

@@ -1,0 +1,32 @@
+{
+  "name": "primevue_demo",
+  "description": "**** PrimeVue is an open source UI library for Vue featuring a rich set of 80+ components, a theme designer, various theme alternatives such as Material, Bootstrap, Tailwind, premium templates and professional support. In addition, it integrates with PrimeBlock, which has 500+ ready to use UI blocks to build spectacular applications in no time.",
+  "keywords": [],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@primeuix/themes": "latest",
+    "@primevue/auto-import-resolver": "4.3.4",
+    "@primevue/forms": "4.3.4",
+    "@vitejs/plugin-vue": "^4.0.0",
+    "autoprefixer": "^10",
+    "axios": "^1.9.0",
+    "chart.js": "^4.4.9",
+    "leaflet": "^1.9.4",
+    "leaflet-draw": "^1.0.4",
+    "pinia": "^3.0.3",
+    "postcss": "^8.4.31",
+    "primeicons": "latest",
+    "primevue": "4.3.4",
+    "tailwindcss": "^3",
+    "tailwindcss-primeui": "latest",
+    "unplugin-vue-components": "latest",
+    "vite": "^4.0.0",
+    "vue": "^3.2.45",
+    "vue-router": "^4.5.1"
+  },
+  "main": "src/App.vue"
+}
