@@ -14,6 +14,7 @@
     </template>
 
     <template v-else>
+      <div class="insights-content-wrapper">
       <!-- Geographic Section -->
       <div class="insights-section">
         <h2 class="insights-section-title">
@@ -48,7 +49,8 @@
                 @click="toggleCountriesExpanded"
                 class="view-more-btn"
               >
-                {{ countriesExpanded ? 'Show Less' : `View All ${geographic.countries.length} Countries →` }}
+                <span v-if="countriesExpanded">Show Less</span>
+                <span v-else>Show More</span>
               </button>
             </div>
             <div v-else class="no-data">Start exploring to discover countries!</div>
@@ -75,7 +77,8 @@
                 @click="toggleCitiesExpanded"
                 class="view-more-btn"
               >
-                {{ citiesExpanded ? 'Show Less' : `View All ${geographic.cities.length} Cities →` }}
+                <span v-if="citiesExpanded">Show Less</span>
+                <span v-else>Show More</span>
               </button>
             </div>
             <div v-else class="no-data">Start tracking to discover cities!</div>
@@ -234,6 +237,7 @@
         <p class="empty-message">
           Start tracking your location to unlock insights about your travel patterns and achievements.
         </p>
+      </div>
       </div>
     </template>
     </PageContainer>
@@ -545,6 +549,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Content Wrapper - Fixed width to prevent layout jumping */
+.insights-content-wrapper {
+  width: 100%;
+  max-width: 1400px; /* Maximum width to prevent excessive stretching */
+  margin: 0 auto; /* Center the content */
+  padding: 0 var(--gp-spacing-md); /* Add some padding on sides */
+  box-sizing: border-box;
+}
+
 /* Loading State */
 .insights-loading {
   display: flex;
@@ -564,6 +577,9 @@ onMounted(async () => {
 /* Section Layout */
 .insights-section {
   margin-bottom: var(--gp-spacing-xxl, 3rem);
+  width: 100%; /* Ensure consistent width */
+  max-width: 100%; /* Prevent overflow */
+  box-sizing: border-box; /* Include padding/borders in width */
 }
 
 .insights-section:last-child {
@@ -603,8 +619,10 @@ onMounted(async () => {
 /* Geographic Section */
 .geographic-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 500px 500px; /* Fixed pixel widths */
   gap: var(--gp-spacing-xl);
+  width: 1040px; /* Fixed total width (500+500+40px gap) */
+  justify-content: center;
 }
 
 .geographic-card {
@@ -613,6 +631,9 @@ onMounted(async () => {
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-lg);
   transition: all 0.3s ease;
+  width: 100%; /* Fixed width */
+  box-sizing: border-box; /* Include padding in width calculation */
+  overflow: hidden; /* Prevent content overflow */
 }
 
 .geographic-card:hover {
@@ -645,6 +666,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
+  min-height: 120px; /* Minimum height to prevent jumping */
+  transition: all 0.3s ease; /* Smooth transitions */
 }
 
 .geographic-item {
@@ -706,6 +729,8 @@ onMounted(async () => {
   padding: var(--gp-spacing-sm) 0;
   text-align: left;
   transition: color 0.2s ease;
+  width: 90px; /* Fixed width to prevent size changes */
+  white-space: nowrap; /* Keep text on one line */
 }
 
 .view-more-btn:hover {
@@ -806,8 +831,10 @@ onMounted(async () => {
 /* Travel Records Layout */
 .travel-records-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 320px 320px 320px; /* Fixed pixel widths */
   gap: var(--gp-spacing-xl);
+  width: 1040px; /* Fixed total width (320+320+320+80px gaps) */
+  justify-content: center;
 }
 
 /* Travel Cards */
@@ -815,6 +842,10 @@ onMounted(async () => {
   position: relative;
   text-align: center;
   padding: var(--gp-spacing-xl) var(--gp-spacing-lg);
+  min-height: 200px; /* Fixed minimum height to prevent jumping */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .travel-icon {
@@ -838,6 +869,11 @@ onMounted(async () => {
   font-weight: 500;
   line-height: 1.4;
   font-style: italic;
+  min-height: 40px; /* Fixed minimum height for consistent layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 /* Stat Containers */
