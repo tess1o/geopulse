@@ -219,7 +219,8 @@ const fetchLocationData = async (startDate, endDate) => {
   try {
     await locationStore.fetchLocationPath(startDate, endDate)
 
-    if (!pathData.value || !pathData.value || pathData.value.length === 0) {
+
+    if (!pathData.value || !pathData.value.points || pathData.value.points.length === 0) {
       toast.add({
         severity: 'info',
         detail: 'No location data for given date range',
