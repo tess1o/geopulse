@@ -44,11 +44,24 @@ const requireAuth = async (to, from, next) => {
 }
 
 // Guest guard function (for login/register pages)
-const requireGuest = (to, from, next) => {
-    const authData = localStorage.getItem('authData')
-    if (authData) {
-        next('/app/timeline')
-    } else {
+const requireGuest = async (to, from, next) => {
+    const authStore = useAuthStore()
+
+    try {
+        // Check auth on first navigation
+        if (!authStore.user) {
+            await authStore.checkAuth()
+        }
+
+        // If authenticated, redirect away from login/register
+        if (authStore.isAuthenticated) {
+            next('/app/timeline')
+        } else {
+            next()
+        }
+    } catch (error) {
+        console.log('Guest check failed, proceeding to login/register')
+        authStore.clearUser()
         next()
     }
 }
