@@ -41,14 +41,12 @@ Create `.env` file with your configuration:
 # Domain Configuration (CHANGE THESE)
 GEOPULSE_UI_URL=https://geopulse.yourdomain.com
 GEOPULSE_BACKEND_URL=https://geopulse-api.yourdomain.com
-GEOPULSE_AUTH_COOKIE_DOMAIN=.yourdomain.com
+GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
 
 # Database Configuration  
 GEOPULSE_POSTGRES_USERNAME=geopulse-user
 GEOPULSE_POSTGRES_PASSWORD=my-good-postgres-password
 
-# Security, change to 32+ symbols random string
-GEOPULSE_CSRF_SECRET=uxU1Qq6HJblt4OquzsICDZWViPQDnKwZUbhiAVAI/XE=
 ```
 
 ### Create Docker Compose File
@@ -80,11 +78,10 @@ services:
       # Authentication (Secure Cookie Mode. For localstorage mode see details below)
       - GEOPULSE_AUTH_MODE=cookies
       - GEOPULSE_AUTH_SECURE_COOKIES=true
-      - GEOPULSE_AUTH_COOKIE_DOMAIN=${GEOPULSE_AUTH_COOKIE_DOMAIN}
+      - GEOPULSE_COOKIE_DOMAIN=${GEOPULSE_COOKIE_DOMAIN}
       
       # Security
       - GEOPULSE_JWT_COOKIE=access_token
-      - GEOPULSE_CSRF_SECRET=${GEOPULSE_CSRF_SECRET}
 
   geopulse-ui:
     image: tess1o/geopulse-ui:0.0.28
@@ -120,7 +117,7 @@ volumes:
 # Your actual domains
 GEOPULSE_UI_URL=https://geopulse.yourdomain.com
 GEOPULSE_BACKEND_URL=https://geopulse-api.yourdomain.com  
-GEOPULSE_AUTH_COOKIE_DOMAIN=.yourdomain.com              # Note the dot prefix
+GEOPULSE_COOKIE_DOMAIN=.yourdomain.com              # Note the dot prefix
 
 # Optionally change database username
 GEOPULSE_POSTGRES_USERNAME=geopulse-user
@@ -172,7 +169,7 @@ When domains are completely different:
 environment:
   - GEOPULSE_AUTH_MODE=localStorage                    # ← Use localStorage instead
   - GEOPULSE_AUTH_SECURE_COOKIES=false                # ← Not applicable
-  - GEOPULSE_AUTH_COOKIE_DOMAIN=""                    # ← Empty string
+  - GEOPULSE_COOKIE_DOMAIN=""                    # ← Empty string
 ```
 
 ---
@@ -186,7 +183,7 @@ For local development with less security restrictions:
 environment:
   - GEOPULSE_AUTH_MODE=localStorage                    # ← localStorage for development
   - GEOPULSE_AUTH_SECURE_COOKIES=false                # ← Allow HTTP cookies  
-  - GEOPULSE_AUTH_COOKIE_DOMAIN=.localhost            # ← Local domain
+  - GEOPULSE_COOKIE_DOMAIN=.localhost            # ← Local domain
 ```
 
 **Development vs Production:**

@@ -44,14 +44,6 @@
                 <span v-else class="country-flag-placeholder">🏳️</span>
                 <span class="country-name">{{ country.name }}</span>
               </div>
-              <button 
-                v-if="geographic.countries.length > 3"
-                @click="toggleCountriesExpanded"
-                class="view-more-btn"
-              >
-                <span v-if="countriesExpanded">Show Less</span>
-                <span v-else>Show More</span>
-              </button>
             </div>
             <div v-else class="no-data">Start exploring to discover countries!</div>
           </div>
@@ -72,48 +64,10 @@
                 <span class="city-name">{{ city.name }}</span>
                 <span class="city-visits">{{ city.visits }} visits</span>
               </div>
-              <button 
-                v-if="geographic.cities.length > 3"
-                @click="toggleCitiesExpanded"
-                class="view-more-btn"
-              >
-                <span v-if="citiesExpanded">Show Less</span>
-                <span v-else>Show More</span>
-              </button>
             </div>
             <div v-else class="no-data">Start tracking to discover cities!</div>
           </div>
 
-          <!-- Most Explored Location -->
-<!--          <div class="geographic-card most-explored-card">-->
-<!--            <div class="geographic-header">-->
-<!--              <span class="geographic-label">Most Explored Location</span>-->
-<!--            </div>-->
-<!--            <div class="most-explored" v-if="geographic.mostExplored">-->
-<!--              <div class="location-showcase">-->
-<!--                <div class="location-icon">-->
-<!--                  <i class="pi pi-home"></i>-->
-<!--                </div>-->
-<!--                <div class="location-info">-->
-<!--                  <div class="location-name">{{ geographic.mostExplored.name }}</div>-->
-<!--                  <div class="location-subtitle">Your favorite place</div>-->
-<!--                </div>-->
-<!--              </div>-->
-<!--              <div class="location-metrics">-->
-<!--                <div class="metric-row">-->
-<!--                  <i class="pi pi-clock metric-icon"></i>-->
-<!--                  <span class="metric-label">Time spent</span>-->
-<!--                  <span class="metric-value">{{ geographic.mostExplored.timeSpent }}</span>-->
-<!--                </div>-->
-<!--                <div class="metric-row">-->
-<!--                  <i class="pi pi-map metric-icon"></i>-->
-<!--                  <span class="metric-label">Places found</span>-->
-<!--                  <span class="metric-value">{{ geographic.mostExplored.placesFound }}</span>-->
-<!--                </div>-->
-<!--              </div>-->
-<!--            </div>-->
-<!--            <div v-else class="no-data">Keep exploring to find your favorite spot!</div>-->
-<!--          </div>-->
         </div>
       </div>
 
@@ -266,8 +220,6 @@ const { handleErrorWithRetry } = useErrorHandler()
 const { insights: journeyInsights, loading: isLoading } = storeToRefs(journeyInsightsStore)
 
 // Local state for UI interactions
-const countriesExpanded = ref(false)
-const citiesExpanded = ref(false)
 const countryFlags = ref(new Map()) // Cache for country flags
 
 // Computed properties
@@ -288,18 +240,16 @@ const distanceTraveled = computed(() => journeyInsightsStore.distance)
 // Geographic display logic
 const displayedCountries = computed(() => {
   const countries = geographic.value?.countries || []
-  const countriesToShow = countriesExpanded.value ? countries : countries.slice(0, 3)
-  
+
   // Add flag URLs to countries
-  return countriesToShow.map(country => ({
+  return countries.map(country => ({
     ...country,
     flagUrl: countryFlags.value.get(country.name)
   }))
 })
 
 const displayedCities = computed(() => {
-  const cities = geographic.value?.cities || []
-  return citiesExpanded.value ? cities : cities.slice(0, 3)
+  return  geographic.value?.cities || []
 })
 
 // Achievement badges logic
@@ -405,14 +355,6 @@ const fetchCountryFlags = async () => {
 const handleFlagError = (country) => {
   // Remove failed flag from cache so it can be retried
   countryFlags.value.delete(country.name)
-}
-
-const toggleCountriesExpanded = () => {
-  countriesExpanded.value = !countriesExpanded.value
-}
-
-const toggleCitiesExpanded = () => {
-  citiesExpanded.value = !citiesExpanded.value
 }
 
 // Distance formatting and motivational phrases
@@ -552,9 +494,9 @@ onMounted(async () => {
 /* Content Wrapper - Fixed width to prevent layout jumping */
 .insights-content-wrapper {
   width: 100%;
-  max-width: 1400px; /* Maximum width to prevent excessive stretching */
-  margin: 0 auto; /* Center the content */
-  padding: 0 var(--gp-spacing-md); /* Add some padding on sides */
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 var(--gp-spacing-md);
   box-sizing: border-box;
 }
 
@@ -619,10 +561,12 @@ onMounted(async () => {
 /* Geographic Section */
 .geographic-grid {
   display: grid;
-  grid-template-columns: 500px 500px; /* Fixed pixel widths */
   gap: var(--gp-spacing-xl);
-  width: 1040px; /* Fixed total width (500+500+40px gap) */
-  justify-content: center;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  /* Desktop: 2 equal columns */
+  grid-template-columns: 1fr 1fr;
 }
 
 .geographic-card {
@@ -631,9 +575,12 @@ onMounted(async () => {
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-lg);
   transition: all 0.3s ease;
-  width: 100%; /* Fixed width */
-  box-sizing: border-box; /* Include padding in width calculation */
-  overflow: hidden; /* Prevent content overflow */
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
 }
 
 .geographic-card:hover {
@@ -666,10 +613,12 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-sm);
-  min-height: 120px; /* Minimum height to prevent jumping */
-  transition: all 0.3s ease; /* Smooth transitions */
+  flex: 1; /* Take available space */
+  /* Add scrolling for overflow content instead of expanding */
+  max-height: 300px;
+  overflow-y: auto;
+  transition: none; /* Remove transitions that cause jumping */
 }
-
 .geographic-item {
   display: flex;
   align-items: center;
@@ -831,10 +780,12 @@ onMounted(async () => {
 /* Travel Records Layout */
 .travel-records-grid {
   display: grid;
-  grid-template-columns: 320px 320px 320px; /* Fixed pixel widths */
   gap: var(--gp-spacing-xl);
-  width: 1040px; /* Fixed total width (320+320+320+80px gaps) */
-  justify-content: center;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  /* Desktop: 3 equal columns */
+  grid-template-columns: repeat(3, 1fr);
 }
 
 /* Travel Cards */
@@ -842,10 +793,12 @@ onMounted(async () => {
   position: relative;
   text-align: center;
   padding: var(--gp-spacing-xl) var(--gp-spacing-lg);
-  min-height: 200px; /* Fixed minimum height to prevent jumping */
+  min-height: 240px; /* Fixed height */
+  max-height: 240px; /* Prevent expansion */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden; /* Prevent content overflow */
 }
 
 .travel-icon {
@@ -1266,75 +1219,138 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .insights-content-wrapper {
+    padding: 0 var(--gp-spacing-sm);
+  }
+
   .insights-section {
     margin-bottom: var(--gp-spacing-xl);
   }
-  
+
   .insights-section-title {
     font-size: 1.25rem;
     margin-bottom: var(--gp-spacing-lg);
   }
-  
+
+  /* Mobile: Single column for all grids */
   .insights-grid,
   .insights-grid-simple,
   .geographic-grid,
   .travel-records-grid {
     grid-template-columns: 1fr;
     gap: var(--gp-spacing-lg);
+    max-width: 100%;
   }
-  
-  .insight-stat-wide {
-    grid-column: span 1;
+
+  /* Mobile card adjustments */
+  .geographic-card {
+    min-height: 260px; /* Slightly smaller on mobile */
+    padding: var(--gp-spacing-md);
   }
-  
+
+  .geographic-list {
+    max-height: 160px; /* Smaller scroll area on mobile */
+  }
+
+  .travel-card {
+    min-height: 200px;
+    max-height: 200px;
+    padding: var(--gp-spacing-md);
+  }
+
+  /* Card padding adjustments for mobile */
+  .insight-stat-large,
+  .insight-stat-medium,
+  .insight-stat-wide,
+  .insight-stat-highlight {
+    padding: var(--gp-spacing-md);
+  }
+
   .stat-number {
     font-size: 2.5rem;
   }
-  
+
   .stat-number-xl {
     font-size: 2.75rem;
   }
-  
-  .milestone-number {
-    font-size: 2.5rem;
-  }
-  
+
   .insight-stat-pattern {
     flex-direction: column;
     text-align: center;
     gap: var(--gp-spacing-md);
+    padding: var(--gp-spacing-md);
   }
-  
+
   .pattern-icon {
     width: 50px;
     height: 50px;
     font-size: 2rem;
   }
-  
+
   .milestones-grid {
     grid-template-columns: 1fr;
     gap: var(--gp-spacing-lg);
   }
+
+  /* Better mobile view-more button */
+  .view-more-btn {
+    background: var(--gp-surface-light);
+    border-radius: var(--gp-radius-small);
+    padding: var(--gp-spacing-sm);
+    text-align: center;
+    margin-top: var(--gp-spacing-xs);
+    min-width: auto;
+  }
 }
 
 @media (max-width: 480px) {
-  .stat-number,
-  .milestone-number {
+  .insights-content-wrapper {
+    padding: 0 var(--gp-spacing-xs);
+  }
+
+  .geographic-card,
+  .travel-card,
+  .insight-stat-large,
+  .insight-stat-medium,
+  .insight-stat-wide,
+  .insight-stat-highlight,
+  .achievement-badge {
+    padding: var(--gp-spacing-sm);
+  }
+
+  .geographic-card {
+    min-height: 240px;
+  }
+
+  .geographic-list {
+    max-height: 140px;
+  }
+
+  .travel-card {
+    min-height: 180px;
+    max-height: 180px;
+  }
+
+  .travel-icon {
+    font-size: 2.5rem;
+  }
+
+  .stat-number {
     font-size: 2rem;
   }
-  
+
   .stat-number-medium {
     font-size: 1.75rem;
   }
-  
+
   .stat-number-xl {
     font-size: 2.25rem;
   }
-  
+
   .empty-icon {
     font-size: 3rem;
   }
-  
+
   .empty-title {
     font-size: 1.25rem;
   }
