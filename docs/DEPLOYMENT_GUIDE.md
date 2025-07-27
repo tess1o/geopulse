@@ -58,7 +58,7 @@ version: '3.8'
 
 services:
   geopulse-backend:
-    image: tess1o/geopulse-backend:0.0.28
+    image: tess1o/geopulse-backend:1.0.0-rc.1
     container_name: geopulse-backend
     volumes:
       - ./keys:/app/keys
@@ -84,7 +84,7 @@ services:
       - GEOPULSE_JWT_COOKIE=access_token
 
   geopulse-ui:
-    image: tess1o/geopulse-ui:0.0.28
+    image: tess1o/geopulse-ui:1.0.0-rc.1
     container_name: geopulse-ui
     depends_on:
       - geopulse-backend
