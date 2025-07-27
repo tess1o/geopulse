@@ -1,0 +1,42 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2007 Free Software Foundation, Inc.
+<https://fsf.org/>
+
+Everyone is permitted to copy and distribute verbatim copies
+of this license document, but changing it is not allowed.
+
+            GNU AFFERO GENERAL PUBLIC LICENSE
+   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+
+(Full AGPL-3.0 text omitted here for brevity — include the full license from: https://www.gnu.org/licenses/agpl-3.0.txt)
+
+You must include the full AGPL text above this line if distributing the source.
+
+------------------------------------------------------------------------
+
+ADDITIONAL TERMS: NON-COMMERCIAL USE ONLY
+
+This software is licensed under the GNU Affero General Public License v3.0
+with the following additional restriction:
+
+**Commercial use is strictly prohibited without a separate commercial license.**
+
+This includes, but is not limited to:
+- Selling or reselling the software.
+- Using the software to provide paid services (including SaaS).
+- Including the software in a commercial product or system.
+- Using the software in any commercial environment or for business purposes.
+
+The software is free to use, modify, and share **only for personal, educational, research, or other non-commercial purposes**.
+
+For commercial licensing, please contact:
+
+Email: kerriden1@gmail.com
+
+By using this software, you agree to the above additional terms.
+
+------------------------------------------------------------------------
+
+SPDX-License-Identifier: AGPL-3.0-only WITH Non-Commercial-Terms
