@@ -7,7 +7,7 @@
   
   A self-hosted location tracking and analysis platform with intelligent timeline generation, social features, and comprehensive privacy controls.
 
-  [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
   [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docs/DEPLOYMENT_GUIDE.md)
   [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-✓-green.svg)](#)
   [![Privacy First](https://img.shields.io/badge/Privacy-First-green.svg)](#)
