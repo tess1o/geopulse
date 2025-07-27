@@ -205,4 +205,5 @@ npm run dev
 
 ## 📄 License
 
-GeoPulse is open source software released under the [MIT License](LICENSE).
+License: AGPL-3.0 with Non-Commercial Use Restriction  
+See [LICENSE](./LICENSE) for details.
