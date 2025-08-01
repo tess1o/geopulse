@@ -1,193 +1,151 @@
 # GeoPulse
 
 <div align="center">
-  <img src="frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="200"/>
-  
-  **Turn Your GPS Data Into Rich Insights**
-  
-  A self-hosted location tracking and analysis platform with intelligent timeline generation, social features, and comprehensive privacy controls.
+  <img src="/frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="200"/>
 
-  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
-  [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docs/DEPLOYMENT_GUIDE.md)
-  [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-✓-green.svg)](#)
-  [![Privacy First](https://img.shields.io/badge/Privacy-First-green.svg)](#)
+**A self-hosted location tracking and analysis platform**
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docs/DEPLOYMENT_GUIDE.md)
+[![Self-Hosted](https://img.shields.io/badge/Self--Hosted-✓-green.svg)](#)
+[![Privacy First](https://img.shields.io/badge/Privacy-First-green.svg)](#)
 </div>
 
 ---
 
-## 🎯 What is GeoPulse?
+GeoPulse transforms raw GPS data from tracking apps like OwnTracks and Overland into organized timelines and insights.
+It automatically categorizes your location data into stays and trips, providing a clear view of your movement patterns
+while keeping everything on your own server.
 
-GeoPulse transforms raw GPS data from tracking apps like **OwnTracks** and **Overland** into meaningful insights about your movement patterns, places you visit, and journeys you take. It automatically categorizes your location data into **stays** and **trips**, providing an intelligent timeline of your daily activities while keeping your data completely under your control.
-
-### 🗺️ See It In Action
 <div align="center">
   <img src="docs/images/timeline.png" alt="GeoPulse Interactive Timeline" width="800"/>
-  <p><em>Smart timeline automatically categorizes your GPS data into meaningful stays and trips with interactive map visualization</em></p>
+  <p><em>Interactive timeline with automatic stay/trip detection and map visualization</em></p>
 </div>
 
-## 🚀 Quick Start
-📖 **For detailed deployment instructions, see [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)**
+## Getting Started
 
-## ✨ Key Features
+For complete deployment instructions, see the [Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
 
-### 📱 **GPS Data Integration**
-- **OwnTracks & Overland Support** - Direct integration with popular tracking apps
-- **Flexible Authentication** - Username/password or token-based connection
-- **Import/Export** - Full OwnTracks format compatibility for data portability
-- **Real-time Updates** - Automatic data synchronization from connected sources
+## Features
 
-### 🗺️ **Interactive Timeline & Maps**
-- **Smart Timeline** - Automatically categorize GPS data into meaningful stays and trips
-- **Interactive Maps** - Visualize your complete movement history with detailed routes
-- **Date Range Flexibility** - View any time period from a single day to months of history
-- **Real-time Tracking** - See current location when viewing today's data
+**GPS Data Integration**
 
-### 📊 **Rich Analytics & Insights**
-- **Dashboard Metrics** - Distance traveled, places visited, trip statistics
-- **Journey Insights** - Countries and cities explored with achievement tracking
-- **Movement Patterns** - Activity levels, streaks, and behavioral analysis
-- **Top Places** - Most visited locations with detailed visit counts
+- Works with OwnTracks (HTTP only) and Overland tracking apps
+- Real-time data sync and import/export capabilities
+- Flexible authentication (username/password or token-based)
 
-### 👥 **Social Features**
-- **Friend Network** - Connect with friends to share locations
-- **Real-time Sharing** - See friends' current locations on the map
-- **Privacy Controls** - Full control over what and when you share
-- **Invitation System** - Email-based friend invitations and management
+**Timeline and Maps**
 
-### 🔗 **Flexible Sharing**
-- **Public Share Links** - Share your location with anyone, even non-registered users
-- **Time-limited Access** - Set expiration dates for shared links
-- **Password Protection** - Optional password protection for sensitive shares
-- **Temporary Links** - Create secure, revocable sharing links
+- Automatic categorization of GPS data into stays and trips
+- Interactive maps showing your complete movement history
+- Flexible date range viewing (single day to months of data)
+- Real-time location display for current day
 
-### ⭐ **Places & Favorites**
-- **Favorite Locations** - Save important places and areas
-- **Map Integration** - Add favorites directly from the map interface
-- **Search & Management** - Organize and find your saved places easily
+**Analytics**
 
-### ⚙️ **Customization & Control**
-- **Timeline Preferences** - Adjust sensitivity settings for stay/trip detection
-- **Data Export/Import** - Full control over your data with multiple export formats
-- **Theme Support** - Dark and light mode with system preference detection
-- **Mobile Optimized** - Fully responsive design for all devices
+- Dashboard with distance traveled and visit statistics
+- Journey insights showing countries and cities visited
+- Movement pattern analysis and activity tracking
+- Most visited locations with detailed counts
 
-## 🏗️ Architecture
+**Social Features**
 
-GeoPulse is built with a modern, scalable architecture designed for performance and maintainability:
+- Connect with friends to share locations
+- Real-time friend location sharing
+- Privacy controls for what and when you share
+- Email-based friend invitations
 
-- **Backend**: Java with Quarkus framework for high-performance REST APIs
-- **Database**: PostGIS (PostgreSQL + Geographic Extensions) for spatial data
-- **Frontend**: Vue.js 3 with Composition API, PrimeVue UI components
-- **Maps**: Leaflet with OpenStreetMap for interactive mapping
-- **State Management**: Pinia for reactive data management
-- **Authentication**: Dual-mode JWT (localStorage for cross-domain, cookies for production)
-- **Deployment**: Docker Compose with PostgreSQL, full containerization
+**Sharing**
 
-## 📱 Compatible GPS Tracking Apps
+- Public share links for non-registered users
+- Time-limited and password-protected access
+- Temporary, revocable sharing links
 
-### OwnTracks
-- **Platform**: iOS, Android, Desktop
-- **Authentication**: Username/Password
-- **Features**: High-precision tracking, offline support, encryption
-- **Setup**: Configure HTTP endpoint in OwnTracks settings
+**Places Management**
 
-### Overland  
-- **Platform**: iOS
-- **Authentication**: Token-based
-- **Features**: Battery-efficient tracking, background sync
-- **Setup**: Add GeoPulse endpoint URL in Overland app
+- Save favorite locations and areas
+- Add favorites directly from the map
+- Search and organize saved places
 
-## 🛡️ Privacy & Security
+**Customization**
 
-GeoPulse is designed with **privacy-first principles**:
+- Adjustable timeline sensitivity settings
+- Data export in multiple formats
+- Dark/light themes with system preference detection
+- Mobile-responsive design
 
-- ✅ **Self-Hosted** - Your data never leaves your server
-- ✅ **No Third-Party Tracking** - No analytics, ads, or external data sharing
-- ✅ **Secure Authentication** - JWT tokens with automatic refresh
-- ✅ **HTTPS Required** - Encrypted connections for all communications
-- ✅ **Granular Controls** - Choose exactly what to share and when
-- ✅ **Data Ownership** - Export your data anytime in standard formats
-- ✅ **CSRF Protection** - Comprehensive security against common attacks
+## Architecture
 
-### Authentication Modes
-- **Cookie Mode (Production)**: Secure HttpOnly cookies with CSRF protection
-- **localStorage Mode (Development/Cross-domain)**: JWT tokens in browser storage
+- **Backend**: Java with Quarkus framework
+- **Database**: PostGIS (PostgreSQL with geographic extensions)
+- **Frontend**: Vue.js 3 with PrimeVue components
+- **Maps**: Leaflet with OpenStreetMap
+- **Authentication**: JWT tokens
+- **Deployment**: Docker Compose
 
+## Compatible Apps
 
-## 📊 More Screenshots
+**OwnTracks** (iOS, Android, Desktop)
 
-### 🏠 Welcome Page
+- Username/password authentication
+- High-precision tracking with offline support
+- Configure HTTP endpoint in app settings
+
+**Overland** (iOS)
+
+- Token-based authentication
+- Battery-efficient background tracking
+- Add GeoPulse endpoint URL in app
+
+## Privacy and Security
+
+GeoPulse keeps your data under your control:
+
+- Self-hosted - your data stays on your server
+- No third-party tracking or external data sharing
+- Secure JWT authentication with HTTPS required
+- Granular sharing controls
+- Full data export capabilities
+
+## Screenshots
+
+### Timeline View
 <div align="center">
-  <img src="docs/images/home_page.png" alt="GeoPulse Home Page" width="800"/>
-  <p><em>Beautiful landing page with feature overview and easy navigation</em></p>
+  <img src="docs/images/timeline.png" alt="GeoPulse Interactive Timeline" width="800"/>
 </div>
 
-### 📊 Analytics & Insights
+### Dashboard
+<div align="center">
+  <img src="docs/images/dashboard.png" alt="GeoPulse Dashboard" width="800"/>
+</div>
 
+### Additional Views
 <details>
-<summary>📈 <strong>Dashboard Overview</strong> (Click to expand)</summary>
-
-![GeoPulse Dashboard](docs/images/dashboard.png)
-*Comprehensive dashboard with activity statistics, distance traveled, and movement insights*
-
-</details>
-
-<details>
-<summary>🎯 <strong>Journey Insights & Achievements</strong> (Click to expand)</summary>
+<summary>Journey Insights & Analytics</summary>
 
 ![Journey Insights](docs/images/journey_insights.png)
-*Explore countries visited, activity streaks, and personal achievements with beautiful visual displays*
 
 </details>
 
-### ⚙️ Configuration & Setup
-
 <details>
-<summary>📱 <strong>GPS Source Configuration</strong> (Click to expand)</summary>
+<summary>Configuration & Setup</summary>
 
 ![Location Sources](docs/images/location_sources.png)
-*Easy setup for OwnTracks, Overland, and other GPS tracking apps with connection testing*
-
-</details>
-
-<details>
-<summary>🎛️ <strong>Timeline Preferences</strong> (Click to expand)</summary>
-
 ![Timeline Preferences](docs/images/timeline_preferences.png)
-*Fine-tune timeline generation algorithms with customizable sensitivity settings*
 
 </details>
 
-### 🔗 Sharing & Data Management
-
 <details>
-<summary>🔗 <strong>Share Links Management</strong> (Click to expand)</summary>
+<summary>Data Management</summary>
 
 ![Share Links](docs/images/share_links.png)
-*Create secure, time-limited sharing links with password protection for non-GeoPulse users*
-
-</details>
-
-### 📊 Data Export & Import
-
-<details>
-<summary>📤 <strong>Data Export Options</strong> (Click to expand)</summary>
-
 ![Export Page](docs/images/export_page.png)
-*Export your location data in multiple formats with flexible date range and data type selection*
-
-</details>
-
-<details>
-<summary>📥 <strong>Data Import Interface</strong> (Click to expand)</summary>
-
 ![Import Page](docs/images/import_page.png)
-*Import existing GPS data from OwnTracks or Overland other sources with progress tracking*
 
 </details>
 
+## Development
 
-### Development Setup
 ```bash
 # Clone repository
 git clone https://github.com/tess1o/geopulse
@@ -203,7 +161,7 @@ npm install
 npm run dev
 ```
 
-## 📄 License
+## License
 
-License: AGPL-3.0 with Non-Commercial Use Restriction  
+AGPL-3.0 with Non-Commercial Use Restriction  
 See [LICENSE](./LICENSE) for details.
