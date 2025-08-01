@@ -24,7 +24,10 @@ while keeping everything on your own server.
 
 ## Getting Started
 
-For complete deployment instructions, see the [Deployment Guide](docs/DEPLOYMENT_GUIDE.md).
+### Quick Start
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Docker deployment instructions
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Geopulse configuration (optional)
+- **[Setup Guide](docs/SETUP.md)** - Complete setup instructions for new users
 
 ## Features
 
@@ -80,7 +83,6 @@ For complete deployment instructions, see the [Deployment Guide](docs/DEPLOYMENT
 - **Database**: PostGIS (PostgreSQL with geographic extensions)
 - **Frontend**: Vue.js 3 with PrimeVue components
 - **Maps**: Leaflet with OpenStreetMap
-- **Authentication**: JWT tokens
 - **Deployment**: Docker Compose
 
 ## Compatible Apps

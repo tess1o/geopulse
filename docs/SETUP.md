@@ -7,17 +7,12 @@ This guide will help you set up GeoPulse and connect it with GPS tracking apps.
 ### 1. First Login
 After deploying GeoPulse, visit your frontend URL and create your first account:
 
-1. Click **"Start Your Journey"** or **"Sign In"**
+1. Click **"Start Your Journey"**
 2. Register with email and password
 3. Complete your profile setup
 
 ### 2. Basic Configuration
-Once logged in, you'll see the onboarding tour. Follow these steps:
-
-1. **Set up GPS Sources** - Connect your tracking apps
-2. **Configure Timeline** - Adjust sensitivity settings
-3. **Add Favorites** - Mark important locations
-4. **Invite Friends** - Connect with others (optional)
+Once logged in, you'll see the onboarding tour. At this stage you need to configure GPS sources (Overland or OwnTracks).
 
 ## 📱 GPS Tracking App Setup
 
@@ -28,20 +23,18 @@ Once logged in, you'll see the onboarding tour. Follow these steps:
 2. Open OwnTracks settings
 3. Configure connection:
    - **Mode:** HTTP
-   - **Host:** `your-api-domain.com`
-   - **Port:** `443` (for HTTPS)
-   - **Path:** `/api/gps-data/owntracks`
-   - **Username:** Choose a username
-   - **Password:** Choose a password
-   - **TLS:** Enable (required for HTTPS)
+   - **DeviceID:** any value
+   - **UserID:** __cool_user__
+   - **Authentication:** Enabled
+   - **Password:** the password
+   - **URL:** `https://YOUR_SERVER/api/owntracks` (adjust accordingly)
 
 **GeoPulse Configuration:**
 1. Go to **Location Sources** in GeoPulse
 2. Click **"Add GPS Source"**
 3. Select **OwnTracks**
 4. Enter the same username/password from the app
-5. Click **"Test Connection"** to verify
-6. Save the configuration
+5. Save the configuration
 
 ### Overland Configuration (iOS)
 
@@ -49,20 +42,20 @@ Once logged in, you'll see the onboarding tour. Follow these steps:
 1. Download Overland from App Store
 2. Open Overland settings
 3. Configure endpoint:
-   - **Endpoint URL:** `https://your-api-domain.com/api/gps-data/overland`
-   - **Token:** Generate a secure token
+   - **Server URL:** `https://your-api-domain.com/api/gps-data/overland`
+   - **Token:** token that will be used in Geopulse for auth
+   - **Device ID:** any value
 
 **GeoPulse Configuration:**
 1. Go to **Location Sources** in GeoPulse
 2. Click **"Add GPS Source"**
 3. Select **Overland**
 4. Enter the same token from the app
-5. Click **"Test Connection"** to verify
-6. Save the configuration
+5Save the configuration
 
 ## ⚙️ Timeline Configuration
 
-### Adjusting Timeline Sensitivity
+### Adjusting Timeline Sensitivity (optionally)
 
 Go to **Timeline Preferences** to customize how GeoPulse processes your GPS data:
 
@@ -77,27 +70,21 @@ Go to **Timeline Preferences** to customize how GeoPulse processes your GPS data
 **Recommended Settings:**
 - **Urban areas:** Lower distance thresholds (50-100m)
 - **Rural areas:** Higher distance thresholds (200-500m)
-- **Walking/cycling:** Lower duration thresholds (5-10 minutes)
+- **Walking:** Lower duration thresholds (5-10 minutes)
 - **Driving only:** Higher duration thresholds (15-30 minutes)
 
 ## 🏠 Adding Favorite Locations
 
 ### From the Map
 1. Go to **Timeline** page
-2. Click on any location on the map
+2. Right click on any location on the map
 3. Select **"Add to Favorites"**
 4. Choose **Point** or **Area** favorite
 5. Enter a name and save
 
-### From Location Details
-1. View any timeline stay
-2. Click **"Add to Favorites"** button
-3. Enter a name and save
-
 ### Managing Favorites
-- **Edit:** Click the edit icon next to any favorite
+- **Edit:** Right Click the edit icon next to any favorite
 - **Delete:** Click the delete icon
-- **Search:** Use the search box to find favorites
 
 ## 👥 Setting Up Friends
 
@@ -112,11 +99,6 @@ Go to **Timeline Preferences** to customize how GeoPulse processes your GPS data
 - **Sent Invitations:** Cancel pending invitations
 - **Received Invitations:** Accept or reject friend requests
 - **Active Friends:** View current friends and their locations
-
-### Privacy Settings
-- **Location Sharing:** Toggle sharing with each friend individually
-- **Data Control:** Choose what information to share
-- **Temporary Sharing:** Set time limits on location sharing
 
 ## 🔗 Creating Share Links
 
@@ -169,7 +151,7 @@ You can connect multiple tracking apps:
 **Import existing data:**
 1. Go to **Data Export/Import**
 2. Click **"Import Data"**
-3. Upload OwnTracks JSON files
+3. Upload the files
 4. Wait for processing to complete
 
 **Export your data:**

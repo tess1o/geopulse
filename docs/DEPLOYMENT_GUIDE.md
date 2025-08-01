@@ -3,8 +3,6 @@
   <h2>GeoPulse Deployment Guide</h2>
 </div>
 
-#  
-
 ## 🚀 Quick Start
 
 1. 🔐 **Choose Authorization Mode** (`cookies` or `localStorage`)
