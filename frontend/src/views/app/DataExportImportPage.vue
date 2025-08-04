@@ -751,6 +751,16 @@ const importFormatOptions = ref([
     uploadFunction: 'uploadGoogleTimelineImportFile',
     supportsDataTypeSelection: false,
     maxFileSizeMB: 100
+  },
+  {
+    label: 'GPX', 
+    value: 'gpx', 
+    description: 'Import from GPX track/route files',
+    fileExtensions: ['.gpx'],
+    acceptedFormats: '.gpx',
+    uploadFunction: 'uploadGpxImportFile',
+    supportsDataTypeSelection: false,
+    maxFileSizeMB: 100
   }
 ])
 
@@ -1105,7 +1115,8 @@ const getUploadNote = () => {
 const getFormatInfoMessage = () => {
   const messages = {
     'owntracks': 'OwnTracks import will add GPS location data to your GeoPulse timeline.',
-    'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.'
+    'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.',
+    'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline.'
   }
   return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
 }

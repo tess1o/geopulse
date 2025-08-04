@@ -286,6 +286,88 @@ public class ImportResource {
         }
     }
 
+    @POST
+    @Path("/gpx/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    public Response uploadGpxImportFile(@MultipartForm ImportUploadForm form) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            log.info("Received GPX import request for user: {}", userId);
+
+            // Validate file
+            if (form.file == null || form.file.size() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE", "No file provided"))
+                        .build();
+            }
+
+            // Check file size (max 100MB)
+            if (form.file.size() > 100 * 1024 * 1024) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
+                        .build();
+            }
+
+            // Validate file extension (should be .gpx)
+            String fileName = form.file.fileName() != null ? form.file.fileName() : "gpx-import.gpx";
+            if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".gpx")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE_TYPE", "Only GPX files are supported for GPX import"))
+                        .build();
+            }
+
+            // Read file content
+            byte[] fileContent;
+            try {
+                fileContent = Files.readAllBytes(form.file.uploadedFile());
+            } catch (IOException e) {
+                log.error("Failed to read uploaded file", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                        .build();
+            }
+
+            // Parse options
+            ImportOptions options;
+            try {
+                options = objectMapper.readValue(form.options, ImportOptions.class);
+                // Force format to be gpx
+                options.setImportFormat("gpx");
+            } catch (Exception e) {
+                log.error("Failed to parse import options", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_OPTIONS", "Invalid import options format"))
+                        .build();
+            }
+
+            // Create GPX import job
+            ImportJob job = importService.createGpxImportJob(userId, options, fileName, fileContent);
+
+            // Create response
+            ImportJobResponse response = new ImportJobResponse();
+            response.setSuccess(true);
+            response.setImportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase(Locale.ENGLISH));
+            response.setUploadedFileName(job.getUploadedFileName());
+            response.setFileSizeBytes(job.getFileSizeBytes());
+            response.setDetectedDataTypes(job.getDetectedDataTypes());
+            response.setEstimatedProcessingTime(job.getEstimatedProcessingTime());
+            response.setMessage("GPX import job created successfully");
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create GPX import job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create GPX import job"))
+                    .build();
+        }
+    }
+
     @GET
     @Path("/status/{importJobId}")
     public Response getImportStatus(@PathParam("importJobId") UUID importJobId) {

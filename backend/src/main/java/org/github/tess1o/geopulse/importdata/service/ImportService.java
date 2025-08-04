@@ -116,6 +116,34 @@ public class ImportService {
         return job;
     }
 
+    public ImportJob createGpxImportJob(UUID userId, ImportOptions options, String fileName, byte[] gpxData) {
+        // Check if user has too many active jobs
+        long userActiveJobs = activeJobs.values().stream()
+                .filter(job -> job.getUserId().equals(userId))
+                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
+                .count();
+
+        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
+        }
+
+        // Force format to be gpx for clarity
+        options.setImportFormat("gpx");
+        
+        // Create GPX import job - we'll store XML data in zipData field for simplicity
+        ImportJob job = new ImportJob(userId, options, fileName, gpxData);
+        
+        // Pre-populate detected data types for GPX (only GPS data)
+        job.setDetectedDataTypes(List.of("rawgps"));
+        
+        activeJobs.put(job.getJobId(), job);
+        
+        log.info("Created GPX import job {} for user {} with file: {}", 
+                job.getJobId(), userId, fileName);
+                
+        return job;
+    }
+
     public ImportJob getImportJob(UUID jobId, UUID userId) {
         ImportJob job = activeJobs.get(jobId);
         if (job == null || !job.getUserId().equals(userId)) {

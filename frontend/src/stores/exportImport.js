@@ -308,6 +308,30 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
+        async uploadGpxImportFile(file, options = {}) {
+            this.isImporting = true
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('options', JSON.stringify(options))
+
+                const response = await apiService.post('/import/gpx/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                })
+
+                this.setCurrentImportJob(response)
+                this.addImportJob(response)
+
+                return response
+            } catch (error) {
+                throw error
+            } finally {
+                this.isImporting = false
+            }
+        },
+
         // API Actions - Import (Google Timeline)
         async uploadGoogleTimelineImportFile(file, options = {}) {
             this.isImporting = true
