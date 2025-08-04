@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -66,21 +67,47 @@ public class TimelineInvalidationService {
         stayRepository.persist(stays);
 
         // Queue background update jobs - group by user and date
-        List<TimelineKey> timelineKeys = stays.stream()
-                .map(stay -> new TimelineKey(
-                        stay.getUser().getId(),
-                        stay.getTimestamp().truncatedTo(ChronoUnit.DAYS)
-                ))
-                .distinct()
-                .collect(Collectors.toList());
+        Map<UUID, List<Instant>> staysByUser = stays.stream()
+                .collect(Collectors.groupingBy(
+                        stay -> stay.getUser().getId(),
+                        Collectors.mapping(
+                                stay -> stay.getTimestamp().truncatedTo(ChronoUnit.DAYS),
+                                Collectors.toList()
+                        )
+                ));
 
         Instant now = Instant.now();
-        timelineKeys.forEach(key -> {
-            QueuedTimelineUpdate update = new QueuedTimelineUpdate(key, now, 0);
-            timelineUpdateQueue.offer(update);
-        });
+        int totalQueuedTasks = 0;
 
-        log.info("Queued {} timeline dates for background regeneration", timelineKeys.size());
+        for (Map.Entry<UUID, List<Instant>> userEntry : staysByUser.entrySet()) {
+            UUID userId = userEntry.getKey();
+            List<Instant> affectedDates = userEntry.getValue().stream().distinct().collect(Collectors.toList());
+            
+            if (affectedDates.size() > 1) {
+                // Multiple dates affected - queue single full user regeneration
+                // Use a special marker (epoch time) to indicate full user regeneration
+                TimelineKey fullRegenKey = new TimelineKey(userId, Instant.EPOCH);
+                QueuedTimelineUpdate fullRegenUpdate = new QueuedTimelineUpdate(fullRegenKey, now, 0);
+                timelineUpdateQueue.offer(fullRegenUpdate);
+                totalQueuedTasks++;
+                
+                log.info("Queued full timeline regeneration for user {} (affects {} dates: {})", 
+                        userId, affectedDates.size(), 
+                        affectedDates.stream().map(d -> d.atZone(ZoneOffset.UTC).toLocalDate()).collect(Collectors.toList()));
+            } else {
+                // Single date affected - queue date-specific regeneration
+                Instant affectedDate = affectedDates.get(0);
+                TimelineKey dateSpecificKey = new TimelineKey(userId, affectedDate);
+                QueuedTimelineUpdate dateSpecificUpdate = new QueuedTimelineUpdate(dateSpecificKey, now, 0);
+                timelineUpdateQueue.offer(dateSpecificUpdate);
+                totalQueuedTasks++;
+                
+                log.info("Queued date-specific timeline regeneration for user {} on date {}", 
+                        userId, affectedDate.atZone(ZoneOffset.UTC).toLocalDate());
+            }
+        }
+
+        log.info("Queued {} timeline regeneration tasks for {} users", totalQueuedTasks, staysByUser.size());
     }
 
 

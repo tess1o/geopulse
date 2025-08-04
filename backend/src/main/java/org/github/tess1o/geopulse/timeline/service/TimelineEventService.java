@@ -79,6 +79,10 @@ public class TimelineEventService {
             FavoriteDeletionStrategy strategy = FavoriteDeletionStrategy.REVERT_TO_GEOCODING;
             
             favoriteDeletionHandler.handleDeletion(affectedStays, strategy);
+            timelineInvalidationService.markStaleAndQueue(affectedStays);
+            
+            log.info("Successfully triggered timeline regeneration for {} affected stays after favorite deletion", 
+                     affectedStays.size());
             
         } catch (Exception e) {
             log.error("Failed to process favorite deleted event for user {}: {}", 

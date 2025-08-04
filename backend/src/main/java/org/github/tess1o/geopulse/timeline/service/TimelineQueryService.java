@@ -75,6 +75,7 @@ public class TimelineQueryService {
         }
 
         // Past days: use persistence strategy
+        log.debug("Generating cached timeline for user {} in range {} to {}", userId, startTime, endTime);
         return getPersistedTimeline(userId, startTime, endTime);
     }
 
@@ -114,9 +115,21 @@ public class TimelineQueryService {
         }
 
         try {
-            // Regenerate timeline with fresh data
+            // Delegate to TimelineRegenerationService for consistent regeneration logic
             log.info("Regenerating stale timeline for user {} in range {} to {}", userId, startTime, endTime);
-            return generateAndPersistTimeline(userId, startTime, endTime);
+            
+            // For single date requests, use date-specific regeneration
+            LocalDate requestDate = startTime.atZone(ZoneOffset.UTC).toLocalDate();
+            LocalDate endDate = endTime.atZone(ZoneOffset.UTC).toLocalDate();
+            
+            if (requestDate.equals(endDate) || requestDate.equals(endDate.minusDays(1))) {
+                // Single day request - use date-specific regeneration
+                return regenerationService.regenerateTimeline(userId, startTime);
+            } else {
+                // Multi-day request - fall back to direct generation for now
+                // TODO: Consider how to handle multi-day requests with regeneration service
+                return generateAndPersistTimeline(userId, startTime, endTime);
+            }
         } finally {
             regenerationInProgress.remove(regenerationKey);
         }
@@ -298,8 +311,17 @@ public class TimelineQueryService {
         String regenerationKey = userId + ":" + timeRangeKey;
         regenerationInProgress.remove(regenerationKey);
 
-        // Use regeneration service for fresh timeline with smart strategies
-        return generateAndPersistTimeline(userId, startTime, endTime);
+        // Delegate to TimelineRegenerationService for consistent regeneration logic
+        LocalDate requestDate = startTime.atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate endDate = endTime.atZone(ZoneOffset.UTC).toLocalDate();
+        
+        if (requestDate.equals(endDate) || requestDate.equals(endDate.minusDays(1))) {
+            // Single day request - use date-specific regeneration
+            return regenerationService.regenerateTimeline(userId, startTime);
+        } else {
+            // Multi-day request - fall back to direct generation
+            return generateAndPersistTimeline(userId, startTime, endTime);
+        }
     }
 
     /**
@@ -316,12 +338,6 @@ public class TimelineQueryService {
      */
     private boolean hasCompleteTimelineCoverage(List<TimelineStayEntity> cachedStays,
                                                 List<TimelineTripEntity> cachedTrips) {
-        // Simplified approach: if we have any cached data, consider it sufficient
-        // In a more sophisticated implementation, this would check:
-        // 1. Whether the cached data spans the entire requested time range
-        // 2. Whether there are gaps in the cached data
-        // 3. Whether the cached data was generated for a compatible time range
-
         return !cachedStays.isEmpty() || !cachedTrips.isEmpty();
     }
 }
