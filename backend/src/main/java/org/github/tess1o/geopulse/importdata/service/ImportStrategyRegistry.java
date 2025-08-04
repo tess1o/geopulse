@@ -19,13 +19,13 @@ public class ImportStrategyRegistry {
     Instance<ImportStrategy> strategies;
     
     /**
-     * Find the appropriate import strategy for a given format
+     * Find the appropriate import strategy for a given format name
      */
-    public ImportStrategy getStrategy(String format) {
+    public ImportStrategy getStrategy(String formatName) {
         return StreamSupport.stream(strategies.spliterator(), false)
-                .filter(strategy -> strategy.canHandle(format))
+                .filter(strategy -> strategy.getFormat().equals(formatName))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("No import strategy found for format: " + format));
+                .orElseThrow(() -> new IllegalArgumentException("No import strategy found for format: " + formatName));
     }
     
     /**
@@ -40,8 +40,8 @@ public class ImportStrategyRegistry {
     /**
      * Check if a format is supported
      */
-    public boolean isFormatSupported(String format) {
+    public boolean isFormatSupported(String formatName) {
         return StreamSupport.stream(strategies.spliterator(), false)
-                .anyMatch(strategy -> strategy.canHandle(format));
+                .anyMatch(strategy -> strategy.getFormat().equals(formatName));
     }
 }

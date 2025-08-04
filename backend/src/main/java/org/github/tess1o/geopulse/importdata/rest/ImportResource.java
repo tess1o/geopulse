@@ -122,12 +122,12 @@ public class ImportResource {
     }
 
     @POST
-    @Path("/upload")
+    @Path("/geopulse/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadImportFile(@MultipartForm ImportUploadForm form) {
+    public Response uploadGeoPulseImportFile(@MultipartForm ImportUploadForm form) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            log.info("Received import request for user: {}", userId);
+            log.info("Received GeoPulse import request for user: {}", userId);
 
             // Validate file
             if (form.file == null || form.file.size() == 0) {
@@ -172,8 +172,10 @@ public class ImportResource {
                         .build();
             }
 
-            // Create import job
-            String fileName = form.file.fileName() != null ? form.file.fileName() : "import-" + System.currentTimeMillis() + ".zip";
+            // Create GeoPulse import job
+            String fileName = form.file.fileName() != null ? form.file.fileName() : "geopulse-import-" + System.currentTimeMillis() + ".zip";
+            // Force format to be geopulse for this endpoint
+            options.setImportFormat("geopulse");
             ImportJob job = importService.createImportJob(userId, options, fileName, fileContent);
 
             // Create response
@@ -185,7 +187,7 @@ public class ImportResource {
             response.setFileSizeBytes(job.getFileSizeBytes());
             response.setDetectedDataTypes(job.getDetectedDataTypes());
             response.setEstimatedProcessingTime(job.getEstimatedProcessingTime());
-            response.setMessage("Import job created successfully");
+            response.setMessage("GeoPulse import job created successfully");
 
             return Response.ok(response).build();
 
@@ -194,9 +196,92 @@ public class ImportResource {
                     .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
                     .build();
         } catch (Exception e) {
-            log.error("Failed to create import job", e);
+            log.error("Failed to create GeoPulse import job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create import job"))
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create GeoPulse import job"))
+                    .build();
+        }
+    }
+
+
+    @POST
+    @Path("/google-timeline/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    public Response uploadGoogleTimelineImportFile(@MultipartForm ImportUploadForm form) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            log.info("Received Google Timeline import request for user: {}", userId);
+
+            // Validate file
+            if (form.file == null || form.file.size() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE", "No file provided"))
+                        .build();
+            }
+
+            // Check file size (max 100MB)
+            if (form.file.size() > 100 * 1024 * 1024) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
+                        .build();
+            }
+
+            // Validate file extension (should be .json)
+            String fileName = form.file.fileName() != null ? form.file.fileName() : "google-timeline-import.json";
+            if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".json")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE_TYPE", "Only JSON files are supported for Google Timeline import"))
+                        .build();
+            }
+
+            // Read file content
+            byte[] fileContent;
+            try {
+                fileContent = Files.readAllBytes(form.file.uploadedFile());
+            } catch (IOException e) {
+                log.error("Failed to read uploaded file", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                        .build();
+            }
+
+            // Parse options
+            ImportOptions options;
+            try {
+                options = objectMapper.readValue(form.options, ImportOptions.class);
+                // Force format to be google-timeline
+                options.setImportFormat("google-timeline");
+            } catch (Exception e) {
+                log.error("Failed to parse import options", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_OPTIONS", "Invalid import options format"))
+                        .build();
+            }
+
+            // Create Google Timeline import job
+            ImportJob job = importService.createGoogleTimelineImportJob(userId, options, fileName, fileContent);
+
+            // Create response
+            ImportJobResponse response = new ImportJobResponse();
+            response.setSuccess(true);
+            response.setImportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase(Locale.ENGLISH));
+            response.setUploadedFileName(job.getUploadedFileName());
+            response.setFileSizeBytes(job.getFileSizeBytes());
+            response.setDetectedDataTypes(job.getDetectedDataTypes());
+            response.setEstimatedProcessingTime(job.getEstimatedProcessingTime());
+            response.setMessage("Google Timeline import job created successfully");
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create Google Timeline import job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create Google Timeline import job"))
                     .build();
         }
     }
