@@ -266,7 +266,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 formData.append('file', file)
                 formData.append('options', JSON.stringify(options))
 
-                const response = await apiService.post('/import/upload', formData, {
+                const response = await apiService.post('/import/geopulse/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
@@ -300,6 +300,31 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.setCurrentImportJob(response)
                 this.addImportJob(response)
                 
+                return response
+            } catch (error) {
+                throw error
+            } finally {
+                this.isImporting = false
+            }
+        },
+
+        // API Actions - Import (Google Timeline)
+        async uploadGoogleTimelineImportFile(file, options = {}) {
+            this.isImporting = true
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('options', JSON.stringify(options))
+
+                const response = await apiService.post('/import/google-timeline/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                })
+
+                this.setCurrentImportJob(response)
+                this.addImportJob(response)
+
                 return response
             } catch (error) {
                 throw error

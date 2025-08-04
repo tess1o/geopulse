@@ -49,6 +49,17 @@ public class ImportService {
         return job;
     }
 
+    /**
+     * Create GeoPulse-specific import job (legacy method for backward compatibility)
+     * @deprecated Use createImportJob directly or format-specific methods
+     */
+    @Deprecated
+    public ImportJob createGeoPulseImportJob(UUID userId, ImportOptions options, String fileName, byte[] zipData) {
+        // Force format to be geopulse for clarity
+        options.setImportFormat("geopulse");
+        return createImportJob(userId, options, fileName, zipData);
+    }
+
     public ImportJob createOwnTracksImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
         // Check if user has too many active jobs
         long userActiveJobs = activeJobs.values().stream()
@@ -60,6 +71,9 @@ public class ImportService {
             throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
         }
 
+        // Force format to be owntracks for clarity
+        options.setImportFormat("owntracks");
+        
         // Create OwnTracks import job - we'll store JSON data in zipData field for simplicity
         ImportJob job = new ImportJob(userId, options, fileName, jsonData);
         
@@ -69,6 +83,34 @@ public class ImportService {
         activeJobs.put(job.getJobId(), job);
         
         log.info("Created OwnTracks import job {} for user {} with file: {}", 
+                job.getJobId(), userId, fileName);
+                
+        return job;
+    }
+
+    public ImportJob createGoogleTimelineImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
+        // Check if user has too many active jobs
+        long userActiveJobs = activeJobs.values().stream()
+                .filter(job -> job.getUserId().equals(userId))
+                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
+                .count();
+
+        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
+        }
+
+        // Force format to be google-timeline for clarity
+        options.setImportFormat("google-timeline");
+        
+        // Create Google Timeline import job - we'll store JSON data in zipData field for simplicity
+        ImportJob job = new ImportJob(userId, options, fileName, jsonData);
+        
+        // Pre-populate detected data types for Google Timeline (only GPS data)
+        job.setDetectedDataTypes(List.of("rawgps"));
+        
+        activeJobs.put(job.getJobId(), job);
+        
+        log.info("Created Google Timeline import job {} for user {} with file: {}", 
                 job.getJobId(), userId, fileName);
                 
         return job;

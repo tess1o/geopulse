@@ -103,7 +103,7 @@ public class TimelineQueryService {
 
         if (isValidCachedData(cachedStays, cachedTrips, currentVersion)) {
             log.debug("Using valid cached timeline for user {} in range {} to {}", userId, startTime, endTime);
-            return buildTimelineFromEntities(userId, cachedStays, cachedTrips, TimelineDataSource.CACHED);
+            return buildTimelineFromEntities(userId, cachedStays, cachedTrips, TimelineDataSource.CACHED, startTime, endTime);
         }
 
         // Check if regeneration is already in progress
@@ -111,24 +111,32 @@ public class TimelineQueryService {
         String regenerationKey = userId + ":" + timeRangeKey;
         if (regenerationInProgress.putIfAbsent(regenerationKey, Boolean.TRUE) != null) {
             log.debug("Timeline regeneration already in progress for user {} in range {} to {}, returning stale data", userId, startTime, endTime);
-            return buildTimelineWithStaleIndicator(userId, cachedStays, cachedTrips);
+            return buildTimelineWithStaleIndicator(userId, cachedStays, cachedTrips, startTime, endTime);
         }
 
         try {
-            // Delegate to TimelineRegenerationService for consistent regeneration logic
+            // LAYER 2 FIX: Use range-aware regeneration to preserve exact time boundaries
             log.info("Regenerating stale timeline for user {} in range {} to {}", userId, startTime, endTime);
             
-            // For single date requests, use date-specific regeneration
+            // For single date requests that match day boundaries, use optimized date-specific regeneration
             LocalDate requestDate = startTime.atZone(ZoneOffset.UTC).toLocalDate();
             LocalDate endDate = endTime.atZone(ZoneOffset.UTC).toLocalDate();
             
-            if (requestDate.equals(endDate) || requestDate.equals(endDate.minusDays(1))) {
-                // Single day request - use date-specific regeneration
+            Instant dayStart = requestDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant dayEnd = requestDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            
+            // Check if request exactly matches day boundaries (optimization for common case)
+            boolean isExactDayRequest = startTime.equals(dayStart) && 
+                                       (endTime.equals(dayEnd) || endTime.equals(dayEnd.minusNanos(1)));
+            
+            if (isExactDayRequest && requestDate.equals(endDate)) {
+                // Exact single day request - use optimized date-specific regeneration
+                log.debug("Using optimized day-based regeneration for exact day request");
                 return regenerationService.regenerateTimeline(userId, startTime);
             } else {
-                // Multi-day request - fall back to direct generation for now
-                // TODO: Consider how to handle multi-day requests with regeneration service
-                return generateAndPersistTimeline(userId, startTime, endTime);
+                // Custom time range or multi-day request - use range-aware regeneration
+                log.debug("Using range-aware regeneration for custom time boundaries");
+                return regenerationService.regenerateTimelineForRange(userId, startTime, endTime);
             }
         } finally {
             regenerationInProgress.remove(regenerationKey);
@@ -187,10 +195,11 @@ public class TimelineQueryService {
 
     /**
      * Check if cached timeline data is still valid.
+     * FIXED: Now coordinates version-based and flag-based staleness detection.
      */
     private boolean isValidCachedData(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, String currentVersion) {
         // If no data, it's not valid
-        if (stays.isEmpty() || trips.isEmpty()) {
+        if (stays.isEmpty() && trips.isEmpty()) {
             return false;
         }
 
@@ -208,6 +217,34 @@ public class TimelineQueryService {
             String cachedVersion = stays.get(0).getTimelineVersion();
             if (cachedVersion == null || !cachedVersion.equals(currentVersion)) {
                 log.debug("Timeline version mismatch: cached={}, current={}", cachedVersion, currentVersion);
+                
+                // LAYER 1 FIX: Mark entities as stale when version mismatch is detected
+                // This coordinates the two staleness detection mechanisms
+                log.info("Marking {} stays and {} trips as stale due to version mismatch", stays.size(), trips.size());
+                
+                stays.forEach(stay -> {
+                    stay.setIsStale(true);
+                    stay.setLastUpdated(Instant.now());
+                });
+                trips.forEach(trip -> {
+                    trip.setIsStale(true);
+                    trip.setLastUpdated(Instant.now());
+                });
+                
+                // Flush changes to managed entities immediately to ensure regeneration service can find them
+                try {
+                    // These are managed entities, so changes are automatically tracked
+                    // We just need to flush to ensure the changes hit the database immediately
+                    if (stayRepository != null) {
+                        stayRepository.flush();
+                        log.debug("Successfully flushed stale flags to database");
+                    } else {
+                        log.debug("Repository not available (test mode), entities already marked as stale");
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to flush stale flags, continuing with regeneration anyway", e);
+                }
+                
                 return false;
             }
         }
@@ -235,12 +272,53 @@ public class TimelineQueryService {
     }
 
     /**
+     * Build timeline DTO from persisted entities with time range filtering.
+     */
+    private MovementTimelineDTO buildTimelineFromEntities(UUID userId, List<TimelineStayEntity> stayEntities,
+                                                          List<TimelineTripEntity> tripEntities, TimelineDataSource dataSource,
+                                                          Instant startTime, Instant endTime) {
+        // Filter entities to requested time range
+        List<TimelineStayEntity> filteredStays = stayEntities.stream()
+                .filter(stay -> !stay.getTimestamp().isBefore(startTime) && !stay.getTimestamp().isAfter(endTime))
+                .toList();
+        
+        List<TimelineTripEntity> filteredTrips = tripEntities.stream()
+                .filter(trip -> !trip.getTimestamp().isBefore(startTime) && !trip.getTimestamp().isAfter(endTime))
+                .toList();
+
+        // Convert filtered entities to DTOs
+        List<TimelineStayLocationDTO> stays = persistenceMapper.toStayDTOs(filteredStays);
+        List<TimelineTripDTO> trips = persistenceMapper.toTripDTOs(filteredTrips);
+
+        MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
+
+        // Add metadata
+        timeline.setDataSource(dataSource);
+        timeline.setLastUpdated(getLatestUpdateTimestamp(filteredStays, filteredTrips));
+        timeline.setIsStale(false);
+
+        return timeline;
+    }
+
+    /**
      * Build timeline DTO with stale data indication.
      */
     private MovementTimelineDTO buildTimelineWithStaleIndicator(UUID userId, List<TimelineStayEntity> stayEntities,
                                                                 List<TimelineTripEntity> tripEntities) {
         MovementTimelineDTO timeline = buildTimelineFromEntities(userId, stayEntities, tripEntities,
                 TimelineDataSource.REGENERATING);
+        timeline.setIsStale(true);
+        return timeline;
+    }
+
+    /**
+     * Build timeline DTO with stale data indication and time range filtering.
+     */
+    private MovementTimelineDTO buildTimelineWithStaleIndicator(UUID userId, List<TimelineStayEntity> stayEntities,
+                                                                List<TimelineTripEntity> tripEntities,
+                                                                Instant startTime, Instant endTime) {
+        MovementTimelineDTO timeline = buildTimelineFromEntities(userId, stayEntities, tripEntities,
+                TimelineDataSource.REGENERATING, startTime, endTime);
         timeline.setIsStale(true);
         return timeline;
     }

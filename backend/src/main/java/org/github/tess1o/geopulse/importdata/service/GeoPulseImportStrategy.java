@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
+import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.locationtech.jts.geom.Coordinate;
@@ -22,6 +23,7 @@ import org.locationtech.jts.geom.LineString;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +49,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     
     @Inject
     SequenceResetService sequenceResetService;
+    
+    @Inject
+    org.github.tess1o.geopulse.timeline.service.TimelineVersionService timelineVersionService;
+    
+    @Inject
+    org.github.tess1o.geopulse.timeline.service.TimelineInvalidationService timelineInvalidationService;
     
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -172,17 +180,29 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
         
+        // Track whether timeline data is being imported
+        boolean hasTimelineData = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA);
+        boolean hasGpsData = fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA);
+        
         // 3. Import timeline data (depends on favorites and reverse geocoding)
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA)) {
+        if (hasTimelineData) {
             importTimelineData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job);
             totalProgress += 20;
             job.setProgress(totalProgress);
         }
         
         // 4. Import GPS data
-        if (fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA)) {
+        if (hasGpsData) {
             importRawGpsData(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
             totalProgress += 25;
+            job.setProgress(totalProgress);
+        }
+        
+        // LAYER 3 FIX: Handle GPS-only imports (timeline generation needed)
+        if (hasGpsData && !hasTimelineData) {
+            log.info("GeoPulse import contains GPS data but no timeline data - will trigger timeline generation");
+            triggerTimelineGenerationForImportedGpsData(job);
+            totalProgress += 10;
             job.setProgress(totalProgress);
         }
         
@@ -297,6 +317,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             }
 
             try {
+                // LAYER 3 FIX: Generate proper version hash instead of hardcoded "imported"
+                String versionHash = timelineVersionService.generateTimelineVersion(job.getUserId(), stayDto.getTimestamp());
+                
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_STAYS_UPSERT)
                     .setParameter(1, stayDto.getId())
                     .setParameter(2, job.getUserId())
@@ -308,6 +331,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     .setParameter(8, "HISTORICAL")
                     .setParameter(9, stayDto.getFavoriteId())
                     .setParameter(10, stayDto.getGeocodingId())
+                    .setParameter(11, versionHash) // Proper version hash
+                    .setParameter(12, false) // is_stale = false for GeoPulse format (pre-computed timeline data)
                     .executeUpdate();
                 importedStays++;
             } catch (Exception e) {
@@ -324,6 +349,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             try {
                 LineString pathGeometry = convertPathToLineString(tripDto.getPath());
                 
+                // LAYER 3 FIX: Generate proper version hash instead of hardcoded "imported"
+                String versionHash = timelineVersionService.generateTimelineVersion(job.getUserId(), tripDto.getTimestamp());
+                
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_TRIPS_UPSERT)
                     .setParameter(1, tripDto.getId())
                     .setParameter(2, job.getUserId())
@@ -336,6 +364,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     .setParameter(9, tripDto.getDuration() != null ? tripDto.getDuration() / 60 : null)
                     .setParameter(10, tripDto.getTransportMode())
                     .setParameter(11, pathGeometry)
+                    .setParameter(12, versionHash) // Proper version hash
+                    .setParameter(13, false) // is_stale = false for GeoPulse format (pre-computed timeline data)
                     .executeUpdate();
                 importedTrips++;
             } catch (Exception e) {
@@ -522,5 +552,49 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
         return timestamp.isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
                timestamp.isAfter(job.getOptions().getDateRangeFilter().getEndDate());
+    }
+    
+    /**
+     * LAYER 3 FIX: Trigger timeline generation for GPS-only imports.
+     * When GeoPulse format contains GPS data but no pre-computed timeline data,
+     * we need to generate timeline from the imported GPS points.
+     */
+    private void triggerTimelineGenerationForImportedGpsData(ImportJob job) {
+        log.info("Triggering timeline generation for GPS-only GeoPulse import for user {}", job.getUserId());
+        
+        try {
+            // Create a dummy timeline stay entity to trigger full user regeneration
+            // This uses the same pattern as TimelineInvalidationService for full user regeneration
+            UserEntity user = userRepository.findById(job.getUserId());
+            if (user == null) {
+                log.error("User not found for GPS timeline generation: {}", job.getUserId());
+                return;
+            }
+            
+            // Create a temporary stay entity to represent the need for timeline generation
+            // We'll use a very old timestamp to ensure it gets processed
+            TimelineStayEntity dummyStay = new TimelineStayEntity();
+            dummyStay.setUser(user);
+            dummyStay.setTimestamp(Instant.EPOCH); // Special marker for full regeneration
+            dummyStay.setLatitude(0.0);
+            dummyStay.setLongitude(0.0);
+            dummyStay.setLocationName("GPS Import Trigger");
+            dummyStay.setStayDuration(0);
+            dummyStay.setLocationSource(org.github.tess1o.geopulse.timeline.model.LocationSource.HISTORICAL);
+            dummyStay.setTimelineVersion("gps-import-trigger");
+            dummyStay.setIsStale(true);
+            dummyStay.setCreatedAt(Instant.now());
+            dummyStay.setLastUpdated(Instant.now());
+            
+            // Use the invalidation service to queue timeline generation
+            timelineInvalidationService.markStaleAndQueue(List.of(dummyStay));
+            
+            log.info("Successfully queued timeline generation for GPS-only import for user {}", job.getUserId());
+            
+        } catch (Exception e) {
+            log.error("Failed to trigger timeline generation for GPS-only import for user {}: {}", 
+                     job.getUserId(), e.getMessage(), e);
+            // Don't fail the entire import - GPS data is still imported successfully
+        }
     }
 }

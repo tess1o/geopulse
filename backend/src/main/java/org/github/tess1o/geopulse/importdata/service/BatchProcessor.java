@@ -52,7 +52,7 @@ public class BatchProcessor {
                 }
 
             } catch (Exception e) {
-                log.warn("Failed to import GPS point at {}", gpsPoint.getTimestamp(), e);
+                log.error("Failed to import GPS point at {}", gpsPoint.getTimestamp(), e);
             }
         }
 

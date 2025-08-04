@@ -12,7 +12,9 @@ import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper;
 import org.github.tess1o.geopulse.timeline.model.LocationSource;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
+import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 import org.locationtech.jts.geom.Point;
@@ -108,6 +110,47 @@ public class TimelineRegenerationService {
                 yield regenerateFromScratch(userId, startOfDay, endOfDay);
             }
         };
+    }
+
+    /**
+     * LAYER 2 FIX: Regenerate timeline for a specific time range (not just full days).
+     * This method preserves the exact time boundaries requested by the user.
+     * 
+     * @param userId user ID
+     * @param startTime exact start time for regeneration
+     * @param endTime exact end time for regeneration
+     * @return regenerated timeline filtered to the exact time range
+     */
+    @Transactional
+    public MovementTimelineDTO regenerateTimelineForRange(UUID userId, Instant startTime, Instant endTime) {
+        log.info("Starting timeline regeneration for user {} in exact range {} to {}", userId, startTime, endTime);
+        
+        // Get affected stays for the time range (not just day boundaries)
+        List<TimelineStayEntity> staleStays = stayRepository.findByUserAndDateRange(userId, startTime, endTime)
+                .stream()
+                .filter(TimelineStayEntity::getIsStale)
+                .toList();
+        
+        List<TimelineTripEntity> staleTrips = tripRepository.findByUserAndDateRange(userId, startTime, endTime)
+                .stream()
+                .filter(TimelineTripEntity::getIsStale)
+                .toList();
+        
+        if (staleStays.isEmpty() && staleTrips.isEmpty()) {
+            // No stale data in the range, return cached timeline filtered to exact range
+            List<TimelineStayEntity> cachedStays = stayRepository.findByUserAndDateRange(userId, startTime, endTime);
+            List<TimelineTripEntity> cachedTrips = tripRepository.findByUserAndDateRange(userId, startTime, endTime);
+            
+            if (!cachedStays.isEmpty() || !cachedTrips.isEmpty()) {
+                log.debug("No stale data found in range, returning existing cached timeline");
+                return buildTimelineFromEntitiesWithTimeFilter(cachedStays, cachedTrips, startTime, endTime);
+            }
+        }
+        
+        // For complex time ranges that cross day boundaries, use full regeneration approach
+        // but filter the result to the exact requested time range
+        log.debug("Using range-aware full regeneration strategy");
+        return regenerateFromScratchForRange(userId, startTime, endTime);
     }
     
     /**
@@ -337,6 +380,65 @@ public class TimelineRegenerationService {
         var trips = tripRepository.findByUserAndDateRange(userId, minTime, maxTime);
         
         return persistenceMapper.toMovementTimelineDTO(userId, stays, trips);
+    }
+
+    /**
+     * LAYER 2 HELPER: Build timeline DTO from entities with exact time filtering.
+     * Ensures only data within the requested time range is included.
+     */
+    private MovementTimelineDTO buildTimelineFromEntitiesWithTimeFilter(List<TimelineStayEntity> stays, 
+                                                                        List<TimelineTripEntity> trips,
+                                                                        Instant startTime, Instant endTime) {
+        if (stays.isEmpty() && trips.isEmpty()) {
+            log.warn("Building timeline from empty entities - this may indicate a data issue");
+            return null;
+        }
+        
+        UUID userId = stays.isEmpty() ? trips.get(0).getUser().getId() : stays.get(0).getUser().getId();
+        
+        // Filter entities to exact time range
+        List<TimelineStayEntity> filteredStays = stays.stream()
+                .filter(stay -> !stay.getTimestamp().isBefore(startTime) && !stay.getTimestamp().isAfter(endTime))
+                .toList();
+        
+        List<TimelineTripEntity> filteredTrips = trips.stream()
+                .filter(trip -> !trip.getTimestamp().isBefore(startTime) && !trip.getTimestamp().isAfter(endTime))
+                .toList();
+        
+        log.debug("Filtered timeline entities: {} stays ({} filtered out), {} trips ({} filtered out)", 
+                 filteredStays.size(), stays.size() - filteredStays.size(),
+                 filteredTrips.size(), trips.size() - filteredTrips.size());
+        
+        return persistenceMapper.toMovementTimelineDTO(userId, filteredStays, filteredTrips);
+    }
+
+    /**
+     * LAYER 2 HELPER: Full regeneration from scratch for a specific time range.
+     * Preserves exact time boundaries instead of expanding to full days.
+     */
+    private MovementTimelineDTO regenerateFromScratchForRange(UUID userId, Instant startTime, Instant endTime) {
+        log.info("Performing range-specific timeline regeneration for user {} from {} to {}", userId, startTime, endTime);
+        
+        // Clear existing persisted data for the EXACT time range (not full days)
+        long deletedStays = stayRepository.delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
+                                                  userId, startTime, endTime);
+        long deletedTrips = tripRepository.delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
+                                                  userId, startTime, endTime);
+        
+        log.debug("Cleared existing timeline data for exact time range: {} stays, {} trips", deletedStays, deletedTrips);
+        
+        // Generate fresh timeline using existing service for the exact time range
+        MovementTimelineDTO freshTimeline = timelineService.getMovementTimeline(userId, startTime, endTime);
+        
+        // For range regeneration, we typically don't persist since it's likely a custom time range
+        // The persistence service is designed for full-day storage
+        if (freshTimeline != null) {
+            freshTimeline.setDataSource(TimelineDataSource.LIVE);
+            freshTimeline.setLastUpdated(Instant.now());
+            freshTimeline.setIsStale(false);
+        }
+        
+        return freshTimeline;
     }
     
     /**

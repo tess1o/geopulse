@@ -364,8 +364,8 @@
                         <FileUpload
                             ref="fileUpload"
                             mode="basic"
-                            :accept="importFormat === 'owntracks' ? '.json' : '.zip'"
-                            :maxFileSize="10485760000"
+                            :accept="getCurrentFormatConfig().acceptedFormats"
+                            :maxFileSize="getCurrentFormatConfig().maxFileSizeMB * 1024 * 1024"
                             @select="onFileSelect"
                             @clear="onFileClear"
                             chooseLabel="Choose Export File"
@@ -374,11 +374,7 @@
                         />
                       </div>
                       <small class="upload-note">
-                        {{
-                          importFormat === 'owntracks'
-                              ? 'Only OwnTracks JSON files are supported. Maximum file size: 100MB'
-                              : 'Only GeoPulse export files (.zip) are supported. Maximum file size: 100MB'
-                        }}
+                        {{ getUploadNote() }}
                       </small>
                     </div>
 
@@ -387,7 +383,7 @@
                       <h3 class="form-section-title">Import Options</h3>
 
                       <div class="import-options">
-                        <div v-if="importFormat === 'geopulse'" class="option-group">
+                        <div v-if="getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
                           <div class="option-group-header">
                             <label class="option-label">Data types to import:</label>
                             <Button
@@ -420,10 +416,10 @@
                           </div>
                         </div>
 
-                        <div v-if="importFormat === 'owntracks'" class="option-group">
-                          <div class="owntracks-info">
+                        <div v-if="!getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
+                          <div class="format-info">
                             <i class="pi pi-info-circle"></i>
-                            <span>OwnTracks import will add GPS location data to your GeoPulse timeline.</span>
+                            <span>{{ getFormatInfoMessage() }}</span>
                           </div>
                         </div>
 
@@ -724,10 +720,38 @@ const exportFormatOptions = ref([
   {label: 'OwnTracks', value: 'owntracks', description: 'Compatible with OwnTracks format (GPS data only)'}
 ])
 
-// Import format options
+// Import format options - extensible for future formats
 const importFormatOptions = ref([
-  {label: 'GeoPulse', value: 'geopulse', description: 'Import from GeoPulse export file'},
-  {label: 'OwnTracks', value: 'owntracks', description: 'Import from OwnTracks export file'}
+  {
+    label: 'GeoPulse', 
+    value: 'geopulse', 
+    description: 'Import from GeoPulse export file',
+    fileExtensions: ['.zip'],
+    acceptedFormats: '.zip',
+    uploadFunction: 'uploadImportFile',
+    supportsDataTypeSelection: true,
+    maxFileSizeMB: 100
+  },
+  {
+    label: 'OwnTracks', 
+    value: 'owntracks', 
+    description: 'Import from OwnTracks export file',
+    fileExtensions: ['.json'],
+    acceptedFormats: '.json',
+    uploadFunction: 'uploadOwnTracksImportFile',
+    supportsDataTypeSelection: false,
+    maxFileSizeMB: 100
+  },
+  {
+    label: 'Google Timeline', 
+    value: 'google-timeline', 
+    description: 'Import from Google Timeline/Takeout JSON files',
+    fileExtensions: ['.json'],
+    acceptedFormats: '.json',
+    uploadFunction: 'uploadGoogleTimelineImportFile',
+    supportsDataTypeSelection: false,
+    maxFileSizeMB: 100
+  }
 ])
 
 // Computed
@@ -748,13 +772,14 @@ const canStartExport = computed(() => {
 const canStartImport = computed(() => {
   const hasValidFile = selectedFile.value
   const hasValidDateFilter = !enableDateFilter.value || (importStartDate.value && importEndDate.value)
+  const formatConfig = getCurrentFormatConfig()
 
-  // For OwnTracks, we don't need data type selection
-  if (importFormat.value === 'owntracks') {
+  // For formats that don't support data type selection, only check file and date filter
+  if (!formatConfig.supportsDataTypeSelection) {
     return hasValidFile && hasValidDateFilter
   }
 
-  // For GeoPulse, we need at least one data type selected
+  // For formats that support data type selection, we need at least one data type selected
   return hasValidFile && importOptions.value.dataTypes.length > 0 && hasValidDateFilter
 })
 
@@ -832,9 +857,10 @@ const onFileClear = () => {
 const startImport = async () => {
   try {
     const options = {importFormat: importFormat.value}
+    const formatConfig = getCurrentFormatConfig()
 
-    // Only add GeoPulse-specific options for GeoPulse imports
-    if (importFormat.value === 'geopulse') {
+    // Only add data type options for formats that support it
+    if (formatConfig.supportsDataTypeSelection) {
       options.dataTypes = importOptions.value.dataTypes
     }
 
@@ -845,11 +871,13 @@ const startImport = async () => {
       }
     }
 
-    if (importFormat.value === 'owntracks') {
-      await exportImportStore.uploadOwnTracksImportFile(selectedFile.value, options)
-    } else {
-      await exportImportStore.uploadImportFile(selectedFile.value, options)
+    // Use the appropriate upload function based on format configuration
+    const uploadFunction = exportImportStore[formatConfig.uploadFunction]
+    if (!uploadFunction) {
+      throw new Error(`Upload function '${formatConfig.uploadFunction}' not found`)
     }
+    
+    await uploadFunction(selectedFile.value, options)
 
     toast.add({
       severity: 'success',
@@ -1062,6 +1090,25 @@ watch(() => currentImportJob.value?.status, (newStatus, oldStatus) => {
     })
   }
 })
+
+// Helper methods to get current format configuration
+const getCurrentFormatConfig = () => {
+  return importFormatOptions.value.find(option => option.value === importFormat.value) || importFormatOptions.value[0]
+}
+
+const getUploadNote = () => {
+  const config = getCurrentFormatConfig()
+  const extensions = config.fileExtensions.join(', ')
+  return `Only ${config.label} files (${extensions}) are supported. Maximum file size: ${config.maxFileSizeMB}MB`
+}
+
+const getFormatInfoMessage = () => {
+  const messages = {
+    'owntracks': 'OwnTracks import will add GPS location data to your GeoPulse timeline.',
+    'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.'
+  }
+  return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
+}
 
 // Lifecycle
 onMounted(async () => {
@@ -1756,7 +1803,19 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* OwnTracks Info */
+/* Format Info */
+.format-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--gp-primary-50);
+  border-radius: var(--gp-radius-small);
+  color: var(--gp-primary-700);
+  font-size: 0.9rem;
+}
+
+/* Backward compatibility */
 .owntracks-info {
   display: flex;
   align-items: center;
