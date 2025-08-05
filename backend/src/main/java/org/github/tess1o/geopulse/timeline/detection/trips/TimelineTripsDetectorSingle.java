@@ -47,9 +47,20 @@ public class TimelineTripsDetectorSingle implements TimelineTripsDetector {
             if (!path.isEmpty()) {
                 Instant startTime = timelineStayPoints.get(i - 1).endTime();
                 Instant endTime = timelineStayPoints.get(i).startTime();
+                
+                // Skip if stay points are adjacent (no travel time)
+                if (!startTime.isBefore(endTime)) {
+                    continue;
+                }
+                
                 Duration duration = Duration.between(startTime, endTime);
                 TravelMode travelMode = travelClassification.classifyTravelType(path, duration);
-                trips.add(new TimelineTrip(startTime, endTime, path, travelMode));
+                TimelineTrip trip = new TimelineTrip(startTime, endTime, path, travelMode);
+                
+                // Only add trip if it meets minimum criteria
+                if (isValidTrip(trip, config)) {
+                    trips.add(trip);
+                }
             }
         }
         return trips;
@@ -60,5 +71,28 @@ public class TimelineTripsDetectorSingle implements TimelineTripsDetector {
                 .filter(p -> validationService.isBetweenInclusive(timelineStayPoint.startTime(), timelineStayPoint.endTime(), p.getTimestamp()))
                 .min(Comparator.comparingDouble(p -> spatialCalculationService.calculateDistance(p.getLatitude(), p.getLongitude(), timelineStayPoint.latitude(), timelineStayPoint.longitude())))
                 .orElseThrow(() -> new RuntimeException("Cannot find the closest point to " + timelineStayPoint)); //should not happen
+    }
+    
+    /**
+     * Validate if a trip meets minimum duration and distance requirements.
+     * 
+     * @param trip the trip to validate
+     * @param config timeline configuration with minimum thresholds
+     * @return true if trip meets minimum criteria
+     */
+    private boolean isValidTrip(TimelineTrip trip, TimelineConfig config) {
+        // Check minimum duration
+        long durationMinutes = trip.getDuration().toMinutes();
+        if (durationMinutes < config.getTripMinDurationMinutes()) {
+            return false;
+        }
+        
+        // Check minimum distance
+        if (trip.path().size() < 2) {
+            return false;
+        }
+        
+        double totalDistanceMeters = spatialCalculationService.calculateTotalPathDistance(trip.path());
+        return totalDistanceMeters >= config.getTripMinDistanceMeters();
     }
 }

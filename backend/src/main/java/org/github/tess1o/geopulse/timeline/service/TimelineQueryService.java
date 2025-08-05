@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.timeline.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper;
@@ -63,6 +64,7 @@ public class TimelineQueryService {
      * @param endTime   end of time range
      * @return timeline DTO with appropriate data source indication
      */
+    @Transactional
     public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant endTime) {
         // Use UTC for all date operations 
         LocalDate startDate = startTime.atZone(ZoneOffset.UTC).toLocalDate();

@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayPoint;
 import org.github.tess1o.geopulse.timeline.model.TimelineTrip;
 import org.github.tess1o.geopulse.timeline.model.TravelMode;
+import org.github.tess1o.geopulse.timeline.core.SpatialCalculationService;
 import org.github.tess1o.geopulse.timeline.core.TimelineValidationService;
 import org.github.tess1o.geopulse.timeline.core.VelocityAnalysisService;
 import org.github.tess1o.geopulse.timeline.util.TimelineConstants;
@@ -25,14 +26,17 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
     private final TravelClassification travelClassification;
     private final VelocityAnalysisService velocityAnalysisService;
     private final TimelineValidationService validationService;
+    private final SpatialCalculationService spatialCalculationService;
 
     @Inject
     public TimelineTripsDetectorMulti(TravelClassification travelClassification,
                                     VelocityAnalysisService velocityAnalysisService,
-                                    TimelineValidationService validationService) {
+                                    TimelineValidationService validationService,
+                                    SpatialCalculationService spatialCalculationService) {
         this.travelClassification = travelClassification;
         this.velocityAnalysisService = velocityAnalysisService;
         this.validationService = validationService;
+        this.spatialCalculationService = spatialCalculationService;
     }
 
     public List<TimelineTrip> detectTrips(TimelineConfig config, List<GpsPointPathPointDTO> allPoints, List<TimelineStayPoint> timelineStayPoints) {
@@ -51,8 +55,13 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
                     .toList();
 
             if (!tripPoints.isEmpty()) {
+                // Skip if stay points are adjacent (no travel time)
+                if (!tripStartTime.isBefore(tripEndTime)) {
+                    continue;
+                }
+                
                 // Try to detect multiple travel modes within this trip segment
-                List<TimelineTrip> segmentTrips = detectMultiModalTrips(tripPoints, tripStartTime, tripEndTime);
+                List<TimelineTrip> segmentTrips = detectMultiModalTrips(tripPoints, tripStartTime, tripEndTime, config);
                 trips.addAll(segmentTrips);
             }
         }
@@ -60,7 +69,7 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
         return trips;
     }
 
-    private List<TimelineTrip> detectMultiModalTrips(List<GpsPointPathPointDTO> tripPoints, Instant overallStart, Instant overallEnd) {
+    private List<TimelineTrip> detectMultiModalTrips(List<GpsPointPathPointDTO> tripPoints, Instant overallStart, Instant overallEnd, TimelineConfig config) {
         List<TimelineTrip> trips = new ArrayList<>();
 
         // First, classify the entire segment to see if it's clearly single-mode
@@ -79,11 +88,19 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
                 Instant segmentStart = segmentPoints.get(0).getTimestamp();
                 Instant segmentEnd = segmentPoints.get(segmentPoints.size() - 1).getTimestamp();
 
-                trips.add(new TimelineTrip(segmentStart, segmentEnd, segmentPoints, segment.travelMode));
+                TimelineTrip trip = new TimelineTrip(segmentStart, segmentEnd, segmentPoints, segment.travelMode);
+                // Only add trip if it meets minimum criteria
+                if (isValidTrip(trip, config)) {
+                    trips.add(trip);
+                }
             }
         } else {
             // Fall back to single trip with overall classification
-            trips.add(new TimelineTrip(overallStart, overallEnd, tripPoints, overallMode));
+            TimelineTrip trip = new TimelineTrip(overallStart, overallEnd, tripPoints, overallMode);
+            // Only add trip if it meets minimum criteria
+            if (isValidTrip(trip, config)) {
+                trips.add(trip);
+            }
         }
 
         return trips;
@@ -226,4 +243,26 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
     private record TravelSegment(int startIndex, int endIndex, TravelMode travelMode) {
     }
 
+    /**
+     * Validate if a trip meets minimum duration and distance requirements.
+     * 
+     * @param trip the trip to validate
+     * @param config timeline configuration with minimum thresholds
+     * @return true if trip meets minimum criteria
+     */
+    private boolean isValidTrip(TimelineTrip trip, TimelineConfig config) {
+        // Check minimum duration
+        long durationMinutes = trip.getDuration().toMinutes();
+        if (durationMinutes < config.getTripMinDurationMinutes()) {
+            return false;
+        }
+        
+        // Check minimum distance
+        if (trip.path().size() < 2) {
+            return false;
+        }
+        
+        double totalDistanceMeters = spatialCalculationService.calculateTotalPathDistance(trip.path());
+        return totalDistanceMeters >= config.getTripMinDistanceMeters();
+    }
 }

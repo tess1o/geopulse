@@ -219,4 +219,25 @@ public class SpatialCalculationService {
         }
         return j;
     }
+
+    /**
+     * Calculate total distance along a path of GPS points.
+     * 
+     * @param path list of GPS points forming a path
+     * @return total distance in meters
+     */
+    public double calculateTotalPathDistance(List<? extends GpsPoint> path) {
+        if (path == null || path.size() < 2) {
+            return 0.0;
+        }
+        
+        double totalDistance = 0.0;
+        for (int i = 1; i < path.size(); i++) {
+            GpsPoint p1 = path.get(i - 1);
+            GpsPoint p2 = path.get(i);
+            totalDistance += calculateDistance(p1.getLatitude(), p1.getLongitude(), 
+                                             p2.getLatitude(), p2.getLongitude());
+        }
+        return totalDistance;
+    }
 }
