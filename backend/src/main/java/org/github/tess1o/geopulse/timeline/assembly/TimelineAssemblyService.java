@@ -15,6 +15,7 @@ import org.locationtech.jts.geom.Point;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -72,15 +73,44 @@ public class TimelineAssemblyService {
     }
 
     /**
-     * Process stay points into timeline stay location DTOs.
+     * Process stay points into timeline stay location DTOs using batch processing.
+     * Optimized to avoid thread blocking by batching geocoding operations.
      * 
      * @param userId the user identifier
      * @param stayPoints detected stay points
      * @return processed and sorted stay location DTOs
      */
     private List<TimelineStayLocationDTO> processStayPoints(UUID userId, List<TimelineStayPoint> stayPoints) {
+        if (stayPoints.isEmpty()) {
+            return List.of();
+        }
+
+        // Step 1: Extract unique coordinates and create points
+        Map<String, Point> coordinatePoints = stayPoints.stream()
+                .collect(Collectors.toMap(
+                        stayPoint -> stayPoint.longitude() + "," + stayPoint.latitude(),
+                        stayPoint -> spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude()),
+                        (existing, replacement) -> existing // Keep first occurrence for duplicates
+                ));
+
+        // Step 2: Batch resolve locations
+        Map<String, org.github.tess1o.geopulse.shared.service.LocationResolutionResult> locationResults = 
+            timelineDataService.resolveLocationsWithReferencesBatch(userId, coordinatePoints.values().stream().toList());
+
+        // Step 3: Map results back to stay points
         return stayPoints.stream()
-                .map(stayPoint -> createStayLocationDTO(userId, stayPoint))
+                .map(stayPoint -> {
+                    String coordKey = stayPoint.longitude() + "," + stayPoint.latitude();
+                    var locationResult = locationResults.get(coordKey);
+                    
+                    // Handle null case - fallback to individual resolution if batch failed
+                    if (locationResult == null) {
+                        Point locationPoint = spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude());
+                        locationResult = timelineDataService.resolveLocationWithReferences(userId, locationPoint);
+                    }
+                    
+                    return timelineMapper.toTimelineStayLocationDTO(stayPoint, locationResult);
+                })
                 .sorted(Comparator.comparing(TimelineStayLocationDTO::getTimestamp))
                 .collect(Collectors.toList());
     }
@@ -88,10 +118,12 @@ public class TimelineAssemblyService {
     /**
      * Create a stay location DTO from a stay point, including location resolution.
      * 
+     * @deprecated Use batch processing in processStayPoints for better performance
      * @param userId the user identifier
      * @param stayPoint the stay point to convert
      * @return stay location DTO with resolved location name
      */
+    @Deprecated
     private TimelineStayLocationDTO createStayLocationDTO(UUID userId, TimelineStayPoint stayPoint) {
         Point locationPoint = spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude());
         var locationResult = timelineDataService.resolveLocationWithReferences(userId, locationPoint);

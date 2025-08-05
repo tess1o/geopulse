@@ -13,7 +13,10 @@ import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationR
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Ultra-simplified geocoding service that stores only formatted display names.
@@ -187,6 +190,77 @@ public class CacheGeocodingService {
                     requestCoordinates.getX(), requestCoordinates.getY(), e);
             throw new GeocodingCacheException("Failed to cache geocoding result", e);
         }
+    }
+
+    /**
+     * Batch get cached geocoding result IDs for multiple coordinates.
+     * Optimized for timeline assembly to reduce database round-trips.
+     *
+     * @param coordinates List of coordinates to look up
+     * @return Map of coordinate string (lon,lat) to entity ID
+     */
+    public Map<String, Long> getCachedGeocodingResultIdsBatch(List<Point> coordinates) {
+        if (coordinates == null || coordinates.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            Map<String, ReverseGeocodingLocationEntity> cachedResults = 
+                repository.findByCoordinatesBatch(coordinates, spatialToleranceMeters);
+            
+            return cachedResults.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> entry.getValue().getId()
+                    ));
+
+        } catch (Exception e) {
+            log.error("Error retrieving batch cached entity IDs for {} coordinates", coordinates.size(), e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * Batch get cached geocoding results for multiple coordinates.
+     * Optimized for timeline assembly to reduce database round-trips.
+     *
+     * @param coordinates List of coordinates to look up
+     * @return Map of coordinate string (lon,lat) to FormattableGeocodingResult
+     */
+    public Map<String, FormattableGeocodingResult> getCachedGeocodingResultsBatch(List<Point> coordinates) {
+        if (coordinates == null || coordinates.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            Map<String, ReverseGeocodingLocationEntity> cachedResults = 
+                repository.findByCoordinatesBatch(coordinates, spatialToleranceMeters);
+            
+            return cachedResults.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> convertFromEntity(entry.getValue())
+                    ));
+
+        } catch (Exception e) {
+            log.error("Error retrieving batch cached results for {} coordinates", coordinates.size(), e);
+            return Map.of();
+        }
+    }
+
+    /**
+     * Convert entity to FormattableGeocodingResult.
+     */
+    private FormattableGeocodingResult convertFromEntity(ReverseGeocodingLocationEntity entity) {
+        return SimpleFormattableResult.builder()
+                .requestCoordinates(entity.getRequestCoordinates())
+                .resultCoordinates(entity.getResultCoordinates())
+                .boundingBox(entity.getBoundingBox())
+                .formattedDisplayName(entity.getDisplayName())
+                .providerName(entity.getProviderName())
+                .city(entity.getCity())
+                .country(entity.getCountry())
+                .build();
     }
 
     /**

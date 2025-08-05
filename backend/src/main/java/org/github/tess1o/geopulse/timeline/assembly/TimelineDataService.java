@@ -13,6 +13,7 @@ import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -73,5 +74,18 @@ public class TimelineDataService {
     public LocationResolutionResult resolveLocationWithReferences(UUID userId, Point point) {
         log.debug("Resolving location with references for user {} at point {}", userId, point);
         return locationPointResolver.resolveLocationWithReferences(userId, point);
+    }
+
+    /**
+     * Batch location resolution with references for timeline assembly.
+     * Optimized to reduce database round-trips and respect API rate limits.
+     * 
+     * @param userId user ID for favorite location lookup
+     * @param coordinates list of coordinates to resolve
+     * @return map of coordinate string (lon,lat) to location resolution results
+     */
+    public Map<String, LocationResolutionResult> resolveLocationsWithReferencesBatch(UUID userId, List<Point> coordinates) {
+        log.debug("Batch resolving {} locations with references for user {}", coordinates.size(), userId);
+        return locationPointResolver.resolveLocationsWithReferencesBatch(userId, coordinates);
     }
 }
