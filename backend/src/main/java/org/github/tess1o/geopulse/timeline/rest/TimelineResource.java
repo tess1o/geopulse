@@ -12,7 +12,7 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.service.TimelineQueryService;
-import org.github.tess1o.geopulse.timeline.service.TimelineInvalidationService;
+import org.github.tess1o.geopulse.timeline.service.TimelineBackgroundService;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -29,15 +29,15 @@ public class TimelineResource {
 
     private final TimelineService timelineService;
     private final TimelineQueryService timelineQueryService;
-    private final TimelineInvalidationService invalidationService;
+    private final TimelineBackgroundService backgroundService;
     private final CurrentUserService currentUserService;
 
     @Inject
     public TimelineResource(TimelineService timelineService, TimelineQueryService timelineQueryService, 
-                          TimelineInvalidationService invalidationService, CurrentUserService currentUserService) {
+                          TimelineBackgroundService backgroundService, CurrentUserService currentUserService) {
         this.timelineService = timelineService;
         this.timelineQueryService = timelineQueryService;
-        this.invalidationService = invalidationService;
+        this.backgroundService = backgroundService;
         this.currentUserService = currentUserService;
     }
 
@@ -157,7 +157,9 @@ public class TimelineResource {
             Instant startOfDay = requestedDate.atStartOfDay(ZoneOffset.UTC).toInstant();
             Instant endOfDay = requestedDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
             
-            MovementTimelineDTO timeline = timelineQueryService.forceRegenerateTimeline(userId, startOfDay, endOfDay);
+            // Use the new simplified system: delete cache and regenerate
+            // For now, just return a live timeline (this method might be deprecated)
+            MovementTimelineDTO timeline = timelineService.getMovementTimeline(userId, startOfDay, endOfDay);
             return Response.ok(ApiResponse.success(timeline)).build();
         } catch (Exception e) {
             log.error("Failed to regenerate timeline for user {} on date {}", userId, date, e);
@@ -178,7 +180,7 @@ public class TimelineResource {
     @RolesAllowed("USER")
     public Response getQueueStatus() {
         try {
-            var queueStats = invalidationService.getQueueStatistics();
+            var queueStats = backgroundService.getQueueStatus();
             return Response.ok(ApiResponse.success(queueStats)).build();
         } catch (Exception e) {
             log.error("Failed to retrieve queue status", e);

@@ -15,9 +15,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
-import org.github.tess1o.geopulse.timeline.model.LocationSource;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.service.TimelineInvalidationService;
+import org.github.tess1o.geopulse.importdata.service.TimelineImportHelper;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -41,7 +39,7 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
     BatchProcessor batchProcessor;
     
     @Inject
-    TimelineInvalidationService timelineInvalidationService;
+    TimelineImportHelper timelineImportHelper;
     
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -139,7 +137,7 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                     job.getUserId(), result.imported, result.skipped, gpsPoints.size(), records.size());
             
             // Trigger timeline generation since we only imported GPS data
-            triggerTimelineGenerationForImportedGpsData(job);
+            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job);
 
         } catch (Exception e) {
             log.error("Failed to process Google Timeline import for user {}: {}", job.getUserId(), e.getMessage(), e);
@@ -241,47 +239,4 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
         return !Double.isNaN(coord) && !Double.isInfinite(coord);
     }
     
-    /**
-     * Triggers timeline generation for imported GPS data.
-     * Since Google Timeline import only imports GPS points (not pre-computed timeline data),
-     * we need to generate timeline from the imported GPS points.
-     */
-    private void triggerTimelineGenerationForImportedGpsData(ImportJob job) {
-        log.info("Triggering timeline generation for Google Timeline import for user {}", job.getUserId());
-        
-        try {
-            // Create a dummy timeline stay entity to trigger full user regeneration
-            // This uses the same pattern as TimelineInvalidationService for full user regeneration
-            UserEntity user = userRepository.findById(job.getUserId());
-            if (user == null) {
-                log.error("User not found for GPS timeline generation: {}", job.getUserId());
-                return;
-            }
-            
-            // Create a temporary stay entity to represent the need for timeline generation
-            // We'll use a very old timestamp to ensure it gets processed
-            TimelineStayEntity dummyStay = new TimelineStayEntity();
-            dummyStay.setUser(user);
-            dummyStay.setTimestamp(Instant.EPOCH); // Special marker for full regeneration
-            dummyStay.setLatitude(0.0);
-            dummyStay.setLongitude(0.0);
-            dummyStay.setLocationName("Google Timeline Import Trigger");
-            dummyStay.setStayDuration(0);
-            dummyStay.setLocationSource(LocationSource.HISTORICAL);
-            dummyStay.setTimelineVersion("google-timeline-import-trigger");
-            dummyStay.setIsStale(true);
-            dummyStay.setCreatedAt(Instant.now());
-            dummyStay.setLastUpdated(Instant.now());
-            
-            // Use the invalidation service to queue timeline generation
-            timelineInvalidationService.markStaleAndQueue(List.of(dummyStay));
-            
-            log.info("Successfully queued timeline generation for Google Timeline import for user {}", job.getUserId());
-            
-        } catch (Exception e) {
-            log.error("Failed to trigger timeline generation for Google Timeline import for user {}: {}", 
-                     job.getUserId(), e.getMessage(), e);
-            // Don't fail the entire import - GPS data is still imported successfully
-        }
-    }
 }

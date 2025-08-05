@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.importdata;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
@@ -51,6 +52,12 @@ class GpxImportStrategyTest {
     @Inject
     TimelineStayRepository timelineStayRepository;
 
+    @Inject
+    EntityManager entityManager;
+
+    @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
+
     private UserEntity testUser;
 
     @BeforeEach
@@ -79,7 +86,8 @@ class GpxImportStrategyTest {
 
     @Transactional
     void cleanupTestData() {
-        // Clean up in dependency order: timeline stays -> GPS points -> user
+        // Clean up in dependency order: timeline regeneration tasks -> timeline stays -> GPS points -> user
+        taskRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
         timelineStayRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
         userRepository.delete("email = ?1", "test-gpx@geopulse.app");
@@ -132,7 +140,6 @@ class GpxImportStrategyTest {
     }
 
     @Test
-    @Transactional
     void testGpxImportWithTrackPointsOnly() throws Exception {
         log.info("=== Testing GPX Import with Track Points Only ===");
 
@@ -147,6 +154,9 @@ class GpxImportStrategyTest {
                 testUser.getId(), importOptions, "test-track-only.gpx", gpxData);
 
         gpxImportStrategy.processImportData(importJob);
+
+        // Clear entity manager to force fresh query from database
+        entityManager.clear();
 
         List<GpsPointEntity> importedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
                 testUser.getId(),
@@ -167,7 +177,6 @@ class GpxImportStrategyTest {
     }
 
     @Test
-    @Transactional
     void testGpxImportWithWaypointsOnly() throws Exception {
         log.info("=== Testing GPX Import with Waypoints Only ===");
 
@@ -182,6 +191,9 @@ class GpxImportStrategyTest {
                 testUser.getId(), importOptions, "test-waypoints-only.gpx", gpxData);
 
         gpxImportStrategy.processImportData(importJob);
+
+        // Clear entity manager to force fresh query from database
+        entityManager.clear();
 
         List<GpsPointEntity> importedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
                 testUser.getId(),
@@ -319,46 +331,50 @@ class GpxImportStrategyTest {
     }
 
     private String createTrackPointsOnlyGpxContent() {
-        return """
+        // Use current time to ensure the test data falls within the query range
+        Instant now = Instant.now();
+        return String.format("""
             <gpx version="1.1" creator="GeoPulseTest">
                 <trk>
                     <name>Track Only</name>
                     <trkseg>
                         <trkpt lat="49.5473" lon="25.5965">
                             <ele>300</ele>
-                            <time>2025-08-04T12:00:00Z</time>
+                            <time>%s</time>
                             <speed>5.0</speed>
                         </trkpt>
                         <trkpt lat="49.5476" lon="25.5968">
                             <ele>302</ele>
-                            <time>2025-08-04T12:05:00Z</time>
+                            <time>%s</time>
                             <speed>4.5</speed>
                         </trkpt>
                         <trkpt lat="49.5480" lon="25.5970">
                             <ele>305</ele>
-                            <time>2025-08-04T12:10:00Z</time>
+                            <time>%s</time>
                             <speed>3.8</speed>
                         </trkpt>
                     </trkseg>
                 </trk>
             </gpx>
-        """;
+        """, now.toString(), now.plusSeconds(300).toString(), now.plusSeconds(600).toString());
     }
 
     private String createWaypointsOnlyGpxContent() {
-        return """
+        // Use current time to ensure the test data falls within the query range
+        Instant now = Instant.now();
+        return String.format("""
             <gpx version="1.1" creator="GeoPulseTest">
                 <!-- Waypoint with timestamp (should be imported) -->
                 <wpt lat="49.5473" lon="25.5965">
                     <ele>300</ele>
-                    <time>2025-08-04T12:00:00Z</time>
+                    <time>%s</time>
                     <name>Timed Waypoint 1</name>
                 </wpt>
                 
                 <!-- Waypoint with timestamp (should be imported) -->
                 <wpt lat="49.5480" lon="25.5970">
                     <ele>305</ele>
-                    <time>2025-08-04T12:30:00Z</time>
+                    <time>%s</time>
                     <name>Timed Waypoint 2</name>
                 </wpt>
                 
@@ -368,7 +384,7 @@ class GpxImportStrategyTest {
                     <name>Untimed Waypoint</name>
                 </wpt>
             </gpx>
-        """;
+        """, now.toString(), now.plusSeconds(1800).toString());
     }
 
     private void verifyImportedData(List<GpsPointEntity> importedPoints) {

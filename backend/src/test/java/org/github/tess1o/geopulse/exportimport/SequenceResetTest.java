@@ -52,6 +52,9 @@ class SequenceResetTest {
     TimelineStayRepository timelineStayRepository;
 
     @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
+
+    @Inject
     FavoritesRepository favoritesRepository;
 
     @Inject
@@ -84,6 +87,7 @@ class SequenceResetTest {
 
     @Transactional
     void cleanupTestData() {
+        taskRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         timelineStayRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         favoritesRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         reverseGeocodingLocationRepository.delete("providerName = ?1", "sequence-test-provider");
@@ -231,8 +235,6 @@ class SequenceResetTest {
                     .geocodingLocation(newGeocoding)
                     .createdAt(Instant.now())
                     .lastUpdated(Instant.now())
-                    .timelineVersion("test-new")
-                    .isStale(false)
                     .build();
             timelineStayRepository.persist(newStay);
 

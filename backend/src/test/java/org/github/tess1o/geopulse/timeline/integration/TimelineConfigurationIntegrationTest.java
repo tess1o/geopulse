@@ -45,6 +45,9 @@ class TimelineConfigurationIntegrationTest {
     @Inject
     jakarta.persistence.EntityManager entityManager;
 
+    @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository timelineRegenerationTaskRepository;
+
     private UserEntity testUser;
 
     @BeforeEach
@@ -60,6 +63,8 @@ class TimelineConfigurationIntegrationTest {
     @AfterEach
     @Transactional
     void cleanup() {
+        // Clean up timeline regeneration queue first to avoid foreign key constraint violations
+        timelineRegenerationTaskRepository.deleteByUserId(testUser.getId());
         userRepository.deleteById(testUser.getId());
     }
 

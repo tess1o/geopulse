@@ -80,4 +80,16 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
             .setParameter(4, coordinates)
             .getResultList();
     }
+
+    /**
+     * Find distinct timestamps (dates) that have GPS data for a user.
+     * Used for determining date ranges that need timeline generation after imports.
+     */
+    public List<Instant> findDistinctTimestampsByUser(UUID userId) {
+        return getEntityManager().createQuery(
+            "SELECT DISTINCT DATE_TRUNC('day', g.timestamp) FROM GpsPointEntity g WHERE g.user.id = :userId ORDER BY DATE_TRUNC('day', g.timestamp)",
+            Instant.class)
+            .setParameter("userId", userId)
+            .getResultList();
+    }
 }

@@ -18,5 +18,10 @@ public enum TimelineDataSource {
     /**
      * Background timeline regeneration is in progress, showing potentially stale data
      */
-    REGENERATING
+    REGENERATING,
+    
+    /**
+     * Timeline combines cached past data with live current data (mixed date ranges)
+     */
+    MIXED
 }

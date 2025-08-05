@@ -36,8 +36,6 @@ public class TimelinePersistenceService {
     @Inject
     UserRepository userRepository;
 
-    @Inject
-    TimelineVersionService versionService;
 
     @Inject
     FavoritesRepository favoritesRepository;
@@ -66,7 +64,7 @@ public class TimelinePersistenceService {
         clearTimelineForDate(userId, timelineDate);
 
         // Generate version hash for this timeline
-        String timelineVersion = versionService.generateTimelineVersion(userId, timelineDate);
+        String timelineVersion = "cached-" + Instant.now().toEpochMilli();
 
         // Persist stays
         persistStays(userId, timelineDate, timeline.getStays(), timelineVersion);
@@ -101,7 +99,7 @@ public class TimelinePersistenceService {
         clearTimelineForRange(userId, startTime, endTime);
 
         // Generate version hash for this timeline (use start time as key)
-        String timelineVersion = versionService.generateTimelineVersion(userId, startTime);
+        String timelineVersion = "cached-" + Instant.now().toEpochMilli();
 
         // Persist stays
         persistStays(userId, startTime, timeline.getStays(), timelineVersion);
@@ -188,17 +186,6 @@ public class TimelinePersistenceService {
     }
 
     /**
-     * Get the version hash of persisted timeline data for a date.
-     */
-    public String getPersistedTimelineVersion(UUID userId, Instant timelineDate) {
-        List<TimelineStayEntity> stays = stayRepository.findByUserAndDate(userId, timelineDate);
-        if (stays.isEmpty()) {
-            return null;
-        }
-        return stays.get(0).getTimelineVersion();
-    }
-
-    /**
      * Persist timeline stay data.
      */
     private void persistStays(UUID userId, Instant timelineDate, List<TimelineStayLocationDTO> stays, String timelineVersion) {
@@ -220,8 +207,6 @@ public class TimelinePersistenceService {
                     .latitude(stayDTO.getLatitude())
                     .longitude(stayDTO.getLongitude())
                     .locationName(stayDTO.getLocationName())
-                    .timelineVersion(timelineVersion)
-                    .isStale(false)
                     .locationSource(determineLocationSource(stayDTO))
                     .build();
 
@@ -295,8 +280,6 @@ public class TimelinePersistenceService {
                     .distanceKm(tripDTO.getDistanceKm())
                     .movementType(tripDTO.getMovementType())
                     .path(pathGeometry)
-                    .timelineVersion(timelineVersion)
-                    .isStale(false)
                     .build();
 
             tripRepository.persist(tripEntity);

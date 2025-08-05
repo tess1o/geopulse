@@ -1,204 +1,115 @@
 package org.github.tess1o.geopulse.timeline.service;
 
-import io.quarkus.test.common.QuarkusTestResource;
-import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.timeline.events.TimelinePreferencesUpdatedEvent;
-import org.github.tess1o.geopulse.timeline.model.LocationSource;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.user.model.TimelinePreferences;
-import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
+import org.github.tess1o.geopulse.timeline.model.ImpactAnalysis;
+import org.github.tess1o.geopulse.timeline.model.ImpactAnalysis.ImpactType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
-import java.util.Collections;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * Unit tests for TimelineEventService, specifically focusing on the timeline preferences
- * update event handling functionality.
+ * Unit tests for the new simplified TimelineEventService.
+ * Tests the hybrid fast/slow path approach for favorite changes.
  */
 @ExtendWith(MockitoExtension.class)
 class TimelineEventServiceTest {
 
-    @Mock
-    private TimelineStayRepository stayRepository;
+    @Mock private FavoriteImpactAnalyzer impactAnalyzer;
+    @Mock private TimelineCacheService timelineCacheService;
+    @Mock private TimelineBackgroundService backgroundService;
+    @Mock private jakarta.persistence.EntityManager entityManager;
+    @Mock private jakarta.persistence.Query query;
 
-    @Mock
-    private TimelineInvalidationService timelineInvalidationService;
-
-    @Mock
-    private FavoriteDeletionHandler favoriteDeletionHandler;
-
-    @InjectMocks
-    private TimelineEventService timelineEventService;
-
-    private UUID testUserId;
-    private TimelinePreferences testPreferences;
+    private TimelineEventService eventService;
 
     @BeforeEach
     void setUp() {
-        testUserId = UUID.randomUUID();
-        testPreferences = new TimelinePreferences();
-        testPreferences.setStaypointDetectionAlgorithm("enhanced");
-        testPreferences.setTripMinDistanceMeters(200);
+        eventService = new TimelineEventService();
+        
+        // Inject mocks using reflection
+        try {
+            var impactField = TimelineEventService.class.getDeclaredField("impactAnalyzer");
+            impactField.setAccessible(true);
+            impactField.set(eventService, impactAnalyzer);
+            
+            var cacheField = TimelineEventService.class.getDeclaredField("timelineCacheService");
+            cacheField.setAccessible(true);
+            cacheField.set(eventService, timelineCacheService);
+            
+            var backgroundField = TimelineEventService.class.getDeclaredField("backgroundService");
+            backgroundField.setAccessible(true);
+            backgroundField.set(eventService, backgroundService);
+            
+            var entityManagerField = TimelineEventService.class.getDeclaredField("entityManager");
+            entityManagerField.setAccessible(true);
+            entityManagerField.set(eventService, entityManager);
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to inject mocks", e);
+        }
+        
+        // Setup EntityManager mocks (lenient because only used for name-only changes)
+        lenient().when(entityManager.createQuery(anyString())).thenReturn(query);
+        lenient().when(query.setParameter(anyString(), any())).thenReturn(query);
+        lenient().when(query.executeUpdate()).thenReturn(1);
     }
 
     @Test
-    void testOnTimelinePreferencesUpdated_WithExistingStays_ShouldInvalidateAll() {
+    void testFavoriteRenamed_NameOnlyChange_ShouldUseFastPath() {
         // Arrange
-        List<TimelineStayEntity> mockStays = createMockTimelineStays(3);
-        when(stayRepository.findByUser(testUserId)).thenReturn(mockStays);
-
-        TimelinePreferencesUpdatedEvent event = new TimelinePreferencesUpdatedEvent(
-            testUserId, 
-            testPreferences, 
-            false
-        );
+        Long favoriteId = 123L;
+        UUID userId = UUID.randomUUID();
+        FavoriteRenamedEvent event = FavoriteRenamedEvent.builder()
+                .favoriteId(favoriteId)
+                .userId(userId)
+                .oldName("Old Name")
+                .newName("New Name")
+                .build();
+        
+        ImpactAnalysis nameOnlyImpact = ImpactAnalysis.nameOnly(favoriteId, "Simple rename");
+        when(impactAnalyzer.analyzeRename(event)).thenReturn(nameOnlyImpact);
 
         // Act
-        timelineEventService.onTimelinePreferencesUpdated(event);
+        eventService.onFavoriteRenamed(event);
 
         // Assert
-        verify(stayRepository).findByUser(testUserId);
-        verify(timelineInvalidationService).markStaleAndQueue(mockStays);
-        verifyNoMoreInteractions(timelineInvalidationService);
+        verify(impactAnalyzer).analyzeRename(event);
+        // Note: Direct cache update is handled internally, we can't easily verify private method calls
+        verify(backgroundService, never()).queueHighPriorityRegeneration(any(), any());
     }
 
     @Test
-    void testOnTimelinePreferencesUpdated_WithNoStays_ShouldNotCallInvalidation() {
+    void testFavoriteRenamed_StructuralChange_ShouldUseSlowPath() {
         // Arrange
-        when(stayRepository.findByUser(testUserId)).thenReturn(Collections.emptyList());
-
-        TimelinePreferencesUpdatedEvent event = new TimelinePreferencesUpdatedEvent(
-            testUserId, 
-            testPreferences, 
-            false
-        );
+        Long favoriteId = 456L;
+        UUID userId = UUID.randomUUID();
+        FavoriteRenamedEvent event = FavoriteRenamedEvent.builder()
+                .favoriteId(favoriteId)
+                .userId(userId)
+                .oldName("Old Name")
+                .newName("New Name")
+                .build();
+        
+        List<LocalDate> affectedDates = List.of(LocalDate.now().minusDays(1), LocalDate.now().minusDays(2));
+        ImpactAnalysis structuralImpact = ImpactAnalysis.structural(favoriteId, affectedDates, "Complex change");
+        when(impactAnalyzer.analyzeRename(event)).thenReturn(structuralImpact);
 
         // Act
-        timelineEventService.onTimelinePreferencesUpdated(event);
+        eventService.onFavoriteRenamed(event);
 
         // Assert
-        verify(stayRepository).findByUser(testUserId);
-        verify(timelineInvalidationService, never()).markStaleAndQueue(any());
-    }
-
-    @Test
-    void testOnTimelinePreferencesUpdated_ResetToDefaults_ShouldStillInvalidate() {
-        // Arrange
-        List<TimelineStayEntity> mockStays = createMockTimelineStays(5);
-        when(stayRepository.findByUser(testUserId)).thenReturn(mockStays);
-
-        TimelinePreferencesUpdatedEvent event = new TimelinePreferencesUpdatedEvent(
-            testUserId, 
-            null, // null indicates reset to defaults
-            true  // wasResetToDefaults = true
-        );
-
-        // Act
-        timelineEventService.onTimelinePreferencesUpdated(event);
-
-        // Assert
-        verify(stayRepository).findByUser(testUserId);
-        verify(timelineInvalidationService).markStaleAndQueue(mockStays);
-    }
-
-    @Test
-    void testOnTimelinePreferencesUpdated_WithLargeNumberOfStays_ShouldHandleAll() {
-        // Arrange
-        List<TimelineStayEntity> mockStays = createMockTimelineStays(1000); // Large number
-        when(stayRepository.findByUser(testUserId)).thenReturn(mockStays);
-
-        TimelinePreferencesUpdatedEvent event = new TimelinePreferencesUpdatedEvent(
-            testUserId, 
-            testPreferences, 
-            false
-        );
-
-        // Act
-        timelineEventService.onTimelinePreferencesUpdated(event);
-
-        // Assert
-        verify(stayRepository).findByUser(testUserId);
-        verify(timelineInvalidationService).markStaleAndQueue(mockStays);
-    }
-
-    @Test
-    void testOnTimelinePreferencesUpdated_RepositoryThrowsException_ShouldHandleGracefully() {
-        // Arrange
-        when(stayRepository.findByUser(testUserId))
-            .thenThrow(new RuntimeException("Database connection error"));
-
-        TimelinePreferencesUpdatedEvent event = new TimelinePreferencesUpdatedEvent(
-            testUserId, 
-            testPreferences, 
-            false
-        );
-
-        // Act & Assert - should not throw exception
-        timelineEventService.onTimelinePreferencesUpdated(event);
-
-        // Verify repository was called but invalidation service was not
-        verify(stayRepository).findByUser(testUserId);
-        verify(timelineInvalidationService, never()).markStaleAndQueue(any());
-    }
-
-    @Test
-    void testOnTimelinePreferencesUpdated_InvalidationServiceThrowsException_ShouldHandleGracefully() {
-        // Arrange
-        List<TimelineStayEntity> mockStays = createMockTimelineStays(2);
-        when(stayRepository.findByUser(testUserId)).thenReturn(mockStays);
-        doThrow(new RuntimeException("Invalidation queue error"))
-            .when(timelineInvalidationService).markStaleAndQueue(mockStays);
-
-        TimelinePreferencesUpdatedEvent event = new TimelinePreferencesUpdatedEvent(
-            testUserId, 
-            testPreferences, 
-            false
-        );
-
-        // Act & Assert - should not throw exception
-        timelineEventService.onTimelinePreferencesUpdated(event);
-
-        // Verify both calls were made despite the exception
-        verify(stayRepository).findByUser(testUserId);
-        verify(timelineInvalidationService).markStaleAndQueue(mockStays);
-    }
-
-    /**
-     * Helper method to create mock timeline stay entities for testing.
-     */
-    private List<TimelineStayEntity> createMockTimelineStays(int count) {
-        return java.util.stream.IntStream.range(0, count)
-            .mapToObj(i -> {
-                TimelineStayEntity stay = new TimelineStayEntity();
-                stay.setId((long) (i + 1));
-                
-                UserEntity user = new UserEntity();
-                user.setId(testUserId);
-                stay.setUser(user);
-                
-                stay.setTimestamp(Instant.now().minusSeconds(i * 3600)); // Different timestamps
-                stay.setLatitude(52.520008 + (i * 0.001)); // Slightly different locations
-                stay.setLongitude(13.404954 + (i * 0.001));
-                stay.setLocationName("Test Location " + (i + 1));
-                stay.setStayDuration(60);
-                stay.setLocationSource(LocationSource.GEOCODING);
-                stay.setIsStale(false);
-                stay.setTimelineVersion("test-version-" + i);
-                stay.setLastUpdated(Instant.now());
-                
-                return stay;
-            })
-            .toList();
+        verify(impactAnalyzer).analyzeRename(event);
+        // Note: Cache deletion and background queueing are handled internally
+        verify(backgroundService).queueHighPriorityRegeneration(eq(userId), eq(affectedDates));
     }
 }

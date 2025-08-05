@@ -43,4 +43,11 @@ public class FavoritesEntity {
      */
     @Column(name = "country", length = 100)
     private String country;
+
+    /**
+     * Indicates if this favorite could cause timeline stays to merge/unmerge when changed.
+     * Used to determine if favorite changes require full timeline regeneration or simple updates.
+     */
+    @Column(name = "merge_impact")
+    private Boolean mergeImpact = false;
 }

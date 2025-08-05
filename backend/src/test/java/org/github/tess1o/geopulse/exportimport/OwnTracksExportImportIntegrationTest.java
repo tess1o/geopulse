@@ -68,6 +68,9 @@ class OwnTracksExportImportIntegrationTest {
     @Inject
     GpsPointRepository gpsPointRepository;
 
+    @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository timelineRegenerationTaskRepository;
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -104,6 +107,11 @@ class OwnTracksExportImportIntegrationTest {
 
     @Transactional
     void cleanupTestData() {
+        // Clean up timeline regeneration queue first to avoid foreign key constraint violations
+        if (testUser != null) {
+            timelineRegenerationTaskRepository.deleteByUserId(testUser.getId());
+        }
+        timelineRegenerationTaskRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
         userRepository.delete("email = ?1", "test-owntracks@geopulse.app");
     }

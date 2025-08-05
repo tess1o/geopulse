@@ -62,6 +62,9 @@ public class BatchProcessor {
             entityManager.clear();
         }
 
+        // Always flush at the end to ensure persistence
+        entityManager.flush();
+
         return imported;
     }
 

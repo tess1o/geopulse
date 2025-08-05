@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -26,12 +27,11 @@ public class MovementTimelineDTO {
     // Timeline metadata for persistence and caching
     private TimelineDataSource dataSource;     // Source of this timeline data
     private Instant lastUpdated;               // When this data was last generated/updated
-    private Boolean isStale;                   // If favorite changes affected this timeline
 
     public MovementTimelineDTO(UUID userId) {
         this.userId = userId;
-        this.stays = Collections.emptyList();
-        this.trips = Collections.emptyList();
+        this.stays = new ArrayList<>();
+        this.trips = new ArrayList<>();
         this.staysCount = 0;
         this.tripsCount = 0;
     }

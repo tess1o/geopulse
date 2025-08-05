@@ -86,24 +86,10 @@ public class TimelineStayEntity {
     private Instant createdAt;
 
     /**
-     * Version hash of relevant favorite data when this stay was generated.
-     * Used to detect when timeline data is stale due to favorite changes.
-     */
-    @Column(name = "timeline_version", length = 64)
-    private String timelineVersion;
-
-    /**
      * When this stay was last updated/regenerated
      */
     @Column(name = "last_updated", nullable = false)
     private Instant lastUpdated;
-
-    /**
-     * Flag indicating if this timeline data is stale and needs regeneration
-     */
-    @Column(name = "is_stale", nullable = false)
-    @Builder.Default
-    private Boolean isStale = false;
 
     /**
      * Tracks the source of the location name for debugging and user information
@@ -117,9 +103,6 @@ public class TimelineStayEntity {
     protected void onCreate() {
         this.createdAt = Instant.now();
         this.lastUpdated = Instant.now();
-        if (this.isStale == null) {
-            this.isStale = false;
-        }
         if (this.locationSource == null) {
             this.locationSource = LocationSource.GEOCODING;
         }

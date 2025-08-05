@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.locationtech.jts.geom.Point;
@@ -46,9 +47,8 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
 
         if (!results.isEmpty()) {
             ReverseGeocodingLocationEntity result = results.getFirst();
-            // Update last accessed time
-            result.setLastAccessedAt(Instant.now());
-            persist(result);
+            // Update last accessed time asynchronously to prevent deadlocks
+            updateAccessTimestampAsync(result.getId());
             
             log.debug("Found cached location for coordinates: lon={}, lat={}, provider={}", 
                      requestCoordinates.getX(), requestCoordinates.getY(), result.getProviderName());
@@ -122,25 +122,9 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             String coordKey = coord.getX() + "," + coord.getY();
             ReverseGeocodingLocationEntity result = findByRequestCoordinatesWithoutUpdate(coord, toleranceMeters);
             if (result != null) {
-                // Update timestamp for all results at once later
-                result.setLastAccessedAt(now);
+                // Update timestamp asynchronously to prevent deadlocks
+                updateAccessTimestampAsync(result.getId());
                 resultMap.put(coordKey, result);
-            }
-        }
-        
-        // Batch update timestamps for found entities
-        if (!resultMap.isEmpty()) {
-            try {
-                getEntityManager().createQuery(
-                    "UPDATE ReverseGeocodingLocationEntity r SET r.lastAccessedAt = :now WHERE r.id IN :ids")
-                    .setParameter("now", now)
-                    .setParameter("ids", resultMap.values().stream()
-                        .map(ReverseGeocodingLocationEntity::getId)
-                        .collect(java.util.stream.Collectors.toList()))
-                    .executeUpdate();
-                    
-            } catch (Exception e) {
-                log.warn("Failed to batch update access timestamps: {}", e.getMessage());
             }
         }
     }
@@ -172,5 +156,23 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         }
         
         return null;
+    }
+    
+    /**
+     * Update access timestamp asynchronously in a separate transaction to prevent deadlocks.
+     * This is a non-critical operation that shouldn't block the main geocoding flow.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public void updateAccessTimestampAsync(Long entityId) {
+        try {
+            getEntityManager()
+                .createQuery("UPDATE ReverseGeocodingLocationEntity r SET r.lastAccessedAt = :now WHERE r.id = :id")
+                .setParameter("now", Instant.now())
+                .setParameter("id", entityId)
+                .executeUpdate();
+        } catch (Exception e) {
+            // Silently ignore - timestamp updates are non-critical
+            log.trace("Failed to update access timestamp for geocoding entity {}: {}", entityId, e.getMessage());
+        }
     }
 }

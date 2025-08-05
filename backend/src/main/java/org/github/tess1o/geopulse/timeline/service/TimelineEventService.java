@@ -2,119 +2,104 @@ package org.github.tess1o.geopulse.timeline.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.timeline.events.FavoriteAddedEvent;
 import org.github.tess1o.geopulse.timeline.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
 import org.github.tess1o.geopulse.timeline.events.TimelinePreferencesUpdatedEvent;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.timeline.model.ImpactAnalysis;
 
-import java.util.List;
-
+/**
+ * Simplified timeline event service using the new impact analysis system.
+ * 
+ * Handles favorite changes with two strategies:
+ * 1. Fast path: Direct SQL updates for simple name changes
+ * 2. Slow path: Delete cache + priority queue regeneration for structural changes
+ */
 @ApplicationScoped
 @Slf4j
 public class TimelineEventService {
-    
-    private final TimelineStayRepository stayRepository;
-    private final TimelineInvalidationService timelineInvalidationService;
-    private final FavoriteDeletionHandler favoriteDeletionHandler;
 
-    // Default proximity thresholds (can be made configurable later if needed)
-    private static final double DEFAULT_POINT_PROXIMITY_METERS = 75.0;
-    private static final double DEFAULT_AREA_PROXIMITY_METERS = 15.0;
-    
-    public TimelineEventService(TimelineStayRepository stayRepository,
-                                TimelineInvalidationService timelineInvalidationService,
-                                FavoriteDeletionHandler favoriteDeletionHandler) {
-        this.stayRepository = stayRepository;
-        this.timelineInvalidationService = timelineInvalidationService;
-        this.favoriteDeletionHandler = favoriteDeletionHandler;
-    }
-    
+    @Inject
+    FavoriteImpactAnalyzer impactAnalyzer;
+
+    @Inject
+    TimelineCacheService timelineCacheService;
+
+    @Inject
+    TimelineBackgroundService backgroundService;
+
+    @Inject
+    EntityManager entityManager;
+
+    /**
+     * Handle favorite addition events.
+     */
+    @Transactional
     public void onFavoriteAdded(@Observes FavoriteAddedEvent event) {
         log.info("Processing favorite added event: {} for user {}", event.getFavoriteName(), event.getUserId());
         
         try {
-            // Find all timelines that could be affected
-            List<TimelineStayEntity> affectedStays = findAffectedStays(event);
+            ImpactAnalysis analysis = impactAnalyzer.analyzeAddition(event);
             
-            if (affectedStays.isEmpty()) {
-                log.debug("No timeline stays affected by new favorite: {}", event.getFavoriteName());
+            if (analysis.isSimpleUpdate()) {
+                log.debug("Favorite addition has no impact on existing timeline data");
                 return;
             }
             
-            log.info("Found {} timeline stays potentially affected by new favorite: {}", 
-                     affectedStays.size(), event.getFavoriteName());
-            
-            // Mark as stale and queue for update
-            timelineInvalidationService.markStaleAndQueue(affectedStays);
+            // Structural change - delete cache and queue regeneration
+            handleStructuralChange(event.getUserId(), analysis);
             
         } catch (Exception e) {
             log.error("Failed to process favorite added event for user {}: {}", 
                      event.getUserId(), e.getMessage(), e);
         }
     }
-    
+
+    /**
+     * Handle favorite deletion events.
+     */
     @Transactional
     public void onFavoriteDeleted(@Observes FavoriteDeletedEvent event) {
         log.info("Processing favorite deleted event: {} for user {}", event.getFavoriteName(), event.getUserId());
         
         try {
-            // Find all timeline stays that reference the deleted favorite
-            List<TimelineStayEntity> affectedStays = stayRepository.findByFavoriteId(event.getFavoriteId());
+            ImpactAnalysis analysis = impactAnalyzer.analyzeDeletion(event);
             
-            if (affectedStays.isEmpty()) {
-                log.debug("No timeline stays affected by favorite deletion: {}", event.getFavoriteName());
+            if (analysis.isSimpleUpdate()) {
+                log.debug("Favorite deletion has no impact on timeline data");
                 return;
             }
             
-            log.info("Processing {} timeline stays affected by favorite deletion: {}", 
-                     affectedStays.size(), event.getFavoriteName());
-            
-            // Apply deletion strategy - use revert to geocoding as default
-            // TODO: Add user preference for deletion strategy in timeline config
-            FavoriteDeletionStrategy strategy = FavoriteDeletionStrategy.REVERT_TO_GEOCODING;
-            
-            favoriteDeletionHandler.handleDeletion(affectedStays, strategy);
-            timelineInvalidationService.markStaleAndQueue(affectedStays);
-            
-            log.info("Successfully triggered timeline regeneration for {} affected stays after favorite deletion", 
-                     affectedStays.size());
+            // Deletion always requires regeneration due to potential unmerging
+            handleStructuralChange(event.getUserId(), analysis);
             
         } catch (Exception e) {
             log.error("Failed to process favorite deleted event for user {}: {}", 
                      event.getUserId(), e.getMessage(), e);
         }
     }
-    
+
+    /**
+     * Handle favorite rename events.
+     */
+    @Transactional
     public void onFavoriteRenamed(@Observes FavoriteRenamedEvent event) {
         log.info("Processing favorite renamed event: '{}' -> '{}' for user {}", 
                  event.getOldName(), event.getNewName(), event.getUserId());
         
         try {
-            // Get user's timeline configuration to check preferences
-            // TODO: Add user preference for updating historical names in timeline config
-            // For now, use default behavior of updating historical names
-            boolean shouldUpdateHistoricalNames = true;
+            ImpactAnalysis analysis = impactAnalyzer.analyzeRename(event);
             
-            if (shouldUpdateHistoricalNames) {
-                List<TimelineStayEntity> affectedStays = stayRepository.findByFavoriteId(event.getFavoriteId());
-                
-                if (affectedStays.isEmpty()) {
-                    log.debug("No timeline stays affected by favorite rename: {} -> {}", 
-                             event.getOldName(), event.getNewName());
-                    return;
-                }
-                
-                log.info("Found {} timeline stays to update for favorite rename: {} -> {}", 
-                         affectedStays.size(), event.getOldName(), event.getNewName());
-                
-                timelineInvalidationService.markStaleAndQueue(affectedStays);
+            if (analysis.isSimpleUpdate()) {
+                // Fast path: Direct SQL update
+                handleSimpleNameUpdate(event);
             } else {
-                log.debug("Skipping historical name updates for favorite rename based on user preference");
+                // Slow path: Delete cache and queue regeneration
+                handleStructuralChange(event.getUserId(), analysis);
             }
             
         } catch (Exception e) {
@@ -122,29 +107,10 @@ public class TimelineEventService {
                      event.getUserId(), e.getMessage(), e);
         }
     }
-    
-    private List<TimelineStayEntity> findAffectedStays(FavoriteAddedEvent event) {
-        if (event.getFavoriteType() == FavoriteLocationType.POINT) {
-            // Find stays within proximity of favorite point
-            return stayRepository.findWithinDistance(
-                event.getUserId(), 
-                event.getGeometry(), 
-                DEFAULT_POINT_PROXIMITY_METERS
-            );
-        } else {
-            // Find stays within or near favorite area
-            return stayRepository.findWithinOrNearArea(
-                event.getUserId(),
-                event.getGeometry(),
-                DEFAULT_AREA_PROXIMITY_METERS
-            );
-        }
-    }
-    
+
     /**
      * Handle timeline preferences update events.
-     * When preferences change, ALL timeline data for the user needs to be regenerated
-     * since preferences affect timeline generation algorithms globally.
+     * When preferences change, ALL timeline data for the user needs to be regenerated.
      */
     @Transactional
     public void onTimelinePreferencesUpdated(@Observes TimelinePreferencesUpdatedEvent event) {
@@ -152,26 +118,58 @@ public class TimelineEventService {
                  event.getUserId(), event.isWasResetToDefaults());
         
         try {
-            // Find ALL timeline stays for the user - preferences affect everything
-            List<TimelineStayEntity> allStays = stayRepository.findByUser(event.getUserId());
+            // Delete all cached timeline data for the user
+            timelineCacheService.deleteAll(event.getUserId());
             
-            if (allStays.isEmpty()) {
-                log.debug("No timeline stays found for user {} - nothing to invalidate", event.getUserId());
-                return;
-            }
+            // Get all dates that had timeline data
+            // Note: Since we just deleted the cache, we need to infer date ranges from GPS data
+            // For now, queue a broad regeneration - this could be optimized later
+            java.time.LocalDate startDate = java.time.LocalDate.now().minusYears(1); // Last year
+            java.time.LocalDate endDate = java.time.LocalDate.now().minusDays(1); // Up to yesterday
             
-            log.info("Found {} timeline stays for user {} - marking all as stale due to preference changes", 
-                     allStays.size(), event.getUserId());
+            backgroundService.queueLowPriorityRegeneration(event.getUserId(), startDate, endDate);
             
-            // Mark ALL stays as stale and queue for regeneration
-            timelineInvalidationService.markStaleAndQueue(allStays);
-            
-            log.info("Successfully invalidated {} timeline stays for user {} due to preference changes", 
-                     allStays.size(), event.getUserId());
+            log.info("Invalidated all timeline data for user {} due to preference changes", event.getUserId());
             
         } catch (Exception e) {
             log.error("Failed to process timeline preferences updated event for user {}: {}", 
                      event.getUserId(), e.getMessage(), e);
         }
+    }
+
+    /**
+     * Handle simple name updates with direct SQL execution (fast path).
+     */
+    private void handleSimpleNameUpdate(FavoriteRenamedEvent event) {
+        int updatedStays = entityManager.createQuery(
+            "UPDATE TimelineStayEntity s SET s.locationName = :newName " +
+            "WHERE s.favoriteId = :favoriteId")
+            .setParameter("newName", event.getNewName())
+            .setParameter("favoriteId", event.getFavoriteId())
+            .executeUpdate();
+
+        log.info("Updated {} timeline stays with new favorite name '{}' for favorite {}", 
+                updatedStays, event.getNewName(), event.getFavoriteId());
+        
+        // Note: We could also update any cached aggregation data here if needed
+    }
+
+    /**
+     * Handle structural changes that require cache deletion and regeneration (slow path).
+     */
+    private void handleStructuralChange(java.util.UUID userId, ImpactAnalysis analysis) {
+        if (analysis.getAffectedDates().isEmpty()) {
+            log.debug("No affected dates for structural change - no action needed");
+            return;
+        }
+
+        // Delete cached timeline data for affected dates
+        timelineCacheService.delete(userId, analysis.getAffectedDates());
+        
+        // Queue high-priority regeneration
+        backgroundService.queueHighPriorityRegeneration(userId, analysis.getAffectedDates());
+        
+        log.info("Processed structural change affecting {} dates: {}", 
+                analysis.getAffectedDates().size(), analysis.getReason());
     }
 }

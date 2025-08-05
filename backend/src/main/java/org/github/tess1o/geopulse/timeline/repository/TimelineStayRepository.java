@@ -75,21 +75,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         return findByUserAndDateRange(userId, startOfDay, endOfDay);
     }
 
-    /**
-     * Find stale timeline stays for a user on a specific date.
-     *
-     * @param userId user ID
-     * @param date   date in UTC
-     * @return list of stale timeline stays for that date
-     */
-    public List<TimelineStayEntity> findStaleByUserAndDate(UUID userId, Instant date) {
-        LocalDate localDate = date.atZone(ZoneOffset.UTC).toLocalDate();
-        Instant startOfDay = localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant endOfDay = localDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        
-        return find("user.id = ?1 and timestamp >= ?2 and timestamp < ?3 and isStale = true order by timestamp",
-                userId, startOfDay, endOfDay).list();
-    }
+
 
     /**
      * Find timeline stays that reference a specific favorite location.
@@ -101,32 +87,6 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         return find("favoriteLocation.id = ?1", favoriteId).list();
     }
 
-    /**
-     * Find timeline stays within a certain distance of a point for a user.
-     *
-     * @param userId   user ID
-     * @param latitude point latitude
-     * @param longitude point longitude
-     * @param distanceMeters maximum distance in meters
-     * @return list of timeline stays within the distance
-     */
-    public List<TimelineStayEntity> findWithinDistance(UUID userId, double latitude, double longitude, double distanceMeters) {
-        return find("user.id = ?1 and ST_DWithin(ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), ST_SetSRID(ST_MakePoint(?3, ?2), 4326), ?4)",
-                userId, latitude, longitude, distanceMeters).list();
-    }
-
-    /**
-     * Mark timeline stays as stale by setting the isStale flag.
-     *
-     * @param stayIds list of stay IDs to mark as stale
-     * @return number of stays updated
-     */
-    public long markAsStale(List<Long> stayIds) {
-        if (stayIds.isEmpty()) {
-            return 0;
-        }
-        return update("isStale = true, lastUpdated = ?1 where id in ?2", Instant.now(), stayIds);
-    }
 
     /**
      * Delete timeline stays for dates before a certain date (cleanup).

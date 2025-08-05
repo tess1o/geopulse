@@ -7,7 +7,7 @@ import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.user.model.UpdateProfileRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
-import org.github.tess1o.geopulse.user.service.PasswordUtils;
+import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ public class UserServiceTest {
     UserRepository userRepository;
 
     @Inject
-    PasswordUtils passwordUtils;
+    SecurePasswordUtils passwordUtils;
 
     @BeforeEach
     @Transactional
@@ -48,7 +48,7 @@ public class UserServiceTest {
         assertTrue(user.getCreatedAt().isBefore(Instant.now()));
         assertTrue(user.getCreatedAt().isAfter(startOfTheTest));
         assertNull(user.getUpdatedAt());
-        assertTrue(passwordUtils.verifyPassword("test", user.getPasswordHash()));
+        assertTrue(passwordUtils.isPasswordValid("test", user.getPasswordHash()));
     }
 
     @Test

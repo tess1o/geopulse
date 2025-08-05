@@ -39,8 +39,8 @@ public final class NativeSqlImportTemplates {
         INSERT INTO timeline_stays 
         (id, user_id, timestamp, latitude, longitude, stay_duration, 
          location_name, location_source, favorite_id, geocoding_id, 
-         created_at, timeline_version, last_updated, is_stale) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW(), ?)
+         created_at, last_updated) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ON CONFLICT (id) DO UPDATE SET
             timestamp = EXCLUDED.timestamp,
             latitude = EXCLUDED.latitude,
@@ -50,16 +50,14 @@ public final class NativeSqlImportTemplates {
             location_source = EXCLUDED.location_source,
             favorite_id = EXCLUDED.favorite_id,
             geocoding_id = EXCLUDED.geocoding_id,
-            timeline_version = EXCLUDED.timeline_version,
-            is_stale = EXCLUDED.is_stale,
             last_updated = NOW()
         """;
     
     public static final String TIMELINE_TRIPS_UPSERT = """
         INSERT INTO timeline_trips 
         (id, user_id, timestamp, start_latitude, start_longitude, end_latitude, end_longitude,
-         distance_km, trip_duration, movement_type, path, timeline_version, last_updated, is_stale, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, NOW())
+         distance_km, trip_duration, movement_type, path, created_at, last_updated) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ON CONFLICT (id) DO UPDATE SET
             timestamp = EXCLUDED.timestamp,
             start_latitude = EXCLUDED.start_latitude,
@@ -70,8 +68,6 @@ public final class NativeSqlImportTemplates {
             trip_duration = EXCLUDED.trip_duration,
             movement_type = EXCLUDED.movement_type,
             path = EXCLUDED.path,
-            timeline_version = EXCLUDED.timeline_version,
-            is_stale = EXCLUDED.is_stale,
             last_updated = NOW()
         """;
     

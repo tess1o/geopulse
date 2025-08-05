@@ -66,6 +66,10 @@ class TimelineTimezoneIntegrationTest {
     @Transactional
     void tearDown() {
         if (testUser != null) {
+            // Clean up timeline regeneration queue first to avoid foreign key constraint violations
+            entityManager.createQuery("DELETE FROM TimelineRegenerationTask t WHERE t.user.id = :userId")
+                    .setParameter("userId", testUser.getId())
+                    .executeUpdate();
             // Clean up test data
             entityManager.createQuery("DELETE FROM TimelineStayEntity t WHERE t.user.id = :userId")
                     .setParameter("userId", testUser.getId())

@@ -54,8 +54,7 @@ public class FavoriteDeletionHandler {
                 stay.setLocationName(geocodingResult.getFormattedDisplayName());
                 stay.setLocationSource(LocationSource.GEOCODING);
                 stay.setLastUpdated(Instant.now());
-                stay.setIsStale(false);
-                
+
                 log.debug("Reverted stay {} to geocoding: {}", stay.getId(), geocodingResult.getFormattedDisplayName());
                 
             } catch (Exception e) {
@@ -65,7 +64,6 @@ public class FavoriteDeletionHandler {
                 stay.setGeocodingLocation(null);
                 stay.setLocationSource(LocationSource.HISTORICAL);
                 stay.setLastUpdated(Instant.now());
-                stay.setIsStale(false);
                 // locationName stays as-is
             }
         }
@@ -80,7 +78,6 @@ public class FavoriteDeletionHandler {
             stay.setFavoriteLocation(null);  // Clear broken reference
             stay.setLocationSource(LocationSource.HISTORICAL);
             stay.setLastUpdated(Instant.now());
-            stay.setIsStale(false);
             // locationName preserved as-is
             
             log.debug("Preserved historical name for stay {}: {}", stay.getId(), stay.getLocationName());

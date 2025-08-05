@@ -61,6 +61,9 @@ class GoogleTimelineImportStrategyTest {
     @Inject
     TimelineStayRepository timelineStayRepository;
 
+    @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository timelineRegenerationTaskRepository;
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -93,6 +96,11 @@ class GoogleTimelineImportStrategyTest {
 
     @Transactional
     void cleanupTestData() {
+        // Clean up timeline regeneration queue first to avoid foreign key constraint violations
+        if (testUser != null) {
+            timelineRegenerationTaskRepository.deleteByUserId(testUser.getId());
+        }
+        timelineRegenerationTaskRepository.delete("user.email = ?1", "test-googletimeline@geopulse.app");
         timelineStayRepository.delete("user.email = ?1", "test-googletimeline@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-googletimeline@geopulse.app");
         userRepository.delete("email = ?1", "test-googletimeline@geopulse.app");
@@ -386,23 +394,18 @@ class GoogleTimelineImportStrategyTest {
         // Process the import
         googleTimelineImportStrategy.processImportData(importJob);
 
-        // After import - should have a trigger stay entity to queue timeline generation
-        List<TimelineStayEntity> timelineStays = timelineStayRepository.find("user = ?1", testUser).list();
+        // After import - should have queued timeline generation task in background service
+        List<org.github.tess1o.geopulse.timeline.model.TimelineRegenerationTask> queuedTasks = 
+                timelineRegenerationTaskRepository.find("user = ?1", testUser).list();
         
-        // Look for the timeline generation trigger entity
-        TimelineStayEntity triggerStay = timelineStays.stream()
-                .filter(stay -> "Google Timeline Import Trigger".equals(stay.getLocationName()))
-                .filter(stay -> "google-timeline-import-trigger".equals(stay.getTimelineVersion()))
-                .filter(stay -> stay.getIsStale() == true)
-                .findFirst()
-                .orElse(null);
+        assertFalse(queuedTasks.isEmpty(), "Should have queued timeline generation tasks after import");
+        
+        // Verify at least one task is for the correct user
+        boolean hasTaskForUser = queuedTasks.stream()
+                .anyMatch(task -> task.getUser().getId().equals(testUser.getId()));
+        
+        assertTrue(hasTaskForUser, "Should have queued timeline generation task for the correct user");
 
-        assertNotNull(triggerStay, "Should have created a timeline generation trigger entity");
-        assertEquals(testUser.getId(), triggerStay.getUser().getId(), "Trigger should be for correct user");
-        assertTrue(triggerStay.getIsStale(), "Trigger entity should be marked as stale for processing");
-
-        log.info("Timeline generation triggering verified: trigger entity created with locationName='{}', isStale={}", 
-                triggerStay.getLocationName(), triggerStay.getIsStale());
     }
 
     private List<GoogleTimelineRecord> createTestTimelineRecords() {

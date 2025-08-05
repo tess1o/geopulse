@@ -78,6 +78,9 @@ class ExportImportIntegrationTest {
     TimelineTripRepository timelineTripRepository;
 
     @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
+
+    @Inject
     FavoritesRepository favoritesRepository;
 
     @Inject
@@ -200,6 +203,7 @@ class ExportImportIntegrationTest {
     @Transactional
     void cleanupTestData() {
         // Clean up in dependency order (reverse of creation)
+        taskRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         gpsSourceRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         timelineTripRepository.delete("user.email = ?1", "test-export-import@geopulse.app");

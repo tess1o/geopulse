@@ -100,7 +100,6 @@ public class TimelineProcessingService {
         MovementTimelineDTO result = new MovementTimelineDTO(timeline.getUserId(), timeline.getStays(), simplifiedTrips);
         result.setDataSource(timeline.getDataSource());
         result.setLastUpdated(timeline.getLastUpdated());
-        result.setIsStale(timeline.getIsStale());
         return result;
     }
 

@@ -176,6 +176,24 @@ public class TimelinePersistenceMapper {
     }
 
     /**
+     * Convert MovementTimelineDTO stays to entities list.
+     */
+     public List<TimelineStayEntity> toStayEntities(MovementTimelineDTO timeline) {
+         return timeline.getStays().stream()
+                 .map(this::toEntity)
+                 .collect(Collectors.toList());
+     }
+
+    /**
+     * Convert MovementTimelineDTO trips to entities list.
+     */
+    public List<TimelineTripEntity> toTripEntities(MovementTimelineDTO timeline) {
+        return timeline.getTrips().stream()
+                .map(this::toTripEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Simple GPS point implementation for conversion.
      */
     private static class SimpleGpsPoint implements GpsPoint {
