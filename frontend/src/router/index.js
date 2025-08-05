@@ -14,6 +14,7 @@ import TimelinePreferencesPage from "@/views/app/TimelinePreferencesPage.vue";
 import UserProfilePage from "@/views/app/UserProfilePage.vue";
 import ShareLinksPage from "@/views/app/ShareLinksPage.vue";
 import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
+import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
@@ -137,6 +138,12 @@ const routes = [
         path: '/app/journey-insights',
         name: 'Journey Insights',
         component: JourneyInsights,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/gps-data',
+        name: 'GPS Data',
+        component: TechnicalDataPage,
         beforeEnter: requireAuth
     },
     {

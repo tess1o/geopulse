@@ -41,7 +41,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @return A list of GPS point entities for the page
      */
     public List<GpsPointEntity> findByUserAndDateRange(UUID userId, Instant startTime, Instant endTime, int page, int pageSize) {
-        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp ASC", userId, startTime, endTime)
+        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp DESC", userId, startTime, endTime)
                 .page(page, pageSize)
                 .list();
     }

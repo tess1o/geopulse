@@ -184,6 +184,12 @@ const accountItems = computed(() => [
     key: 'export'
   },
   {
+    label: 'GPS Data',
+    icon: 'pi pi-database',
+    to: '/app/gps-data',
+    key: 'gps-data'
+  },
+  {
     label: 'Preferences',
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',

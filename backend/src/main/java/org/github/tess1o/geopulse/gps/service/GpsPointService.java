@@ -5,9 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
-import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
-import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
+import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
@@ -16,6 +14,8 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import jakarta.persistence.EntityManager;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
@@ -74,5 +74,65 @@ public class GpsPointService {
         List<GpsPointPathPointDTO> pathPoints = gpsPointMapper.toPathPoints(gpsPoints);
 
         return new GpsPointPathDTO(userId, pathPoints);
+    }
+
+    /**
+     * Get summary statistics for GPS points for a user.
+     *
+     * @param userId The ID of the user
+     * @return Summary statistics
+     */
+    public GpsPointSummaryDTO getGpsPointSummary(UUID userId) {
+        long totalPoints = gpsPointRepository.count("user.id", userId);
+        
+        Instant todayStart = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS);
+        Instant todayEnd = todayStart.plus(1, java.time.temporal.ChronoUnit.DAYS);
+        long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3", 
+                userId, todayStart, todayEnd);
+        
+        GpsPointEntity firstPoint = gpsPointRepository.find("user.id = ?1 ORDER BY timestamp ASC", userId).firstResult();
+        GpsPointEntity lastPoint = gpsPointRepository.find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
+        
+        String firstPointDate = firstPoint != null ? DateTimeFormatter.ISO_DATE_TIME.format(firstPoint.getTimestamp().atOffset(ZoneOffset.UTC)) : null;
+        String lastPointDate = lastPoint != null ? DateTimeFormatter.ISO_DATE_TIME.format(lastPoint.getTimestamp().atOffset(ZoneOffset.UTC)) : null;
+        
+        return new GpsPointSummaryDTO(totalPoints, pointsToday, firstPointDate, lastPointDate);
+    }
+
+    /**
+     * Get paginated GPS points for a user within a time period.
+     *
+     * @param userId    The ID of the user
+     * @param startTime The start of the time period
+     * @param endTime   The end of the time period
+     * @param page      Page number (1-based)
+     * @param limit     Number of items per page
+     * @return Paginated GPS points
+     */
+    public GpsPointPageDTO getGpsPointsPage(UUID userId, Instant startTime, Instant endTime, int page, int limit) {
+        int pageIndex = page - 1; // Convert to 0-based for repository
+        
+        List<GpsPointEntity> points = gpsPointRepository.findByUserAndDateRange(userId, startTime, endTime, pageIndex, limit);
+        long total = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
+                userId, startTime, endTime);
+        
+        List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
+        
+        long totalPages = (total + limit - 1) / limit; // Ceiling division
+        GpsPointPaginationDTO pagination = new GpsPointPaginationDTO(page, limit, total, totalPages);
+        
+        return new GpsPointPageDTO(pointDTOs, pagination);
+    }
+
+    /**
+     * Get all GPS points for a user within a time period for export.
+     *
+     * @param userId    The ID of the user
+     * @param startTime The start of the time period
+     * @param endTime   The end of the time period
+     * @return List of GPS points for export
+     */
+    public List<GpsPointEntity> getGpsPointsForExport(UUID userId, Instant startTime, Instant endTime) {
+        return gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime);
     }
 }

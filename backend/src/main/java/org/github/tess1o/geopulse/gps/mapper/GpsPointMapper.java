@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.gps.mapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -126,6 +127,50 @@ public class GpsPointMapper {
 
         return entities.stream()
                 .map(this::toOwnTracksLocationMessage)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert a GpsPointEntity to a GpsPointDTO.
+     *
+     * @param entity The GPS point entity
+     * @return The GPS point DTO
+     */
+    public GpsPointDTO toGpsPointDTO(GpsPointEntity entity) {
+        if (entity == null || entity.getCoordinates() == null) {
+            return null;
+        }
+
+        GpsPointDTO.CoordinatesDTO coordinates = new GpsPointDTO.CoordinatesDTO(
+                entity.getCoordinates().getY(), // Latitude
+                entity.getCoordinates().getX()  // Longitude
+        );
+
+        return new GpsPointDTO(
+                entity.getId(),
+                entity.getTimestamp(),
+                coordinates,
+                entity.getAccuracy(),
+                entity.getBattery(),
+                entity.getVelocity(),
+                entity.getAltitude(),
+                entity.getSourceType().name()
+        );
+    }
+
+    /**
+     * Convert a list of GpsPointEntity objects to a list of GpsPointDTO objects.
+     *
+     * @param entities The list of GPS point entities
+     * @return The list of GPS point DTOs
+     */
+    public List<GpsPointDTO> toGpsPointDTOs(List<GpsPointEntity> entities) {
+        if (entities == null) {
+            return List.of();
+        }
+
+        return entities.stream()
+                .map(this::toGpsPointDTO)
                 .collect(Collectors.toList());
     }
 }
