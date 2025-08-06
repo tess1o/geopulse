@@ -14,6 +14,7 @@ import BaseLayer from './BaseLayer.vue'
 import { createImmichPhotoIcon, createImmichPhotoClusterIcon } from '@/utils/mapHelpers'
 import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { imageService } from '@/utils/imageService'
 
 const props = defineProps({
   map: {
@@ -201,12 +202,15 @@ const renderPhotoMarkers = () => {
       marker.openPopup()
     })
     
-    // Popup interactions: keep open on hover, add click-to-view action
-    marker.on('popupopen', () => {
+    // Popup interactions: keep open on hover, add click-to-view action, load images
+    marker.on('popupopen', async () => {
       const popupElement = marker.getPopup().getElement()
       
-      // Keep popup open when hovering over it
       if (popupElement) {
+        // Load authenticated images for the popup
+        await loadPopupImages(popupElement, group)
+        
+        // Keep popup open when hovering over it
         popupElement.addEventListener('mouseenter', () => {
           marker.getPopup()._isHovered = true
         })
@@ -268,11 +272,15 @@ const createPhotoPopupContent = (group, groupIndex = 0) => {
   if (photoCount === 1) {
     content += `<div class="popup-title">📷 Photo</div>`
     
-    // Skip thumbnails in popups to avoid CORS issues - user can click to view full image
-    content += `<div class="popup-no-thumbnail">
-      <i class="pi pi-image" style="font-size: 2rem; color: #6366f1; opacity: 0.5;"></i>
-      <div style="font-size: 0.8rem; color: #6366f1; margin-top: 0.25rem;">Preview unavailable</div>
-    </div>`
+    // Show loading placeholder initially, will be replaced with blob URL
+    if (firstPhoto.thumbnailUrl) {
+      content += `<div class="popup-thumbnail">
+        <div class="popup-image-loading" data-photo-id="${firstPhoto.id}" data-thumbnail-url="${firstPhoto.thumbnailUrl}">
+          <i class="pi pi-spin pi-spinner"></i>
+          <div>Loading...</div>
+        </div>
+      </div>`
+    }
     
     // Photo details
     if (firstPhoto.originalFileName) {
@@ -286,12 +294,19 @@ const createPhotoPopupContent = (group, groupIndex = 0) => {
   } else {
     content += `<div class="popup-title">📷 ${photoCount} Photos</div>`
     
-    // Skip thumbnail grid to avoid CORS issues - show photo count instead
-    content += `<div class="popup-photo-count">
-      <i class="pi pi-images" style="font-size: 3rem; color: #6366f1; opacity: 0.5;"></i>
-      <div style="font-size: 1.2rem; font-weight: 600; color: #6366f1; margin-top: 0.5rem;">${photoCount} Photos</div>
-      <div style="font-size: 0.8rem; color: #6366f1; opacity: 0.8;">Click to view</div>
-    </div>`
+    // Show loading placeholders for thumbnails grid
+    content += '<div class="popup-thumbnail-grid">'
+    group.photos.slice(0, 4).forEach((photo, index) => {
+      if (photo.thumbnailUrl) {
+        content += `<div class="popup-grid-thumb-loading" data-photo-id="${photo.id}" data-thumbnail-url="${photo.thumbnailUrl}" data-grid-index="${index}">
+          <i class="pi pi-spin pi-spinner"></i>
+        </div>`
+      }
+    })
+    if (photoCount > 4) {
+      content += `<div class="popup-more">+${photoCount - 4}</div>`
+    }
+    content += '</div>'
     
     // Date range for clusters
     const dates = group.photos
@@ -317,6 +332,57 @@ const createPhotoPopupContent = (group, groupIndex = 0) => {
   popupContentCache.value.set(cacheKey, content)
   
   return content
+}
+
+// Function to load authenticated images for popup content
+const loadPopupImages = async (popupElement, group) => {
+  try {
+    // Load single photo thumbnail
+    const singlePhotoLoading = popupElement.querySelector('.popup-image-loading')
+    if (singlePhotoLoading) {
+      const photoId = singlePhotoLoading.dataset.photoId
+      const thumbnailUrl = singlePhotoLoading.dataset.thumbnailUrl
+      
+      if (popupBlobCache.value.has(photoId)) {
+        // Use cached blob URL
+        const blobUrl = popupBlobCache.value.get(photoId)
+        singlePhotoLoading.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" style="max-width: 100%; max-height: 150px; border-radius: 6px;" />`
+      } else {
+        try {
+          const blobUrl = await imageService.loadAuthenticatedImage(thumbnailUrl)
+          popupBlobCache.value.set(photoId, blobUrl)
+          singlePhotoLoading.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" style="max-width: 100%; max-height: 150px; border-radius: 6px;" />`
+        } catch (error) {
+          console.warn('Failed to load popup thumbnail:', error)
+          singlePhotoLoading.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem;"><i class="pi pi-exclamation-triangle"></i> Failed to load</div>`
+        }
+      }
+    }
+    
+    // Load grid thumbnails
+    const gridLoadingElements = popupElement.querySelectorAll('.popup-grid-thumb-loading')
+    for (const gridElement of gridLoadingElements) {
+      const photoId = gridElement.dataset.photoId
+      const thumbnailUrl = gridElement.dataset.thumbnailUrl
+      
+      if (popupBlobCache.value.has(photoId)) {
+        // Use cached blob URL
+        const blobUrl = popupBlobCache.value.get(photoId)
+        gridElement.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" class="popup-grid-thumb" />`
+      } else {
+        try {
+          const blobUrl = await imageService.loadAuthenticatedImage(thumbnailUrl)
+          popupBlobCache.value.set(photoId, blobUrl)
+          gridElement.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" class="popup-grid-thumb" />`
+        } catch (error) {
+          console.warn('Failed to load grid thumbnail:', error)
+          gridElement.innerHTML = `<div style="background: #fecaca; color: #dc2626; font-size: 0.7rem; padding: 0.25rem;"><i class="pi pi-times"></i></div>`
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading popup images:', error)
+  }
 }
 
 
@@ -433,6 +499,14 @@ onMounted(async () => {
 // Cleanup on unmount
 onUnmounted(() => {
   clearPhotoMarkers()
+  
+  // Clean up blob URLs to prevent memory leaks
+  popupBlobCache.value.forEach((blobUrl) => {
+    if (blobUrl && blobUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(blobUrl)
+    }
+  })
+  popupBlobCache.value.clear()
 })
 
 // Expose methods
@@ -484,14 +558,30 @@ defineExpose({
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.immich-photo-popup .popup-no-thumbnail,
-.immich-photo-popup .popup-photo-count {
+.immich-photo-popup .popup-image-loading {
   text-align: center;
   padding: 1rem;
   background: rgba(99, 102, 241, 0.05);
   border-radius: 8px;
-  border: 1px dashed rgba(99, 102, 241, 0.2);
-  margin-bottom: 0.75rem;
+  color: #6366f1;
+  font-size: 0.8rem;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.immich-photo-popup .popup-grid-thumb-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 4px;
+  aspect-ratio: 1;
+  color: #6366f1;
+  font-size: 0.8rem;
 }
 
 .immich-photo-popup .popup-thumbnail-grid {
@@ -579,10 +669,10 @@ defineExpose({
   color: #a5b4fc !important;
 }
 
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-no-thumbnail,
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-photo-count {
+.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-image-loading,
+.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-grid-thumb-loading {
   background: rgba(99, 102, 241, 0.1) !important;
-  border-color: rgba(99, 102, 241, 0.3) !important;
+  color: #a5b4fc !important;
 }
 
 /* Light theme - ensure good contrast */

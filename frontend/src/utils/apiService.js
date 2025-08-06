@@ -316,12 +316,21 @@ const apiService = {
 
     async getRawWithBlob(endpoint, customHeaders = {}, params = {}) {
         try {
+            console.log('apiService.getRawWithBlob: Endpoint:', endpoint)
+            console.log('apiService.getRawWithBlob: Headers will include auth:', !endpoint.startsWith('/shared/'))
+            
             await this.checkAuthExpired(endpoint);
 
             // Don't send auth headers for shared endpoints (they're public or use custom tokens)
             const isSharedEndpoint = endpoint.startsWith('/shared/');
             const authHeaders = isSharedEndpoint ? {} : this.getAuthHeaders();
-            const headers = { ...authHeaders, ...customHeaders };
+            const headers = { 
+                ...authHeaders, 
+                ...customHeaders
+            };
+            
+            console.log('apiService.getRawWithBlob: Final headers:', Object.keys(headers))
+            console.log('apiService.getRawWithBlob: Auth headers:', authHeaders)
 
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 params,
@@ -329,8 +338,11 @@ const apiService = {
                 headers,
                 responseType: 'blob'
             });
+            
+            console.log('apiService.getRawWithBlob: Response status:', response.status)
             return response;
         } catch (error) {
+            console.error('apiService.getRawWithBlob: Error:', error)
             this.handleError(error);
             throw error;
         }

@@ -162,25 +162,20 @@ export const useImmichStore = defineStore('immich', {
         const response = await apiService.get('/users/me/immich/photos/search', params)
         const photos = response.data?.photos || []
         
-        // Fix thumbnail and download URLs to use the correct backend URL
-        const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api'
-        const baseUrl = API_BASE_URL.startsWith('http') 
-          ? API_BASE_URL.replace('/api', '') 
-          : window.location.origin
-        
+        // Store photos with endpoint paths only (no full URLs)
         this.photos = photos.map(photo => ({
           ...photo,
-          thumbnailUrl: photo.thumbnailUrl ? `${baseUrl}${photo.thumbnailUrl}` : null,
-          downloadUrl: photo.downloadUrl ? `${baseUrl}${photo.downloadUrl}` : null
+          // Remove /api prefix from backend paths since apiService will add it
+          thumbnailUrl: photo.thumbnailUrl ? photo.thumbnailUrl.replace(/^\/api/, '') : null,
+          downloadUrl: photo.downloadUrl ? photo.downloadUrl.replace(/^\/api/, '') : null
         }))
         
         this.lastFetchedRange = [startDate, endDate]
         
         console.log(`Fetched ${this.photos.length} Immich photos for date range`)
-        console.log('API_BASE_URL:', API_BASE_URL)
-        console.log('Base URL for thumbnails:', baseUrl)
         if (this.photos.length > 0) {
-          console.log('Sample thumbnail URL:', this.photos[0].thumbnailUrl)
+          console.log('Sample thumbnail endpoint (after /api removal):', this.photos[0].thumbnailUrl)
+          console.log('Sample download endpoint (after /api removal):', this.photos[0].downloadUrl)
         }
         
         // Clear any previous errors if successful
@@ -250,22 +245,13 @@ export const useImmichStore = defineStore('immich', {
       this.photosError = null
     },
 
-    // Get thumbnail URL for a photo
-    getThumbnailUrl(photoId) {
-      const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api'
-      const baseUrl = API_BASE_URL.startsWith('http') 
-        ? API_BASE_URL.replace('/api', '') 
-        : window.location.origin
-      return `${baseUrl}/api/users/me/immich/photos/${photoId}/thumbnail`
+    // Utility methods for constructing API endpoints (if needed)
+    getThumbnailEndpoint(photoId) {
+      return `/users/me/immich/photos/${photoId}/thumbnail`
     },
 
-    // Get download URL for a photo
-    getDownloadUrl(photoId) {
-      const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api'
-      const baseUrl = API_BASE_URL.startsWith('http') 
-        ? API_BASE_URL.replace('/api', '') 
-        : window.location.origin
-      return `${baseUrl}/api/users/me/immich/photos/${photoId}/download`
+    getDownloadEndpoint(photoId) {
+      return `/users/me/immich/photos/${photoId}/download`
     }
   }
 })

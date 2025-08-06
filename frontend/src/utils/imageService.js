@@ -6,24 +6,20 @@ import apiService from './apiService'
 export const imageService = {
   /**
    * Load an authenticated image as a blob URL
-   * @param {string} url - The image URL to load
+   * @param {string} endpoint - The API endpoint path (e.g., '/users/me/immich/photos/id/thumbnail')
    * @returns {Promise<string>} - Blob URL for the image
    */
-  async loadAuthenticatedImage(url) {
+  async loadAuthenticatedImage(endpoint) {
     try {
-      console.log('imageService: Loading authenticated image:', url)
+      console.log('imageService: Loading authenticated image from endpoint:', endpoint)
+      console.log('imageService: Making request via apiService.getRawWithBlob')
       
-      // Extract the endpoint from the full URL
-      const urlObj = new URL(url)
-      let endpoint = urlObj.pathname
-
-      console.log('imageService: Endpoint:', endpoint)
-
-      endpoint = endpoint.replace('/api', '')
-
+      // Endpoint should already be in the correct format from the backend
+      // Add cache-busting parameter for Safari
+      const cacheBustParam = { _t: Date.now() }
       const response = await apiService.getRawWithBlob(endpoint, {
         'Accept': 'image/*'
-      })
+      }, cacheBustParam)
 
       console.log('imageService: Response:', response);
 
@@ -33,8 +29,15 @@ export const imageService = {
         throw new Error(`Failed to load image: ${response.status} - ${errorText}`)
       }
 
+      // Ensure we have a valid blob before creating URL
+      if (!response.data || !(response.data instanceof Blob)) {
+        throw new Error('Invalid response data - not a blob')
+      }
+      
       const blobUrl = URL.createObjectURL(response.data)
       console.log('imageService: Created blob URL:', blobUrl)
+      console.log('imageService: Blob size:', response.data.size, 'bytes')
+      console.log('imageService: Blob type:', response.data.type)
       return blobUrl
     } catch (error) {
       console.error('Failed to load authenticated image:', error)
@@ -43,7 +46,7 @@ export const imageService = {
       const imageError = new Error(`Image loading failed: ${error.message || 'Unknown error'}`)
       imageError.originalError = error
       imageError.isImageLoadingError = true
-      imageError.url = url
+      imageError.endpoint = endpoint
       
       // Don't let image loading errors trigger global "backend down" redirects
       throw imageError
@@ -82,16 +85,11 @@ export const imageService = {
 
   /**
    * Download an authenticated file
-   * @param {string} url - The download URL
+   * @param {string} endpoint - The API endpoint path for download
    * @param {string} filename - The filename for download
    */
-  async downloadImage(url, filename) {
+  async downloadImage(endpoint, filename) {
     try {
-      const urlObj = new URL(url)
-      let endpoint = urlObj.pathname
-
-      endpoint = endpoint.replace('/api', '')
-
       const response = await apiService.getRawWithBlob(endpoint, {
         'Accept': '*/*'
       })
@@ -119,7 +117,7 @@ export const imageService = {
       const downloadError = new Error(`File download failed: ${error.message || 'Unknown error'}`)
       downloadError.originalError = error
       downloadError.isImageDownloadError = true
-      downloadError.url = url
+      downloadError.endpoint = endpoint
       
       throw downloadError
     }
