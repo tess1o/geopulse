@@ -8,13 +8,13 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, readonly, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, readonly, onMounted, onUnmounted, createApp } from 'vue'
 import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
+import ImmichPhotoPopup from '../popups/ImmichPhotoPopup.vue'
 import { createImmichPhotoIcon, createImmichPhotoClusterIcon } from '@/utils/mapHelpers'
 import { useImmichStore } from '@/stores/immich'
 import { useDateRangeStore } from '@/stores/dateRange'
-import { imageService } from '@/utils/imageService'
 
 const props = defineProps({
   map: {
@@ -184,8 +184,11 @@ const renderPhotoMarkers = () => {
       }, 150)
     })
 
-    // Add popup content for right-click/context menu
-    const popupContent = createPhotoPopupContent(group, index)
+    // Add popup content for right-click/context menu  
+    const cacheKey = `${group.latitude}-${group.longitude}-${photoCount}`
+    const popupContent = createPhotoPopupContent(group)
+    const popupData = popupContentCache.value.get(cacheKey)
+    
     marker.bindPopup(popupContent, {
       maxWidth: window.innerWidth < 768 ? 250 : 300,
       minWidth: window.innerWidth < 768 ? 200 : 250,
@@ -202,13 +205,22 @@ const renderPhotoMarkers = () => {
       marker.openPopup()
     })
     
-    // Popup interactions: keep open on hover, add click-to-view action, load images
-    marker.on('popupopen', async () => {
+    // Popup interactions: keep open on hover, add click-to-view action, mount Vue component
+    marker.on('popupopen', () => {
       const popupElement = marker.getPopup().getElement()
       
       if (popupElement) {
-        // Load authenticated images for the popup
-        await loadPopupImages(popupElement, group)
+        // Mount Vue component if this popup has structured data
+        if (popupData.containerId) {
+          const container = popupElement.querySelector(`#${popupData.containerId}`)
+          if (container && !popupVueApps.value.has(popupData.containerId)) {
+            const app = createApp(ImmichPhotoPopup, {
+              group: popupData.group
+            })
+            app.mount(container)
+            popupVueApps.value.set(popupData.containerId, app)
+          }
+        }
         
         // Keep popup open when hovering over it
         popupElement.addEventListener('mouseenter', () => {
@@ -237,6 +249,15 @@ const renderPhotoMarkers = () => {
         })
       }
     })
+    
+    // Cleanup Vue app when popup closes
+    marker.on('popupclose', () => {
+      if (popupData.containerId && popupVueApps.value.has(popupData.containerId)) {
+        const app = popupVueApps.value.get(popupData.containerId)
+        app.unmount()
+        popupVueApps.value.delete(popupData.containerId)
+      }
+    })
 
     // Add to layer and track
     baseLayerRef.value.addToLayer(marker)
@@ -251,139 +272,31 @@ const renderPhotoMarkers = () => {
   console.log(`Rendered ${photoMarkers.value.length} Immich photo markers`)
 }
 
-// Cache for popup content and blob URLs to avoid regenerating
+// Cache for popup content to avoid regenerating
 const popupContentCache = ref(new Map())
-const popupBlobCache = ref(new Map())
 
-const createPhotoPopupContent = (group, groupIndex = 0) => {
+// Store Vue app instances for popups to keep them reactive
+const popupVueApps = ref(new Map())
+
+const createPhotoPopupContent = (group) => {
   const photoCount = group.photos.length
   const cacheKey = `${group.latitude}-${group.longitude}-${photoCount}`
   
   // Return cached content if available
   if (popupContentCache.value.has(cacheKey)) {
-    return popupContentCache.value.get(cacheKey)
+    return popupContentCache.value.get(cacheKey).content
   }
   
-  const firstPhoto = group.photos[0]
-  
-  let content = '<div class="immich-photo-popup immich-hover-preview">'
-  
-  // Title
-  if (photoCount === 1) {
-    content += `<div class="popup-title">📷 Photo</div>`
-    
-    // Show loading placeholder initially, will be replaced with blob URL
-    if (firstPhoto.thumbnailUrl) {
-      content += `<div class="popup-thumbnail">
-        <div class="popup-image-loading" data-photo-id="${firstPhoto.id}" data-thumbnail-url="${firstPhoto.thumbnailUrl}">
-          <i class="pi pi-spin pi-spinner"></i>
-          <div>Loading...</div>
-        </div>
-      </div>`
-    }
-    
-    // Photo details
-    if (firstPhoto.originalFileName) {
-      content += `<div class="popup-filename">${firstPhoto.originalFileName}</div>`
-    }
-    
-    if (firstPhoto.takenAt) {
-      const date = new Date(firstPhoto.takenAt)
-      content += `<div class="popup-time">${date.toLocaleString()}</div>`
-    }
-  } else {
-    content += `<div class="popup-title">📷 ${photoCount} Photos</div>`
-    
-    // Show loading placeholders for thumbnails grid
-    content += '<div class="popup-thumbnail-grid">'
-    group.photos.slice(0, 4).forEach((photo, index) => {
-      if (photo.thumbnailUrl) {
-        content += `<div class="popup-grid-thumb-loading" data-photo-id="${photo.id}" data-thumbnail-url="${photo.thumbnailUrl}" data-grid-index="${index}">
-          <i class="pi pi-spin pi-spinner"></i>
-        </div>`
-      }
-    })
-    if (photoCount > 4) {
-      content += `<div class="popup-more">+${photoCount - 4}</div>`
-    }
-    content += '</div>'
-    
-    // Date range for clusters
-    const dates = group.photos
-      .map(p => p.takenAt)
-      .filter(Boolean)
-      .map(d => new Date(d))
-      .sort((a, b) => a - b)
-    
-    if (dates.length > 0) {
-      if (dates.length === 1) {
-        content += `<div class="popup-time">${dates[0].toLocaleDateString()}</div>`
-      } else {
-        content += `<div class="popup-time">${dates[0].toLocaleDateString()} - ${dates[dates.length - 1].toLocaleDateString()}</div>`
-      }
-    }
-  }
-  
-  // Action hint for all photos
-  content += '<div class="popup-action">Click to view full size</div>'
-  content += '</div>'
+  // Create a container div with a unique ID for the Vue component
+  const containerId = `popup-${cacheKey.replace(/[^a-zA-Z0-9]/g, '')}-${Date.now()}`
+  const content = `<div id="${containerId}"></div>`
   
   // Cache the content
-  popupContentCache.value.set(cacheKey, content)
+  popupContentCache.value.set(cacheKey, { content, containerId, group })
   
   return content
 }
 
-// Function to load authenticated images for popup content
-const loadPopupImages = async (popupElement, group) => {
-  try {
-    // Load single photo thumbnail
-    const singlePhotoLoading = popupElement.querySelector('.popup-image-loading')
-    if (singlePhotoLoading) {
-      const photoId = singlePhotoLoading.dataset.photoId
-      const thumbnailUrl = singlePhotoLoading.dataset.thumbnailUrl
-      
-      if (popupBlobCache.value.has(photoId)) {
-        // Use cached blob URL
-        const blobUrl = popupBlobCache.value.get(photoId)
-        singlePhotoLoading.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" style="max-width: 100%; max-height: 150px; border-radius: 6px;" />`
-      } else {
-        try {
-          const blobUrl = await imageService.loadAuthenticatedImage(thumbnailUrl)
-          popupBlobCache.value.set(photoId, blobUrl)
-          singlePhotoLoading.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" style="max-width: 100%; max-height: 150px; border-radius: 6px;" />`
-        } catch (error) {
-          console.warn('Failed to load popup thumbnail:', error)
-          singlePhotoLoading.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem;"><i class="pi pi-exclamation-triangle"></i> Failed to load</div>`
-        }
-      }
-    }
-    
-    // Load grid thumbnails
-    const gridLoadingElements = popupElement.querySelectorAll('.popup-grid-thumb-loading')
-    for (const gridElement of gridLoadingElements) {
-      const photoId = gridElement.dataset.photoId
-      const thumbnailUrl = gridElement.dataset.thumbnailUrl
-      
-      if (popupBlobCache.value.has(photoId)) {
-        // Use cached blob URL
-        const blobUrl = popupBlobCache.value.get(photoId)
-        gridElement.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" class="popup-grid-thumb" />`
-      } else {
-        try {
-          const blobUrl = await imageService.loadAuthenticatedImage(thumbnailUrl)
-          popupBlobCache.value.set(photoId, blobUrl)
-          gridElement.innerHTML = `<img src="${blobUrl}" alt="Photo thumbnail" class="popup-grid-thumb" />`
-        } catch (error) {
-          console.warn('Failed to load grid thumbnail:', error)
-          gridElement.innerHTML = `<div style="background: #fecaca; color: #dc2626; font-size: 0.7rem; padding: 0.25rem;"><i class="pi pi-times"></i></div>`
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error loading popup images:', error)
-  }
-}
 
 
 const clearPhotoMarkers = () => {
@@ -391,6 +304,16 @@ const clearPhotoMarkers = () => {
     baseLayerRef.value?.removeFromLayer(marker)
   })
   photoMarkers.value = []
+  
+  // Clean up all Vue popup apps
+  popupVueApps.value.forEach((app, containerId) => {
+    try {
+      app.unmount()
+    } catch (error) {
+      console.warn('Error unmounting popup app:', error)
+    }
+  })
+  popupVueApps.value.clear()
 }
 
 const refreshPhotos = async () => {
@@ -499,14 +422,6 @@ onMounted(async () => {
 // Cleanup on unmount
 onUnmounted(() => {
   clearPhotoMarkers()
-  
-  // Clean up blob URLs to prevent memory leaks
-  popupBlobCache.value.forEach((blobUrl) => {
-    if (blobUrl && blobUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(blobUrl)
-    }
-  })
-  popupBlobCache.value.clear()
 })
 
 // Expose methods
@@ -520,246 +435,5 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Component has no template styles - all styling is in the popup CSS below */
-</style>
-
-<style>
-/* Immich photo popup styling */
-
-.immich-photo-popup {
-  font-family: var(--font-family, system-ui);
-  font-size: 0.875rem;
-  line-height: 1.4;
-  min-width: 200px;
-  max-width: 300px;
-  position: relative;
-  z-index: 10001 !important;
-}
-
-.immich-photo-popup .popup-title {
-  font-weight: 600;
-  color: var(--gp-text-primary, #1e293b);
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.immich-photo-popup .popup-thumbnail {
-  margin-bottom: 0.75rem;
-  text-align: center;
-}
-
-.immich-photo-popup .popup-thumbnail img {
-  max-width: 100%;
-  max-height: 150px;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.immich-photo-popup .popup-image-loading {
-  text-align: center;
-  padding: 1rem;
-  background: rgba(99, 102, 241, 0.05);
-  border-radius: 8px;
-  color: #6366f1;
-  font-size: 0.8rem;
-  min-height: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.immich-photo-popup .popup-grid-thumb-loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(99, 102, 241, 0.05);
-  border-radius: 4px;
-  aspect-ratio: 1;
-  color: #6366f1;
-  font-size: 0.8rem;
-}
-
-.immich-photo-popup .popup-thumbnail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 4px;
-  margin-bottom: 0.75rem;
-  max-width: 120px;
-}
-
-.immich-photo-popup .popup-grid-thumb {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.immich-photo-popup .popup-more {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
-  font-weight: 600;
-  font-size: 0.75rem;
-  border-radius: 4px;
-  aspect-ratio: 1;
-}
-
-.immich-photo-popup .popup-filename {
-  font-weight: 500;
-  color: var(--gp-text-primary, #1e293b);
-  margin-bottom: 0.5rem;
-  font-size: 0.9rem;
-  word-break: break-all;
-}
-
-.immich-photo-popup .popup-time {
-  color: var(--gp-text-secondary, #64748b);
-  font-size: 0.8rem;
-  margin-bottom: 0.5rem;
-}
-
-.immich-photo-popup .popup-action {
-  color: #6366f1;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-align: center;
-  padding: 0.25rem;
-  background: rgba(99, 102, 241, 0.1);
-  border-radius: 4px;
-  margin-top: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.immich-photo-popup .popup-action:hover {
-  background: rgba(99, 102, 241, 0.2);
-  color: #4f46e5;
-}
-
-/* Dark theme overrides for Immich popups */
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-title,
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-filename {
-  color: rgba(255, 255, 255, 0.95) !important;
-}
-
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-time {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-action {
-  color: #a5b4fc !important;
-  background: rgba(99, 102, 241, 0.2) !important;
-}
-
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-action:hover {
-  color: #c7d2fe !important;
-  background: rgba(99, 102, 241, 0.3) !important;
-}
-
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-more {
-  background: rgba(99, 102, 241, 0.2) !important;
-  color: #a5b4fc !important;
-}
-
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-image-loading,
-.p-dark .leaflet-popup-content-wrapper .immich-photo-popup .popup-grid-thumb-loading {
-  background: rgba(99, 102, 241, 0.1) !important;
-  color: #a5b4fc !important;
-}
-
-/* Light theme - ensure good contrast */
-.immich-photo-popup .popup-title,
-.immich-photo-popup .popup-filename {
-  color: #1e293b !important;
-}
-
-.immich-photo-popup .popup-time {
-  color: #475569 !important;
-}
-
-.immich-photo-popup .popup-action {
-  color: #6366f1 !important;
-  background: rgba(99, 102, 241, 0.1) !important;
-}
-
-.immich-photo-popup .popup-more {
-  background: rgba(99, 102, 241, 0.1) !important;
-  color: #6366f1 !important;
-}
-
-/* Hover preview styling */
-.immich-hover-preview {
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.immich-hover-preview:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Mobile responsive styles */
-@media (max-width: 768px) {
-  .immich-photo-popup {
-    font-size: 0.8rem;
-    min-width: 180px;
-    max-width: 250px;
-  }
-  
-  .immich-photo-popup .popup-title {
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  .immich-photo-popup .popup-thumbnail img {
-    max-height: 120px;
-  }
-  
-  .immich-photo-popup .popup-thumbnail-grid {
-    max-width: 100px;
-    gap: 3px;
-  }
-  
-  .immich-photo-popup .popup-filename {
-    font-size: 0.8rem;
-    margin-bottom: 0.4rem;
-  }
-  
-  .immich-photo-popup .popup-time {
-    font-size: 0.75rem;
-    margin-bottom: 0.4rem;
-  }
-  
-  .immich-photo-popup .popup-action {
-    font-size: 0.75rem;
-    padding: 0.2rem;
-    margin-top: 0.4rem;
-  }
-}
-
-/* Small mobile devices */
-@media (max-width: 480px) {
-  .immich-photo-popup {
-    font-size: 0.75rem;
-    min-width: 160px;
-    max-width: 220px;
-  }
-  
-  .immich-photo-popup .popup-thumbnail img {
-    max-height: 100px;
-  }
-  
-  .immich-photo-popup .popup-thumbnail-grid {
-    max-width: 80px;
-    gap: 2px;
-  }
-}
+/* Component has no template styles - popup styling is now in ImmichPhotoPopup.vue */
 </style>
