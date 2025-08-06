@@ -143,7 +143,7 @@ public class TimelineEventService {
     private void handleSimpleNameUpdate(FavoriteRenamedEvent event) {
         int updatedStays = entityManager.createQuery(
             "UPDATE TimelineStayEntity s SET s.locationName = :newName " +
-            "WHERE s.favoriteId = :favoriteId")
+            "WHERE s.favoriteLocation.id = :favoriteId")
             .setParameter("newName", event.getNewName())
             .setParameter("favoriteId", event.getFavoriteId())
             .executeUpdate();
