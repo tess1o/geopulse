@@ -4,9 +4,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
+import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
+import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
+import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
@@ -38,6 +43,12 @@ public class TimelineCacheService {
 
     @Inject
     org.github.tess1o.geopulse.user.repository.UserRepository userRepository;
+
+    @Inject
+    FavoritesRepository favoritesRepository;
+
+    @Inject
+    ReverseGeocodingLocationRepository geocodingRepository;
 
     /**
      * Check if timeline data exists for the given time range.
@@ -85,7 +96,33 @@ public class TimelineCacheService {
                 throw new IllegalArgumentException("User not found: " + userId);
             }
             
-            stayEntities.forEach(stay -> stay.setUser(user));
+            // Set location references for stay entities using DTO data
+            for (int i = 0; i < stayEntities.size() && i < timeline.getStays().size(); i++) {
+                TimelineStayEntity stayEntity = stayEntities.get(i);
+                TimelineStayLocationDTO stayDTO = timeline.getStays().get(i);
+                
+                // Look up favorite location if favoriteId is present
+                FavoritesEntity favoriteLocation = null;
+                if (stayDTO.getFavoriteId() != null) {
+                    favoriteLocation = favoritesRepository.findById(stayDTO.getFavoriteId());
+                    if (favoriteLocation == null) {
+                        log.warn("Favorite location with ID {} not found for user {}", stayDTO.getFavoriteId(), userId);
+                    }
+                }
+                
+                // Look up geocoding location if geocodingId is present
+                ReverseGeocodingLocationEntity geocodingLocation = null;
+                if (stayDTO.getGeocodingId() != null) {
+                    geocodingLocation = geocodingRepository.findById(stayDTO.getGeocodingId());
+                    if (geocodingLocation == null) {
+                        log.warn("Geocoding location with ID {} not found", stayDTO.getGeocodingId());
+                    }
+                }
+                
+                // Set all location references using the helper method
+                persistenceMapper.setLocationReferences(stayEntity, stayDTO, user, favoriteLocation, geocodingLocation);
+            }
+            
             tripEntities.forEach(trip -> trip.setUser(user));
 
             // Persist entities

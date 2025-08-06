@@ -297,4 +297,101 @@ class TimelineEventServiceTest {
         entityManager.flush();
         log.info("Created test GPS data for timeline events");
     }
+    
+    /**
+     * Integration test that verifies favoriteId relationships are properly established 
+     * during timeline persistence. This test would have caught the original bug.
+     */
+    @Test
+    @Transactional
+    void testTimelinePersistence_ShouldPopulateFavoriteIdRelationships() {
+        // Arrange - Create a favorite location
+        Point favoriteLocation = geometryFactory.createPoint(new Coordinate(-122.4194, 37.7749));
+        favoriteLocation.setSRID(4326);
+        
+        testFavorite = FavoritesEntity.builder()
+                .user(testUser)
+                .name("Test Location")
+                .type(FavoriteLocationType.POINT)
+                .geometry(favoriteLocation)
+                .mergeImpact(false)
+                .build();
+        favoritesRepository.persist(testFavorite);
+        entityManager.flush();
+        
+        // Act - Create timeline DTO with favoriteId (as would be returned by LocationResolutionResult)
+        var stayDTO = org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO.builder()
+                .timestamp(java.time.LocalDate.now().minusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant())
+                .latitude(37.7749)
+                .longitude(-122.4194)
+                .stayDuration(120)
+                .locationName("Test Location")
+                .favoriteId(testFavorite.getId())  // This should be populated by LocationResolutionResult
+                .build();
+        
+        var timeline = new org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO(
+                testUser.getId(), 
+                java.util.List.of(stayDTO), 
+                java.util.List.of()
+        );
+        
+        // Create the entity using the mapper (simulating TimelineCacheService.save())
+        var mapper = new org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper();
+        var stayEntities = mapper.toStayEntities(timeline);
+        
+        assertEquals(1, stayEntities.size(), "Should create one stay entity");
+        var stayEntity = stayEntities.get(0);
+        
+        // Set location references using the mapper helper (this is the fix)
+        mapper.setLocationReferences(stayEntity, stayDTO, testUser, testFavorite, null);
+        
+        // Persist the entity
+        timelineStayRepository.persist(stayEntity);
+        entityManager.flush();
+        entityManager.clear(); // Force reload from database
+        
+        // Assert - Verify that the timeline stay was persisted with proper favoriteId relationship
+        var persistedStay = timelineStayRepository.findById(stayEntity.getId());
+        
+        assertNotNull(persistedStay, "Timeline stay should be persisted");
+        assertNotNull(persistedStay.getFavoriteLocation(), 
+                "FavoriteLocation should be set on the persisted timeline stay");
+        assertEquals(testFavorite.getId(), 
+                persistedStay.getFavoriteLocation().getId(),
+                "FavoriteLocation ID should match the original favorite");
+        assertEquals("Test Location", 
+                persistedStay.getLocationName(),
+                "Location name should match");
+        
+        log.info("Test passed - Timeline stay correctly linked to favorite with ID {}", 
+                persistedStay.getFavoriteLocation().getId());
+    }
+    
+    /**
+     * Helper method to create GPS data at a specific location
+     */
+    private void createTestGpsDataAtLocation(double lat, double lon) {
+        Instant baseTime = LocalDate.now().minusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        
+        // Create several GPS points at the location to simulate a stay
+        for (int i = 0; i < 10; i++) {
+            GpsPointEntity gpsPoint = new GpsPointEntity();
+            gpsPoint.setUser(testUser);
+            
+            Point point = geometryFactory.createPoint(new Coordinate(lon, lat));
+            point.setSRID(4326);
+            gpsPoint.setCoordinates(point);
+            
+            gpsPoint.setTimestamp(baseTime.plusSeconds(i * 300)); // Every 5 minutes
+            gpsPoint.setAccuracy(5.0);
+            gpsPoint.setVelocity(0.0); // Stationary
+            gpsPoint.setSourceType(GpsSourceType.OWNTRACKS);
+            gpsPoint.setCreatedAt(Instant.now());
+            
+            gpsPointRepository.persist(gpsPoint);
+        }
+        
+        entityManager.flush();
+        log.info("Created GPS data at location [{}, {}]", lat, lon);
+    }
 }

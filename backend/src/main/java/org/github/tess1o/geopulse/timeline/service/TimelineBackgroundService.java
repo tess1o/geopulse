@@ -163,28 +163,32 @@ public class TimelineBackgroundService {
             }
         }
 
-        // Mark task as processing
-        task.setStatus(TimelineRegenerationTask.TaskStatus.PROCESSING);
-        task.setProcessingStartedAt(Instant.now());
-        taskRepository.persist(task);
+        // Mark task as processing - need to reload to avoid detached entity issue
+        TimelineRegenerationTask managedTask = taskRepository.findById(task.getId());
+        if (managedTask == null) {
+            log.warn("Task {} not found when attempting to process", task.getId());
+            return false;
+        }
+        managedTask.setStatus(TimelineRegenerationTask.TaskStatus.PROCESSING);
+        managedTask.setProcessingStartedAt(Instant.now());
 
         try {
             // Generate timeline for each date in the range
-            LocalDate currentDate = task.getStartDate();
+            LocalDate currentDate = managedTask.getStartDate();
             int daysProcessed = 0;
 
-            while (!currentDate.isAfter(task.getEndDate())) {
+            while (!currentDate.isAfter(managedTask.getEndDate())) {
                 // Check if this date has GPS data
                 Instant dayStart = currentDate.atStartOfDay(ZoneOffset.UTC).toInstant();
                 Instant dayEnd = currentDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
                 // Generate timeline for this date
                 MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
-                    task.getUser().getId(), dayStart, dayEnd);
+                    managedTask.getUser().getId(), dayStart, dayEnd);
 
                 if (timeline != null && (!timeline.getStays().isEmpty() || !timeline.getTrips().isEmpty())) {
                     // Save to cache
-                    timelineCacheService.save(task.getUser().getId(), dayStart, dayEnd, timeline);
+                    timelineCacheService.save(managedTask.getUser().getId(), dayStart, dayEnd, timeline);
                     daysProcessed++;
                     log.debug("Generated timeline for {} - {} stays, {} trips", 
                              currentDate, timeline.getStaysCount(), timeline.getTripsCount());
@@ -196,36 +200,33 @@ public class TimelineBackgroundService {
             }
 
             // Mark task as completed
-            task.setStatus(TimelineRegenerationTask.TaskStatus.COMPLETED);
-            task.setCompletedAt(Instant.now());
-            task.setErrorMessage(null);
-            taskRepository.persist(task);
+            managedTask.setStatus(TimelineRegenerationTask.TaskStatus.COMPLETED);
+            managedTask.setCompletedAt(Instant.now());
+            managedTask.setErrorMessage(null);
 
             log.info("Successfully completed timeline regeneration task {} - processed {} days", 
-                     task.getId(), daysProcessed);
+                     managedTask.getId(), daysProcessed);
             return true;
 
         } catch (Exception e) {
-            log.error("Failed to process timeline regeneration task {}: {}", task.getId(), e.getMessage(), e);
+            log.error("Failed to process timeline regeneration task {}: {}", managedTask.getId(), e.getMessage(), e);
             
             // Handle retry logic
-            if (task.getRetryCount() < MAX_RETRIES) {
-                task.setStatus(TimelineRegenerationTask.TaskStatus.PENDING);
-                task.setRetryCount(task.getRetryCount() + 1);
-                task.setErrorMessage(e.getMessage());
-                task.setProcessingStartedAt(null); // Reset for retry delay calculation
-                taskRepository.persist(task);
+            if (managedTask.getRetryCount() < MAX_RETRIES) {
+                managedTask.setStatus(TimelineRegenerationTask.TaskStatus.PENDING);
+                managedTask.setRetryCount(managedTask.getRetryCount() + 1);
+                managedTask.setErrorMessage(e.getMessage());
+                managedTask.setProcessingStartedAt(null); // Reset for retry delay calculation
                 
                 log.debug("Queued task {} for retry (attempt {} of {})", 
-                         task.getId(), task.getRetryCount() + 1, MAX_RETRIES + 1);
+                         managedTask.getId(), managedTask.getRetryCount(), MAX_RETRIES + 1);
             } else {
-                task.setStatus(TimelineRegenerationTask.TaskStatus.FAILED);
-                task.setErrorMessage(e.getMessage());
-                task.setCompletedAt(Instant.now());
-                taskRepository.persist(task);
+                managedTask.setStatus(TimelineRegenerationTask.TaskStatus.FAILED);
+                managedTask.setErrorMessage(e.getMessage());
+                managedTask.setCompletedAt(Instant.now());
                 
                 log.error("Timeline regeneration task {} failed permanently after {} attempts", 
-                         task.getId(), MAX_RETRIES + 1);
+                         managedTask.getId(), MAX_RETRIES + 1);
             }
             
             return false;
