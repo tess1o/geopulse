@@ -1,10 +1,6 @@
 package org.github.tess1o.geopulse.timeline.detection.trips;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
-import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.timeline.core.SpatialCalculationService;
 import org.github.tess1o.geopulse.timeline.core.TimelineValidationService;
 import org.github.tess1o.geopulse.timeline.core.VelocityAnalysisService;
@@ -29,23 +25,6 @@ public class TripDetectionValidationTest {
     private TimelineTripsDetectorMulti multiDetector;
     private TravelClassification travelClassification;
     private TimelineConfig config;
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    private static class TestGpsPoint implements GpsPoint {
-        private double longitude;
-        private double latitude; 
-        private Instant timestamp;
-        private Double velocity;
-        private Double accuracy;
-
-        public TestGpsPoint(double longitude, double latitude, Instant timestamp) {
-            this.longitude = longitude;
-            this.latitude = latitude;
-            this.timestamp = timestamp;
-        }
-    }
 
     private static GpsPointPathPointDTO createTestGpsPoint(double longitude, double latitude, Instant timestamp, Double velocity, Double accuracy) {
         return new GpsPointPathPointDTO(
