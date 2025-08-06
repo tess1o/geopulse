@@ -11,6 +11,11 @@ import org.github.tess1o.geopulse.timeline.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
 import org.github.tess1o.geopulse.timeline.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.timeline.model.ImpactAnalysis;
+import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
+import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 import java.util.List;
 
@@ -36,6 +41,9 @@ public class TimelineEventService {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    TimelineService timelineGenerationService;
 
     /**
      * Handle favorite addition events.
@@ -127,14 +135,35 @@ public class TimelineEventService {
             timelineCacheService.deleteAll(event.getUserId());
             
             if (!cachedDates.isEmpty()) {
-                // Queue regeneration only for date ranges that had cached data
+                // Use direct synchronous generation like UI regenerate endpoint (fast path)
                 java.time.LocalDate firstDate = cachedDates.get(0);
                 java.time.LocalDate lastDate = cachedDates.get(cachedDates.size() - 1);
                 
-                // Split large ranges into smaller chunks to avoid huge tasks
-                splitAndQueueRegeneration(event.getUserId(), firstDate, lastDate);
+                // Generate timeline for entire range in one operation (like UI /regenerate endpoint)
+                Instant rangeStart = firstDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+                Instant rangeEnd = lastDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
                 
-                log.info("Invalidated timeline data for user {} covering {} dates from {} to {}", 
+                long startTime = System.currentTimeMillis();
+                log.info("Generating direct timeline for user {} from {} to {} ({} days) - preferences update", 
+                        event.getUserId(), firstDate, lastDate,
+                        java.time.temporal.ChronoUnit.DAYS.between(firstDate, lastDate) + 1);
+
+                MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
+                    event.getUserId(), rangeStart, rangeEnd);
+
+                if (timeline != null && (!timeline.getStays().isEmpty() || !timeline.getTrips().isEmpty())) {
+                    // Save timeline data using bulk approach like background service
+                    saveBulkTimelineData(event.getUserId(), timeline, firstDate, lastDate);
+                    
+                    log.info("Successfully regenerated timeline for user {} - {} stays, {} trips in {} s", 
+                             event.getUserId(), timeline.getStaysCount(), timeline.getTripsCount(),
+                             (System.currentTimeMillis() - startTime) / 1000.0f);
+                } else {
+                    log.info("No timeline data generated for user {} (no GPS data in range)", 
+                            event.getUserId());
+                }
+                
+                log.info("Completed direct timeline regeneration for user {} covering {} dates from {} to {}", 
                         event.getUserId(), cachedDates.size(), firstDate, lastDate);
             } else {
                 log.info("No cached timeline data found for user {} - nothing to regenerate", 
@@ -204,5 +233,57 @@ public class TimelineEventService {
         
         log.info("Processed structural change affecting {} dates: {}", 
                 analysis.getAffectedDates().size(), analysis.getReason());
+    }
+
+    /**
+     * Save bulk timeline data efficiently by grouping data by date.
+     * This mirrors the approach used in TimelineBackgroundService for consistency.
+     */
+    private void saveBulkTimelineData(java.util.UUID userId, MovementTimelineDTO timeline, 
+                                     java.time.LocalDate startDate, java.time.LocalDate lastDate) {
+        log.debug("Saving bulk timeline data for user {} ({} stays, {} trips)", 
+                 userId, timeline.getStaysCount(), timeline.getTripsCount());
+        
+        // Group timeline data by date and save efficiently
+        java.time.LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(lastDate)) {
+            Instant dayStart = currentDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant dayEnd = currentDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            
+            // Filter timeline data for this specific date
+            MovementTimelineDTO dailyTimeline = filterTimelineByDateRange(timeline, dayStart, dayEnd);
+            
+            if (dailyTimeline != null && (!dailyTimeline.getStays().isEmpty() || !dailyTimeline.getTrips().isEmpty())) {
+                timelineCacheService.save(userId, dayStart, dayEnd, dailyTimeline);
+                log.debug("Saved timeline data for {} - {} stays, {} trips", 
+                         currentDate, dailyTimeline.getStaysCount(), dailyTimeline.getTripsCount());
+            }
+            
+            currentDate = currentDate.plusDays(1);
+        }
+    }
+    
+    /**
+     * Filter timeline data to only include events within the specified date range.
+     * This mirrors the approach used in TimelineBackgroundService for consistency.
+     */
+    private MovementTimelineDTO filterTimelineByDateRange(MovementTimelineDTO timeline, Instant startTime, Instant endTime) {
+        // Create a new timeline DTO with only the data from the specified date range
+        List<org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO> filteredStays = timeline.getStays().stream()
+            .filter(stay -> stay.getTimestamp().compareTo(startTime) >= 0 && stay.getTimestamp().compareTo(endTime) < 0)
+            .toList();
+            
+        List<org.github.tess1o.geopulse.timeline.model.TimelineTripDTO> filteredTrips = timeline.getTrips().stream()
+            .filter(trip -> trip.getTimestamp().compareTo(startTime) >= 0 && trip.getTimestamp().compareTo(endTime) < 0)
+            .toList();
+        
+        if (filteredStays.isEmpty() && filteredTrips.isEmpty()) {
+            return null;
+        }
+        
+        MovementTimelineDTO filteredTimeline = new MovementTimelineDTO(timeline.getUserId(), filteredStays, filteredTrips);
+        filteredTimeline.setDataSource(timeline.getDataSource());
+        filteredTimeline.setLastUpdated(timeline.getLastUpdated());
+        return filteredTimeline;
     }
 }
