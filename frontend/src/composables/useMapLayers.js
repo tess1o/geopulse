@@ -10,6 +10,7 @@ export function useMapLayers() {
   const showFavorites = ref(false)
   const showTimeline = ref(true)
   const showPath = ref(true)
+  const showImmich = ref(false)
 
   // Layer control methods
   const toggleFriends = (value) => {
@@ -34,12 +35,23 @@ export function useMapLayers() {
     showPath.value = value !== undefined ? value : !showPath.value
   }
 
+  const toggleImmich = (value) => {
+    console.log('useMapLayers: toggleImmich called', {
+      currentValue: showImmich.value,
+      receivedValue: value,
+      willSetTo: value !== undefined ? value : !showImmich.value
+    })
+    showImmich.value = value !== undefined ? value : !showImmich.value
+    console.log('useMapLayers: showImmich is now', showImmich.value)
+  }
+
   // Convenience methods
   const showAllLayers = () => {
     showFriends.value = true
     showFavorites.value = true
     showTimeline.value = true
     showPath.value = true
+    showImmich.value = true
   }
 
   const hideAllLayers = () => {
@@ -47,6 +59,7 @@ export function useMapLayers() {
     showFavorites.value = false
     showTimeline.value = false
     showPath.value = false
+    showImmich.value = false
   }
 
   const resetToDefaults = () => {
@@ -54,11 +67,12 @@ export function useMapLayers() {
     showFavorites.value = false
     showTimeline.value = true
     showPath.value = true
+    showImmich.value = false
   }
 
   // Computed
   const visibleLayerCount = computed(() => {
-    return [showFriends.value, showFavorites.value, showTimeline.value, showPath.value]
+    return [showFriends.value, showFavorites.value, showTimeline.value, showPath.value, showImmich.value]
       .filter(Boolean).length
   })
 
@@ -93,6 +107,13 @@ export function useMapLayers() {
       visible: showPath.value,
       toggle: togglePath,
       icon: 'pi pi-map'
+    },
+    {
+      id: 'immich',
+      label: 'Photos',
+      visible: showImmich.value,
+      toggle: toggleImmich,
+      icon: 'pi pi-camera'
     }
   ])
 
@@ -102,12 +123,14 @@ export function useMapLayers() {
     showFavorites: readonly(showFavorites),
     showTimeline: readonly(showTimeline),
     showPath: readonly(showPath),
+    showImmich: readonly(showImmich),
 
     // Methods
     toggleFriends,
     toggleFavorites,
     toggleTimeline,
     togglePath,
+    toggleImmich,
     showAllLayers,
     hideAllLayers,
     resetToDefaults,

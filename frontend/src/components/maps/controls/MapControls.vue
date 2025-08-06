@@ -40,6 +40,22 @@
       >
         <i class="pi pi-map"></i>
       </button>
+
+      <button
+        v-if="showImmichButton"
+        @click="handleToggleImmich"
+        :class="{ active: showImmich, 'immich-loading': immichLoading }"
+        :title="showImmich ? 'Hide Photos' : 'Show Photos'"
+        class="control-button"
+        :disabled="!map || immichLoading"
+      >
+        <i class="pi pi-camera"></i>
+        <span v-if="immichLoading" class="loading-indicator"></span>
+        <!-- Debug info -->
+        <div v-if="false" style="position:absolute;top:-20px;left:0;font-size:10px;background:red;color:white;padding:2px;">
+          map:{{!!map}} loading:{{immichLoading}} configured:{{immichConfigured}} show:{{showImmich}}
+        </div>
+      </button>
     </div>
 
     <div v-if="showZoomControls" class="control-group">
@@ -56,6 +72,8 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+
 const props = defineProps({
   map: {
     type: Object,
@@ -77,9 +95,21 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  showImmich: {
+    type: Boolean,
+    default: false
+  },
   showZoomControls: {
     type: Boolean,
     default: true
+  },
+  immichConfigured: {
+    type: Boolean,
+    default: false
+  },
+  immichLoading: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -88,6 +118,7 @@ const emit = defineEmits([
   'toggle-favorites', 
   'toggle-timeline',
   'toggle-path',
+  'toggle-immich',
   'zoom-to-data'
 ])
 
@@ -108,9 +139,25 @@ const handleTogglePath = () => {
   emit('toggle-path', !props.showPath)
 }
 
+const handleToggleImmich = () => {
+  console.log('MapControls: Immich toggle clicked', {
+    currentShow: props.showImmich,
+    willToggleTo: !props.showImmich,
+    immichLoading: props.immichLoading,
+    immichConfigured: props.immichConfigured,
+    mapExists: !!props.map
+  })
+  emit('toggle-immich', !props.showImmich)
+}
+
 const handleZoomToData = () => {
   emit('zoom-to-data')
 }
+
+// Computed properties
+const showImmichButton = computed(() => {
+  return props.immichConfigured
+})
 </script>
 
 <style scoped>
@@ -190,6 +237,39 @@ const handleZoomToData = () => {
 .p-dark .control-button:hover:not(:disabled) {
   background-color: var(--gp-surface-darker, #0f172a);
   color: var(--gp-primary-light, #3b82f6);
+}
+
+/* Immich button specific styles */
+.control-button.immich-loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.loading-indicator {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gp-primary, #1a56db);
+  animation: immich-pulse 1.5s infinite;
+}
+
+.p-dark .loading-indicator {
+  background: var(--gp-primary-light, #3b82f6);
+}
+
+@keyframes immich-pulse {
+  0%, 100% { 
+    opacity: 0.3; 
+    transform: translateY(-50%) scale(0.8);
+  }
+  50% { 
+    opacity: 1; 
+    transform: translateY(-50%) scale(1);
+  }
 }
 
 /* Responsive adjustments */

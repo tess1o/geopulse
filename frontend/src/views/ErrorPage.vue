@@ -19,7 +19,84 @@
         <div v-if="errorDetails" class="error-details">
           <details>
             <summary>Technical Details</summary>
-            <pre>{{ errorDetails }}</pre>
+            <div v-if="parsedErrorDetails" class="error-details-formatted">
+              <div class="error-detail-section">
+                <h4>Request Information</h4>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">Method:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.method || 'N/A' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">URL:</span>
+                    <span class="detail-value url">{{ parsedErrorDetails.url || 'N/A' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value status" :class="getStatusClass(parsedErrorDetails.status)">
+                      {{ parsedErrorDetails.status || 'N/A' }} 
+                      {{ parsedErrorDetails.statusText ? `(${parsedErrorDetails.statusText})` : '' }}
+                    </span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Timestamp:</span>
+                    <span class="detail-value">{{ formatTimestamp(parsedErrorDetails.timestamp) }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div v-if="parsedErrorDetails.data" class="error-detail-section">
+                <h4>Response Data</h4>
+                <pre class="response-data">{{ formatResponseData(parsedErrorDetails.data) }}</pre>
+              </div>
+              
+              <div class="error-detail-section">
+                <h4>Error Information</h4>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">Message:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.message || 'N/A' }}</span>
+                  </div>
+                  <div v-if="parsedErrorDetails.userMessage" class="detail-item">
+                    <span class="detail-label">User Message:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.userMessage }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Connection Error:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.isConnectionError ? 'Yes' : 'No' }}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Can Retry:</span>
+                    <span class="detail-value">{{ parsedErrorDetails.canRetry ? 'Yes' : 'No' }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div v-if="parsedErrorDetails.headers" class="error-detail-section">
+                <h4>Request Headers</h4>
+                <pre class="headers-data">{{ formatHeaders(parsedErrorDetails.headers) }}</pre>
+              </div>
+              
+              <div class="error-detail-section">
+                <h4>Browser Information</h4>
+                <div class="detail-grid">
+                  <div class="detail-item">
+                    <span class="detail-label">User Agent:</span>
+                    <span class="detail-value user-agent">{{ parsedErrorDetails.userAgent || 'N/A' }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div v-if="parsedErrorDetails.stack" class="error-detail-section">
+                <details>
+                  <summary>Stack Trace</summary>
+                  <pre class="stack-trace">{{ parsedErrorDetails.stack }}</pre>
+                </details>
+              </div>
+            </div>
+            
+            <!-- Fallback to raw details if parsing fails -->
+            <pre v-else class="raw-details">{{ errorDetails }}</pre>
           </details>
         </div>
 
@@ -164,9 +241,9 @@ const checkBackendConnectivity = async () => {
         life: 3000
       })
       
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 2000)
+      // setTimeout(() => {
+      //   window.location.href = '/'
+      // }, 2000)
     }
   } catch (error) {
     backendOnline.value = false
@@ -227,6 +304,18 @@ const errorMessage = computed(() => {
 })
 
 const errorDetails = computed(() => props.details)
+
+const parsedErrorDetails = computed(() => {
+  if (!props.details) return null
+  
+  try {
+    // Try to parse as JSON first
+    return JSON.parse(props.details)
+  } catch (error) {
+    // If JSON parsing fails, return null to show raw details
+    return null
+  }
+})
 
 const connectionStatus = computed(() => {
   if (!isOnline.value) {
@@ -311,6 +400,47 @@ const goHome = () => {
   emit('home')
   router.push('/')
 }
+
+// Utility methods for formatting error details
+const getStatusClass = (status) => {
+  if (!status) return ''
+  if (status >= 200 && status < 300) return 'status-success'
+  if (status >= 400 && status < 500) return 'status-client-error'
+  if (status >= 500) return 'status-server-error'
+  return 'status-unknown'
+}
+
+const formatTimestamp = (timestamp) => {
+  if (!timestamp) return 'N/A'
+  try {
+    return new Date(timestamp).toLocaleString()
+  } catch (error) {
+    return timestamp
+  }
+}
+
+const formatResponseData = (data) => {
+  if (!data) return 'No response data'
+  if (typeof data === 'string') return data
+  return JSON.stringify(data, null, 2)
+}
+
+const formatHeaders = (headers) => {
+  if (!headers) return 'No headers'
+  if (typeof headers === 'string') return headers
+  
+  // Filter out sensitive headers
+  const sanitizedHeaders = { ...headers }
+  const sensitiveKeys = ['authorization', 'cookie', 'x-csrf-token', 'bearer']
+  
+  Object.keys(sanitizedHeaders).forEach(key => {
+    if (sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive))) {
+      sanitizedHeaders[key] = '[REDACTED]'
+    }
+  })
+  
+  return JSON.stringify(sanitizedHeaders, null, 2)
+}
 </script>
 
 <style scoped>
@@ -382,6 +512,102 @@ const goHome = () => {
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Enhanced error details styles */
+.error-details-formatted {
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.error-detail-section {
+  margin-bottom: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-small);
+  border: 1px solid var(--gp-border-light);
+}
+
+.error-detail-section h4 {
+  margin: 0 0 var(--gp-spacing-sm);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  border-bottom: 1px solid var(--gp-border-light);
+  padding-bottom: var(--gp-spacing-xs);
+}
+
+.detail-grid {
+  display: grid;
+  gap: var(--gp-spacing-sm);
+}
+
+.detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gp-spacing-sm);
+}
+
+.detail-label {
+  font-weight: 600;
+  color: var(--gp-text-secondary);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  color: var(--gp-text-primary);
+  flex: 1;
+  word-break: break-all;
+}
+
+.detail-value.url {
+  font-family: monospace;
+  background: var(--gp-surface-lighter);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.detail-value.user-agent {
+  font-family: monospace;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.detail-value.status {
+  font-weight: 600;
+}
+
+.status-success {
+  color: var(--gp-success);
+}
+
+.status-client-error {
+  color: var(--gp-warning);
+}
+
+.status-server-error {
+  color: var(--gp-danger);
+}
+
+.status-unknown {
+  color: var(--gp-text-muted);
+}
+
+.response-data, .headers-data, .stack-trace, .raw-details {
+  background: var(--gp-surface-lighter, #f9fafb);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+  padding: var(--gp-spacing-sm);
+  font-size: 0.8rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: var(--gp-text-primary);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .error-actions {
@@ -486,6 +712,27 @@ const goHome = () => {
 }
 
 .p-dark .error-details pre {
+  background: var(--gp-surface-darker);
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .error-detail-section {
+  background: var(--gp-surface-darker);
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .error-detail-section h4 {
+  border-bottom-color: var(--gp-border-dark);
+}
+
+.p-dark .detail-value.url {
+  background: var(--gp-surface-darker);
+}
+
+.p-dark .response-data, 
+.p-dark .headers-data, 
+.p-dark .stack-trace, 
+.p-dark .raw-details {
   background: var(--gp-surface-darker);
   border-color: var(--gp-border-dark);
 }

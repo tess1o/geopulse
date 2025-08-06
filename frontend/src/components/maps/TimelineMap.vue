@@ -22,10 +22,14 @@
           :show-favorites="showFavorites"
           :show-timeline="showTimeline"
           :show-path="showPath"
+          :show-immich="showImmich"
+          :immich-configured="immichConfigured"
+          :immich-loading="immichLoading"
           @toggle-friends="toggleFriends"
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
+          @toggle-immich="toggleImmich"
           @zoom-to-data="handleZoomToData"
           class="map-controls"
         />
@@ -80,6 +84,17 @@
           @favorite-contextmenu="handleFavoriteContextMenu"
         />
 
+        <!-- Immich Photos Layer -->
+        <ImmichLayer
+          v-if="map && isReady"
+          ref="immichLayerRef"
+          :map="map"
+          :visible="showImmich"
+          @photo-click="handlePhotoClick"
+          @photo-hover="handlePhotoHover"
+          @error="handleImmichError"
+        />
+
         <!-- Current Location Layer -->
         <CurrentLocationLayer
           v-if="map && isReady && showCurrentLocation && currentLocation"
@@ -130,6 +145,14 @@
           @close="closeEditFavorite"
           @delete-favorite="deleteFavoriteLocation"
         />
+
+        <!-- Photo Viewer Dialog -->
+        <PhotoViewerDialog
+          v-model:visible="photoViewerVisible"
+          :photos="photoViewerPhotos"
+          :initial-photo-index="photoViewerIndex"
+          @close="closePhotoViewer"
+        />
       </template>
     </MapContainer>
   </div>
@@ -138,6 +161,7 @@
 <script setup>
 import {computed, nextTick, onMounted, readonly, ref, watch} from 'vue'
 import {useConfirm} from "primevue/useconfirm"
+import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 import L from 'leaflet'
@@ -147,10 +171,12 @@ import 'leaflet-draw/dist/leaflet.draw.css'
 // Map components
 import {FavoritesLayer, FriendsLayer, MapContainer, MapControls, PathLayer, TimelineLayer} from '@/components/maps'
 import CurrentLocationLayer from '@/components/maps/CurrentLocationLayer.vue'
+import ImmichLayer from '@/components/maps/layers/ImmichLayer.vue'
 
 // Dialog components
 import AddFavoriteDialog from '@/components/dialogs/AddFavoriteDialog.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
+import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 
 // Composables
 import {useMapHighlights, useMapInteractions, useMapLayers} from '@/composables'
@@ -161,6 +187,7 @@ import {useFavoritesStore} from '@/stores/favorites'
 import {useLocationStore} from '@/stores/location'
 import {useTimelineStore} from '@/stores/timeline'
 import {useFriendsStore} from '@/stores/friends'
+import {useImmichStore} from '@/stores/immich'
 
 
 // Props
@@ -207,16 +234,19 @@ const {
   showFavorites,
   showTimeline,
   showPath,
+  showImmich,
   toggleFriends,
   toggleFavorites,
   toggleTimeline,
-  togglePath
+  togglePath,
+  toggleImmich
 } = useMapLayers()
 
 // Store instances
 const favoritesStore = useFavoritesStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
+const immichStore = useImmichStore()
 //const friendsStore = useFriendsStore()
 
 const {
@@ -249,10 +279,12 @@ const pathLayerRef = ref(null)
 const timelineLayerRef = ref(null)
 //const friendsLayerRef = ref(null)
 const favoritesLayerRef = ref(null)
+const immichLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
 
 const confirm = useConfirm()
+const toast = useToast()
 
 // Local state
 const map = ref(null)
@@ -273,6 +305,11 @@ const drawingState = ref({
   tempAreaLayer: null
 })
 
+// Photo viewer state
+const photoViewerVisible = ref(false)
+const photoViewerPhotos = ref([])
+const photoViewerIndex = ref(0)
+
 // Computed getters for dialog state (for template compatibility)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
 const addAreaShowDialog = computed(() => dialogState.value.addAreaVisible)
@@ -287,6 +324,10 @@ const mapZoom = ref(13)
 const controlsProps = computed(() => ({
   showZoomControls: true
 }))
+
+// Immich computed properties
+const immichConfigured = computed(() => immichStore.isConfigured)
+const immichLoading = computed(() => immichStore.photosLoading || immichStore.configLoading)
 
 // Context menu items
 const mapMenuItems = ref([
@@ -415,6 +456,54 @@ const handleTripMarkerClick = (event) => {
 
 const handleFavoriteClick = (event) => {
   baseHandleFavoriteClick(event)
+}
+
+// Immich layer event handlers
+const handlePhotoClick = (event) => {
+  console.log('Immich photo clicked:', event)
+  
+  // Always open PhotoViewerDialog for consistent experience
+  photoViewerPhotos.value = event.photos || []
+  photoViewerIndex.value = event.initialIndex || 0
+  photoViewerVisible.value = true
+}
+
+
+const handlePhotoHover = (event) => {
+  // Could show preview tooltip in the future
+  console.log('Immich photo hovered:', event)
+}
+
+const handleImmichError = (event) => {
+  console.error('Immich layer error:', event)
+  
+  let title = 'Immich Photos Error'
+  let detail = 'Failed to load photos from Immich'
+  
+  // Customize error messages based on error type
+  switch (event.type) {
+    case 'fetch':
+      title = 'Failed to Load Photos'
+      detail = event.message || 'Unable to fetch photos from your Immich server. Please check your configuration.'
+      break
+    case 'refresh':
+      title = 'Refresh Failed'
+      detail = event.message || 'Unable to refresh photos from Immich. Please try again.'
+      break
+    case 'config':
+      title = 'Configuration Error'
+      detail = event.message || 'Immich configuration is invalid. Please check your server settings.'
+      break
+    default:
+      detail = event.message || detail
+  }
+  
+  toast.add({
+    severity: 'error',
+    summary: title,
+    detail: detail,
+    life: 5000
+  })
 }
 
 
@@ -578,6 +667,13 @@ const closeEditFavorite = () => {
 const deleteFavoriteLocation = (favorite) => {
   handleFavoriteDelete(favorite)
   closeEditFavorite()
+}
+
+// Photo viewer handlers
+const closePhotoViewer = () => {
+  photoViewerVisible.value = false
+  photoViewerPhotos.value = []
+  photoViewerIndex.value = 0
 }
 
 // Computed data from stores and props

@@ -12,6 +12,8 @@ import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
 import org.github.tess1o.geopulse.timeline.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.timeline.model.ImpactAnalysis;
 
+import java.util.List;
+
 /**
  * Simplified timeline event service using the new impact analysis system.
  * 
@@ -118,22 +120,53 @@ public class TimelineEventService {
                  event.getUserId(), event.isWasResetToDefaults());
         
         try {
+            // First get cached dates before deleting them
+            List<java.time.LocalDate> cachedDates = timelineCacheService.getCachedDates(event.getUserId());
+            
             // Delete all cached timeline data for the user
             timelineCacheService.deleteAll(event.getUserId());
             
-            // Get all dates that had timeline data
-            // Note: Since we just deleted the cache, we need to infer date ranges from GPS data
-            // For now, queue a broad regeneration - this could be optimized later
-            java.time.LocalDate startDate = java.time.LocalDate.now().minusYears(1); // Last year
-            java.time.LocalDate endDate = java.time.LocalDate.now().minusDays(1); // Up to yesterday
-            
-            backgroundService.queueLowPriorityRegeneration(event.getUserId(), startDate, endDate);
-            
-            log.info("Invalidated all timeline data for user {} due to preference changes", event.getUserId());
+            if (!cachedDates.isEmpty()) {
+                // Queue regeneration only for date ranges that had cached data
+                java.time.LocalDate firstDate = cachedDates.get(0);
+                java.time.LocalDate lastDate = cachedDates.get(cachedDates.size() - 1);
+                
+                // Split large ranges into smaller chunks to avoid huge tasks
+                splitAndQueueRegeneration(event.getUserId(), firstDate, lastDate);
+                
+                log.info("Invalidated timeline data for user {} covering {} dates from {} to {}", 
+                        event.getUserId(), cachedDates.size(), firstDate, lastDate);
+            } else {
+                log.info("No cached timeline data found for user {} - nothing to regenerate", 
+                        event.getUserId());
+            }
             
         } catch (Exception e) {
             log.error("Failed to process timeline preferences updated event for user {}: {}", 
                      event.getUserId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Split large date ranges into smaller chunks for more manageable background processing.
+     * This prevents creating massive tasks that could cause performance issues.
+     */
+    private void splitAndQueueRegeneration(java.util.UUID userId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        final int MAX_DAYS_PER_TASK = 30; // Split into monthly chunks
+        
+        java.time.LocalDate currentStart = startDate;
+        while (currentStart.isBefore(endDate) || currentStart.equals(endDate)) {
+            java.time.LocalDate currentEnd = currentStart.plusDays(MAX_DAYS_PER_TASK - 1);
+            if (currentEnd.isAfter(endDate)) {
+                currentEnd = endDate;
+            }
+            
+            backgroundService.queueLowPriorityRegeneration(userId, currentStart, currentEnd);
+            log.debug("Queued regeneration for user {} from {} to {} ({} days)", 
+                     userId, currentStart, currentEnd, 
+                     java.time.temporal.ChronoUnit.DAYS.between(currentStart, currentEnd) + 1);
+            
+            currentStart = currentEnd.plusDays(1);
         }
     }
 

@@ -608,6 +608,66 @@ export function createFavoriteIcon() {
 }
 
 /**
+ * Create icon for single Immich photo markers
+ * @returns {L.DivIcon} - Configured immich photo icon
+ */
+export function createImmichPhotoIcon() {
+  // Use smaller size on mobile devices
+  const size = window.innerWidth < 768 ? MARKER_SIZES.SMALL : MARKER_SIZES.STANDARD
+  
+  return createCustomDivIcon({
+    color: '#6366f1', // Indigo color for Immich photos
+    icon: '📷', // Camera emoji for photos
+    size,
+    className: 'custom-marker immich-photo-marker',
+    shape: 'square',
+    customStyle: {
+      background: `linear-gradient(135deg, #6366f1, #4f46e5)`,
+      border: '2px solid white',
+      boxShadow: '0 2px 6px rgba(99, 102, 241, 0.4)'
+    }
+  })
+}
+
+/**
+ * Create icon for clustered Immich photo markers
+ * @param {number} count - Number of photos in cluster
+ * @returns {L.DivIcon} - Configured immich photo cluster icon
+ */
+export function createImmichPhotoClusterIcon(count) {
+  // Responsive sizing - smaller on mobile
+  const isMobile = window.innerWidth < 768
+  let size = isMobile ? MARKER_SIZES.SMALL : MARKER_SIZES.STANDARD
+  let backgroundColor = '#6366f1'
+  
+  if (count > 20) {
+    size = isMobile ? MARKER_SIZES.LARGE : MARKER_SIZES.HIGHLIGHT
+    backgroundColor = '#dc2626' // Red for large clusters
+  } else if (count > 10) {
+    size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
+    backgroundColor = '#ea580c' // Orange for medium-large clusters
+  } else if (count > 5) {
+    backgroundColor = '#7c3aed' // Purple for medium clusters
+  }
+
+  return createCustomDivIcon({
+    color: backgroundColor,
+    icon: count.toString(),
+    size,
+    className: 'custom-marker immich-photo-cluster-marker',
+    shape: 'circle',
+    customStyle: {
+      background: `linear-gradient(135deg, ${backgroundColor}, ${backgroundColor}dd)`,
+      border: '3px solid white',
+      boxShadow: '0 3px 8px rgba(99, 102, 241, 0.5)',
+      fontSize: `${Math.floor(size.SIZE * (isMobile ? 0.5 : 0.45))}px`,
+      fontWeight: 'bold',
+      color: 'white'
+    }
+  })
+}
+
+/**
  * Create a polyline with consistent styling
  * @param {Array} coordinates - Array of [lat, lng] coordinates
  * @param {Object} options - Polyline options

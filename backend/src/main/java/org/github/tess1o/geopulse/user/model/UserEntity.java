@@ -8,6 +8,7 @@ import lombok.*;
 import org.github.tess1o.geopulse.friends.invitation.model.FriendInvitationEntity;
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.immich.model.ImmichPreferences;
 import org.hibernate.annotations.Type;
 
 import java.time.Instant;
@@ -62,6 +63,10 @@ public class UserEntity extends PanacheEntityBase {
     @Type(JsonType.class)
     @Column(columnDefinition = "jsonb", name = "timeline_preferences")
     public TimelinePreferences timelinePreferences;
+
+    @Type(JsonType.class)
+    @Column(columnDefinition = "jsonb", name = "immich_preferences")
+    public ImmichPreferences immichPreferences;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude

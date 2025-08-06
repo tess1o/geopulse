@@ -314,6 +314,28 @@ const apiService = {
         }
     },
 
+    async getRawWithBlob(endpoint, customHeaders = {}, params = {}) {
+        try {
+            await this.checkAuthExpired(endpoint);
+
+            // Don't send auth headers for shared endpoints (they're public or use custom tokens)
+            const isSharedEndpoint = endpoint.startsWith('/shared/');
+            const authHeaders = isSharedEndpoint ? {} : this.getAuthHeaders();
+            const headers = { ...authHeaders, ...customHeaders };
+
+            const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
+                params,
+                withCredentials: true,
+                headers,
+                responseType: 'blob'
+            });
+            return response;
+        } catch (error) {
+            this.handleError(error);
+            throw error;
+        }
+    },
+
     async delete(endpoint, params = {}) {
         return this._requestWithRetry(async () => {
             await this.checkAuthExpired(endpoint);
@@ -492,11 +514,25 @@ const apiService = {
 
         // Use setTimeout to avoid issues with Vue router during navigation
         setTimeout(() => {
+            // Collect detailed error information
+            const errorDetails = {
+                message: error.message || 'Unknown error',
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data,
+                url: error.config?.url,
+                method: error.config?.method?.toUpperCase(),
+                headers: error.config?.headers,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                stack: error.stack
+            };
+
             const errorParams = new URLSearchParams({
                 type: 'connection',
                 title: 'Backend Unavailable',
                 message: 'GeoPulse servers are currently unavailable. Please try again later.',
-                details: error.message || 'Network Error'
+                details: JSON.stringify(errorDetails)
             });
 
             window.location.href = `/error?${errorParams.toString()}`;

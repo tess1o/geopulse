@@ -8,12 +8,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineRegenerationTask;
+import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
 import org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -67,7 +70,7 @@ public class TimelineBackgroundService {
      * Process low-priority tasks during low activity (every 30 seconds).
      * These are bulk imports that can wait for system resources.
      */
-    @Scheduled(every = "30s")
+    @Scheduled(every = "5s")
     public void processLowPriorityTasks() {
         if (processing.get()) {
             return;
@@ -143,7 +146,7 @@ public class TimelineBackgroundService {
     }
 
     /**
-     * Process a single timeline regeneration task.
+     * Process a single timeline regeneration task using bulk generation.
      */
     @Transactional
     public boolean processTask(TimelineRegenerationTask task) {
@@ -173,30 +176,27 @@ public class TimelineBackgroundService {
         managedTask.setProcessingStartedAt(Instant.now());
 
         try {
-            // Generate timeline for each date in the range
-            LocalDate currentDate = managedTask.getStartDate();
-            int daysProcessed = 0;
+            // Use bulk generation instead of day-by-day processing
+            Instant rangeStart = managedTask.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant rangeEnd = managedTask.getEndDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            
+            log.info("Generating bulk timeline for user {} from {} to {} ({} days)", 
+                    managedTask.getUser().getId(), managedTask.getStartDate(), managedTask.getEndDate(),
+                    java.time.temporal.ChronoUnit.DAYS.between(managedTask.getStartDate(), managedTask.getEndDate()) + 1);
 
-            while (!currentDate.isAfter(managedTask.getEndDate())) {
-                // Check if this date has GPS data
-                Instant dayStart = currentDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-                Instant dayEnd = currentDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            // Generate timeline for entire range in one operation
+            MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
+                managedTask.getUser().getId(), rangeStart, rangeEnd);
 
-                // Generate timeline for this date
-                MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
-                    managedTask.getUser().getId(), dayStart, dayEnd);
-
-                if (timeline != null && (!timeline.getStays().isEmpty() || !timeline.getTrips().isEmpty())) {
-                    // Save to cache
-                    timelineCacheService.save(managedTask.getUser().getId(), dayStart, dayEnd, timeline);
-                    daysProcessed++;
-                    log.debug("Generated timeline for {} - {} stays, {} trips", 
-                             currentDate, timeline.getStaysCount(), timeline.getTripsCount());
-                } else {
-                    log.debug("No timeline data generated for {} (no GPS data)", currentDate);
-                }
-
-                currentDate = currentDate.plusDays(1);
+            if (timeline != null && (!timeline.getStays().isEmpty() || !timeline.getTrips().isEmpty())) {
+                // Save bulk timeline data using optimized batch save
+                saveBulkTimeline(managedTask.getUser().getId(), timeline, managedTask.getStartDate(), managedTask.getEndDate());
+                
+                log.info("Successfully generated bulk timeline for user {} - {} stays, {} trips", 
+                         managedTask.getUser().getId(), timeline.getStaysCount(), timeline.getTripsCount());
+            } else {
+                log.debug("No timeline data generated for date range {} to {} (no GPS data)", 
+                         managedTask.getStartDate(), managedTask.getEndDate());
             }
 
             // Mark task as completed
@@ -204,8 +204,8 @@ public class TimelineBackgroundService {
             managedTask.setCompletedAt(Instant.now());
             managedTask.setErrorMessage(null);
 
-            log.info("Successfully completed timeline regeneration task {} - processed {} days", 
-                     managedTask.getId(), daysProcessed);
+            log.info("Successfully completed timeline regeneration task {} in bulk mode", 
+                     managedTask.getId());
             return true;
 
         } catch (Exception e) {
@@ -231,6 +231,56 @@ public class TimelineBackgroundService {
             
             return false;
         }
+    }
+
+    /**
+     * Save bulk timeline data efficiently by grouping data by date.
+     * This avoids individual save operations for each day.
+     */
+    private void saveBulkTimeline(UUID userId, MovementTimelineDTO timeline, LocalDate startDate, LocalDate endDate) {
+        log.debug("Saving bulk timeline data for user {} ({} stays, {} trips)", 
+                 userId, timeline.getStaysCount(), timeline.getTripsCount());
+        
+        // Group timeline data by date and save efficiently
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            Instant dayStart = currentDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant dayEnd = currentDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+            
+            // Filter timeline data for this specific date
+            MovementTimelineDTO dailyTimeline = filterTimelineByDateRange(timeline, dayStart, dayEnd);
+            
+            if (dailyTimeline != null && (!dailyTimeline.getStays().isEmpty() || !dailyTimeline.getTrips().isEmpty())) {
+                timelineCacheService.save(userId, dayStart, dayEnd, dailyTimeline);
+                log.debug("Saved timeline data for {} - {} stays, {} trips", 
+                         currentDate, dailyTimeline.getStaysCount(), dailyTimeline.getTripsCount());
+            }
+            
+            currentDate = currentDate.plusDays(1);
+        }
+    }
+    
+    /**
+     * Filter timeline data to only include events within the specified date range.
+     */
+    private MovementTimelineDTO filterTimelineByDateRange(MovementTimelineDTO timeline, Instant startTime, Instant endTime) {
+        // Create a new timeline DTO with only the data from the specified date range
+        List<TimelineStayLocationDTO> filteredStays = timeline.getStays().stream()
+            .filter(stay -> stay.getTimestamp().compareTo(startTime) >= 0 && stay.getTimestamp().compareTo(endTime) < 0)
+            .toList();
+            
+        List<TimelineTripDTO> filteredTrips = timeline.getTrips().stream()
+            .filter(trip -> trip.getTimestamp().compareTo(startTime) >= 0 && trip.getTimestamp().compareTo(endTime) < 0)
+            .toList();
+        
+        if (filteredStays.isEmpty() && filteredTrips.isEmpty()) {
+            return null;
+        }
+        
+        MovementTimelineDTO filteredTimeline = new MovementTimelineDTO(timeline.getUserId(), filteredStays, filteredTrips);
+        filteredTimeline.setDataSource(timeline.getDataSource());
+        filteredTimeline.setLastUpdated(timeline.getLastUpdated());
+        return filteredTimeline;
     }
 
     /**

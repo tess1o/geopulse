@@ -152,6 +152,21 @@ export function showErrorToast(toastAdd, error, options = {}) {
  * @returns {boolean} - True if this looks like a complete backend outage
  */
 export function isBackendDown(error) {
+  // Don't treat image loading errors as backend down
+  if (error.isImageLoadingError || error.isImageDownloadError) {
+    return false
+  }
+  
+  // Don't treat Immich-specific errors as backend down
+  if (error.url && error.url.includes('/immich/')) {
+    return false
+  }
+  
+  // Don't treat errors from image-related URLs as backend down
+  if (error.config?.url && error.config.url.includes('/immich/')) {
+    return false
+  }
+
   return (
     error.code === 'NETWORK_ERROR' ||
     error.message === 'Network Error' ||

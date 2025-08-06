@@ -12,11 +12,28 @@ import { isBackendDown } from './errorHandler'
 export function handleSevereError(error, options = {}) {
   // Check if this is a severe connectivity issue
   if (isBackendDown(error)) {
+    // Collect detailed error information
+    const errorDetails = {
+      message: error.message || 'Unknown error',
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      url: error.config?.url,
+      method: error.config?.method?.toUpperCase(),
+      headers: error.config?.headers,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      stack: error.stack,
+      userMessage: error.userMessage,
+      isConnectionError: error.isConnectionError,
+      canRetry: error.canRetry
+    };
+
     const errorParams = {
       type: 'connection',
       title: options.title || 'Connection Problem',
       message: options.message || error.userMessage || 'Unable to connect to GeoPulse servers.',
-      details: error.message
+      details: JSON.stringify(errorDetails)
     }
 
     // Navigate to error page with parameters
