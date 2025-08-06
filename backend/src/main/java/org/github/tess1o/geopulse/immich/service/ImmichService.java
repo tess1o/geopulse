@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.immich.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.immich.client.ImmichClient;
 import org.github.tess1o.geopulse.immich.model.*;
@@ -28,7 +29,7 @@ public class ImmichService {
 
     public CompletableFuture<ImmichPhotoSearchResponse> searchPhotos(UUID userId, ImmichPhotoSearchRequest searchRequest) {
         log.debug("Searching photos for user {} with params: {}", userId, searchRequest);
-        
+
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + userId);
@@ -53,12 +54,12 @@ public class ImmichService {
         return immichClient.searchAssets(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest)
                 .thenApply(response -> {
                     List<ImmichAsset> assets = response.getAssets().getItems();
-                    
+
                     List<ImmichPhotoDto> filteredPhotos = assets.stream()
                             .filter(asset -> filterByLocation(asset, searchRequest))
                             .map(asset -> mapToPhotoDto(asset, userId))
                             .collect(Collectors.toList());
-                    
+
                     return ImmichPhotoSearchResponse.builder()
                             .photos(filteredPhotos)
                             .totalCount(filteredPhotos.size())
@@ -95,12 +96,14 @@ public class ImmichService {
         return Optional.of(ImmichConfigResponse.builder()
                 .serverUrl(immichPrefs.getServerUrl())
                 .enabled(immichPrefs.getEnabled())
+                .apiKey(immichPrefs.getApiKey())
                 .build());
     }
 
+    @Transactional
     public void updateUserImmichConfig(UUID userId, UpdateImmichConfigRequest request) {
-        log.debug("Updating Immich config for user {}", userId);
-        
+        log.debug("Updating Immich config for user {} and request {}", userId, request);
+
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new IllegalArgumentException("User not found: " + userId);
@@ -112,9 +115,11 @@ public class ImmichService {
                 .enabled(request.getEnabled())
                 .build();
 
+        log.debug("Immich config for user {}: {}", userId, immichPrefs);
+
         user.setImmichPreferences(immichPrefs);
         userRepository.persist(user);
-        
+
         log.info("Updated Immich config for user {}", userId);
     }
 
@@ -164,7 +169,7 @@ public class ImmichService {
 
         if (asset.getExifInfo() != null) {
             builder.latitude(asset.getExifInfo().getLatitude())
-                   .longitude(asset.getExifInfo().getLongitude());
+                    .longitude(asset.getExifInfo().getLongitude());
         }
 
         return builder.build();
@@ -174,12 +179,12 @@ public class ImmichService {
         if (serverUrl == null || serverUrl.isBlank()) {
             return serverUrl;
         }
-        
+
         String normalized = serverUrl.trim();
         if (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
-        
+
         return normalized;
     }
 }

@@ -189,6 +189,121 @@
                   </template>
                 </Card>
             </div>
+
+            <!-- Immich Integration Tab -->
+            <div v-if="activeTab === 'immich'">
+                <Card class="immich-card">
+                  <template #content>
+                    <form @submit.prevent="saveImmichConfig" class="immich-form">
+                      <div class="immich-header">
+                        <div class="immich-icon">
+                          <i class="pi pi-images"></i>
+                        </div>
+                        <div class="immich-info">
+                          <h3 class="immich-title">Immich Integration</h3>
+                          <p class="immich-description">
+                            Connect your Immich photo server to display photos on your timeline
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="form-section">
+                        <!-- Enable/Disable Toggle -->
+                        <div class="form-field">
+                          <div class="toggle-field">
+                            <ToggleButton 
+                              v-model="immichForm.enabled"
+                              onLabel="Enabled" 
+                              offLabel="Disabled"
+                              :disabled="immichLoading || immichSaveLoading"
+                            />
+                            <div class="toggle-info">
+                              <span class="toggle-label">Enable Immich Integration</span>
+                              <span class="toggle-description">
+                                Turn on to sync photos from your Immich server
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Server URL Field -->
+                        <div class="form-field">
+                          <label for="immichServerUrl" class="form-label">Server URL</label>
+                          <InputText 
+                            id="immichServerUrl"
+                            v-model="immichForm.serverUrl"
+                            placeholder="https://photos.example.com"
+                            :invalid="!!immichErrors.serverUrl"
+                            :disabled="!immichForm.enabled || immichLoading || immichSaveLoading"
+                            class="w-full"
+                          />
+                          <small v-if="immichErrors.serverUrl" class="error-message">
+                            {{ immichErrors.serverUrl }}
+                          </small>
+                          <small v-else class="help-text">
+                            Enter the full URL to your Immich server
+                          </small>
+                        </div>
+
+                        <!-- API Key Field -->
+                        <div class="form-field">
+                          <label for="immichApiKey" class="form-label">API Key</label>
+                          <Password 
+                            id="immichApiKey"
+                            v-model="immichForm.apiKey"
+                            :placeholder="immichConfig?.apiKey ? 'API key is set (enter new key to replace)' : 'Enter your Immich API key'"
+                            :feedback="false"
+                            toggleMask
+                            :invalid="!!immichErrors.apiKey"
+                            :disabled="!immichForm.enabled || immichLoading || immichSaveLoading"
+                            class="w-full"
+                          />
+                          <small v-if="immichErrors.apiKey" class="error-message">
+                            {{ immichErrors.apiKey }}
+                          </small>
+                          <small v-else-if="immichConfig?.apiKey && !immichForm.apiKey" class="help-text">
+                            <i class="pi pi-check-circle" style="color: var(--gp-success);"></i>
+                            API key is configured. Leave empty to keep current key.
+                          </small>
+                          <small v-else class="help-text">
+                            Create an API key in your Immich server settings
+                          </small>
+                        </div>
+
+                        <!-- Connection Status -->
+                        <div v-if="immichConfig" class="connection-status">
+                          <div class="status-indicator">
+                            <i :class="['pi', immichConfig.enabled ? 'pi-check-circle' : 'pi-times-circle']"></i>
+                            <span>
+                              {{ immichConfig.enabled ? 'Connected' : 'Disconnected' }}
+                            </span>
+                          </div>
+                          <small v-if="immichConfig.enabled && immichConfig.serverUrl" class="help-text">
+                            Connected to: {{ immichConfig.serverUrl }}
+                          </small>
+                        </div>
+                      </div>
+
+                      <!-- Action Buttons -->
+                      <div class="form-actions">
+                        <Button 
+                          type="button"
+                          label="Reset"
+                          outlined
+                          @click="resetImmichForm"
+                          :disabled="immichLoading || immichSaveLoading"
+                        />
+                        <Button 
+                          type="submit"
+                          label="Save Settings"
+                          :loading="immichSaveLoading"
+                          :disabled="!hasImmichChanges || immichLoading"
+                        />
+                      </div>
+                    </form>
+                  </template>
+                </Card>
+            </div>
           </TabContainer>
         </div>
 
@@ -210,18 +325,22 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 
 // Store
 import { useAuthStore } from '@/stores/auth'
+import { useImmichStore } from '@/stores/immich'
 
 // Composables
 const toast = useToast()
 const authStore = useAuthStore()
+const immichStore = useImmichStore()
 
 // Store refs
 const { userId, userName, userAvatar, userEmail } = storeToRefs(authStore)
+const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
 const activeTab = ref('profile')
 const profileLoading = ref(false)
 const passwordLoading = ref(false)
+const immichSaveLoading = ref(false)
 const selectedAvatar = ref('')
 
 // Tab configuration
@@ -235,6 +354,11 @@ const tabItems = ref([
     label: 'Security',
     icon: 'pi pi-shield',
     key: 'security'
+  },
+  {
+    label: 'Immich Integration',
+    icon: 'pi pi-images',
+    key: 'immich'
   }
 ])
 
@@ -253,9 +377,16 @@ const passwordForm = ref({
   confirmPassword: ''
 })
 
+const immichForm = ref({
+  serverUrl: '',
+  apiKey: '',
+  enabled: false
+})
+
 // Form errors
 const profileErrors = ref({})
 const passwordErrors = ref({})
+const immichErrors = ref({})
 
 // Avatar options
 const avatarOptions = [
@@ -291,6 +422,23 @@ const hasPasswordChanges = computed(() => {
   return passwordForm.value.currentPassword || 
          passwordForm.value.newPassword || 
          passwordForm.value.confirmPassword
+})
+
+const hasImmichChanges = computed(() => {
+  // If no config exists, check if user has made any changes from defaults
+  if (!immichConfig.value) {
+    return immichForm.value.enabled || 
+           (immichForm.value.serverUrl?.trim() || '') !== '' || 
+           (immichForm.value.apiKey?.trim() || '') !== ''
+  }
+  
+  // Compare with existing config
+  const serverUrlChanged = immichForm.value.serverUrl !== (immichConfig.value.serverUrl || '')
+  const enabledChanged = immichForm.value.enabled !== (immichConfig.value.enabled || false)
+  // Check if new API key is provided (since we don't show existing keys)
+  const apiKeyChanged = (immichForm.value.apiKey?.trim() || '') !== ''
+  
+  return serverUrlChanged || enabledChanged || apiKeyChanged
 })
 
 // Methods
@@ -334,6 +482,29 @@ const validatePassword = () => {
   }
   
   return Object.keys(passwordErrors.value).length === 0
+}
+
+const validateImmich = () => {
+  immichErrors.value = {}
+  
+  if (immichForm.value.enabled) {
+    if (!immichForm.value.serverUrl?.trim()) {
+      immichErrors.value.serverUrl = 'Server URL is required when integration is enabled'
+    } else {
+      try {
+        new URL(immichForm.value.serverUrl.trim())
+      } catch {
+        immichErrors.value.serverUrl = 'Please enter a valid URL (e.g., https://photos.example.com)'
+      }
+    }
+    
+    // Only require API key if no existing key is set, or if user is trying to change it
+    if (!immichForm.value.apiKey?.trim() && !immichConfig.value?.apiKey) {
+      immichErrors.value.apiKey = 'API Key is required when integration is enabled'
+    }
+  }
+  
+  return Object.keys(immichErrors.value).length === 0
 }
 
 // Methods
@@ -399,6 +570,39 @@ const changePassword = async () => {
   }
 }
 
+const saveImmichConfig = async () => {
+  if (!validateImmich()) return
+  
+  immichSaveLoading.value = true
+  
+  try {
+    const configData = {
+      serverUrl: immichForm.value.serverUrl?.trim() || null,
+      // Use new API key if provided, otherwise keep existing one
+      apiKey: immichForm.value.apiKey?.trim() || immichConfig.value?.apiKey || null,
+      enabled: immichForm.value.enabled
+    }
+    
+    await immichStore.updateConfig(configData)
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Immich Settings Updated',
+      detail: 'Your Immich integration settings have been saved successfully',
+      life: 3000
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Save Failed',
+      detail: getErrorMessage(error),
+      life: 5000
+    })
+  } finally {
+    immichSaveLoading.value = false
+  }
+}
+
 const resetProfile = () => {
   profileForm.value.fullName = userName.value || ''
   selectedAvatar.value = userAvatar.value || '/avatars/avatar1.png'
@@ -412,6 +616,16 @@ const resetPasswordForm = () => {
     confirmPassword: ''
   }
   passwordErrors.value = {}
+}
+
+const resetImmichForm = () => {
+  immichForm.value = {
+    serverUrl: immichConfig.value?.serverUrl || '',
+    // Never populate existing API key for security
+    apiKey: '',
+    enabled: immichConfig.value?.enabled || false
+  }
+  immichErrors.value = {}
 }
 
 const getErrorMessage = (error) => {
@@ -443,9 +657,28 @@ watch(() => [passwordForm.value.newPassword, passwordForm.value.confirmPassword]
   }
 })
 
+watch(() => [immichForm.value.serverUrl, immichForm.value.apiKey], () => {
+  if (immichErrors.value.serverUrl || immichErrors.value.apiKey) {
+    validateImmich()
+  }
+})
+
+watch(immichConfig, (newConfig) => {
+  if (newConfig) {
+    resetImmichForm()
+  }
+}, { immediate: true })
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   resetProfile()
+  
+  // Load Immich config
+  try {
+    await immichStore.fetchConfig()
+  } catch (error) {
+    console.warn('Failed to load Immich config:', error)
+  }
 })
 </script>
 
@@ -497,7 +730,8 @@ onMounted(() => {
 
 /* Profile Info Card */
 .profile-info-card,
-.security-card {
+.security-card,
+.immich-card {
   background: var(--gp-surface-white);
   border: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
@@ -618,6 +852,103 @@ onMounted(() => {
   color: var(--gp-text-secondary);
   margin: 0;
   line-height: 1.4;
+}
+
+/* Immich Section */
+.immich-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+}
+
+.immich-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: var(--gp-primary);
+  color: white;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.immich-info {
+  flex: 1;
+}
+
+.immich-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.immich-description {
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.toggle-field {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+}
+
+.toggle-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.toggle-label {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  font-size: 0.9rem;
+}
+
+.toggle-description {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+  line-height: 1.4;
+}
+
+.connection-status {
+  padding: 1rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+  margin-top: 0.5rem;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.status-indicator i {
+  font-size: 1.1rem;
+}
+
+.status-indicator .pi-check-circle {
+  color: var(--gp-success);
+}
+
+.status-indicator .pi-times-circle {
+  color: var(--gp-text-secondary);
 }
 
 /* Form Sections */
@@ -753,7 +1084,14 @@ onMounted(() => {
     max-height: 150px;
   }
   
-  .security-header {
+  .security-header,
+  .immich-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+  
+  .toggle-field {
     flex-direction: column;
     text-align: center;
     gap: 1rem;

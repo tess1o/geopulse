@@ -8,4 +8,5 @@ import lombok.Data;
 public class ImmichConfigResponse {
     private String serverUrl;
     private Boolean enabled;
+    private String apiKey;
 }
