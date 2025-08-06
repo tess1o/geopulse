@@ -7,7 +7,6 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.service.TimelinePersistenceService;
 import org.github.tess1o.geopulse.timeline.service.TimelineQueryService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -32,8 +31,6 @@ class TimelineTimezoneIntegrationTest {
     @Inject
     TimelineQueryService timelineQueryService;
 
-    @Inject
-    TimelinePersistenceService persistenceService;
 
     @Inject
     UserRepository userRepository;
@@ -164,7 +161,7 @@ class TimelineTimezoneIntegrationTest {
         Instant startGMT3 = yesterday.atStartOfDay(gmt3).toInstant();
         Instant endGMT3 = yesterday.plusDays(1).atStartOfDay(gmt3).minusNanos(1000000).toInstant();
 
-        boolean shouldPersistGMT3 = persistenceService.shouldPersistTimeline(startGMT3, endGMT3);
+        boolean shouldPersistGMT3 = shouldPersistTimeline(startGMT3, endGMT3);
         assertTrue(shouldPersistGMT3, "Yesterday's GMT+3 day should be persisted");
 
         // Test case 2: Today's GMT+3 day (should NOT be persisted)
@@ -172,7 +169,7 @@ class TimelineTimezoneIntegrationTest {
         Instant startTodayGMT3 = today.atStartOfDay(gmt3).toInstant();
         Instant endTodayGMT3 = today.plusDays(1).atStartOfDay(gmt3).minusNanos(1000000).toInstant();
 
-        boolean shouldPersistTodayGMT3 = persistenceService.shouldPersistTimeline(startTodayGMT3, endTodayGMT3);
+        boolean shouldPersistTodayGMT3 = shouldPersistTimeline(startTodayGMT3, endTodayGMT3);
         // This might be true or false depending on the current UTC time and GMT+3 offset
         log.info("Today's GMT+3 day persistence check: {}", shouldPersistTodayGMT3);
 
@@ -182,7 +179,7 @@ class TimelineTimezoneIntegrationTest {
         Instant startGMT5 = testDate.atStartOfDay(gmt5).toInstant();
         Instant endGMT5 = testDate.plusDays(1).atStartOfDay(gmt5).minusNanos(1000000).toInstant();
 
-        boolean shouldPersistGMT5 = persistenceService.shouldPersistTimeline(startGMT5, endGMT5);
+        boolean shouldPersistGMT5 = shouldPersistTimeline(startGMT5, endGMT5);
         assertTrue(shouldPersistGMT5, "Past GMT-5 day should be persisted");
 
         log.info("Persistence logic tests completed successfully");
@@ -259,7 +256,7 @@ class TimelineTimezoneIntegrationTest {
         assertEquals(testUser.getId(), timeline.getUserId());
 
         // Verify persistence logic handles DST correctly
-        boolean shouldPersist = persistenceService.shouldPersistTimeline(startDST, endDST);
+        boolean shouldPersist = shouldPersistTimeline(startDST, endDST);
         assertTrue(shouldPersist, "Past DST transition day should be persisted");
 
         log.info("DST transition test completed successfully");
@@ -335,5 +332,19 @@ class TimelineTimezoneIntegrationTest {
         }
 
         log.info("Midnight boundary tests completed successfully");
+    }
+
+    /**
+     * Simple utility method to check if a timeline time range should be persisted.
+     * Only completed past days are persisted - today's timeline is always live.
+     * This replaces the removed TimelinePersistenceService.shouldPersistTimeline method.
+     */
+    private boolean shouldPersistTimeline(Instant startTime, Instant endTime) {
+        // Check if the start time represents today in UTC - if so, don't persist
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate startDate = startTime.atZone(ZoneOffset.UTC).toLocalDate();
+        
+        // Only persist if the start date is before today (completed past day)
+        return startDate.isBefore(today);
     }
 }

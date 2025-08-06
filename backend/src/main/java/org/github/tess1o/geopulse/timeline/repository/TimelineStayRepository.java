@@ -75,6 +75,19 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         return findByUserAndDateRange(userId, startOfDay, endOfDay);
     }
 
+    /**
+     * Check if any timeline stays exist for a specific date.
+     * Used by DailyTimelineProcessingService to determine if timeline data is already cached.
+     * 
+     * @param userId user ID
+     * @param timelineDate date to check for existing timeline data
+     * @return true if timeline stays exist for this date, false otherwise
+     */
+    public boolean hasPersistedTimelineForDate(UUID userId, Instant timelineDate) {
+        List<TimelineStayEntity> stays = findByUserAndDate(userId, timelineDate);
+        return !stays.isEmpty();
+    }
+
 
 
     /**

@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
+import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -33,7 +34,7 @@ public class DailyTimelineProcessingService {
     TimelineQueryService timelineQueryService;
 
     @Inject
-    TimelinePersistenceService persistenceService;
+    TimelineStayRepository timelineStayRepository;
 
     // Configuration properties
     @ConfigProperty(name = "geopulse.timeline.daily-processing.batch-size", defaultValue = "20")
@@ -121,7 +122,7 @@ public class DailyTimelineProcessingService {
     public boolean processUserTimeline(UUID userId, Instant startOfDay, Instant endOfDay, LocalDate date) {
         try {
             // Check if timeline is already persisted for this date
-            if (persistenceService.hasPersistedTimelineForDate(userId, startOfDay)) {
+            if (timelineStayRepository.hasPersistedTimelineForDate(userId, startOfDay)) {
                 log.debug("Timeline already exists for user {} on date {}, skipping", userId, date);
                 return false;
             }

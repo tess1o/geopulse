@@ -37,7 +37,7 @@ class DailyTimelineProcessingServiceTest {
     private TimelineQueryService timelineQueryService;
 
     @Mock
-    private TimelinePersistenceService persistenceService;
+    private org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository timelineStayRepository;
 
     @InjectMocks
     private DailyTimelineProcessingService dailyProcessingService;
@@ -66,7 +66,7 @@ class DailyTimelineProcessingServiceTest {
         // Arrange
         MovementTimelineDTO timeline = createMockTimeline(TimelineDataSource.CACHED, 2, 1);
         
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(timeline);
 
         // Act
@@ -74,28 +74,28 @@ class DailyTimelineProcessingServiceTest {
 
         // Assert
         assertTrue(result, "Should return true when timeline is processed and cached");
-        verify(persistenceService).hasPersistedTimelineForDate(testUserId, startOfDay);
+        verify(timelineStayRepository).hasPersistedTimelineForDate(testUserId, startOfDay);
         verify(timelineQueryService).getTimeline(testUserId, startOfDay, endOfDay);
     }
 
     @Test
     void testProcessUserTimeline_ExistingTimeline_ShouldSkip() {
         // Arrange
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(true);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(true);
 
         // Act
         boolean result = dailyProcessingService.processUserTimeline(testUserId, startOfDay, endOfDay, testDate);
 
         // Assert
         assertFalse(result, "Should return false when timeline already exists");
-        verify(persistenceService).hasPersistedTimelineForDate(testUserId, startOfDay);
+        verify(timelineStayRepository).hasPersistedTimelineForDate(testUserId, startOfDay);
         verify(timelineQueryService, never()).getTimeline(any(), any(), any());
     }
 
     @Test
     void testProcessUserTimeline_NoTimelineData_ShouldSkip() {
         // Arrange
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(null);
 
         // Act
@@ -111,7 +111,7 @@ class DailyTimelineProcessingServiceTest {
         // Arrange
         MovementTimelineDTO emptyTimeline = createMockTimeline(TimelineDataSource.LIVE, 0, 0);
         
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(emptyTimeline);
 
         // Act
@@ -127,7 +127,7 @@ class DailyTimelineProcessingServiceTest {
         // Arrange - timeline was generated live but not cached (e.g., for current day)
         MovementTimelineDTO timeline = createMockTimeline(TimelineDataSource.LIVE, 2, 1);
         
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(timeline);
 
         // Act
@@ -141,7 +141,7 @@ class DailyTimelineProcessingServiceTest {
     @Test
     void testProcessUserTimeline_ServiceThrowsException_ShouldPropagateException() {
         // Arrange
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay))
             .thenThrow(new RuntimeException("Database connection error"));
 
@@ -161,7 +161,7 @@ class DailyTimelineProcessingServiceTest {
         MovementTimelineDTO timeline = createMockTimeline(TimelineDataSource.CACHED, 1, 1);
         
         when(userRepository.findActiveUsers()).thenReturn(activeUsers);
-        when(persistenceService.hasPersistedTimelineForDate(any(), any())).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(any(), any())).thenReturn(false);
         when(timelineQueryService.getTimeline(any(), any(), any())).thenReturn(timeline);
 
         // Act
@@ -189,7 +189,7 @@ class DailyTimelineProcessingServiceTest {
         MovementTimelineDTO timeline = createMockTimeline(TimelineDataSource.CACHED, 1, 1);
         
         when(userRepository.findActiveUsers()).thenReturn(activeUsers);
-        when(persistenceService.hasPersistedTimelineForDate(any(), any())).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(any(), any())).thenReturn(false);
         
         // First user: successful processing
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(timeline);
@@ -271,7 +271,7 @@ class DailyTimelineProcessingServiceTest {
         // Arrange
         MovementTimelineDTO timeline = createMockTimeline(TimelineDataSource.CACHED, 3, 0); // Only stays
         
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(timeline);
 
         // Act
@@ -286,7 +286,7 @@ class DailyTimelineProcessingServiceTest {
         // Arrange
         MovementTimelineDTO timeline = createMockTimeline(TimelineDataSource.CACHED, 0, 2); // Only trips
         
-        when(persistenceService.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
+        when(timelineStayRepository.hasPersistedTimelineForDate(testUserId, startOfDay)).thenReturn(false);
         when(timelineQueryService.getTimeline(testUserId, startOfDay, endOfDay)).thenReturn(timeline);
 
         // Act
