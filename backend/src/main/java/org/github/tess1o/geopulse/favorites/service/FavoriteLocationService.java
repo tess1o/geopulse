@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
 import org.locationtech.jts.geom.Point;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -145,6 +146,31 @@ public class FavoriteLocationService {
         }
         List<FavoritesEntity> favorites = List.of(favorite.get());
         return mapper.toFavoriteLocationDto(favorites);
+    }
+
+    /**
+     * Batch find favorites by multiple points with spatial matching.
+     * Uses true batch processing to avoid N+1 query problem.
+     * 
+     * @param userId User ID for favorite location lookup
+     * @param points List of points to search for
+     * @return Map of coordinate string (lon,lat) to FavoriteLocationsDto
+     */
+    public Map<String, FavoriteLocationsDto> findByPointsBatch(UUID userId, List<Point> points) {
+        Map<String, FavoritesEntity> entities = repository.findByPointsBatch(userId, points, maxDistanceFromPoint, maxDistanceFromArea);
+        
+        Map<String, FavoriteLocationsDto> results = new java.util.HashMap<>();
+        for (Map.Entry<String, FavoritesEntity> entry : entities.entrySet()) {
+            String coordKey = entry.getKey();
+            FavoritesEntity entity = entry.getValue();
+            
+            // Convert single entity to DTO format (same as findByPoint)
+            List<FavoritesEntity> favorites = List.of(entity);
+            FavoriteLocationsDto dto = mapper.toFavoriteLocationDto(favorites);
+            results.put(coordKey, dto);
+        }
+        
+        return results;
     }
 
     @Transactional

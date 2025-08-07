@@ -7,7 +7,10 @@ import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.locationtech.jts.geom.Point;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -71,6 +74,104 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
     public long deleteByUserId(UUID userId) {
         return delete("user.id = ?1", userId);
+    }
+
+    /**
+     * Batch find favorites by multiple points with spatial matching.
+     * This method executes a single SQL query instead of N individual queries.
+     * 
+     * @param userId User ID for favorite location lookup
+     * @param points List of points to search for
+     * @param maxDistanceFromPoint Maximum distance in meters for POINT favorites
+     * @param maxDistanceFromArea Maximum distance in meters for AREA favorites
+     * @return Map of coordinate string (lon,lat) to FavoritesEntity
+     */
+    public Map<String, FavoritesEntity> findByPointsBatch(UUID userId, List<Point> points, 
+                                                          int maxDistanceFromPoint, int maxDistanceFromArea) {
+        if (points == null || points.isEmpty()) {
+            return Map.of();
+        }
+
+        // Build VALUES clause for input coordinates
+        StringBuilder valuesClause = new StringBuilder();
+        for (int i = 0; i < points.size(); i++) {
+            if (i > 0) valuesClause.append(", ");
+            valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(i)
+                      .append(", :lat").append(i).append("), 4326), :lon").append(i)
+                      .append(", :lat").append(i).append(")");
+        }
+
+        // Step 1: Get matching favorite IDs and their corresponding input coordinates
+        String matchingQuery = """
+                WITH input_coords AS (
+                    SELECT input_point, input_lon, input_lat
+                    FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
+                )
+                SELECT DISTINCT ON (ic.input_lon, ic.input_lat) 
+                       f.id, ic.input_lon, ic.input_lat
+                FROM favorite_locations f
+                CROSS JOIN input_coords ic
+                WHERE f.user_id = :userId
+                  AND (
+                      (f.type = 'POINT' 
+                       AND ST_DWithin(f.geometry::geography, ic.input_point::geography, :maxDistanceFromPoint)
+                      )
+                      OR 
+                      (f.type = 'AREA' 
+                       AND (ST_Contains(f.geometry, ic.input_point)
+                            OR ST_DWithin(ST_Boundary(f.geometry)::geography, ic.input_point::geography, :maxDistanceFromArea)
+                           )
+                      )
+                  )
+                ORDER BY ic.input_lon, ic.input_lat, 
+                         CASE WHEN f.type = 'AREA' AND ST_Contains(f.geometry, ic.input_point) THEN 1 ELSE 2 END,
+                         ST_Distance(f.geometry::geography, ic.input_point::geography)
+                """.formatted(valuesClause.toString());
+
+        var matchingQueryExec = em.createNativeQuery(matchingQuery)
+                               .setParameter("userId", userId)
+                               .setParameter("maxDistanceFromPoint", maxDistanceFromPoint)
+                               .setParameter("maxDistanceFromArea", maxDistanceFromArea);
+
+        // Set coordinate parameters
+        for (int i = 0; i < points.size(); i++) {
+            Point point = points.get(i);
+            matchingQueryExec.setParameter("lon" + i, point.getX());
+            matchingQueryExec.setParameter("lat" + i, point.getY());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> matchingResults = matchingQueryExec.getResultList();
+        
+        if (matchingResults.isEmpty()) {
+            return Map.of();
+        }
+
+        // Step 2: Get all matching entities in a single query and build coordinate mapping
+        List<Long> favoriteIds = new ArrayList<>();
+        Map<Long, String> idToCoordMap = new HashMap<>();
+        
+        for (Object[] row : matchingResults) {
+            Long id = ((Number) row[0]).longValue();
+            Double inputLon = (Double) row[1];
+            Double inputLat = (Double) row[2];
+            favoriteIds.add(id);
+            idToCoordMap.put(id, inputLon + "," + inputLat);
+        }
+
+        // Get all entities in a single IN query
+        List<FavoritesEntity> entities = find("id in ?1", favoriteIds).list();
+        
+        // Build result map
+        Map<String, FavoritesEntity> resultMap = new HashMap<>();
+        for (FavoritesEntity entity : entities) {
+            String coordKey = idToCoordMap.get(entity.getId());
+            if (coordKey != null) {
+                resultMap.put(coordKey, entity);
+            }
+        }
+
+        return resultMap;
     }
 
 }

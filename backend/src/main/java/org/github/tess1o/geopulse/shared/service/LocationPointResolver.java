@@ -26,9 +26,9 @@ public class LocationPointResolver {
     private final CacheGeocodingService cacheGeocodingService;
 
     @Inject
-    public LocationPointResolver(GeocodingService geocodingService, 
-                               FavoriteLocationService favoriteLocationService,
-                               CacheGeocodingService cacheGeocodingService) {
+    public LocationPointResolver(GeocodingService geocodingService,
+                                 FavoriteLocationService favoriteLocationService,
+                                 CacheGeocodingService cacheGeocodingService) {
         this.geocodingService = geocodingService;
         this.favoriteLocationService = favoriteLocationService;
         this.cacheGeocodingService = cacheGeocodingService;
@@ -54,12 +54,12 @@ public class LocationPointResolver {
 
         // No favorite found, use geocoding
         FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
-        
+
         // Get the entity ID of the cached result (getLocationName already cached it)
         Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(point).orElse(null);
-        
+
         return LocationResolutionResult.fromGeocoding(
-                geocodingResult.getFormattedDisplayName(), 
+                geocodingResult.getFormattedDisplayName(),
                 geocodingId
         );
     }
@@ -68,37 +68,41 @@ public class LocationPointResolver {
      * Batch location resolution with rate limiting for external geocoding API.
      * Processes multiple coordinates efficiently while respecting API limits.
      *
-     * @param userId User ID for favorite location lookup
+     * @param userId      User ID for favorite location lookup
      * @param coordinates List of coordinates to resolve
      * @return Map of coordinate string (lon,lat) to LocationResolutionResult
      */
     public Map<String, LocationResolutionResult> resolveLocationsWithReferencesBatch(
             UUID userId, List<Point> coordinates) {
-        
+
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
         }
 
+        long startTime = System.currentTimeMillis();
+
         log.debug("Batch resolving {} coordinates for user {}", coordinates.size(), userId);
 
-        // Step 1: Check for favorite locations first (these are fast)
+        // Step 1: Batch check for favorite locations using true batch processing
+        Map<String, FavoriteLocationsDto> favoriteResults = favoriteLocationService.findByPointsBatch(userId, coordinates);
+        
         Map<String, LocationResolutionResult> results = new java.util.HashMap<>();
         List<Point> needGeocoding = new java.util.ArrayList<>();
 
         for (Point point : coordinates) {
-            FavoriteLocationsDto favorite = favoriteLocationService.findByPoint(userId, point);
             String coordKey = point.getX() + "," + point.getY();
+            FavoriteLocationsDto favorite = favoriteResults.get(coordKey);
 
             if (favorite != null && (!favorite.getPoints().isEmpty() || !favorite.getAreas().isEmpty())) {
                 // Found a favorite location
                 if (!favorite.getPoints().isEmpty()) {
                     var favoritePoint = favorite.getPoints().getFirst();
                     results.put(coordKey, LocationResolutionResult.fromFavorite(
-                        favoritePoint.getName(), favoritePoint.getId()));
+                            favoritePoint.getName(), favoritePoint.getId()));
                 } else if (!favorite.getAreas().isEmpty()) {
                     var favoriteArea = favorite.getAreas().getFirst();
                     results.put(coordKey, LocationResolutionResult.fromFavorite(
-                        favoriteArea.getName(), favoriteArea.getId()));
+                            favoriteArea.getName(), favoriteArea.getId()));
                 } else {
                     needGeocoding.add(point);
                 }
@@ -112,38 +116,67 @@ public class LocationPointResolver {
             return results;
         }
 
-        log.debug("Found {} favorites, {} coordinates need geocoding", results.size(), needGeocoding.size());
+        log.debug("Found {} favorites, {} coordinates need geocoding. This process took {} s", results.size(), needGeocoding.size(), (System.currentTimeMillis() - startTime) / 1000.0d);
+
+        long step2StartTime = System.currentTimeMillis();
 
         // Step 2: Batch lookup cached geocoding results
-        Map<String, FormattableGeocodingResult> cachedResults = 
-            cacheGeocodingService.getCachedGeocodingResultsBatch(needGeocoding);
-        Map<String, Long> cachedIds = 
-            cacheGeocodingService.getCachedGeocodingResultIdsBatch(needGeocoding);
+        Map<String, FormattableGeocodingResult> cachedResults =
+                cacheGeocodingService.getCachedGeocodingResultsBatch(needGeocoding);
+        Map<String, Long> cachedIds =
+                cacheGeocodingService.getCachedGeocodingResultIdsBatch(needGeocoding);
 
-        log.debug("Found {} cached geocoding results", cachedResults.size());
+        log.debug("Found {} cached geocoding results in {} s", cachedResults.size(), (System.currentTimeMillis() - step2StartTime) / 1000.0d);
 
         List<Point> needExternalGeocoding = new java.util.ArrayList<>();
 
         for (Point point : needGeocoding) {
             String coordKey = point.getX() + "," + point.getY();
-            
+
             if (cachedResults.containsKey(coordKey)) {
                 FormattableGeocodingResult cached = cachedResults.get(coordKey);
                 Long cachedId = cachedIds.get(coordKey);
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
-                    cached.getFormattedDisplayName(), cachedId));
+                        cached.getFormattedDisplayName(), cachedId));
             } else {
                 needExternalGeocoding.add(point);
             }
         }
 
-        // Step 3: Process external geocoding with rate limiting (1 req/sec max)
-        if (!needExternalGeocoding.isEmpty()) {
-            log.debug("Processing {} external geocoding requests with rate limiting", needExternalGeocoding.size());
-            processExternalGeocodingWithRateLimit(needExternalGeocoding, results);
+        // Step 3: Fallback individual cache lookup for missing coordinates
+        // This is a temporary fix while debugging the batch query issue
+        List<Point> stillNeedExternal = new java.util.ArrayList<>();
+        
+        for (Point point : needExternalGeocoding) {
+            String coordKey = point.getX() + "," + point.getY();
+            
+            // Try individual cache lookup as fallback
+            java.util.Optional<org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult> individualResult = 
+                cacheGeocodingService.getCachedGeocodingResult(point);
+            java.util.Optional<Long> individualId = cacheGeocodingService.getCachedGeocodingResultId(point);
+            
+            if (individualResult.isPresent()) {
+                log.debug("Batch missed but individual found cache for: {}", coordKey);
+                results.put(coordKey, LocationResolutionResult.fromGeocoding(
+                    individualResult.get().getFormattedDisplayName(), individualId.orElse(null)));
+            } else {
+                stillNeedExternal.add(point);
+            }
+        }
+        
+        log.debug("After individual fallback: {} coordinates still need external geocoding (batch missed {})", 
+                 stillNeedExternal.size(), needExternalGeocoding.size() - stillNeedExternal.size());
+
+        // Step 4: Process truly external geocoding with rate limiting (1 req/sec max)
+        long step3StartTime = System.currentTimeMillis();
+        if (!stillNeedExternal.isEmpty()) {
+            log.debug("Processing {} external geocoding requests with rate limiting", stillNeedExternal.size());
+            processExternalGeocodingWithRateLimit(stillNeedExternal, results);
         }
 
-        // Step 4: Ensure all coordinates have results (fallback for any missing)
+        log.debug("External geocoding requests processed in {} s", (System.currentTimeMillis() - step3StartTime) / 1000.0d);
+
+        // Step 5: Ensure all coordinates have results (fallback for any missing)
         int fallbackCount = 0;
         for (Point point : coordinates) {
             String coordKey = point.getX() + "," + point.getY();
@@ -154,11 +187,12 @@ public class LocationPointResolver {
             }
         }
 
-        log.debug("Batch resolution completed: {} favorites, {} cached, {} external, {} fallbacks", 
-                  coordinates.size() - needGeocoding.size(),
-                  cachedResults.size(),
-                  needExternalGeocoding.size() - fallbackCount,
-                  fallbackCount);
+        log.debug("Batch resolution completed: {} favorites, {} cached, {} external, {} fallbacks, took {} s",
+                coordinates.size() - needGeocoding.size(),
+                cachedResults.size(),
+                needExternalGeocoding.size() - fallbackCount,
+                fallbackCount,
+                (System.currentTimeMillis() - startTime) / 1000.0d);
 
         return results;
     }
@@ -167,25 +201,25 @@ public class LocationPointResolver {
      * Process external geocoding requests with rate limiting.
      * Respects the 1 request per second limit for geocoding APIs.
      */
-    private void processExternalGeocodingWithRateLimit(List<Point> coordinates, 
-                                                      Map<String, LocationResolutionResult> results) {
-        
+    private void processExternalGeocodingWithRateLimit(List<Point> coordinates,
+                                                       Map<String, LocationResolutionResult> results) {
+
         for (int i = 0; i < coordinates.size(); i++) {
             Point point = coordinates.get(i);
             String coordKey = point.getX() + "," + point.getY();
-            
+
             try {
                 // Rate limiting: wait 1 second between requests (except for the first one)
                 if (i > 0) {
                     Thread.sleep(1000);
                 }
-                
+
                 FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
                 Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(point).orElse(null);
-                
+
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
-                    geocodingResult.getFormattedDisplayName(), geocodingId));
-                    
+                        geocodingResult.getFormattedDisplayName(), geocodingId));
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;

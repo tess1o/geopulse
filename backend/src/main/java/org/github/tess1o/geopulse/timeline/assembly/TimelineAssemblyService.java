@@ -86,9 +86,13 @@ public class TimelineAssemblyService {
         }
 
         // Step 1: Extract unique coordinates and create points
+        // Use consistent coordinate key generation by creating Point first, then using Point coordinates
         Map<String, Point> coordinatePoints = stayPoints.stream()
                 .collect(Collectors.toMap(
-                        stayPoint -> stayPoint.longitude() + "," + stayPoint.latitude(),
+                        stayPoint -> {
+                            Point point = spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude());
+                            return point.getX() + "," + point.getY(); // Use Point precision, not raw doubles
+                        },
                         stayPoint -> spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude()),
                         (existing, replacement) -> existing // Keep first occurrence for duplicates
                 ));
@@ -100,11 +104,14 @@ public class TimelineAssemblyService {
         // Step 3: Map results back to stay points
         return stayPoints.stream()
                 .map(stayPoint -> {
-                    String coordKey = stayPoint.longitude() + "," + stayPoint.latitude();
+                    // Use same coordinate key generation as Step 1
+                    Point point = spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude());
+                    String coordKey = point.getX() + "," + point.getY();
                     var locationResult = locationResults.get(coordKey);
                     
                     // Handle null case - fallback to individual resolution if batch failed
                     if (locationResult == null) {
+                        log.debug("Batch lookup failed for coordinate key '{}', falling back to individual resolution", coordKey);
                         Point locationPoint = spatialCalculationService.createPoint(stayPoint.longitude(), stayPoint.latitude());
                         locationResult = timelineDataService.resolveLocationWithReferences(userId, locationPoint);
                     }
