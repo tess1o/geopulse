@@ -128,24 +128,6 @@ public class TimelineProcessingService {
     }
 
     /**
-     * Apply filtering operations to the timeline.
-     * This is a placeholder for future filtering implementations.
-     * 
-     * @param config timeline configuration with filtering parameters
-     * @param timeline timeline to filter
-     * @return filtered timeline
-     */
-    public MovementTimelineDTO applyFiltering(TimelineConfig config, MovementTimelineDTO timeline) {
-        // Placeholder for future filtering operations:
-        // - Remove stays shorter than minimum duration
-        // - Remove trips shorter than minimum distance
-        // - Apply privacy filters
-        // - Remove low-confidence detections
-        
-        return timeline;
-    }
-
-    /**
      * Check if path simplification is enabled in the configuration.
      * 
      * @param config timeline configuration
@@ -156,21 +138,5 @@ public class TimelineProcessingService {
                config.getPathSimplificationEnabled() &&
                config.getPathSimplificationTolerance() != null &&
                config.getPathSimplificationTolerance() > 0;
-    }
-
-    /**
-     * Check if any post-processing is needed based on configuration.
-     * 
-     * @param config timeline configuration
-     * @return true if any post-processing operations are enabled
-     */
-    public boolean isProcessingNeeded(TimelineConfig config) {
-        if (config == null) {
-            return false;
-        }
-        
-        // Check if any processing operations are enabled
-        return config.getIsMergeEnabled() || isPathSimplificationEnabled(config); 
-        // Future: || config.getIsFilteringEnabled() || config.getIsPrivacyEnabled()
     }
 }

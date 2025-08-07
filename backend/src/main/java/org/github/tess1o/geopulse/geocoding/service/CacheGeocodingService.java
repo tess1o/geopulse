@@ -206,7 +206,7 @@ public class CacheGeocodingService {
 
         try {
             Map<String, ReverseGeocodingLocationEntity> cachedResults = 
-                repository.findByCoordinatesBatch(coordinates, spatialToleranceMeters);
+                repository.findByCoordinatesBatchReal(coordinates, spatialToleranceMeters);
             
             return cachedResults.entrySet().stream()
                     .collect(Collectors.toMap(
@@ -234,7 +234,7 @@ public class CacheGeocodingService {
 
         try {
             Map<String, ReverseGeocodingLocationEntity> cachedResults = 
-                repository.findByCoordinatesBatch(coordinates, spatialToleranceMeters);
+                repository.findByCoordinatesBatchReal(coordinates, spatialToleranceMeters);
             
             return cachedResults.entrySet().stream()
                     .collect(Collectors.toMap(

@@ -8,7 +8,10 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Repository for reverse geocoding locations using ultra-simplified schema.
@@ -174,5 +177,114 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             // Silently ignore - timestamp updates are non-critical
             log.trace("Failed to update access timestamp for geocoding entity {}: {}", entityId, e.getMessage());
         }
+    }
+
+    /**
+     * True batch find cached locations for multiple coordinates.
+     * Replaces the fake batch processing with a single spatial query.
+     * 
+     * @param coordinates List of coordinates to search for
+     * @param toleranceMeters Tolerance in meters for spatial matching
+     * @return Map of coordinate string (lon,lat) to cached location entity
+     */
+    public Map<String, ReverseGeocodingLocationEntity> findByCoordinatesBatchReal(
+            List<Point> coordinates, double toleranceMeters) {
+        
+        if (coordinates == null || coordinates.isEmpty()) {
+            return Map.of();
+        }
+
+        // Build VALUES clause for input coordinates
+        StringBuilder valuesClause = new StringBuilder();
+        for (int i = 0; i < coordinates.size(); i++) {
+            if (i > 0) valuesClause.append(", ");
+            valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(i)
+                      .append(", :lat").append(i).append("), 4326), :lon").append(i)
+                      .append(", :lat").append(i).append(")");
+        }
+
+        // Step 1: Get matching geocoding IDs and their corresponding input coordinates
+        // This query matches the exact logic from findByRequestCoordinates individual method
+        String matchingQuery = """
+                WITH input_coords AS (
+                    SELECT input_point, input_lon, input_lat
+                    FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
+                )
+                SELECT DISTINCT ON (ic.input_lon, ic.input_lat) 
+                       r.id, ic.input_lon, ic.input_lat
+                FROM reverse_geocoding_location r
+                CROSS JOIN input_coords ic
+                WHERE (
+                    ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
+                    OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
+                    OR ST_Contains(r.bounding_box, ic.input_point)
+                )
+                ORDER BY ic.input_lon, ic.input_lat, r.last_accessed_at DESC
+                """.formatted(valuesClause.toString());
+
+        var matchingQueryExec = getEntityManager().createNativeQuery(matchingQuery)
+                               .setParameter("tolerance", toleranceMeters);
+
+        // Set coordinate parameters
+        for (int i = 0; i < coordinates.size(); i++) {
+            Point point = coordinates.get(i);
+            matchingQueryExec.setParameter("lon" + i, point.getX());
+            matchingQueryExec.setParameter("lat" + i, point.getY());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> matchingResults = matchingQueryExec.getResultList();
+        
+        if (matchingResults.isEmpty()) {
+            return Map.of();
+        }
+
+        // Step 2: Get all matching entities in a single query and build coordinate mapping
+        List<Long> geocodingIds = new ArrayList<>();
+        Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // Changed: One ID can map to multiple coordinates
+        
+        for (Object[] row : matchingResults) {
+            Long id = ((Number) row[0]).longValue();
+            Double inputLon = (Double) row[1];
+            Double inputLat = (Double) row[2];
+            String coordKey = inputLon + "," + inputLat;
+            
+            geocodingIds.add(id);
+            idToCoordListMap.computeIfAbsent(id, k -> new ArrayList<>()).add(coordKey);
+        }
+        
+        log.debug("Batch geocoding ID mapping: {} unique entity IDs for {} input coordinates", 
+                 idToCoordListMap.size(), matchingResults.size());
+
+        // Get all entities in a single IN query
+        List<ReverseGeocodingLocationEntity> entities = find("id in ?1", geocodingIds).list();
+        
+        // Debug logging
+        log.debug("Batch geocoding debug: {} input coordinates, {} spatial matches found, {} entities loaded",
+                 coordinates.size(), matchingResults.size(), entities.size());
+        
+        if (log.isDebugEnabled() && matchingResults.size() != entities.size()) {
+            log.debug("Batch geocoding mismatch: expected {} entities for spatial matches, got {}",
+                     matchingResults.size(), entities.size());
+        }
+        
+        // Build result map and update access timestamps
+        Map<String, ReverseGeocodingLocationEntity> resultMap = new HashMap<>();
+        for (ReverseGeocodingLocationEntity entity : entities) {
+            List<String> coordKeys = idToCoordListMap.get(entity.getId());
+            if (coordKeys != null) {
+                // One entity can serve multiple input coordinates
+                for (String coordKey : coordKeys) {
+                    resultMap.put(coordKey, entity);
+                }
+                // Update timestamp asynchronously (non-critical) - once per entity
+                updateAccessTimestampAsync(entity.getId());
+            }
+        }
+        
+        log.debug("Batch geocoding final result: {} coordinate mappings from {} entities", 
+                 resultMap.size(), entities.size());
+
+        return resultMap;
     }
 }
