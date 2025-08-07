@@ -149,14 +149,16 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
 
         // Step 2: Get all matching entities in a single query and build coordinate mapping
         List<Long> favoriteIds = new ArrayList<>();
-        Map<Long, String> idToCoordMap = new HashMap<>();
+        Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // One favorite can match multiple coordinates
         
         for (Object[] row : matchingResults) {
             Long id = ((Number) row[0]).longValue();
             Double inputLon = (Double) row[1];
             Double inputLat = (Double) row[2];
+            String coordKey = inputLon + "," + inputLat;
+            
             favoriteIds.add(id);
-            idToCoordMap.put(id, inputLon + "," + inputLat);
+            idToCoordListMap.computeIfAbsent(id, k -> new ArrayList<>()).add(coordKey);
         }
 
         // Get all entities in a single IN query
@@ -165,9 +167,12 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         // Build result map
         Map<String, FavoritesEntity> resultMap = new HashMap<>();
         for (FavoritesEntity entity : entities) {
-            String coordKey = idToCoordMap.get(entity.getId());
-            if (coordKey != null) {
-                resultMap.put(coordKey, entity);
+            List<String> coordKeys = idToCoordListMap.get(entity.getId());
+            if (coordKeys != null) {
+                // One favorite can serve multiple input coordinates
+                for (String coordKey : coordKeys) {
+                    resultMap.put(coordKey, entity);
+                }
             }
         }
 
