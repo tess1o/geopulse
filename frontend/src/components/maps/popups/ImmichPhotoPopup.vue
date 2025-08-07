@@ -199,6 +199,13 @@ onUnmounted(() => {
 })
 </script>
 
+<style>
+/* Remove conflicting transforms to let JavaScript handle positioning */
+:global(.leaflet-popup-pane .leaflet-popup) {
+  /* JavaScript will handle transforms dynamically */
+}
+</style>
+
 <style scoped>
 .immich-photo-popup {
   font-family: var(--font-family, system-ui);
@@ -235,9 +242,9 @@ onUnmounted(() => {
 .popup-image-loading {
   text-align: center;
   padding: 1rem;
-  background: rgba(99, 102, 241, 0.05);
+  background: var(--gp-surface-light, #f8fafc);
   border-radius: 8px;
-  color: #6366f1;
+  color: var(--gp-text-secondary, #64748b);
   font-size: 0.8rem;
   min-height: 60px;
   display: flex;
@@ -274,9 +281,9 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.05);
+  background: var(--gp-surface-light, #f8fafc);
   border-radius: 4px;
-  color: #6366f1;
+  color: var(--gp-text-secondary, #64748b);
   font-size: 0.8rem;
 }
 
@@ -284,8 +291,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(99, 102, 241, 0.1);
-  color: #6366f1;
+  background: var(--gp-surface-light, #f8fafc);
+  color: var(--gp-text-secondary, #64748b);
   font-weight: 600;
   font-size: 0.75rem;
   border-radius: 4px;
@@ -307,12 +314,13 @@ onUnmounted(() => {
 }
 
 .popup-action {
-  color: #6366f1;
+  color: var(--gp-text-secondary, #64748b);
   font-size: 0.8rem;
   font-weight: 500;
   text-align: center;
   padding: 0.25rem;
-  background: rgba(99, 102, 241, 0.1);
+  background: var(--gp-surface-light, #f1f5f9);
+  border: 1px solid var(--gp-border-light, #e2e8f0);
   border-radius: 4px;
   margin-top: 0.5rem;
   cursor: pointer;
@@ -320,8 +328,9 @@ onUnmounted(() => {
 }
 
 .popup-action:hover {
-  background: rgba(99, 102, 241, 0.2);
-  color: #4f46e5;
+  background: var(--gp-surface-white, #ffffff);
+  color: var(--gp-primary, #1a56db);
+  border-color: var(--gp-primary, #1a56db);
 }
 
 /* Dark theme */
@@ -335,25 +344,17 @@ onUnmounted(() => {
 }
 
 .p-dark .popup-action {
-  color: #a5b4fc !important;
-  background: rgba(99, 102, 241, 0.2) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 .p-dark .popup-action:hover {
-  color: #c7d2fe !important;
-  background: rgba(99, 102, 241, 0.3) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
-.p-dark .popup-more {
-  background: rgba(99, 102, 241, 0.2) !important;
-  color: #a5b4fc !important;
-}
-
-.p-dark .popup-image-loading,
-.p-dark .popup-grid-thumb-loading {
-  background: rgba(99, 102, 241, 0.1) !important;
-  color: #a5b4fc !important;
-}
 
 /* Mobile responsive */
 @media (max-width: 768px) {

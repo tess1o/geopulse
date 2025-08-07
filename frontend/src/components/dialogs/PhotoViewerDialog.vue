@@ -378,7 +378,7 @@ onUnmounted(() => {
   min-height: 400px;
   max-height: 60vh;
   overflow: hidden;
-  background: var(--gp-surface-darker, #000);
+  background: var(--gp-surface-light, #f8fafc);
 }
 
 .main-photo {
@@ -451,6 +451,10 @@ onUnmounted(() => {
 .p-dark .photo-actions {
   background: var(--gp-surface-dark, #1e293b) !important;
   border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1)) !important;
+}
+
+.p-dark .photo-display {
+  background: var(--gp-surface-darker, #000) !important;
 }
 
 .p-dark .photo-details {

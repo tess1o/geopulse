@@ -149,6 +149,7 @@ const renderPhotoMarkers = () => {
     // Hover shows preview popup (with throttling to prevent excessive requests)
     let hoverTimeout = null
     marker.on('mouseover', (e) => {
+      console.log('Marker mouseover event triggered')
       // Clear any pending hover timeout
       if (hoverTimeout) {
         clearTimeout(hoverTimeout)
@@ -157,6 +158,7 @@ const renderPhotoMarkers = () => {
       // Delay popup opening to prevent excessive hovering
       hoverTimeout = setTimeout(() => {
         if (!marker.isPopupOpen()) {
+          console.log('Opening popup for hover:', group.photos.length, 'photos')
           marker.openPopup()
           emit('photo-hover', {
             photos: group.photos,
@@ -187,7 +189,7 @@ const renderPhotoMarkers = () => {
     // Add popup content for right-click/context menu  
     const cacheKey = `${group.latitude}-${group.longitude}-${photoCount}`
     const popupContent = createPhotoPopupContent(group)
-    const popupData = popupContentCache.value.get(cacheKey)
+    const popupData = popupContentCache.value.get(cacheKey) // Get after creation
     
     marker.bindPopup(popupContent, {
       maxWidth: window.innerWidth < 768 ? 250 : 300,
@@ -196,7 +198,8 @@ const renderPhotoMarkers = () => {
       closeButton: true,
       autoClose: true,
       keepInView: false,
-      autoPan: false
+      autoPan: false,
+      offset: [0, -15] // Will be dynamically adjusted
     })
 
     // Right-click shows preview (alternative access)
@@ -210,8 +213,17 @@ const renderPhotoMarkers = () => {
       const popupElement = marker.getPopup().getElement()
       
       if (popupElement) {
+        console.log('Popup opened, element:', popupElement, 'popupData:', popupData)
+        
+        // Adjust popup position based on screen location
+        try {
+          adjustPopupPositionOnScreen(marker, popupElement)
+        } catch (error) {
+          console.error('Error adjusting popup position:', error)
+        }
+        
         // Mount Vue component if this popup has structured data
-        if (popupData.containerId) {
+        if (popupData && popupData.containerId) {
           const container = popupElement.querySelector(`#${popupData.containerId}`)
           if (container && !popupVueApps.value.has(popupData.containerId)) {
             const app = createApp(ImmichPhotoPopup, {
@@ -277,6 +289,67 @@ const popupContentCache = ref(new Map())
 
 // Store Vue app instances for popups to keep them reactive
 const popupVueApps = ref(new Map())
+
+const adjustPopupPositionOnScreen = (marker, popupElement) => {
+  if (!props.map || !popupElement) return
+  
+  console.log('Adjusting popup position...')
+  
+  const map = props.map
+  const markerLatLng = marker.getLatLng()
+  const markerPoint = map.latLngToContainerPoint(markerLatLng)
+  const mapSize = map.getSize()
+  
+  console.log('Marker point:', markerPoint, 'Map size:', mapSize)
+  
+  // Get popup dimensions (wait a bit for rendering)
+  setTimeout(() => {
+    const popupRect = popupElement.getBoundingClientRect()
+    const popupWidth = popupRect.width || 300
+    const popupHeight = popupRect.height || 200
+    
+    console.log('Popup dimensions:', { width: popupWidth, height: popupHeight })
+    
+    // Calculate distances from edges
+    const distanceFromTop = markerPoint.y
+    const distanceFromBottom = mapSize.y - markerPoint.y
+    
+    console.log('Distance from top:', distanceFromTop, 'Distance from bottom:', distanceFromBottom)
+    
+    // Minimum required space
+    const minSpace = 50
+    const popupWithMargin = popupHeight + 60
+    
+    // Override Leaflet's positioning completely
+    popupElement.style.position = 'fixed'
+    popupElement.style.left = `${markerPoint.x}px`
+    popupElement.style.bottom = 'auto'
+    
+    // Check if popup would be cut off at top
+    if (distanceFromTop < popupWithMargin) {
+      console.log('Positioning popup BELOW marker (not enough space above)')
+      // Position popup below marker - much closer spacing
+      popupElement.style.top = `${markerPoint.y + 15}px`
+      popupElement.style.transform = 'translateX(-50%)'
+      
+      // Also flip the tip
+      const tip = popupElement.querySelector('.leaflet-popup-tip-container')
+      if (tip) {
+        tip.style.transform = 'rotate(180deg) translateY(-5px)'
+      }
+    } else {
+      console.log('Positioning popup ABOVE marker (default)')
+      // Position popup above marker - closer spacing
+      popupElement.style.top = `${markerPoint.y - popupHeight - 10}px`
+      popupElement.style.transform = 'translateX(-50%)'
+    }
+    
+    // Reset any margin adjustments
+    popupElement.style.marginLeft = '0'
+    
+    console.log('Final popup transform:', popupElement.style.transform)
+  }, 10) // Small delay to ensure popup is rendered
+}
 
 const createPhotoPopupContent = (group) => {
   const photoCount = group.photos.length
