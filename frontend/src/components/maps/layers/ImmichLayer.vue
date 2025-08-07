@@ -43,7 +43,6 @@ const photoMarkers = ref([])
 const loading = ref(false)
 
 // Computed
-const hasPhotos = computed(() => immichStore.hasPhotos)
 const isConfigured = computed(() => immichStore.isConfigured)
 const photoGroups = computed(() => immichStore.photoGroups)
 
@@ -57,7 +56,6 @@ const handleLayerReady = async (layerGroup) => {
 
 const fetchAndRenderPhotos = async () => {
   if (!isConfigured.value) {
-    console.warn('Immich not configured, skipping photo fetch')
     emit('error', {
       type: 'config',
       message: 'Immich is not configured. Please set up your Immich server first.',
@@ -109,25 +107,21 @@ const renderPhotoMarkers = () => {
     if (!group.latitude || !group.longitude || group.photos.length === 0) return
 
     const photoCount = group.photos.length
-    const firstPhoto = group.photos[0]
 
     // Create appropriate icon based on photo count
     const icon = photoCount === 1 ? 
       createImmichPhotoIcon() : 
       createImmichPhotoClusterIcon(photoCount)
 
-    // Create marker without popup auto-binding
+    // Create marker
     const marker = L.marker([group.latitude, group.longitude], {
       icon,
       photoGroup: group,
       photoCount,
-      groupIndex: index,
       ...props.markerOptions
     })
-
-    // Simplified event listeners: hover = preview, click = full viewer
     
-    // Click always opens PhotoViewerDialog (consistent UX)
+    // Click opens PhotoViewerDialog
     marker.on('click', (e) => {
       L.DomEvent.stopPropagation(e)
       if (e.originalEvent) {
@@ -135,7 +129,7 @@ const renderPhotoMarkers = () => {
         e.originalEvent.preventDefault()
       }
       
-      // Always emit photo-click for consistent PhotoViewerDialog opening
+      // Emit photo-click for PhotoViewerDialog
       emit('photo-click', {
         photos: group.photos,
         initialIndex: 0,
@@ -146,19 +140,13 @@ const renderPhotoMarkers = () => {
       })
     })
 
-    // Hover shows preview popup (with throttling to prevent excessive requests)
+    // Hover shows preview popup with throttling
     let hoverTimeout = null
     marker.on('mouseover', (e) => {
-      console.log('Marker mouseover event triggered')
-      // Clear any pending hover timeout
-      if (hoverTimeout) {
-        clearTimeout(hoverTimeout)
-      }
+      if (hoverTimeout) clearTimeout(hoverTimeout)
       
-      // Delay popup opening to prevent excessive hovering
       hoverTimeout = setTimeout(() => {
         if (!marker.isPopupOpen()) {
-          console.log('Opening popup for hover:', group.photos.length, 'photos')
           marker.openPopup()
           emit('photo-hover', {
             photos: group.photos,
@@ -168,12 +156,11 @@ const renderPhotoMarkers = () => {
             event: e
           })
         }
-      }, 200) // 200ms delay before showing popup
+      }, 200)
     })
     
-    // Hide popup when mouse leaves (with small delay to prevent flickering)
+    // Hide popup when mouse leaves with delay to prevent flickering
     marker.on('mouseout', (e) => {
-      // Clear hover timeout if user moves mouse away quickly
       if (hoverTimeout) {
         clearTimeout(hoverTimeout)
         hoverTimeout = null
@@ -186,10 +173,10 @@ const renderPhotoMarkers = () => {
       }, 150)
     })
 
-    // Add popup content for right-click/context menu  
+    // Bind popup content
     const cacheKey = `${group.latitude}-${group.longitude}-${photoCount}`
     const popupContent = createPhotoPopupContent(group)
-    const popupData = popupContentCache.value.get(cacheKey) // Get after creation
+    const popupData = popupContentCache.value.get(cacheKey)
     
     marker.bindPopup(popupContent, {
       maxWidth: window.innerWidth < 768 ? 250 : 300,
@@ -199,28 +186,22 @@ const renderPhotoMarkers = () => {
       autoClose: true,
       keepInView: false,
       autoPan: false,
-      offset: [0, -15] // Will be dynamically adjusted
+      offset: [0, -15]
     })
 
-    // Right-click shows preview (alternative access)
+    // Right-click shows preview
     marker.on('contextmenu', (e) => {
       e.originalEvent?.preventDefault()
       marker.openPopup()
     })
     
-    // Popup interactions: keep open on hover, add click-to-view action, mount Vue component
+    // Setup popup interactions
     marker.on('popupopen', () => {
       const popupElement = marker.getPopup().getElement()
       
       if (popupElement) {
-        console.log('Popup opened, element:', popupElement, 'popupData:', popupData)
-        
         // Adjust popup position based on screen location
-        try {
-          adjustPopupPositionOnScreen(marker, popupElement)
-        } catch (error) {
-          console.error('Error adjusting popup position:', error)
-        }
+        adjustPopupPositionOnScreen(marker, popupElement)
         
         // Mount Vue component if this popup has structured data
         if (popupData && popupData.containerId) {
@@ -273,15 +254,9 @@ const renderPhotoMarkers = () => {
 
     // Add to layer and track
     baseLayerRef.value.addToLayer(marker)
-    photoMarkers.value.push({
-      marker,
-      group,
-      photoCount,
-      index
-    })
+    photoMarkers.value.push({ marker, group, photoCount })
   })
 
-  console.log(`Rendered ${photoMarkers.value.length} Immich photo markers`)
 }
 
 // Cache for popup content to avoid regenerating
@@ -293,62 +268,41 @@ const popupVueApps = ref(new Map())
 const adjustPopupPositionOnScreen = (marker, popupElement) => {
   if (!props.map || !popupElement) return
   
-  console.log('Adjusting popup position...')
-  
   const map = props.map
   const markerLatLng = marker.getLatLng()
   const markerPoint = map.latLngToContainerPoint(markerLatLng)
   const mapSize = map.getSize()
   
-  console.log('Marker point:', markerPoint, 'Map size:', mapSize)
-  
-  // Get popup dimensions (wait a bit for rendering)
+  // Get popup dimensions with small delay for rendering
   setTimeout(() => {
     const popupRect = popupElement.getBoundingClientRect()
-    const popupWidth = popupRect.width || 300
     const popupHeight = popupRect.height || 200
-    
-    console.log('Popup dimensions:', { width: popupWidth, height: popupHeight })
-    
-    // Calculate distances from edges
     const distanceFromTop = markerPoint.y
-    const distanceFromBottom = mapSize.y - markerPoint.y
-    
-    console.log('Distance from top:', distanceFromTop, 'Distance from bottom:', distanceFromBottom)
-    
-    // Minimum required space
-    const minSpace = 50
     const popupWithMargin = popupHeight + 60
     
-    // Override Leaflet's positioning completely
+    // Override Leaflet's positioning
     popupElement.style.position = 'fixed'
     popupElement.style.left = `${markerPoint.x}px`
     popupElement.style.bottom = 'auto'
+    popupElement.style.marginLeft = '0'
     
-    // Check if popup would be cut off at top
+    // Position popup based on available space
     if (distanceFromTop < popupWithMargin) {
-      console.log('Positioning popup BELOW marker (not enough space above)')
-      // Position popup below marker - much closer spacing
+      // Position below marker when near top
       popupElement.style.top = `${markerPoint.y + 15}px`
       popupElement.style.transform = 'translateX(-50%)'
       
-      // Also flip the tip
+      // Flip the tip
       const tip = popupElement.querySelector('.leaflet-popup-tip-container')
       if (tip) {
         tip.style.transform = 'rotate(180deg) translateY(-5px)'
       }
     } else {
-      console.log('Positioning popup ABOVE marker (default)')
-      // Position popup above marker - closer spacing
+      // Default position above marker
       popupElement.style.top = `${markerPoint.y - popupHeight - 10}px`
       popupElement.style.transform = 'translateX(-50%)'
     }
-    
-    // Reset any margin adjustments
-    popupElement.style.marginLeft = '0'
-    
-    console.log('Final popup transform:', popupElement.style.transform)
-  }, 10) // Small delay to ensure popup is rendered
+  }, 10)
 }
 
 const createPhotoPopupContent = (group) => {
@@ -434,23 +388,14 @@ watch(() => dateRangeStore.getCurrentDateRange, async (newRange) => {
 
 // Watch for visibility changes
 watch(() => props.visible, async (newVisible) => {
-  console.log('ImmichLayer visibility changed:', { 
-    newVisible, 
-    isConfigured: isConfigured.value, 
-    hasPhotos: immichStore.hasPhotos,
-    baseLayerReady: baseLayerRef.value?.isReady 
-  })
   
   if (newVisible && isConfigured.value) {
-    // If we already have photos, just render them; otherwise fetch them
+    // Re-render existing photos or fetch new ones
     if (immichStore.hasPhotos) {
-      console.log('ImmichLayer: Re-rendering existing photos')
-      
       // Wait for BaseLayer to be ready before rendering
       const waitForBaseLayer = async () => {
         let attempts = 0
         while (!baseLayerRef.value?.isReady && attempts < 10) {
-          console.log('ImmichLayer: Waiting for BaseLayer to be ready, attempt', attempts + 1)
           await new Promise(resolve => setTimeout(resolve, 100))
           attempts++
         }
@@ -458,17 +403,12 @@ watch(() => props.visible, async (newVisible) => {
       }
       
       if (await waitForBaseLayer()) {
-        console.log('ImmichLayer: BaseLayer ready, rendering markers')
         renderPhotoMarkers()
-      } else {
-        console.error('ImmichLayer: BaseLayer never became ready, cannot render markers')
       }
     } else {
-      console.log('ImmichLayer: Fetching photos for first time')
       await fetchAndRenderPhotos()
     }
   } else if (!newVisible) {
-    console.log('ImmichLayer: Clearing markers (hidden)')
     clearPhotoMarkers()
   }
 })

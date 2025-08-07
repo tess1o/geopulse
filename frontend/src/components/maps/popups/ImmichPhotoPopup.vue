@@ -1,5 +1,5 @@
 <template>
-  <div class="immich-photo-popup immich-hover-preview">
+  <div class="immich-photo-popup">
     <!-- Single Photo -->
     <template v-if="photoCount === 1">
       <div class="popup-title">📷 Photo</div>
@@ -9,7 +9,6 @@
         <div 
           v-if="!singlePhotoLoaded" 
           class="popup-image-loading"
-          ref="singlePhotoLoadingRef"
         >
           <i class="pi pi-spin pi-spinner"></i>
           <div>Loading...</div>
@@ -42,7 +41,6 @@
           v-for="(photo, index) in displayPhotos" 
           :key="photo.id"
           class="popup-grid-item"
-          :ref="el => setGridItemRef(el, index)"
         >
           <div 
             v-if="!gridPhotosLoaded[index]" 
@@ -90,7 +88,6 @@ const singlePhotoLoaded = ref(false)
 const singlePhotoBlobUrl = ref('')
 const gridPhotosLoaded = ref([false, false, false, false])
 const gridBlobUrls = ref(['', '', '', ''])
-const gridItemRefs = ref([])
 
 // Cache for blob URLs (shared across instances)
 const blobCache = new Map()
@@ -123,11 +120,6 @@ const formatDate = (dateString) => {
   }
 }
 
-const setGridItemRef = (el, index) => {
-  if (el) {
-    gridItemRefs.value[index] = el
-  }
-}
 
 const loadSinglePhoto = async () => {
   const photo = firstPhoto.value
@@ -147,10 +139,7 @@ const loadSinglePhoto = async () => {
     singlePhotoLoaded.value = true
   } catch (error) {
     console.warn('Failed to load popup thumbnail:', error)
-    // Show error state
-    if (singlePhotoLoadingRef.value) {
-      singlePhotoLoadingRef.value.innerHTML = `<div style="color: #ef4444; font-size: 0.8rem;"><i class="pi pi-exclamation-triangle"></i> Failed to load</div>`
-    }
+    singlePhotoLoaded.value = true // Show as loaded to prevent infinite loading state
   }
 }
 
@@ -173,11 +162,7 @@ const loadGridPhotos = async () => {
       gridPhotosLoaded.value[i] = true
     } catch (error) {
       console.warn('Failed to load grid thumbnail:', error)
-      // Show error state
-      const gridElement = gridItemRefs.value[i]?.querySelector('.popup-grid-thumb-loading')
-      if (gridElement) {
-        gridElement.innerHTML = `<div style="background: #fecaca; color: #dc2626; font-size: 0.7rem; padding: 0.25rem;"><i class="pi pi-times"></i></div>`
-      }
+      gridPhotosLoaded.value[i] = true // Show as loaded to prevent infinite loading state
     }
   }
 }
@@ -191,20 +176,9 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
-  // Clean up any blob URLs we created (but don't clear the shared cache)
-  if (singlePhotoBlobUrl.value && singlePhotoBlobUrl.value.startsWith('blob:')) {
-    // Don't revoke here since other popups might use the same blob URL
-  }
-})
+// Cleanup is handled by the shared blobCache - no cleanup needed per instance
 </script>
 
-<style>
-/* Remove conflicting transforms to let JavaScript handle positioning */
-:global(.leaflet-popup-pane .leaflet-popup) {
-  /* JavaScript will handle transforms dynamically */
-}
-</style>
 
 <style scoped>
 .immich-photo-popup {
@@ -213,8 +187,6 @@ onUnmounted(() => {
   line-height: 1.4;
   min-width: 200px;
   max-width: 300px;
-  position: relative;
-  z-index: 10001 !important;
 }
 
 .popup-title {
@@ -354,7 +326,6 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.15) !important;
   border-color: rgba(255, 255, 255, 0.3) !important;
 }
-
 
 /* Mobile responsive */
 @media (max-width: 768px) {
