@@ -34,6 +34,9 @@ public class DailyTimelineProcessingService {
     TimelineQueryService timelineQueryService;
 
     @Inject
+    OvernightTimelineProcessor overnightTimelineProcessor;
+
+    @Inject
     TimelineStayRepository timelineStayRepository;
 
     // Configuration properties
@@ -110,7 +113,7 @@ public class DailyTimelineProcessingService {
     }
 
     /**
-     * Process timeline for a single user for the specified day.
+     * Process timeline for a single user for the specified day using overnight processing algorithm.
      *
      * @param userId     user ID
      * @param startOfDay start of the day (UTC)
@@ -127,9 +130,9 @@ public class DailyTimelineProcessingService {
                 return false;
             }
 
-            // Generate timeline for the day using smart query service
-            log.debug("Generating timeline for user {} on date {}", userId, date);
-            MovementTimelineDTO timeline = timelineQueryService.getTimeline(userId, startOfDay, endOfDay);
+            // Generate timeline using overnight processing algorithm
+            log.debug("Generating overnight timeline for user {} on date {}", userId, date);
+            MovementTimelineDTO timeline = overnightTimelineProcessor.processOvernightTimeline(userId, date);
 
             if (timeline == null) {
                 log.debug("No timeline data generated for user {} on date {}", userId, date);
@@ -142,20 +145,20 @@ public class DailyTimelineProcessingService {
                 return false;
             }
 
-            // TimelineQueryService automatically handles persistence for completed past days
-            log.debug("Successfully processed timeline for user {} on date {}: {} stays, {} trips (source: {})",
+            // OvernightTimelineProcessor automatically handles persistence for completed days
+            log.debug("Successfully processed overnight timeline for user {} on date {}: {} stays, {} trips (source: {})",
                     userId, date, timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataSource());
 
             return timeline.getDataSource() == TimelineDataSource.CACHED; // Return true if data was persisted
 
         } catch (Exception e) {
-            log.error("Error processing timeline for user {} on date {}: {}", userId, date, e.getMessage(), e);
+            log.error("Error processing overnight timeline for user {} on date {}: {}", userId, date, e.getMessage(), e);
             throw e;
         }
     }
 
     /**
-     * Manual trigger for processing a specific date's timelines.
+     * Manual trigger for processing a specific date's timelines using overnight processing.
      * Useful for backfilling or reprocessing data.
      *
      * @param targetDate the date to process
@@ -166,7 +169,7 @@ public class DailyTimelineProcessingService {
         Instant startOfDay = targetDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endOfDay = targetDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 
-        log.info("Manual timeline processing triggered for date: {}", targetDate);
+        log.info("Manual overnight timeline processing triggered for date: {}", targetDate);
 
         List<UserEntity> activeUsers = userRepository.findActiveUsers();
         int totalProcessed = 0;

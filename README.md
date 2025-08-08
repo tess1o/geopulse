@@ -43,6 +43,7 @@ while keeping everything on your own server.
 - Interactive maps showing your complete movement history
 - Flexible date range viewing (single day to months of data)
 - Real-time location display for current day
+- Immich integration to show your photos on the timeline map
 
 **Analytics**
 
