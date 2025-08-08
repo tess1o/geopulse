@@ -1,12 +1,10 @@
 package org.github.tess1o.geopulse.timeline.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,14 +14,11 @@ import java.util.UUID;
  */
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class MovementTimelineDTO {
     private UUID userId;
     private List<TimelineStayLocationDTO> stays;
     private List<TimelineTripDTO> trips;
-    private int staysCount;
-    private int tripsCount;
-    
+
     // Timeline metadata for persistence and caching
     private TimelineDataSource dataSource;     // Source of this timeline data
     private Instant lastUpdated;               // When this data was last generated/updated
@@ -32,8 +27,6 @@ public class MovementTimelineDTO {
         this.userId = userId;
         this.stays = new ArrayList<>();
         this.trips = new ArrayList<>();
-        this.staysCount = 0;
-        this.tripsCount = 0;
     }
 
     /**
@@ -43,8 +36,13 @@ public class MovementTimelineDTO {
         this.userId = userId;
         this.stays = stays;
         this.trips = trips;
-        this.staysCount = stays != null ? stays.size() : 0;
-        this.tripsCount = trips != null ? trips.size() : 0;
     }
 
+    public int getStaysCount(){
+        return stays != null ? stays.size() : 0;
+    }
+
+    public int getTripsCount(){
+        return trips != null ? trips.size() : 0;
+    }
 }

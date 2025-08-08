@@ -165,8 +165,6 @@ export const useTimelineStore = defineStore('timeline', {
         getTimelineSummary() {
             return {
                 totalItems: this.timelineItemsCount,
-                staysCount: this.staysCount,
-                tripsCount: this.tripsCount,
                 totalDistance: this.getTotalDistance(),
                 totalDuration: this.getTotalDuration(),
                 timeSpan: this.getTimelineBounds
