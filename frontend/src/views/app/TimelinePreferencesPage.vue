@@ -41,9 +41,9 @@
               <div class="banner-text">
                 <h3 class="banner-title">How Timeline Processing Works</h3>
                 <p class="banner-description">
-                  Your GPS data is processed to identify meaningful stays and trips. 
-                  These settings control the sensitivity of this detection. Changes apply 
-                  immediately and only affect your account.
+                  Your GPS data is processed to identify meaningful stays and trips.
+                  These settings control the sensitivity of this detection and apply only to your account.
+                  Changing them will trigger a full timeline re-generation, which may take some time depending on your GPS data volume.
                 </p>
               </div>
             </div>
