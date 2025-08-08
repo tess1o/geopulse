@@ -64,11 +64,17 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
         log.info("Merge completed: {} stays merged to {}, {} trips remain", 
                 stays.size(), result.mergedStays.size(), result.remainingTrips.size());
 
-        return new MovementTimelineDTO(
+        MovementTimelineDTO mergedTimeline = new MovementTimelineDTO(
                 timeline.getUserId(),
                 result.mergedStays,
                 result.remainingTrips
         );
+        
+        // Preserve metadata from original timeline
+        mergedTimeline.setDataSource(timeline.getDataSource());
+        mergedTimeline.setLastUpdated(timeline.getLastUpdated());
+        
+        return mergedTimeline;
     }
 
     /**

@@ -233,109 +233,76 @@ class TimelineQueryServiceTest {
      * Creates a realistic pattern: Home stay -> Work commute -> Work stay -> Home commute -> Home stay
      */
     private void createTestGpsData(Instant startTime, Instant endTime) {
-        GeometryFactory geometryFactory = new GeometryFactory();
+        // Use the proven pattern from DailyTimelineProcessingServiceTest
+        // Create simple, dense GPS data that generates detectable stays and trips
         
-        // Home location (San Francisco coordinates)
+        // Home location (San Francisco coordinates)  
         double homeLat = 37.7749, homeLng = -122.4194;
         // Work location (about 2km away)
         double workLat = 37.7849, workLng = -122.4094;
         
+        // Create realistic daily pattern with proper GPS density
         Instant currentTime = startTime;
-        long totalDurationSeconds = endTime.getEpochSecond() - startTime.getEpochSecond();
         
-        // Phase 1: Stay at home (first 30% of time)
-        long homeStay1Duration = totalDurationSeconds * 30 / 100;
-        currentTime = createStayPoints(geometryFactory, homeLat, homeLng, currentTime, homeStay1Duration, "Home morning");
+        // Morning at home (multiple GPS points every 10 minutes for 3 hours)
+        for (int i = 0; i < 18; i++) { // 18 points = 3 hours at 10 min intervals
+            createSimpleGpsPoint(currentTime, homeLat, homeLng);
+            currentTime = currentTime.plusSeconds(600); // 10 minutes
+        }
         
-        // Phase 2: Commute to work (5% of time)
-        long commuteToWorkDuration = totalDurationSeconds * 5 / 100;
-        currentTime = createTripPoints(geometryFactory, homeLat, homeLng, workLat, workLng, currentTime, commuteToWorkDuration, "Commute to work");
+        // Commute to work (show gradual movement over 30 minutes)
+        createSimpleGpsPoint(currentTime, 37.7760, -122.4150); // Halfway point 1
+        currentTime = currentTime.plusSeconds(600);
+        createSimpleGpsPoint(currentTime, 37.7780, -122.4120); // Halfway point 2 
+        currentTime = currentTime.plusSeconds(600);
+        createSimpleGpsPoint(currentTime, 37.7820, -122.4100); // Almost at work
+        currentTime = currentTime.plusSeconds(600);
         
-        // Phase 3: Stay at work (30% of time)
-        long workStayDuration = totalDurationSeconds * 30 / 100;
-        currentTime = createStayPoints(geometryFactory, workLat, workLng, currentTime, workStayDuration, "Work stay");
+        // At work (multiple GPS points every 10 minutes for 8 hours)
+        for (int i = 0; i < 48; i++) { // 48 points = 8 hours at 10 min intervals
+            createSimpleGpsPoint(currentTime, workLat, workLng);
+            currentTime = currentTime.plusSeconds(600); // 10 minutes
+        }
         
-        // Phase 4: Commute back home (5% of time)
-        long commuteHomeDuration = totalDurationSeconds * 5 / 100;
-        currentTime = createTripPoints(geometryFactory, workLat, workLng, homeLat, homeLng, currentTime, commuteHomeDuration, "Commute home");
+        // Commute home (show gradual movement over 30 minutes)
+        createSimpleGpsPoint(currentTime, 37.7820, -122.4150); // Halfway point 1
+        currentTime = currentTime.plusSeconds(600);
+        createSimpleGpsPoint(currentTime, 37.7780, -122.4170); // Halfway point 2
+        currentTime = currentTime.plusSeconds(600);
+        createSimpleGpsPoint(currentTime, 37.7760, -122.4180); // Almost home
+        currentTime = currentTime.plusSeconds(600);
         
-        // Phase 5: Stay at home (remaining 30% of time)
-        long homeStay2Duration = endTime.getEpochSecond() - currentTime.getEpochSecond();
-        createStayPoints(geometryFactory, homeLat, homeLng, currentTime, homeStay2Duration, "Home evening");
+        // Fill remaining time with points at home
+        while (currentTime.isBefore(endTime)) {
+            createSimpleGpsPoint(currentTime, homeLat, homeLng);
+            currentTime = currentTime.plusSeconds(600); // 10 minutes
+        }
         
         entityManager.flush();
-        log.info("Created realistic GPS data with stays and trips between {} and {}", startTime, endTime);
+        log.info("Created realistic GPS data with {} total points from {} to {}", 
+                gpsPointRepository.count("user = ?1 and timestamp >= ?2 and timestamp <= ?3", testUser, startTime, endTime),
+                startTime, endTime);
     }
     
     /**
-     * Create GPS points for a stay at a specific location
+     * Create a single GPS point with simple parameters
      */
-    private Instant createStayPoints(GeometryFactory geometryFactory, double lat, double lng, Instant startTime, long durationSeconds, String phase) {
-        // Create a point every 2 minutes during the stay
-        long intervalSeconds = 120; // 2 minutes
-        long numPoints = Math.max(3, durationSeconds / intervalSeconds); // At least 3 points
-        intervalSeconds = durationSeconds / numPoints; // Adjust interval to fit exact duration
+    private void createSimpleGpsPoint(Instant timestamp, double latitude, double longitude) {
+        GpsPointEntity gpsPoint = new GpsPointEntity();
+        gpsPoint.setUser(testUser);
+        gpsPoint.setTimestamp(timestamp);
         
-        for (int i = 0; i < numPoints; i++) {
-            GpsPointEntity gpsPoint = new GpsPointEntity();
-            gpsPoint.setUser(testUser);
-            
-            // Add tiny random variations to simulate GPS accuracy (within ~10 meters)
-            double latVariation = (Math.random() - 0.5) * 0.0001; // ~11m variation
-            double lngVariation = (Math.random() - 0.5) * 0.0001; // ~11m variation
-            
-            Point point = geometryFactory.createPoint(new Coordinate(lng + lngVariation, lat + latVariation));
-            point.setSRID(4326);
-            gpsPoint.setCoordinates(point);
-            
-            gpsPoint.setTimestamp(startTime.plusSeconds(i * intervalSeconds));
-            gpsPoint.setAccuracy(8.0 + Math.random() * 4); // 8-12m accuracy
-            gpsPoint.setAltitude(100.0);
-            gpsPoint.setVelocity(0.0); // Stationary
-            gpsPoint.setSourceType(GpsSourceType.OWNTRACKS);
-            gpsPoint.setCreatedAt(Instant.now());
-            
-            gpsPointRepository.persist(gpsPoint);
-        }
+        // Create Point geometry with PostGIS coordinates (longitude, latitude)
+        Point point = new GeometryFactory().createPoint(new Coordinate(longitude, latitude));
+        point.setSRID(4326);
+        gpsPoint.setCoordinates(point);
         
-        log.debug("Created {} stay points for {} ({}s duration)", numPoints, phase, durationSeconds);
-        return startTime.plusSeconds(durationSeconds);
-    }
-    
-    /**
-     * Create GPS points showing movement between two locations
-     */
-    private Instant createTripPoints(GeometryFactory geometryFactory, double startLat, double startLng, double endLat, double endLng, 
-                                   Instant startTime, long durationSeconds, String phase) {
-        // Create a point every 30 seconds during the trip
-        long intervalSeconds = 30;
-        long numPoints = Math.max(3, durationSeconds / intervalSeconds); // At least 3 points for movement
-        intervalSeconds = durationSeconds / numPoints; // Adjust interval
+        gpsPoint.setAccuracy(5.0 + Math.random() * 3); // 5-8m accuracy
+        gpsPoint.setAltitude(100.0);
+        gpsPoint.setVelocity(0.0);
+        gpsPoint.setSourceType(GpsSourceType.OWNTRACKS);
+        gpsPoint.setCreatedAt(Instant.now());
         
-        for (int i = 0; i < numPoints; i++) {
-            GpsPointEntity gpsPoint = new GpsPointEntity();
-            gpsPoint.setUser(testUser);
-            
-            // Linear interpolation between start and end points
-            double progress = (double) i / (numPoints - 1);
-            double lat = startLat + (endLat - startLat) * progress;
-            double lng = startLng + (endLng - startLng) * progress;
-            
-            Point point = geometryFactory.createPoint(new Coordinate(lng, lat));
-            point.setSRID(4326);
-            gpsPoint.setCoordinates(point);
-            
-            gpsPoint.setTimestamp(startTime.plusSeconds(i * intervalSeconds));
-            gpsPoint.setAccuracy(6.0 + Math.random() * 3); // 6-9m accuracy (better during movement)
-            gpsPoint.setAltitude(100.0);
-            gpsPoint.setVelocity(i == 0 || i == numPoints - 1 ? 2.0 : 8.0 + Math.random() * 5); // Slower at start/end, faster in middle
-            gpsPoint.setSourceType(GpsSourceType.OWNTRACKS);
-            gpsPoint.setCreatedAt(Instant.now());
-            
-            gpsPointRepository.persist(gpsPoint);
-        }
-        
-        log.debug("Created {} trip points for {} ({}s duration)", numPoints, phase, durationSeconds);
-        return startTime.plusSeconds(durationSeconds);
+        gpsPointRepository.persist(gpsPoint);
     }
 }

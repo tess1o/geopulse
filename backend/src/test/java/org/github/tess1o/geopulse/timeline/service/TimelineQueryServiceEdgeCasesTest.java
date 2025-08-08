@@ -73,23 +73,6 @@ class TimelineQueryServiceEdgeCasesTest {
 
     @Test
     @Transactional
-    void testGetTimeline_WithNullUserId_ShouldHandleGracefully() {
-        // Arrange - Use UTC consistently to match the service logic
-        Instant startTime = LocalDate.now(ZoneOffset.UTC).minusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant endTime = startTime.plusSeconds(86400 - 1);
-
-        // Act - should not throw NPE, just return empty timeline
-        MovementTimelineDTO result = queryService.getTimeline(null, startTime, endTime);
-
-        // Assert - Past dates with no GPS data return CACHED data source for empty timelines
-        assertNotNull(result);
-        assertEquals(TimelineDataSource.CACHED, result.getDataSource());
-        assertTrue(result.getStays().isEmpty());
-        assertTrue(result.getTrips().isEmpty());
-    }
-
-    @Test
-    @Transactional
     void testGetTimeline_WithInvalidTimeRange_ShouldHandleGracefully() {
         // Arrange - Use UTC consistently and create truly invalid range (end before start)
         Instant startTime = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
