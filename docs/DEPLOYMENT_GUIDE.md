@@ -161,7 +161,7 @@ GEOPULSE_JWT_COOKIE=""
 ```yaml
 services:
   geopulse-backend:
-    image: tess1o/geopulse-backend:1.0.0-rc.1
+    image: tess1o/geopulse-backend:1.0.0-rc.2
     container_name: geopulse-backend
     restart: unless-stopped
     env_file:
@@ -175,7 +175,7 @@ services:
         condition: service_healthy
 
   geopulse-ui:
-    image: tess1o/geopulse-ui:1.0.0-rc.1
+    image: tess1o/geopulse-ui:1.0.0-rc.2
     container_name: geopulse-ui
     restart: unless-stopped
     ports:

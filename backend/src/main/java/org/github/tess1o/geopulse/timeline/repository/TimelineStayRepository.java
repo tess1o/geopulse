@@ -172,4 +172,31 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     public boolean existsByUserAndTimestamp(UUID userId, Instant timestamp) {
         return count("user.id = ?1 AND timestamp = ?2", userId, timestamp) > 0;
     }
+
+    /**
+     * Find the latest timeline stay for a user that started before the given timestamp.
+     * Used for prepending previous context to timeline requests.
+     *
+     * @param userId user ID
+     * @param beforeTimestamp find stays starting before this timestamp
+     * @return the most recent stay starting before the given timestamp, or null if none found
+     */
+    public TimelineStayEntity findLatestBefore(UUID userId, Instant beforeTimestamp) {
+        return find("user.id = ?1 and timestamp < ?2 order by timestamp desc", userId, beforeTimestamp)
+                .firstResult();
+    }
+
+    /**
+     * Update the end time and duration of an existing timeline stay.
+     * Used during overnight processing to extend a stay from previous day.
+     *
+     * @param stayId stay ID to update
+     * @param newEndTime new end timestamp for the stay 
+     * @param newDurationSeconds new duration in seconds
+     * @return number of rows updated (should be 1 if successful)
+     */
+    public long updateEndTimeAndDuration(Long stayId, Instant newEndTime, long newDurationSeconds) {
+        return update("stayDuration = ?1, lastUpdated = ?2 where id = ?3", 
+                     newDurationSeconds, Instant.now(), stayId);
+    }
 }

@@ -140,4 +140,31 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
     public boolean existsByUserAndTimestamp(UUID userId, Instant timestamp) {
         return count("user.id = ?1 AND timestamp = ?2", userId, timestamp) > 0;
     }
+
+    /**
+     * Find the latest timeline trip for a user that started before the given timestamp.
+     * Used for prepending previous context to timeline requests.
+     *
+     * @param userId user ID
+     * @param beforeTimestamp find trips starting before this timestamp
+     * @return the most recent trip starting before the given timestamp, or null if none found
+     */
+    public TimelineTripEntity findLatestBefore(UUID userId, Instant beforeTimestamp) {
+        return find("user.id = ?1 and timestamp < ?2 order by timestamp desc", userId, beforeTimestamp)
+                .firstResult();
+    }
+
+    /**
+     * Update the end time and duration of an existing timeline trip.
+     * Used during overnight processing to extend a trip from previous day.
+     *
+     * @param tripId trip ID to update
+     * @param newEndTime new end timestamp for the trip 
+     * @param newDurationMinutes new duration in minutes
+     * @return number of rows updated (should be 1 if successful)
+     */
+    public long updateEndTimeAndDuration(Long tripId, Instant newEndTime, long newDurationMinutes) {
+        return update("tripDuration = ?1, lastUpdated = ?2 where id = ?3", 
+                     newDurationMinutes, Instant.now(), tripId);
+    }
 }

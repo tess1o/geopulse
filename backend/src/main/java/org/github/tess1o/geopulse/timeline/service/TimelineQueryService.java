@@ -5,10 +5,15 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineDataService;
+import org.github.tess1o.geopulse.timeline.assembly.TimelineProcessingService;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
+import org.github.tess1o.geopulse.timeline.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper;
+import org.github.tess1o.geopulse.timeline.model.*;
+import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -34,13 +39,40 @@ public class TimelineQueryService {
 
     @Inject
     TimelineCacheService timelineCacheService;
+    
+    @Inject
+    TimelineStayRepository timelineStayRepository;
+    
+    @Inject
+    TimelineTripRepository timelineTripRepository;
+    
+    @Inject
+    TimelinePersistenceMapper persistenceMapper;
+    @Inject
+    TimelineProcessingService timelineProcessingService;
 
+    @Inject
+    TimelineConfigurationProvider configurationProvider;
     /**
      * Get timeline for a user within a specific time range.
      * Simple logic without version checking, expansion, or staleness detection.
+     * Includes prepending previous context for complete timeline view.
      */
     public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant endTime) {
-        log.debug("Getting timeline for user {} from {} to {}", userId, startTime, endTime);
+        return getTimeline(userId, startTime, endTime, true);
+    }
+
+    /**
+     * Get timeline for a user within a specific time range with option to skip prepending.
+     * 
+     * @param userId user ID
+     * @param startTime start time (inclusive)
+     * @param endTime end time (inclusive)
+     * @param includePrependedContext if true, prepend previous context; if false, skip prepending
+     * @return timeline data
+     */
+    public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant endTime, boolean includePrependedContext) {
+        log.debug("Getting timeline for user {} from {} to {} (prepend: {})", userId, startTime, endTime, includePrependedContext);
 
         // Determine date boundaries (use UTC for consistency)
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
@@ -49,25 +81,36 @@ public class TimelineQueryService {
 
         log.debug("Date analysis: today={}, startDate={}, endDate={}", today, startDate, endDate);
 
+        MovementTimelineDTO timeline;
+        
         if (startDate.equals(today) && endDate.equals(today)) {
             // Case 1: Today only - always generate live
             log.debug("Today only request - generating live timeline");
-            return generateLiveTimeline(userId, startTime, endTime);
+            timeline = generateLiveTimeline(userId, startTime, endTime);
             
         } else if (endDate.isBefore(today)) {
             // Case 2: Past only - use cache or generate
             log.debug("Past only request - checking cache");
-            return getPastTimeline(userId, startTime, endTime);
+            timeline = getPastTimeline(userId, startTime, endTime);
             
         } else if (startDate.isBefore(today) || (startDate.equals(today) && endDate.isAfter(today))) {
             // Case 3: Mixed (includes past/today/future combinations) - combine available data
             log.debug("Mixed request (past/today/future) - combining available data sources");
-            return getMixedTimeline(userId, startTime, endTime, today);
+            timeline = getMixedTimeline(userId, startTime, endTime, today);
             
         } else {
             // Case 4: Pure future dates only - return empty
             log.debug("Pure future dates requested - returning empty timeline");
-            return createEmptyTimeline(userId, TimelineDataSource.LIVE);
+            timeline = createEmptyTimeline(userId, TimelineDataSource.LIVE);
+        }
+        
+        // Enhance timeline with previous context for complete view (if requested)
+        if (includePrependedContext) {
+            var timelinePrepended = prependPreviousContext(userId, startTime, timeline);
+            TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+            return timelineProcessingService.processTimeline(config, timelinePrepended);
+        } else {
+            return timeline;
         }
     }
 
@@ -200,5 +243,141 @@ public class TimelineQueryService {
         timeline.setDataSource(dataSource);
         timeline.setLastUpdated(Instant.now());
         return timeline;
+    }
+    
+    /**
+     * Prepend previous context (latest stay or trip) to provide complete timeline view.
+     * Adjusts the duration of prepended item to show continuity until the first activity.
+     *
+     * @param userId user identifier  
+     * @param requestStartTime start time of the original request
+     * @param timeline timeline to enhance with previous context
+     * @return timeline with previous context prepended if available
+     */
+    private MovementTimelineDTO prependPreviousContext(UUID userId, Instant requestStartTime, MovementTimelineDTO timeline) {
+        try {
+            log.debug("Looking for previous context before {} for user {}", requestStartTime, userId);
+            
+            // Find latest stay and trip before the request start time
+            TimelineStayEntity latestStay = timelineStayRepository.findLatestBefore(userId, requestStartTime);
+            TimelineTripEntity latestTrip = timelineTripRepository.findLatestBefore(userId, requestStartTime);
+
+            log.debug("Found latest stay = {}, latest trip = {}", latestStay, latestTrip);
+            
+            // Determine which is more recent (closest to request start time)
+            boolean useStay = false;
+            Instant latestActivityTime = null;
+            
+            if (latestStay != null && latestTrip != null) {
+                if (latestStay.getTimestamp().isAfter(latestTrip.getTimestamp())) {
+                    useStay = true;
+                    latestActivityTime = latestStay.getTimestamp();
+                } else {
+                    useStay = false;
+                    latestActivityTime = latestTrip.getTimestamp();
+                }
+            } else if (latestStay != null) {
+                useStay = true;
+                latestActivityTime = latestStay.getTimestamp();
+            } else if (latestTrip != null) {
+                useStay = false;
+                latestActivityTime = latestTrip.getTimestamp();
+            } else {
+                log.debug("No previous context found for user {}", userId);
+                return timeline;
+            }
+
+
+            // Find the earliest time in current timeline to determine where previous activity should end
+            Instant earliestTimeInTimeline = findEarliestTimeInTimeline(timeline, requestStartTime);
+
+            log.debug("Found earliest time in timeline = {}", earliestTimeInTimeline);
+            
+            if (earliestTimeInTimeline == null) {
+                // No activities in current timeline, don't prepend (nothing to connect to)
+                log.debug("Current timeline is empty, not prepending previous context");
+                return timeline;
+            }
+            
+            // Prepend the appropriate activity with adjusted duration
+            if (useStay) {
+                prependStayWithAdjustedDuration(timeline, latestStay, earliestTimeInTimeline);
+                log.debug("Prepended stay from {} (adjusted to end at {})", latestActivityTime, earliestTimeInTimeline);
+            } else {
+                prependTripWithAdjustedDuration(timeline, latestTrip, earliestTimeInTimeline);
+                log.debug("Prepended trip from {} (adjusted to end at {})", latestActivityTime, earliestTimeInTimeline);
+            }
+            
+        } catch (Exception e) {
+            log.warn("Failed to prepend previous context for user {}: {}", userId, e.getMessage());
+            // Continue without previous context rather than failing the entire request
+        }
+        
+        return timeline;
+    }
+    
+    /**
+     * Find the earliest timestamp in the timeline that's at or after the request start time.
+     * This ensures prepended activities connect properly to the requested time range.
+     */
+    private Instant findEarliestTimeInTimeline(MovementTimelineDTO timeline, Instant requestStartTime) {
+        Instant earliest = null;
+        
+        // Check stays - find first stay at or after request start time
+        for (var stay : timeline.getStays()) {
+            if (stay.getTimestamp().compareTo(requestStartTime) >= 0) {
+                if (earliest == null || stay.getTimestamp().isBefore(earliest)) {
+                    earliest = stay.getTimestamp();
+                }
+            }
+        }
+        
+        // Check trips - find first trip at or after request start time
+        for (var trip : timeline.getTrips()) {
+            if (trip.getTimestamp().compareTo(requestStartTime) >= 0) {
+                if (earliest == null || trip.getTimestamp().isBefore(earliest)) {
+                    earliest = trip.getTimestamp();
+                }
+            }
+        }
+        
+        // If no activities found at or after request start time, use request start time itself
+        if (earliest == null) {
+            earliest = requestStartTime;
+        }
+        
+        return earliest;
+    }
+    
+    /**
+     * Prepend a stay with adjusted duration to show continuity.
+     */
+    private void prependStayWithAdjustedDuration(MovementTimelineDTO timeline, TimelineStayEntity stayEntity, Instant endTime) {
+        TimelineStayLocationDTO stayDTO = persistenceMapper.toDTO(stayEntity);
+        
+        // Calculate new duration: from stay start to earliest time in timeline
+        long adjustedDurationMinutes = Duration.between(stayEntity.getTimestamp(), endTime).toMinutes();
+        stayDTO.setStayDuration(adjustedDurationMinutes);
+        
+        timeline.getStays().add(0, stayDTO);
+        
+        log.debug("Prepended stay: {} at {} (adjusted duration: {}s)", 
+                 stayDTO.getLocationName(), stayDTO.getTimestamp(), adjustedDurationMinutes);
+    }
+    
+    /**
+     * Prepend a trip with adjusted duration to show continuity.
+     */
+    private void prependTripWithAdjustedDuration(MovementTimelineDTO timeline, TimelineTripEntity tripEntity, Instant endTime) {
+        TimelineTripDTO tripDTO = persistenceMapper.toTripDTO(tripEntity);
+        
+        // Calculate new duration: from trip start to earliest time in timeline  
+        long adjustedDurationMinutes = Duration.between(tripEntity.getTimestamp(), endTime).toMinutes();
+        tripDTO.setTripDuration(adjustedDurationMinutes);
+        
+        timeline.getTrips().add(0, tripDTO);
+        
+        log.debug("Prepended trip: {} at {} (adjusted duration: {}min)", 
+                 tripDTO.getMovementType(), tripDTO.getTimestamp(), adjustedDurationMinutes);
     }
 }
