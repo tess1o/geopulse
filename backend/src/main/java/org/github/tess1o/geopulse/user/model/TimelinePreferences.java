@@ -29,4 +29,8 @@ public class TimelinePreferences {
     private Double pathSimplificationTolerance;
     private Integer pathMaxPoints;
     private Boolean pathAdaptiveSimplification;
+    
+    // Data Gap Detection Settings
+    private Integer dataGapThresholdSeconds;
+    private Integer dataGapMinDurationSeconds;
 }

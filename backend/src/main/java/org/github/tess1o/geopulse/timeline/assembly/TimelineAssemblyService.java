@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.timeline.core.SpatialCalculationService;
 import org.github.tess1o.geopulse.timeline.mapper.TimelineMapper;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayPoint;
 import org.github.tess1o.geopulse.timeline.model.TimelineTrip;
@@ -52,13 +53,34 @@ public class TimelineAssemblyService {
     public MovementTimelineDTO assembleTimeline(UUID userId,
                                               List<TimelineStayPoint> stayPoints,
                                               List<TimelineTrip> trips) {
-        log.debug("Assembling timeline for user {} with {} stay points and {} trips", 
-                 userId, stayPoints.size(), trips.size());
+        return assembleTimeline(userId, stayPoints, trips, List.of());
+    }
+
+    /**
+     * Assemble a complete movement timeline from stay points, trips, and data gaps.
+     * 
+     * @param userId the user identifier
+     * @param stayPoints detected stay points
+     * @param trips detected trips
+     * @param dataGaps detected data gaps
+     * @return assembled movement timeline DTO
+     */
+    public MovementTimelineDTO assembleTimeline(UUID userId,
+                                              List<TimelineStayPoint> stayPoints,
+                                              List<TimelineTrip> trips,
+                                              List<TimelineDataGapDTO> dataGaps) {
+        log.debug("Assembling timeline for user {} with {} stay points, {} trips, and {} data gaps", 
+                 userId, stayPoints.size(), trips.size(), dataGaps.size());
 
         List<TimelineStayLocationDTO> stayLocations = processStayPoints(userId, stayPoints);
         List<TimelineTripDTO> tripDetails = processTrips(trips);
 
-        return new MovementTimelineDTO(userId, stayLocations, tripDetails);
+        // Sort data gaps by start time for consistency
+        List<TimelineDataGapDTO> sortedDataGaps = dataGaps.stream()
+                .sorted(Comparator.comparing(TimelineDataGapDTO::getStartTime))
+                .collect(Collectors.toList());
+
+        return new MovementTimelineDTO(userId, stayLocations, tripDetails, sortedDataGaps);
     }
 
     /**

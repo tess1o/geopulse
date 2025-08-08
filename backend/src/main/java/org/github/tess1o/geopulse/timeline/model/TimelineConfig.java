@@ -135,4 +135,20 @@ public class TimelineConfig {
      * while shorter trips maintain higher accuracy with lower tolerance.
      */
     private Boolean pathAdaptiveSimplification;
+    
+    // Data Gap Detection Configuration
+    /**
+     * Maximum time gap in seconds allowed between GPS points before considering it a data gap.
+     * When the time difference between two consecutive GPS points exceeds this threshold,
+     * a DataGap entity will be created instead of extending the current stay or trip.
+     * This prevents artificial extension of activities during periods of missing GPS data.
+     */
+    private Integer dataGapThresholdSeconds;
+    
+    /**
+     * Minimum duration in seconds for a gap to be recorded as a DataGap entity.
+     * Gaps shorter than this threshold will be ignored to reduce noise.
+     * This prevents very short connectivity issues from creating unnecessary gap records.
+     */
+    private Integer dataGapMinDurationSeconds;
 }

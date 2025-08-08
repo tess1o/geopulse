@@ -21,6 +21,22 @@ export function formatDate(dateString) {
     });
 }
 
+/**
+ * Format a date string to time only (HH:MM format)
+ * @param {string} dateString - Date string to format
+ * @returns {string} - Formatted time string
+ */
+export function formatTime(dateString) {
+    if (!dateString) return 'Unknown';
+
+    const date = new Date(dateString);
+    return date.toLocaleString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
+}
+
 export function formatDateMMDDYYYY(date) {
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');

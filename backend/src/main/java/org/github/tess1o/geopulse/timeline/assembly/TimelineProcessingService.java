@@ -97,7 +97,7 @@ public class TimelineProcessingService {
 
         log.debug("Successfully simplified {} out of {} trip paths", simplificationCount, timeline.getTrips().size());
 
-        MovementTimelineDTO result = new MovementTimelineDTO(timeline.getUserId(), timeline.getStays(), simplifiedTrips);
+        MovementTimelineDTO result = new MovementTimelineDTO(timeline.getUserId(), timeline.getStays(), simplifiedTrips, timeline.getDataGaps() );
         result.setDataSource(timeline.getDataSource());
         result.setLastUpdated(timeline.getLastUpdated());
         return result;

@@ -30,6 +30,11 @@ export const useTimelineStore = defineStore('timeline', {
             return state.timelineData.filter(item => item.type === 'trip')
         },
 
+        getDataGaps: (state) => {
+            if (!state.timelineData) return []
+            return state.timelineData.filter(item => item.type === 'dataGap')
+        },
+
         // Count by type
         staysCount: (state) => {
             if (!state.timelineData) return 0
@@ -39,6 +44,11 @@ export const useTimelineStore = defineStore('timeline', {
         tripsCount: (state) => {
             if (!state.timelineData) return 0
             return state.timelineData.filter(item => item.type === 'trip').length
+        },
+
+        dataGapsCount: (state) => {
+            if (!state.timelineData) return 0
+            return state.timelineData.filter(item => item.type === 'dataGap').length
         },
 
         // Get timeline item by timestamp and coordinates (for click handling)
@@ -119,7 +129,13 @@ export const useTimelineStore = defineStore('timeline', {
                     type: 'trip'
                 }))
 
-                const results = [...normalizedStays, ...normalizedTrips].sort(
+                const normalizedDataGaps = (response.data.dataGaps || []).map(dataGap => ({
+                    ...dataGap,
+                    type: 'dataGap',
+                    timestamp: dataGap.startTime
+                }))
+
+                const results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
                     (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
                 )
 

@@ -123,8 +123,8 @@ public class TimelineQueryService {
             timeline.setDataSource(TimelineDataSource.LIVE);
             timeline.setLastUpdated(Instant.now());
 
-            log.debug("Generated live timeline: {} stays, {} trips", 
-                     timeline.getStaysCount(), timeline.getTripsCount());
+            log.debug("Generated live timeline: {} stays, {} trips, {} data gaps", 
+                     timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
             return timeline;
             
         } catch (Exception e) {
@@ -165,8 +165,8 @@ public class TimelineQueryService {
             // Cache the generated timeline for future requests
             timelineCacheService.save(userId, startTime, endTime, timeline);
             
-            log.debug("Generated and cached timeline: {} stays, {} trips", 
-                     timeline.getStaysCount(), timeline.getTripsCount());
+            log.debug("Generated and cached timeline: {} stays, {} trips, {} data gaps", 
+                     timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
             return timeline;
             
         } catch (Exception e) {
@@ -209,30 +209,161 @@ public class TimelineQueryService {
         combined.setDataSource(TimelineDataSource.MIXED);
         combined.setLastUpdated(Instant.now());
 
-        log.debug("Combined timeline: {} stays ({}+{}), {} trips ({}+{})", 
+        log.debug("Combined timeline: {} stays ({}+{}), {} trips ({}+{}), {} data gaps ({}+{})", 
                  combined.getStaysCount(), pastTimeline.getStaysCount(), todayTimeline.getStaysCount(),
-                 combined.getTripsCount(), pastTimeline.getTripsCount(), todayTimeline.getTripsCount());
+                 combined.getTripsCount(), pastTimeline.getTripsCount(), todayTimeline.getTripsCount(),
+                 combined.getDataGapsCount(), pastTimeline.getDataGapsCount(), todayTimeline.getDataGapsCount());
         
         return combined;
     }
 
     /**
-     * Combine two timelines into one.
+     * Combine two timelines into one, detecting cross-day data gaps at the boundary.
      */
     private MovementTimelineDTO combineTimelines(UUID userId, MovementTimelineDTO past, MovementTimelineDTO today) {
+        log.debug("=== COMBINING TIMELINES FOR CROSS-DAY GAP DETECTION ===");
+        log.debug("Past timeline: {} stays, {} trips, {} data gaps", 
+                 past.getStaysCount(), past.getTripsCount(), past.getDataGapsCount());
+        log.debug("Today timeline: {} stays, {} trips, {} data gaps", 
+                 today.getStaysCount(), today.getTripsCount(), today.getDataGapsCount());
+        
         MovementTimelineDTO combined = new MovementTimelineDTO(userId);
         
-        // Add all stays and trips from both timelines
+        // Add all stays, trips, and data gaps from both timelines
         combined.getStays().addAll(past.getStays());
         combined.getStays().addAll(today.getStays());
         combined.getTrips().addAll(past.getTrips());
         combined.getTrips().addAll(today.getTrips());
+        combined.getDataGaps().addAll(past.getDataGaps());
+        combined.getDataGaps().addAll(today.getDataGaps());
+        
+        // Detect cross-day gaps between the last activity in past timeline and first activity in today timeline
+        detectCrossDayGaps(userId, past, today, combined);
         
         // Sort by timestamp to maintain chronological order
         combined.getStays().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
         combined.getTrips().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
+        combined.getDataGaps().sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
+        
+        log.debug("Combined timeline result: {} stays, {} trips, {} data gaps", 
+                 combined.getStaysCount(), combined.getTripsCount(), combined.getDataGapsCount());
         
         return combined;
+    }
+    
+    /**
+     * Detect data gaps that span across the boundary between past and today timelines.
+     * This catches gaps that wouldn't be detected when processing timelines separately.
+     */
+    private void detectCrossDayGaps(UUID userId, MovementTimelineDTO past, MovementTimelineDTO today, MovementTimelineDTO combined) {
+        // Get configuration for gap detection thresholds
+        TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+        Integer gapThresholdSeconds = config.getDataGapThresholdSeconds();
+        Integer minGapDurationSeconds = config.getDataGapMinDurationSeconds();
+        
+        if (gapThresholdSeconds == null || minGapDurationSeconds == null) {
+            log.debug("Cross-day gap detection disabled - thresholds not configured");
+            return;
+        }
+        
+        log.debug("Checking for cross-day gaps with threshold: {}s, min duration: {}s", 
+                 gapThresholdSeconds, minGapDurationSeconds);
+        
+        // Find the last timestamp in the past timeline (could be stay, trip, or data gap end)
+        Instant lastPastActivity = getLastActivityTimestamp(past);
+        
+        // Find the first timestamp in the today timeline (could be stay, trip, or data gap start)  
+        Instant firstTodayActivity = getFirstActivityTimestamp(today);
+        
+        if (lastPastActivity == null || firstTodayActivity == null) {
+            log.debug("Cannot detect cross-day gap - missing activity timestamps (past: {}, today: {})", 
+                     lastPastActivity, firstTodayActivity);
+            return;
+        }
+        
+        // Calculate gap duration
+        long gapDurationSeconds = java.time.Duration.between(lastPastActivity, firstTodayActivity).getSeconds();
+        
+        log.info("Cross-day gap analysis: {} to {} = {}s ({}h)", 
+                lastPastActivity, firstTodayActivity, gapDurationSeconds, gapDurationSeconds / 3600.0);
+        
+        if (gapDurationSeconds > gapThresholdSeconds && gapDurationSeconds >= minGapDurationSeconds) {
+            TimelineDataGapDTO crossDayGap = new TimelineDataGapDTO(lastPastActivity, firstTodayActivity, gapDurationSeconds);
+            combined.getDataGaps().add(crossDayGap);
+            
+            log.info("✓ CROSS-DAY DATA GAP DETECTED: {} to {} (duration: {}s = {}h)", 
+                    lastPastActivity, firstTodayActivity, gapDurationSeconds, gapDurationSeconds / 3600.0);
+        } else {
+            log.debug("Cross-day gap too short to record: {}s < {}s threshold", gapDurationSeconds, minGapDurationSeconds);
+        }
+    }
+    
+    /**
+     * Get the last activity timestamp from a timeline (latest end time of stays, trips, or data gaps).
+     */
+    private Instant getLastActivityTimestamp(MovementTimelineDTO timeline) {
+        Instant lastTimestamp = null;
+        
+        // Check last stay
+        if (!timeline.getStays().isEmpty()) {
+            TimelineStayLocationDTO lastStay = timeline.getStays().get(timeline.getStays().size() - 1);
+            Instant stayEndTime = lastStay.getTimestamp().plusSeconds(lastStay.getStayDuration() * 60);
+            lastTimestamp = maxInstant(lastTimestamp, stayEndTime);
+        }
+        
+        // Check last trip  
+        if (!timeline.getTrips().isEmpty()) {
+            TimelineTripDTO lastTrip = timeline.getTrips().get(timeline.getTrips().size() - 1);
+            Instant tripEndTime = lastTrip.getTimestamp().plusSeconds(lastTrip.getTripDuration() * 60);
+            lastTimestamp = maxInstant(lastTimestamp, tripEndTime);
+        }
+        
+        // Check last data gap
+        if (!timeline.getDataGaps().isEmpty()) {
+            TimelineDataGapDTO lastGap = timeline.getDataGaps().get(timeline.getDataGaps().size() - 1);
+            lastTimestamp = maxInstant(lastTimestamp, lastGap.getEndTime());
+        }
+        
+        return lastTimestamp;
+    }
+    
+    /**
+     * Get the first activity timestamp from a timeline (earliest start time of stays, trips, or data gaps).
+     */
+    private Instant getFirstActivityTimestamp(MovementTimelineDTO timeline) {
+        Instant firstTimestamp = null;
+        
+        // Check first stay
+        if (!timeline.getStays().isEmpty()) {
+            TimelineStayLocationDTO firstStay = timeline.getStays().get(0);
+            firstTimestamp = minInstant(firstTimestamp, firstStay.getTimestamp());
+        }
+        
+        // Check first trip
+        if (!timeline.getTrips().isEmpty()) {
+            TimelineTripDTO firstTrip = timeline.getTrips().get(0);
+            firstTimestamp = minInstant(firstTimestamp, firstTrip.getTimestamp());
+        }
+        
+        // Check first data gap
+        if (!timeline.getDataGaps().isEmpty()) {
+            TimelineDataGapDTO firstGap = timeline.getDataGaps().get(0);
+            firstTimestamp = minInstant(firstTimestamp, firstGap.getStartTime());
+        }
+        
+        return firstTimestamp;
+    }
+    
+    private Instant maxInstant(Instant a, Instant b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return a.isAfter(b) ? a : b;
+    }
+    
+    private Instant minInstant(Instant a, Instant b) {
+        if (a == null) return b;
+        if (b == null) return a;
+        return a.isBefore(b) ? a : b;
     }
 
     /**
