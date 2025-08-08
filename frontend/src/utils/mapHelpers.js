@@ -613,7 +613,7 @@ export function createFavoriteIcon() {
  */
 export function createImmichPhotoIcon() {
   // Use smaller size on mobile devices
-  const size = window.innerWidth < 768 ? MARKER_SIZES.SMALL : MARKER_SIZES.STANDARD
+  const size = window.innerWidth < 768 ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
   
   return createCustomDivIcon({
     color: '#6366f1', // Indigo color for Immich photos
@@ -637,7 +637,7 @@ export function createImmichPhotoIcon() {
 export function createImmichPhotoClusterIcon(count) {
   // Responsive sizing - smaller on mobile
   const isMobile = window.innerWidth < 768
-  let size = isMobile ? MARKER_SIZES.SMALL : MARKER_SIZES.STANDARD
+  let size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
   let backgroundColor = '#6366f1'
   
   if (count > 20) {
