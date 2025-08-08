@@ -4,21 +4,22 @@
       <div class="share-links-page">
 
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header" v-if="shareLinksStore.links.length !== 0 || shareLinksStore.isLoading">
+          <!--          <div class="page-header">-->
           <div class="header-content">
             <div class="header-text">
               <h1 class="page-title">Share Links</h1>
-              <p class="page-description">
+              <p c  lass="page-description">
                 Create and manage shareable links to your location data
               </p>
             </div>
             <div class="header-actions">
-              <Button 
-                label="Create New Link" 
-                icon="pi pi-plus"
-                @click="showCreateDialog = true"
-                :disabled="!shareLinksStore.canCreateNewLink"
-                class="create-link-btn"
+              <Button
+                  label="Create New Link"
+                  icon="pi pi-plus"
+                  @click="showCreateDialog = true"
+                  :disabled="!shareLinksStore.canCreateNewLink"
+                  class="create-link-btn"
               />
             </div>
           </div>
@@ -27,30 +28,32 @@
         <!-- Share Links Content -->
         <div class="share-links-content">
           <!-- Loading State -->
-          <div v-if="shareLinksStore.isLoading && shareLinksStore.links.length === 0" 
+          <div v-if="shareLinksStore.isLoading && shareLinksStore.links.length === 0"
                class="loading-state">
-            <ProgressSpinner />
+            <ProgressSpinner/>
             <p>Loading share links...</p>
           </div>
 
           <!-- Error State -->
-          <Message v-if="shareLinksStore.getError" 
-                   severity="error" 
+          <Message v-if="shareLinksStore.getError"
+                   severity="error"
                    :closable="true"
                    @close="shareLinksStore.clearError()">
             {{ shareLinksStore.getError }}
           </Message>
 
           <!-- Links List -->
-          <div v-if="!shareLinksStore.isLoading || shareLinksStore.links.length > 0" 
+          <div v-if="!shareLinksStore.isLoading || shareLinksStore.links.length > 0"
                class="links-container">
-            
+
             <!-- Active Links -->
             <div v-if="shareLinksStore.getActiveLinks.length > 0" class="links-section">
-              <h2 class="section-title">Active Links ({{ shareLinksStore.getActiveLinks.length }}/{{ shareLinksStore.maxLinks }})</h2>
+              <h2 class="section-title">Active Links ({{
+                  shareLinksStore.getActiveLinks.length
+                }}/{{ shareLinksStore.maxLinks }})</h2>
               <div class="links-grid">
-                <Card v-for="link in shareLinksStore.getActiveLinks" 
-                      :key="link.id" 
+                <Card v-for="link in shareLinksStore.getActiveLinks"
+                      :key="link.id"
                       class="link-card active">
                   <template #content>
                     <div class="link-header">
@@ -62,7 +65,7 @@
                         </div>
                       </div>
                       <div class="link-status">
-                        <Tag severity="success" value="Active" />
+                        <Tag severity="success" value="Active"/>
                       </div>
                     </div>
 
@@ -70,16 +73,16 @@
                       <div class="link-url-section">
                         <label class="url-label">Share URL:</label>
                         <div class="url-input-group">
-                          <InputText 
-                            :value="getShareUrl(link.id)"
-                            readonly
-                            class="share-url-input"
+                          <InputText
+                              :value="getShareUrl(link.id)"
+                              readonly
+                              class="share-url-input"
                           />
-                          <Button 
-                            icon="pi pi-copy"
-                            @click="copyToClipboard(getShareUrl(link.id))"
-                            class="copy-btn"
-                            v-tooltip="'Copy to clipboard'"
+                          <Button
+                              icon="pi pi-copy"
+                              @click="copyToClipboard(getShareUrl(link.id))"
+                              class="copy-btn"
+                              v-tooltip="'Copy to clipboard'"
                           />
                         </div>
                       </div>
@@ -101,19 +104,19 @@
                     </div>
 
                     <div class="link-actions">
-                      <Button 
-                        label="Edit" 
-                        icon="pi pi-pencil"
-                        severity="secondary"
-                        @click="editLink(link)"
-                        class="edit-btn"
+                      <Button
+                          label="Edit"
+                          icon="pi pi-pencil"
+                          severity="secondary"
+                          @click="editLink(link)"
+                          class="edit-btn"
                       />
-                      <Button 
-                        label="Delete" 
-                        icon="pi pi-trash"
-                        severity="danger"
-                        @click="confirmDeleteLink(link)"
-                        class="delete-btn"
+                      <Button
+                          label="Delete"
+                          icon="pi pi-trash"
+                          severity="danger"
+                          @click="confirmDeleteLink(link)"
+                          class="delete-btn"
                       />
                     </div>
                   </template>
@@ -125,8 +128,8 @@
             <div v-if="shareLinksStore.getExpiredLinks.length > 0" class="links-section">
               <h2 class="section-title">Expired Links ({{ shareLinksStore.getExpiredLinks.length }})</h2>
               <div class="links-grid">
-                <Card v-for="link in shareLinksStore.getExpiredLinks" 
-                      :key="link.id" 
+                <Card v-for="link in shareLinksStore.getExpiredLinks"
+                      :key="link.id"
                       class="link-card expired">
                   <template #content>
                     <div class="link-header">
@@ -138,17 +141,17 @@
                         </div>
                       </div>
                       <div class="link-status">
-                        <Tag severity="danger" value="Expired" />
+                        <Tag severity="danger" value="Expired"/>
                       </div>
                     </div>
 
                     <div class="link-actions">
-                      <Button 
-                        label="Delete" 
-                        icon="pi pi-trash"
-                        severity="danger"
-                        @click="confirmDeleteLink(link)"
-                        class="delete-btn"
+                      <Button
+                          label="Delete"
+                          icon="pi pi-trash"
+                          severity="danger"
+                          @click="confirmDeleteLink(link)"
+                          class="delete-btn"
                       />
                     </div>
                   </template>
@@ -157,38 +160,38 @@
             </div>
 
             <!-- Empty State -->
-            <div v-if="shareLinksStore.links.length === 0 && !shareLinksStore.isLoading" 
+            <div v-if="shareLinksStore.links.length === 0 && !shareLinksStore.isLoading"
                  class="empty-state">
               <i class="pi pi-share-alt empty-icon"></i>
               <h3>No share links yet</h3>
               <p>Create your first share link to start sharing your location data with others.</p>
-              <Button 
-                label="Create Your First Link" 
-                icon="pi pi-plus"
-                @click="showCreateDialog = true"
-                class="empty-action-btn"
+              <Button
+                  label="Create Your First Link"
+                  icon="pi pi-plus"
+                  @click="showCreateDialog = true"
+                  class="empty-action-btn"
               />
             </div>
           </div>
         </div>
 
         <!-- Create/Edit Link Dialog -->
-        <Dialog 
-          v-model:visible="showCreateDialog" 
-          :header="editingLink ? 'Edit Share Link' : 'Create Share Link'"
-          :modal="true"
-          :closable="true"
-          :draggable="false"
-          class="share-link-dialog"
+        <Dialog
+            v-model:visible="showCreateDialog"
+            :header="editingLink ? 'Edit Share Link' : 'Create Share Link'"
+            :modal="true"
+            :closable="true"
+            :draggable="false"
+            class="share-link-dialog"
         >
           <form @submit.prevent="submitLinkForm" class="link-form">
             <div class="form-group">
               <label for="name" class="form-label">Name</label>
-              <InputText 
-                id="name"
-                v-model="linkForm.name"
-                placeholder="Enter a name for this link"
-                class="form-input"
+              <InputText
+                  id="name"
+                  v-model="linkForm.name"
+                  placeholder="Enter a name for this link"
+                  class="form-input"
               />
             </div>
 
@@ -196,10 +199,10 @@
               <label class="form-label">Location Sharing Scope</label>
               <div class="scope-options">
                 <div class="scope-option">
-                  <RadioButton 
-                    id="current-only"
-                    v-model="linkForm.show_history"
-                    :value="false"
+                  <RadioButton
+                      id="current-only"
+                      v-model="linkForm.show_history"
+                      :value="false"
                   />
                   <label for="current-only" class="scope-label">
                     <strong>Current Location Only</strong>
@@ -207,10 +210,10 @@
                   </label>
                 </div>
                 <div class="scope-option">
-                  <RadioButton 
-                    id="with-history"
-                    v-model="linkForm.show_history"
-                    :value="true"
+                  <RadioButton
+                      id="with-history"
+                      v-model="linkForm.show_history"
+                      :value="true"
                   />
                   <label for="with-history" class="scope-label">
                     <strong>Location History</strong>
@@ -222,23 +225,23 @@
 
             <div class="form-group">
               <label for="expires_at" class="form-label">Expires At</label>
-              <Calendar 
-                id="expires_at"
-                v-model="linkForm.expires_at"
-                :minDate="minDate"
-                showTime
-                hourFormat="24"
-                dateFormat="mm/dd/yy"
-                class="form-input"
+              <Calendar
+                  id="expires_at"
+                  v-model="linkForm.expires_at"
+                  :minDate="minDate"
+                  showTime
+                  hourFormat="24"
+                  dateFormat="mm/dd/yy"
+                  class="form-input"
               />
             </div>
 
             <div class="form-group">
               <div class="checkbox-wrapper">
-                <Checkbox 
-                  id="has_password"
-                  v-model="linkForm.has_password"
-                  :binary="true"
+                <Checkbox
+                    id="has_password"
+                    v-model="linkForm.has_password"
+                    :binary="true"
                 />
                 <label for="has_password" class="checkbox-label">Password protect this link</label>
               </div>
@@ -246,41 +249,41 @@
 
             <div v-if="linkForm.has_password" class="form-group">
               <label for="password" class="form-label">Password</label>
-              <Password 
-                id="password"
-                v-model="linkForm.password"
-                placeholder="Enter password"
-                class="form-input"
-                :feedback="false"
+              <Password
+                  id="password"
+                  v-model="linkForm.password"
+                  placeholder="Enter password"
+                  class="form-input"
+                  :feedback="false"
               />
             </div>
 
             <div class="form-actions">
-              <Button 
-                label="Cancel" 
-                severity="secondary"
-                @click="closeDialog"
-                type="button"
-                class="cancel-btn"
+              <Button
+                  label="Cancel"
+                  severity="secondary"
+                  @click="closeDialog"
+                  type="button"
+                  class="cancel-btn"
               />
-              <Button 
-                :label="editingLink ? 'Update Link' : 'Create Link'"
-                type="submit"
-                :loading="shareLinksStore.isLoading"
-                class="submit-btn"
+              <Button
+                  :label="editingLink ? 'Update Link' : 'Create Link'"
+                  type="submit"
+                  :loading="shareLinksStore.isLoading"
+                  class="submit-btn"
               />
             </div>
           </form>
         </Dialog>
 
         <!-- Delete Confirmation Dialog -->
-        <Dialog 
-          v-model:visible="showDeleteDialog" 
-          header="Confirm Delete"
-          :modal="true"
-          :closable="true"
-          :draggable="false"
-          class="delete-dialog"
+        <Dialog
+            v-model:visible="showDeleteDialog"
+            header="Confirm Delete"
+            :modal="true"
+            :closable="true"
+            :draggable="false"
+            class="delete-dialog"
         >
           <div class="delete-content">
             <i class="pi pi-exclamation-triangle warning-icon"></i>
@@ -291,18 +294,18 @@
             </div>
           </div>
           <div class="delete-actions">
-            <Button 
-              label="Cancel" 
-              severity="secondary"
-              @click="showDeleteDialog = false"
-              class="cancel-btn"
+            <Button
+                label="Cancel"
+                severity="secondary"
+                @click="showDeleteDialog = false"
+                class="cancel-btn"
             />
-            <Button 
-              label="Delete" 
-              severity="danger"
-              @click="deleteLink"
-              :loading="shareLinksStore.isLoading"
-              class="delete-btn"
+            <Button
+                label="Delete"
+                severity="danger"
+                @click="deleteLink"
+                :loading="shareLinksStore.isLoading"
+                class="delete-btn"
             />
           </div>
         </Dialog>
@@ -312,9 +315,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useToast } from 'primevue/usetoast'
-import { useShareLinksStore } from '@/stores/shareLinks'
+import {ref, reactive, onMounted, computed} from 'vue'
+import {useToast} from 'primevue/usetoast'
+import {useShareLinksStore} from '@/stores/shareLinks'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
@@ -447,15 +450,15 @@ const copyToClipboard = async (text) => {
       document.body.appendChild(textArea)
       textArea.focus()
       textArea.select()
-      
+
       const successful = document.execCommand('copy')
       document.body.removeChild(textArea)
-      
+
       if (!successful) {
         throw new Error('Copy command failed')
       }
     }
-    
+
     toast.add({
       severity: 'success',
       summary: 'Copied',
