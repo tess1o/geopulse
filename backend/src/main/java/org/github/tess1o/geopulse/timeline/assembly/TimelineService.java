@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.timeline.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.timeline.detection.gaps.DataGapDetectionService;
 import org.github.tess1o.geopulse.timeline.detection.stays.StayPointDetectionService;
 import org.github.tess1o.geopulse.timeline.detection.trips.TripDetectionService;
 import org.github.tess1o.geopulse.timeline.model.*;
@@ -23,6 +24,7 @@ public class TimelineService {
     private final StayPointDetectionService stayPointDetectionService;
     private final TripDetectionService tripDetectionService;
     private final TimelineProcessingService processingService;
+    private final DataGapDetectionService dataGapDetectionService;
 
     @Inject
     public TimelineService(TimelineDataService timelineDataService,
@@ -30,13 +32,15 @@ public class TimelineService {
                           TimelineAssemblyService assemblyService,
                           StayPointDetectionService stayPointDetectionService,
                           TripDetectionService tripDetectionService,
-                          TimelineProcessingService processingService) {
+                          TimelineProcessingService processingService,
+                          DataGapDetectionService dataGapDetectionService) {
         this.timelineDataService = timelineDataService;
         this.configurationProvider = configurationProvider;
         this.assemblyService = assemblyService;
         this.stayPointDetectionService = stayPointDetectionService;
         this.tripDetectionService = tripDetectionService;
         this.processingService = processingService;
+        this.dataGapDetectionService = dataGapDetectionService;
     }
 
     /**
@@ -73,16 +77,19 @@ public class TimelineService {
         // 3. Convert to track points for algorithm processing
         List<TrackPoint> trackPoints = timelineDataService.convertToTrackPoints(gpsData);
 
-        // 4. Detect stay points
+        // 4. Detect data gaps in GPS data
+        List<TimelineDataGapDTO> dataGaps = dataGapDetectionService.detectDataGaps(config, trackPoints);
+
+        // 5. Detect stay points
         List<TimelineStayPoint> stayPoints = stayPointDetectionService.detectStayPoints(config, trackPoints);
 
-        // 5. Detect trips
+        // 6. Detect trips
         List<TimelineTrip> trips = tripDetectionService.detectTrips(config, gpsData.getPoints(), stayPoints);
 
-        // 6. Assemble timeline
-        MovementTimelineDTO timeline = assemblyService.assembleTimeline(userId, stayPoints, trips);
+        // 7. Assemble timeline
+        MovementTimelineDTO timeline = assemblyService.assembleTimeline(userId, stayPoints, trips, dataGaps);
 
-        // 7. Apply post-processing
+        // 8. Apply post-processing
         return processingService.processTimeline(config, timeline);
     }
 

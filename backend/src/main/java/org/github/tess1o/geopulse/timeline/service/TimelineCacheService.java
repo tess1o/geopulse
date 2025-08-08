@@ -10,9 +10,11 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
+import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 
@@ -37,6 +39,9 @@ public class TimelineCacheService {
 
     @Inject
     TimelineTripRepository tripRepository;
+    
+    @Inject
+    TimelineDataGapRepository dataGapRepository;
 
     @Inject
     TimelinePersistenceMapper persistenceMapper;
@@ -56,8 +61,9 @@ public class TimelineCacheService {
     public boolean exists(UUID userId, Instant startTime, Instant endTime) {
         List<TimelineStayEntity> stays = stayRepository.findByUserAndDateRange(userId, startTime, endTime);
         List<TimelineTripEntity> trips = tripRepository.findByUserAndDateRange(userId, startTime, endTime);
+        List<TimelineDataGapEntity> dataGaps = dataGapRepository.findByUserIdAndTimeRange(userId, startTime, endTime);
         
-        boolean hasData = !stays.isEmpty() || !trips.isEmpty();
+        boolean hasData = !stays.isEmpty() || !trips.isEmpty() || !dataGaps.isEmpty();
         log.debug("Cache check for user {} from {} to {}: {}", userId, startTime, endTime, 
                  hasData ? "EXISTS" : "NOT_FOUND");
         
@@ -70,12 +76,13 @@ public class TimelineCacheService {
     public MovementTimelineDTO get(UUID userId, Instant startTime, Instant endTime) {
         List<TimelineStayEntity> stays = stayRepository.findByUserAndDateRange(userId, startTime, endTime);
         List<TimelineTripEntity> trips = tripRepository.findByUserAndDateRange(userId, startTime, endTime);
+        List<TimelineDataGapEntity> dataGaps = dataGapRepository.findByUserIdAndTimeRange(userId, startTime, endTime);
         
-        MovementTimelineDTO timeline = persistenceMapper.toMovementTimelineDTO(userId, stays, trips);
+        MovementTimelineDTO timeline = persistenceMapper.toMovementTimelineDTO(userId, stays, trips, dataGaps);
         timeline.setDataSource(TimelineDataSource.CACHED);  // Mark as cached data
         
-        log.debug("Retrieved cached timeline for user {}: {} stays, {} trips", 
-                 userId, stays.size(), trips.size());
+        log.debug("Retrieved cached timeline for user {}: {} stays, {} trips, {} data gaps", 
+                 userId, stays.size(), trips.size(), dataGaps.size());
         
         return timeline;
     }
@@ -89,6 +96,7 @@ public class TimelineCacheService {
             // Convert DTO to entities
             List<TimelineStayEntity> stayEntities = persistenceMapper.toStayEntities(timeline);
             List<TimelineTripEntity> tripEntities = persistenceMapper.toTripEntities(timeline);
+            List<TimelineDataGapEntity> dataGapEntities = persistenceMapper.toDataGapEntities(timeline);
 
             // Set user on all entities - they need user reference for persistence
             UserEntity user = userRepository.findById(userId);
@@ -124,6 +132,7 @@ public class TimelineCacheService {
             }
             
             tripEntities.forEach(trip -> trip.setUser(user));
+            dataGapEntities.forEach(dataGap -> dataGap.setUser(user));
 
             // Persist entities
             if (!stayEntities.isEmpty()) {
@@ -132,9 +141,12 @@ public class TimelineCacheService {
             if (!tripEntities.isEmpty()) {
                 tripRepository.persist(tripEntities);
             }
+            if (!dataGapEntities.isEmpty()) {
+                dataGapRepository.persist(dataGapEntities);
+            }
 
-            log.debug("Saved timeline to cache for user {}: {} stays, {} trips", 
-                     userId, stayEntities.size(), tripEntities.size());
+            log.debug("Saved timeline to cache for user {}: {} stays, {} trips, {} data gaps", 
+                     userId, stayEntities.size(), tripEntities.size(), dataGapEntities.size());
                      
         } catch (Exception e) {
             log.error("Failed to save timeline to cache for user {} from {} to {}", 
@@ -155,6 +167,7 @@ public class TimelineCacheService {
 
         int deletedStays = 0;
         int deletedTrips = 0;
+        int deletedDataGaps = 0;
 
         for (LocalDate date : dates) {
             Instant dayStart = date.atStartOfDay(ZoneOffset.UTC).toInstant();
@@ -173,10 +186,14 @@ public class TimelineCacheService {
                 tripsToDelete.forEach(tripRepository::delete);
                 deletedTrips += tripsToDelete.size();
             }
+
+            // Delete data gaps for this date
+            long deletedGapsForDate = dataGapRepository.deleteByUserIdAndTimeRange(userId, dayStart, dayEnd);
+            deletedDataGaps += deletedGapsForDate;
         }
 
-        log.info("Deleted cached timeline data for user {} on {} dates: {} stays, {} trips", 
-                userId, dates.size(), deletedStays, deletedTrips);
+        log.info("Deleted cached timeline data for user {} on {} dates: {} stays, {} trips, {} data gaps", 
+                userId, dates.size(), deletedStays, deletedTrips, deletedDataGaps);
     }
 
     /**
@@ -187,9 +204,10 @@ public class TimelineCacheService {
     public void deleteAll(UUID userId) {
         long deletedStays = stayRepository.delete("user.id", userId);
         long deletedTrips = tripRepository.delete("user.id", userId);
+        long deletedDataGaps = dataGapRepository.deleteByUserId(userId);
         
-        log.info("Deleted all cached timeline data for user {}: {} stays, {} trips", 
-                userId, deletedStays, deletedTrips);
+        log.info("Deleted all cached timeline data for user {}: {} stays, {} trips, {} data gaps", 
+                userId, deletedStays, deletedTrips, deletedDataGaps);
     }
 
     /**

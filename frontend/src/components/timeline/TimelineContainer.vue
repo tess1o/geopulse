@@ -36,6 +36,12 @@
           :trip-item="slotProps.item"
           @click="handleTimelineItemClick"
         />
+        
+        <DataGapCard
+          v-else-if="slotProps.item.type === 'dataGap'"
+          :data-gap-item="slotProps.item"
+          @click="handleTimelineItemClick"
+        />
       </template>
     </Timeline>
   </div>
@@ -45,6 +51,7 @@
 import { computed } from 'vue'
 import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
+import DataGapCard from './DataGapCard.vue'
 
 // Props
 const props = defineProps({
@@ -67,11 +74,17 @@ const emit = defineEmits(['timeline-item-click'])
 
 // Computed properties
 const getMarkerIcon = computed(() => (type) => {
-  return type === 'stay' ? 'pi pi-map-marker' : 'pi pi-car'
+  if (type === 'stay') return 'pi pi-map-marker'
+  if (type === 'trip') return 'pi pi-car'
+  if (type === 'dataGap') return 'pi pi-question'
+  return 'pi pi-circle'
 })
 
 const getMarkerClass = computed(() => (type) => {
-  return type === 'stay' ? 'marker-stay' : 'marker-trip'
+  if (type === 'stay') return 'marker-stay'
+  if (type === 'trip') return 'marker-trip'
+  if (type === 'dataGap') return 'marker-data-gap'
+  return 'marker-default'
 })
 
 // Methods
@@ -131,6 +144,10 @@ const handleTimelineItemClick = (item) => {
 
 .timeline-marker.marker-trip {
   background: var(--gp-success);
+}
+
+.timeline-marker.marker-data-gap {
+  background: var(--gp-warning);
 }
 
 /* Dark mode adjustments */

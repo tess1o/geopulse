@@ -126,6 +126,21 @@ public class TimelineConfigFieldRegistry {
                 TimelineConfig::getPathAdaptiveSimplification,
                 TimelineConfig::setPathAdaptiveSimplification,
                 Boolean::valueOf
+            ))
+            // Data Gap Detection
+            .register(new ConfigField<>(
+                "geopulse.timeline.data_gap.threshold_seconds",
+                "10800", // 3 hours default
+                TimelineConfig::getDataGapThresholdSeconds,
+                TimelineConfig::setDataGapThresholdSeconds,
+                Integer::valueOf
+            ))
+            .register(new ConfigField<>(
+                "geopulse.timeline.data_gap.min_duration_seconds", 
+                "1800", // 30 minutes minimum gap duration
+                TimelineConfig::getDataGapMinDurationSeconds,
+                TimelineConfig::setDataGapMinDurationSeconds,
+                Integer::valueOf
             ));
     }
 }

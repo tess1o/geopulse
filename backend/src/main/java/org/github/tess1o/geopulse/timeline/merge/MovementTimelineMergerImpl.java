@@ -67,7 +67,8 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
         MovementTimelineDTO mergedTimeline = new MovementTimelineDTO(
                 timeline.getUserId(),
                 result.mergedStays,
-                result.remainingTrips
+                result.remainingTrips,
+                timeline.getDataGaps()
         );
         
         // Preserve metadata from original timeline

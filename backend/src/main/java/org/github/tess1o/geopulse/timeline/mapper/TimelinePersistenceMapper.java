@@ -176,6 +176,26 @@ public class TimelinePersistenceMapper {
     }
 
     /**
+     * Convert lists of entities to a MovementTimelineDTO including data gaps.
+     *
+     * @param userId       user ID
+     * @param stayEntities list of stay entities
+     * @param tripEntities list of trip entities
+     * @param dataGapEntities list of data gap entities
+     * @return complete movement timeline DTO with data gaps
+     */
+    public MovementTimelineDTO toMovementTimelineDTO(UUID userId, 
+                                                   List<TimelineStayEntity> stayEntities, 
+                                                   List<TimelineTripEntity> tripEntities,
+                                                   List<TimelineDataGapEntity> dataGapEntities) {
+        List<TimelineStayLocationDTO> stays = toStayDTOs(stayEntities);
+        List<TimelineTripDTO> trips = toTripDTOs(tripEntities);
+        List<TimelineDataGapDTO> dataGaps = toDataGapDTOs(dataGapEntities);
+
+        return new MovementTimelineDTO(userId, stays, trips, dataGaps);
+    }
+
+    /**
      * Convert MovementTimelineDTO stays to entities list.
      */
      public List<TimelineStayEntity> toStayEntities(MovementTimelineDTO timeline) {
@@ -190,6 +210,45 @@ public class TimelinePersistenceMapper {
     public List<TimelineTripEntity> toTripEntities(MovementTimelineDTO timeline) {
         return timeline.getTrips().stream()
                 .map(this::toTripEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert a TimelineDataGapEntity to a TimelineDataGapDTO.
+     */
+    public TimelineDataGapDTO toDataGapDTO(TimelineDataGapEntity entity) {
+        return new TimelineDataGapDTO(entity.getStartTime(), entity.getEndTime(), entity.getDurationSeconds());
+    }
+
+    /**
+     * Convert a TimelineDataGapDTO to a TimelineDataGapEntity for persistence.
+     */
+    public TimelineDataGapEntity toDataGapEntity(TimelineDataGapDTO dto) {
+        return TimelineDataGapEntity.builder()
+                .startTime(dto.getStartTime())
+                .endTime(dto.getEndTime())
+                .durationSeconds(dto.getDurationSeconds())
+                .build();
+    }
+
+    /**
+     * Convert a list of TimelineDataGapEntity to TimelineDataGapDTO list.
+     */
+    public List<TimelineDataGapDTO> toDataGapDTOs(List<TimelineDataGapEntity> entities) {
+        return entities.stream()
+                .map(this::toDataGapDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convert MovementTimelineDTO data gaps to entities list.
+     */
+    public List<TimelineDataGapEntity> toDataGapEntities(MovementTimelineDTO timeline) {
+        if (timeline.getDataGaps() == null) {
+            return List.of();
+        }
+        return timeline.getDataGaps().stream()
+                .map(this::toDataGapEntity)
                 .collect(Collectors.toList());
     }
 

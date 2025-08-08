@@ -18,6 +18,7 @@ public class MovementTimelineDTO {
     private UUID userId;
     private List<TimelineStayLocationDTO> stays;
     private List<TimelineTripDTO> trips;
+    private List<TimelineDataGapDTO> dataGaps;
 
     // Timeline metadata for persistence and caching
     private TimelineDataSource dataSource;     // Source of this timeline data
@@ -27,6 +28,7 @@ public class MovementTimelineDTO {
         this.userId = userId;
         this.stays = new ArrayList<>();
         this.trips = new ArrayList<>();
+        this.dataGaps = new ArrayList<>();
     }
 
     /**
@@ -36,6 +38,17 @@ public class MovementTimelineDTO {
         this.userId = userId;
         this.stays = stays;
         this.trips = trips;
+        this.dataGaps = new ArrayList<>();
+    }
+    
+    /**
+     * Constructor with all lists.
+     */
+    public MovementTimelineDTO(UUID userId, List<TimelineStayLocationDTO> stays, List<TimelineTripDTO> trips, List<TimelineDataGapDTO> dataGaps) {
+        this.userId = userId;
+        this.stays = stays;
+        this.trips = trips;
+        this.dataGaps = dataGaps;
     }
 
     public int getStaysCount(){
@@ -44,5 +57,9 @@ public class MovementTimelineDTO {
 
     public int getTripsCount(){
         return trips != null ? trips.size() : 0;
+    }
+
+    public int getDataGapsCount(){
+        return dataGaps != null ? dataGaps.size() : 0;
     }
 }
