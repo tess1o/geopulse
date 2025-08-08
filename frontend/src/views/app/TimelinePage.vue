@@ -31,6 +31,7 @@
           :timelineData="timelineData"
           :timelineNoData="timelineNoData"
           :timelineDataLoading="timelineDataLoading"
+          :dateRange="dateRange"
           @timeline-item-click="handleTimelineItemClick"
       />
     </div>
