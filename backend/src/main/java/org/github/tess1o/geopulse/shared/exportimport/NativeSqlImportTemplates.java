@@ -97,4 +97,15 @@ public final class NativeSqlImportTemplates {
             source_type = EXCLUDED.source_type,
             active = EXCLUDED.active
         """;
+    
+    public static final String TIMELINE_DATA_GAPS_UPSERT = """
+        INSERT INTO timeline_data_gaps 
+        (id, user_id, start_time, end_time, duration_seconds, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (id) DO UPDATE SET
+            start_time = EXCLUDED.start_time,
+            end_time = EXCLUDED.end_time,
+            duration_seconds = EXCLUDED.duration_seconds,
+            created_at = EXCLUDED.created_at
+        """;
 }

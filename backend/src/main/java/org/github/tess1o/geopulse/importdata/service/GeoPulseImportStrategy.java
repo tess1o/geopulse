@@ -88,6 +88,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     case ExportImportConstants.FileNames.TIMELINE_DATA:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE);
                         break;
+                    case ExportImportConstants.FileNames.DATA_GAPS:
+                        detectedDataTypes.add(ExportImportConstants.DataTypes.DATA_GAPS);
+                        break;
                     case ExportImportConstants.FileNames.FAVORITES:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.FAVORITES);
                         break;
@@ -188,6 +191,13 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
         
+        // 3.1. Import data gaps (no dependencies)
+        if (fileContents.containsKey(ExportImportConstants.FileNames.DATA_GAPS)) {
+            importDataGapsData(fileContents.get(ExportImportConstants.FileNames.DATA_GAPS), job);
+            totalProgress += 5;
+            job.setProgress(totalProgress);
+        }
+        
         // 4. Import GPS data
         if (hasGpsData) {
             importRawGpsData(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
@@ -238,6 +248,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return ExportImportConstants.DataTypes.RAW_GPS;
             case ExportImportConstants.FileNames.TIMELINE_DATA:
                 return ExportImportConstants.DataTypes.TIMELINE;
+            case ExportImportConstants.FileNames.DATA_GAPS:
+                return ExportImportConstants.DataTypes.DATA_GAPS;
             case ExportImportConstants.FileNames.FAVORITES:
                 return ExportImportConstants.DataTypes.FAVORITES;
             case ExportImportConstants.FileNames.USER_INFO:
@@ -360,7 +372,62 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             }
         }
         
-        log.info("Successfully imported {} stays and {} trips using native SQL", importedStays, importedTrips);
+        // Import data gaps if included in timeline data
+        int importedDataGaps = 0;
+        if (timelineData.getDataGaps() != null) {
+            for (TimelineDataDto.DataGapDto dataGapDto : timelineData.getDataGaps()) {
+                if (shouldSkipDueToDateFilter(dataGapDto.getStartTime(), job)) {
+                    continue;
+                }
+
+                try {
+                    entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_DATA_GAPS_UPSERT)
+                        .setParameter(1, dataGapDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, dataGapDto.getStartTime())
+                        .setParameter(4, dataGapDto.getEndTime())
+                        .setParameter(5, dataGapDto.getDurationSeconds())
+                        .setParameter(6, dataGapDto.getCreatedAt())
+                        .executeUpdate();
+                    importedDataGaps++;
+                } catch (Exception e) {
+                    log.warn("Failed to import timeline data gap with ID {}: {}", dataGapDto.getId(), e.getMessage());
+                }
+            }
+        }
+
+        log.info("Successfully imported {} stays, {} trips and {} data gaps using native SQL", importedStays, importedTrips, importedDataGaps);
+    }
+
+    @Transactional
+    public void importDataGapsData(byte[] content, ImportJob job) throws IOException {
+        DataGapsDataDto dataGapsData = objectMapper.readValue(content, DataGapsDataDto.class);
+        log.info("Importing {} data gaps for user {} using native SQL", 
+                dataGapsData.getDataGaps().size(), job.getUserId());
+
+        int imported = 0;
+        for (TimelineDataDto.DataGapDto dataGapDto : dataGapsData.getDataGaps()) {
+            // Apply date range filter if specified
+            if (shouldSkipDueToDateFilter(dataGapDto.getStartTime(), job)) {
+                continue;
+            }
+
+            try {
+                entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_DATA_GAPS_UPSERT)
+                    .setParameter(1, dataGapDto.getId())
+                    .setParameter(2, job.getUserId())
+                    .setParameter(3, dataGapDto.getStartTime())
+                    .setParameter(4, dataGapDto.getEndTime())
+                    .setParameter(5, dataGapDto.getDurationSeconds())
+                    .setParameter(6, dataGapDto.getCreatedAt())
+                    .executeUpdate();
+                imported++;
+            } catch (Exception e) {
+                log.warn("Failed to import data gap with ID {}: {}", dataGapDto.getId(), e.getMessage());
+            }
+        }
+        
+        log.info("Successfully imported {} data gaps using native SQL", imported);
     }
 
     @Transactional

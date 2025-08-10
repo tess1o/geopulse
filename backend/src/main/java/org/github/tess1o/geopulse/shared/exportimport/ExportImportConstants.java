@@ -16,6 +16,7 @@ public final class ExportImportConstants {
     public static final class DataTypes {
         public static final String RAW_GPS = "rawgps";
         public static final String TIMELINE = "timeline";
+        public static final String DATA_GAPS = "datagaps";
         public static final String FAVORITES = "favorites";
         public static final String USER_INFO = "userinfo";
         public static final String LOCATION_SOURCES = "locationsources";
@@ -29,6 +30,7 @@ public final class ExportImportConstants {
         public static final String METADATA = "metadata.json";
         public static final String RAW_GPS_DATA = "raw-gps-data.json";
         public static final String TIMELINE_DATA = "timeline-data.json";
+        public static final String DATA_GAPS = "data-gaps.json";
         public static final String FAVORITES = "favorites.json";
         public static final String USER_INFO = "user-info.json";
         public static final String LOCATION_SOURCES = "location-sources.json";

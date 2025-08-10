@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -108,13 +109,31 @@ public class ExportDataMapper {
         return builder.build();
     }
 
+    public TimelineDataDto.DataGapDto toDataGapDto(TimelineDataGapEntity dataGap) {
+        return TimelineDataDto.DataGapDto.builder()
+                .id(dataGap.getId())
+                .startTime(dataGap.getStartTime())
+                .endTime(dataGap.getEndTime())
+                .durationSeconds(dataGap.getDurationSeconds())
+                .createdAt(dataGap.getCreatedAt())
+                .build();
+    }
+
     public TimelineDataDto toTimelineDataDto(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, ExportJob job) {
+        return toTimelineDataDto(stays, trips, new ArrayList<>(), job);
+    }
+
+    public TimelineDataDto toTimelineDataDto(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, List<TimelineDataGapEntity> dataGaps, ExportJob job) {
         List<TimelineDataDto.StayDto> stayDtos = stays.stream()
                 .map(this::toStayDto)
                 .collect(Collectors.toList());
 
         List<TimelineDataDto.TripDto> tripDtos = trips.stream()
                 .map(this::toTripDto)
+                .collect(Collectors.toList());
+
+        List<TimelineDataDto.DataGapDto> dataGapDtos = dataGaps.stream()
+                .map(this::toDataGapDto)
                 .collect(Collectors.toList());
 
         return TimelineDataDto.builder()
@@ -124,6 +143,7 @@ public class ExportDataMapper {
                 .endDate(job.getDateRange().getEndDate())
                 .stays(stayDtos)
                 .trips(tripDtos)
+                .dataGaps(dataGapDtos)
                 .build();
     }
 
