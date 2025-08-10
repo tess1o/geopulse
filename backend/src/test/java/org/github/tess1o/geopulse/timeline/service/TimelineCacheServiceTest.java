@@ -5,6 +5,7 @@ import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
+import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,7 @@ class TimelineCacheServiceTest {
 
     @Mock private TimelineStayRepository stayRepository;
     @Mock private TimelineTripRepository tripRepository;
+    @Mock private TimelineDataGapRepository dataGapRepository;
     @Mock private TimelinePersistenceMapper persistenceMapper;
 
     private TimelineCacheService cacheService;
@@ -54,6 +56,10 @@ class TimelineCacheServiceTest {
             var tripField = TimelineCacheService.class.getDeclaredField("tripRepository");
             tripField.setAccessible(true);
             tripField.set(cacheService, tripRepository);
+            
+            var dataGapField = TimelineCacheService.class.getDeclaredField("dataGapRepository");
+            dataGapField.setAccessible(true);
+            dataGapField.set(cacheService, dataGapRepository);
             
             var mapperField = TimelineCacheService.class.getDeclaredField("persistenceMapper");
             mapperField.setAccessible(true);
@@ -109,10 +115,12 @@ class TimelineCacheServiceTest {
                 .thenReturn(stays);
         when(tripRepository.findByUserAndDateRange(testUserId, testStartTime, testEndTime))
                 .thenReturn(trips);
+        when(dataGapRepository.findByUserIdAndTimeRange(testUserId, testStartTime, testEndTime))
+                .thenReturn(Collections.emptyList());
         
         MovementTimelineDTO expectedTimeline = new MovementTimelineDTO(testUserId);
         expectedTimeline.setDataSource(TimelineDataSource.CACHED);
-        when(persistenceMapper.toMovementTimelineDTO(testUserId, stays, trips))
+        when(persistenceMapper.toMovementTimelineDTO(eq(testUserId), eq(stays), eq(trips), any()))
                 .thenReturn(expectedTimeline);
 
         // Act
@@ -122,7 +130,7 @@ class TimelineCacheServiceTest {
         assertNotNull(result);
         assertEquals(TimelineDataSource.CACHED, result.getDataSource());
         assertEquals(testUserId, result.getUserId());
-        verify(persistenceMapper).toMovementTimelineDTO(testUserId, stays, trips);
+        verify(persistenceMapper).toMovementTimelineDTO(eq(testUserId), eq(stays), eq(trips), any());
     }
 
     @Test

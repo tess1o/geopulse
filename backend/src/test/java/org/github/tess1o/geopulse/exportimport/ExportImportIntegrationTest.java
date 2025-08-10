@@ -28,8 +28,10 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.github.tess1o.geopulse.timeline.model.LocationSource;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
+import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -78,6 +80,9 @@ class ExportImportIntegrationTest {
     TimelineTripRepository timelineTripRepository;
 
     @Inject
+    TimelineDataGapRepository timelineDataGapRepository;
+
+    @Inject
     org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
 
     @Inject
@@ -94,6 +99,7 @@ class ExportImportIntegrationTest {
     private ReverseGeocodingLocationEntity testGeocodingLocation;
     private TimelineStayEntity testStay;
     private TimelineTripEntity testTrip;
+    private TimelineDataGapEntity testDataGap;
     private GpsPointEntity testGpsPoint;
     private GpsSourceConfigEntity testGpsSource;
     private final GeometryFactory geometryFactory = new GeometryFactory();
@@ -171,6 +177,16 @@ class ExportImportIntegrationTest {
                 .build();
         timelineTripRepository.persist(testTrip);
 
+        // Create test data gap
+        testDataGap = TimelineDataGapEntity.builder()
+                .user(testUser)
+                .startTime(Instant.now().minus(4, ChronoUnit.HOURS))
+                .endTime(Instant.now().minus(3, ChronoUnit.HOURS).minus(30, ChronoUnit.MINUTES))
+                .durationSeconds(1800) // 30 minutes gap
+                .createdAt(Instant.now().minus(2, ChronoUnit.HOURS))
+                .build();
+        timelineDataGapRepository.persist(testDataGap);
+
         // Create test GPS point
         testGpsPoint = new GpsPointEntity();
         testGpsPoint.setUser(testUser);
@@ -208,6 +224,7 @@ class ExportImportIntegrationTest {
         gpsPointRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         timelineTripRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         timelineStayRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
+        timelineDataGapRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         favoritesRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         reverseGeocodingLocationRepository.delete("providerName = ?1", "test-provider");
         userRepository.delete("email = ?1", "test-export-import@geopulse.app");
@@ -222,6 +239,7 @@ class ExportImportIntegrationTest {
         log.info("Step 1: Capturing original data state");
         var originalStay = timelineStayRepository.findById(testStay.getId());
         var originalTrip = timelineTripRepository.findById(testTrip.getId());
+        var originalDataGap = timelineDataGapRepository.findById(testDataGap.getId());
         var originalFavorite = favoritesRepository.findById(testFavorite.getId());
         var originalGeocodingLocation = reverseGeocodingLocationRepository.findById(testGeocodingLocation.getId());
         var originalGpsPoint = gpsPointRepository.findById(testGpsPoint.getId());
@@ -230,6 +248,7 @@ class ExportImportIntegrationTest {
 
         assertNotNull(originalStay);
         assertNotNull(originalTrip);
+        assertNotNull(originalDataGap);
         assertNotNull(originalFavorite);
         assertNotNull(originalGeocodingLocation);
         assertNotNull(originalGpsPoint);
@@ -299,6 +318,7 @@ class ExportImportIntegrationTest {
         // Store original IDs for later verification
         Long originalStayId = originalStay.getId();
         Long originalTripId = originalTrip.getId();
+        Long originalDataGapId = originalDataGap.getId();
         Long originalFavoriteId = originalFavorite.getId();
         Long originalGeocodingId = originalGeocodingLocation.getId();
         Long originalGpsPointId = originalGpsPoint.getId();
@@ -310,6 +330,7 @@ class ExportImportIntegrationTest {
         // Delete in dependency order (children first)
         timelineStayRepository.deleteById(testStay.getId());
         timelineTripRepository.deleteById(testTrip.getId());
+        timelineDataGapRepository.deleteById(testDataGap.getId());
         gpsPointRepository.deleteById(testGpsPoint.getId());
         gpsSourceRepository.deleteById(testGpsSource.getId());
         favoritesRepository.deleteById(testFavorite.getId());
@@ -322,6 +343,7 @@ class ExportImportIntegrationTest {
         // Verify data is deleted
         assertNull(timelineStayRepository.findByIdOptional(testStay.getId()).orElse(null));
         assertNull(timelineTripRepository.findByIdOptional(testTrip.getId()).orElse(null));
+        assertNull(timelineDataGapRepository.findByIdOptional(testDataGap.getId()).orElse(null));
         assertNull(gpsPointRepository.findByIdOptional(testGpsPoint.getId()).orElse(null));
         assertNull(gpsSourceRepository.findByIdOptional(testGpsSource.getId()).orElse(null));
         assertNull(favoritesRepository.findByIdOptional(testFavorite.getId()).orElse(null));
@@ -403,6 +425,15 @@ class ExportImportIntegrationTest {
         
         log.info("Path verification: Original path has {} points, imported path has {} points", 
             originalTrip.getPath().getNumPoints(), importedTrip.getPath().getNumPoints());
+
+        // Verify data gap (ID should be preserved exactly)
+        var importedDataGap = timelineDataGapRepository.findById(originalDataGapId);
+        assertNotNull(importedDataGap, "Timeline data gap should be imported with exact ID preservation");
+        assertEquals(originalDataGapId, importedDataGap.getId(), "Timeline data gap ID should be preserved exactly");
+        assertEquals(originalDataGap.getStartTime(), importedDataGap.getStartTime(), "Data gap start time should match");
+        assertEquals(originalDataGap.getEndTime(), importedDataGap.getEndTime(), "Data gap end time should match");
+        assertEquals(originalDataGap.getDurationSeconds(), importedDataGap.getDurationSeconds(), "Data gap duration should match");
+        assertEquals(originalDataGap.getCreatedAt(), importedDataGap.getCreatedAt(), "Data gap created at should match");
 
         // Verify GPS point (GPS points don't preserve IDs since export format doesn't include them)
         var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(

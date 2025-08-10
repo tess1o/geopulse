@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -40,6 +41,9 @@ public class ExportDataGenerator {
 
     @Inject
     TimelineTripRepository timelineTripRepository;
+
+    @Inject
+    TimelineDataGapRepository timelineDataGapRepository;
 
     @Inject
     FavoritesRepository favoritesRepository;
@@ -94,6 +98,9 @@ public class ExportDataGenerator {
                         break;
                     case ExportImportConstants.DataTypes.TIMELINE:
                         addTimelineData(zos, job);
+                        break;
+                    case ExportImportConstants.DataTypes.DATA_GAPS:
+                        addDataGapsData(zos, job);
                         break;
                     case ExportImportConstants.DataTypes.USER_INFO:
                         addUserInfoData(zos, job);
@@ -203,10 +210,41 @@ public class ExportDataGenerator {
                 job.getDateRange().getEndDate()
         );
 
-        TimelineDataDto timelineData = exportDataMapper.toTimelineDataDto(stays, trips, job);
+        // Export data gaps
+        var dataGaps = timelineDataGapRepository.findByUserIdAndTimeRange(
+                job.getUserId(),
+                job.getDateRange().getStartDate(),
+                job.getDateRange().getEndDate()
+        );
+
+        TimelineDataDto timelineData = exportDataMapper.toTimelineDataDto(stays, trips, dataGaps, job);
         addJsonFileToZip(zos, ExportImportConstants.FileNames.TIMELINE_DATA, timelineData);
 
-        log.debug("Exported {} stays and {} trips", stays.size(), trips.size());
+        log.debug("Exported {} stays, {} trips and {} data gaps", stays.size(), trips.size(), dataGaps.size());
+    }
+
+    private void addDataGapsData(ZipOutputStream zos, ExportJob job) throws IOException {
+        log.debug("Exporting data gaps for user {}", job.getUserId());
+
+        var dataGaps = timelineDataGapRepository.findByUserIdAndTimeRange(
+                job.getUserId(),
+                job.getDateRange().getStartDate(),
+                job.getDateRange().getEndDate()
+        );
+
+        DataGapsDataDto dataGapsData = DataGapsDataDto.builder()
+                .dataType("dataGaps")
+                .exportDate(java.time.Instant.now())
+                .startDate(job.getDateRange().getStartDate())
+                .endDate(job.getDateRange().getEndDate())
+                .dataGaps(dataGaps.stream()
+                        .map(exportDataMapper::toDataGapDto)
+                        .collect(java.util.stream.Collectors.toList()))
+                .build();
+
+        addJsonFileToZip(zos, ExportImportConstants.FileNames.DATA_GAPS, dataGapsData);
+
+        log.debug("Exported {} data gaps", dataGaps.size());
     }
 
     private void addFavoritesData(ZipOutputStream zos, ExportJob job) throws IOException {
