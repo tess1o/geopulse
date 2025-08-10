@@ -19,6 +19,7 @@ public class TimelineDataDto {
     private Instant endDate;
     private List<StayDto> stays;
     private List<TripDto> trips;
+    private List<DataGapDto> dataGaps;
     
     @Data
     @AllArgsConstructor
@@ -52,5 +53,17 @@ public class TimelineDataDto {
         private Long duration;
         private String transportMode;
         private List<List<Double>> path; // Array of [longitude, latitude] coordinate pairs
+    }
+    
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    public static class DataGapDto {
+        private long id;
+        private Instant startTime;
+        private Instant endTime;
+        private long durationSeconds;
+        private Instant createdAt;
     }
 }
