@@ -31,6 +31,8 @@
     --gp-timeline-green-light: rgba(209, 250, 229, 0.5);
     --gp-timeline-orange: rgba(245, 158, 11, 0.15);
     --gp-timeline-orange-light: rgba(254, 243, 199, 0.5);
+    --gp-timeline-purple: rgba(139, 92, 246, 0.15);
+    --gp-timeline-purple-light: rgba(237, 233, 254, 0.5);
     
     /* Neutral Colors */
     --gp-text-primary: #1e293b;
