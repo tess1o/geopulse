@@ -28,14 +28,21 @@
           class="custom-timeline date-timeline"
         >
           <template #marker="slotProps">
-            <span class="timeline-marker" :class="getMarkerClass(slotProps.item.type)">
-              <i :class="getMarkerIcon(slotProps.item.type)" />
+            <span class="timeline-marker" :class="getMarkerClassForItem(slotProps.item, dateGroup.date)">
+              <i :class="getMarkerIconForItem(slotProps.item, dateGroup.date)" />
             </span>
           </template>
 
           <template #content="slotProps">
+            <OvernightStayCard
+              v-if="slotProps.item.type === 'stay' && shouldShowAsOvernightStay(slotProps.item, dateGroup.date)"
+              :stay-item="slotProps.item"
+              :current-date="dateGroup.date"
+              @click="handleTimelineItemClick"
+            />
+            
             <StayCard
-              v-if="slotProps.item.type === 'stay'"
+              v-else-if="slotProps.item.type === 'stay'"
               :stay-item="slotProps.item"
               @click="handleTimelineItemClick"
             />
@@ -63,6 +70,8 @@ import { computed } from 'vue'
 import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
 import DataGapCard from './DataGapCard.vue'
+import OvernightStayCard from './OvernightStayCard.vue'
+import { shouldItemAppearOnDate, shouldShowAsOvernightStay } from '@/utils/overnightHelpers'
 
 // Props
 const props = defineProps({
@@ -95,6 +104,14 @@ const getMarkerIcon = computed(() => (type) => {
   return 'pi pi-circle'
 })
 
+// Updated to handle overnight stays with different markers
+const getMarkerIconForItem = computed(() => (item, dateKey) => {
+  if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
+    return 'pi pi-moon' // Moon icon for overnight stays
+  }
+  return getMarkerIcon.value(item.type)
+})
+
 const getMarkerClass = computed(() => (type) => {
   if (type === 'stay') return 'marker-stay'
   if (type === 'trip') return 'marker-trip'
@@ -102,38 +119,80 @@ const getMarkerClass = computed(() => (type) => {
   return 'marker-default'
 })
 
-// Group timeline data by date
+// Updated to handle overnight stays with different classes
+const getMarkerClassForItem = computed(() => (item, dateKey) => {
+  if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
+    return 'marker-overnight-stay' // Special class for overnight stays
+  }
+  return getMarkerClass.value(item.type)
+})
+
+// Group timeline data by date with proper overnight stay handling
 const groupedTimelineData = computed(() => {
   if (!props.timelineData || props.timelineData.length === 0) {
     return []
   }
 
+  // First, determine all the dates we need to show based on the dateRange
+  const allDates = new Set()
+  
+  // Use requested date range if available, otherwise fallback to timeline items
+  if (props.dateRange && props.dateRange.length === 2) {
+    const [startDate, endDate] = props.dateRange
+    const currentDate = new Date(startDate)
+    const end = new Date(endDate)
+    
+    while (currentDate <= end) {
+      allDates.add(currentDate.toDateString())
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+  } else {
+    // Fallback: add dates from timeline items only if no range specified
+    props.timelineData.forEach(item => {
+      const itemDate = new Date(item.timestamp)
+      allDates.add(itemDate.toDateString())
+      
+      // For overnight stays, also add the end date
+      if (item.type === 'stay' && item.stayDuration) {
+        const endDate = new Date(itemDate.getTime() + (item.stayDuration * 60 * 1000))
+        if (itemDate.toDateString() !== endDate.toDateString()) {
+          allDates.add(endDate.toDateString())
+        }
+      }
+    })
+  }
+
   // Create a map to group items by date
   const dateGroups = new Map()
   
-  // Process each timeline item
-  props.timelineData.forEach(item => {
-    const itemDate = new Date(item.timestamp)
-    const dateKey = itemDate.toDateString() // e.g., "Mon Jul 02 2025"
-    
-    if (!dateGroups.has(dateKey)) {
-      dateGroups.set(dateKey, {
-        date: dateKey,
-        dateLabel: itemDate.toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        items: []
-      })
-    }
-    
-    dateGroups.get(dateKey).items.push(item)
+  // Initialize all date groups
+  allDates.forEach(dateKey => {
+    const date = new Date(dateKey)
+    dateGroups.set(dateKey, {
+      date: dateKey,
+      dateLabel: date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      items: []
+    })
   })
   
-  // Convert map to array and sort by date
+  // Process each timeline item and assign to appropriate dates
+  props.timelineData.forEach(item => {
+    // Check each date to see if this item should appear on it
+    allDates.forEach(dateKey => {
+      if (shouldItemAppearOnDate(item, dateKey)) {
+        dateGroups.get(dateKey).items.push(item)
+      }
+    })
+  })
+  
+  // Convert map to array, filter out empty groups, and sort by date
   return Array.from(dateGroups.values())
+    .filter(group => group.items.length > 0)
     .sort((a, b) => new Date(a.date) - new Date(b.date))
 })
 
@@ -198,6 +257,10 @@ const handleTimelineItemClick = (item) => {
 
 .timeline-marker.marker-data-gap {
   background: var(--gp-warning);
+}
+
+.timeline-marker.marker-overnight-stay {
+  background: var(--gp-primary-dark);
 }
 
 /* Dark mode adjustments */
