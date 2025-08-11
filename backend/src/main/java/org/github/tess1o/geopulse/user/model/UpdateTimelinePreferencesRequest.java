@@ -62,4 +62,10 @@ public class UpdateTimelinePreferencesRequest {
     private Integer pathMaxPoints;
     
     private Boolean pathAdaptiveSimplification;
+
+    @Min(value = 1, message = "Data Gap threshold (seconds) must be positive")
+    private Integer dataGapThresholdSeconds;
+
+    @Min(value = 1, message = "Data Gap minimum duration (seconds) must be positive")
+    private Integer dataGapMinDurationSeconds;
 }

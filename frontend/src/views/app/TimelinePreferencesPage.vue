@@ -23,7 +23,7 @@
               <Button 
                 label="Save Changes"
                 icon="pi pi-save"
-                @click="savePreferences"
+                @click="confirmSavePreferences"
                 :loading="loading"
                 :disabled="!hasUnsavedChanges || !isFormValid"
               />
@@ -68,7 +68,7 @@
               <Button 
                 label="Save Now" 
                 size="small" 
-                @click="savePreferences"
+                @click="confirmSavePreferences"
                 :loading="loading"
               />
             </div>
@@ -293,6 +293,66 @@
                         suffix=" min"
                         :input-min="1"
                         :input-max="300"
+                        :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
+                </div>
+              </div>
+          </div>
+
+          <!-- GPS Gaps Detection Tab -->
+          <div v-if="activeTab === 'gpsgaps'">
+              <div class="preferences-section">
+                <div class="section-header">
+                  <h2 class="section-title">GPS Gaps Detection Settings</h2>
+                  <p class="section-description">
+                    Configure how GPS data gaps are detected and recorded in your timeline
+                  </p>
+                </div>
+
+                <div class="settings-grid">
+                  <!-- Data Gap Threshold -->
+                  <SettingCard
+                    title="Data Gap Threshold"
+                    description="Maximum time gap in seconds allowed between GPS points before considering it a GPS data gap"
+                    details="When the time difference between two consecutive GPS points exceeds this threshold, a GPS Data Gap entity will be created instead of extending the current stay or trip. This prevents artificial extension of activities during periods of missing GPS data."
+                    env-var="geopulse.timeline.data_gap.threshold_seconds"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ Math.floor(prefs.dataGapThresholdSeconds / 60) }} minutes ({{ prefs.dataGapThresholdSeconds }}s)</div>
+                      <SliderControl
+                        v-model="prefs.dataGapThresholdSeconds"
+                        :min="300"
+                        :max="21600"
+                        :step="300"
+                        :labels="['5 min (Sensitive)', '3 hours (Balanced)', '6 hours (Lenient)']"
+                        :suffix="' seconds'"
+                        :input-min="60"
+                        :input-max="43200"
+                        :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Min Duration for Gap Recording -->
+                  <SettingCard
+                    title="Minimum Gap Duration"
+                    description="Minimum duration in seconds for a gap to be recorded as a GPS Data Gap"
+                    details="Gaps shorter than this threshold will be ignored to reduce noise. This prevents very short connectivity issues from creating unnecessary gap records."
+                    env-var="geopulse.timeline.data_gap.min_duration_seconds"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ Math.floor(prefs.dataGapMinDurationSeconds / 60) }} minutes ({{ prefs.dataGapMinDurationSeconds }}s)</div>
+                      <SliderControl
+                        v-model="prefs.dataGapMinDurationSeconds"
+                        :min="300"
+                        :max="7200"
+                        :step="300"
+                        :labels="['5 min (Strict)', '30 min (Balanced)', '2 hours (Lenient)']"
+                        :suffix="' seconds'"
+                        :input-min="60"
+                        :input-max="14400"
                         :decimal-places="0"
                       />
                     </template>
@@ -534,6 +594,11 @@ const tabItems = ref([
     key: 'trips'
   },
   {
+    label: 'GPS Gaps Detection',
+    icon: 'pi pi-exclamation-circle',
+    key: 'gpsgaps'
+  },
+  {
     label: 'Stay Point Merging',
     icon: 'pi pi-sitemap',
     key: 'merging'
@@ -554,7 +619,10 @@ const prefs = ref({
   pathSimplificationEnabled: true,
   pathSimplificationTolerance: 15,
   pathMaxPoints: 100,
-  pathAdaptiveSimplification: true
+  pathAdaptiveSimplification: true,
+  // GPS gaps detection defaults
+  dataGapThresholdSeconds: 10800,
+  dataGapMinDurationSeconds: 1800
 })
 
 // Algorithm options
@@ -610,6 +678,37 @@ const loadPreferences = async () => {
   }
 }
 
+const confirmSavePreferences = () => {
+  if (!isFormValid.value) return
+
+  const changes = getChangedPrefs()
+  if (Object.keys(changes).length === 0) {
+    toast.add({
+      severity: 'info',
+      summary: 'No Changes',
+      detail: 'No preferences were modified',
+      life: 3000
+    })
+    return
+  }
+
+  confirm.require({
+    message: 'Changing timeline preferences will trigger a complete re-generation of all your timeline data according to the new settings. This process may take some time depending on the volume of your GPS data. Do you want to proceed?',
+    header: 'Save Timeline Preferences',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: 'Cancel',
+      severity: 'secondary',
+      outlined: true
+    },
+    acceptProps: {
+      label: 'Save & Regenerate',
+      severity: 'primary'
+    },
+    accept: savePreferences
+  })
+}
+
 const savePreferences = async () => {
   if (!isFormValid.value) return
 
@@ -633,8 +732,8 @@ const savePreferences = async () => {
     toast.add({
       severity: 'success',
       summary: 'Preferences Saved',
-      detail: 'Timeline preferences updated successfully',
-      life: 3000
+      detail: 'Timeline preferences updated and timeline is successfully recalculated',
+      life: 5000
     })
   } catch (error) {
     console.error('Error saving preferences:', error)
@@ -712,7 +811,10 @@ watch(originalPrefs, (newVal) => {
       pathSimplificationEnabled: newVal.pathSimplificationEnabled ?? true,
       pathSimplificationTolerance: newVal.pathSimplificationTolerance ?? 15,
       pathMaxPoints: newVal.pathMaxPoints ?? 100,
-      pathAdaptiveSimplification: newVal.pathAdaptiveSimplification ?? true
+      pathAdaptiveSimplification: newVal.pathAdaptiveSimplification ?? true,
+      // Ensure GPS gaps detection properties have defaults if not present
+      dataGapThresholdSeconds: newVal.dataGapThresholdSeconds ?? 10800,
+      dataGapMinDurationSeconds: newVal.dataGapMinDurationSeconds ?? 1800
     }
   }
 }, { immediate: true })
