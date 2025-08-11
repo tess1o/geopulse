@@ -136,7 +136,6 @@ public class TimelineConfig {
      */
     private Boolean pathAdaptiveSimplification;
     
-    // Data Gap Detection Configuration
     /**
      * Maximum time gap in seconds allowed between GPS points before considering it a data gap.
      * When the time difference between two consecutive GPS points exceeds this threshold,
