@@ -36,7 +36,7 @@ public class TimelineRegenerationTask {
     private Integer priority;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private TaskStatus status = TaskStatus.PENDING;
 
     @Column(name = "created_at", nullable = false)
@@ -51,7 +51,7 @@ public class TimelineRegenerationTask {
     @Column(name = "retry_count", nullable = false)
     private Integer retryCount = 0;
 
-    @Column(name = "error_message")
+    @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
     public enum TaskStatus {
