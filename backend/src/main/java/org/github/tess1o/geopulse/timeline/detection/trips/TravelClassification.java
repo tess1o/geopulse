@@ -60,7 +60,25 @@ public class TravelClassification {
             return TravelMode.UNKNOWN;
         }
 
-        if (duration.getSeconds() < TimelineConstants.MIN_TRIP_DURATION_SECONDS || totalDistanceKm < TimelineConstants.MIN_TRIP_DISTANCE_KM) {
+        // For poor GPS data, use fallback calculation based on stay points
+        if (speeds.isEmpty() || totalDistanceKm < TimelineConstants.MIN_TRIP_DISTANCE_KM) {
+            // Use straight-line distance and duration for poor GPS cases
+            if (path.size() >= 2) {
+                GpsPoint start = path.get(0);
+                GpsPoint end = path.get(path.size() - 1);
+                double straightLineDistance = spatialCalculationService.calculateDistance(
+                    start.getLatitude(), start.getLongitude(), 
+                    end.getLatitude(), end.getLongitude()) / 1000.0;
+                double hours = duration.toMillis() / 3600000.0;
+                
+                // If extremely short distance or duration, return UNKNOWN
+                if (straightLineDistance < 0.001 || hours < 0.0003) { // < 1m or < 1 second
+                    return TravelMode.UNKNOWN;
+                }
+                
+                double fallbackAvgSpeed = hours > 0 ? straightLineDistance / hours : 0.0;
+                return TravelMode.classify(fallbackAvgSpeed, fallbackAvgSpeed, straightLineDistance);
+            }
             return TravelMode.UNKNOWN;
         }
 

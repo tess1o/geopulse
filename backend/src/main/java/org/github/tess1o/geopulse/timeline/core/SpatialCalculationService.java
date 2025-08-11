@@ -182,10 +182,11 @@ public class SpatialCalculationService {
     /**
      * Find the end index of a potential stay point cluster starting from the given index.
      * This method implements the common cluster detection logic used by stay point detectors.
+     * Clusters are bounded by both distance and velocity thresholds to prevent including moving points.
      * 
      * @param points list of track points
      * @param startIndex starting index to search from
-     * @param config timeline configuration with distance and accuracy thresholds
+     * @param config timeline configuration with distance, velocity and accuracy thresholds
      * @return the end index (exclusive) of the cluster
      */
     public int findClusterEndIndex(List<TrackPoint> points, int startIndex, org.github.tess1o.geopulse.timeline.model.TimelineConfig config) {
@@ -194,6 +195,7 @@ public class SpatialCalculationService {
         }
 
         int j = startIndex + 1;
+        double velocityThreshold = config.getStaypointVelocityThreshold();
         
         while (j < points.size()) {
             TrackPoint pointI = points.get(startIndex);
@@ -212,6 +214,11 @@ public class SpatialCalculationService {
 
             // If distance exceeds threshold, cluster ends here
             if (distance > config.getTripMinDistanceMeters()) {
+                break;
+            }
+            
+            // If velocity exceeds threshold, cluster ends here (stop including moving points)
+            if (pointJ.getVelocity() != null && pointJ.getVelocity() > velocityThreshold) {
                 break;
             }
 

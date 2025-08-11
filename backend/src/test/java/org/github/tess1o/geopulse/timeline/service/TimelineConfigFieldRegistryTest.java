@@ -25,8 +25,8 @@ class TimelineConfigFieldRegistryTest {
     void testRegistry_HasCorrectNumberOfFields() {
         List<ConfigField<TimelineConfig, ?>> fields = registry.getFields();
 
-        // Should have all timeline configuration fields
-        assertEquals(15, fields.size());
+        // Should have all timeline configuration fields (15 original + 2 data gap fields)
+        assertEquals(17, fields.size());
     }
 
     @Test
@@ -92,7 +92,7 @@ class TimelineConfigFieldRegistryTest {
         ConfigField<TimelineConfig, ?> field = findFieldByProperty("geopulse.timeline.staypoint.velocity.threshold");
 
         assertNotNull(field);
-        assertEquals("8", field.defaultValue());
+        assertEquals("2.0", field.defaultValue());
 
         // Test double parsing
         assertEquals(12.5, field.parseValue("12.5"));

@@ -89,18 +89,14 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
                 Instant segmentEnd = segmentPoints.get(segmentPoints.size() - 1).getTimestamp();
 
                 TimelineTrip trip = new TimelineTrip(segmentStart, segmentEnd, segmentPoints, segment.travelMode);
-                // Only add trip if it meets minimum criteria
-                if (isValidTrip(trip, config)) {
-                    trips.add(trip);
-                }
+                // Trust stay points - segments between stays are valid
+                trips.add(trip);
             }
         } else {
             // Fall back to single trip with overall classification
             TimelineTrip trip = new TimelineTrip(overallStart, overallEnd, tripPoints, overallMode);
-            // Only add trip if it meets minimum criteria
-            if (isValidTrip(trip, config)) {
-                trips.add(trip);
-            }
+            // Trust stay points - movement between stays is valid
+            trips.add(trip);
         }
 
         return trips;
@@ -243,26 +239,4 @@ public class TimelineTripsDetectorMulti implements TimelineTripsDetector {
     private record TravelSegment(int startIndex, int endIndex, TravelMode travelMode) {
     }
 
-    /**
-     * Validate if a trip meets minimum duration and distance requirements.
-     * 
-     * @param trip the trip to validate
-     * @param config timeline configuration with minimum thresholds
-     * @return true if trip meets minimum criteria
-     */
-    private boolean isValidTrip(TimelineTrip trip, TimelineConfig config) {
-        // Check minimum duration
-        long durationMinutes = trip.getDuration().toMinutes();
-        if (durationMinutes < config.getTripMinDurationMinutes()) {
-            return false;
-        }
-        
-        // Check minimum distance
-        if (trip.path().size() < 2) {
-            return false;
-        }
-        
-        double totalDistanceMeters = spatialCalculationService.calculateTotalPathDistance(trip.path());
-        return totalDistanceMeters >= config.getTripMinDistanceMeters();
-    }
 }

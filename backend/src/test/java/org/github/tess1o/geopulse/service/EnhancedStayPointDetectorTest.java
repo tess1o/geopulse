@@ -177,7 +177,7 @@ public class EnhancedStayPointDetectorTest {
         TimelineStayPoint secondStay = stayPoints.get(1);
 
         assertEquals(baseTime.plus(10, ChronoUnit.MINUTES), firstStay.startTime());
-        assertEquals(baseTime.plus(26, ChronoUnit.MINUTES), firstStay.endTime()); // Departure at minute 25
+        assertEquals(baseTime.plus(25, ChronoUnit.MINUTES), firstStay.endTime()); // Departure at minute 25
 
         assertEquals(baseTime.plus(35, ChronoUnit.MINUTES), secondStay.startTime());
         assertEquals(baseTime.plus(50, ChronoUnit.MINUTES), secondStay.endTime());

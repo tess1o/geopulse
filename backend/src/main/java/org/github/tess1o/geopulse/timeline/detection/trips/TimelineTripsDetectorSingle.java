@@ -57,10 +57,9 @@ public class TimelineTripsDetectorSingle implements TimelineTripsDetector {
                 TravelMode travelMode = travelClassification.classifyTravelType(path, duration);
                 TimelineTrip trip = new TimelineTrip(startTime, endTime, path, travelMode);
                 
-                // Only add trip if it meets minimum criteria
-                if (isValidTrip(trip, config)) {
-                    trips.add(trip);
-                }
+                // Trust stay points - if they exist, movement between them is valid
+                // Focus on classification, not validation
+                trips.add(trip);
             }
         }
         return trips;
@@ -73,26 +72,4 @@ public class TimelineTripsDetectorSingle implements TimelineTripsDetector {
                 .orElseThrow(() -> new RuntimeException("Cannot find the closest point to " + timelineStayPoint)); //should not happen
     }
     
-    /**
-     * Validate if a trip meets minimum duration and distance requirements.
-     * 
-     * @param trip the trip to validate
-     * @param config timeline configuration with minimum thresholds
-     * @return true if trip meets minimum criteria
-     */
-    private boolean isValidTrip(TimelineTrip trip, TimelineConfig config) {
-        // Check minimum duration
-        long durationMinutes = trip.getDuration().toMinutes();
-        if (durationMinutes < config.getTripMinDurationMinutes()) {
-            return false;
-        }
-        
-        // Check minimum distance
-        if (trip.path().size() < 2) {
-            return false;
-        }
-        
-        double totalDistanceMeters = spatialCalculationService.calculateTotalPathDistance(trip.path());
-        return totalDistanceMeters >= config.getTripMinDistanceMeters();
-    }
 }

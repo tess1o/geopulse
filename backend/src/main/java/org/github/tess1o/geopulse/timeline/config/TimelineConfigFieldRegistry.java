@@ -35,7 +35,7 @@ public class TimelineConfigFieldRegistry {
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.velocity.threshold",
-                "8",
+                "2.0",
                 TimelineConfig::getStaypointVelocityThreshold,
                 TimelineConfig::setStaypointVelocityThreshold,
                 Double::valueOf
