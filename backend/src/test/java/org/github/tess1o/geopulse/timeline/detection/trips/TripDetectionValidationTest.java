@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.timeline.core.VelocityAnalysisService;
 import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
 import org.github.tess1o.geopulse.timeline.model.TimelineStayPoint;
 import org.github.tess1o.geopulse.timeline.model.TimelineTrip;
+import org.github.tess1o.geopulse.timeline.model.TravelMode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -50,10 +51,13 @@ public class TripDetectionValidationTest {
         singleDetector = new TimelineTripsDetectorSingle(travelClassification, spatialService, validationService);
         multiDetector = new TimelineTripsDetectorMulti(travelClassification, velocityService, validationService, spatialService);
 
-        // Configuration with reasonable minimum thresholds
+        // Configuration with reasonable minimum thresholds matching user setup
         config = new TimelineConfig();
         config.setTripMinDurationMinutes(5);  // 5 minutes minimum
-        config.setTripMinDistanceMeters(100); // 100 meters minimum
+        config.setTripMinDistanceMeters(25);  // 25 meters minimum (matching user)
+        config.setStaypointVelocityThreshold(1.5); // 1.5 km/h (matching user)
+        config.setStaypointMaxAccuracyThreshold(50.0); // 50m accuracy threshold
+        config.setUseVelocityAccuracy(true);
         config.setTripDetectionAlgorithm("single");
     }
 
@@ -126,8 +130,10 @@ public class TripDetectionValidationTest {
 
         List<TimelineTrip> trips = singleDetector.detectTrips(config, gpsPoints, stayPoints);
 
-        // After fix: should NOT create 0-distance trips  
-        assertTrue(trips.isEmpty(), "Fixed implementation should not create 0-distance trips");
+        // With 'trust stay points' approach: should create trip but classify as UNKNOWN due to 0-distance
+        assertFalse(trips.isEmpty(), "Should create trip between consecutive stay points");
+        assertEquals(1, trips.size());
+        assertEquals(TravelMode.UNKNOWN, trips.get(0).travelMode(), "Zero-distance trip should be classified as UNKNOWN");
     }
 
     @Test
@@ -158,8 +164,10 @@ public class TripDetectionValidationTest {
 
         List<TimelineTrip> trips = multiDetector.detectTrips(config, gpsPoints, stayPoints);
 
-        // After fix: should NOT create trips that don't meet minimum criteria
-        assertTrue(trips.isEmpty(), "Fixed multi-detector should not create trips that don't meet minimum criteria");
+        // With 'trust stay points' approach: should create trip but may classify as UNKNOWN due to poor data
+        assertFalse(trips.isEmpty(), "Should create trip between consecutive stay points");
+        assertTrue(trips.size() >= 1, "Should have at least one trip between stays");
+        // Trip may be classified as UNKNOWN due to insufficient data quality
     }
 
     @Test
@@ -180,12 +188,17 @@ public class TripDetectionValidationTest {
             Duration.ofMinutes(5)
         );
 
-        // GPS points showing actual movement over sufficient time and distance
+        // GPS points based on real Ковчег → Дім case: stationary then moving then stationary
         List<GpsPointPathPointDTO> gpsPoints = List.of(
-            createTestGpsPoint(25.595883, 49.547089, baseTime.plusSeconds(300), 5.0, 10.0),
-            createTestGpsPoint(25.597000, 49.548000, baseTime.plusSeconds(400), 15.0, 8.0),
-            createTestGpsPoint(25.599000, 49.550000, baseTime.plusSeconds(500), 12.0, 9.0),
-            createTestGpsPoint(25.601234, 49.551234, baseTime.plusSeconds(600), 3.0, 11.0)
+            createTestGpsPoint(25.595883, 49.547089, baseTime.plusSeconds(180), 0.0, 13.0),  // stationary
+            createTestGpsPoint(25.595883, 49.547089, baseTime.plusSeconds(240), 0.0, 15.0),  // stationary  
+            createTestGpsPoint(25.595883, 49.547089, baseTime.plusSeconds(300), 0.0, 12.0),  // end stay1
+            createTestGpsPoint(25.596500, 49.548000, baseTime.plusSeconds(360), 2.5, 14.0),  // moving > 1.5 km/h
+            createTestGpsPoint(25.598000, 49.549500, baseTime.plusSeconds(420), 3.0, 16.0),  // moving > 1.5 km/h
+            createTestGpsPoint(25.600500, 49.550800, baseTime.plusSeconds(480), 3.5, 18.0),  // moving > 1.5 km/h
+            createTestGpsPoint(25.601234, 49.551234, baseTime.plusSeconds(540), 1.0, 17.0),  // slowing down
+            createTestGpsPoint(25.601234, 49.551234, baseTime.plusSeconds(600), 0.0, 14.0),  // start stay2
+            createTestGpsPoint(25.601234, 49.551234, baseTime.plusSeconds(660), 0.0, 13.0)   // stationary
         );
 
         List<TimelineStayPoint> stayPoints = List.of(stay1, stay2);

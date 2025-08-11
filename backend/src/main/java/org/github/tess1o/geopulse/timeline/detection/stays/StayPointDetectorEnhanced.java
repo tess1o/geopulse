@@ -225,7 +225,6 @@ public class StayPointDetectorEnhanced implements StayPointDetector {
             TrackPoint point = points.get(i);
 
             if (point.getVelocity() != null && point.getVelocity() > velocityThreshold) {
-                // Found transition point
                 return point.getTimestamp();
             }
         }
