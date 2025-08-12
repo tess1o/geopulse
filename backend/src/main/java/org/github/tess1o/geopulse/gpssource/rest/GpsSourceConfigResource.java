@@ -114,7 +114,8 @@ public class GpsSourceConfigResource {
     public Response getGpsSourceEndpoints() {
         return Response.ok(new GpsSourceEndpointsDto(
                 gpsSourceService.getOwntrackUrl(),
-                gpsSourceService.getOverlandUrl()
+                gpsSourceService.getOverlandUrl(),
+                gpsSourceService.getDawarichUrl()
         )).build();
     }
 }

@@ -86,4 +86,11 @@ public abstract class AbstractGpsIntegrationAuthenticator implements GpsIntegrat
         }
         return true;
     }
+
+    protected String extractBearerToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid Bearer Auth header");
+        }
+        return authHeader.substring("Bearer ".length());
+    }
 }

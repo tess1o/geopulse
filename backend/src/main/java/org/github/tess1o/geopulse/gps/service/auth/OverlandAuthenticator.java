@@ -44,11 +44,4 @@ public class OverlandAuthenticator extends AbstractGpsIntegrationAuthenticator {
     protected void logAuthenticationFailed(Exception e) {
         log.error("Overland authentication failed", e);
     }
-    
-    private String extractBearerToken(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("Invalid Bearer Auth header");
-        }
-        return authHeader.substring("Bearer ".length());
-    }
 }

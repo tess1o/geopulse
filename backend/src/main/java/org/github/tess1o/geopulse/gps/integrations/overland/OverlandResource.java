@@ -38,7 +38,7 @@ public class OverlandResource {
     @Path("/api/overland")
     public Response handleOverland(OverlandLocations overlandLocations,
                                    @HeaderParam("Authorization") String overlandAuth) {
-        log.info("Received payload for overland:{}, auth: {}", overlandLocations, overlandAuth);
+        log.info("Received payload for overland:{}", overlandLocations);
 
         Optional<UUID> userIdOpt = authRegistry.authenticate(GpsSourceType.OVERLAND, overlandAuth);
         if (userIdOpt.isEmpty()) {
