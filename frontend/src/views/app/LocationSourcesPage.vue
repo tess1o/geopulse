@@ -12,7 +12,7 @@
               <h1 class="page-title">Location Data Sources</h1>
               <p class="page-description">
                 Configure how GeoPulse receives your location data from different tracking apps.
-                Set up OwnTracks or Overland to automatically sync your location history.
+                Set up OwnTracks, Overland, or Dawarich to automatically sync your location history.
               </p>
             </div>
             <Button 
@@ -34,7 +34,7 @@
             </div>
           </template>
           <template #content>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="source-option">
                 <div class="source-header">
                   <i class="pi pi-mobile text-2xl text-blue-500"></i>
@@ -64,6 +64,22 @@
                   outlined 
                   size="small"
                   @click="startQuickSetup('OVERLAND')"
+                />
+              </div>
+              
+              <div class="source-option">
+                <div class="source-header">
+                  <i class="pi pi-key text-2xl text-purple-500"></i>
+                  <div>
+                    <h3 class="source-name">Dawarich</h3>
+                    <p class="source-description">Privacy-focused location tracking with API key authentication</p>
+                  </div>
+                </div>
+                <Button 
+                  label="Setup Dawarich"
+                  outlined 
+                  size="small"
+                  @click="startQuickSetup('DAWARICH')"
                 />
               </div>
             </div>
@@ -230,6 +246,47 @@
                   </div>
                 </div>
               </div>
+              
+              <!-- Dawarich Tab -->
+              <div v-if="activeTab === 'dawarich' && hasDawarichSource">
+                <div class="instruction-content">
+                  <h3 class="instruction-title">Dawarich Configuration</h3>
+                  <div class="instruction-steps">
+                    <div class="step">
+                      <div class="step-number">1</div>
+                      <div class="step-content">
+                        <div class="step-title">Server URL</div>
+                        <div class="copy-field">
+                          <code>{{ gpsSourcesEndpoints?.dawarichUrl }}</code>
+                          <Button 
+                            icon="pi pi-copy"
+                            size="small"
+                            outlined
+                            @click="copyToClipboard(gpsSourcesEndpoints?.dawarichUrl)"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">2</div>
+                      <div class="step-content">
+                        <div class="step-title">API Key</div>
+                        <div class="copy-field">
+                          <code>{{ dawarichApiKey || 'your-api-key-here' }}</code>
+                          <Button 
+                            v-if="dawarichApiKey"
+                            icon="pi pi-copy"
+                            size="small"
+                            outlined
+                            @click="copyToClipboard(dawarichApiKey)"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </TabContainer>
           </template>
         </Card>
@@ -293,6 +350,19 @@
                   id="token"
                   v-model="formData.token"
                   placeholder="Enter access token"
+                  :invalid="!!formErrors.token"
+                />
+                <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
+              </div>
+            </div>
+
+            <div v-else-if="formData.type === 'DAWARICH'" class="form-section">
+              <div class="form-field">
+                <label for="apiKey" class="form-label">API Key</label>
+                <InputText 
+                  id="apiKey"
+                  v-model="formData.token"
+                  placeholder="Enter API key"
                   :invalid="!!formErrors.token"
                 />
                 <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
@@ -374,6 +444,12 @@ const sourceTypes = [
     label: 'Overland',
     description: 'Simple HTTP endpoint with token-based authentication',
     icon: 'pi pi-map'
+  },
+  {
+    value: 'DAWARICH',
+    label: 'Dawarich',
+    description: 'Privacy-focused location tracking with API key authentication',
+    icon: 'pi pi-key'
   }
 ]
 
@@ -388,6 +464,10 @@ const hasOverlandSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'OVERLAND')
 )
 
+const hasDawarichSource = computed(() => 
+  gpsSourceConfigs.value.some(source => source.type === 'DAWARICH')
+)
+
 const ownTracksUsername = computed(() => {
   const ownTracksSource = gpsSourceConfigs.value.find(s => s.type === 'OWNTRACKS')
   return ownTracksSource?.username
@@ -396,6 +476,11 @@ const ownTracksUsername = computed(() => {
 const overlandToken = computed(() => {
   const overlandSource = gpsSourceConfigs.value.find(s => s.type === 'OVERLAND')
   return overlandSource?.token
+})
+
+const dawarichApiKey = computed(() => {
+  const dawarichSource = gpsSourceConfigs.value.find(s => s.type === 'DAWARICH')
+  return dawarichSource?.token
 })
 
 // Tab configuration
@@ -413,6 +498,13 @@ const tabItems = computed(() => {
       label: 'Overland', 
       icon: 'pi pi-map',
       key: 'overland'
+    })
+  }
+  if (hasDawarichSource.value) {
+    tabs.push({
+      label: 'Dawarich', 
+      icon: 'pi pi-key',
+      key: 'dawarich'
     })
   }
   return tabs
@@ -444,15 +536,24 @@ watch(tabItems, (newTabs) => {
 
 // Methods
 const getSourceIcon = (type) => {
-  return type === 'OWNTRACKS' ? 'pi pi-mobile' : 'pi pi-map'
+  if (type === 'OWNTRACKS') return 'pi pi-mobile'
+  if (type === 'OVERLAND') return 'pi pi-map'
+  if (type === 'DAWARICH') return 'pi pi-key'
+  return 'pi pi-question'
 }
 
 const getSourceDisplayName = (type) => {
-  return type === 'OWNTRACKS' ? 'OwnTracks' : 'Overland'
+  if (type === 'OWNTRACKS') return 'OwnTracks'
+  if (type === 'OVERLAND') return 'Overland'
+  if (type === 'DAWARICH') return 'Dawarich'
+  return type
 }
 
 const getSourceIdentifier = (source) => {
-  return source.type === 'OWNTRACKS' ? source.username : `Token: ${source.token?.substring(0, 8)}...`
+  if (source.type === 'OWNTRACKS') return source.username || 'No username'
+  if (source.type === 'OVERLAND') return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+  if (source.type === 'DAWARICH') return source.token ? `API Key: ${source.token.substring(0, 8)}...` : 'No API key'
+  return `Unknown type: ${source.type}`
 }
 
 const handleTabChange = (event) => {
@@ -469,8 +570,9 @@ const startQuickSetup = (type) => {
 }
 
 const showInstructions = (source) => {
-  activeTab.value = source.type.toLowerCase()
-  activeInstructionTab.value = source.type.toLowerCase()
+  const tabKey = source.type.toLowerCase()
+  activeTab.value = tabKey
+  activeInstructionTab.value = tabKey
   // Scroll to instructions
   document.querySelector('.instructions-card')?.scrollIntoView({ behavior: 'smooth' })
 }
@@ -513,6 +615,10 @@ const validateForm = () => {
   } else if (formData.value.type === 'OVERLAND') {
     if (!formData.value.token) {
       formErrors.value.token = 'Access token is required'
+    }
+  } else if (formData.value.type === 'DAWARICH') {
+    if (!formData.value.token) {
+      formErrors.value.token = 'API key is required'
     }
   }
   

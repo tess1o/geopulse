@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class GpsSourceEndpointsDto {
     private String owntracksUrl;
     private String overlandUrl;
+    private String dawarichUrl;
 }

@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
@@ -42,9 +43,26 @@ public class GpsPointMapper {
         entity.setAccuracy(message.getProperties().getVerticalAccuracy());
         entity.setBattery(message.getProperties().getBatteryLevel() * 100);
         entity.setVelocity(message.getProperties().getSpeed());
-        entity.setAltitude(message.getProperties().getSpeed() * 3.6);
+        entity.setAltitude(message.getProperties().getAltitude() * 1.0);
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
+
+        return entity;
+    }
+
+    public GpsPointEntity toEntity(DawarichLocation message, UserEntity userId, GpsSourceType sourceType) {
+        GpsPointEntity entity = new GpsPointEntity();
+        entity.setDeviceId(message.getProperties().getDeviceId());
+        entity.setUser(userId);
+        entity.setCoordinates(GeoUtils.createPoint(message.getGeometry().getLongitude(), message.getGeometry().getLatitude()));
+        entity.setTimestamp(message.getProperties().getTimestamp());
+        entity.setAccuracy(message.getProperties().getVerticalAccuracy());
+        entity.setVelocity(message.getProperties().getSpeed());
+        entity.setAltitude(Math.round(message.getProperties().getAltitude()) * 1.0);
+        entity.setBattery(-1.0);
+        entity.setSourceType(sourceType);
+        entity.setCreatedAt(Instant.now());
+
 
         return entity;
     }

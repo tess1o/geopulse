@@ -4,6 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
+import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -28,8 +30,8 @@ public class GpsPointService {
     private final EntityManager em;
 
     @Inject
-    public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository, 
-                          GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em) {
+    public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository,
+                           GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
@@ -48,16 +50,36 @@ public class GpsPointService {
     @Transactional
     public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType) {
         Instant timestamp = message.getProperties().getTimestamp();
-        
+
         if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
             log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, timestamp);
             return;
         }
-        
+
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
         gpsPointRepository.persist(entity);
         log.info("Saved Overland GPS point for user {} at timestamp {}", userId, timestamp);
+    }
+
+    @Transactional
+    public void saveDarawichGpsPoints(DawarichPayload payload, UUID userId, GpsSourceType sourceType) {
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        for (DawarichLocation location : payload.getLocations()) {
+            if (duplicateDetectionService.isDuplicatePoint(userId, location.getProperties().getTimestamp(), sourceType)) {
+                log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, location.getProperties().getTimestamp());
+                return;
+            }
+
+            // avoid negative velocity, use 0 to say it's a stationary value
+            if (location.getProperties().getSpeed() < 0) {
+                location.getProperties().setSpeed(0.0);
+            }
+
+            GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
+            gpsPointRepository.persist(entity);
+            log.info("Saved Dawarich GPS point for user {} at timestamp {}", userId, entity.getTimestamp());
+        }
     }
 
     /**
@@ -84,18 +106,18 @@ public class GpsPointService {
      */
     public GpsPointSummaryDTO getGpsPointSummary(UUID userId) {
         long totalPoints = gpsPointRepository.count("user.id", userId);
-        
+
         Instant todayStart = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS);
         Instant todayEnd = todayStart.plus(1, java.time.temporal.ChronoUnit.DAYS);
-        long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3", 
+        long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3",
                 userId, todayStart, todayEnd);
-        
+
         GpsPointEntity firstPoint = gpsPointRepository.find("user.id = ?1 ORDER BY timestamp ASC", userId).firstResult();
         GpsPointEntity lastPoint = gpsPointRepository.find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
-        
+
         String firstPointDate = firstPoint != null ? DateTimeFormatter.ISO_DATE_TIME.format(firstPoint.getTimestamp().atOffset(ZoneOffset.UTC)) : null;
         String lastPointDate = lastPoint != null ? DateTimeFormatter.ISO_DATE_TIME.format(lastPoint.getTimestamp().atOffset(ZoneOffset.UTC)) : null;
-        
+
         return new GpsPointSummaryDTO(totalPoints, pointsToday, firstPointDate, lastPointDate);
     }
 
@@ -111,16 +133,16 @@ public class GpsPointService {
      */
     public GpsPointPageDTO getGpsPointsPage(UUID userId, Instant startTime, Instant endTime, int page, int limit) {
         int pageIndex = page - 1; // Convert to 0-based for repository
-        
+
         List<GpsPointEntity> points = gpsPointRepository.findByUserAndDateRange(userId, startTime, endTime, pageIndex, limit);
-        long total = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
+        long total = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
                 userId, startTime, endTime);
-        
+
         List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
-        
+
         long totalPages = (total + limit - 1) / limit; // Ceiling division
         GpsPointPaginationDTO pagination = new GpsPointPaginationDTO(page, limit, total, totalPages);
-        
+
         return new GpsPointPageDTO(pointDTOs, pagination);
     }
 

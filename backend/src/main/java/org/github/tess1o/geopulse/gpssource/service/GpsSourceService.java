@@ -38,6 +38,10 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     @ConfigProperty(name = "geopulse.gps.source.overland.url")
     String overlandUrl;
 
+    @Getter
+    @ConfigProperty(name = "geopulse.gps.source.dawarich.url")
+    String dawarichUrl;
+
     @Inject
     public GpsSourceService(GpsSourceRepository gpsSourceRepository,
                             GpsSourceConfigMapper gpsSourceMapper, PasswordUtils passwordUtils,
