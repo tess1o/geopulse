@@ -123,7 +123,7 @@
           </div>
         </template>
 
-        <Column field="timestamp" header="Timestamp" sortable class="timestamp-col">
+        <Column field="timestamp" header="Date" sortable class="timestamp-col">
           <template #body="slotProps">
             <div class="timestamp-cell">
               <div class="timestamp-date">{{ formatTimestamp(slotProps.data.timestamp).date }}</div>
@@ -132,7 +132,7 @@
           </template>
         </Column>
 
-        <Column header="Coordinates" class="coordinates-col">
+        <Column header="Location" class="coordinates-col">
           <template #body="slotProps">
             <div class="coordinates-cell">
               <div class="coordinate-line">{{ slotProps.data.coordinates.lat.toFixed(6) }}</div>
@@ -141,23 +141,16 @@
           </template>
         </Column>
 
-        <Column field="accuracy" header="Accuracy" sortable class="numeric-col" v-if="!isMobile">
+        <Column field="velocity" header="Speed" class="numeric-col">
+          <template #body="slotProps">
+            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ (slotProps.data.velocity).toFixed(1) }} km/h</span>
+            <span v-else class="null-value">-</span>
+          </template>
+        </Column>
+
+        <Column field="accuracy" header="Accuracy" class="numeric-col">
           <template #body="slotProps">
             <span v-if="slotProps.data.accuracy">{{ slotProps.data.accuracy.toFixed(1) }}m</span>
-            <span v-else class="null-value">-</span>
-          </template>
-        </Column>
-
-        <Column field="battery" header="Battery" sortable class="numeric-col" v-if="!isMobile">
-          <template #body="slotProps">
-            <span v-if="slotProps.data.battery !== null">{{ Math.round(slotProps.data.battery) }}%</span>
-            <span v-else class="null-value">-</span>
-          </template>
-        </Column>
-
-        <Column field="velocity" header="Speed" sortable class="numeric-col" v-if="!isMobile">
-          <template #body="slotProps">
-            <span v-if="slotProps.data.velocity">{{ (slotProps.data.velocity * 3.6).toFixed(1) }} km/h</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
@@ -169,7 +162,14 @@
           </template>
         </Column>
 
-        <Column field="sourceType" header="Source" class="source-col">
+        <Column field="battery" header="Battery" sortable class="numeric-col" v-if="!isMobile">
+          <template #body="slotProps">
+            <span v-if="slotProps.data.battery !== null && slotProps.data.battery >= 0">{{ Math.round(slotProps.data.battery) }}%</span>
+            <span v-else class="null-value">-</span>
+          </template>
+        </Column>
+
+        <Column field="sourceType" header="Source" class="source-col" v-if="!isMobile">
           <template #body="slotProps">
             <Tag 
               :value="slotProps.data.sourceType || 'Unknown'" 
@@ -237,15 +237,6 @@ const formatNumber = (value) => {
   return new Intl.NumberFormat().format(value)
 }
 
-// const formatDate = (value) => {
-//   if (!value) return 'N/A'
-//   return new Date(value).toLocaleDateString('en-US', {
-//     year: 'numeric',
-//     month: 'short',
-//     day: 'numeric'
-//   })
-// }
-
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
   const date = new Date(timestamp)
@@ -273,6 +264,7 @@ const getSourceSeverity = (sourceType) => {
     'MANUAL': 'warning',
     'IMPORT': 'secondary',
     'GOOGLE_TIMELINE': 'danger',
+    'DAWARICH' : 'danger',
     'GPX': 'contrast'
   }
   return severityMap[sourceType] || 'contrast'
@@ -409,11 +401,21 @@ watch(pageSize, async () => {
   box-sizing: border-box;
 }
 
-/* Large screen optimizations - ensure 4 cards in one row on 27" monitors */
+/* Large screen optimizations - ensure 4 cards in one row on larger monitors */
+@media (min-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    max-width: none;
+    gap: var(--gp-spacing-md);
+  }
+}
+
+/* Extra large screens */
 @media (min-width: 1440px) {
   .stats-grid {
     grid-template-columns: repeat(4, 1fr);
     max-width: none;
+    gap: var(--gp-spacing-lg);
   }
 }
 
@@ -421,6 +423,33 @@ watch(pageSize, async () => {
 @media (min-width: 1920px) {
   .stats-grid {
     gap: var(--gp-spacing-lg);
+  }
+}
+
+/* Tablet screens - maintain 2x2 grid with better spacing */
+@media (min-width: 481px) and (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--gp-spacing-md);
+  }
+
+  .stat-card {
+    padding: var(--gp-spacing-md);
+  }
+
+  .stat-card :deep(.gp-metric-value) {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .stat-card :deep(.gp-metric-label) {
+    font-size: 0.8rem;
+  }
+
+  .stat-card :deep(.gp-metric-icon) {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
   }
 }
 
@@ -711,7 +740,7 @@ watch(pageSize, async () => {
 
   .stats-grid {
     grid-template-columns: 1fr 1fr;
-    gap: var(--gp-spacing-xs);
+    gap: var(--gp-spacing-sm);
     margin-left: 0;
     margin-right: 0;
     width: 100%;
@@ -721,15 +750,15 @@ watch(pageSize, async () => {
   .stat-card {
     min-width: 0; /* Allow cards to shrink */
     width: 100%;
-    padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+    padding: var(--gp-spacing-sm);
     box-sizing: border-box;
     overflow: hidden; /* Prevent content overflow */
   }
 
   /* Ensure MetricItem content respects card boundaries */
   .stat-card :deep(.gp-metric-item) {
-    gap: var(--gp-spacing-xs);
-    padding: var(--gp-spacing-xs) 0;
+    gap: var(--gp-spacing-sm);
+    padding: var(--gp-spacing-sm) 0;
   }
 
   .stat-card :deep(.gp-metric-content) {
@@ -738,21 +767,23 @@ watch(pageSize, async () => {
   }
 
   .stat-card :deep(.gp-metric-value) {
-    font-size: 1rem;
-    word-break: break-word;
-    line-height: 1.1;
-  }
-
-  .stat-card :deep(.gp-metric-label) {
-    font-size: 0.7rem;
+    font-size: 1.1rem;
+    font-weight: 600;
     word-break: break-word;
     line-height: 1.2;
   }
 
+  .stat-card :deep(.gp-metric-label) {
+    font-size: 0.75rem;
+    word-break: break-word;
+    line-height: 1.3;
+    margin-top: 0.125rem;
+  }
+
   .stat-card :deep(.gp-metric-icon) {
-    width: 24px;
-    height: 24px;
-    font-size: 0.8rem;
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
   }
 
   .filter-controls {
@@ -808,27 +839,35 @@ watch(pageSize, async () => {
   }
 }
 
-/* iPhone specific styles - single column for narrow screens */
+/* Very small screens - keep 2x2 grid but adjust spacing */
 @media (max-width: 480px) {
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: var(--gp-spacing-xs);
   }
 
   .stat-card {
     width: 100%;
-    padding: var(--gp-spacing-sm);
+    padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
     box-sizing: border-box;
     overflow: hidden;
   }
 
-  /* Tighter text sizing for very small screens */
+  /* Adjust text sizing for very small screens */
   .stat-card :deep(.gp-metric-value) {
-    font-size: 0.95rem;
+    font-size: 1rem;
+    line-height: 1.1;
   }
 
   .stat-card :deep(.gp-metric-label) {
     font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
+  .stat-card :deep(.gp-metric-icon) {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
   }
   
   .timestamp-date,
