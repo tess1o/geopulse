@@ -74,7 +74,7 @@
       <h4 class="chart-title">Distance Activity</h4>
       <BarChart
         title="Distance, km"
-        :labels="stats.distanceCarChart?.labels || []"
+        :labels="chartLabels"
         :datasets="chartDatasets"
         class="activity-chart"
       />
@@ -131,6 +131,29 @@ const props = defineProps({
 
 const hasChartData = computed(() => {
   return props.stats?.distanceCarChart?.data?.length > 0 || props.stats?.distanceWalkChart?.data?.length > 0
+})
+
+const chartLabels = computed(() => {
+  // If we have car data, use car labels
+  if (props.stats?.distanceCarChart?.labels?.length > 0) {
+    return props.stats.distanceCarChart.labels
+  }
+  
+  // If we have walk data, use walk labels
+  if (props.stats?.distanceWalkChart?.labels?.length > 0) {
+    return props.stats.distanceWalkChart.labels
+  }
+  
+  // If both exist with data, we might need to merge - for now use the one with data
+  if (props.stats?.distanceCarChart?.data?.length > 0) {
+    return props.stats.distanceCarChart.labels || []
+  }
+  
+  if (props.stats?.distanceWalkChart?.data?.length > 0) {
+    return props.stats.distanceWalkChart.labels || []
+  }
+  
+  return []
 })
 
 const chartDatasets = computed(() => {
