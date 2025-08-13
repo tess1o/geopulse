@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.service.auth;
 
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.Optional;
@@ -25,4 +26,24 @@ public interface GpsIntegrationAuthenticator {
      * @return The GPS source type
      */
     GpsSourceType getSupportedSourceType();
+    
+    /**
+     * Get the connection type this authenticator supports.
+     * 
+     * @return The connection type (HTTP, MQTT)
+     */
+    default GpsSourceConfigEntity.ConnectionType getConnectionType() {
+        return GpsSourceConfigEntity.ConnectionType.HTTP;
+    }
+    
+    /**
+     * Authenticate a GPS integration request using username only (for MQTT).
+     * Default implementation returns empty - only MQTT authenticators should override this.
+     * 
+     * @param username The username extracted from MQTT topic
+     * @return Optional containing the authenticated user ID, or empty if authentication failed
+     */
+    default Optional<UUID> authenticateByUsername(String username) {
+        return Optional.empty();
+    }
 }

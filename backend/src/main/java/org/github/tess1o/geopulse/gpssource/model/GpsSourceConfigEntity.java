@@ -33,4 +33,13 @@ public class GpsSourceConfigEntity {
     private String passwordHash;  // For OwnTracks
     private String token;         // For Overland
     private boolean active;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "connection_type", nullable = false)
+    @Builder.Default
+    private ConnectionType connectionType = ConnectionType.HTTP;
+
+    public enum ConnectionType {
+        HTTP, MQTT
+    }
 }

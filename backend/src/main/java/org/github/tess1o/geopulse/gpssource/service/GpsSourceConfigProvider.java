@@ -20,4 +20,13 @@ public interface GpsSourceConfigProvider {
      * Find GPS source configuration by token (for Overland)
      */
     Optional<GpsSourceConfigEntity> findByToken(String token);
+
+    /**
+     * Find GPS source configuration by username and connection type (for MQTT support)
+     *
+     * @param username The username to search for
+     * @param connectionType The connection type (HTTP or MQTT)
+     * @return Optional containing the config if found and active
+     */
+    Optional<GpsSourceConfigEntity> findByUsernameAndConnectionType(String username, GpsSourceConfigEntity.ConnectionType connectionType);
 }

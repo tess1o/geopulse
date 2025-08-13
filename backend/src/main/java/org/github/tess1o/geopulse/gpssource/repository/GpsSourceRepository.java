@@ -36,6 +36,10 @@ public class GpsSourceRepository implements PanacheRepositoryBase<GpsSourceConfi
         return find("token = ?1", username).firstResultOptional();
     }
 
+    public Optional<GpsSourceConfigEntity> findByUsernameAndConnectionType(String username, GpsSourceConfigEntity.ConnectionType connectionType) {
+        return find("username = ?1 and connectionType = ?2 and active = true", username, connectionType).firstResultOptional();
+    }
+
     public boolean existsByUserAndUsername(UUID userId, String username) {
         return count("user.id = ?1 AND username = ?2", userId, username) > 0;
     }
