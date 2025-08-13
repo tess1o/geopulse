@@ -41,6 +41,20 @@ public class GpsPointService {
     @Transactional
     public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType) {
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
+
+        // Check for exact timestamp duplicates
+        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+            log.info("Skipping duplicate OwnTracks GPS point for user {} at timestamp {}", userId, timestamp);
+            return;
+        }
+
+        // Check for location-based duplicates (same coordinates within time threshold)
+        if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType)) {
+            log.debug("Skipping location duplicate OwnTracks GPS point for user {} at coordinates ({}, {})", 
+                     userId, message.getLat(), message.getLon());
+            return;
+        }
+
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
         gpsPointRepository.persist(entity);

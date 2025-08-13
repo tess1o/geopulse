@@ -143,4 +143,9 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         return gpsSourceRepository.findByToken(token);
     }
 
+    @Override
+    public Optional<GpsSourceConfigEntity> findByUsernameAndConnectionType(String username, GpsSourceConfigEntity.ConnectionType connectionType) {
+        return gpsSourceRepository.findByUsernameAndConnectionType(username, connectionType);
+    }
+
 }
