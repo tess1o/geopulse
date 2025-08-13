@@ -172,7 +172,7 @@ const features = ref([
     id: 1,
     icon: 'pi pi-mobile',
     title: 'GPS Data Integration',
-    description: 'Connect with OwnTracks or Overland apps to automatically receive your location data, or import/export your tracking history in OwnTracks format for seamless data management.'
+    description: 'Connect with OwnTracks, Overland or Dawarich apps to automatically receive your location data, or import/export your tracking history in OwnTracks format for seamless data management.'
   },
   {
     id: 2,

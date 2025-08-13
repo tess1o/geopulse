@@ -33,7 +33,7 @@ while keeping everything on your own server.
 
 **GPS Data Integration**
 
-- Works with OwnTracks (HTTP only) and Overland tracking apps
+- Works with OwnTracks (HTTP only), Overland and Dawarich tracking apps
 - Real-time data sync and import/export capabilities
 - Flexible authentication (username/password or token-based)
 
@@ -41,16 +41,15 @@ while keeping everything on your own server.
 
 - Automatic categorization of GPS data into stays and trips
 - Interactive maps showing your complete movement history
+- Immich integration to show your photos on the timeline map
 - Flexible date range viewing (single day to months of data)
 - Real-time location display for current day
-- Immich integration to show your photos on the timeline map
 
 **Analytics**
 
 - Dashboard with distance traveled and visit statistics
 - Journey insights showing countries and cities visited
 - Movement pattern analysis and activity tracking
-- Most visited locations with detailed counts
 
 **Social Features**
 
@@ -98,7 +97,12 @@ while keeping everything on your own server.
 
 - Token-based authentication
 - Battery-efficient background tracking
-- Add GeoPulse endpoint URL in app
+- Configure GeoPulse endpoint URL in the app with your token
+
+- **Dawarich** (iOS)
+
+- API Key authentication
+- Configure GeoPulse endpoint URL in app with your API Key
 
 ## Privacy and Security
 
