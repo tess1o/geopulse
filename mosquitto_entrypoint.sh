@@ -21,7 +21,7 @@ if [ ! -f "$CONF_FILE" ]; then
     : "${GEOPULSE_POSTGRES_HOST:?GEOPULSE_POSTGRES_HOST is not set.}"
     : "${GEOPULSE_POSTGRES_PORT:?GEOPULSE_POSTGRES_PORT is not set.}"
     : "${GEOPULSE_POSTGRES_DB:?GEOPULSE_POSTGRES_DB is not set.}"
-    : "${GEOPULSE_POSTGRES_USER:?GEOPULSE_POSTGRES_USER is not set.}"
+    : "${GEOPULSE_POSTGRES_USERNAME:?GEOPULSE_POSTGRES_USERNAME is not set.}"
     : "${GEOPULSE_POSTGRES_PASSWORD:?GEOPULSE_POSTGRES_PASSWORD is not set.}"
 
     # --- Generate mosquitto.conf ---
@@ -61,7 +61,7 @@ auth_opt_files_hasher bcrypt
 auth_opt_pg_host ${GEOPULSE_POSTGRES_HOST}
 auth_opt_pg_port ${GEOPULSE_POSTGRES_PORT}
 auth_opt_pg_dbname ${GEOPULSE_POSTGRES_DB}
-auth_opt_pg_user ${GEOPULSE_POSTGRES_USER}
+auth_opt_pg_user ${GEOPULSE_POSTGRES_USERNAME}
 auth_opt_pg_password ${GEOPULSE_POSTGRES_PASSWORD}
 auth_opt_pg_sslmode disable
 auth_opt_pg_connect_tries 10

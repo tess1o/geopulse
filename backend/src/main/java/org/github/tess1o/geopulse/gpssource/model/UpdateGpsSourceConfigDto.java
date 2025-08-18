@@ -12,4 +12,5 @@ public class UpdateGpsSourceConfigDto {
     private String password;
     private String token;
     private String userId;
+    private GpsSourceConfigEntity.ConnectionType connectionType;
 }

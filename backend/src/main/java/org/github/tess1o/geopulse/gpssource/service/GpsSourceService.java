@@ -116,8 +116,11 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             dbConfig.setUsername(config.getUsername());
             dbConfig.setPasswordHash(passwordUtils.hashPassword(config.getPassword()));
         }
-        if (dbConfig.getSourceType() == GpsSourceType.OVERLAND) {
+        if (dbConfig.getSourceType() == GpsSourceType.OVERLAND || dbConfig.getSourceType() == GpsSourceType.DAWARICH) {
             dbConfig.setToken(config.getToken());
+        }
+        if (dbConfig.getConnectionType() != null) {
+            dbConfig.setConnectionType(config.getConnectionType());
         }
         return true;
     }
