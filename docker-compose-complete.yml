@@ -1,0 +1,65 @@
+services:
+  geopulse-backend:
+    image: tess1o/geopulse-backend:1.0.0-rc.2
+    container_name: geopulse-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
+    ports:
+      - 8080:8080  # Change left port to customize external access
+    volumes:
+      - ./keys:/app/keys
+    depends_on:
+      geopulse-postgres:
+        condition: service_healthy
+
+  geopulse-ui:
+    image: tess1o/geopulse-ui:1.0.0-rc.2
+    container_name: geopulse-ui
+    restart: unless-stopped
+    ports:
+      - 5555:80  # Change left port to customize external access
+    depends_on:
+      - geopulse-backend
+    environment:
+      - API_BASE_URL=${GEOPULSE_BACKEND_URL}/api
+
+  geopulse-postgres:
+    image: postgis/postgis:17-3.5
+    container_name: geopulse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
+      POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${GEOPULSE_POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  geopulse-mosquitto:
+    image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
+    container_name: geopulse-mosquitto
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto_entrypoint.sh:/entrypoint.sh
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    entrypoint: ["/entrypoint.sh"]
+    command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
+    depends_on:
+      geopulse-postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
