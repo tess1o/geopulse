@@ -40,7 +40,7 @@
                   <i class="pi pi-mobile text-2xl text-blue-500"></i>
                   <div>
                     <h3 class="source-name">OwnTracks</h3>
-                    <p class="source-description">Open-source location tracking with username/password authentication</p>
+                    <p class="source-description">Open-source location tracking with HTTP or MQTT connections</p>
                   </div>
                 </div>
                 <Button 
@@ -100,10 +100,17 @@
                       <div class="source-identifier">{{ getSourceIdentifier(source) }}</div>
                     </div>
                   </div>
-                  <div class="source-status">
+                  <div class="source-status-column">
                     <Badge 
                       :value="source.active ? 'Active' : 'Inactive'" 
                       :severity="source.active ? 'success' : 'secondary'"
+                      class="status-badge"
+                    />
+                    <Badge 
+                      v-if="source.type === 'OWNTRACKS'"
+                      :value="source.connectionType || 'HTTP'"
+                      :severity="source.connectionType === 'MQTT' ? 'info' : 'warn'"
+                      class="connection-badge"
                     />
                   </div>
                 </div>
@@ -163,10 +170,10 @@
               @tab-change="handleTabChange"
               class="instructions-tabs"
             >
-              <!-- OwnTracks Tab -->
-              <div v-if="activeTab === 'owntracks' && hasOwnTracksSource">
+              <!-- OwnTracks HTTP Tab -->
+              <div v-if="activeTab === 'owntracks-http' && hasOwnTracksHttp">
                 <div class="instruction-content">
-                  <h3 class="instruction-title">OwnTracks Configuration</h3>
+                  <h3 class="instruction-title">OwnTracks Configuration (HTTP)</h3>
                   <div class="instruction-steps">
                     <div class="step">
                       <div class="step-number">1</div>
@@ -187,7 +194,7 @@
                     <div class="step">
                       <div class="step-number">2</div>
                       <div class="step-content">
-                        <div class="step-title">Mode</div>
+                        <div class="step-title">Connection Mode</div>
                         <div class="step-value">HTTP</div>
                       </div>
                     </div>
@@ -197,8 +204,79 @@
                       <div class="step-content">
                         <div class="step-title">Authentication</div>
                         <div class="step-value">
-                          Use username: <strong>{{ ownTracksUsername || 'your-username' }}</strong>
-                          and your configured password
+                          Username: <strong>{{ ownTracksHttpSources[0]?.username || 'your-username' }}</strong><br>
+                          Use your configured password
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- OwnTracks MQTT Tab -->
+              <div v-if="activeTab === 'owntracks-mqtt' && hasOwnTracksMqtt">
+                <div class="instruction-content">
+                  <h3 class="instruction-title">OwnTracks Configuration (MQTT)</h3>
+                  <div class="instruction-steps">
+                    <div class="step">
+                      <div class="step-number">1</div>
+                      <div class="step-content">
+                        <div class="step-title">Connection Type</div>
+                        <div class="step-value">Select <strong>MQTT</strong> in OwnTracks connection settings</div>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">2</div>
+                      <div class="step-content">
+                        <div class="step-title">MQTT Broker Host</div>
+                        <div class="copy-field">
+                          <code>{{ getMqttHost() }}</code>
+                          <Button 
+                            icon="pi pi-copy"
+                            size="small"
+                            outlined
+                            @click="copyToClipboard(getMqttHost())"
+                          />
+                        </div>
+                        <small class="text-muted">Use your public host or IP address</small>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">3</div>
+                      <div class="step-content">
+                        <div class="step-title">MQTT Port</div>
+                        <div class="copy-field">
+                          <code>1883</code>
+                          <Button 
+                            icon="pi pi-copy"
+                            size="small"
+                            outlined
+                            @click="copyToClipboard('1883')"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">4</div>
+                      <div class="step-content">
+                        <div class="step-title">Authentication</div>
+                        <div class="step-value">
+                          Username: <strong>{{ ownTracksMqttSources[0]?.username || 'your-username' }}</strong><br>
+                          Password: Use your configured password
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">5</div>
+                      <div class="step-content">
+                        <div class="step-title">Security Settings</div>
+                        <div class="step-value">
+                          TLS: <strong>Disabled</strong><br>
+                          <small class="text-muted">Leave TLS/SSL settings unchecked</small>
                         </div>
                       </div>
                     </div>
@@ -319,6 +397,32 @@
 
             <div v-if="formData.type === 'OWNTRACKS'" class="form-section">
               <div class="form-field">
+                <label for="connectionType" class="form-label">Connection Type</label>
+                <div class="connection-type-selection">
+                  <div 
+                    :class="['connection-type-option', { active: formData.connectionType === 'HTTP' }]"
+                    @click="formData.connectionType = 'HTTP'"
+                  >
+                    <i class="pi pi-globe"></i>
+                    <div>
+                      <div class="connection-type-name">HTTP</div>
+                      <div class="connection-type-description">Standard HTTP endpoint</div>
+                    </div>
+                  </div>
+                  <div 
+                    :class="['connection-type-option', { active: formData.connectionType === 'MQTT' }]"
+                    @click="formData.connectionType = 'MQTT'"
+                  >
+                    <i class="pi pi-send"></i>
+                    <div>
+                      <div class="connection-type-name">MQTT</div>
+                      <div class="connection-type-description">MQTT broker connection</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-field">
                 <label for="username" class="form-label">Username</label>
                 <InputText 
                   id="username"
@@ -419,14 +523,15 @@ const isEditMode = ref(false)
 const editingSource = ref(null)
 const saving = ref(false)
 const activeInstructionTab = ref('owntracks')
-const activeTab = ref('owntracks')
+const activeTab = ref('owntracks-http')
 
 // Form data
 const formData = ref({
   type: 'OWNTRACKS',
   username: '',
   password: '',
-  token: ''
+  token: '',
+  connectionType: 'HTTP'
 })
 
 const formErrors = ref({})
@@ -436,7 +541,7 @@ const sourceTypes = [
   {
     value: 'OWNTRACKS',
     label: 'OwnTracks',
-    description: 'Open-source location tracking with username/password authentication',
+    description: 'Open-source location tracking with HTTP or MQTT connections',
     icon: 'pi pi-mobile'
   },
   {
@@ -460,6 +565,26 @@ const hasOwnTracksSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'OWNTRACKS')
 )
 
+const ownTracksSources = computed(() => 
+  gpsSourceConfigs.value.filter(source => source.type === 'OWNTRACKS')
+)
+
+const hasOwnTracksHttp = computed(() => 
+  ownTracksSources.value.some(source => source.connectionType === 'HTTP' || !source.connectionType)
+)
+
+const hasOwnTracksMqtt = computed(() => 
+  ownTracksSources.value.some(source => source.connectionType === 'MQTT')
+)
+
+const ownTracksHttpSources = computed(() => 
+  ownTracksSources.value.filter(source => source.connectionType === 'HTTP' || !source.connectionType)
+)
+
+const ownTracksMqttSources = computed(() => 
+  ownTracksSources.value.filter(source => source.connectionType === 'MQTT')
+)
+
 const hasOverlandSource = computed(() => 
   gpsSourceConfigs.value.some(source => source.type === 'OVERLAND')
 )
@@ -469,8 +594,15 @@ const hasDawarichSource = computed(() =>
 )
 
 const ownTracksUsername = computed(() => {
+  // Show the first OwnTracks source
   const ownTracksSource = gpsSourceConfigs.value.find(s => s.type === 'OWNTRACKS')
   return ownTracksSource?.username
+})
+
+const ownTracksConnectionType = computed(() => {
+  // Show the first OwnTracks source
+  const ownTracksSource = gpsSourceConfigs.value.find(s => s.type === 'OWNTRACKS')
+  return ownTracksSource?.connectionType || 'HTTP'
 })
 
 const overlandToken = computed(() => {
@@ -486,13 +618,33 @@ const dawarichApiKey = computed(() => {
 // Tab configuration
 const tabItems = computed(() => {
   const tabs = []
-  if (hasOwnTracksSource.value) {
+  
+  // Add separate tabs for HTTP and MQTT OwnTracks if both exist
+  if (hasOwnTracksHttp.value && hasOwnTracksMqtt.value) {
+    tabs.push({
+      label: 'OwnTracks (HTTP)',
+      icon: 'pi pi-globe',
+      key: 'owntracks-http'
+    })
+    tabs.push({
+      label: 'OwnTracks (MQTT)',
+      icon: 'pi pi-send',
+      key: 'owntracks-mqtt'
+    })
+  } else if (hasOwnTracksHttp.value) {
     tabs.push({
       label: 'OwnTracks',
       icon: 'pi pi-mobile',
-      key: 'owntracks'
+      key: 'owntracks-http'
+    })
+  } else if (hasOwnTracksMqtt.value) {
+    tabs.push({
+      label: 'OwnTracks',
+      icon: 'pi pi-mobile',
+      key: 'owntracks-mqtt'
     })
   }
+  
   if (hasOverlandSource.value) {
     tabs.push({
       label: 'Overland', 
@@ -570,7 +722,14 @@ const startQuickSetup = (type) => {
 }
 
 const showInstructions = (source) => {
-  const tabKey = source.type.toLowerCase()
+  let tabKey = source.type.toLowerCase()
+  
+  // Handle OwnTracks connection type specific tabs
+  if (source.type === 'OWNTRACKS') {
+    const connectionType = source.connectionType || 'HTTP'
+    tabKey = `owntracks-${connectionType.toLowerCase()}`
+  }
+  
   activeTab.value = tabKey
   activeInstructionTab.value = tabKey
   // Scroll to instructions
@@ -584,7 +743,8 @@ const editSource = (source) => {
     type: source.type,
     username: source.username || '',
     password: '',
-    token: source.token || ''
+    token: source.token || '',
+    connectionType: source.connectionType || 'HTTP'
   }
   showAddDialog.value = true
 }
@@ -597,7 +757,8 @@ const closeDialog = () => {
     type: 'OWNTRACKS',
     username: '',
     password: '',
-    token: ''
+    token: '',
+    connectionType: 'HTTP'
   }
   formErrors.value = {}
 }
@@ -643,15 +804,23 @@ const saveSource = async () => {
         life: 3000
       })
     } else {
+      // For non-OwnTracks types, always use HTTP connection type
+      const connectionType = formData.value.type === 'OWNTRACKS' ? formData.value.connectionType : 'HTTP'
+      
       await gpsStore.addGpsConfigSource(
         formData.value.type,
         formData.value.username,
         formData.value.password,
-        formData.value.token
+        formData.value.token,
+        connectionType
       )
       
       // Set the newly created source's tab as active
-      const sourceType = formData.value.type.toLowerCase()
+      let sourceType = formData.value.type.toLowerCase()
+      if (formData.value.type === 'OWNTRACKS') {
+        const connectionType = formData.value.connectionType.toLowerCase()
+        sourceType = `owntracks-${connectionType}`
+      }
       await nextTick() // Wait for DOM update
       activeTab.value = sourceType
       activeInstructionTab.value = sourceType
@@ -752,6 +921,11 @@ const copyToClipboard = async (text) => {
       life: 3000
     })
   }
+}
+
+const getMqttHost = () => {
+  // Extract hostname from current URL for MQTT broker host
+  return window.location.hostname
 }
 
 // Lifecycle
@@ -904,6 +1078,23 @@ onMounted(async () => {
   font-family: var(--font-mono, monospace);
 }
 
+.source-status-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+}
+
+.connection-badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
 .source-actions {
   display: flex;
   flex-direction: column;
@@ -983,6 +1174,12 @@ onMounted(async () => {
 .step-value {
   color: var(--gp-text-secondary);
   line-height: 1.4;
+}
+
+.text-muted {
+  color: var(--gp-text-muted, #6b7280);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
 }
 
 .copy-field {
@@ -1084,6 +1281,52 @@ onMounted(async () => {
 .form-label {
   font-weight: 600;
   color: var(--gp-text-primary);
+}
+
+.connection-type-selection {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.connection-type-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 2px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--gp-surface-white);
+  flex: 1;
+}
+
+.connection-type-option:hover {
+  border-color: var(--gp-border-medium);
+  background: var(--gp-surface-light);
+}
+
+.connection-type-option.active {
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-white);
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+}
+
+.connection-type-option.active:hover {
+  background: var(--gp-surface-white);
+}
+
+.connection-type-name {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin-bottom: 0.125rem;
+  font-size: 0.9rem;
+}
+
+.connection-type-description {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+  line-height: 1.2;
 }
 
 .error-message {
@@ -1192,6 +1435,38 @@ onMounted(async () => {
 
 .p-dark .dialog-footer {
   border-top-color: var(--gp-border-dark);
+}
+
+.p-dark .connection-type-option {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .connection-type-option:hover {
+  background: var(--gp-surface-light);
+  border-color: var(--gp-border-medium);
+}
+
+.p-dark .connection-type-option.active {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.p-dark .connection-type-option.active:hover {
+  background: var(--gp-surface-dark);
+}
+
+.p-dark .connection-type-name {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .connection-type-description {
+  color: var(--gp-text-secondary);
+}
+
+.p-dark .text-muted {
+  color: var(--gp-text-muted, #9ca3af);
 }
 
 

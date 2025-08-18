@@ -223,6 +223,7 @@ public class ExportDataMapper {
                 .type(source.getSourceType() != null ? source.getSourceType().name() : "UNKNOWN")
                 .username(source.getUsername())
                 .active(source.isActive())
+                .connectionType(source.getConnectionType() != null ? source.getConnectionType().name() : "HTTP")
                 .build();
     }
 

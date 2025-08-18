@@ -18,23 +18,85 @@ Once logged in, you'll see the onboarding tour. At this stage you need to config
 
 ### OwnTracks Configuration
 
+OwnTracks supports both **HTTP** and **MQTT** modes. Choose the one that fits your needs:
+
+#### 🌐 HTTP Mode (Recommended for Most Users)
+
 **iOS/Android App Setup:**
 1. Download OwnTracks from App Store/Google Play
 2. Open OwnTracks settings
 3. Configure connection:
    - **Mode:** HTTP
-   - **DeviceID:** any value
-   - **UserID:** __cool_user__
+   - **DeviceID:** any value (e.g., `iphone`, `android`)
+   - **UserID:** `cool_user` (choose any username)
    - **Authentication:** Enabled
-   - **Password:** the password
-   - **URL:** `https://YOUR_SERVER/api/owntracks` (adjust accordingly)
+   - **Password:** `secure_password_123` (choose a secure password)
+   - **URL:** `https://YOUR_SERVER/api/owntracks`
 
 **GeoPulse Configuration:**
 1. Go to **Location Sources** in GeoPulse
 2. Click **"Add GPS Source"**
 3. Select **OwnTracks**
-4. Enter the same username/password from the app
-5. Save the configuration
+4. Set **Connection Type:** HTTP
+5. Enter the same username/password from the app
+6. Save the configuration
+
+---
+
+#### 📡 MQTT Mode (For Advanced Users)
+
+**Prerequisites:**
+- MQTT broker must be configured (see [Deployment Guide MQTT section](DEPLOYMENT_GUIDE.md#-optional-mqtt-support-for-owntracks))
+- ✅ **Database-driven authentication** - users authenticated automatically from database
+
+**iOS/Android App Setup:**
+1. Download OwnTracks from App Store/Google Play
+2. Open OwnTracks settings
+3. Configure connection:
+   - **Mode:** Private MQTT
+   - **DeviceID:** any value (e.g., `iphone`, `android`)
+   - **UserID:** `john_doe` (must match MQTT username)
+   - **Password:** `your_secure_password` (must match MQTT password)
+   - **Host:** your MQTT broker host
+   - **Port:** `1883`
+   - **Security:** None (or TLS if configured)
+   - **Client ID:** auto-generated (leave empty)
+
+**GeoPulse Configuration:**
+1. Go to **Location Sources** in GeoPulse
+2. Click **"Add GPS Source"**
+3. Select **OwnTracks**
+4. Set **Connection Type:** MQTT
+5. Enter the same **username** and **password** from the app
+6. Save the configuration
+7. ✅ **Instant MQTT access via database authentication!**
+
+**How Database Authentication Works:**
+- Your credentials are stored in GeoPulse database
+- MQTT broker authenticates users directly from database in real-time
+- Activate/deactivate GPS source = immediate MQTT access change
+- No manual user management needed
+
+**MQTT Topic Structure:**
+- OwnTracks publishes to: `owntracks/{username}/{deviceId}`
+- Example: `owntracks/john_doe/iphone`
+
+---
+
+#### 🤔 HTTP vs MQTT Comparison
+
+| Feature | HTTP Mode | MQTT Mode |
+|---------|-----------|-----------|
+| **Setup Complexity** | ✅ Simple | ✅ Simple (database-driven) |
+| **Real-time Updates** | ✅ Good | ✅ Excellent |
+| **Battery Usage** | ✅ Good | ✅ Better |
+| **Network Efficiency** | ✅ Good | ✅ Better |
+| **User Management** | ✅ Database-driven | ✅ Database-driven |
+| **Access Control** | ✅ Immediate | ✅ Real-time |
+| **Infrastructure** | ✅ None needed | ⚠️ MQTT broker required |
+| **Firewall/NAT** | ✅ Works everywhere | ⚠️ May need configuration |
+
+**Recommendation:** Both modes are now equally easy to manage thanks to database-driven authentication. Choose MQTT for better battery life and real-time performance.
 
 ### Overland Configuration (iOS)
 

@@ -90,12 +90,13 @@ public final class NativeSqlImportTemplates {
     
     public static final String GPS_SOURCE_CONFIG_UPSERT = """
         INSERT INTO gps_source_config 
-        (id, user_id, username, source_type, active) 
-        VALUES (?, ?, ?, ?, ?)
+        (id, user_id, username, source_type, active, connection_type) 
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT (id) DO UPDATE SET
             username = EXCLUDED.username,
             source_type = EXCLUDED.source_type,
-            active = EXCLUDED.active
+            active = EXCLUDED.active,
+            connection_type = EXCLUDED.connection_type
         """;
     
     public static final String TIMELINE_DATA_GAPS_UPSERT = """
