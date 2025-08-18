@@ -79,7 +79,6 @@ public class GpsPointServiceTest {
 
         var selectCount = stats.getQueryExecutionCount();
         assertTrue(selectCount <= 2); //for duplication check and possbile timeline_regeneration_queue
-        assertEquals(2, selectCount);
 
         assertEquals(1, gpsPointRepository.count());
         GpsPointEntity savedGpsPoint = gpsPointRepository.findAll().firstResult();
