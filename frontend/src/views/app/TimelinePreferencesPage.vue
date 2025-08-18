@@ -101,7 +101,6 @@
                       'Original': 'Time-based clustering approach',
                       'Enhanced': 'Advanced velocity and accuracy filtering'
                     }"
-                    env-var="geopulse.timeline.staypoint.detection.algorithm"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.staypointDetectionAlgorithm }}</div>
@@ -121,7 +120,6 @@
                     title="Enhanced Filtering"
                     description="Use velocity and accuracy data for better stay point detection"
                     details="Filters out poor quality GPS points and improves timeline accuracy"
-                    env-var="geopulse.timeline.staypoint.use_velocity_accuracy"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.useVelocityAccuracy ? 'Enabled' : 'Disabled' }}</div>
@@ -141,7 +139,6 @@
                       'Lower values': 'More strict filtering',
                       'Higher values': 'Allow more movement within stays'
                     }"
-                    env-var="geopulse.timeline.staypoint.velocity.threshold"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.staypointVelocityThreshold }} km/h</div>
@@ -168,7 +165,6 @@
                       'Lower values': 'Require more accurate GPS',
                       'Higher values': 'Accept less accurate GPS points'
                     }"
-                    env-var="geopulse.timeline.staypoint.accuracy.threshold"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.staypointMaxAccuracyThreshold }}m</div>
@@ -192,7 +188,6 @@
                     title="Minimum Accuracy Ratio"
                     description="Minimum ratio of accurate GPS points required in a stay point cluster"
                     details="Higher values ensure more reliable stay point detection by requiring a higher percentage of accurate GPS points"
-                    env-var="geopulse.timeline.staypoint.min_accuracy_ratio"
                   >
                     <template #control>
                       <div class="control-value">{{ Math.round(prefs.staypointMinAccuracyRatio * 100) }}%</div>
@@ -231,7 +226,6 @@
                       'Single': 'Always one trip between stay points',
                       'Multiple': 'Based on velocity one or more trips between stay points (like CAR → WALK, WALK → CAR, etc)'
                     }"
-                    env-var="geopulse.timeline.trip.detection.algorithm"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.tripDetectionAlgorithm }}</div>
@@ -254,7 +248,6 @@
                       'Lower values': 'Capture shorter movements',
                       'Higher values': 'Only longer trips are recorded'
                     }"
-                    env-var="geopulse.timeline.trip.min_distance_meters"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.tripMinDistanceMeters }}m</div>
@@ -280,7 +273,6 @@
                       'Lower values': 'Capture quick movements',
                       'Higher values': 'Only longer journeys are recorded'
                     }"
-                    env-var="geopulse.timeline.trip.min_duration_minutes"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.tripMinDurationMinutes }} minutes</div>
@@ -317,7 +309,6 @@
                     title="Data Gap Threshold"
                     description="Maximum time gap in seconds allowed between GPS points before considering it a GPS data gap"
                     details="When the time difference between two consecutive GPS points exceeds this threshold, a GPS Data Gap entity will be created instead of extending the current stay or trip. This prevents artificial extension of activities during periods of missing GPS data."
-                    env-var="geopulse.timeline.data_gap.threshold_seconds"
                   >
                     <template #control>
                       <div class="control-value">{{ Math.floor(prefs.dataGapThresholdSeconds / 60) }} minutes ({{ prefs.dataGapThresholdSeconds }}s)</div>
@@ -340,7 +331,6 @@
                     title="Minimum Gap Duration"
                     description="Minimum duration in seconds for a gap to be recorded as a GPS Data Gap"
                     details="Gaps shorter than this threshold will be ignored to reduce noise. This prevents very short connectivity issues from creating unnecessary gap records."
-                    env-var="geopulse.timeline.data_gap.min_duration_seconds"
                   >
                     <template #control>
                       <div class="control-value">{{ Math.floor(prefs.dataGapMinDurationSeconds / 60) }} minutes ({{ prefs.dataGapMinDurationSeconds }}s)</div>
@@ -377,7 +367,6 @@
                     title="Enable Stay Point Merging"
                     description="Whether to merge nearby stay points that are close in time and distance"
                     details="Helps consolidate multiple GPS clusters at the same general location into single stay points"
-                    env-var="geopulse.timeline.staypoint.merge.enabled"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.isMergeEnabled ? 'Enabled' : 'Disabled' }}</div>
@@ -397,7 +386,6 @@
                       'Lower values': 'Only merge very close points',
                       'Higher values': 'Merge points further apart'
                     }"
-                    env-var="geopulse.timeline.staypoint.merge.max_distance_meters"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.mergeMaxDistanceMeters }}m</div>
@@ -424,7 +412,6 @@
                       'Lower values': 'Only merge consecutive stays',
                       'Higher values': 'Merge stays separated by longer gaps'
                     }"
-                    env-var="geopulse.timeline.staypoint.merge.max_time_gap_minutes"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.mergeMaxTimeGapMinutes }} minutes</div>
@@ -461,7 +448,6 @@
                     title="Enable Path Simplification"
                     description="Whether GPS path simplification is enabled for timeline trips"
                     details="When enabled, trip paths will be simplified using the Douglas-Peucker algorithm to reduce the number of GPS points while preserving route accuracy"
-                    env-var="geopulse.timeline.path.simplification.enabled"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.pathSimplificationEnabled ? 'Enabled' : 'Disabled' }}</div>
@@ -481,7 +467,6 @@
                       'Lower values': 'Preserve more detail, less compression',
                       'Higher values': 'More compression, less detail'
                     }"
-                    env-var="geopulse.timeline.path.simplification.tolerance"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.pathSimplificationTolerance }}m</div>
@@ -505,7 +490,6 @@
                     title="Maximum Points"
                     description="Maximum number of GPS points to retain in simplified paths"
                     details="If a simplified path still exceeds this limit, tolerance will be automatically increased until the limit is met. Set to 0 for no limit"
-                    env-var="geopulse.timeline.path.simplification.max_points"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.pathMaxPoints === 0 ? 'No limit' : prefs.pathMaxPoints + ' points' }}</div>
@@ -529,7 +513,6 @@
                     title="Adaptive Simplification"
                     description="Enables adaptive simplification that adjusts tolerance based on trip characteristics"
                     details="When enabled, longer trips use higher tolerance values for better compression while shorter trips maintain higher accuracy with lower tolerance"
-                    env-var="geopulse.timeline.path.simplification.adaptive"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.pathAdaptiveSimplification ? 'Enabled' : 'Disabled' }}</div>

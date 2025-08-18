@@ -19,10 +19,6 @@
             <slot name="details" />
           </div>
           
-          <!-- Environment Variable -->
-          <div v-if="envVar" class="env-var">
-            <code>{{ envVar }}</code>
-          </div>
         </div>
         
         <div class="setting-control">
@@ -47,10 +43,6 @@ defineProps({
     type: [String, Object],
     default: null
   },
-  envVar: {
-    type: String,
-    default: null
-  }
 })
 </script>
 
@@ -124,20 +116,6 @@ defineProps({
   color: var(--gp-text-primary);
 }
 
-.env-var {
-  padding: 0.5rem 0;
-  border-top: 1px solid var(--gp-border-light);
-}
-
-.env-var code {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  background: var(--gp-surface-light);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-small);
-  color: var(--gp-primary);
-  font-family: var(--font-mono, monospace);
-}
 
 .setting-control {
   display: flex;
@@ -219,10 +197,5 @@ defineProps({
     font-size: 0.8rem;
   }
   
-  .env-var code {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
-    word-break: break-all;
-  }
 }
 </style>
