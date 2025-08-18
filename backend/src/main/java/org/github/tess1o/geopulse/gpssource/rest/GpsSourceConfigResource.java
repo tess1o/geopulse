@@ -41,7 +41,7 @@ public class GpsSourceConfigResource {
     @Path("/")
     @POST
     //TODO: duplication check!!!
-    public Response addGpsSourceConfig(CreateGpsSourceConfigDto config) {
+    public Response addGpsSourceCnfig(CreateGpsSourceConfigDto config) {
         try {
             config.setUserId(currentUserService.getCurrentUserId());
             GpsSourceConfigDTO dto = gpsSourceService.addGpsSourceConfig(config);

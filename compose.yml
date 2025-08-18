@@ -1,18 +1,23 @@
 services:
-  mosquitto:
-    image: eclipse-mosquitto:2.0
-    container_name: geopulse-mqtt
+  geopulse-mosquitto:
+    image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
+    container_name: geopulse-mosquitto
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "1883:1883"
-      - "9001:9001"  # WebSocket port (optional)
     volumes:
+      - ./mosquitto_entrypoint.sh:/entrypoint.sh
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+    entrypoint: ["/entrypoint.sh"]
+    command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
     networks:
-      - geopulse-network
+      - geopulse_default
+    # Note: geopulse-postgres container should be running
 
 networks:
-  geopulse-network:
-    driver: bridge
+  geopulse_default:
+    external: true

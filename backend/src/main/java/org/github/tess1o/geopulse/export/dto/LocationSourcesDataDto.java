@@ -27,5 +27,6 @@ public class LocationSourcesDataDto {
         private String type;
         private String username;
         private boolean active;
+        private String connectionType;
     }
 }

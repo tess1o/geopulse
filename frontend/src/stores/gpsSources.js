@@ -89,14 +89,15 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
             }
         },
 
-        async addGpsConfigSource(type, username, password, token) {
+        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP') {
             try {
                 // Note: Removed userId parameter as per your security discussion
                 await apiService.post('/gps/source', {
                     type,
                     username,
                     password,
-                    token
+                    token,
+                    connectionType
                     // Backend should get userId from JWT token
                 })
                 // Refresh the configs after adding

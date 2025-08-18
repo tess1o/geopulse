@@ -15,7 +15,7 @@ import org.github.tess1o.geopulse.sharing.exceptions.TooManyLinksException;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.repository.SharedLinkRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.user.service.PasswordUtils;
+import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -43,7 +43,7 @@ public class SharedLinkService {
     SharedLinkMapper mapper;
 
     @Inject
-    PasswordUtils passwordUtils;
+    SecurePasswordUtils passwordUtils;
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
@@ -153,7 +153,7 @@ public class SharedLinkService {
         SharedLinkEntity entity = entityOpt.get();
         
         if (entity.getPassword() != null) {
-            if (password == null || !passwordUtils.verifyPassword(password, entity.getPassword())) {
+            if (password == null || !passwordUtils.isPasswordValid(password, entity.getPassword())) {
                 log.warn("Invalid password attempt for linkId: {}", linkId);
                 throw new ForbiddenException("Invalid password");
             }

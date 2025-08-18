@@ -59,7 +59,7 @@ public class GpsPointServiceTest {
     @Test
     @Transactional
     public void testSaveOwnTracksGpsPoint() {
-        Integer tst = (int)Instant.now().toEpochMilli() / 1000;
+        Integer tst = (int)Instant.now().plusSeconds(20000).toEpochMilli() / 1000;
         OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
                 .type("location")
                 .acc(0.2)
@@ -78,7 +78,8 @@ public class GpsPointServiceTest {
         assertEquals(1, insertCount); // Expect 1 query
 
         var selectCount = stats.getQueryExecutionCount();
-        assertEquals(0, selectCount);
+        assertTrue(selectCount <= 2); //for duplication check and possbile timeline_regeneration_queue
+        assertEquals(2, selectCount);
 
         assertEquals(1, gpsPointRepository.count());
         GpsPointEntity savedGpsPoint = gpsPointRepository.findAll().firstResult();

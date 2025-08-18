@@ -512,6 +512,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     .setParameter(3, sourceDto.getUsername())
                     .setParameter(4, sourceDto.getType())
                     .setParameter(5, sourceDto.isActive())
+                    .setParameter(6, sourceDto.getConnectionType() != null ? sourceDto.getConnectionType() : "HTTP")
                     .executeUpdate();
                 imported++;
             } catch (Exception e) {

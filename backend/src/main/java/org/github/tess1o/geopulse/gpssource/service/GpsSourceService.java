@@ -15,7 +15,7 @@ import org.github.tess1o.geopulse.gpssource.model.UpdateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.user.service.PasswordUtils;
+import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -27,7 +27,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
 
     private final GpsSourceRepository gpsSourceRepository;
     private final GpsSourceConfigMapper gpsSourceMapper;
-    private final PasswordUtils passwordUtils;
+    private final SecurePasswordUtils passwordUtils;
     private final EntityManager em;
 
     @Getter
@@ -44,7 +44,8 @@ public class GpsSourceService implements GpsSourceConfigProvider {
 
     @Inject
     public GpsSourceService(GpsSourceRepository gpsSourceRepository,
-                            GpsSourceConfigMapper gpsSourceMapper, PasswordUtils passwordUtils,
+                            GpsSourceConfigMapper gpsSourceMapper,
+                            SecurePasswordUtils passwordUtils,
                             EntityManager em) {
         this.gpsSourceRepository = gpsSourceRepository;
         this.gpsSourceMapper = gpsSourceMapper;

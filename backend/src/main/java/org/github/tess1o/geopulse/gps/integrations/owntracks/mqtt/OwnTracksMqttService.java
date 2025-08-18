@@ -76,12 +76,20 @@ public class OwnTracksMqttService {
         log.info("Initializing MQTT client for broker: {}", mqttConfig.getBrokerUrl());
 
         mqttClient = new MqttClient(mqttConfig.getBrokerUrl(), CLIENT_ID);
-        
+
         MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(true);
         options.setConnectionTimeout(30);
         options.setKeepAliveInterval(60);
         options.setAutomaticReconnect(true);
+        
+        // Additional resilience and stability settings
+        options.setMaxReconnectDelay(120000);    // Max 2 minutes between reconnect attempts
+        options.setExecutorServiceTimeout(5);    // 5 second timeout for operations
+        options.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1); // Force MQTT 3.1.1
+        options.setServerURIs(new String[]{mqttConfig.getBrokerUrl()}); // Explicit server URI list
+        options.setHttpsHostnameVerificationEnabled(false); // For internal networks
+        options.setMaxInflight(100); // Max unacknowledged messages
 
         if (mqttConfig.hasCredentials()) {
             options.setUserName(mqttConfig.getUsername());
@@ -89,16 +97,38 @@ public class OwnTracksMqttService {
             log.debug("MQTT authentication configured for user: {}", mqttConfig.getUsername());
         }
 
-        // Set callback for message handling
-        mqttClient.setCallback(new MqttCallback() {
+        // Set callback for message handling with reconnection support
+        mqttClient.setCallback(new MqttCallbackExtended() {
+            @Override
+            public void connectComplete(boolean reconnect, String serverURI) {
+                if (reconnect) {
+                    log.info("MQTT reconnected to: {}", serverURI);
+                    // Re-subscribe after reconnection
+                    try {
+                        mqttClient.subscribe(TOPIC_PATTERN, 1);
+                        log.info("MQTT re-subscribed to pattern: {} after reconnection", TOPIC_PATTERN);
+                    } catch (MqttException e) {
+                        log.error("Failed to re-subscribe after reconnection", e);
+                    }
+                } else {
+                    log.info("MQTT initial connection completed to: {}", serverURI);
+                }
+            }
+
             @Override
             public void connectionLost(Throwable cause) {
-                log.warn("MQTT connection lost", cause);
+                log.warn("MQTT connection lost, automatic reconnect will be attempted", cause);
             }
 
             @Override
             public void messageArrived(String topic, MqttMessage message) throws Exception {
-                handleMqttMessage(topic, new String(message.getPayload()));
+                try {
+                    handleMqttMessage(topic, new String(message.getPayload()));
+                } catch (Exception e) {
+                    // Log the error but don't let it propagate to MQTT client
+                    // This ensures subsequent messages are still processed
+                    log.error("Error processing MQTT message from topic: {} - {}", topic, new String(message.getPayload()), e);
+                }
             }
 
             @Override
@@ -109,9 +139,10 @@ public class OwnTracksMqttService {
 
         // Connect and subscribe
         mqttClient.connect(options);
-        mqttClient.subscribe(TOPIC_PATTERN);
-        
-        log.info("MQTT client connected and subscribed to topic: {}", TOPIC_PATTERN);
+        log.info("MQTT client connected successfully");
+
+        mqttClient.subscribe(TOPIC_PATTERN, 1); // QoS 1 for at-least-once delivery
+        log.info("MQTT subscription completed for pattern: {} with QoS 1", TOPIC_PATTERN);
     }
 
     /**
@@ -119,12 +150,12 @@ public class OwnTracksMqttService {
      */
     private void handleMqttMessage(String topic, String payload) {
         try {
-            log.debug("Received MQTT message on topic: {} - {}", topic, payload);
+            log.info("Received MQTT message on topic: {} - {}", topic, payload);
 
             // Parse topic: owntracks/{username}/{deviceId}
             String[] topicParts = topic.split("/");
             if (topicParts.length != 3 || !"owntracks".equals(topicParts[0])) {
-                log.warn("Invalid OwnTracks MQTT topic format: {}", topic);
+                log.error("Invalid OwnTracks MQTT topic format: {}", topic);
                 return;
             }
 
@@ -136,14 +167,14 @@ public class OwnTracksMqttService {
 
             // Skip non-location messages
             if (!"location".equals(messageData.get("_type"))) {
-                log.trace("Skipping non-location message: {}", messageData.get("_type"));
+                log.error("Skipping non-location message: {}", messageData.get("_type"));
                 return;
             }
 
             // Authenticate user
             Optional<UUID> userIdOpt = authRegistry.authenticateByUsername(username, GpsSourceType.OWNTRACKS);
             if (userIdOpt.isEmpty()) {
-                log.warn("Authentication failed for MQTT user: {}", username);
+                log.error("Authentication failed for MQTT user: {}", username);
                 return;
             }
 

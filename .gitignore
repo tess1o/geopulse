@@ -40,3 +40,4 @@ build/
 /frontend/dist/
 /.claude/
 /backend/.claude/
+/mosquitto/

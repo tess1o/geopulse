@@ -5,15 +5,15 @@ import org.github.tess1o.geopulse.gpssource.model.CreateGpsSourceConfigDto;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigDTO;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.user.service.PasswordUtils;
+import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 
 @ApplicationScoped
 public class GpsSourceConfigMapper {
 
-    private final PasswordUtils passwordUtils;
+    private final SecurePasswordUtils securePasswordUtils;
 
-    public GpsSourceConfigMapper(PasswordUtils passwordUtils) {
-        this.passwordUtils = passwordUtils;
+    public GpsSourceConfigMapper(SecurePasswordUtils securePasswordUtils) {
+        this.securePasswordUtils = securePasswordUtils;
     }
 
     public GpsSourceConfigDTO toDTO(GpsSourceConfigEntity config) {
@@ -24,12 +24,13 @@ public class GpsSourceConfigMapper {
                 .token(config.getToken())
                 .type(config.getSourceType().name())
                 .active(config.isActive())
+                .connectionType(config.getConnectionType())
                 .build();
     }
 
     public GpsSourceConfigEntity toEntity(CreateGpsSourceConfigDto newConfig, UserEntity user) {
         String hashedPassword = newConfig.getPassword() == null || newConfig.getPassword().isEmpty()
-                ? "" : passwordUtils.hashPassword(newConfig.getPassword());
+                ? "" : securePasswordUtils.hashPassword(newConfig.getPassword());
         return GpsSourceConfigEntity.builder()
                 .user(user)
                 .active(true)

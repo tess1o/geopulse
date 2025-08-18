@@ -254,6 +254,142 @@ docker compose logs -f geopulse-backend
 
 ---
 
+## 📡 Optional: MQTT Support for OwnTracks
+
+GeoPulse supports MQTT integration for OwnTracks users who prefer MQTT over HTTP. This is completely **optional** - the
+standard HTTP integration works perfectly for most users.
+
+### When to Use MQTT
+
+✅ **Use MQTT if:**
+
+- You want real-time GPS streaming
+- You prefer MQTT protocol over HTTP
+- You're already running MQTT infrastructure
+- You want to reduce HTTP request overhead
+
+❌ **Stick with HTTP if:**
+
+- You're happy with the current setup
+- You want simplicity (HTTP is easier)
+- You don't want to manage an MQTT broker
+
+### Quick MQTT Setup
+
+**1. Add MQTT environment variables to your existing `.env` file:**
+
+```env
+# MQTT Configuration (add to your existing .env)
+GEOPULSE_MQTT_ENABLED=true
+GEOPULSE_MQTT_BROKER_HOST=geopulse-mosquitto
+GEOPULSE_MQTT_BROKER_PORT=1883
+GEOPULSE_MQTT_USERNAME=geopulse_mqtt_admin
+GEOPULSE_MQTT_PASSWORD=geopulse_mqtt_pass_123
+
+# Additional Postgres properties required by Mosquitto. Update them if you changed default Postgres configuration
+GEOPULSE_POSTGRES_HOST=geopulse-postgres
+GEOPULSE_POSTGRES_PORT=5432
+```
+
+**2. Download the entrypoint script to your current folder**
+
+```bash
+curl -o mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
+chmod +x mosquitto_entrypoint.sh
+```
+
+This entrypoint will be used by docker container to properly configure Mosquitto MQTT broker. It will do the following:
+
+1. Configure file-based auth for `GEOPULSE_MQTT_USERNAME` user. This user will have ADMIN rights to consume messages
+   from all topics. It's a system user used by GeoPulse backend.
+2. Configure postgres-based auth for all regular users. When OwnTrack sends messages to the MQTT broker, the broker will
+   execute SQL queries on geopulse-postgres database to check if such user/pass exists, if the configuration is active,
+   etc.
+
+**3. Add mosquitto service to your `docker-compose.yml`:**
+
+```yaml
+# Add this service to your existing docker-compose.yml
+geopulse-mosquitto:
+  image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
+  container_name: geopulse-mosquitto
+  restart: unless-stopped
+  env_file:
+    - .env
+  ports:
+    - "1883:1883"
+  volumes:
+    - ./mosquitto_entrypoint.sh:/entrypoint.sh
+    - ./mosquitto/config:/mosquitto/config
+    - ./mosquitto/data:/mosquitto/data
+    - ./mosquitto/log:/mosquitto/log
+  entrypoint: [ "/entrypoint.sh" ]
+  command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
+  depends_on:
+    geopulse-postgres:
+      condition: service_healthy
+```
+
+**3. Restart GeoPulse:**
+
+```bash
+docker compose up -d
+```
+
+### Database-Driven MQTT Authentication
+
+GeoPulse uses **database-driven MQTT authentication** for seamless user management:
+
+✅ **Real-time Authentication:**
+
+- **Instant authentication** - MQTT users authenticated directly from database
+- **Automatic permissions** - GPS source activation/deactivation immediately affects MQTT access
+- **No file management** - no password files or ACL files to maintain
+- **Admin + User access** - admin gets full access, users restricted to their OwnTracks topics
+
+🎯 **How It Works:**
+
+1. **Admin User**: Uses environment variables (`GEOPULSE_MQTT_USERNAME` / `GEOPULSE_MQTT_PASSWORD`)
+2. **Regular Users**: Authenticated from `gps_source_config` table
+3. **ACL Security**: Admin = all topics, Users = only `owntracks/{username}/+`
+4. **Real-time updates**: Activate/deactivate GPS source = immediate MQTT access change
+
+🔄 **User Experience:**
+
+1. Go to GeoPulse → **Location Sources** → **Add GPS Source**
+2. Select **OwnTracks** + **Connection Type: MQTT**
+3. Enter **username** and **password**
+4. Save → **User can connect to MQTT immediately!**
+
+### MQTT Security Notes
+
+- **Two-user setup**: One admin user (for GeoPulse), individual users (for OwnTracks apps)
+- **ACL-based security**: Each user can only access their own `owntracks/{username}/+` topics. Admin (
+  `GEOPULSE_MQTT_USERNAME`) can access all topics
+- **No anonymous access**: All connections require authentication
+- **Configurable credentials**: Admin credentials can be customized via environment variables
+
+### Troubleshooting MQTT
+
+**Check if MQTT is working:**
+
+```bash
+# Test MQTT connectivity
+docker compose logs geopulse-mosquitto
+
+# Verify GeoPulse can connect
+docker compose logs geopulse-backend | grep -i mqtt
+```
+
+**Common issues:**
+
+- **Port conflicts**: Make sure port 1883 is not used by other services
+- **Authentication failures**: Verify usernames/passwords match between OwnTracks app and MQTT broker and GeoPulse
+  configuration
+- **Topic permissions**: Ensure OwnTracks uses topic pattern `owntracks/{username}/{device}`
+
+---
+
 ## 🔒 Security Recommendations
 
 * 🔐 Use strong, unique passwords for `GEOPULSE_POSTGRES_PASSWORD`

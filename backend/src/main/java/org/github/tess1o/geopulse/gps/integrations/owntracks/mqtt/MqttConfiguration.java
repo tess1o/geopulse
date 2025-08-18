@@ -1,13 +1,14 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.ConfigProvider;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /**
  * Configuration class for conditional MQTT support.
- * Only activates MQTT functionality when GEOPULSE_MQTT_BROKER_HOST is configured.
+ * Only activates MQTT functionality when geopulse.mqtt.enabled is set to true.
  */
 @ApplicationScoped
 @Slf4j
@@ -20,31 +21,23 @@ public class MqttConfiguration {
     private final String username;
     private final String password;
 
-    public MqttConfiguration() {
-        boolean explicitlyEnabled = ConfigProvider.getConfig()
-                .getOptionalValue("GEOPULSE_MQTT_ENABLED", Boolean.class)
-                .orElse(false);
+    @Inject
+    public MqttConfiguration(
+            @ConfigProperty(name = "geopulse.mqtt.enabled") boolean mqttEnabled,
+            @ConfigProperty(name = "geopulse.mqtt.broker.host") String brokerHost,
+            @ConfigProperty(name = "geopulse.mqtt.broker.port") int brokerPort,
+            @ConfigProperty(name = "geopulse.mqtt.username") String username,
+            @ConfigProperty(name = "geopulse.mqtt.password") String password) {
         
-        this.brokerHost = ConfigProvider.getConfig()
-                .getOptionalValue("GEOPULSE_MQTT_BROKER_HOST", String.class)
-                .orElse("");
-        
-        this.brokerPort = ConfigProvider.getConfig()
-                .getOptionalValue("GEOPULSE_MQTT_BROKER_PORT", Integer.class)
-                .orElse(1883);
-        
-        this.username = ConfigProvider.getConfig()
-                .getOptionalValue("GEOPULSE_MQTT_USERNAME", String.class)
-                .orElse("");
-        
-        this.password = ConfigProvider.getConfig()
-                .getOptionalValue("GEOPULSE_MQTT_PASSWORD", String.class)
-                .orElse("");
+        this.brokerHost = brokerHost;
+        this.brokerPort = brokerPort;
+        this.username = username;
+        this.password = password;
         
         // Validate configuration when MQTT is enabled
-        if (explicitlyEnabled) {
+        if (mqttEnabled) {
             if (brokerHost.trim().isEmpty()) {
-                log.error("MQTT is enabled but GEOPULSE_MQTT_BROKER_HOST is not configured");
+                log.error("MQTT is enabled but broker host is not configured");
                 this.mqttEnabled = false;
             } else {
                 this.mqttEnabled = true;
@@ -52,7 +45,7 @@ public class MqttConfiguration {
             }
         } else {
             this.mqttEnabled = false;
-            log.debug("MQTT support is disabled - GEOPULSE_MQTT_ENABLED not set to true");
+            log.debug("MQTT support is disabled");
         }
     }
 
