@@ -1,5 +1,15 @@
 # GeoPulse Configuration
 
+## 🚀 Quick Start
+
+**New to GeoPulse?** Start with our simplified deployment that includes pre-configured .env files:
+
+👉 **[5-Minute Quick Deploy Instructions](../README.md#-quick-deploy-recommended)**
+
+---
+
+## 🔧 Advanced Configuration
+
 GeoPulse provides extensive configuration options to fine-tune timeline generation and GPS data processing. Environment
 variables set the system-wide default values, which can then be customized per-user through the web interface. Once a
 user modifies settings in the UI, those personal preferences take precedence over any future changes to the environment
@@ -166,18 +176,18 @@ GEOPULSE_TIMELINE_PATH_SIMPLIFICATION_ADAPTIVE=true
 
 **For Higher Accuracy** (more sensitive detection):
 
-- Decrease `staypoint.velocity.threshold` (e.g., 3-5 m/s)
-- Decrease `staypoint.accuracy.threshold` (e.g., 30-40 meters)
-- Decrease `trip.min_distance_meters` (e.g., 25-30 meters)
+- Decrease `geopulse.timeline.staypoint.velocity.threshold` (e.g., 3-5 m/s)
+- Decrease `geopulse.timeline.staypoint.accuracy.threshold` (e.g., 30-40 meters)
+- Decrease `geopulse.timeline.trip.min_distance_meters` (e.g., 25-30 meters)
 
 **For Less Noise** (less sensitive detection):
 
-- Increase `staypoint.velocity.threshold` (e.g., 10-15 m/s)
-- Increase `trip.min_distance_meters` (e.g., 100-200 meters)
-- Increase `trip.min_duration_minutes` (e.g., 10-15 minutes)
+- Increase `geopulse.timeline.staypoint.velocity.threshold` (e.g., 10-15 m/s)
+- Increase `geopulse.timeline.trip.min_distance_meters` (e.g., 100-200 meters)
+- Increase `geopulse.timeline.trip.min_duration_minutes` (e.g., 10-15 minutes)
 
 **For Battery/Storage Optimization**:
 
 - Enable path simplification with higher tolerance (20-30 meters)
-- Set lower `path.simplification.max_points` (50-75 points)
+- Set lower `geopulse.timeline.path.simplification.max_points` (50-75 points)
 - Enable adaptive simplification

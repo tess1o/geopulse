@@ -2,7 +2,15 @@
 
 This guide will help you set up GeoPulse and connect it with GPS tracking apps.
 
-## 🚀 Initial Setup
+## 🚀 Deploy First
+
+**Haven't deployed GeoPulse yet?** Start with our quick deployment:
+
+👉 **[5-Minute Quick Deploy Instructions](../README.md#-quick-deploy-recommended)**
+
+---
+
+## 🎯 Initial Setup
 
 ### 1. First Login
 After deploying GeoPulse, visit your frontend URL and create your first account:

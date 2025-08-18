@@ -22,20 +22,38 @@ while keeping everything on your own server.
   <p><em>Interactive timeline with automatic stay/trip detection and map visualization</em></p>
 </div>
 
-## Getting Started
+## 🚀 Getting Started
 
-### Quick Start
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Docker deployment instructions
-- **[Configuration Guide](docs/CONFIGURATION.md)** - Geopulse configuration (optional)
-- **[Setup Guide](docs/SETUP.md)** - Complete setup instructions for new users
+Deploy GeoPulse in under 5 minutes with Docker:
+
+**Choose your deployment:**
+- 🏠 **Local Machine** - on your computer without external domain
+- 🏠📡 **Local Machine + MQTT** - same with OwnTracks MQTT support  
+- 🌐 **Server** - VPS/server with domain and reverse proxy
+- 🌐📡 **Server + MQTT** - same with OwnTracks MQTT support
+
+**Simple deployment process:**
+1. Download .env configuration for your setup
+2. Download docker-compose file (basic or with MQTT)  
+3. Generate JWT keys and update passwords
+4. Run `docker compose up -d`
+
+**👉 [Complete Step-by-Step Instructions](docs/DEPLOYMENT_GUIDE.md)**
+
+Once deployed:
+- **Local Machine**: http://localhost:5555
+- **Server**: https://your-domain.com
+
+---
 
 ## Features
 
 **GPS Data Integration**
 
-- Works with OwnTracks (HTTP only), Overland and Dawarich tracking apps
+- Works with OwnTracks (HTTP or MQTT), Overland and Dawarich tracking apps
 - Real-time data sync and import/export capabilities
 - Flexible authentication (username/password or token-based)
+- Manual import from Google Takeout, GPX files
 
 **Timeline and Maps**
 
@@ -77,6 +95,13 @@ while keeping everything on your own server.
 - Dark/light themes with system preference detection
 - Mobile-responsive design
 
+## 📚 Complete Documentation
+
+### Detailed Guides
+- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Comprehensive deployment options and troubleshooting
+- **[Configuration Guide](docs/CONFIGURATION.md)** - Advanced configuration and environment variables
+- **[Setup Guide](docs/SETUP.md)** - GPS apps setup and initial configuration
+
 ## Architecture
 
 - **Backend**: Java with Quarkus framework
@@ -99,7 +124,7 @@ while keeping everything on your own server.
 - Battery-efficient background tracking
 - Configure GeoPulse endpoint URL in the app with your token
 
-- **Dawarich** (iOS)
+**Dawarich** (iOS)
 
 - API Key authentication
 - Configure GeoPulse endpoint URL in app with your API Key
