@@ -16,6 +16,6 @@ public class CreateGpsSourceConfigDto {
     private String password;
     private String token;
     private UUID userId;
-    private GpsSourceConfigEntity.ConnectionType connectionType = GpsSourceConfigEntity.ConnectionType.HTTP;
+    private GpsSourceConfigEntity.ConnectionType connectionType;
 }
 

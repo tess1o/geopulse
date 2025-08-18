@@ -38,6 +38,7 @@ public class GpsSourceConfigMapper {
                 .username(newConfig.getUsername())
                 .passwordHash(hashedPassword)
                 .sourceType(newConfig.getType())
+                .connectionType(newConfig.getConnectionType())
                 .build();
     }
 }

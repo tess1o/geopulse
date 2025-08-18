@@ -8,6 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
+import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
@@ -75,7 +76,10 @@ public class OwnTracksMqttService {
     private void initializeMqttClient() throws MqttException {
         log.info("Initializing MQTT client for broker: {}", mqttConfig.getBrokerUrl());
 
-        mqttClient = new MqttClient(mqttConfig.getBrokerUrl(), CLIENT_ID);
+        // Use file persistence with explicit writable directory for container environments
+        String persistenceDir = System.getProperty("java.io.tmpdir") + "/mqtt-persistence";
+        MqttDefaultFilePersistence persistence = new MqttDefaultFilePersistence(persistenceDir);
+        mqttClient = new MqttClient(mqttConfig.getBrokerUrl(), CLIENT_ID, persistence);
 
         MqttConnectOptions options = new MqttConnectOptions();
         options.setCleanSession(true);

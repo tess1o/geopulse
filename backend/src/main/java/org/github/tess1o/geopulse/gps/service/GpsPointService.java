@@ -44,7 +44,7 @@ public class GpsPointService {
 
         // Check for location-based duplicates (same coordinates within time threshold)
         if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType)) {
-            log.debug("Skipping location duplicate OwnTracks GPS point for user {} at coordinates ({}, {})", 
+            log.info("Skipping location duplicate OwnTracks GPS point for user {} at coordinates ({}, {})",
                      userId, message.getLat(), message.getLon());
             return;
         }
