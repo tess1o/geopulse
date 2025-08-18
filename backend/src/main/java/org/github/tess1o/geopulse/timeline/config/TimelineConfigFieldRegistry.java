@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.timeline.config;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.Getter;
 import org.github.tess1o.geopulse.shared.configuration.ConfigField;
 import org.github.tess1o.geopulse.shared.configuration.ConfigFieldRegistry;
@@ -16,40 +17,41 @@ public class TimelineConfigFieldRegistry {
 
     private final ConfigFieldRegistry<TimelineConfig> registry;
 
-    public TimelineConfigFieldRegistry() {
+    @Inject
+    public TimelineConfigFieldRegistry(TimelineConfigurationProperties properties) {
         this.registry = new ConfigFieldRegistry<TimelineConfig>()
             // Staypoint Detection
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.detection.algorithm",
-                "enhanced",
+                properties.getStaypointDetectionAlgorithm(),
                 TimelineConfig::getStaypointDetectionAlgorithm,
                 TimelineConfig::setStaypointDetectionAlgorithm,
                 String::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.use_velocity_accuracy",
-                "true",
+                properties.getUseVelocityAccuracy(),
                 TimelineConfig::getUseVelocityAccuracy,
                 TimelineConfig::setUseVelocityAccuracy,
                 Boolean::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.velocity.threshold",
-                "2.0",
+                properties.getStaypointVelocityThreshold(),
                 TimelineConfig::getStaypointVelocityThreshold,
                 TimelineConfig::setStaypointVelocityThreshold,
                 Double::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.accuracy.threshold",
-                "60.0",
+                properties.getStaypointAccuracyThreshold(),
                 TimelineConfig::getStaypointMaxAccuracyThreshold,
                 TimelineConfig::setStaypointMaxAccuracyThreshold,
                 Double::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.min_accuracy_ratio",
-                "0.5",
+                properties.getStaypointMinAccuracyRatio(),
                 TimelineConfig::getStaypointMinAccuracyRatio,
                 TimelineConfig::setStaypointMinAccuracyRatio,
                 Double::valueOf
@@ -57,21 +59,21 @@ public class TimelineConfigFieldRegistry {
             // Trip Detection
             .register(new ConfigField<>(
                 "geopulse.timeline.trip.detection.algorithm",
-                "single",
+                properties.getTripDetectionAlgorithm(),
                 TimelineConfig::getTripDetectionAlgorithm,
                 TimelineConfig::setTripDetectionAlgorithm,
                 String::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.trip.min_distance_meters",
-                "50",
+                properties.getTripMinDistanceMeters(),
                 TimelineConfig::getTripMinDistanceMeters,
                 TimelineConfig::setTripMinDistanceMeters,
                 Integer::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.trip.min_duration_minutes",
-                "7",
+                properties.getTripMinDurationMinutes(),
                 TimelineConfig::getTripMinDurationMinutes,
                 TimelineConfig::setTripMinDurationMinutes,
                 Integer::valueOf
@@ -79,21 +81,21 @@ public class TimelineConfigFieldRegistry {
             // Merging
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.merge.enabled",
-                "true",
+                properties.getMergeEnabled(),
                 TimelineConfig::getIsMergeEnabled,
                 TimelineConfig::setIsMergeEnabled,
                 Boolean::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.merge.max_distance_meters",
-                "150",
+                properties.getMergeMaxDistanceMeters(),
                 TimelineConfig::getMergeMaxDistanceMeters,
                 TimelineConfig::setMergeMaxDistanceMeters,
                 Integer::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.staypoint.merge.max_time_gap_minutes",
-                "10",
+                properties.getMergeMaxTimeGapMinutes(),
                 TimelineConfig::getMergeMaxTimeGapMinutes,
                 TimelineConfig::setMergeMaxTimeGapMinutes,
                 Integer::valueOf
@@ -101,28 +103,28 @@ public class TimelineConfigFieldRegistry {
             // GPS Path Simplification
             .register(new ConfigField<>(
                 "geopulse.timeline.path.simplification.enabled",
-                "true",
+                properties.getPathSimplificationEnabled(),
                 TimelineConfig::getPathSimplificationEnabled,
                 TimelineConfig::setPathSimplificationEnabled,
                 Boolean::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.path.simplification.tolerance",
-                "15.0",
+                properties.getPathSimplificationTolerance(),
                 TimelineConfig::getPathSimplificationTolerance,
                 TimelineConfig::setPathSimplificationTolerance,
                 Double::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.path.simplification.max_points",
-                "100",
+                properties.getPathMaxPoints(),
                 TimelineConfig::getPathMaxPoints,
                 TimelineConfig::setPathMaxPoints,
                 Integer::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.path.simplification.adaptive",
-                "true",
+                properties.getPathAdaptiveSimplification(),
                 TimelineConfig::getPathAdaptiveSimplification,
                 TimelineConfig::setPathAdaptiveSimplification,
                 Boolean::valueOf
@@ -130,14 +132,14 @@ public class TimelineConfigFieldRegistry {
             // Data Gap Detection
             .register(new ConfigField<>(
                 "geopulse.timeline.data_gap.threshold_seconds",
-                "10800", // 3 hours default
+                properties.getDataGapThresholdSeconds(),
                 TimelineConfig::getDataGapThresholdSeconds,
                 TimelineConfig::setDataGapThresholdSeconds,
                 Integer::valueOf
             ))
             .register(new ConfigField<>(
                 "geopulse.timeline.data_gap.min_duration_seconds", 
-                "1800", // 30 minutes minimum gap duration
+                properties.getDataGapMinDurationSeconds(),
                 TimelineConfig::getDataGapMinDurationSeconds,
                 TimelineConfig::setDataGapMinDurationSeconds,
                 Integer::valueOf
