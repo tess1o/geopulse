@@ -348,14 +348,25 @@ const apiService = {
     /**
      * Download a file as a blob and trigger browser download
      * @param {string} endpoint - API endpoint
-     * @param {string} filename - Optional filename override
+     * @param {Object|string} paramsOrFilename - Query parameters object or filename string
+     * @param {string} filename - Optional filename override (when first param is params object)
      * @returns {Promise} - Download promise
      */
-    async download(endpoint, filename = null) {
+    async download(endpoint, paramsOrFilename = null, filename = null) {
         try {
             await this.checkAuthExpired(endpoint);
 
+            let params = {};
+            let filenameOverride = filename;
+            
+            if (typeof paramsOrFilename === 'string') {
+                filenameOverride = paramsOrFilename;
+            } else if (typeof paramsOrFilename === 'object' && paramsOrFilename !== null) {
+                params = paramsOrFilename;
+            }
+
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
+                params,
                 headers: {},
                 responseType: 'blob',
                 withCredentials: true
@@ -369,14 +380,14 @@ const apiService = {
 
             // Try to get filename from Content-Disposition header
             const contentDisposition = response.headers['content-disposition'];
-            if (contentDisposition && !filename) {
+            if (contentDisposition && !filenameOverride) {
                 const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
                 if (filenameMatch) {
-                    filename = filenameMatch[1].replace(/['"]/g, '');
+                    filenameOverride = filenameMatch[1].replace(/['"]/g, '');
                 }
             }
 
-            link.download = filename || 'download';
+            link.download = filenameOverride || 'download';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
