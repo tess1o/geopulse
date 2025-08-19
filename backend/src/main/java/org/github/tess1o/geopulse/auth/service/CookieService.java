@@ -18,9 +18,6 @@ public class CookieService {
     @ConfigProperty(name = "geopulse.auth.cookie-domain")
     Optional<String> cookieDomain;
 
-    @Inject
-    @ConfigProperty(name = "geopulse.auth.mode", defaultValue = "localStorage")
-    String authMode;
 
     @Inject
     @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
@@ -93,10 +90,4 @@ public class CookieService {
         };
     }
 
-    /**
-     * Check if we're in cookie mode
-     */
-    public boolean isCookieMode() {
-        return "cookies".equals(authMode);
-    }
 }

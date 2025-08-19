@@ -12,54 +12,12 @@ const apiService = {
     // Promise that resolves when token refresh completes
     _refreshTokenPromise: null,
 
-    // Auth mode - will be detected from server response or localStorage
-    authMode: null,
-    
-    /**
-     * Initialize auth mode detection on startup
-     */
-    initAuthMode() {
-        if (this.authMode !== null) return; // Already detected
-        
-        // Check if we have tokens in localStorage (localStorage mode)
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        if (userInfo.accessToken) {
-            this.authMode = 'localStorage';
-            return;
-        }
-        
-        // Check if we have user info but no tokens (cookie mode)
-        if (userInfo.id) {
-            this.authMode = 'cookies';
-            return;
-        }
-        
-        // Default to cookies mode if we can't determine
-        this.authMode = 'cookies';
-    },
-    /**
-     * Get authentication headers
-     * @returns {Object} Headers object
-     */
-    getAuthHeaders() {
-        this.initAuthMode();
-        if (this.authMode === 'cookies') {
-            return {}; // Rely on cookies
-        }
-        
-        // localStorage mode
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        return userInfo.accessToken ? 
-            { 'Authorization': `Bearer ${userInfo.accessToken}` } : {};
-    },
 
     /**
      * Get CSRF token from cookie (Quarkus REST CSRF handles this automatically)
      * @returns {string|null} CSRF token or null if not found
      */
-    getCsrfToken() {
-        if (this.authMode !== 'cookies') return null;
-        
+    getCsrfToken() {        
         try {
             // Use proper cookie parsing
             const value = document.cookie.replace(
@@ -75,18 +33,16 @@ const apiService = {
 
     /**
      * Get headers for state-changing operations (includes CSRF token)
-     * @returns {Object} Headers object with Authorization and CSRF token
+     * @returns {Object} Headers object with CSRF token
      */
     getSecureHeaders() {
-        const headers = this.getAuthHeaders();
+        const headers = {};
         
-        if (this.authMode === 'cookies') {
-            const csrfToken = this.getCsrfToken();
-            if (csrfToken) {
-                headers['X-CSRF-Token'] = csrfToken;
-            }
-            // Don't fail if no CSRF token - let server handle it
+        const csrfToken = this.getCsrfToken();
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
         }
+        // Don't fail if no CSRF token - let server handle it
         
         return headers;
     },
@@ -97,15 +53,8 @@ const apiService = {
      * @returns {boolean} True if token needs refresh
      */
     isTokenExpired() {
-        this.initAuthMode();
-        
         try {
-            if (this.authMode === 'localStorage') {
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-                return userInfo.expiresAt ? Date.now() > userInfo.expiresAt - 10000 : false; // 10s buffer for testing
-            }
-            
-            // Cookie mode - check expiration cookie
+            // Check expiration cookie
             const expiresAt = this.getTokenExpirationFromCookie();
             // If expiration cookie is missing, assume token is expired (needs refresh)
             if (expiresAt === null) {
@@ -151,43 +100,13 @@ const apiService = {
         this._refreshingToken = true;
         this._refreshTokenPromise = (async () => {
             try {
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-
-                // In cookie mode, refresh is handled server-side
-                if (this.authMode === 'cookies') {
-                    try {
-                        const response = await axios.post(`${API_BASE_URL}/auth/refresh-cookie`, {}, {
-                            withCredentials: true
-                        });
-                        return response.status === 200;
-                    } catch (refreshError) {
-                        console.error('Cookie refresh failed:', refreshError);
-                        return false;
-                    }
-                }
-                
-                if (!userInfo.refreshToken) {
-                    return false;
-                }
-
-                const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-                    refreshToken: userInfo.refreshToken
+                // Cookie-based refresh is handled server-side
+                const response = await axios.post(`${API_BASE_URL}/auth/refresh-cookie`, {}, {
+                    withCredentials: true
                 });
-                if (response.data) {
-                    const {accessToken, refreshToken, expiresIn} = response.data
-
-                    // Update the access token and expiration
-                    userInfo.accessToken = accessToken;
-                    userInfo.expiresAt = Date.now() + (expiresIn * 1000);
-                    userInfo.refreshToken = refreshToken;
-
-                    localStorage.setItem('userInfo', JSON.stringify(userInfo));
-                    return true;
-                }
-                this.clearAuthData();
-                return false;
-            } catch (error) {
-                console.error('Error refreshing token:', error);
+                return response.status === 200;
+            } catch (refreshError) {
+                console.error('Cookie refresh failed:', refreshError);
                 this.clearAuthData();
                 return false;
             } finally {
@@ -200,26 +119,20 @@ const apiService = {
     },
 
     /**
-     * Execute a request with automatic retry on 401 for cookie mode
+     * Execute a request with automatic retry on 401
      * @param {Function} requestFn - Function that performs the actual request
      * @param {number} maxRetries - Maximum number of retries (default: 1)
      * @returns {Promise} - Request result
      */
     async _requestWithRetry(requestFn, maxRetries = 1) {
-        // Ensure auth mode is detected
-        this.initAuthMode();
-        
         let attempt = 0;
         
         while (attempt <= maxRetries) {
             try {
                 return await requestFn();
             } catch (error) {
-                // Only retry on 401 in cookie mode
-                if (error.response?.status === 401 && 
-                    this.authMode === 'cookies' && 
-                    attempt < maxRetries) {
-                    
+                // Retry on 401 with token refresh
+                if (error.response?.status === 401 && attempt < maxRetries) {
                     const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
                     if (userInfo.id) {
                         try {
@@ -280,14 +193,10 @@ const apiService = {
         return this._requestWithRetry(async () => {
             await this.checkAuthExpired(endpoint);
 
-            // Don't send auth headers for shared endpoints (they're public or use custom tokens)
-            const isSharedEndpoint = endpoint.startsWith('/shared/');
-            const headers = isSharedEndpoint ? {} : this.getAuthHeaders();
-
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 params,
                 withCredentials: true,
-                headers
+                headers: {}
             });
             return response.data;
         });
@@ -317,20 +226,16 @@ const apiService = {
     async getRawWithBlob(endpoint, customHeaders = {}, params = {}) {
         try {
             console.log('apiService.getRawWithBlob: Endpoint:', endpoint)
-            console.log('apiService.getRawWithBlob: Headers will include auth:', !endpoint.startsWith('/shared/'))
+            console.log('apiService.getRawWithBlob: Using cookie-based auth')
             
             await this.checkAuthExpired(endpoint);
 
-            // Don't send auth headers for shared endpoints (they're public or use custom tokens)
-            const isSharedEndpoint = endpoint.startsWith('/shared/');
-            const authHeaders = isSharedEndpoint ? {} : this.getAuthHeaders();
+            // Always rely on cookies for authentication
             const headers = { 
-                ...authHeaders, 
                 ...customHeaders
             };
             
             console.log('apiService.getRawWithBlob: Final headers:', Object.keys(headers))
-            console.log('apiService.getRawWithBlob: Auth headers:', authHeaders)
 
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 params,
@@ -407,8 +312,10 @@ const apiService = {
         const isPublicEndpoint = publicEndpoints.some(pe => endpoint.startsWith(pe));
 
         try {
-            const headers = isPublicEndpoint ? this.getAuthHeaders() : this.getSecureHeaders();
+            const headers = isPublicEndpoint ? {} : this.getSecureHeaders();
             const mergedHeaders = {...headers, ...options.headers};
+
+            console.log('headers: ', mergedHeaders)
 
             let axiosOptions = {
                 withCredentials: true,
@@ -449,7 +356,7 @@ const apiService = {
             await this.checkAuthExpired(endpoint);
 
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
-                headers: this.getAuthHeaders(),
+                headers: {},
                 responseType: 'blob',
                 withCredentials: true
             });
@@ -487,14 +394,14 @@ const apiService = {
      * @param {Error} error - Error object
      */
     handleError(error) {
-        // If unauthorized, clear auth data and check if we need to redirect
+        // If unauthorized, clear auth data and redirect to login if logged in
         if (error.response && error.response.status === 401) {
             this.clearAuthData();
 
-            // In cookie mode, 401 means cookies expired - redirect to login
+            // 401 means cookies expired - redirect to login if we have user info
             const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
             
-            if (this.authMode === 'cookies' && userInfo.id) {
+            if (userInfo.id) {
                 window.location.href = '/login';
             }
         }
@@ -569,10 +476,7 @@ const apiService = {
             if (response.data && response.data.data) {
                 const responseData = response.data.data;
                 
-                // Detect auth mode from response
-                this.authMode = responseData.accessToken ? 'localStorage' : 'cookies';
-                
-                // Store user info
+                // Store only user profile info (no tokens)
                 const userInfo = {
                     email: responseData.email,
                     fullName: responseData.fullName,
@@ -580,13 +484,6 @@ const apiService = {
                     avatar: responseData.avatar,
                     createdAt: responseData.createdAt
                 };
-
-                // Only store tokens in localStorage mode
-                if (this.authMode === 'localStorage') {
-                    userInfo.accessToken = responseData.accessToken;
-                    userInfo.refreshToken = responseData.refreshToken;
-                    userInfo.expiresAt = Date.now() + (responseData.expiresIn * 1000);
-                }
 
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;

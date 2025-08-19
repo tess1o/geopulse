@@ -9,76 +9,42 @@
 
 ---
 
-## 📖 Comprehensive Deployment Guide
+## Prerequisites
 
-This detailed guide covers all deployment options, customizations, and troubleshooting. Use this if:
-- You need custom configuration beyond the examples  
-- You want to understand all the options available
-- You're troubleshooting deployment issues
-- You prefer manual configuration
+Before you begin, ensure you have the following installed:
 
-### Quick Start Overview
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-1. 🔐 **Choose Authorization Mode** (`cookies` or `localStorage`)
-2. 🔑 **Generate JWT Keys**
-3. 🐳 **Configure Docker Compose**
-4. ▶️ **Start the Application**
-5. ♻️ **Update GeoPulse**
+## Overview about the system components
 
----
+GeoPulse consists of 3 mandatory services and one optional service:
 
-## 🛠 Prerequisites
+1. GeoPulse Backend - mandatory
+2. GeoPulse Frontend - mandatory
+3. GeoPulse Postgres (Postgis) database - mandatory
+4. MQTT Broker (Mosquitto) - optional
 
-* ✅ [Docker](https://www.docker.com/) (version 20.10+) and [Docker Compose](https://docs.docker.com/compose/) (version
-  2.0+) installed
-* ✅ Ports `8080` (backend) and `5555` (frontend) must be available
-    * 📝 **Note**: These ports can be changed in the `docker-compose.yml` file
-    * 🛡️ **Security**: Remove port mappings if using a reverse proxy to avoid exposing services directly to the internet
-* 🌐 (For production) A domain and reverse proxy (e.g., Nginx, Traefik, or Caddy)
-* 💾 At least 1GB of available disk space for Docker images and database
+MQTT broker can be deployed if you want to use OwnTracks integration with MQTT protocol. If you don't use OwnTracks or
+want to use OwnTracks with HTTP - you don't need the MQTT broker. This guide provides steps on how to install the system
+with or without MQTT broker.
+
+## Quick Start
+
+1. Generate JWT keys
+2. Download configuration files
+3. Start with Docker Compose
 
 ---
 
-## 1. 🔐 Choose Authorization Mode
+## Setup
 
-GeoPulse uses **JWT tokens** (access + refresh) for authentication. You can store these tokens on the frontend using
-either:
+### 1. Generate JWT Keys
 
-* 🧁 `HttpOnly Cookies` (recommended for production)
-* 📔 `LocalStorage` (simpler for local setups)
-
-### 🔒 Cookie Mode (Recommended for Production)
-
-* ✅ Secure via **HttpOnly cookies** (XSS-protected)
-* 🌐 Requires same root domain (e.g., `geopulse.yourdomain.com` and `geopulse-api.yourdomain.com`)
-* 🛡️ Requires a reverse proxy for HTTPS
-
-⚠️ **Domain Requirements for Cookie Mode**:
-
-- Both frontend and backend must share the same root domain
-- Example: `app.example.com` (frontend) and `api.example.com` (backend) ✅
-- Example: `example.com` (frontend) and `different.com` (backend) ❌
-
-### 📔 LocalStorage Mode (For Local Machine & Dev)
-
-* ❗ Tokens stored in browser `localStorage` (XSS-vulnerable)
-* ✅ Works across different domains
-* 🧪 Ideal for local machine or self-hosted environments
-
-⚠️ **Important**: GeoPulse does **not** serve HTTPS directly. You must use a reverse proxy (e.g., Nginx Proxy Manager
-with Let's Encrypt, Traefik, or Caddy) to handle TLS/SSL termination.
-
----
-
-## 2. 🔑 Generate JWT Keys
-
-Run the following to create the signing keys:
+These keys are required to sign and verify JWT tokens on the server side.
 
 ```bash
-# Create keys directory
 mkdir -p keys
-
-# Generate RSA private/public key pair using Docker
 docker run --rm -v "$(pwd)/keys:/keys" alpine:latest sh -c "
   apk add --no-cache openssl &&
   openssl genpkey -algorithm RSA -out /keys/jwt-private-key.pem &&
@@ -87,357 +53,154 @@ docker run --rm -v "$(pwd)/keys:/keys" alpine:latest sh -c "
 "
 ```
 
-This will create:
+### 2. Download Configuration and docker-compose
 
-* 🔐 `keys/jwt-private-key.pem` – used to **sign** JWTs
-* 🔓 `keys/jwt-public-key.pem` – used to **verify** JWTs
+Download `.env` configuration
 
----
-
-## 3. ⚙️ Docker Compose Configuration
-
-### 📜 Environment Configuration
-
-Download pre-configured .env examples:
 ```bash
-# For local machine (no external domain)
-wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example.localhost
-
-# For local machine + MQTT support (OwnTracks MQTT mode)
-wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example.localhost_mqtt
-
-# For server with domain (reverse proxy required)
-wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example.cookies
-
-# For server with domain + MQTT support (OwnTracks MQTT mode)
-wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example.cookies_mqtt
+wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 ```
 
-Then edit the downloaded `.env` file to update passwords and domains as needed.
+If you do not want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml`:
 
-<details>
-<summary>📋 Manual .env Configuration Examples (click to expand)</summary>
-
-If you prefer to create the `.env` file manually, here are the configuration templates:
-
-#### For `cookie` based authentication (with reverse proxy and domain). Preferable for server deployments
-
-```env
-# Domain Configuration (update UI and backend URLs and root domain accordingly)
-GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-GEOPULSE_BACKEND_URL=https://geopulse-api.yourdomain.com
-GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
-
-# Database Configuration
-GEOPULSE_POSTGRES_HOST=geopulse-postgres
-GEOPULSE_POSTGRES_PORT=5432
-GEOPULSE_POSTGRES_DB=geopulse
-GEOPULSE_POSTGRES_USERNAME=geopulse-user
-GEOPULSE_POSTGRES_PASSWORD=my-good-postgres-password
-```
-
-#### For `cookie` based authentication for local machine only.
-
-```env
-# Domain Configuration
-GEOPULSE_UI_URL=http://localhost:5555
-GEOPULSE_BACKEND_URL=http://localhost:8080
-GEOPULSE_COOKIE_DOMAIN=.localhost
-
-# Database Configuration
-GEOPULSE_POSTGRES_HOST=geopulse-postgres
-GEOPULSE_POSTGRES_PORT=5432
-GEOPULSE_POSTGRES_DB=geopulse
-GEOPULSE_POSTGRES_USERNAME=geopulse-user
-GEOPULSE_POSTGRES_PASSWORD=my-good-postgres-password
-```
-
-#### For local machine + MQTT support
-
-```env
-# Domain Configuration
-GEOPULSE_UI_URL=http://localhost:5555
-GEOPULSE_BACKEND_URL=http://localhost:8080
-GEOPULSE_COOKIE_DOMAIN=""
-
-# Database Configuration
-GEOPULSE_POSTGRES_HOST=geopulse-postgres
-GEOPULSE_POSTGRES_PORT=5432
-GEOPULSE_POSTGRES_DB=geopulse
-GEOPULSE_POSTGRES_USERNAME=geopulse-user
-GEOPULSE_POSTGRES_PASSWORD=my-good-postgres-password
-
-# Auth settings
-GEOPULSE_AUTH_MODE=localStorage
-GEOPULSE_AUTH_SECURE_COOKIES=false
-GEOPULSE_JWT_HEADER=Authorization
-GEOPULSE_JWT_COOKIE=""
-
-# MQTT Configuration
-GEOPULSE_MQTT_ENABLED=true
-GEOPULSE_MQTT_BROKER_HOST=geopulse-mosquitto
-GEOPULSE_MQTT_BROKER_PORT=1883
-GEOPULSE_MQTT_USERNAME=geopulse_mqtt_admin
-GEOPULSE_MQTT_PASSWORD=my-mqtt-admin-password
-```
-
-#### For `localStorage` authentication (reverse proxy with domain is used)
-
-```env
-# Domain Configuration (update UI and backend URLs and root domain accordingly)
-GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-GEOPULSE_BACKEND_URL=https://geopulse-api.yourdomain.com
-GEOPULSE_COOKIE_DOMAIN=""
-
-# Database Configuration
-GEOPULSE_POSTGRES_HOST=geopulse-postgres
-GEOPULSE_POSTGRES_PORT=5432
-GEOPULSE_POSTGRES_DB=geopulse
-GEOPULSE_POSTGRES_USERNAME=geopulse-user
-GEOPULSE_POSTGRES_PASSWORD=my-good-postgres-password
-
-# Auth settings
-GEOPULSE_AUTH_MODE=localStorage
-GEOPULSE_AUTH_SECURE_COOKIES=false
-GEOPULSE_JWT_HEADER=Authorization
-GEOPULSE_JWT_COOKIE=""
-```
-
-#### For local machine setup (no domain, no reverse proxy):
-
-```env
-GEOPULSE_UI_URL=http://localhost:5555
-GEOPULSE_BACKEND_URL=http://localhost:8080
-GEOPULSE_COOKIE_DOMAIN=""
-
-# Database Configuration
-GEOPULSE_POSTGRES_HOST=geopulse-postgres
-GEOPULSE_POSTGRES_PORT=5432
-GEOPULSE_POSTGRES_DB=geopulse
-GEOPULSE_POSTGRES_USERNAME=geopulse-user
-GEOPULSE_POSTGRES_PASSWORD=my-good-postgres-password
-
-# Auth settings
-GEOPULSE_AUTH_MODE=localStorage
-GEOPULSE_AUTH_SECURE_COOKIES=false
-GEOPULSE_JWT_HEADER=Authorization
-GEOPULSE_JWT_COOKIE=""
-```
-
-</details>
-
----
-
-### 📦 Docker Compose Configuration
-
-Download pre-configured docker-compose files:
 ```bash
-# Basic services (backend + UI + postgres)  
 wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
-
-# Complete setup with MQTT (backend + UI + postgres + mosquitto)
-wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
 ```
 
-**If you selected MQTT support:** Download the MQTT entrypoint script (required for MQTT):
+If you want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml` and mosquitto entrypoint script.
+The entrypoint script will be executed automatically by docker container and will configure MQTT broker: create config,
+setup integration with GeoPulse database for custom authentication, setup admin user.
+
 ```bash
+wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
 wget -O mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
 chmod +x mosquitto_entrypoint.sh
 ```
 
-> 💡 **What is MQTT?** MQTT allows OwnTracks to send GPS data in real-time with lower battery usage. If you're unsure, start without MQTT - you can always add it later.
+Update `.env` file:
+If you want to use MQTT broker, enable MQTT integration:
 
-<details>
-<summary>🐳 Manual Docker Compose Example (click to expand)</summary>
-
-If you need customizations, here's the basic template:
-
-```yaml
-services:
-  geopulse-backend:
-    image: tess1o/geopulse-backend:1.0.0-rc.2
-    container_name: geopulse-backend
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
-    ports:
-      - 8080:8080
-    volumes:
-      - ./keys:/app/keys
-    depends_on:
-      geopulse-postgres:
-        condition: service_healthy
-
-  geopulse-ui:
-    image: tess1o/geopulse-ui:1.0.0-rc.2
-    container_name: geopulse-ui
-    restart: unless-stopped
-    ports:
-      - 5555:80
-    depends_on:
-      - geopulse-backend
-    environment:
-      - API_BASE_URL=${GEOPULSE_BACKEND_URL}/api
-
-  geopulse-postgres:
-    image: postgis/postgis:17-3.5
-    container_name: geopulse-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
-      POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${GEOPULSE_POSTGRES_DB}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}" ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres-data:
+```env
+GEOPULSE_MQTT_ENABLED=true
 ```
 
-</details>
-
----
-
-## 4. ▶️ Start the Application
+Change database and MQTT passwords (recommended)
 
 ```bash
-# Start all services in background
+GEOPULSE_POSTGRES_PASSWORD=change-this-secure-password
+GEOPULSE_MQTT_PASSWORD=change-this-mqtt-admin-password
+```
+
+### 3. Start GeoPulse
+
+```bash
 docker compose up -d
-
-# Tail logs
-docker compose logs -f
-
-# Check status
-docker compose ps
-
-# Stop all services
-docker compose down
 ```
 
-### 🔗 Access GeoPulse
+**Access:**
 
-* 🗰 **With reverse proxy**:
-
-    * Frontend: `https://geopulse.yourdomain.com`
-    * API: `https://geopulse-api.yourdomain.com/api`
-    * MQTT Broker: `your-mqtt-domain.com:1883` (if MQTT enabled)
-
-* 💻 **Local machine**:
-
-    * Frontend: `http://localhost:5555`
-    * API: `http://localhost:8080/api`  
-    * MQTT Broker: `localhost:1883` (if MQTT enabled)
+- Frontend: http://localhost:5555
+- API: http://localhost:8080/api
 
 ---
 
-## 5. 🔄 Updating GeoPulse
+## Production Deployment
 
-```bash
-# Pull latest backend & frontend images
-docker compose pull
+For server deployment with your domain:
 
-# Restart with new versions
-docker compose up -d
+1. **Complete setup steps above**
 
-# Watch logs for migrations and readiness
-docker compose logs -f geopulse-backend
+2. **Edit `.env` file:**
+   ```bash
+   nano .env
+   ```
+   
+   Update the following values:
+   ```env
+   GEOPULSE_UI_URL=https://geopulse.yourdomain.com
+   GEOPULSE_BACKEND_URL=https://geopulse-api.yourdomain.com
+   GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
+   GEOPULSE_AUTH_SECURE_COOKIES=true
+   ```
+
+3. **Configure reverse proxy** (Nginx/Caddy/Traefik) for HTTPS
+
+You must terminate HTTPS at a reverse proxy and forward traffic to the GeoPulse containers. Here is a basic Nginx
+configuration. You will also need to set up SSL certificates (e.g., using Let's Encrypt).
+
+```nginx
+# /etc/nginx/sites-available/geopulse.conf
+
+server {
+    listen 80;
+    server_name geopulse.yourdomain.com geopulse-api.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name geopulse.yourdomain.com;
+
+    # SSL certs
+    ssl_certificate /path/to/your/fullchain.pem;
+    ssl_certificate_key /path/to/your/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:5555;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name geopulse-api.yourdomain.com;
+
+    # SSL certs (can be the same)
+    ssl_certificate /path/to/your/fullchain.pem;
+    ssl_certificate_key /path/to/your/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-📦 **Note**: Database migrations are applied automatically on backend startup.
-
 ---
 
-
-## 🔒 Security Recommendations
-
-* 🔐 Use strong, unique passwords for `GEOPULSE_POSTGRES_PASSWORD` and `GEOPULSE_MQTT_PASSWORD` (if using MQTT)
-* 🛡️ Never expose port `5432` (PostgreSQL) or `1883` (MQTT) directly to the internet
-* 🌐 Always use HTTPS in production with proper SSL certificates
-* 🔑 Keep your JWT keys secure and never commit them to version control
-* 🚫 Remove port mappings in production when using reverse proxy
-
----
-
-## 🏥 Health Checks
-
-### Verify Installation
-
-```bash
-# Check all services are running
-docker compose ps
-
-# Test backend API (adjust URL based on your setup)
-curl ${GEOPULSE_BACKEND_URL}/api/health
-
-# Test frontend (adjust URL based on your setup)
-curl -I ${GEOPULSE_UI_URL}
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Common Issues
+## Troubleshooting
 
 **Port conflicts:**
 
 ```bash
-# Check if ports are in use
-netstat -tulpn | grep -E ':(8080|5555)'
-# Or use Docker to check
 docker ps --format "table {{.Names}}\t{{.Ports}}"
 ```
 
-**Permission issues with keys:**
+**Service issues:**
 
 ```bash
-# Fix key permissions if needed
-sudo chown -R $USER:$USER keys/
-chmod 600 keys/jwt-private-key.pem
-chmod 644 keys/jwt-public-key.pem
+docker compose logs -f
+curl http://localhost:8080/api/health
 ```
 
-**Database connection issues:**
+**Authentication issues:**
 
-```bash
-# Check database health
-docker compose logs geopulse-postgres
-# Verify database is ready
-docker compose exec geopulse-postgres pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}
-```
-
-**Service not accessible through reverse proxy:**
-
-```bash
-# Check if services are running on Docker network
-docker compose exec geopulse-backend curl http://localhost:8080/api/health
-docker compose exec geopulse-ui curl http://localhost:80
-```
+- Check domains match between frontend/backend
+- For local deployment: `GEOPULSE_COOKIE_DOMAIN=""` and `GEOPULSE_AUTH_SECURE_COOKIES=false`
+- For production: set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com` and `GEOPULSE_AUTH_SECURE_COOKIES=true`
+- Verify JWT keys exist in `keys/` directory
 
 ---
 
-## 💾 Backup & Recovery
+## Security
 
-### Database Backup
-
-```bash
-# Create backup
-docker compose exec geopulse-postgres pg_dump -U ${GEOPULSE_POSTGRES_USERNAME} ${GEOPULSE_POSTGRES_DB} > backup.sql
-
-# Restore backup
-docker compose exec -T geopulse-postgres psql -U ${GEOPULSE_POSTGRES_USERNAME} ${GEOPULSE_POSTGRES_DB} < backup.sql
-```
-
-### Configuration Backup
-
-```bash
-# Backup your configuration
-tar -czf geopulse-backup.tar.gz .env docker-compose.yml keys/
-```
+- Use strong passwords for database and MQTT broker
+- Never expose PostgreSQL/MQTT port externally
+- Use HTTPS in production
+- Keep JWT keys secure

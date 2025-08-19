@@ -108,7 +108,7 @@ export const useAuthStore = defineStore('auth', {
                     return null
                 }
                 
-                // Check token expiration for both modes
+                // Check cookie expiration and refresh if needed
                 if (apiService.isTokenExpired()) {
                     const refreshed = await apiService.refreshToken()
                     if (!refreshed) {
@@ -117,11 +117,13 @@ export const useAuthStore = defineStore('auth', {
                     }
                 }
                 
-                // Get user data and set authentication state
-                const user = apiService.getUserInfoFromAuthData()
-                if (!user) {
-                    this.clearUser()
-                    return null
+                // Use user data from localStorage (profile info only)
+                const user = {
+                    userId: userInfo.id,
+                    fullName: userInfo.fullName,
+                    email: userInfo.email,
+                    avatar: userInfo.avatar,
+                    createdAt: userInfo.createdAt,
                 }
                 
                 this.setUser(user)
