@@ -80,23 +80,125 @@ Tests properly handle GeoPulse's HttpOnly JWT cookies:
 }
 ```
 
-## Development
+## Running Tests Manually
 
-### Running Tests Locally
+### Prerequisites
+1. **Docker containers must be running:**
+   - PostgreSQL database
+   - Backend API (default: http://localhost:8081)
+   - Frontend UI (default: http://localhost:5556)
+
+2. **Setup:**
+   ```bash
+   cd tests
+   npm install
+   npx playwright install
+   ```
+
+### Basic Commands
 
 ```bash
-# Setup test dependencies
-npm run test:e2e:setup
+# Run all tests
+npm run test:e2e
 
-# Run tests in UI mode
+# Run tests in UI mode (interactive)
 npm run test:e2e:ui
 
-# Debug tests
+# Run tests in headed mode (see browser)
+npm run test:e2e:headed
+
+# Debug tests (step through)
 npm run test:e2e:debug
 
 # View test report
 npm run test:e2e:report
 ```
+
+### Advanced Commands
+
+```bash
+# Run specific test file
+npx playwright test user-registration.spec.js
+
+# Run specific test by name
+npx playwright test -g "should successfully register a new user"
+
+# Run with different browser
+npx playwright test --project=chromium
+
+# Run with verbose output
+npx playwright test --reporter=list
+```
+
+### Environment Variables
+
+```bash
+# Custom URLs
+export BASE_URL=http://localhost:3000        # Frontend
+export API_BASE_URL=http://localhost:8080    # Backend API
+
+# Database connection (for test database)
+export DATABASE_HOST=localhost
+export DATABASE_PORT=5433
+export DATABASE_NAME=geopulse_test
+export DATABASE_USER=geopulse_test
+export DATABASE_PASSWORD=testpassword
+```
+
+### Container Environments
+
+GeoPulse has **two separate Docker environments** with different ports and container names:
+
+#### **Development Environment** (`docker-compose.yml`)
+- **Backend:** `geopulse-backend` → http://localhost:8080  
+- **Frontend:** `geopulse-ui` → http://localhost:5555
+- **Database:** `geopulse-postgres` → localhost:5432
+- **Uses:** Pre-built Docker images (`tess1o/geopulse-backend:1.0.0-rc.2`)
+
+#### **E2E Testing Environment** (`tests/docker-compose.e2e.yml`)  
+- **Backend:** `geopulse-backend-e2e` → http://localhost:8081
+- **Frontend:** `geopulse-ui-e2e` → http://localhost:5556  
+- **Database:** `geopulse-postgres-e2e` → localhost:5433
+- **Uses:** Build from source code (live builds)
+
+### Bug Fix & Rebuild Procedure
+
+When you fix a bug and need to rebuild containers:
+
+#### **For Development Environment:**
+```bash
+# Fix backend bug
+./dev-rebuild.sh backend
+
+# Fix frontend bug  
+./dev-rebuild.sh frontend
+
+# Fix both
+./dev-rebuild.sh both
+```
+
+#### **For E2E Testing Environment:**
+```bash
+# Fix backend bug for E2E
+./dev-rebuild.sh backend --env=e2e
+
+# Fix frontend bug for E2E
+./dev-rebuild.sh frontend --env=e2e
+
+# Fix both for E2E
+./dev-rebuild.sh both --env=e2e
+```
+
+### Troubleshooting
+
+1. **Connection issues:** Verify Docker containers are running on correct ports
+   - Dev: Backend :8080, Frontend :5555
+   - E2E: Backend :8081, Frontend :5556
+2. **Database errors:** Check test database exists and is accessible
+   - Dev DB: localhost:5432 
+   - E2E DB: localhost:5433
+3. **Browser issues:** Run `npx playwright install` to install browsers
+4. **Port conflicts:** E2E containers use different ports to avoid conflicts with dev containers
 
 ### Adding New Tests
 

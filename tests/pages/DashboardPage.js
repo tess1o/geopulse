@@ -18,21 +18,6 @@ export class DashboardPage {
     };
   }
 
-  async waitForPageLoad() {
-    await this.page.waitForSelector(this.selectors.navbar);
-    await this.page.waitForLoadState('networkidle');
-  }
-
-  async isOnDashboard() {
-    try {
-      await this.page.waitForURL('**/app/**', { timeout: 5000 });
-      await this.page.waitForSelector(this.selectors.navbar, { timeout: 5000 });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   async isOnTimelinePage() {
     const url = this.page.url();
     return /\/app\/timeline(\/|\?|#|$)/.test(url);
@@ -125,35 +110,4 @@ export class DashboardPage {
     }
   }
 
-  async navigateToTimeline() {
-    await this.page.click(this.selectors.timelineLink);
-    await this.page.waitForURL('**/app/timeline');
-  }
-
-  async navigateToLocationSources() {
-    await this.page.click(this.selectors.locationSourcesLink);
-    await this.page.waitForURL('**/app/location-sources');
-  }
-
-  async getCurrentUrl() {
-    return this.page.url();
-  }
-
-  async waitForNavigation() {
-    await this.page.waitForLoadState('networkidle');
-  }
-
-  async hasWelcomeMessage() {
-    return await this.page.locator(this.selectors.welcomeMessage).isVisible();
-  }
-
-  async isAuthenticated() {
-    // Check if we're on an authenticated page by looking for navigation
-    try {
-      await this.page.waitForSelector(this.selectors.navigation, { timeout: 2000 });
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }
