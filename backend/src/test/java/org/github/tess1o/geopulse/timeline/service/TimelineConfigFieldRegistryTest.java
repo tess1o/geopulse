@@ -3,13 +3,16 @@ package org.github.tess1o.geopulse.timeline.service;
 import org.github.tess1o.geopulse.shared.configuration.ConfigField;
 import org.github.tess1o.geopulse.shared.configuration.ConfigFieldRegistry;
 import org.github.tess1o.geopulse.timeline.config.TimelineConfigFieldRegistry;
+import org.github.tess1o.geopulse.timeline.config.TimelineConfigurationProperties;
 import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 class TimelineConfigFieldRegistryTest {
 
@@ -17,7 +20,29 @@ class TimelineConfigFieldRegistryTest {
 
     @BeforeEach
     void setUp() {
-        TimelineConfigFieldRegistry fieldRegistry = new TimelineConfigFieldRegistry();
+        // Create a mock properties object with default values
+        TimelineConfigurationProperties mockProperties = Mockito.mock(TimelineConfigurationProperties.class);
+        
+        // Mock all the property getter methods to match the expected defaults
+        when(mockProperties.getStaypointDetectionAlgorithm()).thenReturn("enhanced");
+        when(mockProperties.getUseVelocityAccuracy()).thenReturn("true");
+        when(mockProperties.getStaypointVelocityThreshold()).thenReturn("2.0");
+        when(mockProperties.getStaypointAccuracyThreshold()).thenReturn("60.0");
+        when(mockProperties.getStaypointMinAccuracyRatio()).thenReturn("0.5");
+        when(mockProperties.getTripDetectionAlgorithm()).thenReturn("single");
+        when(mockProperties.getTripMinDistanceMeters()).thenReturn("50");
+        when(mockProperties.getTripMinDurationMinutes()).thenReturn("7");
+        when(mockProperties.getMergeEnabled()).thenReturn("true");
+        when(mockProperties.getMergeMaxDistanceMeters()).thenReturn("150");
+        when(mockProperties.getMergeMaxTimeGapMinutes()).thenReturn("10");
+        when(mockProperties.getPathSimplificationEnabled()).thenReturn("true");
+        when(mockProperties.getPathSimplificationTolerance()).thenReturn("15.0");
+        when(mockProperties.getPathMaxPoints()).thenReturn("100");
+        when(mockProperties.getPathAdaptiveSimplification()).thenReturn("true");
+        when(mockProperties.getDataGapThresholdSeconds()).thenReturn("10800");
+        when(mockProperties.getDataGapMinDurationSeconds()).thenReturn("1800");
+        
+        TimelineConfigFieldRegistry fieldRegistry = new TimelineConfigFieldRegistry(mockProperties);
         registry = fieldRegistry.getRegistry();
     }
 
