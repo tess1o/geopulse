@@ -1,13 +1,5 @@
 # GeoPulse Configuration
 
-## 🚀 Quick Start
-
-**New to GeoPulse?** Start with our simplified deployment that includes pre-configured .env files:
-
-👉 **[5-Minute Quick Deploy Instructions](../README.md#-quick-deploy-recommended)**
-
----
-
 ## 🔧 Advanced Configuration
 
 GeoPulse provides extensive configuration options to fine-tune timeline generation and GPS data processing. There are
