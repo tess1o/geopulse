@@ -27,22 +27,22 @@ while keeping everything on your own server.
 Deploy GeoPulse in under 5 minutes with Docker:
 
 **Choose your deployment:**
-- 🏠 **Local Machine** - on your computer without external domain
-- 🏠📡 **Local Machine + MQTT** - same with OwnTracks MQTT support  
-- 🌐 **Server** - VPS/server with domain and reverse proxy
-- 🌐📡 **Server + MQTT** - same with OwnTracks MQTT support
+- 🏠 **Local Deployment** - Deploy on your local machine (zero configuration required)
+- 🌐 **Production** - Deploy on server with domain and reverse proxy
+
+Both scenarios optionally support MQTT for real-time OwnTracks integration.
 
 **Simple deployment process:**
-1. Download .env configuration for your setup
-2. Download docker-compose file (basic or with MQTT)  
-3. Generate JWT keys and update passwords
+1. Generate JWT keys
+2. Download single .env configuration (works without changes for local Deployment)
+3. Download docker-compose file
 4. Run `docker compose up -d`
 
 **👉 [Complete Step-by-Step Instructions](docs/DEPLOYMENT_GUIDE.md)**
 
 Once deployed:
-- **Local Machine**: http://localhost:5555
-- **Server**: https://your-domain.com
+- **Local Deployment**: http://localhost:5555
+- **Production**: https://your-domain.com
 
 ---
 
@@ -52,7 +52,7 @@ Once deployed:
 
 - Works with OwnTracks (HTTP or MQTT), Overland and Dawarich tracking apps
 - Real-time data sync and import/export capabilities
-- Flexible authentication (username/password or token-based)
+- Secure authentication with HTTP-only cookies and Bearer token API access
 - Manual import from Google Takeout, GPX files
 
 **Timeline and Maps**
@@ -114,20 +114,21 @@ Once deployed:
 
 **OwnTracks** (iOS, Android, Desktop)
 
-- Username/password authentication
+- Configure username/password in app settings
 - High-precision tracking with offline support
-- Configure HTTP endpoint in app settings
+- Supports both HTTP and MQTT protocols
 
 **Overland** (iOS)
 
-- Token-based authentication
+- Configure with API token from GeoPulse
 - Battery-efficient background tracking
-- Configure GeoPulse endpoint URL in the app with your token
+- HTTP-based location transmission
 
 **Dawarich** (iOS)
 
-- API Key authentication
-- Configure GeoPulse endpoint URL in app with your API Key
+- Configure with API key from GeoPulse  
+- Simple setup and configuration
+- HTTP-based location transmission
 
 ## Privacy and Security
 
@@ -135,7 +136,7 @@ GeoPulse keeps your data under your control:
 
 - Self-hosted - your data stays on your server
 - No third-party tracking or external data sharing
-- Secure JWT authentication with HTTPS required
+- Secure HTTP-only cookies with JWT tokens for API access
 - Granular sharing controls
 - Full data export capabilities
 

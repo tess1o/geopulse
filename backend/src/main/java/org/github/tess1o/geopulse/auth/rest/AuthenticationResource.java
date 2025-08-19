@@ -11,6 +11,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
@@ -32,6 +33,10 @@ public class AuthenticationResource {
     private final CookieService cookieService;
 
     @Inject
+    @ConfigProperty(name = "geopulse.test.mode", defaultValue = "false")
+    boolean testMode;
+
+    @Inject
     public AuthenticationResource(AuthenticationService authenticationService,
                                   CookieService cookieService) {
         this.authenticationService = authenticationService;
@@ -50,36 +55,27 @@ public class AuthenticationResource {
         try {
             AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
 
-            // Create secure cookies for tokens
+            // Create cookies for web app
             var accessTokenCookie = cookieService.createAccessTokenCookie(authResponse.getAccessToken(), authResponse.getExpiresIn());
-            var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan()); // 7 days
+            var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
+            var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            // Check auth mode
-            boolean useCookieMode = cookieService.isCookieMode();
+            // In test mode, return tokens in response body for compatibility
+            // In production, exclude tokens from response body for security
+            AuthResponse responseData = testMode ? authResponse : AuthResponse.builder()
+                    .id(authResponse.getId())
+                    .email(authResponse.getEmail())
+                    .fullName(authResponse.getFullName())
+                    .avatar(authResponse.getAvatar())
+                    .expiresIn(authResponse.getExpiresIn())
+                    .createdAt(authResponse.getCreatedAt())
+                    .build(); // NO tokens in production
 
-            if (useCookieMode) {
-                // Cookie mode: Set cookies, exclude tokens from response body
-                AuthResponse safeResponse = AuthResponse.builder()
-                        .id(authResponse.getId())
-                        .email(authResponse.getEmail())
-                        .fullName(authResponse.getFullName())
-                        .avatar(authResponse.getAvatar())
-                        .expiresIn(authResponse.getExpiresIn())
-                        .createdAt(authResponse.getCreatedAt())
-                        .build(); // NO tokens in response
-
-                var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
-
-                return Response.ok(ApiResponse.success(safeResponse))
-                        .cookie(accessTokenCookie)
-                        .cookie(refreshTokenCookie)
-                        .cookie(tokenExpirationCookie)
-                        .build();
-            } else {
-                // localStorage mode: NO cookies, tokens in response body
-                return Response.ok(ApiResponse.success(authResponse))
-                        .build(); // NO cookies
-            }
+            return Response.ok(ApiResponse.success(responseData))
+                    .cookie(accessTokenCookie)
+                    .cookie(refreshTokenCookie)
+                    .cookie(tokenExpirationCookie)
+                    .build();
         } catch (UserNotFoundException e) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("User is not found"))
@@ -97,7 +93,39 @@ public class AuthenticationResource {
     }
 
     /**
-     * Refresh an access token using a refresh token.
+     * API Login endpoint that returns JWT tokens directly (for API clients).
+     * Unlike the main /login endpoint which uses cookies, this returns tokens in the response body.
+     *
+     * @return JWT tokens if authentication is successful
+     */
+    @POST
+    @Path("/api-login")
+    public Response apiLogin(LoginRequest request) {
+        try {
+            AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
+
+            // API mode: Return tokens in response body, no cookies
+            return Response.ok(ApiResponse.success(authResponse))
+                    .build();
+        } catch (UserNotFoundException e) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(ApiResponse.error("User is not found"))
+                    .build();
+        } catch (InvalidPasswordException e) {
+            return Response.status(Response.Status.UNAUTHORIZED)
+                    .entity(ApiResponse.error("Invalid password"))
+                    .build();
+        } catch (Exception e) {
+            log.info("API authentication failed for user {}", request.getEmail(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Authentication failed"))
+                    .build();
+        }
+    }
+
+    /**
+     * Refresh an access token using a refresh token (for token-based authentication).
+     * This endpoint is primarily used by API clients and tests.
      *
      * @param request The token refresh request
      * @return A new access token if the refresh token is valid
@@ -128,7 +156,7 @@ public class AuthenticationResource {
     }
 
     /**
-     * Refresh tokens using cookies (for cookie-based auth mode).
+     * Refresh tokens using cookies.
      * Extracts refresh token from httpOnly cookie and returns new tokens as cookies.
      *
      * @param refreshTokenCookie The refresh token from httpOnly cookie
