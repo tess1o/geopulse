@@ -63,11 +63,12 @@ export class DashboardPage {
         console.log('🔍 Logout not visible, looking for menu toggle...');
 
         const menuSelectors = [
+          'span.pi-bars', // PrimeVue menu icon
+          '.p-button:has(.pi-bars)',
+          'button:has(.pi-bars)',
           '.sidebar-toggle',
           '.menu-toggle',
           'button[aria-label="Menu"]',
-          '.p-button:has(.pi-bars)',
-          'button:has(.pi-bars)',
           '.hamburger-menu'
         ];
 
@@ -84,10 +85,6 @@ export class DashboardPage {
               if (await logoutButton.isVisible({ timeout: 2000 })) {
                 console.log('✅ Menu opened, logout button now visible');
                 await logoutButton.click();
-                const response = await page.waitForResponse(resp =>
-                    resp.url().includes('/logout') && resp.request().method() === 'POST'
-                );
-
                 menuOpened = true;
                 break;
               }
@@ -108,6 +105,14 @@ export class DashboardPage {
           }
         }
       }
+
+      // Wait for logout API call to complete
+      console.log('⏳ Waiting for logout API call...');
+      const response = await this.page.waitForResponse(resp =>
+          resp.url().includes('/api/auth/logout') && resp.request().method() === 'POST',
+          { timeout: 5000 }
+      );
+      console.log('✅ Logout API call completed:', response.status());
 
       // Wait for redirect to login page
       console.log('⏳ Waiting for redirect to login...');

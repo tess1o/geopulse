@@ -117,7 +117,6 @@ export class TestHelpers {
    */
   static async getCookieValue(page, cookieName) {
     const cookies = await page.context().cookies();
-    console.log('Cookies: ', cookies);
     const cookie = cookies.find(c => c.name === cookieName);
     return cookie ? cookie.value : null;
   }
@@ -127,9 +126,8 @@ export class TestHelpers {
    * @param {import('@playwright/test').Page} page 
    */
   static async isAuthenticated(page) {
-    const tokenExpiresWhen = await this.getCookieValue(page, 'token_expires_at');
-    console.log('token_expires_at: ', tokenExpiresWhen);
-    return tokenExpiresWhen != null
+    const accessToken = await this.getCookieValue(page, 'access_token');
+    return accessToken != null
   }
 
   static async isHomePage(page) {

@@ -15,6 +15,8 @@ async function createUser(page, existingUser) {
         }
     });
 
+    console.log('Response:', response);
+
     expect(response.ok()).toBeTruthy();
 }
 
@@ -37,6 +39,7 @@ test.describe('Authentication Flow', () => {
         // Clear all cookies and storage before each test
         await context.clearCookies();
         await context.clearPermissions();
+        await dbManager.resetDatabase();
         // await page.evaluate(() => {
         //     localStorage.clear();
         //     sessionStorage.clear();
@@ -195,7 +198,7 @@ test.describe('Authentication Flow', () => {
             const dashboardPage = new DashboardPage(page);
             const testUser = TestData.users.existing;
 
-            createUser(page, testUser);
+            await createUser(page, testUser);
 
             // Login first
             await loginPage.navigate();
