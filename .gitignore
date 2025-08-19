@@ -41,3 +41,25 @@ build/
 /.claude/
 /backend/.claude/
 /mosquitto/
+
+### E2E Testing ###
+test-results/
+playwright-report/
+tests/test-results/
+tests/playwright-report/
+
+### Node.js ###
+node_modules/
+*/node_modules/
+package-lock.json
+npm-debug.log*
+
+### Environment files ###
+.env
+.env.local
+.env.*.local
+
+### Temporary files ###
+*.tmp
+*.temp
+*.log

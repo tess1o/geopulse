@@ -57,10 +57,12 @@ public class UserResource {
             UserResponse response = userMapper.toResponse(user);
             return Response.status(Response.Status.CREATED).entity(ApiResponse.success(response)).build();
         } catch (IllegalArgumentException e) {
+            log.error("Failed to register user due to duplicate", e);
             return Response.status(Response.Status.CONFLICT)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
+            log.error("Failed to register user", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to register user"))
                     .build();

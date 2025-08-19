@@ -1,0 +1,27 @@
+FROM mcr.microsoft.com/playwright:v1.40.0-focal
+
+# Set working directory
+WORKDIR /app
+
+# Copy package.json and package-lock.json for tests
+COPY package*.json ./
+
+# Install test dependencies
+RUN npm ci
+
+# Install Playwright browsers
+RUN npx playwright install
+
+# Copy test files
+COPY . ./tests/
+COPY wait-for-it.sh ./
+
+# Make wait script executable
+RUN chmod +x ./wait-for-it.sh
+
+# Set environment variables
+ENV NODE_ENV=test
+ENV CI=true
+
+# Default command
+CMD ["npm", "run", "test:e2e"]

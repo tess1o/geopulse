@@ -1,0 +1,86 @@
+services:
+  geopulse-backend-e2e:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: geopulse-backend-e2e
+    restart: "no"
+    env_file:
+      - .env.e2e
+    ports:
+      - "8081:8080"  # Different port to avoid conflicts
+    volumes:
+      - ../backend/src/main/resources/keys:/app/keys
+    depends_on:
+      geopulse-postgres-e2e:
+        condition: service_healthy
+
+  geopulse-ui-e2e:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    container_name: geopulse-ui-e2e
+    restart: "no"
+    ports:
+      - "5556:80"  # Different port to avoid conflicts
+    depends_on:
+      - geopulse-backend-e2e
+    env_file:
+      - .env.e2e
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  geopulse-postgres-e2e:
+    image: postgis/postgis:17-3.5
+    container_name: geopulse-postgres-e2e
+    restart: "no"
+    environment:
+      POSTGRES_USER: geopulse_test
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: geopulse_test
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    volumes:
+      - postgres-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geopulse_test -d geopulse_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  playwright-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    container_name: playwright-tests
+    restart: "no"
+    environment:
+      - BASE_URL=http://geopulse-ui-e2e:80
+      - API_BASE_URL=http://geopulse-backend-e2e:8080/api
+      - DATABASE_URL=postgresql://geopulse_test:testpassword@geopulse-postgres-e2e:5432/geopulse_test
+      - NODE_ENV=test
+      - CI=true
+    depends_on:
+      geopulse-ui-e2e:
+        condition: service_healthy
+      geopulse-backend-e2e:
+        condition: service_started
+      geopulse-postgres-e2e:
+        condition: service_healthy
+    volumes:
+      - .:/app/tests
+      - ./test-results:/app/test-results
+      - ./playwright-report:/app/playwright-report
+    command: >
+      sh -c "
+        ./wait-for-it.sh geopulse-ui-e2e:80 -t 60 &&
+        ./wait-for-it.sh geopulse-backend-e2e:8080 -t 60 &&
+        npm run test:e2e
+      "
+
+volumes:
+  postgres-test-data:

@@ -1,0 +1,23 @@
+{
+  "name": "geopulse-e2e-tests",
+  "version": "1.0.0",
+  "description": "End-to-end tests for GeoPulse application",
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "setup:db": "node setup/database-setup.js"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.40.0",
+    "pg": "^8.11.3",
+    "faker": "^5.5.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.10.9",
+    "dotenv": "^16.3.1"
+  }
+}
