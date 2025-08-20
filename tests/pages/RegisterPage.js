@@ -9,11 +9,9 @@ export class RegisterPage {
       passwordInput: '#password input', // PrimeVue Password component uses nested input
       confirmPasswordInput: '#confirmPassword input',
       registerButton: 'button[type="submit"]',
-      loginLink: 'a[href="/login"]',
       errorMessage: '.register-error',
-      loadingSpinner: '.p-button-loading',
       formTitle: '.form-title',
-      logo: '.app-logo',
+      passwordError: '.password-error'
     };
   }
 
@@ -62,36 +60,32 @@ export class RegisterPage {
     await this.clickRegister();
   }
 
-  async getErrorMessage() {
-    const errorElement = this.page.locator(this.selectors.errorMessage);
-    if (await errorElement.isVisible()) {
-      return await errorElement.textContent();
-    }
-    return null;
+  /**
+   * Get registration error message selector for use with ValidationHelpers
+   * Usage: ValidationHelpers.getPageErrorMessage(page, registerPage.getErrorSelector())
+   */
+  getErrorSelector() {
+    return this.selectors.errorMessage;
   }
 
-  async isLoading() {
-    return await this.page.locator(this.selectors.loadingSpinner).isVisible();
-  }
-
-  async waitForErrorMessage() {
-    await this.page.waitForSelector(this.selectors.errorMessage, { state: 'visible' });
-  }
-
+  /**
+   * Check if register button is enabled
+   */
   async isRegisterButtonEnabled() {
     const button = this.page.locator(this.selectors.registerButton);
     return await button.isEnabled();
   }
 
-  // async isRegisterButtonEnabled() {
-  //   const button = this.page.locator(this.selectors.registerButton);
-  //   return !(await button.getAttribute('disabled'));
-  // }
-
+  /**
+   * Get page title
+   */
   async getPageTitle() {
     return await this.page.locator(this.selectors.formTitle).textContent();
   }
 
+  /**
+   * Check if currently on register page
+   */
   async isOnRegisterPage() {
     try {
       await this.page.waitForURL('**/register', { timeout: 5000 });
@@ -100,36 +94,5 @@ export class RegisterPage {
     } catch {
       return false;
     }
-  }
-
-  // Helper method to check form validation
-  async hasFieldError(fieldSelector) {
-    const errorSelector = `${fieldSelector} + .error-message, ${fieldSelector} ~ .error-message`;
-    return await this.page.locator(errorSelector).isVisible();
-  }
-
-  async getFieldError(fieldName) {
-    // Map field names to their selectors
-    const fieldMap = {
-      email: this.selectors.emailInput,
-      fullName: this.selectors.fullNameInput,
-      password: this.selectors.passwordInput,
-      confirmPassword: this.selectors.confirmPasswordInput,
-    };
-
-    const fieldSelector = fieldMap[fieldName];
-    if (!fieldSelector) return null;
-
-    const errorSelector = `${fieldSelector.replace(' input', '')} + .error-message, ${fieldSelector.replace(' input', '')} ~ .error-message`;
-    const errorElement = this.page.locator(errorSelector);
-    
-    if (await errorElement.isVisible()) {
-      return await errorElement.textContent();
-    }
-    return null;
-  }
-
-  async waitForValidationErrors() {
-    await this.page.waitForTimeout(500); // Wait for validation to run
   }
 }

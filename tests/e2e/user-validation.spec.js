@@ -20,11 +20,11 @@ test.describe('User Input Validation', () => {
         await registerPage.fillPassword('ValidPassword123!');
         await registerPage.fillConfirmPassword('ValidPassword123!');
 
-        await registerPage.waitForValidationErrors();
+        await ValidationHelpers.waitForValidation();
 
         // Use validation helper to check browser validation message
         const emailValidationMessage = await ValidationHelpers.getBrowserValidationMessage(
-            page, 
+            page,
             registerPage.selectors.emailInput
         );
         expect(emailValidationMessage).toContain("Please include an '@' in the email address");
@@ -35,8 +35,8 @@ test.describe('User Input Validation', () => {
         await registerPage.fillConfirmPassword('DifferentPassword123!');
         await registerPage.clickRegister();
 
-        await registerPage.waitForValidationErrors();
-        expect(await registerPage.hasFieldError('#confirmPassword')).toBe(true);
+        await ValidationHelpers.waitForValidation();
+        expect(await ValidationHelpers.hasFieldError(page, registerPage.selectors.confirmPasswordInput)).toBe(true);
     });
 
     test('should validate password requirements', async ({page}) => {
@@ -51,12 +51,12 @@ test.describe('User Input Validation', () => {
         await registerPage.fillPassword('weak');
         await registerPage.fillConfirmPassword('weak');
 
-        await registerPage.waitForValidationErrors();
+        await ValidationHelpers.waitForValidation();
 
         // Check for password strength validation (if implemented)
-        const hasPasswordError = await ValidationHelpers.hasCustomValidationError(page, '.password-error');
+        const hasPasswordError = await ValidationHelpers.hasCustomValidationError(page, registerPage.selectors.passwordError);
         if (hasPasswordError) {
-            const errorMessage = await ValidationHelpers.getCustomValidationError(page, '.password-error');
+            const errorMessage = await ValidationHelpers.getCustomValidationError(page, registerPage.selectors.passwordError);
             expect(errorMessage).toBeTruthy();
         }
     });

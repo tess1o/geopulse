@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import {TestConfig} from "../config/test-config.js";
 
 test.describe('Health Check', () => {
   
@@ -20,7 +21,7 @@ test.describe('Health Check', () => {
 
   test('should access backend health endpoint', async ({ page }) => {
     // Make a request to the backend health endpoint
-    const response = await page.request.get('http://localhost:8081/api/health');
+    const response = await page.request.get(TestConfig.API_BASE_URL + '/api/health');
     
     // Should return 200 OK
     expect(response.status()).toBe(200);

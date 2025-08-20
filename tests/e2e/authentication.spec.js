@@ -6,6 +6,7 @@ import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
+import {ValidationHelpers} from '../utils/validation-helpers.js';
 
 test.describe('Authentication Flow', () => {
 
@@ -81,8 +82,8 @@ test.describe('Authentication Flow', () => {
             
             // Check for error message if login page has error handling
             try {
-                await loginPage.waitForErrorMessage();
-                const errorMessage = await loginPage.getErrorMessage();
+                await ValidationHelpers.waitForPageErrorMessage(page, loginPage.getErrorSelector());
+                const errorMessage = await ValidationHelpers.getPageErrorMessage(page, loginPage.getErrorSelector());
                 expect(errorMessage).toBeTruthy();
             } catch {
                 // Error handling might not be implemented yet

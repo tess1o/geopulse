@@ -5,6 +5,7 @@ import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
+import {ValidationHelpers} from '../utils/validation-helpers.js';
 
 test.describe('User Registration', () => {
 
@@ -62,8 +63,8 @@ test.describe('User Registration', () => {
         );
 
         // Should show error message
-        await registerPage.waitForErrorMessage();
-        const errorMessage = await registerPage.getErrorMessage();
+        await ValidationHelpers.waitForPageErrorMessage(page, registerPage.getErrorSelector());
+        const errorMessage = await ValidationHelpers.getPageErrorMessage(page, registerPage.getErrorSelector());
         expect(errorMessage).toContain('User with email ' + existingUser.email + ' already exists');
 
         await dbManager.deleteUser(existingUser.email);
