@@ -257,6 +257,14 @@ const formatDateRange = (range) => {
   return `${start} - ${end}`
 }
 
+const formatDateForAPI = (date) => {
+  // Format date in local timezone to avoid timezone offset issues
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const getSourceSeverity = (sourceType) => {
   const severityMap = {
     'OWNTRACKS': 'success',
@@ -319,8 +327,9 @@ const loadGPSPoints = async () => {
     }
     
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      params.startDate = dateRange.value[0].toISOString().split('T')[0]
-      params.endDate = dateRange.value[1].toISOString().split('T')[0]
+      // Format dates in local timezone to avoid timezone offset issues
+      params.startDate = formatDateForAPI(dateRange.value[0])
+      params.endDate = formatDateForAPI(dateRange.value[1])
     }
     
     await technicalDataStore.fetchGPSPoints(params)
@@ -343,8 +352,9 @@ const handleExportCSV = async () => {
     const params = {}
     
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      params.startDate = dateRange.value[0].toISOString().split('T')[0]
-      params.endDate = dateRange.value[1].toISOString().split('T')[0]
+      // Format dates in local timezone to avoid timezone offset issues
+      params.startDate = formatDateForAPI(dateRange.value[0])
+      params.endDate = formatDateForAPI(dateRange.value[1])
     }
     
     await technicalDataStore.exportGPSPoints(params)
