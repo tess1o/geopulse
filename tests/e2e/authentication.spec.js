@@ -15,7 +15,6 @@ test.describe('Authentication Flow', () => {
             const loginPage = new LoginPage(page);
             const timelinePage = new TimelinePage(page);
             const testUser = TestData.users.existing;
-
             await UserFactory.createUser(page, testUser);
 
             // Login first

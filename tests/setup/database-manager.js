@@ -54,6 +54,7 @@ export class DatabaseManager {
                 console.warn(`Warning: Could not clear table: ${error.message}`);
             }
         }
+        console.log('Truncated all tables successfully');
     }
 
     async getUserByEmail(email) {
