@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import {TestConfig} from "../config/test-config.js";
+import {LoginPage} from "../pages/LoginPage.js";
 
 test.describe('Health Check', () => {
   
@@ -35,11 +36,13 @@ test.describe('Health Check', () => {
   test('should show login form', async ({ page }) => {
     await page.goto('/login');
     await page.waitForLoadState('networkidle');
+
+    const loginPage = new LoginPage(page);
     
     // Check for login form elements
-    const emailInput = page.locator('#email');
-    const passwordInput = page.locator('#password input');
-    const loginButton = page.locator('button[type="submit"]');
+    const emailInput = page.locator(loginPage.selectors.emailInput);
+    const passwordInput = page.locator(loginPage.selectors.passwordInput);
+    const loginButton = page.locator(loginPage.selectors.loginButton);
     
     await expect(emailInput).toBeVisible();
     await expect(passwordInput).toBeVisible();

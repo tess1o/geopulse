@@ -6,6 +6,7 @@ import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
+import {LoginPage} from "../pages/LoginPage.js";
 
 test.describe('User Registration', () => {
 
@@ -42,9 +43,6 @@ test.describe('User Registration', () => {
         const createdUser = await dbManager.getUserByEmail(newUser.email);
         expect(createdUser).toBeTruthy();
         expect(createdUser.full_name).toBe(newUser.fullName);
-
-        // Cleanup: Delete the test user
-        await dbManager.deleteUser(newUser.email);
     });
 
     test('should prevent registration with existing email', async ({page, dbManager}) => {
@@ -66,13 +64,11 @@ test.describe('User Registration', () => {
         await ValidationHelpers.waitForPageErrorMessage(page, registerPage.getErrorSelector());
         const errorMessage = await ValidationHelpers.getPageErrorMessage(page, registerPage.getErrorSelector());
         expect(errorMessage).toContain('User with email ' + existingUser.email + ' already exists');
-
-        await dbManager.deleteUser(existingUser.email);
     });
 
     test('should navigate to login page from register page', async ({page}) => {
         const registerPage = new RegisterPage(page);
-        const loginPage = new (await import('../pages/LoginPage.js')).LoginPage(page);
+        const loginPage = new LoginPage(page);
 
         await registerPage.navigate();
         await registerPage.waitForPageLoad();
