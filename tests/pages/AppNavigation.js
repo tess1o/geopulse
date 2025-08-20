@@ -1,40 +1,16 @@
 import {TestHelpers} from "../utils/test-helpers.js";
 
-export class DashboardPage {
+export class AppNavigation {
   constructor(page) {
     this.page = page;
-
-    // Selectors
-    this.selectors = {
-      navbar: '.app-navbar',
-      userMenu: '.user-menu',
-      logoutButton: '[data-testid="logout-button"], button:has-text("Logout")',
-      timelineLink: 'a[href="/app/timeline"]',
-      locationSourcesLink: 'a[href="/app/location-sources"]',
-      dashboardContent: '.dashboard-content',
-      navigation: '.app-navigation',
-      welcomeMessage: '.welcome-message',
-      loadingSpinner: '.loading',
-    };
   }
 
-  async isOnTimelinePage() {
-    const url = this.page.url();
-    return /\/app\/timeline(\/|\?|#|$)/.test(url);
-  }
-
-  async isOnLocationSourcesPage() {
-    try {
-      await this.page.waitForURL('**/app/location-sources', { timeout: 5000 });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
+  /**
+   * Logout from any authenticated page
+   * Handles menu opening and logout button clicking
+   */
   async logout() {
     try {
-      // The logout button is in the left sidebar menu, we may need to open it first
       console.log('🔍 Looking for logout button...');
 
       // First check if logout button is already visible
@@ -109,5 +85,4 @@ export class DashboardPage {
       throw new Error(`Failed to logout: ${error.message}`);
     }
   }
-
 }

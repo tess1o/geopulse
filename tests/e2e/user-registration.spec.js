@@ -1,6 +1,6 @@
 import {test, expect} from '../fixtures/database-fixture.js';
 import {RegisterPage} from '../pages/RegisterPage.js';
-import {DashboardPage} from '../pages/DashboardPage.js';
+import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
@@ -10,7 +10,7 @@ test.describe('User Registration', () => {
 
     test('should successfully register a new user', async ({page, dbManager}) => {
         const registerPage = new RegisterPage(page);
-        const dashboardPage = new DashboardPage(page);
+        const locationSourcesPage = new LocationSourcesPage(page);
         const newUser = TestData.generateNewUser();
 
         // Navigate to register page
@@ -32,7 +32,7 @@ test.describe('User Registration', () => {
         await TestHelpers.waitForNavigation(page, '**/app/location-sources', TestConfig.TIMEOUTS.navigation);
 
         // Verify we're redirected to location sources page (onboarding)
-        expect(await dashboardPage.isOnLocationSourcesPage()).toBe(true);
+        expect(await locationSourcesPage.isOnLocationSourcesPage()).toBe(true);
 
         // Verify user is authenticated
         expect(await TestHelpers.isAuthenticated(page)).toBe(true);

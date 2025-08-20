@@ -1,6 +1,7 @@
 import {test, expect} from '../fixtures/database-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
-import {DashboardPage} from '../pages/DashboardPage.js';
+import {TimelinePage} from '../pages/TimelinePage.js';
+import {AppNavigation} from '../pages/AppNavigation.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
@@ -11,7 +12,7 @@ test.describe('Authentication Flow', () => {
     test.describe('Session Management', () => {
         test('should maintain session across page reloads', async ({page}) => {
             const loginPage = new LoginPage(page);
-            const dashboardPage = new DashboardPage(page);
+            const timelinePage = new TimelinePage(page);
             const testUser = TestData.users.existing;
 
             await UserFactory.createUser(page, testUser);
@@ -29,7 +30,7 @@ test.describe('Authentication Flow', () => {
             await page.waitForLoadState('networkidle');
 
             // Should still be authenticated and on timeline page
-            expect(await dashboardPage.isOnTimelinePage()).toBe(true);
+            expect(await timelinePage.isOnTimelinePage()).toBe(true);
             expect(await TestHelpers.isAuthenticated(page)).toBe(true);
         });
 
@@ -46,7 +47,7 @@ test.describe('Authentication Flow', () => {
 
         test('should handle logout correctly', async ({page}) => {
             const loginPage = new LoginPage(page);
-            const dashboardPage = new DashboardPage(page);
+            const appNavigation = new AppNavigation(page);
             const testUser = TestData.users.existing;
 
             await UserFactory.createUser(page, testUser);
@@ -60,7 +61,7 @@ test.describe('Authentication Flow', () => {
             expect(await TestHelpers.isAuthenticated(page)).toBe(true);
 
             // Logout
-            await dashboardPage.logout();
+            await appNavigation.logout();
 
             // Should be redirected to login page
             expect(await TestHelpers.isHomePage(page)).toBe(true);
@@ -91,7 +92,6 @@ test.describe('Authentication Flow', () => {
 
         test('should handle session timeout', async ({page}) => {
             const loginPage = new LoginPage(page);
-            const dashboardPage = new DashboardPage(page);
             const testUser = TestData.users.existing;
 
             await UserFactory.createUser(page, testUser);
