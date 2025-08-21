@@ -29,51 +29,77 @@ MQTT broker can be deployed if you want to use OwnTracks integration with MQTT p
 want to use OwnTracks with HTTP - you don't need the MQTT broker. This guide provides steps on how to install the system
 with or without MQTT broker.
 
-## Quick Start
-
-1. Download configuration files
-2. Start with Docker Compose
+There is one time service "geopulse-keygen" that creates JWT keys in the "keys" folder. 
 
 ---
 
 ## Setup
 
-### 1. Download Configuration and docker-compose
+### 1. Download Configuration Files
 
-1. Download `.env` configuration
+#### Step 1: Download `.env` configuration and key generation script
 
+**Using wget:**
 ```bash
 wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
+wget -O generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
+chmod +x generate-keys.sh
 ```
 
-2.1 If you do not want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml`:
+**Using curl:**
+```bash
+curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
+curl -L -o generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
+chmod +x generate-keys.sh
+```
 
+#### Step 2: Choose your deployment type
+
+**Option A: Basic deployment (without MQTT broker)**
+
+Download the basic docker-compose.yml:
+
+Using wget:
 ```bash
 wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
 ```
 
-2.2 If you want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml` and mosquitto entrypoint script.
-The entrypoint script will be executed automatically by docker container and will configure MQTT broker: create config,
-setup integration with GeoPulse database for custom authentication, setup admin user.
+Using curl:
+```bash
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
+```
 
+**Option B: Full deployment (with MQTT broker for OwnTracks)**
+
+Download the complete docker-compose.yml and mosquitto entrypoint script:
+
+Using wget:
 ```bash
 wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
 wget -O mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
 chmod +x mosquitto_entrypoint.sh
 ```
 
-Update `.env` file:
-If you want to use MQTT broker, enable MQTT integration:
+Using curl:
+```bash
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
+curl -L -o mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
+chmod +x mosquitto_entrypoint.sh
+```
+
+#### Step 3: Configure environment variables
+
+**Step 3.1:** If you chose Option B (MQTT broker), enable MQTT integration in `.env`:
 
 ```env
 GEOPULSE_MQTT_ENABLED=true
 ```
 
-Change Postgres database and MQTT passwords (recommended)
+**Step 3.2:** Change database and MQTT passwords (optional, but recommended):
 
-```bash
-GEOPULSE_POSTGRES_PASSWORD=change-this-secure-password
-GEOPULSE_MQTT_PASSWORD=change-this-mqtt-admin-password
+```env
+GEOPULSE_POSTGRES_PASSWORD=your-secure-database-password
+GEOPULSE_MQTT_PASSWORD=your-secure-mqtt-password
 ```
 
 ### 2. Start GeoPulse
@@ -208,12 +234,3 @@ curl http://localhost:8080/api/health
 - If you see key-related errors, check that the `geopulse-keygen` service completed successfully: `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist
 - To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`
-
----
-
-## Security
-
-- Use strong passwords for database and MQTT broker
-- Never expose PostgreSQL/MQTT port externally
-- Use HTTPS in production
-- Keep JWT keys secure

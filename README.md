@@ -13,9 +13,10 @@
 
 ---
 
-GeoPulse transforms raw GPS data from tracking apps like OwnTracks and Overland into organized timelines and insights.
-It automatically categorizes your location data into stays and trips, providing a clear view of your movement patterns
-while keeping everything on your own server.
+GeoPulse transforms raw GPS data from tracking apps like OwnTracks, Overland or Dawarich into organized timelines and
+insights. It automatically categorizes your location data into stays and trips, providing a clear view of your movement
+patterns while keeping everything on your own server. GeoPulse has integration with Immich server so you can view your
+photos directly on the timeline map.
 
 <div align="center">
   <img src="docs/images/timeline.png" alt="GeoPulse Interactive Timeline" width="800"/>
@@ -27,20 +28,22 @@ while keeping everything on your own server.
 Deploy GeoPulse in under 5 minutes with Docker:
 
 **Choose your deployment:**
+
 - 🏠 **Local Deployment** - Deploy on your local machine (zero configuration required)
 - 🌐 **Production** - Deploy on server with domain and reverse proxy
 
 Both scenarios optionally support MQTT for real-time OwnTracks integration.
 
 **Simple deployment process:**
-1. Generate JWT keys
-2. Download single .env configuration (works without changes for local Deployment)
-3. Download docker-compose file
-4. Run `docker compose up -d`
+
+1. Download single `.env` configuration (works without changes for local Deployment)
+2. Download `docker-compose` file
+3. Run `docker compose up -d`
 
 **👉 [Complete Step-by-Step Instructions](docs/DEPLOYMENT_GUIDE.md)**
 
 Once deployed:
+
 - **Local Deployment**: http://localhost:5555
 - **Production**: https://your-domain.com
 
@@ -51,8 +54,7 @@ Once deployed:
 **GPS Data Integration**
 
 - Works with OwnTracks (HTTP or MQTT), Overland and Dawarich tracking apps
-- Real-time data sync and import/export capabilities
-- Secure authentication with HTTP-only cookies and Bearer token API access
+- Real-time data sync with GPS tracking apps.
 - Manual import from Google Takeout, GPX files
 
 **Timeline and Maps**
@@ -74,7 +76,6 @@ Once deployed:
 - Connect with friends to share locations
 - Real-time friend location sharing
 - Privacy controls for what and when you share
-- Email-based friend invitations
 
 **Sharing**
 
@@ -85,12 +86,12 @@ Once deployed:
 **Places Management**
 
 - Save favorite locations and areas
-- Add favorites directly from the map
-- Search and organize saved places
+- Add/Edit/Delete favorite places directly on the map
+- Reverse geocoding using Nomatim, Google Maps or Mapbox API.
 
 **Customization**
 
-- Adjustable timeline sensitivity settings
+- Adjustable timeline sensitivity settings individually for each user
 - Data export in multiple formats
 - Dark/light themes with system preference detection
 - Mobile-responsive design
@@ -98,6 +99,7 @@ Once deployed:
 ## 📚 Complete Documentation
 
 ### Detailed Guides
+
 - **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Comprehensive deployment options and troubleshooting
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Advanced configuration and environment variables
 - **[Setup Guide](docs/SETUP.md)** - GPS apps setup and initial configuration
@@ -109,6 +111,7 @@ Once deployed:
 - **Frontend**: Vue.js 3 with PrimeVue components
 - **Maps**: Leaflet with OpenStreetMap
 - **Deployment**: Docker Compose
+- **MQTT broker**: Mosquitto (optional, used for OwnTracks MQTT integration)
 
 ## Compatible Apps
 
@@ -126,7 +129,7 @@ Once deployed:
 
 **Dawarich** (iOS)
 
-- Configure with API key from GeoPulse  
+- Configure with API key from GeoPulse
 - Simple setup and configuration
 - HTTP-based location transmission
 
@@ -143,16 +146,19 @@ GeoPulse keeps your data under your control:
 ## Screenshots
 
 ### Timeline View
+
 <div align="center">
   <img src="docs/images/timeline.png" alt="GeoPulse Interactive Timeline" width="800"/>
 </div>
 
 ### Dashboard
+
 <div align="center">
   <img src="docs/images/dashboard.png" alt="GeoPulse Dashboard" width="800"/>
 </div>
 
 ### Additional Views
+
 <details>
 <summary>Journey Insights & Analytics</summary>
 
