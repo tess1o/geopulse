@@ -16,8 +16,6 @@ services:
       - .env
     environment:
       - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
-    ports:
-      - 8080:8080  # Change left port to customize external access
     volumes:
       - ./keys:/app/keys
     depends_on:
