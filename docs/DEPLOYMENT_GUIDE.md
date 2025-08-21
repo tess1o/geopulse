@@ -31,43 +31,28 @@ with or without MQTT broker.
 
 ## Quick Start
 
-1. Generate JWT keys
-2. Download configuration files
-3. Start with Docker Compose
+1. Download configuration files
+2. Start with Docker Compose
 
 ---
 
 ## Setup
 
-### 1. Generate JWT Keys
+### 1. Download Configuration and docker-compose
 
-These keys are required to sign and verify JWT tokens on the server side.
-
-```bash
-mkdir -p keys
-docker run --rm -v "$(pwd)/keys:/keys" alpine:latest sh -c "
-  apk add --no-cache openssl &&
-  openssl genpkey -algorithm RSA -out /keys/jwt-private-key.pem &&
-  openssl rsa -pubout -in /keys/jwt-private-key.pem -out /keys/jwt-public-key.pem &&
-  chmod 644 /keys/jwt-*.pem
-"
-```
-
-### 2. Download Configuration and docker-compose
-
-Download `.env` configuration
+1. Download `.env` configuration
 
 ```bash
 wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 ```
 
-If you do not want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml`:
+2.1 If you do not want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml`:
 
 ```bash
 wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
 ```
 
-If you want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml` and mosquitto entrypoint script.
+2.2 If you want to use MQTT broker (for OwnTracks app), download this `docker-compose.yml` and mosquitto entrypoint script.
 The entrypoint script will be executed automatically by docker container and will configure MQTT broker: create config,
 setup integration with GeoPulse database for custom authentication, setup admin user.
 
@@ -84,14 +69,14 @@ If you want to use MQTT broker, enable MQTT integration:
 GEOPULSE_MQTT_ENABLED=true
 ```
 
-Change database and MQTT passwords (recommended)
+Change Postgres database and MQTT passwords (recommended)
 
 ```bash
 GEOPULSE_POSTGRES_PASSWORD=change-this-secure-password
 GEOPULSE_MQTT_PASSWORD=change-this-mqtt-admin-password
 ```
 
-### 3. Start GeoPulse
+### 2. Start GeoPulse
 
 ```bash
 docker compose up -d
@@ -104,6 +89,33 @@ docker compose up -d
 
 ---
 
+## Homelab Deployment
+
+GeoPulse is designed to work seamlessly across multiple access methods in homelab environments:
+
+### Multiple Access Methods Support
+
+Update your `.env` file to support multiple UI URLs:
+
+```env
+# Support multiple access methods (comma-separated)
+GEOPULSE_UI_URL=http://localhost:5555,http://192.168.1.100:5555,http://your-tailscale-ip:5555
+```
+
+This allows you to access GeoPulse via:
+- **Localhost**: `http://localhost:5555`
+- **Local Network**: `http://192.168.1.100:5555`
+- **Tailscale**: `http://your-tailscale-ip:5555`
+- **Any combination** of the above
+
+### Key Benefits
+- **Single deployment** works across all access methods
+- **No need to choose** between localhost, LAN, or Tailscale access
+- **Automatic proxy handling** - frontend uses relative `/api` paths
+- **Flexible CORS configuration** supports multiple origins
+
+---
+
 ## Production Deployment
 
 For server deployment with your domain:
@@ -111,14 +123,10 @@ For server deployment with your domain:
 1. **Complete setup steps above**
 
 2. **Edit `.env` file:**
-   ```bash
-   nano .env
-   ```
    
    Update the following values:
    ```env
    GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-   GEOPULSE_BACKEND_URL=https://geopulse-api.yourdomain.com
    GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
    GEOPULSE_AUTH_SECURE_COOKIES=true
    ```
@@ -128,12 +136,13 @@ For server deployment with your domain:
 You must terminate HTTPS at a reverse proxy and forward traffic to the GeoPulse containers. Here is a basic Nginx
 configuration. You will also need to set up SSL certificates (e.g., using Let's Encrypt).
 
+**Single Domain (Recommended)**
 ```nginx
 # /etc/nginx/sites-available/geopulse.conf
 
 server {
     listen 80;
-    server_name geopulse.yourdomain.com geopulse-api.yourdomain.com;
+    server_name geopulse.yourdomain.com;
     return 301 https://$host$request_uri;
 }
 
@@ -145,25 +154,9 @@ server {
     ssl_certificate /path/to/your/fullchain.pem;
     ssl_certificate_key /path/to/your/privkey.pem;
 
+    # Frontend
     location / {
         proxy_pass http://localhost:5555;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-server {
-    listen 443 ssl;
-    server_name geopulse-api.yourdomain.com;
-
-    # SSL certs (can be the same)
-    ssl_certificate /path/to/your/fullchain.pem;
-    ssl_certificate_key /path/to/your/privkey.pem;
-
-    location / {
-        proxy_pass http://localhost:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -195,6 +188,26 @@ curl http://localhost:8080/api/health
 - For local deployment: `GEOPULSE_COOKIE_DOMAIN=""` and `GEOPULSE_AUTH_SECURE_COOKIES=false`
 - For production: set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com` and `GEOPULSE_AUTH_SECURE_COOKIES=true`
 - Verify JWT keys exist in `keys/` directory
+
+**Network/Proxy issues:**
+
+- API requests failing: Check that frontend nginx proxy is configured correctly
+- Multiple access methods not working: Ensure `GEOPULSE_UI_URL` includes all required URLs (comma-separated)
+- CORS errors: Verify backend `GEOPULSE_UI_URL` matches your access URLs
+- Development proxy issues: Ensure Vite dev server is running with proxy configuration
+
+**Configuration issues:**
+
+- Check `.env` file is properly formatted and readable by containers
+- Verify `GEOPULSE_BACKEND_URL` uses correct container name (`http://geopulse-backend:8080` for Docker)
+- For homelab: Use your actual IP addresses in `GEOPULSE_UI_URL`
+
+**Key generation issues:**
+
+- JWT keys are automatically generated in the `keys/` directory on first startup
+- If you see key-related errors, check that the `geopulse-keygen` service completed successfully: `docker compose logs geopulse-keygen`
+- Keys are persistent - they won't be regenerated if they already exist
+- To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`
 
 ---
 

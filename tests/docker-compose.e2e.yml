@@ -1,4 +1,13 @@
 services:
+  geopulse-keygen-e2e:
+    image: alpine:latest
+    container_name: geopulse-keygen-e2e
+    restart: "no"
+    volumes:
+      - ../keys:/keys
+      - ../generate-keys.sh:/generate-keys.sh
+    command: sh /generate-keys.sh
+
   geopulse-backend-e2e:
     build:
       context: ..
@@ -10,8 +19,10 @@ services:
     ports:
       - "8081:8080"  # Different port to avoid conflicts
     volumes:
-      - ../backend/src/main/resources/keys:/app/keys
+      - ../keys:/app/keys
     depends_on:
+      geopulse-keygen-e2e:
+        condition: service_completed_successfully
       geopulse-postgres-e2e:
         condition: service_healthy
 

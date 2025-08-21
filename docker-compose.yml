@@ -1,4 +1,13 @@
 services:
+  geopulse-keygen:
+    image: alpine:latest
+    container_name: geopulse-keygen
+    restart: "no"
+    volumes:
+      - ./keys:/keys
+      - ./generate-keys.sh:/generate-keys.sh
+    command: sh /generate-keys.sh
+
   geopulse-backend:
     image: tess1o/geopulse-backend:1.0.0-rc.2
     container_name: geopulse-backend
@@ -12,6 +21,8 @@ services:
     volumes:
       - ./keys:/app/keys
     depends_on:
+      geopulse-keygen:
+        condition: service_completed_successfully
       geopulse-postgres:
         condition: service_healthy
 
@@ -19,12 +30,12 @@ services:
     image: tess1o/geopulse-ui:1.0.0-rc.2
     container_name: geopulse-ui
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - 5555:80  # Change left port to customize external access
     depends_on:
       - geopulse-backend
-    environment:
-      - API_BASE_URL=${GEOPULSE_BACKEND_URL}/api
 
   geopulse-postgres:
     image: postgis/postgis:17-3.5

@@ -1,16 +1,18 @@
 services:
-  geopulse-keygen:
+  geopulse-keygen-dev:
     image: alpine:latest
-    container_name: geopulse-keygen
+    container_name: geopulse-keygen-dev
     restart: "no"
     volumes:
       - ./keys:/keys
       - ./generate-keys.sh:/generate-keys.sh
     command: sh /generate-keys.sh
 
-  geopulse-backend:
-    image: tess1o/geopulse-backend:1.0.0-rc.2
-    container_name: geopulse-backend
+  geopulse-backend-dev:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: geopulse-backend-dev
     restart: unless-stopped
     env_file:
       - .env
@@ -21,56 +23,39 @@ services:
     volumes:
       - ./keys:/app/keys
     depends_on:
-      geopulse-keygen:
+      geopulse-keygen-dev:
         condition: service_completed_successfully
-      geopulse-postgres:
+      geopulse-postgres-dev:
         condition: service_healthy
 
-  geopulse-ui:
-    image: tess1o/geopulse-ui:1.0.0-rc.2
-    container_name: geopulse-ui
+  geopulse-ui-dev:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: geopulse-ui-dev
     restart: unless-stopped
     env_file:
       - .env
     ports:
       - 5555:80  # Change left port to customize external access
     depends_on:
-      - geopulse-backend
+      - geopulse-backend-dev
 
-  geopulse-postgres:
+  geopulse-postgres-dev:
     image: postgis/postgis:17-3.5
-    container_name: geopulse-postgres
+    container_name: geopulse-postgres-dev
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
       POSTGRES_DB: ${GEOPULSE_POSTGRES_DB}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data-dev:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  geopulse-mosquitto:
-    image: iegomez/mosquitto-go-auth:3.0.0-mosquitto_2.0.18
-    container_name: geopulse-mosquitto
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "1883:1883"
-    volumes:
-      - ./mosquitto_entrypoint.sh:/entrypoint.sh
-      - ./mosquitto/config:/mosquitto/config
-      - ./mosquitto/data:/mosquitto/data
-      - ./mosquitto/log:/mosquitto/log
-    entrypoint: ["/entrypoint.sh"]
-    command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
-    depends_on:
-      geopulse-postgres:
-        condition: service_healthy
-
 volumes:
-  postgres-data:
+  postgres-data-dev:

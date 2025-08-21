@@ -63,3 +63,4 @@ npm-debug.log*
 *.tmp
 *.temp
 *.log
+/keys/
