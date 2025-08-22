@@ -53,6 +53,9 @@ public class TimelineQueryService {
 
     @Inject
     TimelineConfigurationProvider configurationProvider;
+    
+    @Inject
+    WholeTimelineProcessor wholeTimelineProcessor;
     /**
      * Get timeline for a user within a specific time range.
      * Simple logic without version checking, expansion, or staleness detection.
@@ -155,19 +158,53 @@ public class TimelineQueryService {
             return createEmptyTimeline(userId, TimelineDataSource.CACHED);
         }
 
-        // GPS data exists - generate and cache timeline
-        log.debug("Found {} GPS points - generating and caching timeline", gpsData.getPoints().size());
+        // GPS data exists - generate timeline using WholeTimelineProcessor for past days
+        log.debug("Found {} GPS points - generating timeline using WholeTimelineProcessor", gpsData.getPoints().size());
         try {
-            MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(userId, startTime, endTime);
-            timeline.setDataSource(TimelineDataSource.CACHED);
-            timeline.setLastUpdated(Instant.now());
-
-            // Cache the generated timeline for future requests
-            timelineCacheService.save(userId, startTime, endTime, timeline);
+            // For past days, always use WholeTimelineProcessor which handles overnight stays correctly
+            LocalDate startDate = startTime.atZone(ZoneOffset.UTC).toLocalDate();
+            LocalDate endDate = endTime.atZone(ZoneOffset.UTC).toLocalDate();
             
-            log.debug("Generated and cached timeline: {} stays, {} trips, {} data gaps", 
-                     timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
-            return timeline;
+            if (startDate.equals(endDate)) {
+                // Single day - use WholeTimelineProcessor
+                MovementTimelineDTO timeline = wholeTimelineProcessor.processWholeTimeline(userId, startDate);
+                if (timeline != null) {
+                    timeline.setDataSource(TimelineDataSource.CACHED);
+                    timeline.setLastUpdated(Instant.now());
+                    log.debug("Generated timeline for day {}: {} stays, {} trips, {} data gaps", 
+                             startDate, timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
+                    return timeline;
+                }
+            } else {
+                // Multi-day range - process each day with WholeTimelineProcessor and combine
+                MovementTimelineDTO combinedTimeline = new MovementTimelineDTO(userId);
+                
+                LocalDate currentDate = startDate;
+                while (!currentDate.isAfter(endDate)) {
+                    MovementTimelineDTO dayTimeline = wholeTimelineProcessor.processWholeTimeline(userId, currentDate);
+                    if (dayTimeline != null) {
+                        combinedTimeline.getStays().addAll(dayTimeline.getStays());
+                        combinedTimeline.getTrips().addAll(dayTimeline.getTrips());
+                        combinedTimeline.getDataGaps().addAll(dayTimeline.getDataGaps());
+                    }
+                    currentDate = currentDate.plusDays(1);
+                }
+                
+                // Sort by timestamp to maintain chronological order
+                combinedTimeline.getStays().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
+                combinedTimeline.getTrips().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
+                combinedTimeline.getDataGaps().sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
+                
+                combinedTimeline.setDataSource(TimelineDataSource.CACHED);
+                combinedTimeline.setLastUpdated(Instant.now());
+                
+                log.debug("Generated combined timeline for {} days: {} stays, {} trips, {} data gaps", 
+                         java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1,
+                         combinedTimeline.getStaysCount(), combinedTimeline.getTripsCount(), combinedTimeline.getDataGapsCount());
+                return combinedTimeline;
+            }
+            
+            return createEmptyTimeline(userId, TimelineDataSource.CACHED);
             
         } catch (Exception e) {
             log.error("Failed to generate timeline for user {} from {} to {}", 

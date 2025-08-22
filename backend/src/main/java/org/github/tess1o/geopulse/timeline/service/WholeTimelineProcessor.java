@@ -16,17 +16,18 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 
 /**
- * Processes timeline generation for overnight stays by implementing the 4-step algorithm:
+ * Processes timeline generation for whole days using the 4-step algorithm:
  * 1. Retrieve the last saved event from previous days
  * 2. Generate timeline from that event's start time to end of processing day
  * 3. Update existing event with new end time/duration from first generated event
  * 4. Save remaining generated events (skipping first one)
  * 
  * This ensures overnight stays are properly extended rather than cut at midnight.
+ * This is the unified processor for all whole-day timeline generation.
  */
 @ApplicationScoped
 @Slf4j
-public class OvernightTimelineProcessor {
+public class WholeTimelineProcessor {
 
     @Inject
     TimelineService timelineGenerationService;
@@ -52,8 +53,8 @@ public class OvernightTimelineProcessor {
      * @return MovementTimelineDTO with processed timeline data
      */
     @Transactional
-    public MovementTimelineDTO processOvernightTimeline(UUID userId, LocalDate processingDate) {
-        log.debug("Processing overnight timeline for user {} on date {}", userId, processingDate);
+    public MovementTimelineDTO processWholeTimeline(UUID userId, LocalDate processingDate) {
+        log.debug("Processing whole-day timeline for user {} on date {}", userId, processingDate);
 
         Instant startOfProcessingDay = processingDate.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant endOfProcessingDay = processingDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
@@ -238,16 +239,21 @@ public class OvernightTimelineProcessor {
 
     /**
      * Generate standard 00:00-23:59 timeline when no previous events exist.
-     * Uses TimelineQueryService without prepending to avoid duplication.
+     * Uses TimelineService directly to avoid circular dependency.
      */
     private MovementTimelineDTO generateStandardTimeline(UUID userId, Instant startOfDay, Instant endOfDay) {
         log.debug("Generating standard timeline for user {} from {} to {}", userId, startOfDay, endOfDay);
         
-        // Use TimelineQueryService without prepending since this is daily job processing
-        MovementTimelineDTO timeline = timelineQueryService.getTimeline(userId, startOfDay, endOfDay, false);
+        // Use TimelineService directly to avoid circular dependency with TimelineQueryService
+        MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(userId, startOfDay, endOfDay);
         if (timeline != null) {
             timeline.setDataSource(TimelineDataSource.CACHED);
             timeline.setLastUpdated(Instant.now());
+            
+            // Cache the generated timeline (same as overnight processing does)
+            timelineCacheService.save(userId, startOfDay, endOfDay, timeline);
+            log.debug("Cached standard timeline: {} stays, {} trips", 
+                     timeline.getStaysCount(), timeline.getTripsCount());
         }
 
         return timeline;

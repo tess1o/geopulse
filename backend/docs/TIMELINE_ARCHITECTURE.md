@@ -69,17 +69,25 @@ public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant e
 
 ```
 ┌─────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
-│  TimelineQuery      │    │  TimelineGeneration  │    │  TimelineBackground  │
-│  Service            │    │  Service (Live)      │    │  Service             │
-│  (Orchestrator)     │    │                      │    │  (Priority Queue)    │
+│  TimelineQuery      │    │  WholeTimeline       │    │  TimelineBackground  │
+│  Service            │    │  Processor           │    │  Service             │
+│  (Orchestrator)     │    │  (Unified Day        │    │  (Priority Queue)    │
+│                     │    │   Processing)        │    │                      │
 └─────────────────────┘    └──────────────────────┘    └──────────────────────┘
          │                           │                            │
          ▼                           ▼                            ▼
 ┌─────────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
-│  TimelineCache      │    │  TimelineData        │    │  TimelineEvent       │
-│  Service            │    │  Service             │    │  Service             │
-│  (Simple Cache)     │    │  (GPS Retrieval)     │    │  (Impact Analysis)   │
+│  TimelineCache      │    │  TimelineGeneration  │    │  TimelineEvent       │
+│  Service            │    │  Service (Live)      │    │  Service             │
+│  (Simple Cache)     │    │                      │    │  (Impact Analysis)   │
 └─────────────────────┘    └──────────────────────┘    └──────────────────────┘
+                                    │
+                                    ▼
+                           ┌──────────────────────┐
+                           │  TimelineData        │
+                           │  Service             │
+                           │  (GPS Retrieval)     │
+                           └──────────────────────┘
 ```
 
 ### Key Services
@@ -88,9 +96,22 @@ public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant e
 **Role**: Main orchestrator with simple decision logic
 
 **Decision Logic**:
-- **Today only** → Live generation
-- **Past only** → Cache check → Generate if no GPS data → Return empty if no GPS
+- **Today only** → Live generation using TimelineService
+- **Past only** → Cache check → Generate using WholeTimelineProcessor if no cache → Return empty if no GPS
 - **Mixed range** → Combine cached past + live today
+
+#### WholeTimelineProcessor
+**Role**: Unified whole-day timeline processor with overnight stay handling
+
+**Key Features**:
+- **4-step overnight algorithm**: Extends stays across midnight boundaries
+- **Consistent processing**: Used by all whole-day generation paths
+- **Fallback logic**: Uses standard 00:00-23:59 processing when no previous events exist
+
+**Usage**:
+- Daily scheduled processing (DailyTimelineProcessingService)
+- Background regeneration (TimelineBackgroundService)
+- Past day requests (TimelineQueryService)
 
 #### TimelineCacheService
 **Role**: Simple existence-based cache operations
@@ -137,9 +158,9 @@ Request → Cache Check → Exists? → Return Cached
    ↓           ↓           ↓           ↓
  User API   Database   Timeline    CACHED source
                ↓         Missing?
-             GPS Check → Generate → Cache → Return
-               ↓           ↓          ↓        ↓
-           Data Exists  Processing  Store   LIVE source
+             GPS Check → WholeTimelineProcessor → Cache → Return
+               ↓           ↓                      ↓        ↓
+           Data Exists  4-Step Algorithm        Store   LIVE source
                ↓
            No GPS → Empty Timeline
 ```
@@ -302,20 +323,15 @@ private void processRegenerationTask(TimelineRegenerationTask task) {
         task.setStatus(TaskStatus.PROCESSING);
         task.setProcessingStartedAt(Instant.now());
         
-        // Generate fresh timeline
-        MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
-            task.getUser().getId(),
-            task.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant(),
-            task.getEndDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
-        );
-        
-        // Cache the result
-        timelineCacheService.save(
-            task.getUser().getId(),
-            task.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant(),
-            task.getEndDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
-            timeline
-        );
+        // Process each day individually using WholeTimelineProcessor for consistency
+        LocalDate currentDate = task.getStartDate();
+        while (!currentDate.isAfter(task.getEndDate())) {
+            MovementTimelineDTO dayTimeline = wholeTimelineProcessor.processWholeTimeline(
+                task.getUser().getId(), currentDate);
+            
+            // WholeTimelineProcessor automatically handles caching
+            currentDate = currentDate.plusDays(1);
+        }
         
         task.setStatus(TaskStatus.COMPLETED);
         task.setCompletedAt(Instant.now());

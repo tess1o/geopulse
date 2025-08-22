@@ -37,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class OvernightTimelineProcessorTest {
 
     @Inject
-    OvernightTimelineProcessor overnightTimelineProcessor;
+    WholeTimelineProcessor wholeTimelineProcessor;
 
     @Inject
     DailyTimelineProcessingService dailyTimelineProcessingService;
@@ -115,7 +115,7 @@ class OvernightTimelineProcessorTest {
         log.info("Created GPS data: Aug 3rd (20:00-23:00 at home) + Aug 4th (14:00-16:00 at office)");
 
         // Process Aug 4th using overnight processing
-        MovementTimelineDTO aug4Timeline = overnightTimelineProcessor.processOvernightTimeline(testUser.getId(), aug4);
+        MovementTimelineDTO aug4Timeline = wholeTimelineProcessor.processWholeTimeline(testUser.getId(), aug4);
 
         assertNotNull(aug4Timeline, "Aug 4th timeline should be generated");
         assertTrue(aug4Timeline.getStays().size() >= 1, "Aug 4th timeline should have at least 1 stay (office)");
@@ -141,7 +141,7 @@ class OvernightTimelineProcessorTest {
         log.info("Created GPS data: Aug 4th (09:00-17:00 at office) with no previous events");
 
         // Process Aug 4th using overnight processing (should fall back to standard)
-        MovementTimelineDTO aug4Timeline = overnightTimelineProcessor.processOvernightTimeline(testUser.getId(), aug4);
+        MovementTimelineDTO aug4Timeline = wholeTimelineProcessor.processWholeTimeline(testUser.getId(), aug4);
 
         assertNotNull(aug4Timeline, "Aug 4th timeline should be generated");
         assertTrue(aug4Timeline.getStaysCount() >= 1, "Aug 4th timeline should have at least 1 stay (office)");
@@ -191,7 +191,7 @@ class OvernightTimelineProcessorTest {
         log.info("Created GPS data: Aug 3rd (22:00-23:00 at home) + Aug 4th (10:00-14:00 office, 15:00-18:00 cafe)");
 
         // Process Aug 4th using overnight processing
-        MovementTimelineDTO aug4Timeline = overnightTimelineProcessor.processOvernightTimeline(testUser.getId(), aug4);
+        MovementTimelineDTO aug4Timeline = wholeTimelineProcessor.processWholeTimeline(testUser.getId(), aug4);
 
         assertNotNull(aug4Timeline, "Aug 4th timeline should be generated");
         assertTrue(aug4Timeline.getStays().size() >= 2, "Aug 4th timeline should have at least 2 stays (office + cafe)");

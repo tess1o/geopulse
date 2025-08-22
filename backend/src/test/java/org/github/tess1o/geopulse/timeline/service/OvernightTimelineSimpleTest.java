@@ -126,7 +126,7 @@ class OvernightTimelineSimpleTest {
 
     @Test
     void testOvernightProcessingFallback() {
-        // Test that OvernightTimelineProcessor properly handles the case when no previous events exist
+        // Test that WholeTimelineProcessor properly handles the case when no previous events exist
         // This should not require GPS data generation
         
         LocalDate aug4 = LocalDate.of(2025, 8, 4);

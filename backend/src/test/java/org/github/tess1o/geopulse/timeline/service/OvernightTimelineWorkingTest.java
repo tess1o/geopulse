@@ -36,7 +36,7 @@ class OvernightTimelineWorkingTest {
     DailyTimelineProcessingService dailyTimelineProcessingService;
 
     @Inject
-    OvernightTimelineProcessor overnightTimelineProcessor;
+    WholeTimelineProcessor wholeTimelineProcessor;
 
     @Inject
     UserRepository userRepository;
@@ -116,7 +116,7 @@ class OvernightTimelineWorkingTest {
         log.info("=== PROCESSING AUG 8TH WITH OVERNIGHT ALGORITHM ===");
         
         // Process Aug 8th using overnight processing
-        MovementTimelineDTO aug8Timeline = overnightTimelineProcessor.processOvernightTimeline(testUser.getId(), aug8);
+        MovementTimelineDTO aug8Timeline = wholeTimelineProcessor.processWholeTimeline(testUser.getId(), aug8);
         
         assertNotNull(aug8Timeline, "Aug 8th timeline should be generated");
         log.info("Aug 8th timeline: {} stays, {} trips (source: {})", 

@@ -35,6 +35,9 @@ public class TimelineBackgroundService {
 
     @Inject
     TimelineService timelineGenerationService;
+    
+    @Inject
+    WholeTimelineProcessor wholeTimelineProcessor;
 
     @Inject
     TimelineCacheService timelineCacheService;
@@ -176,35 +179,50 @@ public class TimelineBackgroundService {
         managedTask.setProcessingStartedAt(Instant.now());
 
         try {
-            // Use bulk generation instead of day-by-day processing
-            Instant rangeStart = managedTask.getStartDate().atStartOfDay(ZoneOffset.UTC).toInstant();
-            Instant rangeEnd = managedTask.getEndDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-            
-            log.info("Generating bulk timeline for user {} from {} to {} ({} days)", 
+            // Use day-by-day processing with WholeTimelineProcessor for consistency with daily job
+            log.info("Generating timeline day-by-day for user {} from {} to {} ({} days)", 
                     managedTask.getUser().getId(), managedTask.getStartDate(), managedTask.getEndDate(),
                     java.time.temporal.ChronoUnit.DAYS.between(managedTask.getStartDate(), managedTask.getEndDate()) + 1);
 
-            // Generate timeline for entire range in one operation
-            MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
-                managedTask.getUser().getId(), rangeStart, rangeEnd);
-
-            if (timeline != null && (!timeline.getStays().isEmpty() || !timeline.getTrips().isEmpty())) {
-                // Save bulk timeline data using optimized batch save
-                saveBulkTimeline(managedTask.getUser().getId(), timeline, managedTask.getStartDate(), managedTask.getEndDate());
+            int processedDays = 0;
+            int totalStays = 0;
+            int totalTrips = 0;
+            
+            // Process each day individually using WholeTimelineProcessor
+            LocalDate currentDate = managedTask.getStartDate();
+            while (!currentDate.isAfter(managedTask.getEndDate())) {
+                try {
+                    log.debug("Processing day {} for user {}", currentDate, managedTask.getUser().getId());
+                    MovementTimelineDTO dayTimeline = wholeTimelineProcessor.processWholeTimeline(
+                        managedTask.getUser().getId(), currentDate);
+                    
+                    if (dayTimeline != null) {
+                        totalStays += dayTimeline.getStaysCount();
+                        totalTrips += dayTimeline.getTripsCount();
+                        processedDays++;
+                        log.debug("Day {} processed: {} stays, {} trips", currentDate, 
+                                dayTimeline.getStaysCount(), dayTimeline.getTripsCount());
+                    } else {
+                        log.debug("No timeline data for day {} (no GPS data)", currentDate);
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to process day {} for user {}: {}", currentDate, 
+                            managedTask.getUser().getId(), e.getMessage());
+                    // Continue with next day instead of failing entire task
+                }
                 
-                log.info("Successfully generated bulk timeline for user {} - {} stays, {} trips", 
-                         managedTask.getUser().getId(), timeline.getStaysCount(), timeline.getTripsCount());
-            } else {
-                log.debug("No timeline data generated for date range {} to {} (no GPS data)", 
-                         managedTask.getStartDate(), managedTask.getEndDate());
+                currentDate = currentDate.plusDays(1);
             }
+            
+            log.info("Successfully processed {} days for user {} - {} total stays, {} total trips", 
+                     processedDays, managedTask.getUser().getId(), totalStays, totalTrips);
 
             // Mark task as completed
             managedTask.setStatus(TimelineRegenerationTask.TaskStatus.COMPLETED);
             managedTask.setCompletedAt(Instant.now());
             managedTask.setErrorMessage(null);
 
-            log.info("Successfully completed timeline regeneration task {} in bulk mode", 
+            log.info("Successfully completed timeline regeneration task {} using day-by-day processing", 
                      managedTask.getId());
             return true;
 
