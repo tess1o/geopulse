@@ -10,6 +10,12 @@ import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.timeline.mapper.TimelinePersistenceMapper;
 import org.github.tess1o.geopulse.timeline.model.*;
+import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
+import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
+
+import java.util.List;
+import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
 
@@ -56,11 +62,18 @@ public class TimelineQueryService {
     
     @Inject
     WholeTimelineProcessor wholeTimelineProcessor;
+    
+    @Inject
+    TimelineDataGapRepository timelineDataGapRepository;
+    
+    @Inject
+    UserRepository userRepository;
     /**
      * Get timeline for a user within a specific time range.
      * Simple logic without version checking, expansion, or staleness detection.
      * Includes prepending previous context for complete timeline view.
      */
+    @Transactional
     public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant endTime) {
         return getTimeline(userId, startTime, endTime, true);
     }
@@ -74,6 +87,7 @@ public class TimelineQueryService {
      * @param includePrependedContext if true, prepend previous context; if false, skip prepending
      * @return timeline data
      */
+    @Transactional
     public MovementTimelineDTO getTimeline(UUID userId, Instant startTime, Instant endTime, boolean includePrependedContext) {
         log.debug("Getting timeline for user {} from {} to {} (prepend: {})", userId, startTime, endTime, includePrependedContext);
 
@@ -154,8 +168,8 @@ public class TimelineQueryService {
         GpsPointPathDTO gpsData = timelineDataService.getGpsPointPath(userId, startTime, endTime);
         
         if (gpsData == null || gpsData.getPoints() == null || gpsData.getPoints().isEmpty()) {
-            log.debug("No GPS data found - returning empty timeline");
-            return createEmptyTimeline(userId, TimelineDataSource.CACHED);
+            log.debug("No GPS data found - creating data gap for entire time range");
+            return createTimelineWithDataGap(userId, startTime, endTime, TimelineDataSource.CACHED);
         }
 
         // GPS data exists - generate timeline using WholeTimelineProcessor for past days
@@ -176,32 +190,14 @@ public class TimelineQueryService {
                     return timeline;
                 }
             } else {
-                // Multi-day range - process each day with WholeTimelineProcessor and combine
-                MovementTimelineDTO combinedTimeline = new MovementTimelineDTO(userId);
-                
-                LocalDate currentDate = startDate;
-                while (!currentDate.isAfter(endDate)) {
-                    MovementTimelineDTO dayTimeline = wholeTimelineProcessor.processWholeTimeline(userId, currentDate);
-                    if (dayTimeline != null) {
-                        combinedTimeline.getStays().addAll(dayTimeline.getStays());
-                        combinedTimeline.getTrips().addAll(dayTimeline.getTrips());
-                        combinedTimeline.getDataGaps().addAll(dayTimeline.getDataGaps());
-                    }
-                    currentDate = currentDate.plusDays(1);
+                // Multi-day range - use new processMultiDayTimeline method for proper data gap handling
+                MovementTimelineDTO timeline = wholeTimelineProcessor.processMultiDayTimeline(userId, startTime, endTime);
+                if (timeline != null) {
+                    log.debug("Generated multi-day timeline for {} days: {} stays, {} trips, {} data gaps", 
+                             java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1,
+                             timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
+                    return timeline;
                 }
-                
-                // Sort by timestamp to maintain chronological order
-                combinedTimeline.getStays().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
-                combinedTimeline.getTrips().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
-                combinedTimeline.getDataGaps().sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
-                
-                combinedTimeline.setDataSource(TimelineDataSource.CACHED);
-                combinedTimeline.setLastUpdated(Instant.now());
-                
-                log.debug("Generated combined timeline for {} days: {} stays, {} trips, {} data gaps", 
-                         java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) + 1,
-                         combinedTimeline.getStaysCount(), combinedTimeline.getTripsCount(), combinedTimeline.getDataGapsCount());
-                return combinedTimeline;
             }
             
             return createEmptyTimeline(userId, TimelineDataSource.CACHED);
@@ -410,6 +406,46 @@ public class TimelineQueryService {
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
         timeline.setDataSource(dataSource);
         timeline.setLastUpdated(Instant.now());
+        return timeline;
+    }
+    
+    /**
+     * Create a timeline with a single data gap covering the entire time range.
+     * This represents periods where no GPS data is available.
+     * Persists the data gap to the database and caches the timeline.
+     * Note: Must be called within a transactional context.
+     */
+    private MovementTimelineDTO createTimelineWithDataGap(UUID userId, Instant startTime, Instant endTime, TimelineDataSource dataSource) {
+        MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
+        timeline.setDataSource(dataSource);
+        timeline.setLastUpdated(Instant.now());
+        
+        // Create a data gap covering the entire requested time range
+        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startTime, endTime);
+        timeline.getDataGaps().add(dataGap);
+        
+        // Persist the data gap entity to the database
+        UserEntity user = userRepository.findById(userId);
+        if (user != null) {
+            TimelineDataGapEntity dataGapEntity = TimelineDataGapEntity.builder()
+                .user(user)
+                .startTime(startTime)
+                .endTime(endTime)
+                .durationSeconds(dataGap.getDurationSeconds())
+                .build();
+                
+            timelineDataGapRepository.persist(dataGapEntity);
+            log.debug("Persisted data gap entity: id={}, startTime={}, endTime={}, duration={}s", 
+                     dataGapEntity.getId(), dataGapEntity.getStartTime(), 
+                     dataGapEntity.getEndTime(), dataGapEntity.getDurationSeconds());
+        }
+        
+        // Cache the timeline for future requests
+        timelineCacheService.save(userId, startTime, endTime, timeline);
+        
+        log.debug("Created and cached timeline with data gap from {} to {} ({} minutes)", 
+                 startTime, endTime, dataGap.getDurationMinutes());
+        
         return timeline;
     }
     

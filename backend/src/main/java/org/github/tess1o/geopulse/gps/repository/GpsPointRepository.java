@@ -33,6 +33,21 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
+     * Find the latest GPS timestamp for a user within a specific time range.
+     * Used for data gap detection in multi-day timeline processing.
+     *
+     * @param userId The ID of the user
+     * @param startTime The start of the time range
+     * @param endTime The end of the time range
+     * @return The timestamp of the latest GPS point in the range, or null if none found
+     */
+    public Instant findLatestTimestamp(UUID userId, Instant startTime, Instant endTime) {
+        GpsPointEntity latestPoint = find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp DESC",
+                userId, startTime, endTime).firstResult();
+        return latestPoint != null ? latestPoint.getTimestamp() : null;
+    }
+
+    /**
      * Find the latest GPS point for a user and source type.
      * Used for location-based duplicate detection.
      *

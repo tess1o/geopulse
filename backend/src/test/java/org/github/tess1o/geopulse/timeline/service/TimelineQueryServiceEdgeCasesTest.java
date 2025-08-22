@@ -42,6 +42,9 @@ class TimelineQueryServiceEdgeCasesTest {
     @Inject
     GpsPointRepository gpsPointRepository;
 
+    @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository timelineDataGapRepository;
+
     private UserEntity testUser;
 
     @BeforeEach
@@ -67,6 +70,8 @@ class TimelineQueryServiceEdgeCasesTest {
 
     @Transactional
     void cleanupTestData() {
+        // Clean up data gaps first to avoid foreign key constraint violations
+        timelineDataGapRepository.delete("user.email = ?1", "test-timeline-edges@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-timeline-edges@geopulse.app");
         userRepository.delete("email = ?1", "test-timeline-edges@geopulse.app");
     }

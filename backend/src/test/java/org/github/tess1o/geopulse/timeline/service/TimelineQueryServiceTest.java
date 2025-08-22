@@ -48,6 +48,9 @@ class TimelineQueryServiceTest {
     @Inject
     jakarta.persistence.EntityManager entityManager;
 
+    @Inject
+    org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository timelineDataGapRepository;
+
     private UserEntity testUser;
     private UUID testUserId;
     private Instant testStartTime;
@@ -83,6 +86,10 @@ class TimelineQueryServiceTest {
         if (testUser != null) {
             // Clean up timeline regeneration queue first to avoid foreign key constraint violations
             entityManager.createQuery("DELETE FROM TimelineRegenerationTask t WHERE t.user.id = :userId")
+                    .setParameter("userId", testUser.getId())
+                    .executeUpdate();
+            // Clean up data gaps first to avoid foreign key constraint violations
+            entityManager.createQuery("DELETE FROM TimelineDataGapEntity t WHERE t.user.id = :userId")
                     .setParameter("userId", testUser.getId())
                     .executeUpdate();
             // Clean up test timeline data
@@ -166,6 +173,7 @@ class TimelineQueryServiceTest {
     }
 
     @Test
+    @Transactional
     void testGetTimeline_PastWithoutCacheOrGps_ShouldReturnEmpty() {
         // Arrange - No GPS data created, cache should be empty
 

@@ -5,9 +5,12 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.timeline.model.*;
+import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -33,9 +36,6 @@ public class WholeTimelineProcessor {
     TimelineService timelineGenerationService;
 
     @Inject
-    TimelineQueryService timelineQueryService;
-
-    @Inject
     TimelineStayRepository timelineStayRepository;
 
     @Inject
@@ -43,6 +43,15 @@ public class WholeTimelineProcessor {
 
     @Inject
     TimelineCacheService timelineCacheService;
+
+    @Inject
+    TimelineDataGapRepository timelineDataGapRepository;
+
+    @Inject
+    UserRepository userRepository;
+
+    @Inject
+    GpsPointRepository gpsPointRepository;
 
     /**
      * Process timeline for a user on a specific date, handling overnight stays.
@@ -257,6 +266,206 @@ public class WholeTimelineProcessor {
         }
 
         return timeline;
+    }
+
+    /**
+     * Process timeline for a user across a multi-day date range, handling data gaps properly.
+     * This method generates timeline for the entire range as a single unit, ensuring proper
+     * data gap detection at the end of available GPS data.
+     *
+     * @param userId user ID
+     * @param startTime start of the time range
+     * @param endTime end of the time range
+     * @return MovementTimelineDTO with processed timeline data including proper data gaps
+     */
+    @Transactional
+    public MovementTimelineDTO processMultiDayTimeline(UUID userId, Instant startTime, Instant endTime) {
+        log.debug("Processing multi-day timeline for user {} from {} to {}", userId, startTime, endTime);
+
+        // Find the last saved event before the start time to handle overnight stays
+        LastSavedEvent lastSavedEvent = findLastSavedEvent(userId, startTime);
+        
+        Instant actualStartTime = startTime;
+        if (lastSavedEvent != null) {
+            log.debug("Found last saved event: {} at {}", lastSavedEvent.getType(), lastSavedEvent.getStartTime());
+            actualStartTime = lastSavedEvent.getStartTime();
+        }
+
+        // Generate timeline for the entire range as a single unit
+        MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(userId, actualStartTime, endTime);
+        
+        if (timeline == null) {
+            // No timeline generated - check if there are existing data gaps for this period
+            MovementTimelineDTO existingGapTimeline = getExistingDataGaps(userId, startTime, endTime);
+            if (existingGapTimeline != null && existingGapTimeline.getDataGapsCount() > 0) {
+                return existingGapTimeline;
+            }
+            // No existing gaps found - create new one
+            return createTimelineWithDataGap(userId, startTime, endTime, TimelineDataSource.CACHED);
+        }
+
+        // If we started earlier due to a previous event, update that event and remove it from the new timeline
+        if (lastSavedEvent != null && timeline.getStaysCount() > 0) {
+            processGeneratedTimelineForRange(lastSavedEvent, timeline, startTime);
+        }
+
+        // Check if we need to add data gaps for periods where GPS data is missing
+        // This handles cases where GPS data ends before the requested end time
+        // TEMPORARILY DISABLED: Only add gaps if timeline generation didn't already detect them
+        // if (timeline.getDataGapsCount() == 0) {
+            ensureDataGapsForMissingPeriods(timeline, userId, startTime, endTime);
+        // }
+
+        // CRITICAL: Save the timeline to database and cache (this was missing!)
+        timelineCacheService.save(userId, startTime, endTime, timeline);
+        
+        // Set proper metadata
+        timeline.setDataSource(TimelineDataSource.CACHED);
+        timeline.setLastUpdated(Instant.now());
+        
+        log.debug("Generated multi-day timeline: {} stays, {} trips, {} data gaps", 
+                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
+
+        return timeline;
+    }
+
+    /**
+     * Process generated timeline for multi-day range, updating existing events properly.
+     */
+    private void processGeneratedTimelineForRange(LastSavedEvent lastSavedEvent, MovementTimelineDTO timeline, Instant rangeStartTime) {
+        if (timeline.getStaysCount() == 0 && timeline.getTripsCount() == 0) {
+            return;
+        }
+
+        // Similar logic to processGeneratedTimeline but for multi-day ranges
+        if (lastSavedEvent.getType() == EventType.STAY && timeline.getStaysCount() > 0) {
+            TimelineStayLocationDTO firstStay = timeline.getStays().get(0);
+            
+            // Update the existing stay in database
+            timelineStayRepository.findByIdOptional(lastSavedEvent.getId())
+                .ifPresent(existingStay -> {
+                    Duration extendedDuration = Duration.between(existingStay.getTimestamp(), firstStay.getTimestamp().plus(Duration.ofSeconds(firstStay.getStayDuration())));
+                    existingStay.setStayDuration(extendedDuration.toSeconds());
+                    log.debug("Updated existing stay {} with extended duration: {} seconds", existingStay.getId(), extendedDuration.toSeconds());
+                });
+
+            // Remove first stay from timeline since we updated the existing one
+            timeline.getStays().remove(0);
+        }
+        // Similar logic can be added for trips if needed
+    }
+
+    /**
+     * Create a timeline with a data gap covering the entire requested period when no GPS data exists.
+     */
+    private MovementTimelineDTO createTimelineWithDataGap(UUID userId, Instant startTime, Instant endTime, TimelineDataSource dataSource) {
+        log.debug("Creating timeline with data gap for user {} from {} to {}", userId, startTime, endTime);
+        
+        MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
+        timeline.setDataSource(dataSource);
+        timeline.setLastUpdated(Instant.now());
+        
+        // Add data gap for the entire period
+        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startTime, endTime);
+        timeline.getDataGaps().add(dataGap);
+        
+        // Persist the data gap to database
+        userRepository.findByIdOptional(userId).ifPresent(user -> {
+            TimelineDataGapEntity dataGapEntity = TimelineDataGapEntity.builder()
+                .user(user)
+                .startTime(startTime)
+                .endTime(endTime)
+                .build();
+            timelineDataGapRepository.persist(dataGapEntity);
+            log.debug("Persisted data gap entity for entire range: {} to {}", startTime, endTime);
+        });
+        
+        return timeline;
+    }
+
+    /**
+     * Get existing data gaps from database that overlap with the requested time range.
+     * This handles cases where a timeline request covers a period that already has persisted data gaps.
+     */
+    private MovementTimelineDTO getExistingDataGaps(UUID userId, Instant startTime, Instant endTime) {
+        log.debug("Looking for existing data gaps for user {} from {} to {}", userId, startTime, endTime);
+        
+        // Find data gaps that overlap with the requested time range
+        var existingGaps = timelineDataGapRepository.findByUserIdAndTimeRange(userId, startTime, endTime);
+        
+        if (existingGaps.isEmpty()) {
+            return null;
+        }
+        
+        log.debug("Found {} existing data gaps that overlap with requested period", existingGaps.size());
+        
+        // Create timeline with existing gaps
+        MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
+        timeline.setDataSource(TimelineDataSource.CACHED);
+        timeline.setLastUpdated(Instant.now());
+        
+        // Convert entities to DTOs, but only include gaps that actually overlap with the requested range
+        for (var gapEntity : existingGaps) {
+            // Calculate the intersection of the existing gap with the requested period
+            Instant gapStart = gapEntity.getStartTime().isAfter(startTime) ? gapEntity.getStartTime() : startTime;
+            Instant gapEnd = gapEntity.getEndTime().isBefore(endTime) ? gapEntity.getEndTime() : endTime;
+            
+            // Only include if there's actual overlap
+            if (gapStart.isBefore(gapEnd)) {
+                TimelineDataGapDTO gapDto = new TimelineDataGapDTO(gapStart, gapEnd);
+                timeline.getDataGaps().add(gapDto);
+                log.debug("Added existing data gap: {} to {}", gapStart, gapEnd);
+            }
+        }
+        
+        return timeline.getDataGapsCount() > 0 ? timeline : null;
+    }
+
+    /**
+     * Ensure that data gaps are created for periods where GPS data is missing.
+     * This checks if the timeline covers the full requested period and adds data gaps as needed.
+     */
+    private void ensureDataGapsForMissingPeriods(MovementTimelineDTO timeline, UUID userId, Instant requestStartTime, Instant requestEndTime) {
+        // Check if we have GPS data for the entire requested period
+        // We'll query for the latest GPS point to see where our data ends
+        
+        // First, get the actual GPS data range to compare with the requested range
+        Instant latestGpsTime = gpsPointRepository.findLatestTimestamp(userId, requestStartTime, requestEndTime);
+        
+        if (latestGpsTime == null) {
+            // No GPS data at all - entire period should be a data gap
+            createAndPersistDataGap(timeline, userId, requestStartTime, requestEndTime);
+            return;
+        }
+
+        // If GPS data ends before the requested end time, create a data gap for the missing period
+        if (latestGpsTime.isBefore(requestEndTime)) {
+            Instant gapStartTime = latestGpsTime.plusSeconds(1); // Start gap right after last GPS point
+            createAndPersistDataGap(timeline, userId, gapStartTime, requestEndTime);
+            
+            log.debug("Created data gap from {} to {} (GPS data ended at {})", 
+                     gapStartTime, requestEndTime, latestGpsTime);
+        }
+    }
+
+    /**
+     * Create a data gap DTO and persist it to the database.
+     */
+    private void createAndPersistDataGap(MovementTimelineDTO timeline, UUID userId, Instant gapStartTime, Instant gapEndTime) {
+        // Add data gap DTO to timeline
+        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(gapStartTime, gapEndTime);
+        timeline.getDataGaps().add(dataGap);
+        
+        // Persist the data gap entity to database
+        userRepository.findByIdOptional(userId).ifPresent(user -> {
+            TimelineDataGapEntity dataGapEntity = TimelineDataGapEntity.builder()
+                .user(user)
+                .startTime(gapStartTime)
+                .endTime(gapEndTime)
+                .build();
+            timelineDataGapRepository.persist(dataGapEntity);
+            log.debug("Persisted data gap entity: {} to {}", gapStartTime, gapEndTime);
+        });
     }
 
     /**
