@@ -107,6 +107,40 @@ export const useTechnicalDataStore = defineStore('technicalData', {
                 console.error('Error exporting GPS points:', error)
                 throw error
             }
+        },
+
+        async updateGpsPoint(pointId, data) {
+            try {
+                const response = await apiService.put(`/gps/${pointId}`, data)
+                const responseData = response.data || response
+                return responseData
+            } catch (error) {
+                console.error('Error updating GPS point:', error)
+                throw error
+            }
+        },
+
+        async deleteGpsPoint(pointId) {
+            try {
+                await apiService.delete(`/gps/${pointId}`)
+                return true
+            } catch (error) {
+                console.error('Error deleting GPS point:', error)
+                throw error
+            }
+        },
+
+        async deleteGpsPoints(pointIds) {
+            try {
+                const response = await apiService.delete('/gps/bulk', {
+                    gpsPointIds: pointIds
+                })
+                const responseData = response.data || response
+                return responseData
+            } catch (error) {
+                console.error('Error deleting GPS points:', error)
+                throw error
+            }
         }
     }
 })

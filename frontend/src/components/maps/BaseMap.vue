@@ -38,16 +38,6 @@ const map = ref(null)
 const isReady = ref(false)
 const isInitializing = ref(false)
 
-// Fix Leaflet default icons
-const fixLeafletIcons = () => {
-  delete L.Icon.Default.prototype._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
-    iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
-    shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href
-  })
-}
-
 // Map initialization with improved container detection
 const initializeMap = async () => {
   // Prevent multiple initialization attempts
@@ -58,7 +48,6 @@ const initializeMap = async () => {
   
   isInitializing.value = true
   
-  fixLeafletIcons()
   fixLeafletMarkerImages();
   fixLeafLetTooltip();
   fixLeafletMarkerAnimation();
@@ -70,7 +59,7 @@ const initializeMap = async () => {
   let attempts = 0
   const maxAttempts = 20 // Increased max attempts
   
-  const tryInit = () => {
+  function tryInit() {
     const container = document.getElementById(props.mapId)
     
     // More comprehensive container readiness check
@@ -100,14 +89,26 @@ const initializeMap = async () => {
           container.innerHTML = ''
         }
         
-        // Create map
-        map.value = L.map(props.mapId).setView(props.center, props.zoom)
+        // Create map with error handling
+        try {
+          map.value = L.map(props.mapId, {
+            attributionControl: true,
+            zoomControl: true,
+            touchZoom: true,
+            dragging: true,
+            tap: true,
+            touchExtend: false
+          }).setView(props.center, props.zoom)
 
-        // Add tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19
-        }).addTo(map.value)
+          // Add tile layer
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+          }).addTo(map.value)
+        } catch (mapError) {
+          console.error('Error creating Leaflet map:', mapError)
+          throw mapError
+        }
 
         // Add event listeners
         map.value.on('click', (e) => {
@@ -118,6 +119,19 @@ const initializeMap = async () => {
           e.originalEvent.preventDefault()
           emit('map-contextmenu', e)
         })
+
+        // // Fix touch event issues
+        // const container = map.value.getContainer()
+        // if (container) {
+        //   // Remove problematic touch events that cause warnings
+        //   container.addEventListener('touchstart', (e) => {
+        //     // Handle touchstart silently
+        //   }, { passive: true })
+        //
+        //   container.addEventListener('touchend', (e) => {
+        //     // Handle touchend silently
+        //   }, { passive: true })
+        // }
 
         // Ensure map container size is correct
         setTimeout(() => {
@@ -143,7 +157,10 @@ const initializeMap = async () => {
         isInitializing.value = false
         attempts++
         if (attempts < maxAttempts) {
+          console.log(`BaseMap retry attempt ${attempts}/${maxAttempts} for ${props.mapId}`)
           setTimeout(tryInit, 200)
+        } else {
+          console.error(`BaseMap initialization failed after ${maxAttempts} attempts:`, props.mapId)
         }
       }
     } else {

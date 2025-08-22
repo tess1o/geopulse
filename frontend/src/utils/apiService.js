@@ -253,10 +253,10 @@ const apiService = {
         }
     },
 
-    async delete(endpoint, params = {}) {
+    async delete(endpoint, data = {}) {
         return this._requestWithRetry(async () => {
             await this.checkAuthExpired(endpoint);
-            return await this._performSecureRequest('delete', endpoint, null, {params});
+            return await this._performSecureRequest('delete', endpoint, data);
         });
     },
 
@@ -333,7 +333,15 @@ const apiService = {
             } else if (method === 'put') {
                 response = await axios.put(`${API_BASE_URL}${endpoint}`, data, axiosOptions);
             } else if (method === 'delete') {
-                response = await axios.delete(`${API_BASE_URL}${endpoint}`, axiosOptions);
+                // For DELETE requests, send data in request body
+                if (data && Object.keys(data).length > 0) {
+                    response = await axios.delete(`${API_BASE_URL}${endpoint}`, {
+                        ...axiosOptions,
+                        data: data
+                    });
+                } else {
+                    response = await axios.delete(`${API_BASE_URL}${endpoint}`, axiosOptions);
+                }
             }
 
             return response.data;

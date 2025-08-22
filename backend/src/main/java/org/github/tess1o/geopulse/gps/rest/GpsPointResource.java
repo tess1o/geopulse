@@ -12,12 +12,14 @@ import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.timeline.simplification.GpsPathSimplifier;
+import jakarta.validation.Valid;
 
 import java.io.StringWriter;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -235,6 +237,107 @@ public class GpsPointResource {
         }
         
         return writer.toString();
+    }
+
+    /**
+     * Update a GPS point.
+     * This endpoint requires authentication.
+     *
+     * @param pointId The ID of the GPS point to update
+     * @param editDto The update data
+     * @return The updated GPS point
+     */
+    @PUT
+    @Path("/{pointId}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("USER")
+    public Response updateGpsPoint(@PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to update GPS point {} for user {}", pointId, userId);
+
+        try {
+            GpsPointDTO updatedPoint = gpsPointService.updateGpsPoint(pointId, editDto, userId);
+            return Response.ok(ApiResponse.success(updatedPoint)).build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("GPS point not found"))
+                    .build();
+        } catch (jakarta.ws.rs.ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to update GPS point {} for user {}", pointId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to update GPS point: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Delete a GPS point.
+     * This endpoint requires authentication.
+     *
+     * @param pointId The ID of the GPS point to delete
+     * @return 204 No Content if successful
+     */
+    @DELETE
+    @Path("/{pointId}")
+    @RolesAllowed("USER")
+    public Response deleteGpsPoint(@PathParam("pointId") Long pointId) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to delete GPS point {} for user {}", pointId, userId);
+
+        try {
+            gpsPointService.deleteGpsPoint(pointId, userId);
+            return Response.noContent().build();
+        } catch (jakarta.ws.rs.NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("GPS point not found"))
+                    .build();
+        } catch (jakarta.ws.rs.ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to delete GPS point {} for user {}", pointId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to delete GPS point: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Delete multiple GPS points.
+     * This endpoint requires authentication.
+     *
+     * @param bulkDeleteDto The bulk delete request containing GPS point IDs
+     * @return Response with the number of deleted points
+     */
+    @DELETE
+    @Path("/bulk")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("USER")
+    public Response deleteGpsPoints(@Valid BulkDeleteGpsPointsDto bulkDeleteDto) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to delete {} GPS points for user {}", 
+                 bulkDeleteDto.getGpsPointIds().size(), userId);
+
+        try {
+            int deletedCount = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);
+            return Response.ok(ApiResponse.success(Map.of("deletedCount", deletedCount))).build();
+        } catch (jakarta.ws.rs.ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to delete GPS points for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to delete GPS points: " + e.getMessage()))
+                    .build();
+        }
     }
 
 }

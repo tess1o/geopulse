@@ -1032,3 +1032,109 @@ body {
         color: white !important;
     }
 }
+
+/* ================================
+   TOOLTIP GLOBAL STYLING
+   ================================ */
+
+/* Force tooltip styling with high specificity - Light theme */
+html body .p-tooltip .p-tooltip-text {
+  background: #1e293b !important;
+  color: #ffffff !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
+  border: none !important;
+}
+
+/* Force tooltip arrow styling - Light theme */
+html body .p-tooltip .p-tooltip-arrow::before {
+  border-top-color: #1e293b !important;
+  border-bottom-color: #1e293b !important;
+  border-left-color: #1e293b !important;
+  border-right-color: #1e293b !important;
+}
+
+/* Force tooltip styling with high specificity - Dark theme */
+html body .p-dark .p-tooltip .p-tooltip-text {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+html body .p-dark .p-tooltip .p-tooltip-arrow::before {
+  border-top-color: #f8fafc !important;
+  border-bottom-color: #f8fafc !important;
+  border-left-color: #f8fafc !important;
+  border-right-color: #f8fafc !important;
+}
+
+/* ================================
+   MAP MARKER STYLES
+   ================================ */
+
+/* Timeline Markers */
+.custom-marker.timeline-marker {
+  border: none !important;
+  background: transparent !important;
+}
+
+.custom-marker.timeline-marker .marker-inner {
+  width: 20px;
+  height: 20px;
+  background: #607D8B;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.custom-marker.timeline-marker .marker-inner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 8px;
+  background: white;
+  border-radius: 50%;
+}
+
+/* Highlighted Timeline Markers */
+.custom-marker.timeline-marker.highlighted .marker-inner {
+  width: 24px;
+  height: 24px;
+  background: #607D8B;
+  border: 3px solid #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  position: relative;
+  animation: pulse-highlight 2s infinite;
+}
+
+.custom-marker.timeline-marker.highlighted .marker-inner::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+}
+
+@keyframes pulse-highlight {
+  0% {
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  }
+}

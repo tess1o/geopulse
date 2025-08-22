@@ -7,13 +7,25 @@
       variant="fullwidth"
     >
     <template #actions>
-      <Button 
-        label="Export CSV" 
-        icon="pi pi-download" 
-        @click="handleExportCSV"
-        :loading="exportLoading"
-        :disabled="!hasData"
-      />
+      <div class="header-actions">
+        <Button 
+          v-if="selectedRows.length > 0"
+          label="Delete Selected"
+          icon="pi pi-trash"
+          severity="danger"
+          size="small"
+          @click="bulkDeleteGpsPoints"
+          :disabled="selectedRows.length === 0"
+          class="bulk-delete-button"
+        />
+        <Button 
+          label="Export CSV" 
+          icon="pi pi-download" 
+          @click="handleExportCSV"
+          :loading="exportLoading"
+          :disabled="!hasData"
+        />
+      </div>
     </template>
 
     <!-- Summary Statistics -->
@@ -97,6 +109,8 @@
         data-key="id"
         responsive-layout="scroll"
         class="gps-data-table"
+        v-model:selection="selectedRows"
+        selection-mode="multiple"
         :pt="{
           root: 'bg-surface-0 dark:bg-surface-950',
           header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
@@ -123,6 +137,9 @@
           </div>
         </template>
 
+        <!-- Selection Column -->
+        <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col"></Column>
+
         <Column field="timestamp" header="Date" sortable class="timestamp-col">
           <template #body="slotProps">
             <div class="timestamp-cell">
@@ -148,7 +165,7 @@
           </template>
         </Column>
 
-        <Column field="accuracy" header="Accuracy" class="numeric-col">
+        <Column field="accuracy" header="Accuracy" class="numeric-col" v-if="!isMobile">
           <template #body="slotProps">
             <span v-if="slotProps.data.accuracy">{{ slotProps.data.accuracy.toFixed(1) }}m</span>
             <span v-else class="null-value">-</span>
@@ -178,8 +195,100 @@
             />
           </template>
         </Column>
+
+        <Column header="Actions" class="actions-col">
+          <template #body="slotProps">
+            <div class="actions-buttons">
+              <Button 
+                icon="pi pi-pencil" 
+                severity="secondary" 
+                size="small"
+                text
+                @click="editGpsPoint(slotProps.data)"
+                v-tooltip.top="'Edit GPS Point'"
+                class="action-button edit-button"
+              />
+              <Button 
+                icon="pi pi-trash" 
+                severity="danger" 
+                size="small"
+                text
+                @click="deleteGpsPoint(slotProps.data)"
+                v-tooltip.top="'Delete GPS Point'"
+                class="action-button delete-button"
+              />
+            </div>
+          </template>
+        </Column>
       </DataTable>
     </BaseCard>
+    
+    <!-- Delete Confirmation Dialog -->
+    <Dialog
+      v-model:visible="showDeleteDialog"
+      :header="'Delete GPS Point'"
+      :modal="true"
+      :style="{ width: '25rem' }"
+    >
+      <div class="confirm-dialog-content">
+        <i class="pi pi-exclamation-triangle confirm-icon"></i>
+        <span>Are you sure you want to delete this GPS point? This action cannot be undone.</span>
+      </div>
+      <template #footer>
+        <Button 
+          label="Cancel" 
+          severity="secondary" 
+          @click="showDeleteDialog = false" 
+          autofocus 
+          :disabled="deleteLoading"
+        />
+        <Button 
+          label="Delete" 
+          severity="danger" 
+          @click="confirmDeleteGpsPoint" 
+          :loading="deleteLoading"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Bulk Delete Confirmation Dialog -->
+    <Dialog
+      v-model:visible="showBulkDeleteDialog"
+      :header="'Delete Multiple GPS Points'"
+      :modal="true"
+      :style="{ width: '30rem' }"
+    >
+      <div class="confirm-dialog-content">
+        <i class="pi pi-exclamation-triangle confirm-icon"></i>
+        <span>
+          Are you sure you want to delete {{ selectedRows.length }} GPS point{{ selectedRows.length > 1 ? 's' : '' }}? 
+          This action cannot be undone.
+        </span>
+      </div>
+      <template #footer>
+        <Button 
+          label="Cancel" 
+          severity="secondary" 
+          @click="showBulkDeleteDialog = false" 
+          autofocus 
+          :disabled="bulkDeleteLoading"
+        />
+        <Button 
+          label="Delete All" 
+          severity="danger" 
+          @click="confirmBulkDelete" 
+          :loading="bulkDeleteLoading"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Edit GPS Point Dialog -->
+    <GpsPointEditDialog 
+      :visible="showEditDialog"
+      :gps-point="selectedGpsPoint"
+      @close="showEditDialog = false"
+      @save="handleEditSave"
+    />
     </PageContainer>
   </AppLayout>
 </template>
@@ -195,6 +304,7 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
+import GpsPointEditDialog from '@/components/dialogs/GpsPointEditDialog.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'
@@ -202,6 +312,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
+import Dialog from 'primevue/dialog'
 
 // Store and utils
 const technicalDataStore = useTechnicalDataStore()
@@ -217,6 +328,17 @@ const currentPage = ref(0)
 const isLoading = ref(false)
 const tableLoading = ref(false)
 const exportLoading = ref(false)
+
+// Edit/Delete states
+const showEditDialog = ref(false)
+const showDeleteDialog = ref(false)
+const selectedGpsPoint = ref(null)
+
+// Bulk delete states
+const selectedRows = ref([])
+const showBulkDeleteDialog = ref(false)
+const bulkDeleteLoading = ref(false)
+const deleteLoading = ref(false)
 
 // Computed properties
 const summaryStats = computed(() => technicalDataStore.summaryStats)
@@ -375,6 +497,126 @@ const handleExportCSV = async () => {
     })
   } finally {
     exportLoading.value = false
+  }
+}
+
+const editGpsPoint = (gpsPoint) => {
+  selectedGpsPoint.value = gpsPoint
+  showEditDialog.value = true
+}
+
+const deleteGpsPoint = (gpsPoint) => {
+  selectedGpsPoint.value = gpsPoint
+  showDeleteDialog.value = true
+}
+
+const confirmDeleteGpsPoint = async () => {
+  if (!selectedGpsPoint.value || deleteLoading.value) return
+  
+  deleteLoading.value = true
+  
+  try {
+    await technicalDataStore.deleteGpsPoint(selectedGpsPoint.value.id)
+    
+    toast.add({
+      severity: 'success',
+      summary: 'GPS Point Deleted',
+      detail: 'GPS point has been successfully deleted',
+      life: 3000
+    })
+    
+    // Refresh the data
+    await loadGPSPoints()
+    await loadSummaryStats()
+    
+  } catch (error) {
+    console.error('Error deleting GPS point:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to delete GPS point'
+    toast.add({
+      severity: 'error',
+      summary: 'Delete Failed',
+      detail: errorMessage,
+      life: 5000
+    })
+  } finally {
+    deleteLoading.value = false
+    showDeleteDialog.value = false
+    selectedGpsPoint.value = null
+  }
+}
+
+const handleEditSave = async (updatedData) => {
+  if (!selectedGpsPoint.value) return
+  
+  try {
+    await technicalDataStore.updateGpsPoint(selectedGpsPoint.value.id, updatedData)
+    
+    toast.add({
+      severity: 'success',
+      summary: 'GPS Point Updated',
+      detail: 'GPS point has been successfully updated',
+      life: 3000
+    })
+    
+    // Refresh the data
+    await loadGPSPoints()
+    
+  } catch (error) {
+    console.error('Error updating GPS point:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to update GPS point'
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: errorMessage,
+      life: 5000
+    })
+  } finally {
+    showEditDialog.value = false
+    selectedGpsPoint.value = null
+  }
+}
+
+const bulkDeleteGpsPoints = () => {
+  if (selectedRows.value.length === 0) return
+  showBulkDeleteDialog.value = true
+}
+
+const confirmBulkDelete = async () => {
+  if (selectedRows.value.length === 0 || bulkDeleteLoading.value) return
+  
+  bulkDeleteLoading.value = true
+  
+  try {
+    const pointIds = selectedRows.value.map(row => row.id)
+    const result = await technicalDataStore.deleteGpsPoints(pointIds)
+    
+    // Extract the correct count from the response
+    const deletedCount = result?.data?.deletedCount || result?.deletedCount || pointIds.length
+    
+    toast.add({
+      severity: 'success',
+      summary: 'GPS Points Deleted',
+      detail: `Successfully deleted ${deletedCount} GPS point${deletedCount !== 1 ? 's' : ''}`,
+      life: 3000
+    })
+    
+    // Clear selection and refresh data
+    selectedRows.value = []
+    await loadGPSPoints()
+    await loadSummaryStats()
+    
+  } catch (error) {
+    console.error('Error deleting GPS points:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to delete selected GPS points'
+    toast.add({
+      severity: 'error',
+      summary: 'Bulk Delete Failed',
+      detail: errorMessage,
+      life: 5000
+    })
+  } finally {
+    bulkDeleteLoading.value = false
+    showBulkDeleteDialog.value = false
   }
 }
 
@@ -626,6 +868,18 @@ watch(pageSize, async () => {
   width: 100px;
 }
 
+.gps-data-table :deep(.selection-col) {
+  width: 3rem;
+  min-width: 3rem;
+  text-align: center;
+}
+
+.gps-data-table :deep(.actions-col) {
+  min-width: 80px;
+  width: 80px;
+  text-align: center;
+}
+
 /* Large screen column optimizations */
 @media (min-width: 1440px) {
   .gps-data-table :deep(.timestamp-col) {
@@ -639,8 +893,8 @@ watch(pageSize, async () => {
   }
 
   .gps-data-table :deep(.numeric-col) {
-    min-width: 100px;
-    width: 100px;
+    min-width: 90px;
+    width: 90px;
   }
 
   .gps-data-table :deep(.source-col) {
@@ -716,25 +970,27 @@ watch(pageSize, async () => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  /* Override PageContainer padding for mobile */
+  /* Override PageContainer padding for mobile with balanced margins */
   :deep(.gp-page-container--fullwidth) {
-    padding-left: var(--gp-spacing-xs) !important;
-    padding-right: var(--gp-spacing-xs) !important;
+    padding-left: var(--gp-spacing-md) !important;
+    padding-right: var(--gp-spacing-md) !important;
     max-width: 100vw !important;
     overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   /* Override page content container */
   :deep(.gp-page-content) {
     max-width: 100% !important;
     overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   /* Force all content to respect viewport width */
   .stats-grid,
   .filter-section,
   .table-section {
-    max-width: calc(100vw - 2 * var(--gp-spacing-xs));
+    max-width: 100%;
     box-sizing: border-box;
     margin-left: 0;
     margin-right: 0;
@@ -746,6 +1002,7 @@ watch(pageSize, async () => {
   .table-section {
     margin-left: 0 !important;
     margin-right: 0 !important;
+    box-sizing: border-box;
   }
 
   .stats-grid {
@@ -831,13 +1088,13 @@ watch(pageSize, async () => {
   }
 
   .gps-data-table :deep(.timestamp-col) {
-    min-width: 100px;
-    width: 100px;
+    min-width: 90px;
+    width: 90px;
   }
 
   .gps-data-table :deep(.coordinates-col) {
-    min-width: 120px;
-    width: 120px;
+    min-width: 100px;
+    width: 100px;
   }
 
   .coordinate-line {
@@ -1040,6 +1297,7 @@ watch(pageSize, async () => {
   color: var(--gp-text-secondary) !important;
 }
 
+
 /* Fix the table wrapper to ensure proper corner styling */
 .p-dark .gps-data-table :deep(.p-datatable-wrapper) {
   border-radius: var(--gp-radius-medium) !important;
@@ -1094,5 +1352,119 @@ watch(pageSize, async () => {
   outline: none !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+/* Actions Column */
+.actions-buttons {
+  display: flex;
+  gap: var(--gp-spacing-xs);
+  justify-content: center;
+  align-items: center;
+}
+
+.action-button {
+  min-width: 32px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: var(--gp-radius-small);
+  transition: all 0.2s ease;
+}
+
+.edit-button:hover {
+  background-color: var(--gp-primary-light) !important;
+  color: var(--gp-primary) !important;
+}
+
+.delete-button:hover {
+  background-color: var(--p-red-50) !important;
+  color: var(--p-red-600) !important;
+}
+
+/* Confirmation Dialog */
+.confirm-dialog-content {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-md);
+  padding: var(--gp-spacing-md) 0;
+}
+
+.confirm-icon {
+  color: var(--p-orange-500);
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Mobile Actions */
+@media (max-width: 768px) {
+  .gps-data-table :deep(.selection-col) {
+    width: 2.5rem;
+    min-width: 2.5rem;
+  }
+
+  .gps-data-table :deep(.actions-col) {
+    min-width: 70px;
+    width: 70px;
+  }
+  
+  .actions-buttons {
+    gap: var(--gp-spacing-xs);
+  }
+  
+  .action-button {
+    min-width: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Header Actions */
+.header-actions {
+  display: flex;
+  gap: var(--gp-spacing-md);
+  align-items: center;
+}
+
+.bulk-delete-button {
+  animation: fadeInScale 0.2s ease;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Mobile header actions */
+@media (max-width: 768px) {
+  .header-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: var(--gp-spacing-sm);
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .bulk-delete-button {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 120px;
+    max-width: 140px;
+    order: 1;
+  }
+  
+  .header-actions > button:not(.bulk-delete-button) {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 100px;
+    max-width: 120px;
+    order: 2;
+  }
 }
 </style>

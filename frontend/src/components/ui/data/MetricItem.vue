@@ -34,8 +34,8 @@ const props = defineProps({
     validator: (value) => ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'muted'].includes(value)
   },
   value: {
-    type: [String, Number],
-    required: true
+    type: [String, Number, null],
+    default: null
   },
   label: {
     type: String,
@@ -75,6 +75,9 @@ const props = defineProps({
 })
 
 const formattedValue = computed(() => {
+  if (props.value === null || props.value === undefined) {
+    return '-'
+  }
   return props.formatter ? props.formatter(props.value) : props.value
 })
 
