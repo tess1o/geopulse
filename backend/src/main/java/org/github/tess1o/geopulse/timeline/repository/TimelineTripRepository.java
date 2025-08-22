@@ -167,4 +167,51 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
         return update("tripDuration = ?1, lastUpdated = ?2 where id = ?3", 
                      newDurationMinutes, Instant.now(), tripId);
     }
+
+    /**
+     * Find timeline trips for a user within a time range, including boundary expansion.
+     * Includes trips that start before the range but extend into it.
+     * 
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return list of trips that overlap with the time range, ordered by timestamp
+     */
+    public List<TimelineTripEntity> findByUserIdAndTimeRangeWithExpansion(UUID userId, Instant startTime, Instant endTime) {
+        // Find trips that either:
+        // 1. Start within the requested range, OR
+        // 2. Start before the range but extend into it (boundary expansion)
+        return find("user.id = ?1 AND (" +
+                   "timestamp >= ?2 OR " +  // Starts in range
+                   "(timestamp < ?2 AND FUNCTION('TIMESTAMPADD', MINUTE, tripDuration, timestamp) > ?2)" + // Starts before but extends into range
+                   ") AND timestamp <= ?3 " +
+                   "ORDER BY timestamp", 
+                   userId, startTime, endTime).list();
+    }
+
+    /**
+     * Find timeline trips for a user within a time range (exact range, no expansion).
+     * 
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return list of trips within the exact time range, ordered by timestamp
+     */
+    public List<TimelineTripEntity> findByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
+        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp", 
+                   userId, startTime, endTime).list();
+    }
+
+    /**
+     * Delete timeline trips for a user within a specific time range.
+     * 
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return number of trips deleted
+     */
+    public long deleteByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
+        return delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
+                     userId, startTime, endTime);
+    }
 }

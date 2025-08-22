@@ -31,10 +31,10 @@ public class DailyTimelineProcessingService {
     UserRepository userRepository;
 
     @Inject
-    TimelineQueryService timelineQueryService;
+    org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter timelineRequestRouter;
 
     @Inject
-    WholeTimelineProcessor wholeTimelineProcessor;
+    org.github.tess1o.geopulse.timeline.service.redesign.TimelineOvernightProcessor timelineOvernightProcessor;
 
     @Inject
     TimelineStayRepository timelineStayRepository;
@@ -132,7 +132,7 @@ public class DailyTimelineProcessingService {
 
             // Generate timeline using whole-day processing algorithm
             log.debug("Generating whole-day timeline for user {} on date {}", userId, date);
-            MovementTimelineDTO timeline = wholeTimelineProcessor.processWholeTimeline(userId, date);
+            MovementTimelineDTO timeline = timelineOvernightProcessor.processWholeDay(userId, date);
 
             if (timeline == null) {
                 log.debug("No timeline data generated for user {} on date {}", userId, date);

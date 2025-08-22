@@ -199,4 +199,51 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         return update("stayDuration = ?1, lastUpdated = ?2 where id = ?3", 
                      newDurationSeconds, Instant.now(), stayId);
     }
+
+    /**
+     * Find timeline stays for a user within a time range, including boundary expansion.
+     * Includes stays that start before the range but extend into it.
+     * 
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return list of stays that overlap with the time range, ordered by timestamp
+     */
+    public List<TimelineStayEntity> findByUserIdAndTimeRangeWithExpansion(UUID userId, Instant startTime, Instant endTime) {
+        // Find stays that either:
+        // 1. Start within the requested range, OR
+        // 2. Start before the range but extend into it (boundary expansion)
+        return find("user.id = ?1 AND (" +
+                   "timestamp >= ?2 OR " +  // Starts in range
+                   "(timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, stayDuration, timestamp) > ?2)" + // Starts before but extends into range
+                   ") AND timestamp <= ?3 " +
+                   "ORDER BY timestamp", 
+                   userId, startTime, endTime).list();
+    }
+
+    /**
+     * Find timeline stays for a user within a time range (exact range, no expansion).
+     * 
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return list of stays within the exact time range, ordered by timestamp
+     */
+    public List<TimelineStayEntity> findByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
+        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp", 
+                   userId, startTime, endTime).list();
+    }
+
+    /**
+     * Delete timeline stays for a user within a specific time range.
+     * 
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return number of stays deleted
+     */
+    public long deleteByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
+        return delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
+                     userId, startTime, endTime);
+    }
 }

@@ -11,7 +11,7 @@ import org.github.tess1o.geopulse.timeline.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
 import org.github.tess1o.geopulse.timeline.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.timeline.model.ImpactAnalysis;
-import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
+import org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 
 import java.time.Instant;
@@ -43,7 +43,7 @@ public class TimelineEventService {
     EntityManager entityManager;
 
     @Inject
-    TimelineService timelineGenerationService;
+    TimelineRequestRouter timelineRequestRouter;
 
     /**
      * Handle favorite addition events.
@@ -148,7 +148,7 @@ public class TimelineEventService {
                         event.getUserId(), firstDate, lastDate,
                         java.time.temporal.ChronoUnit.DAYS.between(firstDate, lastDate) + 1);
 
-                MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(
+                MovementTimelineDTO timeline = timelineRequestRouter.getTimeline(
                     event.getUserId(), rangeStart, rangeEnd);
 
                 if (timeline != null && (!timeline.getStays().isEmpty() || !timeline.getTrips().isEmpty())) {

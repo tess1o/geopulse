@@ -12,7 +12,7 @@ import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
 import org.github.tess1o.geopulse.statistics.service.TimelineAggregationService;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TravelMode;
-import org.github.tess1o.geopulse.timeline.service.TimelineQueryService;
+import org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -32,7 +32,7 @@ import java.util.UUID;
 @Slf4j
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final TimelineQueryService timelineQueryService;
+    private final TimelineRequestRouter timelineRequestRouter;
     private final ChartDataService chartDataService;
     private final PlacesAnalysisService placesAnalysisService;
     private final RoutesAnalysisService routesAnalysisService;
@@ -41,13 +41,13 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Inject
     public StatisticsServiceImpl(
-            TimelineQueryService timelineQueryService,
+            TimelineRequestRouter timelineRequestRouter,
             ChartDataService chartDataService,
             PlacesAnalysisService placesAnalysisService,
             RoutesAnalysisService routesAnalysisService,
             TimelineAggregationService timelineAggregationService,
             ActivityAnalysisService activityAnalysisService) {
-        this.timelineQueryService = timelineQueryService;
+        this.timelineRequestRouter = timelineRequestRouter;
         this.chartDataService = chartDataService;
         this.placesAnalysisService = placesAnalysisService;
         this.routesAnalysisService = routesAnalysisService;
@@ -60,7 +60,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         log.debug("Generating statistics for user {} from {} to {} with grouping {}", 
                 userId, from, to, chartGroupMode);
         
-        MovementTimelineDTO timeline = timelineQueryService.getTimeline(userId, from, to);
+        MovementTimelineDTO timeline = timelineRequestRouter.getTimeline(userId, from, to);
         
         // Calculate basic aggregations
         double totalDistanceKm = timelineAggregationService.getTotalDistance(timeline);

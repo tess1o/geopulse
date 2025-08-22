@@ -35,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MultiDayDataGapTest {
 
     @Inject
-    TimelineQueryService timelineQueryService;
+    org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter timelineRequestRouter;
 
     @Inject
     TimelineDataGapRepository timelineDataGapRepository;
@@ -84,7 +84,7 @@ class MultiDayDataGapTest {
         Instant requestEndTime = requestEndDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
 
         // Act - Request multi-day timeline that extends beyond available GPS data
-        MovementTimelineDTO result = timelineQueryService.getTimeline(testUserId, requestStartTime, requestEndTime);
+        MovementTimelineDTO result = timelineRequestRouter.getTimeline(testUserId, requestStartTime, requestEndTime);
 
         // Assert
         assertNotNull(result, "Timeline should not be null");
@@ -116,7 +116,7 @@ class MultiDayDataGapTest {
         Instant requestEndTime = requestEndDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
 
         // Act - Request timeline for period with no GPS data
-        MovementTimelineDTO result = timelineQueryService.getTimeline(testUserId, requestStartTime, requestEndTime);
+        MovementTimelineDTO result = timelineRequestRouter.getTimeline(testUserId, requestStartTime, requestEndTime);
 
         // Assert
         assertNotNull(result, "Timeline should not be null");
@@ -152,7 +152,7 @@ class MultiDayDataGapTest {
         Instant initialRequestStart = LocalDate.of(2025, 8, 12).atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant initialRequestEnd = LocalDate.of(2025, 8, 16).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
         
-        MovementTimelineDTO initialTimeline = timelineQueryService.getTimeline(testUserId, initialRequestStart, initialRequestEnd);
+        MovementTimelineDTO initialTimeline = timelineRequestRouter.getTimeline(testUserId, initialRequestStart, initialRequestEnd);
         assertNotNull(initialTimeline);
         assertTrue(initialTimeline.getDataGapsCount() > 0, "Initial timeline should have data gaps");
         
@@ -160,7 +160,7 @@ class MultiDayDataGapTest {
         Instant laterRequestStart = LocalDate.of(2025, 8, 15).atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant laterRequestEnd = LocalDate.of(2025, 8, 16).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
         
-        MovementTimelineDTO laterTimeline = timelineQueryService.getTimeline(testUserId, laterRequestStart, laterRequestEnd);
+        MovementTimelineDTO laterTimeline = timelineRequestRouter.getTimeline(testUserId, laterRequestStart, laterRequestEnd);
         
         // Debug output
         log.info("Later timeline result: {} stays, {} trips, {} data gaps, source: {}", 

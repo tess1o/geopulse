@@ -5,18 +5,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineRegenerationTask;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
 import org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -34,13 +29,7 @@ public class TimelineBackgroundService {
     TimelineRegenerationTaskRepository taskRepository;
 
     @Inject
-    TimelineService timelineGenerationService;
-    
-    @Inject
-    WholeTimelineProcessor wholeTimelineProcessor;
-
-    @Inject
-    TimelineCacheService timelineCacheService;
+    org.github.tess1o.geopulse.timeline.service.redesign.TimelineOvernightProcessor timelineOvernightProcessor;
 
     private final AtomicBoolean processing = new AtomicBoolean(false);
 
@@ -179,7 +168,7 @@ public class TimelineBackgroundService {
         managedTask.setProcessingStartedAt(Instant.now());
 
         try {
-            // Use day-by-day processing with WholeTimelineProcessor for consistency with daily job
+            // Use day-by-day processing with TimelineOvernightProcessor from redesigned architecture
             log.info("Generating timeline day-by-day for user {} from {} to {} ({} days)", 
                     managedTask.getUser().getId(), managedTask.getStartDate(), managedTask.getEndDate(),
                     java.time.temporal.ChronoUnit.DAYS.between(managedTask.getStartDate(), managedTask.getEndDate()) + 1);
@@ -187,21 +176,23 @@ public class TimelineBackgroundService {
             int processedDays = 0;
             int totalStays = 0;
             int totalTrips = 0;
+            int totalDataGaps = 0;
             
-            // Process each day individually using WholeTimelineProcessor
+            // Process each day individually using TimelineOvernightProcessor
             LocalDate currentDate = managedTask.getStartDate();
             while (!currentDate.isAfter(managedTask.getEndDate())) {
                 try {
                     log.debug("Processing day {} for user {}", currentDate, managedTask.getUser().getId());
-                    MovementTimelineDTO dayTimeline = wholeTimelineProcessor.processWholeTimeline(
+                    MovementTimelineDTO dayTimeline = timelineOvernightProcessor.processWholeDay(
                         managedTask.getUser().getId(), currentDate);
                     
                     if (dayTimeline != null) {
                         totalStays += dayTimeline.getStaysCount();
                         totalTrips += dayTimeline.getTripsCount();
+                        totalDataGaps += dayTimeline.getDataGapsCount();
                         processedDays++;
-                        log.debug("Day {} processed: {} stays, {} trips", currentDate, 
-                                dayTimeline.getStaysCount(), dayTimeline.getTripsCount());
+                        log.debug("Day {} processed: {} stays, {} trips, {} data gaps", currentDate, 
+                                dayTimeline.getStaysCount(), dayTimeline.getTripsCount(), dayTimeline.getDataGapsCount());
                     } else {
                         log.debug("No timeline data for day {} (no GPS data)", currentDate);
                     }
@@ -214,8 +205,8 @@ public class TimelineBackgroundService {
                 currentDate = currentDate.plusDays(1);
             }
             
-            log.info("Successfully processed {} days for user {} - {} total stays, {} total trips", 
-                     processedDays, managedTask.getUser().getId(), totalStays, totalTrips);
+            log.info("Successfully processed {} days for user {} - {} total stays, {} total trips, {} total data gaps", 
+                     processedDays, managedTask.getUser().getId(), totalStays, totalTrips, totalDataGaps);
 
             // Mark task as completed
             managedTask.setStatus(TimelineRegenerationTask.TaskStatus.COMPLETED);
@@ -251,55 +242,6 @@ public class TimelineBackgroundService {
         }
     }
 
-    /**
-     * Save bulk timeline data efficiently by grouping data by date.
-     * This avoids individual save operations for each day.
-     */
-    private void saveBulkTimeline(UUID userId, MovementTimelineDTO timeline, LocalDate startDate, LocalDate endDate) {
-        log.debug("Saving bulk timeline data for user {} ({} stays, {} trips)", 
-                 userId, timeline.getStaysCount(), timeline.getTripsCount());
-        
-        // Group timeline data by date and save efficiently
-        LocalDate currentDate = startDate;
-        while (!currentDate.isAfter(endDate)) {
-            Instant dayStart = currentDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-            Instant dayEnd = currentDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-            
-            // Filter timeline data for this specific date
-            MovementTimelineDTO dailyTimeline = filterTimelineByDateRange(timeline, dayStart, dayEnd);
-            
-            if (dailyTimeline != null && (!dailyTimeline.getStays().isEmpty() || !dailyTimeline.getTrips().isEmpty())) {
-                timelineCacheService.save(userId, dayStart, dayEnd, dailyTimeline);
-                log.debug("Saved timeline data for {} - {} stays, {} trips", 
-                         currentDate, dailyTimeline.getStaysCount(), dailyTimeline.getTripsCount());
-            }
-            
-            currentDate = currentDate.plusDays(1);
-        }
-    }
-    
-    /**
-     * Filter timeline data to only include events within the specified date range.
-     */
-    private MovementTimelineDTO filterTimelineByDateRange(MovementTimelineDTO timeline, Instant startTime, Instant endTime) {
-        // Create a new timeline DTO with only the data from the specified date range
-        List<TimelineStayLocationDTO> filteredStays = timeline.getStays().stream()
-            .filter(stay -> stay.getTimestamp().compareTo(startTime) >= 0 && stay.getTimestamp().compareTo(endTime) < 0)
-            .toList();
-            
-        List<TimelineTripDTO> filteredTrips = timeline.getTrips().stream()
-            .filter(trip -> trip.getTimestamp().compareTo(startTime) >= 0 && trip.getTimestamp().compareTo(endTime) < 0)
-            .toList();
-        
-        if (filteredStays.isEmpty() && filteredTrips.isEmpty()) {
-            return null;
-        }
-        
-        MovementTimelineDTO filteredTimeline = new MovementTimelineDTO(timeline.getUserId(), filteredStays, filteredTrips);
-        filteredTimeline.setDataSource(timeline.getDataSource());
-        filteredTimeline.setLastUpdated(timeline.getLastUpdated());
-        return filteredTimeline;
-    }
 
     /**
      * Queue a high-priority regeneration task (for favorite changes).

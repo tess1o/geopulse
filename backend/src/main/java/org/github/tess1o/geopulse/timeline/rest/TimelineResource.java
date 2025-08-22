@@ -11,8 +11,8 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
-import org.github.tess1o.geopulse.timeline.service.TimelineQueryService;
 import org.github.tess1o.geopulse.timeline.service.TimelineBackgroundService;
+import org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -28,24 +28,25 @@ import java.util.UUID;
 public class TimelineResource {
 
     private final TimelineService timelineService;
-    private final TimelineQueryService timelineQueryService;
     private final TimelineBackgroundService backgroundService;
     private final CurrentUserService currentUserService;
+    private final TimelineRequestRouter timelineRequestRouter;
 
     @Inject
-    public TimelineResource(TimelineService timelineService, TimelineQueryService timelineQueryService, 
-                          TimelineBackgroundService backgroundService, CurrentUserService currentUserService) {
+    public TimelineResource(TimelineService timelineService, TimelineBackgroundService backgroundService, 
+                          CurrentUserService currentUserService, TimelineRequestRouter timelineRequestRouter) {
         this.timelineService = timelineService;
-        this.timelineQueryService = timelineQueryService;
         this.backgroundService = backgroundService;
         this.currentUserService = currentUserService;
+        this.timelineRequestRouter = timelineRequestRouter;
     }
 
     /**
      * Get a movement timeline for a user within a specified time period.
      * This endpoint requires authentication.
      * 
-     * Uses smart caching for single-day requests and live generation for multi-day ranges.
+     * Uses the new clean timeline architecture with proper request classification,
+     * boundary expansion, previous context prepending, and cross-day gap detection.
      *
      * @param startTime       The start of the time period (ISO-8601 format)
      * @param endTime         The end of the time period (ISO-8601 format)
@@ -78,26 +79,21 @@ public class TimelineResource {
     }
     
     /**
-     * Get timeline using optimal strategy based on time range.
+     * Get timeline using the new clean architecture.
+     * Automatically handles request classification, boundary expansion, and all complex logic.
      */
     private MovementTimelineDTO getTimelineWithOptimalStrategy(UUID userId, Instant start, Instant end) {
-        // Check if this is a single-day request (can benefit from caching)
-        // Consider it a single day if the duration is 24 hours or less
         long durationHours = java.time.Duration.between(start, end).toHours();
-        
-        log.info("Start: {}, End: {}, Duration: {} hours", start, end, durationHours);
+        log.info("Timeline request - Start: {}, End: {}, Duration: {} hours", start, end, durationHours);
 
-        return timelineQueryService.getTimeline(userId, start, end);
+        // Use the new clean architecture - it handles all the complexity internally
+        MovementTimelineDTO timeline = timelineRequestRouter.getTimeline(userId, start, end);
         
-//        if (durationHours <= 24) {
-//            // Single day or less - use TimelineQueryService for smart caching
-//            log.debug("Using cached timeline strategy for single day request (duration: {} hours)", durationHours);
-//            return timelineQueryService.getTimeline(userId, start, end);
-//        } else {
-//            // Multi-day range - use original TimelineService for live generation
-//            log.debug("Using live timeline strategy for multi-day request (duration: {} hours)", durationHours);
-//            return timelineService.getMovementTimeline(userId, start, end);
-//        }
+        log.debug("Timeline result: {} stays, {} trips, {} data gaps, source: {}", 
+                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount(), 
+                 timeline.getDataSource());
+        
+        return timeline;
     }
 
     @GET
