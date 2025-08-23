@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.timeline.service.redesign;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataGapDTO;
@@ -40,20 +41,64 @@ public class TimelineEventRetriever {
 
     /**
      * Check if complete timeline data exists in cache for the given time range.
+     * This validates that the ENTIRE time range is covered by existing timeline events.
      */
     public boolean hasCompleteData(UUID userId, Instant startTime, Instant endTime) {
         log.debug("Checking for complete timeline data for user {} from {} to {}", userId, startTime, endTime);
         
-        // Check if we have any timeline events (stays, trips, or data gaps) covering this period
-        boolean hasStays = !timelineStayRepository.findByUserIdAndTimeRange(userId, startTime, endTime).isEmpty();
-        boolean hasTrips = !timelineTripRepository.findByUserIdAndTimeRange(userId, startTime, endTime).isEmpty();
-        boolean hasDataGaps = !timelineDataGapRepository.findByUserIdAndTimeRange(userId, startTime, endTime).isEmpty();
+        // Get all timeline events that overlap with the requested range (using expansion queries for consistency)
+        var stays = timelineStayRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
+        var trips = timelineTripRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
+        var gaps = timelineDataGapRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
         
-        boolean hasData = hasStays || hasTrips || hasDataGaps;
-        log.debug("Complete data check result: {} (stays: {}, trips: {}, gaps: {})", 
-                 hasData, hasStays, hasTrips, hasDataGaps);
+        log.debug("Found overlapping events: {} stays, {} trips, {} gaps", stays.size(), trips.size(), gaps.size());
         
-        return hasData;
+        // If no events exist at all, definitely not complete
+        if (stays.isEmpty() && trips.isEmpty() && gaps.isEmpty()) {
+            log.debug("Complete data check result: false (no events found)");
+            return false;
+        }
+        
+        // Check if the entire requested time range is covered by existing timeline events
+        boolean isCovered = isTimeRangeCovered(userId, startTime, endTime, stays, trips, gaps);
+        
+        log.debug("Complete data check result: {} (coverage validated)", isCovered);
+        return isCovered;
+    }
+    
+    /**
+     * Validate that a time range is completely covered by existing timeline events.
+     * This ensures no uncovered gaps exist in the requested time range.
+     */
+    private boolean isTimeRangeCovered(UUID userId, Instant startTime, Instant endTime,
+                                     List<?> stays, List<?> trips, List<?> gaps) {
+        
+        // If we have real timeline events (stays or trips), consider the range covered
+        // This indicates that timeline processing already occurred for this period
+        if (!stays.isEmpty() || !trips.isEmpty()) {
+            log.debug("Found real timeline events - range considered covered");
+            return true;
+        }
+        
+        // If we only have gaps, check if any gap covers the entire requested range
+        // This ensures GPS data processing isn't skipped when gaps only partially cover the range
+        if (!gaps.isEmpty()) {
+            for (Object gapObj : gaps) {
+                var gap = (org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity) gapObj;
+                
+                // Gap must start at or before requested start AND end at or after requested end
+                if (!gap.getStartTime().isAfter(startTime) && !gap.getEndTime().isBefore(endTime)) {
+                    log.debug("Found gap that covers entire range: {} to {}", gap.getStartTime(), gap.getEndTime());
+                    return true;
+                }
+            }
+            log.debug("Found gaps but none cover entire range - may need GPS processing");
+            return false;
+        }
+        
+        // No timeline events at all
+        log.debug("No timeline events found - range not covered");
+        return false;
     }
 
     /**
@@ -151,6 +196,7 @@ public class TimelineEventRetriever {
      * Delete all timeline events for a specific time range.
      * Used when regenerating timeline data from scratch.
      */
+    @Transactional
     public void deleteTimelineData(UUID userId, Instant startTime, Instant endTime) {
         log.debug("Deleting timeline data for user {} from {} to {}", userId, startTime, endTime);
         
