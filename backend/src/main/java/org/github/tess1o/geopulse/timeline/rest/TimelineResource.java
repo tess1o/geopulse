@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.service.TimelineBackgroundService;
+import org.github.tess1o.geopulse.timeline.service.TimelineEventService;
 import org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter;
 
 import java.time.Instant;
@@ -31,14 +32,17 @@ public class TimelineResource {
     private final TimelineBackgroundService backgroundService;
     private final CurrentUserService currentUserService;
     private final TimelineRequestRouter timelineRequestRouter;
+    private final TimelineEventService timelineEventService;
 
     @Inject
     public TimelineResource(TimelineService timelineService, TimelineBackgroundService backgroundService, 
-                          CurrentUserService currentUserService, TimelineRequestRouter timelineRequestRouter) {
+                          CurrentUserService currentUserService, TimelineRequestRouter timelineRequestRouter,
+                          TimelineEventService timelineEventService) {
         this.timelineService = timelineService;
         this.backgroundService = backgroundService;
         this.currentUserService = currentUserService;
         this.timelineRequestRouter = timelineRequestRouter;
+        this.timelineEventService = timelineEventService;
     }
 
     /**
@@ -161,6 +165,41 @@ public class TimelineResource {
             log.error("Failed to regenerate timeline for user {} on date {}", userId, date, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to regenerate timeline: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Regenerate the complete timeline for the current user.
+     * This operation will delete all existing timeline data and regenerate it from scratch
+     * based on the user's current timeline preferences and GPS data.
+     * 
+     * This is useful when the user suspects there are issues with their timeline data
+     * or wants a fresh start with the current configuration.
+     *
+     * @return Success message if regeneration completed successfully
+     */
+    @POST
+    @Path("/regenerate-all")
+    @RolesAllowed("USER")
+    public Response regenerateAllTimeline() {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Full timeline regeneration requested by user {}", userId);
+        
+        try {
+            boolean success = timelineEventService.regenerateFullTimelineForUser(userId, "user manual request");
+            
+            if (success) {
+                return Response.ok(ApiResponse.success("Timeline regeneration completed successfully")).build();
+            } else {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(ApiResponse.error("Timeline regeneration failed. Please try again or contact support."))
+                        .build();
+            }
+        } catch (Exception e) {
+            log.error("Failed to regenerate full timeline for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Timeline regeneration failed: " + e.getMessage()))
                     .build();
         }
     }

@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
 
 import java.time.Instant;
@@ -83,7 +84,24 @@ public class MixedRequestHandler {
     private MovementTimelineDTO generateTodayTimeline(UUID userId, Instant startTime, Instant endTime) {
         try {
             MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(userId, startTime, endTime);
-            if (timeline != null) {
+            if (timeline != null && (timeline.getStaysCount() > 0 || timeline.getTripsCount() > 0)) {
+                // Check if GPS data covers the full requested period
+                Instant latestGpsTime = findLatestTimelineEventEnd(timeline);
+                
+                // For today's timeline, cap any gaps at current time (we don't know the future)
+                Instant cappedEndTime = endTime.isAfter(Instant.now()) ? Instant.now() : endTime;
+                
+                if (latestGpsTime != null && latestGpsTime.isBefore(cappedEndTime)) {
+                    // Add data gap for period after GPS data ends, capped to "now"
+                    Instant gapStartTime = latestGpsTime.plusSeconds(1);
+                    TimelineDataGapDTO dataGap = new TimelineDataGapDTO(gapStartTime, cappedEndTime);
+                    timeline.getDataGaps().add(dataGap);
+                    
+                    log.debug("Added data gap for today from {} to {} (GPS ended at {}, capped to now)", 
+                             gapStartTime, cappedEndTime, latestGpsTime);
+                }
+                
+                // Timeline has actual data - return it as live
                 timeline.setDataSource(TimelineDataSource.LIVE);
                 timeline.setLastUpdated(Instant.now());
                 return timeline;
@@ -93,10 +111,64 @@ public class MixedRequestHandler {
                      userId, startTime, endTime, e);
         }
         
-        // Return empty timeline on failure
-        MovementTimelineDTO emptyTimeline = new MovementTimelineDTO(userId);
-        emptyTimeline.setDataSource(TimelineDataSource.LIVE);
-        emptyTimeline.setLastUpdated(Instant.now());
-        return emptyTimeline;
+        // No timeline data generated (null or empty) - create timeline with data gap capped to "now"
+        Instant cappedEndTime = endTime.isAfter(Instant.now()) ? Instant.now() : endTime;
+        log.debug("No GPS data for today timeline - creating data gap from {} to {} (capped to now)", 
+                 startTime, cappedEndTime);
+        return createDataGapTimelineForToday(userId, startTime, cappedEndTime);
+    }
+
+    /**
+     * Create timeline with data gap for today when no GPS data exists.
+     * Similar to TimelineOvernightProcessor.createTimelineWithDataGap() but for live data.
+     */
+    private MovementTimelineDTO createDataGapTimelineForToday(UUID userId, Instant startTime, Instant endTime) {
+        MovementTimelineDTO timeline = new MovementTimelineDTO(userId);
+        timeline.setDataSource(TimelineDataSource.LIVE);
+        timeline.setLastUpdated(Instant.now());
+        
+        // Add data gap for the requested period
+        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startTime, endTime);
+        timeline.getDataGaps().add(dataGap);
+        
+        log.debug("Created today timeline with data gap from {} to {}", startTime, endTime);
+        
+        return timeline;
+    }
+
+    /**
+     * Find the latest end time among all timeline events (stays, trips, existing data gaps).
+     * This helps determine if there's a gap between the last GPS activity and the requested end time.
+     * 
+     * @param timeline the timeline to analyze
+     * @return the latest end time of any timeline event, or null if no events exist
+     */
+    private Instant findLatestTimelineEventEnd(MovementTimelineDTO timeline) {
+        Instant latestTime = null;
+        
+        // Check stays
+        for (var stay : timeline.getStays()) {
+            Instant stayEndTime = stay.getTimestamp().plusSeconds(stay.getStayDuration() * 60L);
+            if (latestTime == null || stayEndTime.isAfter(latestTime)) {
+                latestTime = stayEndTime;
+            }
+        }
+        
+        // Check trips
+        for (var trip : timeline.getTrips()) {
+            Instant tripEndTime = trip.getTimestamp().plusSeconds(trip.getTripDuration() * 60L);
+            if (latestTime == null || tripEndTime.isAfter(latestTime)) {
+                latestTime = tripEndTime;
+            }
+        }
+        
+        // Check existing data gaps (in case timeline generation service already added some)
+        for (var dataGap : timeline.getDataGaps()) {
+            if (latestTime == null || dataGap.getEndTime().isAfter(latestTime)) {
+                latestTime = dataGap.getEndTime();
+            }
+        }
+        
+        return latestTime;
     }
 }

@@ -152,6 +152,18 @@ export const useTimelineStore = defineStore('timeline', {
             return this.fetchMovementTimeline(startTime, endTime)
         },
 
+        // Regenerate entire timeline from scratch
+        async regenerateAllTimeline() {
+            try {
+                const response = await apiService.post('/timeline/regenerate-all')
+                // Clear current timeline data since it's been regenerated
+                this.clearTimelineData()
+                return response
+            } catch (error) {
+                throw error
+            }
+        },
+
         // Find timeline item index (useful for component interactions)
         findTimelineItemIndex(timestamp, latitude, longitude) {
             if (!this.timelineData) return -1

@@ -295,6 +295,52 @@ class MixedRequestHandlerIntegrationTest {
         System.out.println("✅ Timeline generation failure handled gracefully");
     }
 
+    @Test
+    @DisplayName("ISSUE: Today request with no GPS data should create data gap instead of empty timeline")
+    @Transactional
+    void testTodayRequestNoGpsData_ShouldCreateDataGap() {
+        /*
+         * This test demonstrates the reported issue:
+         * When requesting timeline for today with no GPS data, system should create data gap
+         * instead of returning empty timeline (like past requests do).
+         * 
+         * Expected: Timeline with 1 data gap for the requested time range
+         * Current bug: Returns empty timeline (0 stays, 0 trips, 0 data gaps)
+         */
+        
+        // Request today only with no GPS data created
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        Instant startTime = today.atTime(9, 0).atZone(ZoneOffset.UTC).toInstant(); // 9 AM today
+        Instant endTime = today.atTime(17, 0).atZone(ZoneOffset.UTC).toInstant();   // 5 PM today
+        
+        // Call handler without creating any GPS data
+        MovementTimelineDTO result = mixedRequestHandler.handle(testUserId, startTime, endTime);
+        
+        // Verify basic properties
+        assertNotNull(result);
+        assertEquals(testUserId, result.getUserId());
+        assertEquals(TimelineDataSource.LIVE, result.getDataSource());
+        assertNotNull(result.getLastUpdated());
+        
+        // THIS TEST SHOULD FAIL with current implementation
+        // Current bug: returns empty timeline (0 stays, 0 trips, 0 data gaps)
+        // Expected fix: should return timeline with 1 data gap covering the requested period
+        assertEquals(0, result.getStaysCount(), "Should have no stays when no GPS data");
+        assertEquals(0, result.getTripsCount(), "Should have no trips when no GPS data");
+        assertEquals(1, result.getDataGapsCount(), 
+            "Should create data gap for today request when no GPS data exists (like past requests do). " +
+            "Current bug: returns empty timeline instead of data gap.");
+        
+        // Verify the data gap covers the requested time range
+        if (result.getDataGapsCount() > 0) {
+            var dataGap = result.getDataGaps().get(0);
+            assertEquals(startTime, dataGap.getStartTime(), "Data gap should start at request start time");
+            assertEquals(endTime, dataGap.getEndTime(), "Data gap should end at request end time");
+        }
+        
+        System.out.println("🐛 This test demonstrates the today data gap issue - should FAIL until fixed");
+    }
+
     // Helper methods for creating test data
 
     private void createGpsDataForToday() {

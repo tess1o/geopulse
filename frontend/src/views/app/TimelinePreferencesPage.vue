@@ -18,6 +18,15 @@
                 severity="secondary"
                 outlined
                 @click="confirmResetDefaults"
+                :disabled="loading || regenerateLoading"
+              />
+              <Button 
+                label="Regenerate Timeline"
+                icon="pi pi-replay"
+                severity="danger"
+                outlined
+                @click="confirmRegenerateTimeline"
+                :loading="regenerateLoading"
                 :disabled="loading"
               />
               <Button 
@@ -25,7 +34,7 @@
                 icon="pi pi-save"
                 @click="confirmSavePreferences"
                 :loading="loading"
-                :disabled="!hasUnsavedChanges || !isFormValid"
+                :disabled="!hasUnsavedChanges || !isFormValid || regenerateLoading"
               />
             </div>
           </div>
@@ -552,11 +561,13 @@ import SliderControl from '@/components/ui/forms/SliderControl.vue'
 
 // Store
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
+import { useTimelineStore } from '@/stores/timeline'
 
 // Composables
 const toast = useToast()
 const confirm = useConfirm()
 const timelinePreferencesStore = useTimelinePreferencesStore()
+const timelineStore = useTimelineStore()
 
 // Store refs
 const { timelinePreferences: originalPrefs } = storeToRefs(timelinePreferencesStore)
@@ -597,6 +608,7 @@ const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
 })
 const loading = ref(false)
+const regenerateLoading = ref(false)
 const prefs = ref({
   // Path simplification defaults
   pathSimplificationEnabled: true,
@@ -782,6 +794,49 @@ const discardChanges = () => {
       detail: 'All unsaved changes have been discarded',
       life: 3000
     })
+  }
+}
+
+const confirmRegenerateTimeline = () => {
+  confirm.require({
+    message: 'This will completely delete your current timeline data and regenerate it from scratch based on your GPS data and current preferences. This operation may take several minutes depending on the amount of GPS data you have. Your timeline will be temporarily unavailable during this process. Do you want to proceed?',
+    header: 'Regenerate Complete Timeline',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: {
+      label: 'Cancel',
+      severity: 'secondary',
+      outlined: true
+    },
+    acceptProps: {
+      label: 'Regenerate Timeline',
+      severity: 'danger'
+    },
+    accept: regenerateTimeline
+  })
+}
+
+const regenerateTimeline = async () => {
+  regenerateLoading.value = true
+  
+  try {
+    await timelineStore.regenerateAllTimeline()
+    toast.add({
+      severity: 'success',
+      summary: 'Timeline Regenerated',
+      detail: 'Your timeline has been completely regenerated from scratch. You may need to refresh the timeline page to see the updated data.',
+      life: 8000
+    })
+  } catch (error) {
+    console.error('Error regenerating timeline:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Unknown error occurred'
+    toast.add({
+      severity: 'error',
+      summary: 'Regeneration Failed',
+      detail: `Failed to regenerate timeline: ${errorMessage}`,
+      life: 8000
+    })
+  } finally {
+    regenerateLoading.value = false
   }
 }
 
@@ -1042,6 +1097,19 @@ onMounted(() => {
 :deep(.p-button:not(.p-button-outlined):hover) {
   background: var(--gp-primary-hover);
   border-color: var(--gp-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--gp-shadow-medium);
+}
+
+/* Danger button styling */
+:deep(.p-button.p-button-danger.p-button-outlined) {
+  border-color: #dc3545;
+  color: #dc3545;
+}
+
+:deep(.p-button.p-button-danger.p-button-outlined:hover) {
+  background: #dc3545;
+  color: white;
   transform: translateY(-1px);
   box-shadow: var(--gp-shadow-medium);
 }
