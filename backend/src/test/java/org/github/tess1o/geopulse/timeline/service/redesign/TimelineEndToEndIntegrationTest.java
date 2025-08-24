@@ -342,17 +342,22 @@ class TimelineEndToEndIntegrationTest {
         
         MovementTimelineDTO result = timelineRequestRouter.getTimeline(testUserId, startTime, endTime);
         
-        // Should handle gracefully with empty timeline
+        // Should handle gracefully by creating data gap for unknown activity
         assertNotNull(result);
         assertEquals(testUserId, result.getUserId());
         assertNotNull(result.getLastUpdated());
         
-        // Timeline should be empty but valid
+        // Timeline should have no stays/trips but should create data gap for unknown activity period
         assertEquals(0, result.getStaysCount());
         assertEquals(0, result.getTripsCount());
-        assertEquals(0, result.getDataGapsCount());
+        assertEquals(1, result.getDataGapsCount(), "Should create data gap when no GPS data exists");
         
-        System.out.println("✅ E2E No GPS data: Handled gracefully with empty timeline");
+        // Verify data gap covers the requested period
+        var dataGap = result.getDataGaps().get(0);
+        assertEquals(startTime, dataGap.getStartTime());
+        assertEquals(endTime, dataGap.getEndTime());
+        
+        System.out.println("✅ E2E No GPS data: Handled gracefully with data gap for unknown activity");
     }
 
     @Test

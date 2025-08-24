@@ -46,10 +46,24 @@
               :stay-item="slotProps.item"
               @click="handleTimelineItemClick"
             />
+
+            <OvernightTripCard
+              v-else-if="slotProps.item.type === 'trip' && shouldShowAsOvernightTrip(slotProps.item, dateGroup.date)"
+              :trip-item="slotProps.item"
+              :current-date="dateGroup.date"
+              @click="handleTimelineItemClick"
+            />
             
             <TripCard
               v-else-if="slotProps.item.type === 'trip'"
               :trip-item="slotProps.item"
+              @click="handleTimelineItemClick"
+            />
+
+            <OvernightDataGapCard
+              v-else-if="slotProps.item.type === 'dataGap' && shouldShowAsOvernightDataGap(slotProps.item, dateGroup.date)"
+              :data-gap-item="slotProps.item"
+              :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
             />
             
@@ -71,7 +85,14 @@ import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
 import DataGapCard from './DataGapCard.vue'
 import OvernightStayCard from './OvernightStayCard.vue'
-import { shouldItemAppearOnDate, shouldShowAsOvernightStay } from '@/utils/overnightHelpers'
+import OvernightTripCard from './OvernightTripCard.vue'
+import OvernightDataGapCard from './OvernightDataGapCard.vue'
+import { 
+  shouldItemAppearOnDate, 
+  shouldShowAsOvernightStay,
+  shouldShowAsOvernightTrip,
+  shouldShowAsOvernightDataGap
+} from '@/utils/overnightHelpers'
 
 // Props
 const props = defineProps({
@@ -104,10 +125,16 @@ const getMarkerIcon = computed(() => (type) => {
   return 'pi pi-circle'
 })
 
-// Updated to handle overnight stays with different markers
+// Updated to handle overnight items with different markers
 const getMarkerIconForItem = computed(() => (item, dateKey) => {
   if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
     return 'pi pi-moon' // Moon icon for overnight stays
+  }
+  if (item.type === 'trip' && shouldShowAsOvernightTrip(item, dateKey)) {
+    return 'pi pi-moon' // Moon icon for overnight trips
+  }
+  if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
+    return 'pi pi-moon' // Moon icon for overnight data gaps
   }
   return getMarkerIcon.value(item.type)
 })
@@ -119,10 +146,16 @@ const getMarkerClass = computed(() => (type) => {
   return 'marker-default'
 })
 
-// Updated to handle overnight stays with different classes
+// Updated to handle overnight items with different classes
 const getMarkerClassForItem = computed(() => (item, dateKey) => {
   if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
     return 'marker-overnight-stay' // Special class for overnight stays
+  }
+  if (item.type === 'trip' && shouldShowAsOvernightTrip(item, dateKey)) {
+    return 'marker-overnight-trip' // Special class for overnight trips
+  }
+  if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
+    return 'marker-overnight-data-gap' // Special class for overnight data gaps
   }
   return getMarkerClass.value(item.type)
 })
@@ -261,6 +294,14 @@ const handleTimelineItemClick = (item) => {
 
 .timeline-marker.marker-overnight-stay {
   background: var(--gp-primary-dark);
+}
+
+.timeline-marker.marker-overnight-trip {
+  background: var(--gp-success-dark);
+}
+
+.timeline-marker.marker-overnight-data-gap {
+  background: var(--gp-warning-dark);
 }
 
 /* Dark mode adjustments */

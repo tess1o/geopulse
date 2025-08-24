@@ -51,13 +51,19 @@ public class MixedRequestHandler {
             return generateTodayTimeline(userId, startTime, endTime);
         }
         
+        if (endDate.isBefore(today)) {
+            // Request is entirely in the past - delegate to past handler
+            log.debug("Request is entirely in the past - using past handler");
+            return pastRequestHandler.handle(userId, startTime, endTime);
+        }
+        
         if (startDate.equals(today)) {
-            // Request starts today - just generate live for today portion
-            log.debug("Request starts today - generating live timeline");
+            // Request starts today and extends into future - generate live for the period
+            log.debug("Request starts today and may extend to future - generating live timeline");
             return generateTodayTimeline(userId, startTime, endTime);
         }
         
-        // Split request at today's boundary
+        // Mixed request: spans past and today/future - split at today's boundary
         Instant todayStart = today.atStartOfDay(ZoneOffset.UTC).toInstant();
         Instant effectiveEndTime = endDate.isAfter(today) ? 
             today.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1) : endTime;

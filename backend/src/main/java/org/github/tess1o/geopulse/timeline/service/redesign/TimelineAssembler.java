@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -88,6 +89,9 @@ public class TimelineAssembler {
         combined.getStays().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
         combined.getTrips().sort((a, b) -> a.getTimestamp().compareTo(b.getTimestamp()));
         combined.getDataGaps().sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
+        
+        // Merge adjacent/overlapping data gaps
+        mergeAdjacentDataGaps(combined);
         
         combined.setLastUpdated(Instant.now());
         
@@ -356,5 +360,95 @@ public class TimelineAssembler {
         if (a == null) return b;
         if (b == null) return a;
         return a.isBefore(b) ? a : b;
+    }
+
+    /**
+     * Merge adjacent or overlapping data gaps into single continuous gaps.
+     * This is essential for cases where past and today timelines both have data gaps
+     * that should be presented as a single continuous period without GPS data.
+     * 
+     * @param timeline timeline to process for gap merging
+     */
+    private void mergeAdjacentDataGaps(MovementTimelineDTO timeline) {
+        List<TimelineDataGapDTO> gaps = timeline.getDataGaps();
+        if (gaps.size() <= 1) {
+            log.debug("Timeline has {} gaps - no merging needed", gaps.size());
+            return;
+        }
+        
+        log.debug("Merging {} data gaps for adjacent/overlapping periods", gaps.size());
+        
+        // Gaps should already be sorted, but ensure chronological order
+        gaps.sort((a, b) -> a.getStartTime().compareTo(b.getStartTime()));
+        
+        // Merge adjacent/overlapping gaps
+        List<TimelineDataGapDTO> mergedGaps = new java.util.ArrayList<>();
+        TimelineDataGapDTO currentGap = gaps.get(0);
+        
+        for (int i = 1; i < gaps.size(); i++) {
+            TimelineDataGapDTO nextGap = gaps.get(i);
+            
+            // Check if gaps are adjacent (current ends exactly when next starts) 
+            // or overlapping (current ends after next starts)
+            if (isAdjacentOrOverlapping(currentGap, nextGap)) {
+                // Merge gaps - start time remains, end time is the later of the two
+                Instant mergedEndTime = currentGap.getEndTime().isAfter(nextGap.getEndTime()) 
+                    ? currentGap.getEndTime() : nextGap.getEndTime();
+                    
+                log.debug("Merging adjacent gaps: {} → {} and {} → {} into {} → {}", 
+                         currentGap.getStartTime(), currentGap.getEndTime(),
+                         nextGap.getStartTime(), nextGap.getEndTime(),
+                         currentGap.getStartTime(), mergedEndTime);
+                         
+                currentGap = new TimelineDataGapDTO(currentGap.getStartTime(), mergedEndTime);
+            } else {
+                // Gaps are not adjacent - add current gap and move to next
+                mergedGaps.add(currentGap);
+                currentGap = nextGap;
+                log.debug("Gap not adjacent - keeping separate: {} → {} | {} → {}", 
+                         mergedGaps.get(mergedGaps.size() - 1).getStartTime(), 
+                         mergedGaps.get(mergedGaps.size() - 1).getEndTime(),
+                         currentGap.getStartTime(), currentGap.getEndTime());
+            }
+        }
+        
+        // Add the last gap
+        mergedGaps.add(currentGap);
+        
+        // Replace the original gaps with merged ones
+        timeline.getDataGaps().clear();
+        timeline.getDataGaps().addAll(mergedGaps);
+        
+        log.debug("Gap merging complete: {} original gaps merged into {} gaps", 
+                 gaps.size(), mergedGaps.size());
+    }
+
+    /**
+     * Check if two data gaps are adjacent (touching) or overlapping.
+     * Adjacent means the first gap ends exactly when the second gap starts.
+     * Overlapping means the first gap ends after the second gap starts.
+     */
+    private boolean isAdjacentOrOverlapping(TimelineDataGapDTO firstGap, TimelineDataGapDTO secondGap) {
+        // Adjacent: first ends exactly when second starts (considering nanosecond precision)
+        // We check for near-equality to handle potential nanosecond rounding issues
+        Duration timeBetween = Duration.between(firstGap.getEndTime(), secondGap.getStartTime());
+        
+        // Adjacent if time between is 0 or very small (up to 1 nanosecond difference)
+        boolean adjacent = timeBetween.abs().toNanos() <= 1;
+        
+        // Overlapping: first ends after second starts
+        boolean overlapping = firstGap.getEndTime().isAfter(secondGap.getStartTime());
+        
+        boolean result = adjacent || overlapping;
+        
+        if (result) {
+            log.debug("Gaps are {} - gap1: {} → {}, gap2: {} → {}, time between: {} ns", 
+                     adjacent ? "adjacent" : "overlapping",
+                     firstGap.getStartTime(), firstGap.getEndTime(),
+                     secondGap.getStartTime(), secondGap.getEndTime(),
+                     timeBetween.toNanos());
+        }
+        
+        return result;
     }
 }

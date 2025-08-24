@@ -24,6 +24,47 @@ export function isOvernightStay(stayItem) {
 }
 
 /**
+ * Check if a trip spans multiple days (overnight trip)
+ * @param {Object} tripItem - The trip item with timestamp and tripDuration
+ * @returns {boolean} - True if the trip crosses midnight boundary
+ */
+export function isOvernightTrip(tripItem) {
+  if (!tripItem.timestamp || !tripItem.tripDuration) {
+    return false
+  }
+
+  const startDate = new Date(tripItem.timestamp)
+  // Calculate end time from start time + duration (tripDuration is in minutes)
+  const endDate = new Date(startDate.getTime() + (tripItem.tripDuration * 60 * 1000))
+
+  // Get date parts (ignoring time) to check if they're on different days
+  const startDay = startDate.toDateString()
+  const endDay = endDate.toDateString()
+
+  return startDay !== endDay
+}
+
+/**
+ * Check if a data gap spans multiple days (overnight data gap)
+ * @param {Object} dataGapItem - The data gap item with startTime and endTime
+ * @returns {boolean} - True if the data gap crosses midnight boundary
+ */
+export function isOvernightDataGap(dataGapItem) {
+  if (!dataGapItem.startTime || !dataGapItem.endTime) {
+    return false
+  }
+
+  const startDate = new Date(dataGapItem.startTime)
+  const endDate = new Date(dataGapItem.endTime)
+
+  // Get date parts (ignoring time) to check if they're on different days
+  const startDay = startDate.toDateString()
+  const endDay = endDate.toDateString()
+
+  return startDay !== endDay
+}
+
+/**
  * Check if a stay should be shown as an overnight card for a specific date
  * @param {Object} stayItem - The stay item
  * @param {string} currentDateString - The date we're rendering (date key from grouping)
@@ -43,6 +84,50 @@ export function shouldShowAsOvernightStay(stayItem, currentDateString) {
 
   // Show as overnight if the stay started on a different day than we're currently rendering
   return currentDateStr !== stayStartDateStr
+}
+
+/**
+ * Check if a trip should be shown as an overnight card for a specific date
+ * @param {Object} tripItem - The trip item
+ * @param {string} currentDateString - The date we're rendering (date key from grouping)
+ * @returns {boolean} - True if this should use OvernightTripCard
+ */
+export function shouldShowAsOvernightTrip(tripItem, currentDateString) {
+  if (!isOvernightTrip(tripItem)) {
+    return false
+  }
+
+  const currentDate = new Date(currentDateString)
+  const tripStartDate = new Date(tripItem.timestamp)
+  
+  // Get date parts for comparison (ignoring time)
+  const currentDateStr = currentDate.toDateString()
+  const tripStartDateStr = tripStartDate.toDateString()
+
+  // Show as overnight if the trip started on a different day than we're currently rendering
+  return currentDateStr !== tripStartDateStr
+}
+
+/**
+ * Check if a data gap should be shown as an overnight card for a specific date
+ * @param {Object} dataGapItem - The data gap item
+ * @param {string} currentDateString - The date we're rendering (date key from grouping)
+ * @returns {boolean} - True if this should use OvernightDataGapCard
+ */
+export function shouldShowAsOvernightDataGap(dataGapItem, currentDateString) {
+  if (!isOvernightDataGap(dataGapItem)) {
+    return false
+  }
+
+  const currentDate = new Date(currentDateString)
+  const gapStartDate = new Date(dataGapItem.startTime)
+  
+  // Get date parts for comparison (ignoring time)
+  const currentDateStr = currentDate.toDateString()
+  const gapStartDateStr = gapStartDate.toDateString()
+
+  // Show as overnight if the data gap started on a different day than we're currently rendering
+  return currentDateStr !== gapStartDateStr
 }
 
 /**
@@ -119,28 +204,59 @@ export function formatOvernightContinuation(startTime, currentDateString) {
 
 /**
  * Check if an item should be grouped under a specific date
- * This handles overnight stays that might appear on multiple days
+ * This handles overnight stays and multi-day data gaps that might appear on multiple days
  * @param {Object} timelineItem - The timeline item (stay, trip, dataGap)
  * @param {string} dateKey - The date key we're checking against
  * @returns {boolean} - True if this item should appear under this date
  */
 export function shouldItemAppearOnDate(timelineItem, dateKey) {
-  const itemDate = new Date(timelineItem.timestamp)
   const targetDate = new Date(dateKey)
-  
-  // For non-stays or non-overnight items, simple date matching
-  if (timelineItem.type !== 'stay' || !isOvernightStay(timelineItem)) {
-    return itemDate.toDateString() === targetDate.toDateString()
-  }
-  
-  // For overnight stays, check if this date falls within the stay period
-  const stayStart = new Date(timelineItem.timestamp)
-  // Calculate end time from start time + duration (stayDuration is in minutes)
-  const stayEnd = new Date(stayStart.getTime() + (timelineItem.stayDuration * 60 * 1000))
-  
   const dayStart = getStartOfDay(targetDate)
   const dayEnd = getEndOfDay(targetDate)
   
-  // Item appears on this date if the stay overlaps with this day
-  return stayStart < dayEnd && stayEnd > dayStart
+  // Handle data gaps (which have startTime/endTime instead of timestamp)
+  if (timelineItem.type === 'dataGap') {
+    const gapStart = new Date(timelineItem.startTime)
+    const gapEnd = new Date(timelineItem.endTime)
+    
+    // Data gap appears on this date if it overlaps with this day
+    return gapStart < dayEnd && gapEnd > dayStart
+  }
+  
+  // Handle trips (both single-day and overnight)
+  if (timelineItem.type === 'trip') {
+    // For non-overnight trips, simple date matching
+    if (!isOvernightTrip(timelineItem)) {
+      const itemDate = new Date(timelineItem.timestamp)
+      return itemDate.toDateString() === targetDate.toDateString()
+    }
+    
+    // For overnight trips, check if this date falls within the trip period
+    const tripStart = new Date(timelineItem.timestamp)
+    // Calculate end time from start time + duration (tripDuration is in minutes)
+    const tripEnd = new Date(tripStart.getTime() + (timelineItem.tripDuration * 60 * 1000))
+    
+    // Item appears on this date if the trip overlaps with this day
+    return tripStart < dayEnd && tripEnd > dayStart
+  }
+  
+  // Handle stays (both single-day and overnight)
+  if (timelineItem.type === 'stay') {
+    // For non-overnight stays, simple date matching
+    if (!isOvernightStay(timelineItem)) {
+      const itemDate = new Date(timelineItem.timestamp)
+      return itemDate.toDateString() === targetDate.toDateString()
+    }
+    
+    // For overnight stays, check if this date falls within the stay period
+    const stayStart = new Date(timelineItem.timestamp)
+    // Calculate end time from start time + duration (stayDuration is in minutes)
+    const stayEnd = new Date(stayStart.getTime() + (timelineItem.stayDuration * 60 * 1000))
+    
+    // Item appears on this date if the stay overlaps with this day
+    return stayStart < dayEnd && stayEnd > dayStart
+  }
+  
+  // Fallback for unknown types
+  return false
 }

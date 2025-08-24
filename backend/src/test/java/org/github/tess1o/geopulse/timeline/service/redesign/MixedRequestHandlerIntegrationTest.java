@@ -26,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -335,7 +336,17 @@ class MixedRequestHandlerIntegrationTest {
         if (result.getDataGapsCount() > 0) {
             var dataGap = result.getDataGaps().get(0);
             assertEquals(startTime, dataGap.getStartTime(), "Data gap should start at request start time");
-            assertEquals(endTime, dataGap.getEndTime(), "Data gap should end at request end time");
+            
+            // Data gap should end at "now" (current time) if request end time is in the future
+            // This is the "cap to now" behavior - we don't predict future gaps
+            Instant expectedEndTime = endTime.isAfter(Instant.now()) ? Instant.now() : endTime;
+            
+            // Allow for small timing differences (up to 1 second) due to test execution timing
+            long timeDiffSeconds = Math.abs(ChronoUnit.SECONDS.between(dataGap.getEndTime(), expectedEndTime));
+            assertTrue(timeDiffSeconds <= 1, 
+                "Data gap should end at current time (capped to now). " +
+                "Expected: " + expectedEndTime + ", Actual: " + dataGap.getEndTime() + 
+                ", Diff: " + timeDiffSeconds + "s");
         }
         
         System.out.println("🐛 This test demonstrates the today data gap issue - should FAIL until fixed");

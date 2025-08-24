@@ -388,6 +388,95 @@ class TimelineAssemblerTest {
         assertTrue(result.getTrips().get(0).getTimestamp().isBefore(result.getTrips().get(1).getTimestamp()));
     }
 
+    @Test
+    @DisplayName("Adjacent data gap merging: Merge adjacent data gaps into single continuous gap")
+    void testCombineTimelines_MergeAdjacentDataGaps() {
+        // Configure gap detection (disabled for this test since we're testing basic merging)
+        mockConfig.setDataGapThresholdSeconds(null);
+        mockConfig.setDataGapMinDurationSeconds(null);
+        when(configurationProvider.getConfigurationForUser(testUserId)).thenReturn(mockConfig);
+        
+        // Create test data that reproduces the user's exact scenario:
+        // Past gap: Aug 23 21:00 → Aug 23 23:59:59.999
+        // Today gap: Aug 24 00:00 → Aug 24 10:00 (current time)
+        // Expected: Single merged gap Aug 23 21:00 → Aug 24 10:00
+        
+        Instant now = Instant.now();
+        Instant pastStart = now.atZone(ZoneOffset.UTC)
+            .toLocalDate()
+            .minusDays(1)
+            .atTime(21, 0)
+            .atZone(ZoneOffset.UTC)
+            .toInstant(); // Yesterday 21:00
+        Instant pastEnd = now.atZone(ZoneOffset.UTC)
+            .toLocalDate()
+            .atStartOfDay()
+            .atZone(ZoneOffset.UTC)
+            .toInstant()
+            .minusNanos(1); // Today 00:00:00.000 - 1ns = Yesterday 23:59:59.999
+        Instant todayStart = now.atZone(ZoneOffset.UTC)
+            .toLocalDate()
+            .atStartOfDay()
+            .atZone(ZoneOffset.UTC)
+            .toInstant(); // Today 00:00:00.000
+        Instant todayEnd = now; // Current time
+        
+        // Create past timeline with gap from yesterday 21:00 to end of yesterday
+        MovementTimelineDTO pastTimeline = new MovementTimelineDTO(testUserId);
+        pastTimeline.setDataSource(TimelineDataSource.CACHED);
+        TimelineDataGapDTO pastGap = new TimelineDataGapDTO(pastStart, pastEnd);
+        pastTimeline.getDataGaps().add(pastGap);
+        
+        // Create today timeline with gap from start of today to now
+        MovementTimelineDTO todayTimeline = new MovementTimelineDTO(testUserId);
+        todayTimeline.setDataSource(TimelineDataSource.LIVE);
+        TimelineDataGapDTO todayGap = new TimelineDataGapDTO(todayStart, todayEnd);
+        todayTimeline.getDataGaps().add(todayGap);
+        
+        System.out.println("Adjacent gap merging test scenario:");
+        System.out.println("  Past gap: " + pastStart + " → " + pastEnd);
+        System.out.println("  Today gap: " + todayStart + " → " + todayEnd);
+        System.out.println("  Gaps are adjacent (past ends exactly when today starts)");
+        System.out.println("  Expected: Single merged gap " + pastStart + " → " + todayEnd);
+        
+        // Act - Combine the timelines
+        MovementTimelineDTO result = timelineAssembler.combineTimelines(pastTimeline, todayTimeline, testUserId);
+        
+        // Print actual results for debugging
+        System.out.println("Actual results:");
+        System.out.println("  Number of gaps: " + result.getDataGapsCount());
+        for (int i = 0; i < result.getDataGapsCount(); i++) {
+            var gap = result.getDataGaps().get(i);
+            System.out.println("  Gap " + i + ": " + gap.getStartTime() + " → " + gap.getEndTime() + 
+                             " (" + gap.getDurationMinutes() + " min)");
+        }
+        
+        // CRITICAL TEST: Should have exactly one merged gap (not two separate gaps)
+        // This assertion should FAIL before fix (will show 2 gaps instead of 1)
+        assertEquals(1, result.getDataGapsCount(),
+            "Should have exactly one merged gap, but found " + result.getDataGapsCount() + " gaps. " +
+            "Adjacent gaps should be merged into a single continuous gap.");
+        
+        var mergedGap = result.getDataGaps().get(0);
+        
+        // CRITICAL TEST: Merged gap should start at past gap start time  
+        assertEquals(pastStart, mergedGap.getStartTime(),
+            "Merged gap should start at past gap start time. " +
+            "Expected: " + pastStart + ", Actual: " + mergedGap.getStartTime());
+            
+        // CRITICAL TEST: Merged gap should end at today gap end time
+        assertEquals(todayEnd, mergedGap.getEndTime(),
+            "Merged gap should end at today gap end time. " +
+            "Expected: " + todayEnd + ", Actual: " + mergedGap.getEndTime());
+        
+        // Verify other properties
+        assertEquals(testUserId, result.getUserId());
+        assertEquals(0, result.getStaysCount());
+        assertEquals(0, result.getTripsCount());
+        // Note: DataSource is set by the caller (MixedRequestHandler), not by TimelineAssembler
+        // so we don't test it here since this is testing TimelineAssembler in isolation
+    }
+
     // Helper methods
 
     private Instant parseInstant(String instantString) {

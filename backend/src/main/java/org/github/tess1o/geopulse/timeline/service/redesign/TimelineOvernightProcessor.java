@@ -64,8 +64,17 @@ public class TimelineOvernightProcessor {
         LocalDate endDate = endTime.atZone(ZoneOffset.UTC).toLocalDate();
         
         if (startDate.equals(endDate)) {
-            // Single day processing
-            return processWholeDay(userId, startDate);
+            // Same date - check if it's actually a whole day request
+            Instant startOfDay = startDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+            Instant endOfDay = startDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+            
+            if (startTime.equals(startOfDay) && endTime.equals(endOfDay)) {
+                // True whole day request - use optimized algorithm  
+                return processWholeDay(userId, startDate);
+            } else {
+                // Partial day request - use multi-day logic with exact times
+                return processMultiDayRange(userId, startTime, endTime);
+            }
         } else {
             // Multi-day processing
             return processMultiDayRange(userId, startTime, endTime);
@@ -180,7 +189,7 @@ public class TimelineOvernightProcessor {
         log.debug("Generating standard timeline for user {} from {} to {}", userId, startOfDay, endOfDay);
         
         MovementTimelineDTO timeline = timelineGenerationService.getMovementTimeline(userId, startOfDay, endOfDay);
-        if (timeline != null) {
+        if (timeline != null && (timeline.getStaysCount() > 0 || timeline.getTripsCount() > 0)) {
             timeline.setDataSource(TimelineDataSource.CACHED);
             timeline.setLastUpdated(Instant.now());
             
@@ -188,9 +197,20 @@ public class TimelineOvernightProcessor {
             timelineCacheService.save(userId, startOfDay, endOfDay, timeline);
             log.debug("Cached standard timeline: {} stays, {} trips", 
                      timeline.getStaysCount(), timeline.getTripsCount());
+            return timeline;
         }
 
-        return timeline;
+        // No timeline data generated (null or empty) - create timeline with data gap
+        log.debug("No GPS data for requested period - creating data gap from {} to {}", startOfDay, endOfDay);
+        MovementTimelineDTO dataGapTimeline = new MovementTimelineDTO(userId);
+        dataGapTimeline.setDataSource(TimelineDataSource.CACHED);
+        dataGapTimeline.setLastUpdated(Instant.now());
+        
+        // Create data gap covering the entire requested period
+        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startOfDay, endOfDay);
+        dataGapTimeline.getDataGaps().add(dataGap);
+        
+        return dataGapTimeline;
     }
 
     /**
