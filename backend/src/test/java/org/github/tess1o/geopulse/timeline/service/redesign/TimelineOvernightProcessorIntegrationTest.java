@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
 import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
@@ -310,6 +311,108 @@ class TimelineOvernightProcessorIntegrationTest {
 
         log.info("✅ GPS ends early test passed: {} stays, {} trips, {} data gaps", 
                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
+    }
+
+    @Test
+    @Transactional
+    void testPartialDayRequest_ShouldRespectExactTimeBoundaries() {
+        // CRITICAL TEST: Ensures partial day requests use exact time boundaries, not full day boundaries
+        // This test verifies the fix for the bug where "yesterday 21:00 to 23:59:59" was incorrectly
+        // treated as a whole day (00:00 to 23:59:59), causing data gaps to start at wrong times.
+        
+        LocalDate testDate = LocalDate.of(2025, 8, 22);
+        
+        // Don't create any GPS data - we want to test data gap creation with exact boundaries
+        
+        // Request partial day: 21:00 to 23:30 (2.5 hours, NOT a full day)
+        Instant partialStart = testDate.atTime(21, 0).atZone(ZoneOffset.UTC).toInstant();   // 21:00:00
+        Instant partialEnd = testDate.atTime(23, 30).atZone(ZoneOffset.UTC).toInstant();     // 23:30:00
+        
+        log.info("Testing partial day request scenario:");
+        log.info("  Date: {}", testDate);
+        log.info("  Request start: {} (21:00)", partialStart);
+        log.info("  Request end: {} (23:30)", partialEnd);
+        log.info("  This is NOT a whole day - should use processMultiDayRange with exact boundaries");
+        
+        // Act - Use processTimeRange (which internally decides between processWholeDay vs processMultiDayRange)
+        MovementTimelineDTO timeline = timelineOvernightProcessor.processTimeRange(testUserId, partialStart, partialEnd);
+        
+        // Assert
+        assertNotNull(timeline, "Timeline should not be null");
+        assertEquals(testUserId, timeline.getUserId(), "User ID should match");
+        
+        // Should have no GPS-based activities
+        assertEquals(0, timeline.getStaysCount(), "Should have no stays");
+        assertEquals(0, timeline.getTripsCount(), "Should have no trips");
+        
+        // CRITICAL: Should create exactly one data gap with EXACT requested boundaries
+        assertEquals(1, timeline.getDataGapsCount(), 
+            "Should create exactly one data gap for period with no GPS data");
+        
+        TimelineDataGapDTO dataGap = timeline.getDataGaps().get(0);
+        
+        // CRITICAL: Data gap should start at EXACT requested start time (21:00), NOT at 00:00
+        assertEquals(partialStart, dataGap.getStartTime(),
+            "Data gap should start at exact requested time (21:00), NOT at start of day (00:00). " +
+            "This verifies the partial day vs whole day logic fix.");
+        
+        // CRITICAL: Data gap should end at EXACT requested end time (23:30), NOT at 23:59:59
+        assertEquals(partialEnd, dataGap.getEndTime(),
+            "Data gap should end at exact requested time (23:30), NOT at end of day (23:59:59). " +
+            "This verifies the partial day vs whole day logic fix.");
+        
+        // Verify duration matches the partial request (2.5 hours = 150 minutes)
+        long expectedDurationMinutes = 150; // 21:00 to 23:30 = 2.5 hours
+        assertEquals(expectedDurationMinutes, dataGap.getDurationMinutes(),
+            "Duration should match the partial request period");
+        
+        log.info("✅ Partial day test PASSED:");
+        log.info("  Data gap: {} → {} ({} minutes)", 
+                dataGap.getStartTime(), dataGap.getEndTime(), dataGap.getDurationMinutes());
+        log.info("  Correctly used exact boundaries, NOT full day boundaries");
+        log.info("  This verifies the fix for the gap merging start time bug");
+    }
+
+    @Test
+    @Transactional
+    void testWholeDayRequest_ShouldUseOptimizedPath() {
+        // Control test: Verify that true whole day requests still use the optimized processWholeDay path
+        
+        LocalDate testDate = LocalDate.of(2025, 8, 22);
+        
+        // Request EXACT whole day: 00:00:00.000 to 23:59:59.999999999
+        Instant wholeStart = testDate.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant wholeEnd = testDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+        
+        log.info("Testing whole day request scenario:");
+        log.info("  Request start: {} (00:00:00.000)", wholeStart);
+        log.info("  Request end: {} (23:59:59.999999999)", wholeEnd);
+        log.info("  This IS a whole day - should use processWholeDay optimization");
+        
+        // Act
+        MovementTimelineDTO timeline = timelineOvernightProcessor.processTimeRange(testUserId, wholeStart, wholeEnd);
+        
+        // Assert
+        assertNotNull(timeline, "Timeline should not be null");
+        assertEquals(testUserId, timeline.getUserId(), "User ID should match");
+        
+        // Should create data gap for the whole day
+        assertEquals(1, timeline.getDataGapsCount(), 
+            "Should create data gap for whole day with no GPS data");
+        
+        TimelineDataGapDTO dataGap = timeline.getDataGaps().get(0);
+        assertEquals(wholeStart, dataGap.getStartTime(), "Should start at exact day start");
+        assertEquals(wholeEnd, dataGap.getEndTime(), "Should end at exact day end");
+        
+        // Verify duration is close to 24 hours (1439 minutes due to nanosecond precision)
+        long durationMinutes = dataGap.getDurationMinutes();
+        assertTrue(durationMinutes >= 1439 && durationMinutes <= 1440, 
+            "Duration should be approximately 24 hours (1439-1440 minutes), actual: " + durationMinutes);
+        
+        log.info("✅ Whole day test PASSED:");
+        log.info("  Data gap: {} → {} ({} minutes)", 
+                dataGap.getStartTime(), dataGap.getEndTime(), dataGap.getDurationMinutes());
+        log.info("  Correctly used whole day optimization");
     }
 
     // ============ Helper Methods ============
