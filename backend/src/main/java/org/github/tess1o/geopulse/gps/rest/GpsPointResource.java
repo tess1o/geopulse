@@ -80,18 +80,33 @@ public class GpsPointResource {
      * Get summary statistics for GPS points.
      * This endpoint requires authentication.
      *
+     * @param timezone Optional timezone parameter (e.g., "Europe/Kyiv", "America/New_York"). 
+     *                 If not provided, defaults to UTC.
      * @return Summary statistics for the user's GPS points
      */
     @GET
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed("USER")
-    public Response getGpsPointSummary() {
+    public Response getGpsPointSummary(@QueryParam("timezone") String timezone) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS point summary for user {}", userId);
+        log.info("Received request to get GPS point summary for user {} with timezone {}", userId, timezone);
 
         try {
-            GpsPointSummaryDTO summary = gpsPointService.getGpsPointSummary(userId);
+            GpsPointSummaryDTO summary;
+            
+            if (timezone != null && !timezone.trim().isEmpty()) {
+                try {
+                    java.time.ZoneId userTimezone = java.time.ZoneId.of(timezone.trim());
+                    summary = gpsPointService.getGpsPointSummary(userId, userTimezone);
+                } catch (java.time.DateTimeException e) {
+                    log.warn("Invalid timezone '{}' provided for user {}, falling back to UTC", timezone, userId);
+                    summary = gpsPointService.getGpsPointSummary(userId);
+                }
+            } else {
+                summary = gpsPointService.getGpsPointSummary(userId);
+            }
+            
             return Response.ok(ApiResponse.success(summary)).build();
         } catch (Exception e) {
             log.error("Failed to retrieve GPS point summary for user {}", userId, e);

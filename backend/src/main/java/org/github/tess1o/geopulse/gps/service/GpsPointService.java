@@ -22,7 +22,9 @@ import jakarta.ws.rs.NotFoundException;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -125,10 +127,28 @@ public class GpsPointService {
      * @return Summary statistics
      */
     public GpsPointSummaryDTO getGpsPointSummary(UUID userId) {
+        return getGpsPointSummary(userId, ZoneId.of("UTC"));
+    }
+
+    /**
+     * Get summary statistics for GPS points for a user with timezone support.
+     *
+     * @param userId The ID of the user
+     * @param userTimezone The user's timezone for calculating "today"
+     * @return Summary statistics
+     */
+    public GpsPointSummaryDTO getGpsPointSummary(UUID userId, ZoneId userTimezone) {
         long totalPoints = gpsPointRepository.count("user.id", userId);
 
-        Instant todayStart = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS);
-        Instant todayEnd = todayStart.plus(1, java.time.temporal.ChronoUnit.DAYS);
+        // Calculate "today" in the user's timezone, not UTC
+        ZonedDateTime nowInUserTz = ZonedDateTime.now(userTimezone);
+        ZonedDateTime todayStartInUserTz = nowInUserTz.toLocalDate().atStartOfDay(userTimezone);
+        ZonedDateTime todayEndInUserTz = todayStartInUserTz.plusDays(1);
+        
+        // Convert to UTC for database query (since timestamps are stored in UTC)
+        Instant todayStart = todayStartInUserTz.toInstant();
+        Instant todayEnd = todayEndInUserTz.toInstant();
+        
         long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3",
                 userId, todayStart, todayEnd);
 
