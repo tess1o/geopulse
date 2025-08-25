@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Service responsible for detecting data gaps in GPS tracking data.
@@ -171,6 +172,38 @@ public class DataGapDetectionService {
         ).getSeconds();
 
         return timeDifferenceSeconds > config.getDataGapThresholdSeconds();
+    }
+
+    /**
+     * Create a data gap if duration meets minimum configuration requirements.
+     * This method ensures that only gaps meeting the configured minimum duration are created.
+     * 
+     * @param config timeline configuration containing minimum gap duration
+     * @param startTime gap start time
+     * @param endTime gap end time
+     * @return TimelineDataGapDTO if gap should be created, null if below minimum threshold
+     */
+    public TimelineDataGapDTO createDataGapIfValid(TimelineConfig config, Instant startTime, Instant endTime) {
+        long gapDurationSeconds = endTime.getEpochSecond() - startTime.getEpochSecond();
+        long gapDurationMinutes = gapDurationSeconds / 60;
+        
+        Integer minGapDurationSeconds = config.getDataGapMinDurationSeconds();
+        if (minGapDurationSeconds == null) {
+            log.warn("Minimum gap duration not configured - creating gap without validation");
+            return new TimelineDataGapDTO(startTime, endTime);
+        }
+        
+        int minGapDurationMinutes = minGapDurationSeconds / 60;
+        
+        if (gapDurationSeconds >= minGapDurationSeconds) {
+            log.debug("Creating data gap from {} to {} ({} minutes, meets minimum {} minutes)", 
+                     startTime, endTime, gapDurationMinutes, minGapDurationMinutes);
+            return new TimelineDataGapDTO(startTime, endTime);
+        } else {
+            log.debug("Skipping data gap from {} to {} ({} minutes < minimum {} minutes)", 
+                     startTime, endTime, gapDurationMinutes, minGapDurationMinutes);
+            return null;
+        }
     }
 
     /**

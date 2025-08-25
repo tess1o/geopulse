@@ -6,7 +6,10 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
+import org.github.tess1o.geopulse.timeline.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.timeline.detection.gaps.DataGapDetectionService;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
@@ -46,6 +49,12 @@ public class TimelineOvernightProcessor {
     
     @Inject
     TimelineDataGapRepository timelineDataGapRepository;
+    
+    @Inject
+    TimelineConfigurationProvider configurationProvider;
+    
+    @Inject
+    DataGapDetectionService dataGapDetectionService;
 
     /**
      * Process timeline for a specific time range, handling data gaps properly.
@@ -158,17 +167,16 @@ public class TimelineOvernightProcessor {
             updateBoundaryEvent(boundaryEvent.get(), timeline);
         }
 
-        // Add data gap if GPS data ends before request end time
+        // Add data gap if GPS data ends before request end time (with configuration check)
         if (latestGpsTime.isBefore(endTime)) {
             Instant gapStartTime = latestGpsTime.plusSeconds(1);
-            TimelineDataGapDTO dataGap = new TimelineDataGapDTO(gapStartTime, endTime);
-            timeline.getDataGaps().add(dataGap);
-            
-            // Persist the data gap
-            persistDataGap(userId, gapStartTime, endTime);
-            
-            log.debug("Added data gap from {} to {} (GPS data ended at {})", 
-                     gapStartTime, endTime, latestGpsTime);
+            TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+            TimelineDataGapDTO dataGap = dataGapDetectionService.createDataGapIfValid(config, gapStartTime, endTime);
+            if (dataGap != null) {
+                timeline.getDataGaps().add(dataGap);
+                // Persist the data gap
+                persistDataGap(userId, gapStartTime, endTime);
+            }
         }
 
         // Set metadata and cache
@@ -206,9 +214,12 @@ public class TimelineOvernightProcessor {
         dataGapTimeline.setDataSource(TimelineDataSource.CACHED);
         dataGapTimeline.setLastUpdated(Instant.now());
         
-        // Create data gap covering the entire requested period
-        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startOfDay, endOfDay);
-        dataGapTimeline.getDataGaps().add(dataGap);
+        // Create data gap covering the entire requested period (with configuration check)
+        TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+        TimelineDataGapDTO dataGap = dataGapDetectionService.createDataGapIfValid(config, startOfDay, endOfDay);
+        if (dataGap != null) {
+            dataGapTimeline.getDataGaps().add(dataGap);
+        }
         
         return dataGapTimeline;
     }
@@ -345,17 +356,18 @@ public class TimelineOvernightProcessor {
         timeline.setDataSource(TimelineDataSource.CACHED);
         timeline.setLastUpdated(Instant.now());
         
-        // Add data gap for the entire period
-        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startTime, endTime);
-        timeline.getDataGaps().add(dataGap);
-        
-        // Persist the data gap
-        persistDataGap(userId, startTime, endTime);
-        
-        log.debug("Created timeline with data gap from {} to {}", startTime, endTime);
+        // Add data gap for the entire period (with configuration check)
+        TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+        TimelineDataGapDTO dataGap = dataGapDetectionService.createDataGapIfValid(config, startTime, endTime);
+        if (dataGap != null) {
+            timeline.getDataGaps().add(dataGap);
+            // Persist the data gap
+            persistDataGap(userId, startTime, endTime);
+        }
         
         return timeline;
     }
+
 
     /**
      * Persist data gap to database.

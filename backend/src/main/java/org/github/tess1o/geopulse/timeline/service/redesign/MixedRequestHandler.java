@@ -4,7 +4,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.timeline.assembly.TimelineService;
+import org.github.tess1o.geopulse.timeline.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.timeline.detection.gaps.DataGapDetectionService;
 import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
+import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.timeline.model.TimelineDataSource;
 
@@ -29,6 +32,12 @@ public class MixedRequestHandler {
     
     @Inject
     TimelineAssembler timelineAssembler;
+    
+    @Inject
+    TimelineConfigurationProvider configurationProvider;
+    
+    @Inject
+    DataGapDetectionService dataGapDetectionService;
 
     /**
      * Handle mixed timeline requests (past + today).
@@ -98,13 +107,13 @@ public class MixedRequestHandler {
                 Instant cappedEndTime = endTime.isAfter(Instant.now()) ? Instant.now() : endTime;
                 
                 if (latestGpsTime != null && latestGpsTime.isBefore(cappedEndTime)) {
-                    // Add data gap for period after GPS data ends, capped to "now"
+                    // Check if gap should be created based on configuration
                     Instant gapStartTime = latestGpsTime.plusSeconds(1);
-                    TimelineDataGapDTO dataGap = new TimelineDataGapDTO(gapStartTime, cappedEndTime);
-                    timeline.getDataGaps().add(dataGap);
-                    
-                    log.debug("Added data gap for today from {} to {} (GPS ended at {}, capped to now)", 
-                             gapStartTime, cappedEndTime, latestGpsTime);
+                    TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+                    TimelineDataGapDTO dataGap = dataGapDetectionService.createDataGapIfValid(config, gapStartTime, cappedEndTime);
+                    if (dataGap != null) {
+                        timeline.getDataGaps().add(dataGap);
+                    }
                 }
                 
                 // Timeline has actual data - return it as live
@@ -133,14 +142,16 @@ public class MixedRequestHandler {
         timeline.setDataSource(TimelineDataSource.LIVE);
         timeline.setLastUpdated(Instant.now());
         
-        // Add data gap for the requested period
-        TimelineDataGapDTO dataGap = new TimelineDataGapDTO(startTime, endTime);
-        timeline.getDataGaps().add(dataGap);
-        
-        log.debug("Created today timeline with data gap from {} to {}", startTime, endTime);
+        // Check if gap should be created based on configuration
+        TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+        TimelineDataGapDTO dataGap = dataGapDetectionService.createDataGapIfValid(config, startTime, endTime);
+        if (dataGap != null) {
+            timeline.getDataGaps().add(dataGap);
+        }
         
         return timeline;
     }
+
 
     /**
      * Find the latest end time among all timeline events (stays, trips, existing data gaps).
