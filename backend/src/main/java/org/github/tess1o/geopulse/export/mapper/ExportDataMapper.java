@@ -9,13 +9,12 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
-import org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
-import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;

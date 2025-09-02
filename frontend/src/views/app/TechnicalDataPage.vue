@@ -172,14 +172,14 @@
           </template>
         </Column>
 
-        <Column field="altitude" header="Altitude" sortable class="numeric-col" v-if="!isMobile">
+        <Column field="altitude" header="Altitude" sortable class="numeric-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.altitude">{{ Math.round(slotProps.data.altitude) }}m</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="battery" header="Battery" sortable class="numeric-col" v-if="!isMobile">
+        <Column field="battery" header="Battery" sortable class="numeric-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.battery !== null && slotProps.data.battery >= 0">{{ Math.round(slotProps.data.battery) }}%</span>
             <span v-else class="null-value">-</span>
@@ -320,6 +320,7 @@ const toast = useToast()
 
 // Reactive state
 const isMobile = ref(false)
+const isTablet = ref(false)
 const dateRange = ref(null)
 const pageSize = ref(50)
 const currentPage = ref(0)
@@ -402,6 +403,7 @@ const getSourceSeverity = (sourceType) => {
 
 const handleResize = () => {
   isMobile.value = window.innerWidth < 768
+  isTablet.value = window.innerWidth >= 768 && window.innerWidth < 1024
   pageSize.value = isMobile.value ? 25 : 50
 }
 

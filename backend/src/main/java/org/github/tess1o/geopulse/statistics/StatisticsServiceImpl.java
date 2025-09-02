@@ -10,9 +10,9 @@ import org.github.tess1o.geopulse.statistics.service.ChartDataService;
 import org.github.tess1o.geopulse.statistics.service.PlacesAnalysisService;
 import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
 import org.github.tess1o.geopulse.statistics.service.TimelineAggregationService;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TravelMode;
-import org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -32,7 +32,7 @@ import java.util.UUID;
 @Slf4j
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final TimelineRequestRouter timelineRequestRouter;
+    private final StreamingTimelineAggregator streamingTimelineAggregator;
     private final ChartDataService chartDataService;
     private final PlacesAnalysisService placesAnalysisService;
     private final RoutesAnalysisService routesAnalysisService;
@@ -41,13 +41,13 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Inject
     public StatisticsServiceImpl(
-            TimelineRequestRouter timelineRequestRouter,
+            StreamingTimelineAggregator streamingTimelineAggregator,
             ChartDataService chartDataService,
             PlacesAnalysisService placesAnalysisService,
             RoutesAnalysisService routesAnalysisService,
             TimelineAggregationService timelineAggregationService,
             ActivityAnalysisService activityAnalysisService) {
-        this.timelineRequestRouter = timelineRequestRouter;
+        this.streamingTimelineAggregator = streamingTimelineAggregator;
         this.chartDataService = chartDataService;
         this.placesAnalysisService = placesAnalysisService;
         this.routesAnalysisService = routesAnalysisService;
@@ -60,7 +60,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         log.debug("Generating statistics for user {} from {} to {} with grouping {}", 
                 userId, from, to, chartGroupMode);
         
-        MovementTimelineDTO timeline = timelineRequestRouter.getTimeline(userId, from, to);
+        MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, from, to);
         
         // Calculate basic aggregations
         double totalDistanceKm = timelineAggregationService.getTotalDistance(timeline);
@@ -76,8 +76,8 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .places(placesAnalysisService.getPlacesStatistics(timeline))
                 .mostActiveDay(activityAnalysisService.getMostActiveDay(timeline))
                 .averageSpeed(timelineAggregationService.getAverageSpeed(totalDistanceKm, timeMovingMinutes))
-                .distanceCarChart(chartDataService.getDistanceChartData(timeline, TravelMode.CAR, chartGroupMode))
-                .distanceWalkChart(chartDataService.getDistanceChartData(timeline, TravelMode.WALKING, chartGroupMode))
+                .distanceCarChart(chartDataService.getDistanceChartData(timeline, TripType.CAR, chartGroupMode))
+                .distanceWalkChart(chartDataService.getDistanceChartData(timeline, TripType.WALK, chartGroupMode))
                 .build();
     }
 }

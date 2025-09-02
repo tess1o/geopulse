@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
 import io.quarkus.scheduler.Scheduled;
+import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -176,6 +177,7 @@ public class ImportService {
     boolean schedulerEnabled;
 
     @Scheduled(every = "2s")
+    @RunOnVirtualThread
     public void processImportJobs() {
         if (!schedulerEnabled) {
             log.info("Import scheduler is disabled. Skipping scheduled import jobs.");

@@ -114,7 +114,7 @@ export const useTimelineStore = defineStore('timeline', {
         // API Actions
         async fetchMovementTimeline(startTime, endTime) {
             try {
-                const response = await apiService.get('/timeline', {
+                const response = await apiService.get('/streaming-timeline', {
                     startTime: startTime.toISOString(),
                     endTime: endTime.toISOString()
                 })
@@ -155,7 +155,7 @@ export const useTimelineStore = defineStore('timeline', {
         // Regenerate entire timeline from scratch
         async regenerateAllTimeline() {
             try {
-                const response = await apiService.post('/timeline/regenerate-all')
+                const response = await apiService.post('/streaming-timeline/regenerate-all')
                 // Clear current timeline data since it's been regenerated
                 this.clearTimelineData()
                 return response

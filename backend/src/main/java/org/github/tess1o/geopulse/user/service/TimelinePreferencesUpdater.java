@@ -2,8 +2,8 @@ package org.github.tess1o.geopulse.user.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
-import org.github.tess1o.geopulse.timeline.config.TimelineConfigFieldRegistry;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfigFieldRegistry;
 import org.github.tess1o.geopulse.user.mapper.TimelinePreferencesMapper;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UpdateTimelinePreferencesRequest;

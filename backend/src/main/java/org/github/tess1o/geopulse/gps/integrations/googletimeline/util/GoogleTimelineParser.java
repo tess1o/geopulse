@@ -13,7 +13,10 @@ import java.util.List;
  * Parser utility for Google Timeline data, implementing the same logic as google_timeline_parser.py
  */
 @Slf4j
-public class GoogleTimelineParser {
+public final class GoogleTimelineParser {
+
+    private GoogleTimelineParser(){
+    }
     
     /**
      * Parse geo string from "geo:lat,lng" format to coordinates
@@ -52,10 +55,7 @@ public class GoogleTimelineParser {
         for (int i = 0; i < records.size(); i++) {
             GoogleTimelineRecord record = records.get(i);
             GoogleTimelineRecordType recordType = record.getRecordType();
-            
-            Instant startTime = record.getStartTime();
-            Instant endTime = record.getEndTime();
-            
+
             switch (recordType) {
                 case ACTIVITY -> processActivityRecord(record, i, includeVelocity, gpsPoints);
                 case VISIT -> processVisitRecord(record, i, gpsPoints);
@@ -74,7 +74,9 @@ public class GoogleTimelineParser {
     private static void processActivityRecord(GoogleTimelineRecord record, int recordIndex, 
                                             boolean includeVelocity, List<GoogleTimelineGpsPoint> gpsPoints) {
         GoogleTimelineActivity activity = record.getActivity();
-        if (activity == null) return;
+        if (activity == null) {
+            return;
+        }
         
         double[] startCoords = parseGeoString(activity.getStart());
         double[] endCoords = parseGeoString(activity.getEnd());
@@ -146,12 +148,16 @@ public class GoogleTimelineParser {
     private static void processVisitRecord(GoogleTimelineRecord record, int recordIndex, 
                                          List<GoogleTimelineGpsPoint> gpsPoints) {
         GoogleTimelineVisit visit = record.getVisit();
-        if (visit == null || visit.getTopCandidate() == null) return;
+        if (visit == null || visit.getTopCandidate() == null) {
+            return;
+        }
         
         GoogleTimelineVisitCandidate topCandidate = visit.getTopCandidate();
         double[] coords = parseGeoString(topCandidate.getPlaceLocation());
         
-        if (coords == null) return;
+        if (coords == null) {
+            return;
+        }
         
         String placeName = topCandidate.getSemanticType() != null ? 
                 topCandidate.getSemanticType() : "unknown";
@@ -194,7 +200,9 @@ public class GoogleTimelineParser {
         
         for (GoogleTimelinePath pathPoint : timelinePath) {
             double[] coords = parseGeoString(pathPoint.getPoint());
-            if (coords == null) continue;
+            if (coords == null) {
+                continue;
+            }
             
             int offsetMinutes = 0;
             try {

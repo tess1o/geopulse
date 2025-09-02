@@ -13,16 +13,16 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.timeline.service.TimelineBackgroundService;
-import org.github.tess1o.geopulse.timeline.service.TimelineCacheService;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -35,19 +35,17 @@ public class GpsPointService {
     private final GpsPointRepository gpsPointRepository;
     private final GpsPointDuplicateDetectionService duplicateDetectionService;
     private final EntityManager em;
-    private final TimelineBackgroundService timelineBackgroundService;
-    private final TimelineCacheService timelineCacheService;
+    private final StreamingTimelineGenerationService streamingTimelineGenerationService;
 
     @Inject
     public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository,
                            GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em,
-                           TimelineBackgroundService timelineBackgroundService, TimelineCacheService timelineCacheService) {
+                           StreamingTimelineGenerationService streamingTimelineGenerationService) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
         this.em = em;
-        this.timelineBackgroundService = timelineBackgroundService;
-        this.timelineCacheService = timelineCacheService;
+        this.streamingTimelineGenerationService = streamingTimelineGenerationService;
     }
 
     @Transactional
@@ -64,6 +62,7 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
         gpsPointRepository.persist(entity);
+        
         log.info("Saved OwnTracks GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
@@ -79,6 +78,7 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
         gpsPointRepository.persist(entity);
+        
         log.info("Saved Overland GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
@@ -98,6 +98,7 @@ public class GpsPointService {
 
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
             gpsPointRepository.persist(entity);
+            
             log.info("Saved Dawarich GPS point for user {} at timestamp {}", userId, entity.getTimestamp());
         }
     }
@@ -125,10 +126,28 @@ public class GpsPointService {
      * @return Summary statistics
      */
     public GpsPointSummaryDTO getGpsPointSummary(UUID userId) {
+        return getGpsPointSummary(userId, ZoneId.of("UTC"));
+    }
+
+    /**
+     * Get summary statistics for GPS points for a user with timezone support.
+     *
+     * @param userId The ID of the user
+     * @param userTimezone The user's timezone for calculating "today"
+     * @return Summary statistics
+     */
+    public GpsPointSummaryDTO getGpsPointSummary(UUID userId, ZoneId userTimezone) {
         long totalPoints = gpsPointRepository.count("user.id", userId);
 
-        Instant todayStart = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.DAYS);
-        Instant todayEnd = todayStart.plus(1, java.time.temporal.ChronoUnit.DAYS);
+        // Calculate "today" in the user's timezone, not UTC
+        ZonedDateTime nowInUserTz = ZonedDateTime.now(userTimezone);
+        ZonedDateTime todayStartInUserTz = nowInUserTz.toLocalDate().atStartOfDay(userTimezone);
+        ZonedDateTime todayEndInUserTz = todayStartInUserTz.plusDays(1);
+        
+        // Convert to UTC for database query (since timestamps are stored in UTC)
+        Instant todayStart = todayStartInUserTz.toInstant();
+        Instant todayEnd = todayEndInUserTz.toInstant();
+        
         long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3",
                 userId, todayStart, todayEnd);
 
@@ -202,8 +221,8 @@ public class GpsPointService {
             throw new ForbiddenException("GPS point does not belong to the user");
         }
         
-        // Store original date for timeline recalculation check
-        LocalDate originalDate = gpsPoint.getTimestamp().atZone(ZoneOffset.UTC).toLocalDate();
+        // Store original timestamp for timeline recalculation
+        Instant originalTimestamp = gpsPoint.getTimestamp();
         
         // Update the GPS point
         gpsPoint.setCoordinates(GeoUtils.createPoint(dto.getCoordinates().getLng(), dto.getCoordinates().getLat()));
@@ -212,8 +231,8 @@ public class GpsPointService {
         
         gpsPointRepository.persist(gpsPoint);
         
-        // Check if timeline recalculation is needed
-        triggerTimelineRecalculationIfNeeded(userId, originalDate);
+        // Trigger synchronous timeline regeneration if needed
+        triggerSynchronousTimelineRegenerationIfNeeded(userId, originalTimestamp);
         
         // Return updated point as DTO
         return gpsPointMapper.toGpsPointDTO(gpsPoint);
@@ -240,14 +259,14 @@ public class GpsPointService {
             throw new ForbiddenException("GPS point does not belong to the user");
         }
         
-        // Store date for timeline recalculation check
-        LocalDate pointDate = gpsPoint.getTimestamp().atZone(ZoneOffset.UTC).toLocalDate();
+        // Store timestamp for timeline recalculation
+        Instant pointTimestamp = gpsPoint.getTimestamp();
         
         // Delete the GPS point
         gpsPointRepository.delete(gpsPoint);
         
-        // Check if timeline recalculation is needed
-        triggerTimelineRecalculationIfNeeded(userId, pointDate);
+        // Trigger synchronous timeline regeneration if needed
+        triggerSynchronousTimelineRegenerationIfNeeded(userId, pointTimestamp);
     }
 
     /**
@@ -275,11 +294,11 @@ public class GpsPointService {
             }
         }
         
-        // Collect unique dates for timeline recalculation
-        List<LocalDate> affectedDates = gpsPoints.stream()
-            .map(point -> point.getTimestamp().atZone(ZoneOffset.UTC).toLocalDate())
-            .distinct()
-            .toList();
+        // Find the earliest timestamp among all points to be deleted
+        Instant earliestTimestamp = gpsPoints.stream()
+            .map(GpsPointEntity::getTimestamp)
+            .min(Instant::compareTo)
+            .orElse(null);
         
         // Delete all points
         int deletedCount = 0;
@@ -288,46 +307,21 @@ public class GpsPointService {
             deletedCount++;
         }
         
-        // Trigger timeline recalculation for all affected dates
-        triggerTimelineRecalculationIfNeeded(userId, affectedDates);
+        // Trigger synchronous timeline regeneration if needed
+        if (earliestTimestamp != null) {
+            triggerSynchronousTimelineRegenerationIfNeeded(userId, earliestTimestamp);
+        }
         
         log.info("Successfully deleted {} GPS points for user {}", deletedCount, userId);
         return deletedCount;
     }
 
     /**
-     * Check if timeline recalculation is needed for a specific date.
-     * If the date is "today", no recalculation is needed (live calculation).
-     * If the date is in the past, trigger high-priority timeline regeneration.
+     * Trigger synchronous timeline regeneration if needed.
+     * If the affected timestamp is in the past (not today), regenerate timeline immediately.
+     * For today's data, timeline is handled by live processing.
      */
-    private void triggerTimelineRecalculationIfNeeded(UUID userId, LocalDate affectedDate) {
-        triggerTimelineRecalculationIfNeeded(userId, List.of(affectedDate));
-    }
-
-    /**
-     * Check if timeline recalculation is needed for multiple dates.
-     * If any date is in the past, trigger high-priority timeline regeneration.
-     */
-    private void triggerTimelineRecalculationIfNeeded(UUID userId, List<LocalDate> affectedDates) {
-        LocalDate today = LocalDate.now(ZoneOffset.UTC);
-        
-        // Filter out today's date (no recalculation needed for live data)
-        List<LocalDate> pastDates = affectedDates.stream()
-            .filter(date -> date.isBefore(today))
-            .distinct()
-            .toList();
-        
-        if (!pastDates.isEmpty()) {
-            log.info("GPS point changes affect past dates: {}. Triggering timeline recalculation for user {}", 
-                     pastDates, userId);
-            
-            // Clear existing timeline cache for affected dates
-            timelineCacheService.delete(userId, pastDates);
-            
-            // Queue high-priority timeline regeneration
-            timelineBackgroundService.queueHighPriorityRegeneration(userId, pastDates);
-        } else {
-            log.debug("GPS point changes only affect today's data. No timeline recalculation needed.");
-        }
+    private void triggerSynchronousTimelineRegenerationIfNeeded(UUID userId, Instant affectedTimestamp) {
+        streamingTimelineGenerationService.generateTimelineFromTimestamp(userId, affectedTimestamp);
     }
 }

@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.gps.model;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GpsPointPathDTO {
     private UUID userId;
-    private List<GpsPointPathPointDTO> points;
+    private List<? extends GpsPoint> points;
     private int pointCount;
     
     /**
@@ -25,6 +26,9 @@ public class GpsPointPathDTO {
     public GpsPointPathDTO(UUID userId, List<GpsPointPathPointDTO> points) {
         this.userId = userId;
         this.points = points;
-        this.pointCount = points != null ? points.size() : 0;
+    }
+
+    public int getPointCount() {
+        return points != null ? points.size() : 0;
     }
 }

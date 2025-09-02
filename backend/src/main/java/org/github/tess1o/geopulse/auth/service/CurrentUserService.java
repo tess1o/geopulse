@@ -32,7 +32,7 @@ public class CurrentUserService {
             try {
                 return UUID.fromString(userIdStr);
             } catch (IllegalArgumentException e) {
-                throw new SecurityException("Invalid userId in token");
+                throw new SecurityException("Invalid userId in token", e);
             }
         }
 
@@ -42,7 +42,7 @@ public class CurrentUserService {
             try {
                 return UUID.fromString(subject);
             } catch (IllegalArgumentException e) {
-                throw new SecurityException("Invalid subject in token");
+                throw new SecurityException("Invalid subject in token", e);
             }
         }
 

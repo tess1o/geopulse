@@ -5,13 +5,8 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
-import org.github.tess1o.geopulse.user.exceptions.NotAuthorizedUserException;
 import org.mindrot.jbcrypt.BCrypt;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 
 /**
  * Secure password utility with bcrypt hashing and migration support from SHA-256.

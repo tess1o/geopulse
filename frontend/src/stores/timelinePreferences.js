@@ -1,7 +1,6 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 
-//TODO: check if all these crap is needed
 export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
     state: () => ({
         timelinePreferences: null
@@ -56,7 +55,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         // API Actions
         async fetchTimelinePreferences() {
             try {
-                const response = await apiService.get(`/timeline/user/preferences`)
+                const response = await apiService.get(`/streaming-timeline/user/preferences`)
                 this.setTimelinePreferences(response)
                 return response
             } catch (error) {

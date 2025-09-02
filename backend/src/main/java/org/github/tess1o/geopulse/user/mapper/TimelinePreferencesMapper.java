@@ -1,6 +1,6 @@
 package org.github.tess1o.geopulse.user.mapper;
 
-import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UpdateTimelinePreferencesRequest;
 import org.mapstruct.Mapper;
@@ -43,8 +43,6 @@ public interface TimelinePreferencesMapper {
      * If existing is null, returns a copy of import preferences.
      * If import is null, returns existing preferences unchanged.
      */
-    @org.mapstruct.Mapping(target = "staypointDetectionAlgorithm", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "useVelocityAccuracy", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "staypointVelocityThreshold", 
@@ -55,9 +53,9 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "tripDetectionAlgorithm", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "tripMinDistanceMeters", 
+    @org.mapstruct.Mapping(target = "staypointRadiusMeters", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "tripMinDurationMinutes", 
+    @org.mapstruct.Mapping(target = "staypointMinDurationMinutes", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "isMergeEnabled", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -77,6 +75,8 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "dataGapMinDurationSeconds", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "timezone", 
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void mergeImportIntoExisting(TimelinePreferences fromImport, @MappingTarget TimelinePreferences existing);
 
     /**
@@ -92,14 +92,13 @@ public interface TimelinePreferencesMapper {
         // If no existing preferences, return copy of import preferences
         if (existing == null) {
             return TimelinePreferences.builder()
-                    .staypointDetectionAlgorithm(fromImport.getStaypointDetectionAlgorithm())
                     .useVelocityAccuracy(fromImport.getUseVelocityAccuracy())
                     .staypointVelocityThreshold(fromImport.getStaypointVelocityThreshold())
                     .staypointMaxAccuracyThreshold(fromImport.getStaypointMaxAccuracyThreshold())
                     .staypointMinAccuracyRatio(fromImport.getStaypointMinAccuracyRatio())
                     .tripDetectionAlgorithm(fromImport.getTripDetectionAlgorithm())
-                    .tripMinDistanceMeters(fromImport.getTripMinDistanceMeters())
-                    .tripMinDurationMinutes(fromImport.getTripMinDurationMinutes())
+                    .staypointRadiusMeters(fromImport.getStaypointRadiusMeters())
+                    .staypointMinDurationMinutes(fromImport.getStaypointMinDurationMinutes())
                     .isMergeEnabled(fromImport.getIsMergeEnabled())
                     .mergeMaxDistanceMeters(fromImport.getMergeMaxDistanceMeters())
                     .mergeMaxTimeGapMinutes(fromImport.getMergeMaxTimeGapMinutes())
@@ -109,19 +108,19 @@ public interface TimelinePreferencesMapper {
                     .pathAdaptiveSimplification(fromImport.getPathAdaptiveSimplification())
                     .dataGapThresholdSeconds(fromImport.getDataGapThresholdSeconds())
                     .dataGapMinDurationSeconds(fromImport.getDataGapMinDurationSeconds())
+                    .timezone(fromImport.getTimezone())
                     .build();
         }
         
         // Both are non-null: create a copy of existing and merge import into it
         TimelinePreferences result = TimelinePreferences.builder()
-                .staypointDetectionAlgorithm(existing.getStaypointDetectionAlgorithm())
                 .useVelocityAccuracy(existing.getUseVelocityAccuracy())
                 .staypointVelocityThreshold(existing.getStaypointVelocityThreshold())
                 .staypointMaxAccuracyThreshold(existing.getStaypointMaxAccuracyThreshold())
                 .staypointMinAccuracyRatio(existing.getStaypointMinAccuracyRatio())
                 .tripDetectionAlgorithm(existing.getTripDetectionAlgorithm())
-                .tripMinDistanceMeters(existing.getTripMinDistanceMeters())
-                .tripMinDurationMinutes(existing.getTripMinDurationMinutes())
+                .staypointRadiusMeters(existing.getStaypointRadiusMeters())
+                .staypointMinDurationMinutes(existing.getStaypointMinDurationMinutes())
                 .isMergeEnabled(existing.getIsMergeEnabled())
                 .mergeMaxDistanceMeters(existing.getMergeMaxDistanceMeters())
                 .mergeMaxTimeGapMinutes(existing.getMergeMaxTimeGapMinutes())
@@ -131,6 +130,7 @@ public interface TimelinePreferencesMapper {
                 .pathAdaptiveSimplification(existing.getPathAdaptiveSimplification())
                 .dataGapThresholdSeconds(existing.getDataGapThresholdSeconds())
                 .dataGapMinDurationSeconds(existing.getDataGapMinDurationSeconds())
+                .timezone(existing.getTimezone())
                 .build();
         
         // Use MapStruct to merge non-null import values into the result

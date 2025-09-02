@@ -543,11 +543,12 @@ export function createFavoriteLocationMarker(latitude, longitude) {
  * @returns {L.DivIcon} - Configured timeline icon
  */
 export function createTimelineIcon() {
-  return L.divIcon({
+  return createCustomDivIcon({
+    color: MARKER_COLORS.STAY,
+    icon: '📍', // Pin emoji for timeline points
+    size: MARKER_SIZES.STANDARD,
     className: 'custom-marker timeline-marker',
-    html: '<div class="marker-inner"></div>',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10]
+    shape: 'circle'
   })
 }
 
@@ -556,11 +557,16 @@ export function createTimelineIcon() {
  * @returns {L.DivIcon} - Configured highlighted timeline icon
  */
 export function createHighlightedTimelineIcon() {
-  return L.divIcon({
+  return createCustomDivIcon({
+    color: MARKER_COLORS.STAY, // Use the same color as regular timeline markers
+    icon: '📍', // Pin emoji for highlighted timeline points
+    size: MARKER_SIZES.HIGHLIGHT,
     className: 'custom-marker timeline-marker highlighted',
-    html: '<div class="marker-inner"></div>',
-    iconSize: [24, 24],
-    iconAnchor: [12, 12]
+    shape: 'circle',
+    customStyle: {
+      border: '3px solid #22c55e', // Green border to indicate highlighting
+      boxShadow: '0 0 8px rgba(46, 204, 113, 0.4)'
+    }
   })
 }
 

@@ -19,9 +19,9 @@ import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
-import org.github.tess1o.geopulse.timeline.model.LocationSource;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -50,9 +50,6 @@ class SequenceResetTest {
 
     @Inject
     TimelineStayRepository timelineStayRepository;
-
-    @Inject
-    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
 
     @Inject
     FavoritesRepository favoritesRepository;
@@ -87,7 +84,6 @@ class SequenceResetTest {
 
     @Transactional
     void cleanupTestData() {
-        taskRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         timelineStayRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         favoritesRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         reverseGeocodingLocationRepository.delete("providerName = ?1", "sequence-test-provider");

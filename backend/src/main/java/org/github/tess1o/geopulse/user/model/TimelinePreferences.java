@@ -12,14 +12,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class TimelinePreferences {
-    private String staypointDetectionAlgorithm;
     private Boolean useVelocityAccuracy;
     private Double staypointVelocityThreshold;
     private Double staypointMaxAccuracyThreshold;
     private Double staypointMinAccuracyRatio;
     private String tripDetectionAlgorithm;
-    private Integer tripMinDistanceMeters;
-    private Integer tripMinDurationMinutes;
+    private Integer staypointRadiusMeters;
+    private Integer staypointMinDurationMinutes;
     private Boolean isMergeEnabled;
     private Integer mergeMaxDistanceMeters;
     private Integer mergeMaxTimeGapMinutes;
@@ -33,4 +32,7 @@ public class TimelinePreferences {
     // Data Gap Detection Settings
     private Integer dataGapThresholdSeconds;
     private Integer dataGapMinDurationSeconds;
+    
+    // Timezone Settings
+    private String timezone; // User's timezone (e.g., "Europe/Kyiv", "America/New_York")
 }

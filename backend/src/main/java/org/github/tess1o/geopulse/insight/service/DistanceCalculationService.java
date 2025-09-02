@@ -4,7 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.DistanceTraveled;
-import org.github.tess1o.geopulse.timeline.model.TravelMode;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.util.List;
 import java.util.UUID;
@@ -39,15 +39,15 @@ public class DistanceCalculationService {
         int walk = 0;
 
         for (Object[] result : results) {
-            TravelMode movementType = TravelMode.valueOf((String) result[0]);
+            TripType movementType = TripType.valueOf((String) result[0]);
             Double distanceKm = (Double) result[1];
             if (distanceKm == null) {
                 distanceKm = 0.0d;
             }
-            if (movementType == TravelMode.CAR || movementType == TravelMode.UNKNOWN) {
+            if (movementType == TripType.CAR || movementType == TripType.UNKNOWN) {
                 car = car + distanceKm.intValue();
             }
-            if (movementType == TravelMode.WALKING) {
+            if (movementType == TripType.WALK) {
                 walk = walk + distanceKm.intValue();
             }
         }

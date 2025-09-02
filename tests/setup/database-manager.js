@@ -35,7 +35,6 @@ export class DatabaseManager {
             'TRUNCATE TABLE timeline_trips CASCADE',
             'TRUNCATE TABLE timeline_stays CASCADE',
             'TRUNCATE TABLE timeline_data_gaps CASCADE',
-            'TRUNCATE TABLE timeline_regeneration_queue CASCADE',
             'TRUNCATE TABLE gps_points CASCADE',
             'TRUNCATE TABLE reverse_geocoding_location CASCADE',
             'TRUNCATE TABLE favorite_locations CASCADE',

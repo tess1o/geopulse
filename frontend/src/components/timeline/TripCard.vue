@@ -54,7 +54,7 @@ const emit = defineEmits(['click'])
 
 // Movement type mapping
 const movementTypeMap = {
-  WALKING: { label: 'Walking', icon: '🚶‍♂️' },
+  WALK: { label: 'Walk', icon: '🚶‍♂️' },
   CAR: { label: 'Car', icon: '🚗' },
   UNKNOWN: { label: 'Unknown', icon: '❓' }
 }

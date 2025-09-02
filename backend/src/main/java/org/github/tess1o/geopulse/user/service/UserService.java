@@ -6,7 +6,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
-import org.github.tess1o.geopulse.timeline.events.TimelinePreferencesUpdatedEvent;
+import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserRepository;

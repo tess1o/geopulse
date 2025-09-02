@@ -32,6 +32,10 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
     }
 
+    public GpsPointEntity findByUserIdFirstGpsPoint(UUID userId) {
+        return find("user.id = ?1 ORDER BY timestamp ASC", userId).firstResult();
+    }
+
     /**
      * Find the latest GPS timestamp for a user within a specific time range.
      * Used for data gap detection in multi-day timeline processing.

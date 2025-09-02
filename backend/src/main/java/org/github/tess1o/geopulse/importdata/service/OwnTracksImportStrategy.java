@@ -39,7 +39,9 @@ public class OwnTracksImportStrategy implements ImportStrategy {
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
-    
+    @Inject
+    TimelineImportHelper timelineImportHelper;
+
     @Override
     public String getFormat() {
         return "owntracks";
@@ -103,7 +105,10 @@ public class OwnTracksImportStrategy implements ImportStrategy {
             // Process in batches to avoid memory issues and timeouts
             int batchSize = 500; // Optimized batch size for large datasets
             BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsPoints, batchSize);
-            
+
+            Instant firstGpsTimestamp = gpsPoints.stream().map(GpsPointEntity::getTimestamp).min(Instant::compareTo).orElse(null);
+            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
+
             job.setProgress(100);
             
             log.info("OwnTracks import completed for user {}: {} imported, {} skipped from {} total messages", 

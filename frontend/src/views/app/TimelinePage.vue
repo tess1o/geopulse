@@ -18,10 +18,10 @@
           :showCurrentLocation="isToday"
           @timeline-marker-click="handleTimelineMarkerClick"
           @highlighted-path-click="handleHighlightedPathClick"
-          @add-point="handleAddPointSubmit"
-          @add-area="handleAddAreaSubmit"
+          @add-point-with-regeneration="handleAddPointWithRegeneration"
+          @add-area-with-regeneration="handleAddAreaWithRegeneration"
           @edit-favorite="handleEditFavorite"
-          @delete-favorite="handleDeleteFavorite"
+          @delete-favorite-with-regeneration="handleDeleteFavoriteWithRegeneration"
       />
     </div>
 
@@ -118,59 +118,6 @@ const handleTimelineItemClick = (item) => {
   highlightStore.setHighlightedItem(item)
 }
 
-const handleAddPointSubmit = async (point) => {
-  try {
-    console.log(point);
-    await favoritesStore.addPointToFavorites(
-        point.name,
-        point.lat,
-        point.lon
-    )
-
-    toast.add({
-      severity: 'success',
-      summary: 'Point added',
-      detail: 'The point was added to your favorites',
-      life: 3000
-    })
-  } catch (error) {
-    console.error('Error adding point to favorites:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Failed to add point',
-      detail: 'Could not add the point to your favorites',
-      life: 3000
-    })
-  }
-}
-
-const handleAddAreaSubmit = async (area) => {
-  try {
-    await favoritesStore.addAreaToFavorites(
-        area.name,
-        area.northEastLat,
-        area.northEastLon,
-        area.southWestLat,
-        area.southWestLon
-    )
-
-    toast.add({
-      severity: 'success',
-      summary: 'Area added',
-      detail: 'The area was added to your favorites',
-      life: 3000
-    })
-  } catch (error) {
-    console.error('Error adding area to favorites:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Failed to add area',
-      detail: 'Could not add the area to your favorites',
-      life: 3000
-    })
-  }
-}
-
 const handleEditFavorite = async (favorite) => {
   try {
     await favoritesStore.editFavorite(favorite.id, favorite.name)
@@ -192,24 +139,120 @@ const handleEditFavorite = async (favorite) => {
   }
 }
 
-const handleDeleteFavorite = async (favorite) => {
+// New handlers for favorites with timeline regeneration modal
+const handleAddPointWithRegeneration = async ({ favorite, onComplete, onError }) => {
   try {
-    await favoritesStore.deleteFavorite(favorite.id)
+    // Add the favorite point (this triggers timeline regeneration on backend)
+    await favoritesStore.addPointToFavorites(
+      favorite.name,
+      favorite.lat,
+      favorite.lon
+    )
 
+    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
+      await fetchTimelineData(dateRange.value[0], dateRange.value[1])
+    }
+    
+    // Show success message
     toast.add({
       severity: 'success',
-      summary: 'Favorite deleted',
-      detail: 'The favorite location was deleted',
-      life: 3000
+      summary: 'Favorite Added',
+      detail: 'Your favorite point has been added and timeline has been regenerated with the latest data.',
+      life: 5000
     })
+    
+    // Close the modal
+    onComplete()
   } catch (error) {
-    console.error('Error deleting favorite:', error)
+    console.error('Error adding point to favorites:', error)
+    
+    const errorMessage = error.response?.data?.message || error.message || 'Could not add the point to your favorites'
+    toast.add({
+      severity: 'error', 
+      summary: 'Failed to Add Favorite',
+      detail: errorMessage,
+      life: 5000
+    })
+    
+    // Close the modal
+    onError()
+  }
+}
+
+const handleAddAreaWithRegeneration = async ({ favorite, onComplete, onError }) => {
+  try {
+    // Add the favorite area (this triggers timeline regeneration on backend)
+    await favoritesStore.addAreaToFavorites(
+      favorite.name,
+      favorite.northEastLat,
+      favorite.northEastLon,
+      favorite.southWestLat,
+      favorite.southWestLon
+    )
+
+    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
+      await fetchTimelineData(dateRange.value[0], dateRange.value[1])
+    }
+    
+    // Show success message
+    toast.add({
+      severity: 'success',
+      summary: 'Favorite Area Added',
+      detail: 'Your favorite area has been added and timeline has been regenerated with the latest data.',
+      life: 5000
+    })
+    
+    // Close the modal
+    onComplete()
+  } catch (error) {
+    console.error('Error adding area to favorites:', error)
+    
+    const errorMessage = error.response?.data?.message || error.message || 'Could not add the area to your favorites'
     toast.add({
       severity: 'error',
-      summary: 'Failed to delete favorite',
-      detail: 'Could not delete the favorite location',
-      life: 3000
+      summary: 'Failed to Add Favorite Area', 
+      detail: errorMessage,
+      life: 5000
     })
+    
+    // Close the modal
+    onError()
+  }
+}
+
+const handleDeleteFavoriteWithRegeneration = async ({ favorite, onComplete, onError }) => {
+  try {
+    // Delete the favorite (this triggers timeline regeneration on backend)
+    await favoritesStore.deleteFavorite(favorite.id)
+
+    // Refresh timeline data using existing function with proper error handling
+    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
+      await fetchTimelineData(dateRange.value[0], dateRange.value[1])
+    }
+    
+    // Show success message
+    toast.add({
+      severity: 'success',
+      summary: 'Favorite Deleted',
+      detail: 'Your favorite location has been deleted and timeline has been regenerated with the latest data.',
+      life: 5000
+    })
+    
+    // Close the modal
+    onComplete()
+  } catch (error) {
+    console.error('Error deleting favorite:', error)
+    
+    const errorMessage = error.response?.data?.message || error.message || 'Could not delete the favorite location'
+    toast.add({
+      severity: 'error',
+      summary: 'Failed to Delete Favorite',
+      detail: errorMessage,
+      life: 5000
+    })
+    
+    // Close the modal
+    onError()
   }
 }
 
@@ -467,12 +510,12 @@ watch(pathData, () => {
   }
 
   .left-pane {
-    flex: 6;
+    flex: 3;
     max-height: 65vh;
   }
 
   .right-pane {
-    flex: 3;
+    flex: 2;
   }
 }
 

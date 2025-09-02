@@ -8,6 +8,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -27,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,6 +54,9 @@ class OwnTracksExportImportUnitTest {
     @Inject
     GpsPointRepository gpsPointRepository;
 
+    @Inject
+    CleanupHelper cleanupHelper;
+
     private UserEntity testUser;
 
     @BeforeEach
@@ -79,6 +82,7 @@ class OwnTracksExportImportUnitTest {
 
     @Transactional
     void cleanupTestData() {
+        cleanupHelper.cleanupTimeline();
         gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
         userRepository.delete("email = ?1", "test-owntracks@geopulse.app");
     }

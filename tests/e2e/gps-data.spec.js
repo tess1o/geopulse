@@ -263,6 +263,84 @@ test.describe('GPS Data Page', () => {
       expect(stats.pointsToday).toBe(todayDbCount);
       expect(todayDbCount).toBe(5);
     });
+
+    test('should handle timezone correctly for points today count - GMT+3 scenario', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const gpsDataPage = new GpsDataPage(page);
+      const testUser = TestData.users.existing;
+      
+      // Create user
+      await UserFactory.createUser(page, testUser);
+      const user = await dbManager.getUserByEmail(testUser.email);
+      
+      // Simulate GMT+3 timezone scenario
+      // Create points that should count as "today" from GMT+3 perspective
+
+      // Set browser timezone to GMT+3 (Europe/Kyiv)
+      await page.addInitScript(() => {
+        // Override Intl.DateTimeFormat to simulate GMT+3 timezone
+        Object.defineProperty(Intl.DateTimeFormat.prototype, 'resolvedOptions', {
+          value: function() {
+            return {
+              ...Object.getPrototypeOf(this).resolvedOptions.call(this),
+              timeZone: 'Europe/Kyiv'
+            };
+          }
+        });
+        
+        // Override Date.prototype.getTimezoneOffset to return GMT+3 offset
+        Object.defineProperty(Date.prototype, 'getTimezoneOffset', {
+          value: function() { return -180; } // GMT+3 = -180 minutes
+        });
+      });
+      
+      // Scenario: It's 02:00 AM in GMT+3 (which is 23:00 UTC previous day)
+      const now = new Date();
+      const gmtPlus3Offset = -3 * 60; // GMT+3 in minutes
+      
+      // Create points that are "today" from GMT+3 perspective
+      // but fall into different UTC days
+      const todaysPointsGmtPlus3 = [];
+      
+      // Point 1: Today at 01:00 GMT+3 (yesterday 22:00 UTC)
+      const point1Time = new Date(now);
+      point1Time.setHours(1, 0, 0, 0); // 01:00 local time
+      const point1Utc = new Date(point1Time.getTime() - (gmtPlus3Offset * 60 * 1000)); // Convert to UTC
+      
+      todaysPointsGmtPlus3.push({
+        id: 88000,
+        device_id: 'tz-test-device',
+        user_id: user.id,
+        coordinates: `POINT (-0.1278 51.5074)`,
+        timestamp: point1Utc.toISOString().replace('T', ' ').replace('Z', ''),
+        accuracy: 5.0,
+        battery: 85,
+        velocity: 1.5,
+        altitude: 20.0,
+        source_type: 'OWNTRACKS',
+        created_at: point1Utc.toISOString().replace('T', ' ').replace('Z', '')
+      });
+      
+      // Insert the test data
+      await GpsDataFactory.insertGpsData(dbManager, todaysPointsGmtPlus3);
+      
+      // Login and navigate
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      await gpsDataPage.navigate();
+      await gpsDataPage.waitForPageLoad();
+      
+      // Get summary statistics
+      const stats = await gpsDataPage.getSummaryStats();
+
+      expect(stats.totalPoints).toBe(1);
+      
+      expect(stats.pointsToday).toBe(1,
+        'Expected 1 point for "today" from GMT+3 user perspective. ' +
+        'If this fails, it demonstrates the timezone bug where backend uses UTC instead of user timezone.');
+    });
   });
 
   test.describe('Date Range Filtering', () => {

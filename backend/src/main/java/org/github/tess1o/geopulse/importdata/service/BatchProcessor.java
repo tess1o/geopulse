@@ -47,7 +47,7 @@ public class BatchProcessor {
                     imported++;
                 } else {
                     // Update existing GPS point with better data if necessary
-                    GpsPointEntity existing = existingPoints.get(0);
+                    GpsPointEntity existing = existingPoints.getFirst();
                     updateGpsPointIfNecessary(existing, gpsPoint);
                 }
 
@@ -115,8 +115,8 @@ public class BatchProcessor {
             totalImported += imported;
             totalSkipped += (batch.size() - imported);
 
-            log.debug("Processed batch {}-{}: {} imported, {} skipped",
-                    i, endIndex - 1, imported, batch.size() - imported);
+            log.debug("Processed batch {}-{} out of {}: {} imported, {} skipped",
+                    i, endIndex - 1, allPoints.size(), imported, batch.size() - imported);
         }
 
         return new BatchResult(totalImported, totalSkipped);

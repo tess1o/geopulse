@@ -4,8 +4,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.github.tess1o.geopulse.statistics.model.TopPlace;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 
 import java.util.Comparator;
 import java.util.List;

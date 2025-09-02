@@ -12,7 +12,6 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportJobResponse;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportService;
-import org.jboss.resteasy.reactive.MultipartForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.PartType;
 import org.jboss.resteasy.reactive.RestForm;
@@ -42,27 +41,29 @@ public class ImportResource {
     @POST
     @Path("/owntracks/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadOwnTracksImportFile(@MultipartForm ImportUploadForm form) {
+    public Response uploadOwnTracksImportFile(
+            @RestForm("file") FileUpload file,
+            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received OwnTracks import request for user: {}", userId);
 
             // Validate file
-            if (form.file == null || form.file.size() == 0) {
+            if (file == null || file.size() == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE", "No file provided"))
                         .build();
             }
 
             // Check file size (max 100MB)
-            if (form.file.size() > 100 * 1024 * 1024) {
+            if (file.size() > 100 * 1024 * 1024) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
             }
 
             // Validate file extension (should be .json)
-            String fileName = form.file.fileName() != null ? form.file.fileName() : "owntracks-import.json";
+            String fileName = file.fileName() != null ? file.fileName() : "owntracks-import.json";
             if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".json")) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE_TYPE", "Only JSON files are supported for OwnTracks import"))
@@ -72,7 +73,7 @@ public class ImportResource {
             // Read file content
             byte[] fileContent;
             try {
-                fileContent = Files.readAllBytes(form.file.uploadedFile());
+                fileContent = Files.readAllBytes(file.uploadedFile());
             } catch (IOException e) {
                 log.error("Failed to read uploaded file", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -81,11 +82,11 @@ public class ImportResource {
             }
 
             // Parse options
-            ImportOptions options;
+            ImportOptions importOptions;
             try {
-                options = objectMapper.readValue(form.options, ImportOptions.class);
+                importOptions = objectMapper.readValue(options, ImportOptions.class);
                 // Force format to be owntracks
-                options.setImportFormat("owntracks");
+                importOptions.setImportFormat("owntracks");
             } catch (Exception e) {
                 log.error("Failed to parse import options", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -94,7 +95,7 @@ public class ImportResource {
             }
 
             // Create import job
-            ImportJob job = importService.createOwnTracksImportJob(userId, options, fileName, fileContent);
+            ImportJob job = importService.createOwnTracksImportJob(userId, importOptions, fileName, fileContent);
 
             // Create response
             ImportJobResponse response = new ImportJobResponse();
@@ -124,20 +125,22 @@ public class ImportResource {
     @POST
     @Path("/geopulse/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadGeoPulseImportFile(@MultipartForm ImportUploadForm form) {
+    public Response uploadGeoPulseImportFile(
+            @RestForm("file") FileUpload file,
+            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received GeoPulse import request for user: {}", userId);
 
             // Validate file
-            if (form.file == null || form.file.size() == 0) {
+            if (file == null || file.size() == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE", "No file provided"))
                         .build();
             }
 
             // Check file size (max 100MB)
-            if (form.file.size() > 100 * 1024 * 1024) {
+            if (file.size() > 100 * 1024 * 1024) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
@@ -146,7 +149,7 @@ public class ImportResource {
             // Read file content
             byte[] fileContent;
             try {
-                fileContent = Files.readAllBytes(form.file.uploadedFile());
+                fileContent = Files.readAllBytes(file.uploadedFile());
             } catch (IOException e) {
                 log.error("Failed to read uploaded file", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -155,9 +158,9 @@ public class ImportResource {
             }
 
             // Parse options
-            ImportOptions options;
+            ImportOptions importOptions;
             try {
-                options = objectMapper.readValue(form.options, ImportOptions.class);
+                importOptions = objectMapper.readValue(options, ImportOptions.class);
             } catch (Exception e) {
                 log.error("Failed to parse import options", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -166,17 +169,17 @@ public class ImportResource {
             }
 
             // Validate options
-            if (options.getDataTypes() == null || options.getDataTypes().isEmpty()) {
+            if (importOptions.getDataTypes() == null || importOptions.getDataTypes().isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_OPTIONS", "Data types are required"))
                         .build();
             }
 
             // Create GeoPulse import job
-            String fileName = form.file.fileName() != null ? form.file.fileName() : "geopulse-import-" + System.currentTimeMillis() + ".zip";
+            String fileName = file.fileName() != null ? file.fileName() : "geopulse-import-" + System.currentTimeMillis() + ".zip";
             // Force format to be geopulse for this endpoint
-            options.setImportFormat("geopulse");
-            ImportJob job = importService.createImportJob(userId, options, fileName, fileContent);
+            importOptions.setImportFormat("geopulse");
+            ImportJob job = importService.createImportJob(userId, importOptions, fileName, fileContent);
 
             // Create response
             ImportJobResponse response = new ImportJobResponse();
@@ -207,27 +210,29 @@ public class ImportResource {
     @POST
     @Path("/google-timeline/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadGoogleTimelineImportFile(@MultipartForm ImportUploadForm form) {
+    public Response uploadGoogleTimelineImportFile(
+            @RestForm("file") FileUpload file,
+            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received Google Timeline import request for user: {}", userId);
 
             // Validate file
-            if (form.file == null || form.file.size() == 0) {
+            if (file == null || file.size() == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE", "No file provided"))
                         .build();
             }
 
             // Check file size (max 100MB)
-            if (form.file.size() > 100 * 1024 * 1024) {
+            if (file.size() > 100 * 1024 * 1024) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
             }
 
             // Validate file extension (should be .json)
-            String fileName = form.file.fileName() != null ? form.file.fileName() : "google-timeline-import.json";
+            String fileName = file.fileName() != null ? file.fileName() : "google-timeline-import.json";
             if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".json")) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE_TYPE", "Only JSON files are supported for Google Timeline import"))
@@ -237,7 +242,7 @@ public class ImportResource {
             // Read file content
             byte[] fileContent;
             try {
-                fileContent = Files.readAllBytes(form.file.uploadedFile());
+                fileContent = Files.readAllBytes(file.uploadedFile());
             } catch (IOException e) {
                 log.error("Failed to read uploaded file", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -246,11 +251,11 @@ public class ImportResource {
             }
 
             // Parse options
-            ImportOptions options;
+            ImportOptions importOptions;
             try {
-                options = objectMapper.readValue(form.options, ImportOptions.class);
+                importOptions = objectMapper.readValue(options, ImportOptions.class);
                 // Force format to be google-timeline
-                options.setImportFormat("google-timeline");
+                importOptions.setImportFormat("google-timeline");
             } catch (Exception e) {
                 log.error("Failed to parse import options", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -259,7 +264,7 @@ public class ImportResource {
             }
 
             // Create Google Timeline import job
-            ImportJob job = importService.createGoogleTimelineImportJob(userId, options, fileName, fileContent);
+            ImportJob job = importService.createGoogleTimelineImportJob(userId, importOptions, fileName, fileContent);
 
             // Create response
             ImportJobResponse response = new ImportJobResponse();
@@ -289,27 +294,29 @@ public class ImportResource {
     @POST
     @Path("/gpx/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    public Response uploadGpxImportFile(@MultipartForm ImportUploadForm form) {
+    public Response uploadGpxImportFile(
+            @RestForm("file") FileUpload file,
+            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received GPX import request for user: {}", userId);
 
             // Validate file
-            if (form.file == null || form.file.size() == 0) {
+            if (file == null || file.size() == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE", "No file provided"))
                         .build();
             }
 
             // Check file size (max 100MB)
-            if (form.file.size() > 100 * 1024 * 1024) {
+            if (file.size() > 100 * 1024 * 1024) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
             }
 
             // Validate file extension (should be .gpx)
-            String fileName = form.file.fileName() != null ? form.file.fileName() : "gpx-import.gpx";
+            String fileName = file.fileName() != null ? file.fileName() : "gpx-import.gpx";
             if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".gpx")) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE_TYPE", "Only GPX files are supported for GPX import"))
@@ -319,7 +326,7 @@ public class ImportResource {
             // Read file content
             byte[] fileContent;
             try {
-                fileContent = Files.readAllBytes(form.file.uploadedFile());
+                fileContent = Files.readAllBytes(file.uploadedFile());
             } catch (IOException e) {
                 log.error("Failed to read uploaded file", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -328,11 +335,11 @@ public class ImportResource {
             }
 
             // Parse options
-            ImportOptions options;
+            ImportOptions importOptions;
             try {
-                options = objectMapper.readValue(form.options, ImportOptions.class);
+                importOptions = objectMapper.readValue(options, ImportOptions.class);
                 // Force format to be gpx
-                options.setImportFormat("gpx");
+                importOptions.setImportFormat("gpx");
             } catch (Exception e) {
                 log.error("Failed to parse import options", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -341,7 +348,7 @@ public class ImportResource {
             }
 
             // Create GPX import job
-            ImportJob job = importService.createGpxImportJob(userId, options, fileName, fileContent);
+            ImportJob job = importService.createGpxImportJob(userId, importOptions, fileName, fileContent);
 
             // Create response
             ImportJobResponse response = new ImportJobResponse();
@@ -443,13 +450,4 @@ public class ImportResource {
         return response;
     }
 
-    // Form data class for multipart upload
-    public static class ImportUploadForm {
-        @RestForm("file")
-        public FileUpload file;
-
-        @RestForm("options")
-        @PartType(MediaType.TEXT_PLAIN)
-        public String options;
-    }
 }

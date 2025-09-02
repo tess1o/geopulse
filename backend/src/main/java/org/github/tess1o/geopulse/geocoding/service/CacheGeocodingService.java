@@ -38,39 +38,6 @@ public class CacheGeocodingService {
     }
 
     /**
-     * Get cached result for the given coordinates.
-     *
-     * @param requestCoordinates The coordinates to look up
-     * @return Formatted display name if found
-     */
-    public Optional<String> getCachedDisplayName(Point requestCoordinates) {
-        if (requestCoordinates == null) {
-            return Optional.empty();
-        }
-
-        try {
-            ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    requestCoordinates, spatialToleranceMeters
-            );
-
-            if (match != null) {
-                log.debug("Cache hit for coordinates: lon={}, lat={} (tolerance: {}m), provider: {}",
-                        requestCoordinates.getX(), requestCoordinates.getY(), spatialToleranceMeters, match.getProviderName());
-                return Optional.of(match.getDisplayName());
-            }
-
-            log.debug("Cache miss for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY());
-            return Optional.empty();
-
-        } catch (Exception e) {
-            log.error("Error retrieving cached result for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY(), e);
-            throw new GeocodingCacheException("Failed to retrieve cached result", e);
-        }
-    }
-
-    /**
      * Get cached result for the given coordinates as a FormattableGeocodingResult.
      *
      * @param requestCoordinates The coordinates to look up

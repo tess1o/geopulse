@@ -19,19 +19,31 @@
     </template>
 
     <template #content>
-      <div class="stay-content">
+      <div class="stay-content" v-if="!isOvernight">
         <span>For </span>
         <span class="duration-text">
           {{ formatDuration(stayItem.stayDuration) }}
         </span>
+      </div>
+      <div class="overnight-stay-content" v-else>
+        <p class="duration-detail">
+          📈 Total duration:
+          <span class="duration-value">{{ formatDuration(stayItem.stayDuration) }}</span>
+        </p>
+        <p class="duration-detail">
+          ⏱️ On this day:
+          <span class="duration-value">{{ formatOnThisDayDuration(stayItem) }}</span>
+        </p>
       </div>
     </template>
   </Card>
 </template>
 
 <script setup>
-import { formatDate } from '@/utils/dateHelpers'
+import { computed } from 'vue'
+import { formatDate, formatTime } from '@/utils/dateHelpers'
 import { formatDuration } from '@/utils/calculationsHelpers'
+import { isOvernightStay } from '@/utils/overnightHelpers'
 
 const props = defineProps({
   stayItem: {
@@ -44,6 +56,32 @@ const emit = defineEmits(['click'])
 
 const handleClick = () => {
   emit('click', props.stayItem)
+}
+
+const isOvernight = computed(() => isOvernightStay(props.stayItem))
+
+const getEndOfDayTime = (startTime) => {
+  const date = new Date(startTime)
+  const endOfDay = new Date(date)
+  endOfDay.setHours(23, 59, 59, 999)
+  return endOfDay
+}
+
+const formatOnThisDayDuration = (stayItem) => {
+  const stayStart = new Date(stayItem.timestamp)
+  const stayEnd = new Date(stayStart.getTime() + (stayItem.stayDuration * 60 * 1000))
+  const endOfDay = getEndOfDayTime(stayStart)
+  
+  // For overnight stays, the "on this day" duration is from start time to end of day
+  const thisDayEnd = stayEnd < endOfDay ? stayEnd : endOfDay
+  
+  const startTimeStr = formatTime(stayStart)
+  const endTimeStr = formatTime(thisDayEnd)
+  
+  const durationMs = thisDayEnd - stayStart
+  const durationMinutes = Math.floor(durationMs / (1000 * 60))
+  
+  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationMinutes)})`
 }
 </script>
 
@@ -77,6 +115,15 @@ const handleClick = () => {
   .stay-content {
     margin-top: var(--gp-spacing-xs);
     font-size: 0.875rem;
+  }
+  
+  .overnight-stay-content {
+    margin-top: var(--gp-spacing-xs);
+  }
+  
+  .duration-detail {
+    margin: 2px 0;
+    font-size: 0.8rem;
   }
 }
 
@@ -125,6 +172,23 @@ const handleClick = () => {
   font-weight: 700;
 }
 
+.overnight-stay-content {
+  margin-top: var(--gp-spacing-xs);
+  color: var(--gp-text-primary);
+}
+
+.duration-detail {
+  margin: var(--gp-spacing-xs) 0;
+  color: var(--gp-text-primary);
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+.duration-detail .duration-value {
+  font-weight: 700;
+  color: var(--gp-primary);
+}
+
 /* Dark mode adjustments */
 .p-dark .timeline-card {
   border-color: var(--gp-border-medium);
@@ -151,5 +215,14 @@ const handleClick = () => {
 
 .p-dark .timeline-card:hover {
   box-shadow: var(--gp-shadow-medium);
+}
+
+.p-dark .overnight-stay-content,
+.p-dark .duration-detail {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .duration-detail .duration-value {
+  color: var(--gp-primary);
 }
 </style>

@@ -18,7 +18,7 @@
                 severity="secondary"
                 outlined
                 @click="confirmResetDefaults"
-                :disabled="loading || regenerateLoading"
+                :disabled="timelineRegenerationVisible"
               />
               <Button 
                 label="Regenerate Timeline"
@@ -26,15 +26,13 @@
                 severity="danger"
                 outlined
                 @click="confirmRegenerateTimeline"
-                :loading="regenerateLoading"
-                :disabled="loading"
+                :disabled="timelineRegenerationVisible"
               />
               <Button 
                 label="Save Changes"
                 icon="pi pi-save"
                 @click="confirmSavePreferences"
-                :loading="loading"
-                :disabled="!hasUnsavedChanges || !isFormValid || regenerateLoading"
+                :disabled="!hasUnsavedChanges || !isFormValid || timelineRegenerationVisible"
               />
             </div>
           </div>
@@ -78,7 +76,7 @@
                 label="Save Now" 
                 size="small" 
                 @click="confirmSavePreferences"
-                :loading="loading"
+                :disabled="timelineRegenerationVisible"
               />
             </div>
           </div>
@@ -102,39 +100,68 @@
                 </div>
 
                 <div class="settings-grid">
-                  <!-- Detection Algorithm -->
+
+                  <!-- Stay Detection Radius -->
                   <SettingCard
-                    title="Detection Algorithm"
-                    description="The algorithm used to identify stay points from GPS data"
+                    title="Stay Detection Radius"
+                    description="Distance threshold for grouping GPS points into stay locations. Also defines minimum distance between stays to create a trip"
                     :details="{
-                      'Original': 'Time-based clustering approach',
-                      'Enhanced': 'Advanced velocity and accuracy filtering'
+                      'Lower values': 'More sensitive stay detection, separate nearby locations',
+                      'Higher values': 'Less sensitive, merge nearby locations into single stays'
                     }"
                   >
                     <template #control>
-                      <div class="control-value">{{ prefs.staypointDetectionAlgorithm }}</div>
-                      <Select
-                        v-model="prefs.staypointDetectionAlgorithm"
-                        :options="algorithmOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        placeholder="Select algorithm"
-                        class="w-full"
+                      <div class="control-value">{{ prefs.staypointRadiusMeters }}m</div>
+                      <SliderControl
+                        v-model="prefs.staypointRadiusMeters"
+                        :min="10"
+                        :max="500"
+                        :step="10"
+                        :labels="['10m (Sensitive)', '50m (Balanced)', '500m (Conservative)']"
+                        suffix=" m"
+                        :input-min="1"
+                        :input-max="2000"
+                        :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Min Trip Duration -->
+                  <SettingCard
+                      title="Minimum Stay Duration"
+                      description="The minimum duration (in minutes) for a stay point to be confirmed"
+                      :details="{
+                      'Lower values': 'Too short stays can be false positives',
+                      'Higher values': 'Longer stays are more likely to be real'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.staypointMinDurationMinutes }} minutes</div>
+                      <SliderControl
+                          v-model="prefs.staypointMinDurationMinutes"
+                          :min="1"
+                          :max="60"
+                          :step="1"
+                          :labels="['1 min (Sensitive)', '7 min (Balanced)', '60 min (Conservative)']"
+                          suffix=" min"
+                          :input-min="1"
+                          :input-max="300"
+                          :decimal-places="0"
                       />
                     </template>
                   </SettingCard>
 
                   <!-- Enhanced Filtering -->
                   <SettingCard
-                    title="Enhanced Filtering"
-                    description="Use velocity and accuracy data for better stay point detection"
-                    details="Filters out poor quality GPS points and improves timeline accuracy"
+                      title="Enhanced Filtering"
+                      description="Use velocity and accuracy data for better stay point detection"
+                      details="Filters out poor quality GPS points and improves timeline accuracy"
                   >
                     <template #control>
                       <div class="control-value">{{ prefs.useVelocityAccuracy ? 'Enabled' : 'Disabled' }}</div>
                       <ToggleSwitch
-                        v-model="prefs.useVelocityAccuracy"
-                        class="toggle-control"
+                          v-model="prefs.useVelocityAccuracy"
+                          class="toggle-control"
                       />
                     </template>
                   </SettingCard>
@@ -245,56 +272,6 @@
                         optionValue="value"
                         placeholder="Select algorithm"
                         class="w-full"
-                      />
-                    </template>
-                  </SettingCard>
-
-                  <!-- Min Trip Distance -->
-                  <SettingCard
-                    title="Minimum Trip Distance"
-                    description="Minimum distance traveled to register as a trip between locations"
-                    :details="{
-                      'Lower values': 'Capture shorter movements',
-                      'Higher values': 'Only longer trips are recorded'
-                    }"
-                  >
-                    <template #control>
-                      <div class="control-value">{{ prefs.tripMinDistanceMeters }}m</div>
-                      <SliderControl
-                        v-model="prefs.tripMinDistanceMeters"
-                        :min="10"
-                        :max="500"
-                        :step="10"
-                        :labels="['10m (Sensitive)', '50m (Balanced)', '500m (Conservative)']"
-                        suffix=" m"
-                        :input-min="1"
-                        :input-max="2000"
-                        :decimal-places="0"
-                      />
-                    </template>
-                  </SettingCard>
-
-                  <!-- Min Trip Duration -->
-                  <SettingCard
-                    title="Minimum Trip Duration"
-                    description="Shortest time period to register as a trip between locations"
-                    :details="{
-                      'Lower values': 'Capture quick movements',
-                      'Higher values': 'Only longer journeys are recorded'
-                    }"
-                  >
-                    <template #control>
-                      <div class="control-value">{{ prefs.tripMinDurationMinutes }} minutes</div>
-                      <SliderControl
-                        v-model="prefs.tripMinDurationMinutes"
-                        :min="1"
-                        :max="60"
-                        :step="1"
-                        :labels="['1 min (Sensitive)', '7 min (Balanced)', '60 min (Conservative)']"
-                        suffix=" min"
-                        :input-min="1"
-                        :input-max="300"
-                        :decimal-places="0"
                       />
                     </template>
                   </SettingCard>
@@ -539,6 +516,12 @@
         <!-- Confirm Dialog -->
         <ConfirmDialog />
         <Toast />
+        
+        <!-- Timeline Regeneration Modal -->
+        <TimelineRegenerationModal
+          v-model:visible="timelineRegenerationVisible"
+          :type="timelineRegenerationType"
+        />
       </div>
     </PageContainer>
   </AppLayout>
@@ -558,6 +541,7 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 // Custom components
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
+import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
 // Store
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
@@ -609,6 +593,11 @@ const activeTabIndex = computed(() => {
 })
 const loading = ref(false)
 const regenerateLoading = ref(false)
+
+// Timeline regeneration modal state
+const timelineRegenerationVisible = ref(false)
+const timelineRegenerationType = ref('general')
+
 const prefs = ref({
   // Path simplification defaults
   pathSimplificationEnabled: true,
@@ -674,7 +663,10 @@ const loadPreferences = async () => {
 }
 
 const confirmSavePreferences = () => {
-  if (!isFormValid.value) return
+  if (!isFormValid.value) {
+    console.log('Invalid form');
+    return;
+  }
 
   const changes = getChangedPrefs()
   if (Object.keys(changes).length === 0) {
@@ -704,25 +696,42 @@ const confirmSavePreferences = () => {
   })
 }
 
+// Helper function to ensure minimum modal duration for better UX
+const ensureMinimumDuration = async (operation, minDuration = 3000) => {
+  const startTime = Date.now()
+  const result = await operation()
+  const elapsed = Date.now() - startTime
+  
+  if (elapsed < minDuration) {
+    await new Promise(resolve => setTimeout(resolve, minDuration - elapsed))
+  }
+  
+  return result
+}
+
 const savePreferences = async () => {
   if (!isFormValid.value) return
 
-  loading.value = true
+  // Show modal and set type
+  timelineRegenerationType.value = 'preferences'
+  timelineRegenerationVisible.value = true
   
   try {
-    const changes = getChangedPrefs()
+    await ensureMinimumDuration(async () => {
+      const changes = getChangedPrefs()
 
-    if (Object.keys(changes).length === 0) {
-      toast.add({
-        severity: 'info',
-        summary: 'No Changes',
-        detail: 'No preferences were modified',
-        life: 3000
-      })
-      return
-    }
+      if (Object.keys(changes).length === 0) {
+        toast.add({
+          severity: 'info',
+          summary: 'No Changes',
+          detail: 'No preferences were modified',
+          life: 3000
+        })
+        return
+      }
 
-    await timelinePreferencesStore.updateTimelinePreferences(changes)
+      await timelinePreferencesStore.updateTimelinePreferences(changes)
+    })
 
     toast.add({
       severity: 'success',
@@ -739,7 +748,7 @@ const savePreferences = async () => {
       life: 5000
     })
   } finally {
-    loading.value = false
+    timelineRegenerationVisible.value = false
   }
 }
 
@@ -762,15 +771,20 @@ const confirmResetDefaults = () => {
 }
 
 const resetDefaults = async () => {
-  loading.value = true
+  // Show modal and set type
+  timelineRegenerationType.value = 'preferences'
+  timelineRegenerationVisible.value = true
   
   try {
-    await timelinePreferencesStore.resetTimelinePreferencesToDefaults()
+    await ensureMinimumDuration(async () => {
+      await timelinePreferencesStore.resetTimelinePreferencesToDefaults()
+    })
+    
     toast.add({
       severity: 'success',
       summary: 'Settings Reset',
-      detail: 'All preferences have been reset to defaults',
-      life: 3000
+      detail: 'All preferences have been reset to defaults and timeline has been regenerated',
+      life: 5000
     })
   } catch (error) {
     console.error('Error resetting preferences:', error)
@@ -781,7 +795,7 @@ const resetDefaults = async () => {
       life: 5000
     })
   } finally {
-    loading.value = false
+    timelineRegenerationVisible.value = false
   }
 }
 
@@ -799,7 +813,7 @@ const discardChanges = () => {
 
 const confirmRegenerateTimeline = () => {
   confirm.require({
-    message: 'This will completely delete your current timeline data and regenerate it from scratch based on your GPS data and current preferences. This operation may take several minutes depending on the amount of GPS data you have. Your timeline will be temporarily unavailable during this process. Do you want to proceed?',
+    message: 'This will completely delete your current timeline data and regenerate it from scratch.\n\nThis operation may take several minutes depending on your GPS data volume.\n\nDo you want to proceed?',
     header: 'Regenerate Complete Timeline',
     icon: 'pi pi-exclamation-triangle',
     rejectProps: {
@@ -816,10 +830,15 @@ const confirmRegenerateTimeline = () => {
 }
 
 const regenerateTimeline = async () => {
-  regenerateLoading.value = true
+  // Show modal and set type
+  timelineRegenerationType.value = 'general'
+  timelineRegenerationVisible.value = true
   
   try {
-    await timelineStore.regenerateAllTimeline()
+    await ensureMinimumDuration(async () => {
+      await timelineStore.regenerateAllTimeline()
+    })
+    
     toast.add({
       severity: 'success',
       summary: 'Timeline Regenerated',
@@ -836,7 +855,7 @@ const regenerateTimeline = async () => {
       life: 8000
     })
   } finally {
-    regenerateLoading.value = false
+    timelineRegenerationVisible.value = false
   }
 }
 

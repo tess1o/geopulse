@@ -15,7 +15,6 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
-import org.github.tess1o.geopulse.importdata.service.TimelineImportHelper;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -31,47 +30,48 @@ import java.util.List;
 @ApplicationScoped
 @Slf4j
 public class GoogleTimelineImportStrategy implements ImportStrategy {
-    
+
     @Inject
     UserRepository userRepository;
-    
+
     @Inject
     BatchProcessor batchProcessor;
-    
+
     @Inject
     TimelineImportHelper timelineImportHelper;
-    
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
-    
+
     @Override
     public String getFormat() {
         return "google-timeline";
     }
-    
+
     @Override
     public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
         log.info("Validating Google Timeline JSON data for user {}", job.getUserId());
-        
+
         try {
             String jsonContent = new String(job.getZipData()); // zipData contains JSON for Google Timeline
-            
+
             // Parse as JSON array of Google Timeline records
-            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent, 
-                    new TypeReference<List<GoogleTimelineRecord>>() {});
-            
+            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
+                    new TypeReference<List<GoogleTimelineRecord>>() {
+                    });
+
             if (records.isEmpty()) {
                 throw new IllegalArgumentException("Google Timeline file contains no records");
             }
-            
+
             // Analyze record types and validate data quality
             int activityCount = 0;
             int visitCount = 0;
             int timelinePathCount = 0;
             int unknownCount = 0;
             int validRecords = 0;
-            
+
             for (GoogleTimelineRecord record : records) {
                 switch (record.getRecordType()) {
                     case ACTIVITY -> {
@@ -89,16 +89,16 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                     case UNKNOWN -> unknownCount++;
                 }
             }
-            
+
             if (validRecords == 0) {
                 throw new IllegalArgumentException("Google Timeline file contains no valid GPS data");
             }
-            
-            log.info("Google Timeline validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records", 
+
+            log.info("Google Timeline validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records",
                     records.size(), activityCount, visitCount, timelinePathCount, unknownCount, validRecords);
-            
+
             return List.of(ExportImportConstants.DataTypes.RAW_GPS);
-            
+
         } catch (Exception e) {
             if (e instanceof IllegalArgumentException) {
                 throw e;
@@ -106,65 +106,70 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
             throw new IllegalArgumentException("Invalid Google Timeline JSON format: " + e.getMessage());
         }
     }
-    
+
     @Override
     public void processImportData(ImportJob job) throws IOException {
         log.info("Processing Google Timeline import data for user {}", job.getUserId());
-        
+
         try {
             String jsonContent = new String(job.getZipData());
-            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent, 
-                    new TypeReference<List<GoogleTimelineRecord>>() {});
-            
+            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
+                    new TypeReference<List<GoogleTimelineRecord>>() {
+                    });
+
             UserEntity user = userRepository.findById(job.getUserId());
             if (user == null) {
                 throw new IllegalStateException("User not found: " + job.getUserId());
             }
-            
+
             // Extract GPS points using the same logic as Python script
             List<GoogleTimelineGpsPoint> gpsPoints = GoogleTimelineParser.extractGpsPoints(records, true);
-            
+
             // Convert to GpsPointEntity objects
             List<GpsPointEntity> gpsEntities = convertToGpsEntities(gpsPoints, user, job);
-            
+
             // Process in batches to avoid memory issues and timeouts
             int batchSize = 500; // Optimized batch size for large datasets
             BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsEntities, batchSize);
-            
-            job.setProgress(100);
-            
-            log.info("Google Timeline import completed for user {}: {} imported, {} skipped from {} GPS points extracted from {} timeline records", 
+
+            job.setProgress(95);
+
+            Instant firstGpsTimestamp = gpsEntities.stream().map(GpsPointEntity::getTimestamp).min(Instant::compareTo).orElse(null);
+
+            log.info("Google Timeline import completed for user {}: {} imported, {} skipped from {} GPS points extracted from {} timeline records",
                     job.getUserId(), result.imported, result.skipped, gpsPoints.size(), records.size());
-            
+
             // Trigger timeline generation since we only imported GPS data
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job);
+            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
+
+            job.setProgress(100);
 
         } catch (Exception e) {
             log.error("Failed to process Google Timeline import for user {}: {}", job.getUserId(), e.getMessage(), e);
             throw new IOException("Failed to process Google Timeline import: " + e.getMessage(), e);
         }
     }
-    
+
     private List<GpsPointEntity> convertToGpsEntities(List<GoogleTimelineGpsPoint> gpsPoints, UserEntity user, ImportJob job) {
         List<GpsPointEntity> gpsEntities = new ArrayList<>();
         int processedPoints = 0;
-        
+
         for (GoogleTimelineGpsPoint point : gpsPoints) {
             // Skip points without valid coordinates or timestamp
-            if (point.getTimestamp() == null || 
-                !isValidCoordinate(point.getLatitude()) || 
-                !isValidCoordinate(point.getLongitude())) {
+            if (point.getTimestamp() == null ||
+                    !isValidCoordinate(point.getLatitude()) ||
+                    !isValidCoordinate(point.getLongitude())) {
                 continue;
             }
-            
+
             // Apply date range filter if specified
             if (job.getOptions().getDateRangeFilter() != null) {
                 if (point.getTimestamp().isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-                    point.getTimestamp().isAfter(job.getOptions().getDateRangeFilter().getEndDate())) {
+                        point.getTimestamp().isAfter(job.getOptions().getDateRangeFilter().getEndDate())) {
                     continue;
                 }
             }
-            
+
             try {
                 GpsPointEntity gpsEntity = new GpsPointEntity();
                 gpsEntity.setUser(user);
@@ -173,21 +178,21 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                 gpsEntity.setTimestamp(point.getTimestamp());
                 gpsEntity.setSourceType(GpsSourceType.GOOGLE_TIMELINE);
                 gpsEntity.setCreatedAt(Instant.now());
-                
+
                 // Set velocity if available (convert from m/s to km/h)
                 if (point.getVelocityMs() != null) {
                     gpsEntity.setVelocity(point.getVelocityMs() * 3.6); // Convert m/s to km/h
                 }
-                
+
                 // For Google Timeline, we don't have accuracy/battery/altitude in most cases
                 // so we leave these as null
-                
+
                 gpsEntities.add(gpsEntity);
-                
+
             } catch (Exception e) {
                 log.warn("Failed to create GPS entity from point: {}", e.getMessage());
             }
-            
+
             // Update progress periodically
             processedPoints++;
             if (processedPoints % 1000 == 0) {
@@ -195,35 +200,35 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                 job.setProgress(Math.min(progress, 90));
             }
         }
-        
+
         return gpsEntities;
     }
-    
+
     private boolean isValidActivityRecord(GoogleTimelineRecord record) {
         if (record.getActivity() == null || !record.hasValidTimes()) {
             return false;
         }
-        
+
         double[] startCoords = GoogleTimelineParser.parseGeoString(record.getActivity().getStart());
         double[] endCoords = GoogleTimelineParser.parseGeoString(record.getActivity().getEnd());
-        
+
         return startCoords != null || endCoords != null;
     }
-    
+
     private boolean isValidVisitRecord(GoogleTimelineRecord record) {
         if (record.getVisit() == null || record.getVisit().getTopCandidate() == null || !record.hasValidTimes()) {
             return false;
         }
-        
+
         double[] coords = GoogleTimelineParser.parseGeoString(record.getVisit().getTopCandidate().getPlaceLocation());
         return coords != null;
     }
-    
+
     private boolean isValidTimelinePathRecord(GoogleTimelineRecord record) {
         if (record.getTimelinePath() == null || record.getTimelinePath().length == 0 || !record.hasValidTimes()) {
             return false;
         }
-        
+
         // Check if at least one point in the path has valid coordinates
         for (var pathPoint : record.getTimelinePath()) {
             double[] coords = GoogleTimelineParser.parseGeoString(pathPoint.getPoint());
@@ -231,12 +236,12 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     private boolean isValidCoordinate(double coord) {
         return !Double.isNaN(coord) && !Double.isInfinite(coord);
     }
-    
+
 }

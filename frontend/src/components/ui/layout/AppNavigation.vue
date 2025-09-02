@@ -62,6 +62,12 @@
                 class="gp-nav-logout"
               />
             </div>
+
+            <!-- Version Display -->
+            <div class="gp-nav-version">
+              <span class="gp-nav-version-label">Version</span>
+              <span class="gp-nav-version-number">{{ appVersion }}</span>
+            </div>
           </nav>
         </div>
       </template>
@@ -89,6 +95,7 @@ import NavigationSection from './NavigationSection.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useFriendsStore } from '@/stores/friends'
 import { useErrorHandler } from '@/composables/useErrorHandler'
+import apiService from '@/utils/apiService'
 
 const props = defineProps({
   variant: {
@@ -113,6 +120,7 @@ const { receivedInvitesCount } = storeToRefs(friendsStore)
 // Local state
 const visible = ref(false)
 const isDarkMode = ref(false)
+const appVersion = ref('')
 
 // Computed
 const drawerClasses = computed(() => ({
@@ -216,6 +224,17 @@ const handleLogout = async () => {
   }
 }
 
+// Version fetching
+const fetchVersion = async () => {
+  try {
+    const response = await apiService.get('/version')
+    appVersion.value = response.version || 'Unknown'
+  } catch (error) {
+    console.warn('Failed to fetch app version:', error)
+    appVersion.value = 'Unknown'
+  }
+}
+
 // Dark mode functionality
 const toggleDarkMode = () => {
   document.documentElement.classList.toggle('p-dark')
@@ -249,6 +268,9 @@ onMounted(async () => {
     // Just log it - navigation should still work even if this fails
     handleError(error, { life: 2000, severity: 'warn' })
   }
+
+  // Load app version
+  await fetchVersion()
 })
 </script>
 
@@ -368,6 +390,34 @@ onMounted(async () => {
   justify-content: flex-start;
 }
 
+/* Version Section */
+.gp-nav-version {
+  padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
+  border-top: 1px solid var(--gp-border-light);
+  text-align: center;
+  background: var(--gp-surface-lighter, rgba(0, 0, 0, 0.02));
+  flex-shrink: 0;
+}
+
+.gp-nav-version-label {
+  display: block;
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  color: var(--gp-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--gp-spacing-xs);
+  opacity: 0.7;
+}
+
+.gp-nav-version-number {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gp-text-secondary);
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
 /* Dark Mode */
 .p-dark .gp-nav-container {
   background: var(--gp-surface-dark);
@@ -414,6 +464,19 @@ onMounted(async () => {
   color: var(--gp-text-primary);
 }
 
+.p-dark .gp-nav-version {
+  background: var(--gp-surface-darker, rgba(255, 255, 255, 0.03));
+  border-top-color: var(--gp-border-dark);
+}
+
+.p-dark .gp-nav-version-label {
+  color: var(--gp-text-muted);
+}
+
+.p-dark .gp-nav-version-number {
+  color: var(--gp-text-secondary);
+}
+
 /* Compact variant */
 .gp-drawer--compact .gp-nav-header {
   padding: var(--gp-spacing-md);
@@ -421,6 +484,10 @@ onMounted(async () => {
 
 .gp-drawer--compact .gp-nav-user {
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+}
+
+.gp-drawer--compact .gp-nav-version {
+  padding: var(--gp-spacing-xs) var(--gp-spacing-md);
 }
 
 /* Responsive */
@@ -435,6 +502,10 @@ onMounted(async () => {
 
   .gp-nav-logo-img {
     width: 60px;
+  }
+
+  .gp-nav-version {
+    padding: var(--gp-spacing-xs) var(--gp-spacing-md);
   }
 }
 </style>

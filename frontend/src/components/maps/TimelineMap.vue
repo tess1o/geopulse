@@ -61,16 +61,6 @@
           @marker-click="handleTimelineMarkerClick"
         />
 
-<!--        &lt;!&ndash; Friends Layer &ndash;&gt;-->
-<!--        <FriendsLayer-->
-<!--          v-if="map && isReady"-->
-<!--          ref="friendsLayerRef"-->
-<!--          :map="map"-->
-<!--          :friends-data="processedFriendsData"-->
-<!--          :visible="showFriends"-->
-<!--          @friend-click="handleFriendClick"-->
-<!--        />-->
-
         <!-- Favorites Layer -->
         <FavoritesLayer
           v-if="map && isReady"
@@ -153,6 +143,12 @@
           :initial-photo-index="photoViewerIndex"
           @close="closePhotoViewer"
         />
+
+        <!-- Timeline Regeneration Modal -->
+        <TimelineRegenerationModal
+          v-model:visible="timelineRegenerationVisible"
+          :type="timelineRegenerationType"
+        />
       </template>
     </MapContainer>
   </div>
@@ -165,8 +161,6 @@ import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 import L from 'leaflet'
-import 'leaflet-draw'
-import 'leaflet-draw/dist/leaflet.draw.css'
 
 // Map components
 import {FavoritesLayer, FriendsLayer, MapContainer, MapControls, PathLayer, TimelineLayer} from '@/components/maps'
@@ -177,9 +171,10 @@ import ImmichLayer from '@/components/maps/layers/ImmichLayer.vue'
 import AddFavoriteDialog from '@/components/dialogs/AddFavoriteDialog.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
+import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
 // Composables
-import {useMapHighlights, useMapInteractions, useMapLayers} from '@/composables'
+import {useMapHighlights, useMapInteractions, useMapLayers, useRectangleDrawing} from '@/composables'
 
 // Store imports
 import {useHighlightStore} from '@/stores/highlight'
@@ -220,10 +215,10 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits([
-  'add-point',
-  'add-area',
+  'add-point-with-regeneration',
+  'add-area-with-regeneration',
   'edit-favorite',
-  'delete-favorite',
+  'delete-favorite-with-regeneration',
   'highlighted-path-click',
   'timeline-marker-click'
 ])
@@ -259,10 +254,10 @@ const {
 } = useMapInteractions({
   onTimelineMarkerClick: (event) => emit('timeline-marker-click', event),
   onPathClick: (event) => emit('highlighted-path-click', event),
-  onFriendClick: (event) => console.log('Friend clicked:', event),
-  onFavoriteClick: (event) => console.log('Favorite clicked:', event),
-  onMapClick: (event) => console.log('Map clicked:', event),
-  onMapContextMenu: (event) => console.log('Map context menu:', event)
+  onFriendClick: (event) => {},
+  onFavoriteClick: (event) => {},
+  onMapClick: (event) => {},
+  onMapContextMenu: (event) => {}
 })
 
 const {
@@ -299,16 +294,30 @@ const dialogState = ref({
   addToFavoritesLatLng: null
 })
 
-// Drawing state
-const drawingState = ref({
-  areaDrawHandler: null,
-  tempAreaLayer: null
+// Rectangle drawing composable
+const {
+  drawingState,
+  initialize: initializeDrawing,
+  startDrawing,
+  stopDrawing,
+  cleanupTempLayer,
+  isDrawing
+} = useRectangleDrawing({
+  onRectangleCreated: (rectangle) => {
+    drawingState.value.tempAreaLayer = rectangle.layer
+    dialogState.value.addAreaVisible = true
+  }
 })
 
 // Photo viewer state
 const photoViewerVisible = ref(false)
 const photoViewerPhotos = ref([])
 const photoViewerIndex = ref(0)
+
+// Timeline regeneration modal state
+const timelineRegenerationVisible = ref(false)
+const timelineRegenerationType = ref('general')
+const modalShowStartTime = ref(null)
 
 // Computed getters for dialog state (for template compatibility)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
@@ -373,7 +382,8 @@ const favoriteMenuItems = ref([
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
   
-  // Initialize drawing controls
+  // Initialize rectangle drawing
+  initializeDrawing(mapInstance)
   initAreaDrawControl()
   
   // Fit map to data if available
@@ -399,6 +409,11 @@ const handleMapClick = (event) => {
 }
 
 const handleMapContextMenu = (event) => {
+  // If drawing is in progress, do nothing to avoid conflicts with touch events.
+  if (isDrawing()) {
+    return
+  }
+
   // Don't show map context menu if favorite context menu is active
   if (favoriteContextMenuActive.value) {
     favoriteContextMenuActive.value = false
@@ -460,22 +475,17 @@ const handleFavoriteClick = (event) => {
 
 // Immich layer event handlers
 const handlePhotoClick = (event) => {
-  console.log('Immich photo clicked:', event)
-  
   // Always open PhotoViewerDialog for consistent experience
   photoViewerPhotos.value = event.photos || []
   photoViewerIndex.value = event.initialIndex || 0
   photoViewerVisible.value = true
 }
 
-
 const handlePhotoHover = (event) => {
   // Could show preview tooltip in the future
-  console.log('Immich photo hovered:', event)
 }
 
 const handleImmichError = (event) => {
-  console.error('Immich layer error:', event)
   
   let title = 'Immich Photos Error'
   let detail = 'Failed to load photos from Immich'
@@ -516,11 +526,24 @@ const handleFavoriteDelete = (event) => {
   const favorite = event.favorite || event
   // Confirm deletion
   confirm.require({
-    message: 'Are you sure you want to delete this favorite location?',
+    message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
     header: 'Delete Favorite',
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
-      emit('delete-favorite', favorite)
+      // Show timeline regeneration modal with timing
+      showTimelineRegenerationModal('favorite-delete')
+      
+      // Emit the event with modal context
+      emit('delete-favorite-with-regeneration', {
+        favorite,
+        onComplete: () => {
+          closeTimelineRegenerationModal()
+          toggleFavorites(true)
+        },
+        onError: () => {
+          closeTimelineRegenerationModal()
+        }
+      })
     }
   })
 }
@@ -564,19 +587,7 @@ const handleZoomToData = () => {
   }
 }
 
-// Drawing Methods
-const startDrawing = () => {
-  if (!map.value) return
-
-  drawingState.value.areaDrawHandler = new L.Draw.Rectangle(map.value, {
-    showArea: true,
-    shapeOptions: {
-      color: '#e91e63', // MARKER_COLORS.FAVORITE
-      weight: 2
-    }
-  })
-  drawingState.value.areaDrawHandler.enable()
-}
+// Area drawing control (for escape key handling)
 
 const initAreaDrawControl = () => {
   if (!map.value) return
@@ -585,18 +596,12 @@ const initAreaDrawControl = () => {
   const handleEscape = (e) => {
     if (e.key === 'Escape') {
       closeAddFavoriteArea()
-      if (drawingState.value.areaDrawHandler) {
-        drawingState.value.areaDrawHandler.disable()
+      if (isDrawing()) {
+        stopDrawing()
       }
     }
   }
   window.addEventListener('keydown', handleEscape)
-
-  // Handle draw:created event
-  map.value.on('draw:created', (e) => {
-    drawingState.value.tempAreaLayer = e.layer
-    dialogState.value.addAreaVisible = true
-  })
   
   // Cleanup function
   return () => {
@@ -612,8 +617,24 @@ const onFavoritePointSubmit = (favoriteData) => {
     lon: dialogState.value.addToFavoritesLatLng.lng,
     type: 'point'
   }
-  emit('add-point', newFavorite)
+  
+  // Close the add favorite dialog
   closeAddFavoritePoint()
+  
+  // Show timeline regeneration modal with timing
+  showTimelineRegenerationModal('favorite')
+  
+  // Emit the event with modal context
+  emit('add-point-with-regeneration', {
+    favorite: newFavorite,
+    onComplete: () => {
+      closeTimelineRegenerationModal()
+      toggleFavorites(true)
+    },
+    onError: () => {
+      closeTimelineRegenerationModal()
+    }
+  })
 }
 
 const onFavoriteAreaSubmit = (favoriteData) => {
@@ -630,8 +651,23 @@ const onFavoriteAreaSubmit = (favoriteData) => {
     southWestLon: bounds.getSouthWest().lng
   }
   
-  emit('add-area', newFavorite)
+  // Close the add favorite dialog
   closeAddFavoriteArea()
+  
+  // Show timeline regeneration modal with timing
+  showTimelineRegenerationModal('favorite')
+  
+  // Emit the event with modal context
+  emit('add-area-with-regeneration', {
+    favorite: newFavorite,
+    onComplete: () => {
+      closeTimelineRegenerationModal()
+      toggleFavorites(true)
+    },
+    onError: () => {
+      closeTimelineRegenerationModal()
+    }
+  })
 }
 
 const onEditFavoriteLocationSubmit = (updatedData) => {
@@ -648,15 +684,12 @@ const closeAddFavoriteArea = () => {
   dialogState.value.addAreaVisible = false
   
   // Clean up drawing state
-  if (drawingState.value.areaDrawHandler) {
-    drawingState.value.areaDrawHandler.disable()
-    drawingState.value.areaDrawHandler = null
+  if (isDrawing()) {
+    stopDrawing()
   }
   
-  if (drawingState.value.tempAreaLayer && map.value) {
-    map.value.removeLayer(drawingState.value.tempAreaLayer)
-    drawingState.value.tempAreaLayer = null
-  }
+  // Clean up temp layer
+  cleanupTempLayer()
 }
 
 const closeEditFavorite = () => {
@@ -665,8 +698,10 @@ const closeEditFavorite = () => {
 }
 
 const deleteFavoriteLocation = (favorite) => {
-  handleFavoriteDelete(favorite)
+  // Close edit dialog first
   closeEditFavorite()
+  // Use the same delete handling logic
+  handleFavoriteDelete({ favorite })
 }
 
 // Photo viewer handlers
@@ -674,6 +709,29 @@ const closePhotoViewer = () => {
   photoViewerVisible.value = false
   photoViewerPhotos.value = []
   photoViewerIndex.value = 0
+}
+
+// Timeline regeneration modal timing helpers
+const showTimelineRegenerationModal = (type) => {
+  timelineRegenerationType.value = type
+  modalShowStartTime.value = Date.now()
+  timelineRegenerationVisible.value = true
+}
+
+const closeTimelineRegenerationModal = () => {
+  if (!modalShowStartTime.value) {
+    timelineRegenerationVisible.value = false
+    return
+  }
+  
+  const elapsed = Date.now() - modalShowStartTime.value
+  const minimumDisplayTime = 3000 // 3 seconds
+  const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
+  
+  setTimeout(() => {
+    timelineRegenerationVisible.value = false
+    modalShowStartTime.value = null
+  }, remainingTime)
 }
 
 // Computed data from stores and props

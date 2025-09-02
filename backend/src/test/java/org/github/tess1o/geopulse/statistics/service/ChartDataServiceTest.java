@@ -2,10 +2,10 @@ package org.github.tess1o.geopulse.statistics.service;
 
 import org.github.tess1o.geopulse.statistics.model.BarChartData;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
-import org.github.tess1o.geopulse.timeline.model.TravelMode;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +36,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createSampleTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.DAYS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.DAYS);
 
         // Then
         assertNotNull(result);
@@ -56,7 +56,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createMultiWeekTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.WEEKS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.WEEKS);
 
         // Then
         assertNotNull(result);
@@ -75,7 +75,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO emptyTimeline = new MovementTimelineDTO(testUserId, List.of(), List.of());
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(emptyTimeline, TravelMode.CAR, ChartGroupMode.DAYS);
+        BarChartData result = chartDataService.getDistanceChartData(emptyTimeline, TripType.CAR, ChartGroupMode.DAYS);
 
         // Then
         assertNotNull(result);
@@ -89,7 +89,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createSingleDayTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.DAYS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.DAYS);
 
         // Then
         assertNotNull(result);
@@ -105,7 +105,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createMultiWeekTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.WEEKS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.WEEKS);
 
         // Then
         assertNotNull(result);
@@ -125,7 +125,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createSameDayMultipleTripsTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.DAYS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.DAYS);
 
         // Then
         assertNotNull(result);
@@ -140,7 +140,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createTimeZoneSpanningTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.DAYS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.DAYS);
 
         // Then
         assertNotNull(result);
@@ -161,7 +161,7 @@ class ChartDataServiceTest {
         MovementTimelineDTO timeline = createMultiDayTimeline();
 
         // When
-        BarChartData result = chartDataService.getDistanceChartData(timeline, TravelMode.CAR, ChartGroupMode.DAYS);
+        BarChartData result = chartDataService.getDistanceChartData(timeline, TripType.CAR, ChartGroupMode.DAYS);
 
         // Then
         assertNotNull(result);

@@ -6,11 +6,12 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.GpxImportStrategy;
 import org.github.tess1o.geopulse.importdata.service.ImportService;
@@ -50,13 +51,10 @@ class GpxImportStrategyTest {
     GpsPointRepository gpsPointRepository;
 
     @Inject
-    TimelineStayRepository timelineStayRepository;
+    CleanupHelper cleanupHelper;
 
     @Inject
     EntityManager entityManager;
-
-    @Inject
-    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
 
     private UserEntity testUser;
 
@@ -86,9 +84,8 @@ class GpxImportStrategyTest {
 
     @Transactional
     void cleanupTestData() {
+        cleanupHelper.cleanupTimeline();
         // Clean up in dependency order: timeline regeneration tasks -> timeline stays -> GPS points -> user
-        taskRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
-        timelineStayRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
         userRepository.delete("email = ?1", "test-gpx@geopulse.app");
     }

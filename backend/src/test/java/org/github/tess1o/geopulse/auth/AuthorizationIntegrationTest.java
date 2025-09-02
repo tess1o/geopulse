@@ -29,9 +29,6 @@ public class AuthorizationIntegrationTest {
     @Inject
     AuthenticationService authenticationService;
 
-    @Inject
-    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository timelineRegenerationTaskRepository;
-
     private String validJwtToken;
     private String expiredJwtToken;
 
@@ -39,9 +36,7 @@ public class AuthorizationIntegrationTest {
     @Transactional
     public void setup() {
         // Clean up existing data in proper order to avoid foreign key constraint violations
-        // First delete all timeline regeneration queue entries
-        timelineRegenerationTaskRepository.deleteAll();
-        // Then delete users
+        // Delete users
         userRepository.findAll().stream().forEach(userRepository::delete);
 
         // Create test user

@@ -60,7 +60,7 @@ build-frontend:
 		-f frontend/Dockerfile \
 		--push \
 		.
-	@echo "Frontend primevue image built successfully"
+	@echo "Frontend image built successfully"
 
 .PHONY: build-frontend-local
 build-frontend-local:
@@ -96,7 +96,7 @@ push-frontend:
 		-f frontend/Dockerfile \
 		--push \
 		.
-	@echo "Frontend primevue image pushed successfully"
+	@echo "Frontend image pushed successfully"
 
 # Show version
 .PHONY: version

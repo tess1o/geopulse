@@ -8,6 +8,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.*;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -19,8 +20,7 @@ import org.github.tess1o.geopulse.importdata.service.ImportDataService;
 import org.github.tess1o.geopulse.importdata.service.ImportService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -50,9 +50,6 @@ class GoogleTimelineImportStrategyTest {
     ImportService importService;
 
     @Inject
-    ImportDataService importDataService;
-
-    @Inject
     UserRepository userRepository;
 
     @Inject
@@ -62,7 +59,7 @@ class GoogleTimelineImportStrategyTest {
     TimelineStayRepository timelineStayRepository;
 
     @Inject
-    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository timelineRegenerationTaskRepository;
+    CleanupHelper cleanupHelper;
 
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -96,12 +93,7 @@ class GoogleTimelineImportStrategyTest {
 
     @Transactional
     void cleanupTestData() {
-        // Clean up timeline regeneration queue first to avoid foreign key constraint violations
-        if (testUser != null) {
-            timelineRegenerationTaskRepository.deleteByUserId(testUser.getId());
-        }
-        timelineRegenerationTaskRepository.delete("user.email = ?1", "test-googletimeline@geopulse.app");
-        timelineStayRepository.delete("user.email = ?1", "test-googletimeline@geopulse.app");
+        cleanupHelper.cleanupTimeline();
         gpsPointRepository.delete("user.email = ?1", "test-googletimeline@geopulse.app");
         userRepository.delete("email = ?1", "test-googletimeline@geopulse.app");
     }
@@ -393,18 +385,6 @@ class GoogleTimelineImportStrategyTest {
 
         // Process the import
         googleTimelineImportStrategy.processImportData(importJob);
-
-        // After import - should have queued timeline generation task in background service
-        List<org.github.tess1o.geopulse.timeline.model.TimelineRegenerationTask> queuedTasks = 
-                timelineRegenerationTaskRepository.find("user = ?1", testUser).list();
-        
-        assertFalse(queuedTasks.isEmpty(), "Should have queued timeline generation tasks after import");
-        
-        // Verify at least one task is for the correct user
-        boolean hasTaskForUser = queuedTasks.stream()
-                .anyMatch(task -> task.getUser().getId().equals(testUser.getId()));
-        
-        assertTrue(hasTaskForUser, "Should have queued timeline generation task for the correct user");
 
     }
 

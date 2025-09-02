@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
-        <version>1.0.0-rc.3</version>
+        <version>1.0.0-rc.5</version>
     </parent>
     <artifactId>backend</artifactId>
 
@@ -33,6 +33,7 @@
         <testcontainers.version>1.19.7</testcontainers.version>
         <pmd.version>7.12.0</pmd.version>
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
+        <org.eclipse.paho.client.mqttv3.version>1.2.5</org.eclipse.paho.client.mqttv3.version>
     </properties>
 
     <dependencyManagement>
@@ -208,6 +209,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.24.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${testcontainers.version}</version>
@@ -233,7 +240,7 @@
         <dependency>
             <groupId>org.eclipse.paho</groupId>
             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
-            <version>1.2.5</version>
+            <version>${org.eclipse.paho.client.mqttv3.version}</version>
         </dependency>
 
     </dependencies>
@@ -259,6 +266,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${compiler-plugin.version}</version>
                 <configuration>
+                    <parameters>true</parameters>
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>

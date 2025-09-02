@@ -2,10 +2,10 @@ package org.github.tess1o.geopulse.statistics;
 
 import org.github.tess1o.geopulse.statistics.model.*;
 import org.github.tess1o.geopulse.statistics.service.*;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
-import org.github.tess1o.geopulse.timeline.service.redesign.TimelineRequestRouter;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.when;
 class StatisticsServiceImplTest {
 
     @Mock
-    private TimelineRequestRouter timelineRequestRouter;
+    private StreamingTimelineAggregator streamingTimelineAggregator;
 
     private ChartDataService chartDataService;
     private PlacesAnalysisService placesAnalysisService;
@@ -57,7 +57,7 @@ class StatisticsServiceImplTest {
         
         // Create the main service with real dependencies
         statisticsService = new StatisticsServiceImpl(
-                timelineRequestRouter,
+                streamingTimelineAggregator,
                 chartDataService,
                 placesAnalysisService,
                 routesAnalysisService,
@@ -70,7 +70,7 @@ class StatisticsServiceImplTest {
     void getStatistics_WithValidData_ReturnsCompleteStatistics() {
         // Given
         MovementTimelineDTO timeline = createSampleTimeline();
-        when(timelineRequestRouter.getTimeline(eq(testUserId), eq(testStart), eq(testEnd)))
+        when(streamingTimelineAggregator.getTimelineFromDb(eq(testUserId), eq(testStart), eq(testEnd)))
                 .thenReturn(timeline);
 
         // When
@@ -93,7 +93,7 @@ class StatisticsServiceImplTest {
     void getStatistics_WithEmptyTimeline_ReturnsZeroStatistics() {
         // Given
         MovementTimelineDTO emptyTimeline = new MovementTimelineDTO(testUserId, List.of(), List.of());
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(emptyTimeline);
 
         // When
@@ -121,7 +121,7 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-01T11:00:00Z", "Work", 40.7580, -73.9855, 480)
                 ),
                 List.of(createTrip("2024-01-01T10:00:00Z", 10.0, 60)));
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -139,7 +139,7 @@ class StatisticsServiceImplTest {
     void getStatistics_WithWeeklyGrouping_GeneratesCorrectChartData() {
         // Given
         MovementTimelineDTO timeline = createMultiWeekTimeline();
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -161,7 +161,7 @@ class StatisticsServiceImplTest {
     void getStatistics_WithDailyGrouping_GeneratesCorrectChartData() {
         // Given
         MovementTimelineDTO timeline = createSampleTimeline();
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -183,7 +183,7 @@ class StatisticsServiceImplTest {
     void getStatistics_CalculatesTopPlacesCorrectly() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithMultiplePlaces();
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -211,7 +211,7 @@ class StatisticsServiceImplTest {
     void getStatistics_CalculatesRoutesStatisticsCorrectly() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithRoutes();
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -231,7 +231,7 @@ class StatisticsServiceImplTest {
     void getStatistics_HandlesMostActiveDayCalculation() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithVariableActivity();
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -253,7 +253,7 @@ class StatisticsServiceImplTest {
         MovementTimelineDTO timeline = new MovementTimelineDTO(testUserId,
                 List.of(createStay("2024-01-01T10:00:00Z", "Home", 40.7128, -74.0060, 480)),
                 List.of()); // No trips = no moving time
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -274,7 +274,7 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-01T11:30:00Z", "Home", 40.7128, -74.0060, 45)
                 ),
                 List.of(createTrip("2024-01-01T10:00:00Z", 5.0, 30)));
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When
@@ -303,7 +303,7 @@ class StatisticsServiceImplTest {
                         createTrip("2024-01-01T23:30:00Z", 10.0, 60), // Late night UTC
                         createTrip("2024-01-02T01:30:00Z", 5.0, 30)   // Early morning UTC
                 ));
-        when(timelineRequestRouter.getTimeline(any(), any(), any()))
+        when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
         // When

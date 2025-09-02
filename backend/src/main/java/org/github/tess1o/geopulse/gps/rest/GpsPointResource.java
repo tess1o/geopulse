@@ -9,10 +9,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
+import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
-import org.github.tess1o.geopulse.shared.geo.GpsPoint;
-import org.github.tess1o.geopulse.timeline.simplification.GpsPathSimplifier;
 import jakarta.validation.Valid;
+import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.StringWriter;
 import java.time.Instant;
@@ -33,11 +36,18 @@ public class GpsPointResource {
 
     private final GpsPointService gpsPointService;
     private final CurrentUserService currentUserService;
+    private final PathSimplificationService pathSimplificationService;
+    private final TimelineConfigurationProvider configurationProvider;
 
     @Inject
-    public GpsPointResource(GpsPointService gpsPointService, CurrentUserService currentUserService) {
+    public GpsPointResource(GpsPointService gpsPointService,
+                            CurrentUserService currentUserService,
+                            PathSimplificationService pathSimplificationService,
+                            TimelineConfigurationProvider configurationProvider) {
         this.gpsPointService = gpsPointService;
         this.currentUserService = currentUserService;
+        this.pathSimplificationService = pathSimplificationService;
+        this.configurationProvider = configurationProvider;
     }
 
     /**
@@ -55,14 +65,15 @@ public class GpsPointResource {
     public Response getGpsPointPath(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS point path for user {} between {} and {}", userId, startTime, endTime);
+        UserEntity user = currentUserService.getCurrentUser();
+        log.info("Received request to get GPS point path for user {} between {} and {}", user.getEmail(), startTime, endTime);
 
         try {
             Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
-            GpsPointPathDTO path = gpsPointService.getGpsPointPath(userId, start, end);
-            List<GpsPointPathPointDTO> simplifyPath = GpsPathSimplifier.simplifyPath(path.getPoints(), 10);
+            GpsPointPathDTO path = gpsPointService.getGpsPointPath(user.getId(), start, end);
+            TimelineConfig config = configurationProvider.getConfigurationForUser(user.getId());
+            List<? extends GpsPoint> simplifyPath = pathSimplificationService.simplify(path.getPoints(), config);
             path.setPoints(simplifyPath);
             return Response.ok(ApiResponse.success(path)).build();
         } catch (DateTimeParseException e) {
@@ -80,18 +91,33 @@ public class GpsPointResource {
      * Get summary statistics for GPS points.
      * This endpoint requires authentication.
      *
+     * @param timezone Optional timezone parameter (e.g., "Europe/Kyiv", "America/New_York").
+     *                 If not provided, defaults to UTC.
      * @return Summary statistics for the user's GPS points
      */
     @GET
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed("USER")
-    public Response getGpsPointSummary() {
+    public Response getGpsPointSummary(@QueryParam("timezone") String timezone) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS point summary for user {}", userId);
+        log.info("Received request to get GPS point summary for user {} with timezone {}", userId, timezone);
 
         try {
-            GpsPointSummaryDTO summary = gpsPointService.getGpsPointSummary(userId);
+            GpsPointSummaryDTO summary;
+
+            if (timezone != null && !timezone.trim().isEmpty()) {
+                try {
+                    java.time.ZoneId userTimezone = java.time.ZoneId.of(timezone.trim());
+                    summary = gpsPointService.getGpsPointSummary(userId, userTimezone);
+                } catch (java.time.DateTimeException e) {
+                    log.warn("Invalid timezone '{}' provided for user {}, falling back to UTC", timezone, userId);
+                    summary = gpsPointService.getGpsPointSummary(userId);
+                }
+            } else {
+                summary = gpsPointService.getGpsPointSummary(userId);
+            }
+
             return Response.ok(ApiResponse.success(summary)).build();
         } catch (Exception e) {
             log.error("Failed to retrieve GPS point summary for user {}", userId, e);
@@ -120,7 +146,7 @@ public class GpsPointResource {
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}", 
+        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}",
                 userId, page, limit, startDate, endDate);
 
         try {
@@ -169,7 +195,7 @@ public class GpsPointResource {
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}", 
+        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}",
                 userId, startDate, endDate);
 
         try {
@@ -180,7 +206,7 @@ public class GpsPointResource {
             List<GpsPointEntity> points = gpsPointService.getGpsPointsForExport(userId, start, end);
             String csv = generateCsv(points);
 
-            String filename = String.format("gps-points-export-%s.csv", 
+            String filename = String.format("gps-points-export-%s.csv",
                     startDate != null && endDate != null ? startDate + "_" + endDate : "all");
 
             return Response.ok(csv)
@@ -199,8 +225,8 @@ public class GpsPointResource {
 
     /**
      * Parse date string to Instant.
-     * 
-     * @param dateStr Date string in YYYY-MM-DD format
+     *
+     * @param dateStr     Date string in YYYY-MM-DD format
      * @param isStartDate True if this is a start date (start of day), false for end date (end of day)
      * @return Parsed Instant or null if dateStr is null
      */
@@ -208,22 +234,22 @@ public class GpsPointResource {
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return isStartDate ? Instant.EPOCH : Instant.now();
         }
-        
+
         LocalDate date = LocalDate.parse(dateStr.trim());
-        return isStartDate ? date.atStartOfDay().toInstant(java.time.ZoneOffset.UTC) 
-                          : date.atTime(23, 59, 59).toInstant(java.time.ZoneOffset.UTC);
+        return isStartDate ? date.atStartOfDay().toInstant(java.time.ZoneOffset.UTC)
+                : date.atTime(23, 59, 59).toInstant(java.time.ZoneOffset.UTC);
     }
 
     /**
      * Generate CSV from GPS points.
-     * 
+     *
      * @param points List of GPS points
      * @return CSV string
      */
     private String generateCsv(List<GpsPointEntity> points) {
         StringWriter writer = new StringWriter();
         writer.append("id,timestamp,latitude,longitude,accuracy,battery,velocity,altitude,sourceType\n");
-        
+
         for (GpsPointEntity point : points) {
             writer.append(String.valueOf(point.getId())).append(",");
             writer.append(point.getTimestamp().toString()).append(",");
@@ -235,7 +261,7 @@ public class GpsPointResource {
             writer.append(point.getAltitude() != null ? String.valueOf(point.getAltitude()) : "").append(",");
             writer.append(point.getSourceType().name()).append("\n");
         }
-        
+
         return writer.toString();
     }
 
@@ -322,8 +348,8 @@ public class GpsPointResource {
     @RolesAllowed("USER")
     public Response deleteGpsPoints(@Valid BulkDeleteGpsPointsDto bulkDeleteDto) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to delete {} GPS points for user {}", 
-                 bulkDeleteDto.getGpsPointIds().size(), userId);
+        log.info("Received request to delete {} GPS points for user {}",
+                bulkDeleteDto.getGpsPointIds().size(), userId);
 
         try {
             int deletedCount = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);

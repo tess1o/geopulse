@@ -8,6 +8,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -69,7 +70,7 @@ class OwnTracksExportImportIntegrationTest {
     GpsPointRepository gpsPointRepository;
 
     @Inject
-    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository timelineRegenerationTaskRepository;
+    CleanupHelper cleanupHelper;
 
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -107,11 +108,7 @@ class OwnTracksExportImportIntegrationTest {
 
     @Transactional
     void cleanupTestData() {
-        // Clean up timeline regeneration queue first to avoid foreign key constraint violations
-        if (testUser != null) {
-            timelineRegenerationTaskRepository.deleteByUserId(testUser.getId());
-        }
-        timelineRegenerationTaskRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
+        cleanupHelper.cleanupTimeline();
         gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
         userRepository.delete("email = ?1", "test-owntracks@geopulse.app");
     }

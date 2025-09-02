@@ -16,9 +16,9 @@ import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
-import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.io.ByteArrayOutputStream;

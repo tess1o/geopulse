@@ -68,6 +68,11 @@ public class UserEntity extends PanacheEntityBase {
     @Column(columnDefinition = "jsonb", name = "immich_preferences")
     public ImmichPreferences immichPreferences;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "timeline_status", nullable = false)
+    @Builder.Default
+    private TimelineStatus timelineStatus = TimelineStatus.IDLE;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

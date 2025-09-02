@@ -12,7 +12,7 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
     private static PostgreSQLContainer<?> postgreSQLContainer;
     @Override
     public Map<String, String> start() {
-        var postgis = DockerImageName.parse("postgis/postgis:15-3.3")
+        var postgis = DockerImageName.parse("postgis/postgis:17-3.5")
                 .asCompatibleSubstituteFor("postgres");
         postgreSQLContainer = new PostgreSQLContainer<>(postgis)
                 .withDatabaseName("test")

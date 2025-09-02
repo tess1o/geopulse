@@ -10,7 +10,6 @@ import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 

@@ -1,9 +1,9 @@
 package org.github.tess1o.geopulse.statistics.service;
 
 import org.github.tess1o.geopulse.statistics.model.MostActiveDayDto;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

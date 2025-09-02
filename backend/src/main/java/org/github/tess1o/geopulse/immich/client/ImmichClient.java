@@ -1,7 +1,6 @@
 package org.github.tess1o.geopulse.immich.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.HttpResponse;

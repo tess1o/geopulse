@@ -1,0 +1,303 @@
+<template>
+  <Dialog 
+    v-model:visible="internalVisible"
+    :header="'Timeline Regeneration'"
+    :modal="true"
+    :closable="false"
+    :draggable="false"
+    :style="{ width: '450px' }"
+    class="timeline-regeneration-modal"
+  >
+    <div class="regeneration-content">
+      <div class="icon-container">
+        <ProgressSpinner 
+          style="width: 60px; height: 60px"
+          stroke-width="4"
+          animationDuration="1s"
+        />
+      </div>
+      
+      <div class="message-container">
+        <h3 class="regeneration-title">{{ title }}</h3>
+        <p class="regeneration-message">{{ message }}</p>
+        <p class="regeneration-note">
+          This process may take 5-15 seconds or longer depending on your data size.
+          Your timeline will be temporarily unavailable during regeneration.
+        </p>
+      </div>
+      
+      <div class="progress-indicator">
+        <div class="progress-dots">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <p class="progress-text">Please wait...</p>
+      </div>
+    </div>
+  </Dialog>
+</template>
+
+<script setup>
+import { ref, watch, computed } from 'vue'
+import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
+
+// Props
+const props = defineProps({
+  visible: {
+    type: Boolean,
+    default: false
+  },
+  type: {
+    type: String,
+    default: 'general', // 'favorite', 'favorite-delete', 'preferences', 'general'
+    validator: (value) => ['favorite', 'favorite-delete', 'preferences', 'general'].includes(value)
+  }
+})
+
+// Emits
+const emit = defineEmits(['update:visible'])
+
+// Local state
+const internalVisible = ref(props.visible)
+
+// Computed properties for dynamic content based on type
+const title = computed(() => {
+  switch (props.type) {
+    case 'favorite':
+      return 'Adding Favorite & Regenerating Timeline'
+    case 'favorite-delete':
+      return 'Deleting Favorite & Regenerating Timeline'
+    case 'preferences':
+      return 'Applying Preferences & Regenerating Timeline'
+    default:
+      return 'Regenerating Timeline'
+  }
+})
+
+const message = computed(() => {
+  switch (props.type) {
+    case 'favorite':
+      return 'We\'re adding your favorite location and regenerating your complete timeline to incorporate this change. This ensures all timeline data remains accurate and up-to-date.'
+    case 'favorite-delete':
+      return 'We\'re removing your favorite location and regenerating your complete timeline to reflect this change. This ensures all timeline data remains accurate and up-to-date.'
+    case 'preferences':
+      return 'We\'re applying your new preferences and regenerating your complete timeline based on the updated settings. This ensures optimal timeline accuracy with your preferences.'
+    default:
+      return 'We\'re regenerating your complete timeline from your GPS data. This process ensures your timeline is accurate and reflects all available location information.'
+  }
+})
+
+// Watch for prop changes
+watch(() => props.visible, (newValue) => {
+  internalVisible.value = newValue
+})
+
+watch(internalVisible, (newValue) => {
+  if (newValue !== props.visible) {
+    emit('update:visible', newValue)
+  }
+})
+</script>
+
+<style scoped>
+.timeline-regeneration-modal :deep(.p-dialog) {
+  background: var(--gp-surface-card);
+  border: 1px solid var(--gp-surface-border);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.timeline-regeneration-modal :deep(.p-dialog-header) {
+  background: var(--gp-surface-card);
+  border-bottom: 1px solid var(--gp-surface-border);
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+}
+
+.timeline-regeneration-modal :deep(.p-dialog-title) {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.timeline-regeneration-modal :deep(.p-dialog-content) {
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  background: var(--gp-surface-card);
+}
+
+.regeneration-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.5rem;
+}
+
+.icon-container {
+  margin-top: 0.5rem;
+}
+
+.message-container {
+  max-width: 380px;
+}
+
+.regeneration-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 0.75rem 0;
+  line-height: 1.4;
+}
+
+.regeneration-message {
+  font-size: 0.95rem;
+  color: var(--gp-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+}
+
+.regeneration-note {
+  font-size: 0.85rem;
+  color: var(--gp-text-muted);
+  line-height: 1.4;
+  margin: 0;
+  padding: 0.75rem;
+  background: var(--gp-surface-ground);
+  border-radius: 8px;
+  border: 1px solid var(--gp-surface-border);
+}
+
+.progress-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress-dots {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background: var(--gp-primary-color);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 1s;
+}
+
+.progress-text {
+  font-size: 0.9rem;
+  color: var(--gp-text-muted);
+  margin: 0;
+  font-weight: 500;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Dark mode support */
+.p-dark .timeline-regeneration-modal :deep(.p-dialog) {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-surface-border-dark);
+}
+
+.p-dark .timeline-regeneration-modal :deep(.p-dialog-header) {
+  background: var(--gp-surface-dark);
+  border-bottom-color: var(--gp-surface-border-dark);
+}
+
+.p-dark .timeline-regeneration-modal :deep(.p-dialog-content) {
+  background: var(--gp-surface-dark);
+}
+
+.p-dark .regeneration-note {
+  background: var(--gp-surface-ground-dark);
+  border-color: var(--gp-surface-border-dark);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .timeline-regeneration-modal :deep(.p-dialog) {
+    width: 90vw !important;
+    max-width: 360px !important;
+    margin: 0 20px;
+  }
+  
+  .timeline-regeneration-modal :deep(.p-dialog-content) {
+    padding: 0 2rem 2rem 2rem;
+  }
+  
+  .regeneration-content {
+    gap: 1.5rem;
+    padding: 0.5rem;
+  }
+  
+  .message-container {
+    max-width: 100%;
+    padding: 0 0.5rem;
+  }
+  
+  .regeneration-title {
+    font-size: 1rem;
+  }
+  
+  .regeneration-message {
+    font-size: 0.9rem;
+  }
+  
+  .regeneration-note {
+    font-size: 0.8rem;
+    padding: 1rem;
+  }
+}
+
+/* Large mobile phones (iPhone 14 Pro Max, iPhone 15 Pro Max, iPhone 16 Pro Max) */
+@media (max-width: 768px) and (min-width: 415px) {
+  .timeline-regeneration-modal :deep(.p-dialog) {
+    width: 85vw !important;
+    max-width: 380px !important;
+    margin: 0 25px;
+  }
+  
+  .regeneration-content {
+    gap: 1.75rem;
+    padding: 0.75rem;
+  }
+  
+  .message-container {
+    padding: 0 0.75rem;
+  }
+  
+  .regeneration-note {
+    padding: 1.25rem;
+  }
+}
+
+/* Extra large mobile phones (iPhone 16 Pro Max and similar) */
+@media (max-width: 768px) and (min-width: 430px) {
+  .timeline-regeneration-modal :deep(.p-dialog) {
+    width: 380px !important;
+    max-width: 380px !important;
+    margin: 0 auto;
+  }
+}
+</style>

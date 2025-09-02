@@ -3,9 +3,9 @@ package org.github.tess1o.geopulse.statistics.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.statistics.model.BarChartData;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
-import org.github.tess1o.geopulse.timeline.model.TravelMode;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -36,22 +36,22 @@ public class ChartDataService {
      * @param chartGroupMode the grouping mode (DAYS or WEEKS)
      * @return chart data with labels and distance values
      */
-    public BarChartData getDistanceChartData(MovementTimelineDTO timeline, TravelMode travelMode, ChartGroupMode chartGroupMode) {
+    public BarChartData getDistanceChartData(MovementTimelineDTO timeline, TripType tripType, ChartGroupMode chartGroupMode) {
         if (chartGroupMode == ChartGroupMode.WEEKS) {
-            return getBarChartDataByWeeks(timeline, travelMode);
+            return getBarChartDataByWeeks(timeline, tripType);
         }
-        return getBarChartDataByDays(timeline, travelMode);
+        return getBarChartDataByDays(timeline, tripType);
     }
 
     /**
      * Generates weekly chart data grouped by start of week (Monday).
      */
-    private BarChartData getBarChartDataByWeeks(MovementTimelineDTO timeline, TravelMode travelMode) {
+    private BarChartData getBarChartDataByWeeks(MovementTimelineDTO timeline, TripType tripType) {
         ZoneId zone = ZoneId.of("UTC");
 
         // Group by start-of-week (Monday)
         Map<LocalDate, Double> distanceByWeek = timeline.getTrips().stream()
-                .filter(matchesTravelMode(travelMode))
+                .filter(matchesTripType(tripType))
                 .collect(Collectors.groupingBy(
                         trip -> getStartOfWeek(trip.getTimestamp().atZone(zone).toLocalDate()),
                         TreeMap::new, // ensures sorted by week
@@ -73,11 +73,11 @@ public class ChartDataService {
     /**
      * Generates daily chart data grouped by day of week.
      */
-    private BarChartData getBarChartDataByDays(MovementTimelineDTO timeline, TravelMode travelMode) {
+    private BarChartData getBarChartDataByDays(MovementTimelineDTO timeline, TripType tripType) {
         ZoneId zone = ZoneId.of("UTC");
         // Step 1: Group by date, summing distances
         Map<LocalDate, Double> distanceByDate = timeline.getTrips().stream()
-                .filter(matchesTravelMode(travelMode))
+                .filter(matchesTripType(tripType))
                 .collect(Collectors.groupingBy(
                         trip -> trip.getTimestamp().atZone(zone).toLocalDate(),
                         Collectors.summingDouble(TimelineTripDTO::getDistanceKm)
@@ -100,8 +100,8 @@ public class ChartDataService {
         return new BarChartData(labels, distances);
     }
 
-    private static Predicate<TimelineTripDTO> matchesTravelMode(TravelMode travelMode) {
-        return t -> t.getMovementType() == null || t.getMovementType().isBlank() || t.getMovementType().equals(travelMode.name());
+    private static Predicate<TimelineTripDTO> matchesTripType(TripType tripType) {
+        return t -> t.getMovementType() == null || t.getMovementType().isBlank() || t.getMovementType().equals(tripType.name());
     }
 
     /**

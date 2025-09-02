@@ -11,9 +11,9 @@ import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
-import org.github.tess1o.geopulse.timeline.events.FavoriteAddedEvent;
-import org.github.tess1o.geopulse.timeline.events.FavoriteDeletedEvent;
-import org.github.tess1o.geopulse.timeline.events.FavoriteRenamedEvent;
+import org.github.tess1o.geopulse.streaming.events.FavoriteAddedEvent;
+import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
+import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
 import org.locationtech.jts.geom.Point;
 
 import java.util.List;
@@ -226,8 +226,7 @@ public class FavoriteLocationService {
         }
 
         String favoriteName = favoritesEntity.getName();
-        
-        // Fire event for timeline system BEFORE deletion
+        repository.deleteById(id);
         favoriteDeletedEvent.fire(FavoriteDeletedEvent.builder()
                 .favoriteId(id)
                 .userId(userId)
@@ -235,8 +234,6 @@ public class FavoriteLocationService {
                 .favoriteType(favoritesEntity.getType())
                 .geometry(favoritesEntity.getGeometry())
                 .build());
-        
-        repository.deleteById(id);
 
         log.info("User {} successfully deleted favorite {} ('{}')", userId, id, favoriteName);
     }

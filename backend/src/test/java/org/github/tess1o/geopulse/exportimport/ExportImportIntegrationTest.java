@@ -27,13 +27,13 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.github.tess1o.geopulse.timeline.model.LocationSource;
-import org.github.tess1o.geopulse.timeline.model.TimelineDataGapEntity;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayEntity;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripEntity;
-import org.github.tess1o.geopulse.timeline.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.timeline.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.timeline.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -81,9 +81,6 @@ class ExportImportIntegrationTest {
 
     @Inject
     TimelineDataGapRepository timelineDataGapRepository;
-
-    @Inject
-    org.github.tess1o.geopulse.timeline.repository.TimelineRegenerationTaskRepository taskRepository;
 
     @Inject
     FavoritesRepository favoritesRepository;
@@ -219,7 +216,6 @@ class ExportImportIntegrationTest {
     @Transactional
     void cleanupTestData() {
         // Clean up in dependency order (reverse of creation)
-        taskRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         gpsSourceRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         timelineTripRepository.delete("user.email = ?1", "test-export-import@geopulse.app");

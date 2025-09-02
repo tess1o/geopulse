@@ -1,8 +1,8 @@
 package org.github.tess1o.geopulse.statistics.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;

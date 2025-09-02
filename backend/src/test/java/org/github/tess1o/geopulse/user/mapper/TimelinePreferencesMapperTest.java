@@ -2,7 +2,7 @@ package org.github.tess1o.geopulse.user.mapper;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UpdateTimelinePreferencesRequest;
 import org.junit.jupiter.api.Test;
@@ -19,10 +19,9 @@ class TimelinePreferencesMapperTest {
     void testPreferencesToConfig() {
         // Given
         TimelinePreferences preferences = new TimelinePreferences();
-        preferences.setStaypointDetectionAlgorithm("enhanced");
         preferences.setUseVelocityAccuracy(true);
         preferences.setStaypointVelocityThreshold(12.0);
-        preferences.setTripMinDistanceMeters(100);
+        preferences.setStaypointRadiusMeters(100);
         preferences.setIsMergeEnabled(false);
 
         // When
@@ -30,10 +29,9 @@ class TimelinePreferencesMapperTest {
 
         // Then
         assertNotNull(config);
-        assertEquals("enhanced", config.getStaypointDetectionAlgorithm());
         assertEquals(true, config.getUseVelocityAccuracy());
         assertEquals(12.0, config.getStaypointVelocityThreshold());
-        assertEquals(100, config.getTripMinDistanceMeters());
+        assertEquals(100, config.getStaypointRadiusMeters());
         assertEquals(false, config.getIsMergeEnabled());
     }
 
@@ -41,9 +39,8 @@ class TimelinePreferencesMapperTest {
     void testRequestToConfig() {
         // Given
         UpdateTimelinePreferencesRequest request = new UpdateTimelinePreferencesRequest();
-        request.setStaypointDetectionAlgorithm("claude");
         request.setStaypointVelocityThreshold(15.0);
-        request.setTripMinDistanceMeters(200);
+        request.setStaypointRadiusMeters(200);
         request.setIsMergeEnabled(true);
 
         // When
@@ -51,9 +48,8 @@ class TimelinePreferencesMapperTest {
 
         // Then
         assertNotNull(config);
-        assertEquals("claude", config.getStaypointDetectionAlgorithm());
         assertEquals(15.0, config.getStaypointVelocityThreshold());
-        assertEquals(200, config.getTripMinDistanceMeters());
+        assertEquals(200, config.getStaypointRadiusMeters());
         assertEquals(true, config.getIsMergeEnabled());
     }
 
@@ -61,24 +57,21 @@ class TimelinePreferencesMapperTest {
     void testUpdatePreferencesFromConfig() {
         // Given
         TimelinePreferences preferences = new TimelinePreferences();
-        preferences.setStaypointDetectionAlgorithm("original");
-        preferences.setTripMinDistanceMeters(50);
+        preferences.setStaypointRadiusMeters(50);
 
         TimelineConfig config = new TimelineConfig();
-        config.setStaypointDetectionAlgorithm("enhanced");
         config.setUseVelocityAccuracy(true);
         config.setStaypointVelocityThreshold(12.0);
-        config.setTripMinDistanceMeters(100);
+        config.setStaypointRadiusMeters(100);
         config.setIsMergeEnabled(false);
 
         // When
         mapper.updatePreferencesFromConfig(config, preferences);
 
         // Then
-        assertEquals("enhanced", preferences.getStaypointDetectionAlgorithm());
         assertEquals(true, preferences.getUseVelocityAccuracy());
         assertEquals(12.0, preferences.getStaypointVelocityThreshold());
-        assertEquals(100, preferences.getTripMinDistanceMeters());
+        assertEquals(100, preferences.getStaypointRadiusMeters());
         assertEquals(false, preferences.getIsMergeEnabled());
     }
 
@@ -86,10 +79,9 @@ class TimelinePreferencesMapperTest {
     void testConfigToPreferences() {
         // Given
         TimelineConfig config = new TimelineConfig();
-        config.setStaypointDetectionAlgorithm("claude");
         config.setUseVelocityAccuracy(false);
         config.setStaypointVelocityThreshold(20.0);
-        config.setTripMinDistanceMeters(150);
+        config.setStaypointRadiusMeters(150);
         config.setIsMergeEnabled(true);
 
         // When
@@ -97,10 +89,9 @@ class TimelinePreferencesMapperTest {
 
         // Then
         assertNotNull(preferences);
-        assertEquals("claude", preferences.getStaypointDetectionAlgorithm());
         assertEquals(false, preferences.getUseVelocityAccuracy());
         assertEquals(20.0, preferences.getStaypointVelocityThreshold());
-        assertEquals(150, preferences.getTripMinDistanceMeters());
+        assertEquals(150, preferences.getStaypointRadiusMeters());
         assertEquals(true, preferences.getIsMergeEnabled());
     }
 
@@ -128,8 +119,7 @@ class TimelinePreferencesMapperTest {
     void testPartialData() {
         // Given preferences with only some fields set
         TimelinePreferences preferences = new TimelinePreferences();
-        preferences.setStaypointDetectionAlgorithm("enhanced");
-        preferences.setTripMinDistanceMeters(100);
+        preferences.setStaypointRadiusMeters(100);
         // Other fields are null
 
         // When converting
@@ -137,8 +127,7 @@ class TimelinePreferencesMapperTest {
 
         // Then
         assertNotNull(config);
-        assertEquals("enhanced", config.getStaypointDetectionAlgorithm());
-        assertEquals(100, config.getTripMinDistanceMeters());
+        assertEquals(100, config.getStaypointRadiusMeters());
         // Other fields should be null
         assertNull(config.getUseVelocityAccuracy());
         assertNull(config.getStaypointVelocityThreshold());

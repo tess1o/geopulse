@@ -36,34 +36,34 @@ import java.util.zip.ZipInputStream;
 @ApplicationScoped
 @Slf4j
 public class GeoPulseImportStrategy implements ImportStrategy {
-    
+
     @Inject
     UserRepository userRepository;
-    
+
     @Inject
     ImportDataMapper importDataMapper;
-    
+
     @Inject
     EntityManager entityManager;
-    
+
     @Inject
     SequenceResetService sequenceResetService;
-    
-    
+
+
     @Inject
     TimelineImportHelper timelineImportHelper;
-    
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
-    
+
     private final GeometryFactory geometryFactory = new GeometryFactory();
-    
+
     @Override
     public String getFormat() {
         return ExportImportConstants.Formats.GEOPULSE;
     }
-    
+
     @Override
     public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
         List<String> detectedDataTypes = new ArrayList<>();
@@ -120,25 +120,25 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             return detectedDataTypes;
         }
     }
-    
+
     @Override
     @Transactional
     public void processImportData(ImportJob job) throws IOException {
         // Collect all file contents for proper dependency ordering
         Map<String, byte[]> fileContents = extractZipContents(job);
-        
+
         // Import in dependency order using native SQL
         processFilesInOrder(fileContents, job);
-        
+
         // Reset sequences after import to prevent future ID conflicts
         log.info("Resetting sequences after import...");
         sequenceResetService.resetAllSequences();
         job.setProgress(100);
     }
-    
+
     private Map<String, byte[]> extractZipContents(ImportJob job) throws IOException {
         Map<String, byte[]> fileContents = new HashMap<>();
-        
+
         try (ByteArrayInputStream bais = new ByteArrayInputStream(job.getZipData());
              ZipInputStream zis = new ZipInputStream(bais)) {
 
@@ -159,67 +159,69 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 zis.closeEntry();
             }
         }
-        
+
         return fileContents;
     }
-    
+
     private void processFilesInOrder(Map<String, byte[]> fileContents, ImportJob job) throws IOException {
         int totalProgress = 0;
-        
+
         // 1. Import reverse geocoding locations first (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.REVERSE_GEOCODING)) {
             importReverseGeocodingData(fileContents.get(ExportImportConstants.FileNames.REVERSE_GEOCODING), job);
             totalProgress += 10;
             job.setProgress(totalProgress);
         }
-        
+
         // 2. Import favorites (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)) {
             importFavoritesData(fileContents.get(ExportImportConstants.FileNames.FAVORITES), job);
             totalProgress += 15;
             job.setProgress(totalProgress);
         }
-        
+
         // Track whether timeline data is being imported
         boolean hasTimelineData = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA);
         boolean hasGpsData = fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA);
-        
+
         // 3. Import timeline data (depends on favorites and reverse geocoding)
         if (hasTimelineData) {
             importTimelineData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job);
             totalProgress += 20;
             job.setProgress(totalProgress);
         }
-        
+
         // 3.1. Import data gaps (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.DATA_GAPS)) {
             importDataGapsData(fileContents.get(ExportImportConstants.FileNames.DATA_GAPS), job);
             totalProgress += 5;
             job.setProgress(totalProgress);
         }
-        
+
         // 4. Import GPS data
+        Instant firstGpsTimestamp = null;
         if (hasGpsData) {
-            importRawGpsData(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
+            firstGpsTimestamp = importRawGpsData(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
+            log.info("Successfully imported raw GPS data for user {} - first timestamp: {}", job.getUserId(), firstGpsTimestamp);
             totalProgress += 25;
             job.setProgress(totalProgress);
         }
-        
+
         // LAYER 3 FIX: Handle GPS-only imports (timeline generation needed)
         if (hasGpsData && !hasTimelineData) {
             log.info("GeoPulse import contains GPS data but no timeline data - will trigger timeline generation");
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job);
+            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
             totalProgress += 10;
             job.setProgress(totalProgress);
         }
-        
+
         // 5. Import user info
         if (fileContents.containsKey(ExportImportConstants.FileNames.USER_INFO)) {
             importUserInfoData(fileContents.get(ExportImportConstants.FileNames.USER_INFO), job);
             totalProgress += 10;
             job.setProgress(totalProgress);
         }
-        
+
         // 6. Import location sources
         if (fileContents.containsKey(ExportImportConstants.FileNames.LOCATION_SOURCES)) {
             importLocationSourcesData(fileContents.get(ExportImportConstants.FileNames.LOCATION_SOURCES), job);
@@ -227,7 +229,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
     }
-    
+
     private void validateMetadata(ZipInputStream zis, ImportJob job) throws IOException {
         byte[] content = zis.readAllBytes();
         ExportMetadataDto metadata = objectMapper.readValue(content, ExportMetadataDto.class);
@@ -241,7 +243,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             throw new IllegalArgumentException("Unsupported export format: " + metadata.getFormat());
         }
     }
-    
+
     private String getDataTypeFromFileName(String fileName) {
         switch (fileName) {
             case ExportImportConstants.FileNames.RAW_GPS_DATA:
@@ -262,11 +264,10 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 return null;
         }
     }
-    
+
     // Import methods delegated from original ImportDataService
-    
     @Transactional
-    public void importRawGpsData(byte[] content, ImportJob job) throws IOException {
+    public Instant importRawGpsData(byte[] content, ImportJob job) throws IOException {
         RawGpsDataDto gpsData = objectMapper.readValue(content, RawGpsDataDto.class);
         log.info("Importing {} GPS points for user {} using native SQL", gpsData.getPoints().size(), job.getUserId());
 
@@ -285,29 +286,31 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 org.locationtech.jts.geom.Point coordinates = null;
                 if (pointDto.getLatitude() != null && pointDto.getLongitude() != null) {
                     coordinates = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                        pointDto.getLongitude(), pointDto.getLatitude());
+                            pointDto.getLongitude(), pointDto.getLatitude());
                 }
-                
+
                 entityManager.createNativeQuery(NativeSqlImportTemplates.GPS_POINTS_UPSERT)
-                    .setParameter(1, pointDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, pointDto.getTimestamp())
-                    .setParameter(4, coordinates)
-                    .setParameter(5, pointDto.getAccuracy())
-                    .setParameter(6, pointDto.getAltitude())
-                    .setParameter(7, pointDto.getSpeed())
-                    .setParameter(8, pointDto.getBattery())
-                    .setParameter(9, pointDto.getDeviceId())
-                    .setParameter(10, pointDto.getSource())
-                    .setParameter(11, pointDto.getTimestamp()) // created_at - use same as timestamp
-                    .executeUpdate();
+                        .setParameter(1, pointDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, pointDto.getTimestamp())
+                        .setParameter(4, coordinates)
+                        .setParameter(5, pointDto.getAccuracy())
+                        .setParameter(6, pointDto.getAltitude())
+                        .setParameter(7, pointDto.getSpeed())
+                        .setParameter(8, pointDto.getBattery())
+                        .setParameter(9, pointDto.getDeviceId())
+                        .setParameter(10, pointDto.getSource())
+                        .setParameter(11, pointDto.getTimestamp()) // created_at - use same as timestamp
+                        .executeUpdate();
                 imported++;
             } catch (Exception e) {
                 log.warn("Failed to import GPS point with ID {}: {}", pointDto.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Successfully imported {} GPS points using native SQL", imported);
+
+        return gpsData.getPoints().stream().map(RawGpsDataDto.GpsPointDto::getTimestamp).min(Instant::compareTo).orElse(null);
     }
 
     @Transactional
@@ -327,17 +330,17 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
             try {
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_STAYS_UPSERT)
-                    .setParameter(1, stayDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, stayDto.getTimestamp())
-                    .setParameter(4, stayDto.getLatitude())
-                    .setParameter(5, stayDto.getLongitude())
-                    .setParameter(6, stayDto.getDuration() != null ? stayDto.getDuration() / 60 : null)
-                    .setParameter(7, stayDto.getAddress())
-                    .setParameter(8, "HISTORICAL")
-                    .setParameter(9, stayDto.getFavoriteId())
-                    .setParameter(10, stayDto.getGeocodingId())
-                    .executeUpdate();
+                        .setParameter(1, stayDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, stayDto.getTimestamp())
+                        .setParameter(4, stayDto.getLatitude())
+                        .setParameter(5, stayDto.getLongitude())
+                        .setParameter(6, stayDto.getDuration() != null ? stayDto.getDuration() / 60 : null)
+                        .setParameter(7, stayDto.getAddress())
+                        .setParameter(8, "HISTORICAL")
+                        .setParameter(9, stayDto.getFavoriteId())
+                        .setParameter(10, stayDto.getGeocodingId())
+                        .executeUpdate();
                 importedStays++;
             } catch (Exception e) {
                 log.warn("Failed to import timeline stay with ID {}: {}", stayDto.getId(), e.getMessage());
@@ -352,26 +355,26 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
             try {
                 LineString pathGeometry = convertPathToLineString(tripDto.getPath());
-                
+
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_TRIPS_UPSERT)
-                    .setParameter(1, tripDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, tripDto.getTimestamp())
-                    .setParameter(4, tripDto.getStartLatitude())
-                    .setParameter(5, tripDto.getStartLongitude())
-                    .setParameter(6, tripDto.getEndLatitude())
-                    .setParameter(7, tripDto.getEndLongitude())
-                    .setParameter(8, tripDto.getDistance() != null ? tripDto.getDistance() / 1000.0 : null)
-                    .setParameter(9, tripDto.getDuration() != null ? tripDto.getDuration() / 60 : null)
-                    .setParameter(10, tripDto.getTransportMode())
-                    .setParameter(11, pathGeometry)
-                    .executeUpdate();
+                        .setParameter(1, tripDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, tripDto.getTimestamp())
+                        .setParameter(4, tripDto.getStartLatitude())
+                        .setParameter(5, tripDto.getStartLongitude())
+                        .setParameter(6, tripDto.getEndLatitude())
+                        .setParameter(7, tripDto.getEndLongitude())
+                        .setParameter(8, tripDto.getDistance() != null ? tripDto.getDistance() / 1000.0 : null)
+                        .setParameter(9, tripDto.getDuration() != null ? tripDto.getDuration() / 60 : null)
+                        .setParameter(10, tripDto.getTransportMode())
+                        .setParameter(11, pathGeometry)
+                        .executeUpdate();
                 importedTrips++;
             } catch (Exception e) {
                 log.warn("Failed to import timeline trip with ID {}: {}", tripDto.getId(), e.getMessage());
             }
         }
-        
+
         // Import data gaps if included in timeline data
         int importedDataGaps = 0;
         if (timelineData.getDataGaps() != null) {
@@ -382,13 +385,13 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
                 try {
                     entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_DATA_GAPS_UPSERT)
-                        .setParameter(1, dataGapDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, dataGapDto.getStartTime())
-                        .setParameter(4, dataGapDto.getEndTime())
-                        .setParameter(5, dataGapDto.getDurationSeconds())
-                        .setParameter(6, dataGapDto.getCreatedAt())
-                        .executeUpdate();
+                            .setParameter(1, dataGapDto.getId())
+                            .setParameter(2, job.getUserId())
+                            .setParameter(3, dataGapDto.getStartTime())
+                            .setParameter(4, dataGapDto.getEndTime())
+                            .setParameter(5, dataGapDto.getDurationSeconds())
+                            .setParameter(6, dataGapDto.getCreatedAt())
+                            .executeUpdate();
                     importedDataGaps++;
                 } catch (Exception e) {
                     log.warn("Failed to import timeline data gap with ID {}: {}", dataGapDto.getId(), e.getMessage());
@@ -402,7 +405,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Transactional
     public void importDataGapsData(byte[] content, ImportJob job) throws IOException {
         DataGapsDataDto dataGapsData = objectMapper.readValue(content, DataGapsDataDto.class);
-        log.info("Importing {} data gaps for user {} using native SQL", 
+        log.info("Importing {} data gaps for user {} using native SQL",
                 dataGapsData.getDataGaps().size(), job.getUserId());
 
         int imported = 0;
@@ -414,19 +417,19 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
             try {
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_DATA_GAPS_UPSERT)
-                    .setParameter(1, dataGapDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, dataGapDto.getStartTime())
-                    .setParameter(4, dataGapDto.getEndTime())
-                    .setParameter(5, dataGapDto.getDurationSeconds())
-                    .setParameter(6, dataGapDto.getCreatedAt())
-                    .executeUpdate();
+                        .setParameter(1, dataGapDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, dataGapDto.getStartTime())
+                        .setParameter(4, dataGapDto.getEndTime())
+                        .setParameter(5, dataGapDto.getDurationSeconds())
+                        .setParameter(6, dataGapDto.getCreatedAt())
+                        .executeUpdate();
                 imported++;
             } catch (Exception e) {
                 log.warn("Failed to import data gap with ID {}: {}", dataGapDto.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Successfully imported {} data gaps using native SQL", imported);
     }
 
@@ -442,14 +445,14 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         for (FavoritesDataDto.FavoritePointDto pointDto : favoritesData.getPoints()) {
             try {
                 entityManager.createNativeQuery(NativeSqlImportTemplates.FAVORITES_UPSERT)
-                    .setParameter(1, pointDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, pointDto.getName())
-                    .setParameter(4, pointDto.getCity())
-                    .setParameter(5, pointDto.getCountry())
-                    .setParameter(6, "POINT")
-                    .setParameter(7, importDataMapper.createPointFromCoordinates(pointDto.getLongitude(), pointDto.getLatitude()))
-                    .executeUpdate();
+                        .setParameter(1, pointDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, pointDto.getName())
+                        .setParameter(4, pointDto.getCity())
+                        .setParameter(5, pointDto.getCountry())
+                        .setParameter(6, "POINT")
+                        .setParameter(7, importDataMapper.createPointFromCoordinates(pointDto.getLongitude(), pointDto.getLatitude()))
+                        .executeUpdate();
                 importedFavorites++;
             } catch (Exception e) {
                 log.warn("Failed to import favorite point with ID {}: {}", pointDto.getId(), e.getMessage());
@@ -460,20 +463,20 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         for (FavoritesDataDto.FavoriteAreaDto areaDto : favoritesData.getAreas()) {
             try {
                 entityManager.createNativeQuery(NativeSqlImportTemplates.FAVORITES_UPSERT)
-                    .setParameter(1, areaDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, areaDto.getName())
-                    .setParameter(4, areaDto.getCity())
-                    .setParameter(5, areaDto.getCountry())
-                    .setParameter(6, "AREA")
-                    .setParameter(7, importDataMapper.createPolygonFromCoordinates(areaDto))
-                    .executeUpdate();
+                        .setParameter(1, areaDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, areaDto.getName())
+                        .setParameter(4, areaDto.getCity())
+                        .setParameter(5, areaDto.getCountry())
+                        .setParameter(6, "AREA")
+                        .setParameter(7, importDataMapper.createPolygonFromCoordinates(areaDto))
+                        .executeUpdate();
                 importedFavorites++;
             } catch (Exception e) {
                 log.warn("Failed to import favorite area with ID {}: {}", areaDto.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Successfully imported {} favorites using native SQL", importedFavorites);
     }
 
@@ -507,26 +510,26 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         for (LocationSourcesDataDto.SourceDto sourceDto : sourcesData.getSources()) {
             try {
                 entityManager.createNativeQuery(NativeSqlImportTemplates.GPS_SOURCE_CONFIG_UPSERT)
-                    .setParameter(1, sourceDto.getId())
-                    .setParameter(2, job.getUserId())
-                    .setParameter(3, sourceDto.getUsername())
-                    .setParameter(4, sourceDto.getType())
-                    .setParameter(5, sourceDto.isActive())
-                    .setParameter(6, sourceDto.getConnectionType() != null ? sourceDto.getConnectionType() : "HTTP")
-                    .executeUpdate();
+                        .setParameter(1, sourceDto.getId())
+                        .setParameter(2, job.getUserId())
+                        .setParameter(3, sourceDto.getUsername())
+                        .setParameter(4, sourceDto.getType())
+                        .setParameter(5, sourceDto.isActive())
+                        .setParameter(6, sourceDto.getConnectionType() != null ? sourceDto.getConnectionType() : "HTTP")
+                        .executeUpdate();
                 imported++;
             } catch (Exception e) {
                 log.warn("Failed to import GPS source with ID {}: {}", sourceDto.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Successfully imported {} GPS sources using native SQL", imported);
     }
 
     @Transactional
     public void importReverseGeocodingData(byte[] content, ImportJob job) throws IOException {
         ReverseGeocodingDataDto geocodingData = objectMapper.readValue(content, ReverseGeocodingDataDto.class);
-        log.info("Importing {} reverse geocoding locations for user {} using native SQL", 
+        log.info("Importing {} reverse geocoding locations for user {} using native SQL",
                 geocodingData.getLocations().size(), job.getUserId());
 
         int imported = 0;
@@ -536,51 +539,52 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 org.locationtech.jts.geom.Point requestCoordinates = null;
                 if (locationDto.getRequestLatitude() != null && locationDto.getRequestLongitude() != null) {
                     requestCoordinates = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                        locationDto.getRequestLongitude(), locationDto.getRequestLatitude());
+                            locationDto.getRequestLongitude(), locationDto.getRequestLatitude());
                 }
-                
+
                 org.locationtech.jts.geom.Point resultCoordinates = null;
                 if (locationDto.getResultLatitude() != null && locationDto.getResultLongitude() != null) {
                     resultCoordinates = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                        locationDto.getResultLongitude(), locationDto.getResultLatitude());
+                            locationDto.getResultLongitude(), locationDto.getResultLatitude());
                 }
-                
+
                 org.locationtech.jts.geom.Polygon boundingBox = null;
-                if (locationDto.getBoundingBoxNorthEastLatitude() != null && 
-                    locationDto.getBoundingBoxNorthEastLongitude() != null &&
-                    locationDto.getBoundingBoxSouthWestLatitude() != null && 
-                    locationDto.getBoundingBoxSouthWestLongitude() != null) {
+                if (locationDto.getBoundingBoxNorthEastLatitude() != null &&
+                        locationDto.getBoundingBoxNorthEastLongitude() != null &&
+                        locationDto.getBoundingBoxSouthWestLatitude() != null &&
+                        locationDto.getBoundingBoxSouthWestLongitude() != null) {
                     boundingBox = org.github.tess1o.geopulse.shared.geo.GeoUtils.buildBoundingBoxPolygon(
-                        locationDto.getBoundingBoxSouthWestLatitude(),
-                        locationDto.getBoundingBoxNorthEastLatitude(),
-                        locationDto.getBoundingBoxSouthWestLongitude(),
-                        locationDto.getBoundingBoxNorthEastLongitude()
+                            locationDto.getBoundingBoxSouthWestLatitude(),
+                            locationDto.getBoundingBoxNorthEastLatitude(),
+                            locationDto.getBoundingBoxSouthWestLongitude(),
+                            locationDto.getBoundingBoxNorthEastLongitude()
                     );
                 }
 
                 entityManager.createNativeQuery(NativeSqlImportTemplates.REVERSE_GEOCODING_LOCATION_UPSERT)
-                    .setParameter(1, locationDto.getId())
-                    .setParameter(2, requestCoordinates)
-                    .setParameter(3, resultCoordinates)
-                    .setParameter(4, boundingBox)
-                    .setParameter(5, locationDto.getDisplayName())
-                    .setParameter(6, locationDto.getProviderName())
-                    .setParameter(7, locationDto.getCreatedAt())
-                    .setParameter(8, locationDto.getLastAccessedAt())
-                    .setParameter(9, locationDto.getCity())
-                    .setParameter(10, locationDto.getCountry())
-                    .executeUpdate();
+                        .setParameter(1, locationDto.getId())
+                        .setParameter(2, requestCoordinates)
+                        .setParameter(3, resultCoordinates)
+                        .setParameter(4, boundingBox)
+                        .setParameter(5, locationDto.getDisplayName())
+                        .setParameter(6, locationDto.getProviderName())
+                        .setParameter(7, locationDto.getCreatedAt())
+                        .setParameter(8, locationDto.getLastAccessedAt())
+                        .setParameter(9, locationDto.getCity())
+                        .setParameter(10, locationDto.getCountry())
+                        .executeUpdate();
                 imported++;
             } catch (Exception e) {
                 log.warn("Failed to import reverse geocoding location with ID {}: {}", locationDto.getId(), e.getMessage());
             }
         }
-        
+
         log.info("Successfully imported {} reverse geocoding locations using native SQL", imported);
     }
-    
+
     /**
      * Converts a list of coordinate pairs to a JTS LineString
+     *
      * @param pathCoordinates List of coordinate pairs in [longitude, latitude] format
      * @return LineString geometry or null if input is null or empty
      */
@@ -588,25 +592,25 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         if (pathCoordinates == null || pathCoordinates.isEmpty()) {
             return null;
         }
-        
+
         Coordinate[] coordinates = pathCoordinates.stream()
-            .filter(coord -> coord != null && coord.size() >= 2)
-            .map(coord -> new Coordinate(coord.get(0), coord.get(1))) // [longitude, latitude]
-            .toArray(Coordinate[]::new);
-            
+                .filter(coord -> coord != null && coord.size() >= 2)
+                .map(coord -> new Coordinate(coord.get(0), coord.get(1))) // [longitude, latitude]
+                .toArray(Coordinate[]::new);
+
         if (coordinates.length < 2) {
             return null; // LineString needs at least 2 points
         }
-        
+
         return geometryFactory.createLineString(coordinates);
     }
-    
+
     private boolean shouldSkipDueToDateFilter(java.time.Instant timestamp, ImportJob job) {
         if (job.getOptions().getDateRangeFilter() == null) {
             return false;
         }
         return timestamp.isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-               timestamp.isAfter(job.getOptions().getDateRangeFilter().getEndDate());
+                timestamp.isAfter(job.getOptions().getDateRangeFilter().getEndDate());
     }
-    
+
 }

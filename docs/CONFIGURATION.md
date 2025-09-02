@@ -22,7 +22,8 @@ individually.*
 
 | Property                                            | Default    | Description                                                                       |
 |-----------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `geopulse.timeline.staypoint.detection.algorithm`   | `enhanced` | Algorithm used for staypoint detection. Possible values: `simple` and `enchanced` |
+| `geopulse.timeline.staypoint.radius_meters`         | `50`       | Radius (in meters) used for stay point detection and clustering                   |
+| `geopulse.timeline.staypoint.min_duration_minutes`  | `7`        | Minimum duration (in minutes) for a stay point to be confirmed                    |
 | `geopulse.timeline.staypoint.use_velocity_accuracy` | `true`     | Whether to consider velocity accuracy in filtering                                |
 | `geopulse.timeline.staypoint.velocity.threshold`    | `2.5`      | Velocity threshold (m/s) below which movement is considered a staypoint           |
 | `geopulse.timeline.staypoint.accuracy.threshold`    | `60.0`     | Maximum GPS accuracy (meters) for staypoint detection                             |
@@ -32,11 +33,9 @@ individually.*
 
 Defines criteria for identifying meaningful trips vs. noise. *Users can customize these settings individually.*
 
-| Property                                      | Default  | Description                                                                 |
-|-----------------------------------------------|----------|-----------------------------------------------------------------------------|
-| `geopulse.timeline.trip.detection.algorithm`  | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple` |
-| `geopulse.timeline.trip.min_distance_meters`  | `50`     | Minimum distance (meters) for a trip to be considered valid                 |
-| `geopulse.timeline.trip.min_duration_minutes` | `7`      | Minimum duration (minutes) for a trip to be considered valid                |
+| Property                                     | Default  | Description                                                                 |
+|----------------------------------------------|----------|-----------------------------------------------------------------------------|
+| `geopulse.timeline.trip.detection.algorithm` | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple` |
 
 ### Staypoint Merging
 
@@ -152,7 +151,8 @@ GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
 
 ```bash
 # Staypoint Detection
-GEOPULSE_TIMELINE_STAYPOINT_DETECTION_ALGORITHM=enhanced
+GEOPULSE_TIMELINE_STAYPOINT_RADIUS_METERS=50
+GEOPULSE_TIMELINE_STAYPOINT_MIN_DURATION_MINUTES=7
 GEOPULSE_TIMELINE_STAYPOINT_USE_VELOCITY_ACCURACY=true
 GEOPULSE_TIMELINE_STAYPOINT_VELOCITY_THRESHOLD=2.5
 GEOPULSE_TIMELINE_STAYPOINT_ACCURACY_THRESHOLD=60.0
@@ -160,8 +160,6 @@ GEOPULSE_TIMELINE_STAYPOINT_MIN_ACCURACY_RATIO=0.5
 
 # Trip Detection
 GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM=single
-GEOPULSE_TIMELINE_TRIP_MIN_DISTANCE_METERS=50
-GEOPULSE_TIMELINE_TRIP_MIN_DURATION_MINUTES=7
 
 # Staypoint Merging
 GEOPULSE_TIMELINE_STAYPOINT_MERGE_ENABLED=true
@@ -270,13 +268,13 @@ GEOPULSE_BACKEND_URL=http://localhost:8080
 
 - Decrease `geopulse.timeline.staypoint.velocity.threshold` (e.g., 3-5 m/s)
 - Decrease `geopulse.timeline.staypoint.accuracy.threshold` (e.g., 30-40 meters)
-- Decrease `geopulse.timeline.trip.min_distance_meters` (e.g., 25-30 meters)
+- Decrease `geopulse.timeline.staypoint.radius_meters` (e.g., 25-30 meters)
 
 **For Less Noise** (less sensitive detection):
 
 - Increase `geopulse.timeline.staypoint.velocity.threshold` (e.g., 10-15 m/s)
-- Increase `geopulse.timeline.trip.min_distance_meters` (e.g., 100-200 meters)
-- Increase `geopulse.timeline.trip.min_duration_minutes` (e.g., 10-15 minutes)
+- Increase `geopulse.timeline.staypoint.radius_meters` (e.g., 100-200 meters)
+- Increase `geopulse.timeline.staypoint.min_duration_minutes` (e.g., 10-15 minutes)
 
 **For Battery/Storage Optimization**:
 

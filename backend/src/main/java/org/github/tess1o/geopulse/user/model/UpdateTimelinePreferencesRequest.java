@@ -12,9 +12,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class UpdateTimelinePreferencesRequest {
     
-    @Pattern(regexp = "^(simple|enhanced)$", message = "Staypoint detection algorithm must be one of: simple, enhanced")
-    private String staypointDetectionAlgorithm;
-    
     private Boolean useVelocityAccuracy;
     
     @DecimalMin(value = "0.1", message = "Staypoint velocity threshold must be at least 0.1")
@@ -32,13 +29,13 @@ public class UpdateTimelinePreferencesRequest {
     @Pattern(regexp = "^(single|multiple)$", message = "Trip detection algorithm must be one of: single, multiple")
     private String tripDetectionAlgorithm;
     
-    @Min(value = 1, message = "Trip min distance must be at least 1 meter")
-    @Max(value = 10_000, message = "Trip min distance must be at most 10000 meters")
-    private Integer tripMinDistanceMeters;
+    @Min(value = 1, message = "Staypoint radius must be at least 1 meter")
+    @Max(value = 10_000, message = "Staypoint radius must be at most 10000 meters")
+    private Integer staypointRadiusMeters;
     
-    @Min(value = 1, message = "Trip min duration must be at least 1 minute")
-    @Max(value = 1440, message = "Trip min duration must be at most 1440 minutes (24 hours)")
-    private Integer tripMinDurationMinutes;
+    @Min(value = 1, message = "Stay min duration must be at least 1 minute")
+    @Max(value = 1440, message = "Stay min duration must be at most 1440 minutes (24 hours)")
+    private Integer staypointMinDurationMinutes;
     
     private Boolean isMergeEnabled;
     
@@ -68,4 +65,9 @@ public class UpdateTimelinePreferencesRequest {
 
     @Min(value = 1, message = "Data Gap minimum duration (seconds) must be positive")
     private Integer dataGapMinDurationSeconds;
+    
+    // Timezone Settings
+    @Pattern(regexp = "^[A-Za-z_]+/[A-Za-z_]+$", 
+             message = "Timezone must be a valid timezone ID (e.g., 'Europe/Kyiv', 'America/New_York')")
+    private String timezone;
 }

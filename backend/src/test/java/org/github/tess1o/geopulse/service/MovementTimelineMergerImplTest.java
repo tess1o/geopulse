@@ -1,13 +1,13 @@
 package org.github.tess1o.geopulse.service;
 
-import org.github.tess1o.geopulse.timeline.model.MovementTimelineDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineConfig;
-import org.github.tess1o.geopulse.timeline.model.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.timeline.model.TimelineTripDTO;
-import org.github.tess1o.geopulse.timeline.merge.MovementTimelineMergerImpl;
-import org.github.tess1o.geopulse.timeline.merge.TimelineMergeAnalysisService;
-import org.github.tess1o.geopulse.timeline.merge.TimelineMergeExecutionService;
-import org.github.tess1o.geopulse.timeline.merge.TripFilteringService;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.merge.MovementTimelineMergerImpl;
+import org.github.tess1o.geopulse.streaming.merge.TimelineMergeAnalysisService;
+import org.github.tess1o.geopulse.streaming.merge.TimelineMergeExecutionService;
+import org.github.tess1o.geopulse.streaming.merge.TripFilteringService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -361,6 +361,6 @@ public class MovementTimelineMergerImplTest {
 
     private TimelineTripDTO createTrip(Instant timestamp, long duration, double distanceKm,
                                        double lat, double lon) {
-        return new TimelineTripDTO(timestamp, lat, lon, duration, distanceKm, "WALKING", List.of());
+        return new TimelineTripDTO(timestamp, lat, lon, lat + 0.001, lon + 0.001, duration, distanceKm, "WALKING", List.of());
     }
 }
