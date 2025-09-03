@@ -108,14 +108,4 @@ public class GpsSourceConfigResource {
         }
         return Response.ok().build();
     }
-
-    @Path("/endpoints")
-    @GET
-    public Response getGpsSourceEndpoints() {
-        return Response.ok(new GpsSourceEndpointsDto(
-                gpsSourceService.getOwntrackUrl(),
-                gpsSourceService.getOverlandUrl(),
-                gpsSourceService.getDawarichUrl()
-        )).build();
-    }
 }

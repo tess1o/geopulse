@@ -18,6 +18,7 @@ public class ImportJobResponse {
     private String message;
     private String error;
     private int progress;
+    private String progressMessage;
     private Instant createdAt;
     private Instant completedAt;
 }

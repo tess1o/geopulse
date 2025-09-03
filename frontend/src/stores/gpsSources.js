@@ -3,18 +3,15 @@ import apiService from '../utils/apiService'
 
 export const useGpsSourcesStore = defineStore('gpsSources', {
     state: () => ({
-        gpsSourceConfigs: [],
-        gpsSourcesEndpoints: null
+        gpsSourceConfigs: []
     }),
 
     getters: {
         // Direct access getters
         getGpsSourceConfigs: (state) => state.gpsSourceConfigs,
-        getGpsSourcesEndpoints: (state) => state.gpsSourcesEndpoints,
 
         // Computed getters for additional functionality
         hasGpsConfigs: (state) => state.gpsSourceConfigs.length > 0,
-        hasEndpoints: (state) => !!state.gpsSourcesEndpoints,
 
         // Get GPS configs by type
         getConfigsByType: (state) => (type) => {
@@ -29,13 +26,6 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         // Count of active/enabled configs
         activeConfigsCount: (state) => {
             return state.gpsSourceConfigs.filter(config => config.status === 'active').length
-        },
-
-        // Available GPS source types (if endpoints provide this info)
-        availableTypes: (state) => {
-            if (!state.gpsSourcesEndpoints) return []
-            // Adjust this based on your endpoints structure
-            return state.gpsSourcesEndpoints.types || []
         }
     },
 
@@ -45,14 +35,10 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
             this.gpsSourceConfigs = configs
         },
 
-        setGpsSourcesEndpoints(endpoints) {
-            this.gpsSourcesEndpoints = endpoints
-        },
 
         // Clear all GPS data
         clearGpsData() {
             this.gpsSourceConfigs = []
-            this.gpsSourcesEndpoints = null
         },
 
         // Update a single config in the store (optimistic update)
@@ -79,15 +65,6 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
             }
         },
 
-        async fetchGpsSourceEndpoints() {
-            try {
-                const response = await apiService.get('/gps/source/endpoints')
-                this.setGpsSourcesEndpoints(response)
-                return response
-            } catch (error) {
-                throw error
-            }
-        },
 
         async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP') {
             try {
@@ -176,10 +153,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         // Convenience method to fetch all GPS data
         async fetchAllGpsData() {
             try {
-                await Promise.all([
-                    this.fetchGpsConfigSources(),
-                    this.fetchGpsSourceEndpoints()
-                ])
+                await this.fetchGpsConfigSources()
             } catch (error) {
                 console.error('Error fetching GPS data:', error)
                 throw error

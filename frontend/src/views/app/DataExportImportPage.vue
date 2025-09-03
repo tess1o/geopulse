@@ -179,11 +179,6 @@
                           :disabled="!canStartExport"
                           class="export-button"
                       />
-                      <!--                      <div class="export-info">-->
-                      <!--                        <small class="export-note">-->
-                      <!--                          Export files are available for 7 days and will be automatically deleted for security.-->
-                      <!--                        </small>-->
-                      <!--                      </div>-->
                     </div>
                   </div>
                 </template>
@@ -320,13 +315,6 @@
           <!-- Import Tab -->
           <div v-if="activeTab === 'import'">
             <div class="tab-section">
-              <!--              <div class="section-header">-->
-              <!--                <h2 class="section-title">Import Your Data</h2>-->
-              <!--                <p class="section-description">-->
-              <!--                  Upload a previously exported GeoPulse data file-->
-              <!--                </p>-->
-              <!--              </div>-->
-
               <!-- Import Form -->
               <Card class="import-form-card">
                 <template #content>
@@ -434,8 +422,31 @@
                               Import only data within date range
                             </label>
                           </div>
+                        </div>
 
-                          <div v-if="enableDateFilter" class="date-filter-controls">
+                        <div class="option-group">
+                          <div class="checkbox-option">
+                            <Checkbox
+                                v-model="clearDataBeforeImport"
+                                inputId="clearDataBeforeImport"
+                                :binary="true"
+                            />
+                            <label for="clearDataBeforeImport" class="option-label">
+                              Replace existing data in time range
+                            </label>
+                          </div>
+                          <div class="option-description">
+                            <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--gp-primary-500);"></i>
+                            When enabled, existing data in the time range being imported will be deleted before importing new data.
+                            This is faster than merging and ensures clean data replacement.
+                          </div>
+                          <div v-if="clearDataBeforeImport" class="warning-message">
+                            <i class="pi pi-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                            <strong>Warning:</strong> This will permanently delete existing data in the import time range. Make sure you have backups if needed.
+                          </div>
+                        </div>
+
+                        <div v-if="enableDateFilter" class="date-filter-controls">
                             <div class="date-control">
                               <label for="importStartDate" class="date-label">Start Date</label>
                               <Calendar
@@ -460,7 +471,6 @@
                             </div>
                           </div>
                         </div>
-                      </div>
                     </div>
 
                     <!-- Import Actions -->
@@ -513,7 +523,10 @@
                         <span class="detail-label">Progress:</span>
                         <div class="detail-value">
                           <ProgressBar :value="currentImportJob.progress" class="job-progress"/>
-                          <span class="progress-text">{{ currentImportJob.progress }}%</span>
+                          <div class="progress-info">
+                            <span class="progress-text">{{ currentImportJob.progress }}%</span>
+                            <span class="progress-phase">{{ getProgressPhaseDescription(currentImportJob) }}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -650,6 +663,7 @@ const importFormat = ref('geopulse')
 const selectedFile = ref(null)
 const fileUpload = ref(null)
 const enableDateFilter = ref(false)
+const clearDataBeforeImport = ref(false)
 const importStartDate = ref(null)
 const importEndDate = ref(null)
 const importOptions = ref({
@@ -880,6 +894,9 @@ const startImport = async () => {
         endDate: importEndDate.value.toISOString()
       }
     }
+
+    // Add clear data before import option
+    options.clearDataBeforeImport = clearDataBeforeImport.value
 
     // Use the appropriate upload function based on format configuration
     const uploadFunction = exportImportStore[formatConfig.uploadFunction]
@@ -1119,6 +1136,35 @@ const getFormatInfoMessage = () => {
     'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline.'
   }
   return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
+}
+
+const getProgressPhaseDescription = (job) => {
+  if (!job || job.status === 'completed') return ''
+  
+  // Use backend-provided progress message if available
+  if (job.progressMessage) {
+    return job.progressMessage
+  }
+  
+  // Fallback to client-side logic for backwards compatibility
+  const progress = job.progress || 0
+  
+  if (job.status === 'validating') {
+    return 'Validating file format...'
+  }
+  
+  if (job.status === 'processing') {
+    if (progress < 25) {
+      return 'Parsing import data...'
+    } else if (progress < 95) {
+      const mode = clearDataBeforeImport.value ? 'bulk inserting' : 'merging with existing data'
+      return `Importing GPS points (${mode})...`
+    } else {
+      return 'Generating timeline...'
+    }
+  }
+  
+  return job.status
 }
 
 // Lifecycle
@@ -1493,9 +1539,34 @@ onMounted(async () => {
   width: 200px;
 }
 
+.progress-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
 .progress-text {
   font-size: 0.9rem;
   font-weight: 500;
+}
+
+.progress-phase {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+  font-style: italic;
+}
+
+.warning-message {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 6px;
+  color: #856404;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
 }
 
 .job-actions {

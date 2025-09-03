@@ -46,6 +46,6 @@ public class TripClassificationEngine {
         );
 
         // Use existing travel classification service (now returns TripType directly)
-        return travelClassification.classifyTravelType(tripPoints, tripDuration);
+        return travelClassification.classifyTravelType(tripPoints, tripDuration, config);
     }
 }

@@ -5,18 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineGpsPoint;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineRecord;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.util.GoogleTimelineParser;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
-import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -29,16 +26,7 @@ import java.util.List;
  */
 @ApplicationScoped
 @Slf4j
-public class GoogleTimelineImportStrategy implements ImportStrategy {
-
-    @Inject
-    UserRepository userRepository;
-
-    @Inject
-    BatchProcessor batchProcessor;
-
-    @Inject
-    TimelineImportHelper timelineImportHelper;
+public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
 
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -50,104 +38,61 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
     }
 
     @Override
-    public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
-        log.info("Validating Google Timeline JSON data for user {}", job.getUserId());
+    protected FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException {
+        String jsonContent = new String(job.getZipData()); // zipData contains JSON for Google Timeline
 
-        try {
-            String jsonContent = new String(job.getZipData()); // zipData contains JSON for Google Timeline
+        // Parse as JSON array of Google Timeline records
+        List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
+                new TypeReference<List<GoogleTimelineRecord>>() {
+                });
 
-            // Parse as JSON array of Google Timeline records
-            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
-                    new TypeReference<List<GoogleTimelineRecord>>() {
-                    });
-
-            if (records.isEmpty()) {
-                throw new IllegalArgumentException("Google Timeline file contains no records");
-            }
-
-            // Analyze record types and validate data quality
-            int activityCount = 0;
-            int visitCount = 0;
-            int timelinePathCount = 0;
-            int unknownCount = 0;
-            int validRecords = 0;
-
-            for (GoogleTimelineRecord record : records) {
-                switch (record.getRecordType()) {
-                    case ACTIVITY -> {
-                        activityCount++;
-                        if (isValidActivityRecord(record)) validRecords++;
-                    }
-                    case VISIT -> {
-                        visitCount++;
-                        if (isValidVisitRecord(record)) validRecords++;
-                    }
-                    case TIMELINE_PATH -> {
-                        timelinePathCount++;
-                        if (isValidTimelinePathRecord(record)) validRecords++;
-                    }
-                    case UNKNOWN -> unknownCount++;
-                }
-            }
-
-            if (validRecords == 0) {
-                throw new IllegalArgumentException("Google Timeline file contains no valid GPS data");
-            }
-
-            log.info("Google Timeline validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records",
-                    records.size(), activityCount, visitCount, timelinePathCount, unknownCount, validRecords);
-
-            return List.of(ExportImportConstants.DataTypes.RAW_GPS);
-
-        } catch (Exception e) {
-            if (e instanceof IllegalArgumentException) {
-                throw e;
-            }
-            throw new IllegalArgumentException("Invalid Google Timeline JSON format: " + e.getMessage());
+        if (records.isEmpty()) {
+            throw new IllegalArgumentException("Google Timeline file contains no records");
         }
+
+        // Analyze record types and validate data quality
+        int activityCount = 0;
+        int visitCount = 0;
+        int timelinePathCount = 0;
+        int unknownCount = 0;
+        int validRecords = 0;
+
+        for (GoogleTimelineRecord record : records) {
+            switch (record.getRecordType()) {
+                case ACTIVITY -> {
+                    activityCount++;
+                    if (isValidActivityRecord(record)) validRecords++;
+                }
+                case VISIT -> {
+                    visitCount++;
+                    if (isValidVisitRecord(record)) validRecords++;
+                }
+                case TIMELINE_PATH -> {
+                    timelinePathCount++;
+                    if (isValidTimelinePathRecord(record)) validRecords++;
+                }
+                case UNKNOWN -> unknownCount++;
+            }
+        }
+
+        log.info("Google Timeline validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records",
+                records.size(), activityCount, visitCount, timelinePathCount, unknownCount, validRecords);
+
+        return new FormatValidationResult(records.size(), validRecords);
     }
 
     @Override
-    public void processImportData(ImportJob job) throws IOException {
-        log.info("Processing Google Timeline import data for user {}", job.getUserId());
+    protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
+        String jsonContent = new String(job.getZipData());
+        List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
+                new TypeReference<List<GoogleTimelineRecord>>() {
+                });
 
-        try {
-            String jsonContent = new String(job.getZipData());
-            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
-                    new TypeReference<List<GoogleTimelineRecord>>() {
-                    });
+        // Extract GPS points using the same logic as Python script
+        List<GoogleTimelineGpsPoint> gpsPoints = GoogleTimelineParser.extractGpsPoints(records, true);
 
-            UserEntity user = userRepository.findById(job.getUserId());
-            if (user == null) {
-                throw new IllegalStateException("User not found: " + job.getUserId());
-            }
-
-            // Extract GPS points using the same logic as Python script
-            List<GoogleTimelineGpsPoint> gpsPoints = GoogleTimelineParser.extractGpsPoints(records, true);
-
-            // Convert to GpsPointEntity objects
-            List<GpsPointEntity> gpsEntities = convertToGpsEntities(gpsPoints, user, job);
-
-            // Process in batches to avoid memory issues and timeouts
-            int batchSize = 500; // Optimized batch size for large datasets
-            BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsEntities, batchSize);
-
-            job.setProgress(95);
-
-            Instant firstGpsTimestamp = gpsEntities.stream().map(GpsPointEntity::getTimestamp).min(Instant::compareTo).orElse(null);
-
-            log.info("Google Timeline import completed for user {}: {} imported, {} skipped from {} GPS points extracted from {} timeline records",
-                    job.getUserId(), result.imported, result.skipped, gpsPoints.size(), records.size());
-
-            // Trigger timeline generation since we only imported GPS data
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
-
-            job.setProgress(100);
-
-        } catch (Exception e) {
-            log.error("Failed to process Google Timeline import for user {}: {}", job.getUserId(), e.getMessage(), e);
-            throw new IOException("Failed to process Google Timeline import: " + e.getMessage(), e);
-        }
+        // Convert to GpsPointEntity objects
+        return convertToGpsEntities(gpsPoints, user, job);
     }
 
     private List<GpsPointEntity> convertToGpsEntities(List<GoogleTimelineGpsPoint> gpsPoints, UserEntity user, ImportJob job) {
@@ -162,12 +107,9 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                 continue;
             }
 
-            // Apply date range filter if specified
-            if (job.getOptions().getDateRangeFilter() != null) {
-                if (point.getTimestamp().isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-                        point.getTimestamp().isAfter(job.getOptions().getDateRangeFilter().getEndDate())) {
-                    continue;
-                }
+            // Apply date range filter using base class method
+            if (shouldSkipDueDateFilter(point.getTimestamp(), job)) {
+                continue;
             }
 
             try {
@@ -193,12 +135,9 @@ public class GoogleTimelineImportStrategy implements ImportStrategy {
                 log.warn("Failed to create GPS entity from point: {}", e.getMessage());
             }
 
-            // Update progress periodically
+            // Update progress using base class method
             processedPoints++;
-            if (processedPoints % 1000 == 0) {
-                int progress = 10 + (int) ((double) processedPoints / gpsPoints.size() * 80);
-                job.setProgress(Math.min(progress, 90));
-            }
+            updateProgress(processedPoints, gpsPoints.size(), job, 10, 80);
         }
 
         return gpsEntities;

@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.gps.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
+import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
+import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantLocation;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
@@ -60,6 +62,26 @@ public class GpsPointMapper {
         entity.setVelocity(message.getProperties().getSpeed());
         entity.setAltitude(Math.round(message.getProperties().getAltitude()) * 1.0);
         entity.setBattery(-1.0);
+        entity.setSourceType(sourceType);
+        entity.setCreatedAt(Instant.now());
+
+
+        return entity;
+    }
+
+    public GpsPointEntity toEntity(HomeAssistantGpsData message, UserEntity userId, GpsSourceType sourceType) {
+        GpsPointEntity entity = new GpsPointEntity();
+        entity.setUser(userId);
+        entity.setTimestamp(message.getTimestamp());
+        entity.setDeviceId(message.getDeviceId());
+
+        HomeAssistantLocation location = message.getLocation();
+
+        entity.setCoordinates(GeoUtils.createPoint(location.getLongitude(), location.getLatitude()));
+        entity.setAccuracy(location.getAccuracy());
+        entity.setVelocity(location.getSpeed());
+        entity.setAltitude(Math.round(location.getAltitude()) * 1.0);
+        entity.setBattery(message.getBattery().getLevel() * 1.0);
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
 

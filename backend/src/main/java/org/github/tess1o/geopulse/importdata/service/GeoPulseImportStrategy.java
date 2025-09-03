@@ -53,6 +53,9 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Inject
     TimelineImportHelper timelineImportHelper;
 
+    @Inject
+    ImportDataClearingService dataClearingService;
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -183,6 +186,13 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // Track whether timeline data is being imported
         boolean hasTimelineData = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA);
         boolean hasGpsData = fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA);
+
+        // Handle data clearing before import if requested
+        if (job.getOptions().isClearDataBeforeImport()) {
+            clearExistingDataBeforeImport(fileContents, job);
+            totalProgress += 15;
+            job.setProgress(totalProgress);
+        }
 
         // 3. Import timeline data (depends on favorites and reverse geocoding)
         if (hasTimelineData) {
@@ -611,6 +621,126 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
         return timestamp.isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
                 timestamp.isAfter(job.getOptions().getDateRangeFilter().getEndDate());
+    }
+
+    /**
+     * Clear existing data before GeoPulse import based on the data types and date ranges in the import file.
+     */
+    private void clearExistingDataBeforeImport(Map<String, byte[]> fileContents, ImportJob job) throws IOException {
+        log.info("Clearing existing data before GeoPulse import for user {}", job.getUserId());
+        
+        // Calculate deletion range for GPS data if present
+        if (fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA)) {
+            clearGpsDataForImport(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
+        }
+        
+        // Calculate deletion range for timeline data if present
+        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA)) {
+            clearTimelineDataForImport(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job);
+        }
+    }
+    
+    private void clearGpsDataForImport(byte[] content, ImportJob job) throws IOException {
+        try {
+            RawGpsDataDto gpsData = objectMapper.readValue(content, RawGpsDataDto.class);
+            
+            if (gpsData.getPoints().isEmpty()) {
+                return;
+            }
+            
+            // Extract date range from GPS data
+            Instant minTimestamp = gpsData.getPoints().stream()
+                .map(RawGpsDataDto.GpsPointDto::getTimestamp)
+                .filter(timestamp -> timestamp != null)
+                .min(Instant::compareTo)
+                .orElse(null);
+                
+            Instant maxTimestamp = gpsData.getPoints().stream()
+                .map(RawGpsDataDto.GpsPointDto::getTimestamp)
+                .filter(timestamp -> timestamp != null)
+                .max(Instant::compareTo)
+                .orElse(null);
+            
+            if (minTimestamp != null && maxTimestamp != null) {
+                ImportDataClearingService.DateRange fileDataRange = 
+                    new ImportDataClearingService.DateRange(minTimestamp, maxTimestamp);
+                
+                ImportDataClearingService.DateRange deletionRange = 
+                    dataClearingService.calculateDeletionRange(job, fileDataRange);
+                
+                if (deletionRange != null) {
+                    int deletedCount = dataClearingService.clearGpsDataInRange(job.getUserId(), deletionRange);
+                    log.info("Cleared {} existing GPS points before GeoPulse import", deletedCount);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to clear GPS data before import: {}", e.getMessage());
+        }
+    }
+    
+    private void clearTimelineDataForImport(byte[] content, ImportJob job) throws IOException {
+        try {
+            TimelineDataDto timelineData = objectMapper.readValue(content, TimelineDataDto.class);
+            
+            // Extract date range from timeline data (stays and trips)
+            Instant minTimestamp = null;
+            Instant maxTimestamp = null;
+            
+            // Check stays
+            if (!timelineData.getStays().isEmpty()) {
+                Instant staysMin = timelineData.getStays().stream()
+                    .map(TimelineDataDto.StayDto::getTimestamp)
+                    .filter(timestamp -> timestamp != null)
+                    .min(Instant::compareTo)
+                    .orElse(null);
+                    
+                Instant staysMax = timelineData.getStays().stream()
+                    .map(TimelineDataDto.StayDto::getTimestamp)
+                    .filter(timestamp -> timestamp != null)
+                    .max(Instant::compareTo)
+                    .orElse(null);
+                    
+                minTimestamp = staysMin;
+                maxTimestamp = staysMax;
+            }
+            
+            // Check trips
+            if (!timelineData.getTrips().isEmpty()) {
+                Instant tripsMin = timelineData.getTrips().stream()
+                    .map(TimelineDataDto.TripDto::getTimestamp)
+                    .filter(timestamp -> timestamp != null)
+                    .min(Instant::compareTo)
+                    .orElse(null);
+                    
+                Instant tripsMax = timelineData.getTrips().stream()
+                    .map(TimelineDataDto.TripDto::getTimestamp)
+                    .filter(timestamp -> timestamp != null)
+                    .max(Instant::compareTo)
+                    .orElse(null);
+                
+                if (minTimestamp == null || (tripsMin != null && tripsMin.isBefore(minTimestamp))) {
+                    minTimestamp = tripsMin;
+                }
+                if (maxTimestamp == null || (tripsMax != null && tripsMax.isAfter(maxTimestamp))) {
+                    maxTimestamp = tripsMax;
+                }
+            }
+            
+            if (minTimestamp != null && maxTimestamp != null) {
+                ImportDataClearingService.DateRange fileDataRange = 
+                    new ImportDataClearingService.DateRange(minTimestamp, maxTimestamp);
+                
+                ImportDataClearingService.DateRange deletionRange = 
+                    dataClearingService.calculateDeletionRange(job, fileDataRange);
+                
+                if (deletionRange != null) {
+                    int deletedCount = dataClearingService.clearTimelineDataInRange(job.getUserId(), deletionRange);
+                    log.info("Cleared {} existing timeline items before GeoPulse import", deletedCount);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to clear timeline data before import: {}", e.getMessage());
+        }
     }
 
 }

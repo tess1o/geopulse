@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.core.VelocityAnalysisService;
 import org.github.tess1o.geopulse.streaming.util.TimelineConstants;
@@ -12,8 +13,18 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
+
 @ApplicationScoped
 public class TravelClassification {
+
+    // Thresholds (can be adjusted)
+    private static final double WALKING_MAX_AVG_SPEED = 8.0;
+    private static final double WALKING_MAX_MAX_SPEED = 10.0;
+
+    private static final double CAR_MIN_AVG_SPEED = 10.0;
+    private static final double CAR_MIN_MAX_SPEED = 30.0;
+    public static final double SHORT_DISTANCE_KM = 1.5;
 
     private final VelocityAnalysisService velocityAnalysisService;
 
@@ -22,9 +33,9 @@ public class TravelClassification {
         this.velocityAnalysisService = velocityAnalysisService;
     }
 
-    public TripType classifyTravelType(List<? extends GpsPoint> path, Duration duration) {
+    public TripType classifyTravelType(List<? extends GpsPoint> path, Duration duration, TimelineConfig config) {
         if (path == null || path.size() < 2) {
-            return TripType.UNKNOWN;
+            return UNKNOWN;
         }
 
         List<Double> speeds = new ArrayList<>();
@@ -54,15 +65,15 @@ public class TravelClassification {
         }
 
         if (speeds.isEmpty()) {
-            return TripType.UNKNOWN;
+            return UNKNOWN;
         }
 
         // For poor GPS data, use fallback calculation based on stay points
-        if (speeds.isEmpty() || totalDistanceKm < TimelineConstants.MIN_TRIP_DISTANCE_KM) {
+        if (speeds.isEmpty() || totalDistanceKm < config.getStaypointRadiusMeters()) {
             // Use straight-line distance and duration for poor GPS cases
             if (path.size() >= 2) {
-                GpsPoint start = path.get(0);
-                GpsPoint end = path.get(path.size() - 1);
+                GpsPoint start = path.getFirst();
+                GpsPoint end = path.getLast();
                 double straightLineDistance = GeoUtils.haversine(
                     start.getLatitude(), start.getLongitude(), 
                     end.getLatitude(), end.getLongitude()) / 1000.0;
@@ -70,13 +81,13 @@ public class TravelClassification {
                 
                 // If extremely short distance or duration, return UNKNOWN
                 if (straightLineDistance < 0.001 || hours < 0.0003) { // < 1m or < 1 second
-                    return TripType.UNKNOWN;
+                    return UNKNOWN;
                 }
                 
                 double fallbackAvgSpeed = hours > 0 ? straightLineDistance / hours : 0.0;
-                return TripType.classify(fallbackAvgSpeed, fallbackAvgSpeed, straightLineDistance);
+                return classify(fallbackAvgSpeed, fallbackAvgSpeed, straightLineDistance);
             }
-            return TripType.UNKNOWN;
+            return UNKNOWN;
         }
 
         // Smooth speeds with a simple moving average
@@ -85,6 +96,31 @@ public class TravelClassification {
         double hours = duration.toMillis() / 3600000.0;
         double avgSpeedKmh = totalDistanceKm / hours;
         double maxSpeedKmh = smoothedSpeeds.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
-        return TripType.classify(avgSpeedKmh, maxSpeedKmh, totalDistanceKm);
+        return classify(avgSpeedKmh, maxSpeedKmh, totalDistanceKm);
+    }
+
+    /**
+     * Classify trip type based on speed and distance metrics.
+     *
+     * @param avgSpeedKmh average speed in km/h
+     * @param maxSpeedKmh maximum speed in km/h
+     * @param totalDistanceKm total distance in km
+     * @return classified trip type
+     */
+    private TripType classify(double avgSpeedKmh, double maxSpeedKmh, double totalDistanceKm) {
+        // Short trip walking tolerance
+        boolean shortTrip = totalDistanceKm <= SHORT_DISTANCE_KM;
+        boolean avgSpeedWithinWalking = avgSpeedKmh < WALKING_MAX_AVG_SPEED;
+        boolean maxSpeedWithinWalking = maxSpeedKmh < WALKING_MAX_MAX_SPEED;
+        boolean avgSpeedSlightlyAboveWalking = avgSpeedKmh < (WALKING_MAX_AVG_SPEED + 1.0); // 1 km/h delta
+
+        if ((avgSpeedWithinWalking && maxSpeedWithinWalking) ||
+                (shortTrip && avgSpeedSlightlyAboveWalking && maxSpeedWithinWalking)) {
+            return WALK;
+        } else if (avgSpeedKmh > CAR_MIN_AVG_SPEED || maxSpeedKmh > CAR_MIN_MAX_SPEED) {
+            return CAR;
+        } else {
+            return UNKNOWN;
+        }
     }
 }

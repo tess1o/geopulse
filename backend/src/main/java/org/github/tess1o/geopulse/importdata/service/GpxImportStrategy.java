@@ -10,11 +10,9 @@ import org.github.tess1o.geopulse.gps.integrations.gpx.model.GpxTrackPoint;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.GpxWaypoint;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
-import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -26,16 +24,7 @@ import java.util.List;
  */
 @ApplicationScoped
 @Slf4j
-public class GpxImportStrategy implements ImportStrategy {
-
-    @Inject
-    UserRepository userRepository;
-
-    @Inject
-    BatchProcessor batchProcessor;
-
-    @Inject
-    TimelineImportHelper timelineImportHelper;
+public class GpxImportStrategy extends BaseGpsImportStrategy {
 
     private final XmlMapper xmlMapper = XmlMapper.builder()
             .addModule(new JavaTimeModule())
@@ -47,72 +36,31 @@ public class GpxImportStrategy implements ImportStrategy {
     }
 
     @Override
-    public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
-        log.info("Validating GPX data for user {}", job.getUserId());
+    protected FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException {
+        String xmlContent = new String(job.getZipData()); // zipData contains GPX XML for GPX format
 
-        try {
-            String xmlContent = new String(job.getZipData()); // zipData contains GPX XML for GPX format
+        // Parse GPX XML
+        GpxFile gpxFile = xmlMapper.readValue(xmlContent, GpxFile.class);
 
-            // Parse GPX XML
-            GpxFile gpxFile = xmlMapper.readValue(xmlContent, GpxFile.class);
+        // Count valid GPS points from tracks and waypoints
+        List<GpxTrackPoint> trackPoints = gpxFile.getAllTrackPoints();
+        List<GpxWaypoint> waypoints = gpxFile.getValidWaypoints();
 
-            // Count valid GPS points from tracks and waypoints
-            List<GpxTrackPoint> trackPoints = gpxFile.getAllTrackPoints();
-            List<GpxWaypoint> waypoints = gpxFile.getValidWaypoints();
+        int totalValidPoints = trackPoints.size() + waypoints.size();
 
-            int totalValidPoints = trackPoints.size() + waypoints.size();
+        log.info("GPX validation successful: {} track points, {} waypoints ({} total valid GPS points)",
+                trackPoints.size(), waypoints.size(), totalValidPoints);
 
-            if (totalValidPoints == 0) {
-                throw new IllegalArgumentException("GPX file contains no valid GPS data");
-            }
-
-            log.info("GPX validation successful: {} track points, {} waypoints ({} total valid GPS points)",
-                    trackPoints.size(), waypoints.size(), totalValidPoints);
-
-            return List.of(ExportImportConstants.DataTypes.RAW_GPS);
-
-        } catch (Exception e) {
-            if (e instanceof IllegalArgumentException) {
-                throw e;
-            }
-            throw new IllegalArgumentException("Invalid GPX format: " + e.getMessage());
-        }
+        return new FormatValidationResult(trackPoints.size() + waypoints.size(), totalValidPoints);
     }
 
     @Override
-    public void processImportData(ImportJob job) throws IOException {
-        log.info("Processing GPX import data for user {}", job.getUserId());
+    protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
+        String xmlContent = new String(job.getZipData());
+        GpxFile gpxFile = xmlMapper.readValue(xmlContent, GpxFile.class);
 
-        try {
-            String xmlContent = new String(job.getZipData());
-            GpxFile gpxFile = xmlMapper.readValue(xmlContent, GpxFile.class);
-
-            UserEntity user = userRepository.findById(job.getUserId());
-            if (user == null) {
-                throw new IllegalStateException("User not found: " + job.getUserId());
-            }
-
-            // Convert GPX data to GPS entities
-            List<GpsPointEntity> gpsPoints = convertGpxToGpsPoints(gpxFile, user, job);
-
-            Instant firstGpsTimestamp = gpsPoints.stream().map(GpsPointEntity::getTimestamp).min(Instant::compareTo).orElse(null);
-
-            // Process in batches to avoid memory issues and timeouts
-            int batchSize = 500; // Optimized batch size for large datasets
-            BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsPoints, batchSize);
-
-            // Trigger timeline generation since we only imported GPS data
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
-
-            job.setProgress(100);
-
-            log.info("GPX import completed for user {}: {} imported, {} skipped from {} total GPS points",
-                    job.getUserId(), result.imported, result.skipped, gpsPoints.size());
-
-        } catch (Exception e) {
-            log.error("Failed to process GPX import for user {}: {}", job.getUserId(), e.getMessage(), e);
-            throw new IOException("Failed to process GPX import: " + e.getMessage(), e);
-        }
+        // Convert GPX data to GPS entities
+        return convertGpxToGpsPoints(gpxFile, user, job);
     }
 
     private List<GpsPointEntity> convertGpxToGpsPoints(GpxFile gpxFile, UserEntity user, ImportJob job) {
@@ -128,7 +76,7 @@ public class GpxImportStrategy implements ImportStrategy {
             }
 
             processedPoints++;
-            updateProgress(processedPoints, trackPoints.size() + gpxFile.getValidWaypoints().size(), job);
+            updateProgress(processedPoints, trackPoints.size() + gpxFile.getValidWaypoints().size(), job, 10, 80);
         }
 
         // Process waypoints (if they have timestamps)
@@ -140,7 +88,7 @@ public class GpxImportStrategy implements ImportStrategy {
             }
 
             processedPoints++;
-            updateProgress(processedPoints, trackPoints.size() + waypoints.size(), job);
+            updateProgress(processedPoints, trackPoints.size() + waypoints.size(), job, 10, 80);
         }
 
         return gpsPoints;
@@ -152,12 +100,9 @@ public class GpxImportStrategy implements ImportStrategy {
             return null;
         }
 
-        // Apply date range filter if specified
-        if (job.getOptions().getDateRangeFilter() != null) {
-            if (trackPoint.getTime().isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-                    trackPoint.getTime().isAfter(job.getOptions().getDateRangeFilter().getEndDate())) {
-                return null;
-            }
+        // Apply date range filter using base class method
+        if (shouldSkipDueDateFilter(trackPoint.getTime(), job)) {
+            return null;
         }
 
         try {
@@ -198,12 +143,9 @@ public class GpxImportStrategy implements ImportStrategy {
             return null;
         }
 
-        // Apply date range filter if specified
-        if (job.getOptions().getDateRangeFilter() != null) {
-            if (waypoint.getTime().isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
-                    waypoint.getTime().isAfter(job.getOptions().getDateRangeFilter().getEndDate())) {
-                return null;
-            }
+        // Apply date range filter using base class method
+        if (shouldSkipDueDateFilter(waypoint.getTime(), job)) {
+            return null;
         }
 
         try {
@@ -231,11 +173,5 @@ public class GpxImportStrategy implements ImportStrategy {
         }
     }
 
-    private void updateProgress(int processed, int total, ImportJob job) {
-        if (processed % 100 == 0 || processed == total) {
-            int progress = 10 + (int) ((double) processed / total * 80);
-            job.setProgress(Math.min(progress, 90));
-        }
-    }
 
 }

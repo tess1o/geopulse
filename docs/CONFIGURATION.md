@@ -207,36 +207,17 @@ Controls GPS point duplicate detection and processing. **Applies to all users.**
 |--------------------------------------------------------------------|---------|-------------------------------------------------------------------|
 | `geopulse.gps.duplicate-detection.location-time-threshold-minutes` | `2`     | Time threshold (minutes) for considering GPS points as duplicates |
 
-### Backend URL Configuration
-
-Configures URLs for GPS data source endpoints. **Applies to all users.**
-
-| Property                           | Default                                 | Description                     |
-|------------------------------------|-----------------------------------------|---------------------------------|  
-| `geopulse.backend.url`             | `http://localhost:8080`                 | Base backend URL                |
-| `geopulse.gps.source.owntrack.url` | `${geopulse.backend.url}/api/owntracks` | OwnTracks GPS data endpoint URL |
-| `geopulse.gps.source.overland.url` | `${geopulse.backend.url}/api/overland`  | Overland GPS data endpoint URL  |
-| `geopulse.gps.source.dawarich.url` | `${geopulse.backend.url}/api/dawarich`  | Dawarich GPS data endpoint URL  |
-
 ### Environment Variables Reference
 
 ```bash
 # System-Wide Settings (apply to all users)
 
 # Favorites Configuration
-GEOPULSE_FAVORITES_MAX_DISTANCE_FROM_POINT=50
+GEOPULSE_FAVORITES_MAX_DISTANCE_FROM_POINT=75
 GEOPULSE_FAVORITES_MAX_DISTANCE_FROM_AREA=15
-
-# Daily Timeline Processing
-GEOPULSE_TIMELINE_DAILY_PROCESSING_ENABLED=true
-GEOPULSE_TIMELINE_DAILY_PROCESSING_BATCH_SIZE=20
-GEOPULSE_TIMELINE_DAILY_PROCESSING_BATCH_DELAY_MS=1000
 
 # GPS Data Processing
 GEOPULSE_GPS_DUPLICATE_DETECTION_LOCATION_TIME_THRESHOLD_MINUTES=2
-
-# Backend URL Configuration
-GEOPULSE_BACKEND_URL=http://localhost:8080
 ```
 
 ## How Configuration Works

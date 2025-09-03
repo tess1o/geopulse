@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.core.VelocityAnalysisService;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
@@ -52,7 +53,10 @@ public class TimelineTripClassificationTest {
         );
 
         Duration duration = Duration.between(path.getFirst().getTimestamp(), path.getLast().getTimestamp());
-        TripType tripType = classification.classifyTravelType(path, duration);
+        TimelineConfig config = TimelineConfig.builder()
+                .staypointRadiusMeters(200)
+                .build();
+        TripType tripType = classification.classifyTravelType(path, duration, config);
 
         assertEquals(TripType.WALK, tripType);
     }
@@ -66,7 +70,10 @@ public class TimelineTripClassificationTest {
                 point(0.0, 0.02, 180)  // ~1.66 km in 90s → 66 km/h
         );
         Duration duration = Duration.between(path.getFirst().getTimestamp(), path.getLast().getTimestamp());
-        TripType tripType = classification.classifyTravelType(path, duration);
+        TimelineConfig config = TimelineConfig.builder()
+                .staypointRadiusMeters(200)
+                .build();
+        TripType tripType = classification.classifyTravelType(path, duration, config);
 
         assertEquals(TripType.CAR, tripType);
     }
@@ -78,7 +85,10 @@ public class TimelineTripClassificationTest {
                 point(0.0, 0.000001, 100)  // ~0.1 m in 1s → too short distance and duration
         );
         Duration duration = Duration.between(path.getFirst().getTimestamp(), path.getLast().getTimestamp());
-        TripType tripType = classification.classifyTravelType(path, duration);
+        TimelineConfig config = TimelineConfig.builder()
+                .staypointRadiusMeters(200)
+                .build();
+        TripType tripType = classification.classifyTravelType(path, duration, config);
 
         assertEquals(TripType.UNKNOWN, tripType);
     }
@@ -92,7 +102,10 @@ public class TimelineTripClassificationTest {
                 point(0.0, 0.0126, 900)  // ~1.4 km north in 15 minutes (900 seconds)
         );
         Duration duration = Duration.between(path.getFirst().getTimestamp(), path.getLast().getTimestamp());
-        TripType tripType = classification.classifyTravelType(path, duration);
+        TimelineConfig config = TimelineConfig.builder()
+                .staypointRadiusMeters(200)
+                .build();
+        TripType tripType = classification.classifyTravelType(path, duration, config);
 
         assertEquals(TripType.WALK, tripType);
     }

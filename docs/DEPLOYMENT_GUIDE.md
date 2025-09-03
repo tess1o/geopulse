@@ -29,7 +29,7 @@ MQTT broker can be deployed if you want to use OwnTracks integration with MQTT p
 want to use OwnTracks with HTTP - you don't need the MQTT broker. This guide provides steps on how to install the system
 with or without MQTT broker.
 
-There is one time service "geopulse-keygen" that creates JWT keys in the "keys" folder. 
+There is one time service "geopulse-keygen" that creates JWT keys in the "keys" folder.
 
 ---
 
@@ -40,6 +40,7 @@ There is one time service "geopulse-keygen" that creates JWT keys in the "keys" 
 #### Step 1: Download `.env` configuration and key generation script
 
 **Using wget:**
+
 ```bash
 wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 wget -O generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
@@ -47,6 +48,7 @@ chmod +x generate-keys.sh
 ```
 
 **Using curl:**
+
 ```bash
 curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 curl -L -o generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
@@ -60,11 +62,13 @@ chmod +x generate-keys.sh
 Download the basic docker-compose.yml:
 
 Using wget:
+
 ```bash
 wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
 ```
 
 Using curl:
+
 ```bash
 curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
 ```
@@ -74,6 +78,7 @@ curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/
 Download the complete docker-compose.yml and mosquitto entrypoint script:
 
 Using wget:
+
 ```bash
 wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
 wget -O mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
@@ -81,6 +86,7 @@ chmod +x mosquitto_entrypoint.sh
 ```
 
 Using curl:
+
 ```bash
 curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
 curl -L -o mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
@@ -129,40 +135,39 @@ GEOPULSE_UI_URL=http://localhost:5555,http://192.168.1.100:5555,http://your-tail
 ```
 
 This allows you to access GeoPulse via:
+
 - **Localhost**: `http://localhost:5555`
 - **Local Network**: `http://192.168.1.100:5555`
 - **Tailscale**: `http://your-tailscale-ip:5555`
 - **Any combination** of the above
 
-### Key Benefits
-- **Single deployment** works across all access methods
-- **No need to choose** between localhost, LAN, or Tailscale access
-- **Automatic proxy handling** - frontend uses relative `/api` paths
-- **Flexible CORS configuration** supports multiple origins
-
 ---
 
 ## Production Deployment
 
-For server deployment with your domain:
+For server deployment (like VPS) with your domain:
 
 1. **Complete setup steps above**
 
 2. **Edit `.env` file:**
-   
-   Update the following values:
-   ```env
-   GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-   GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
-   GEOPULSE_AUTH_SECURE_COOKIES=true
-   ```
+
+Update the following values:
+
+```env
+GEOPULSE_UI_URL=https://geopulse.yourdomain.com
+GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
+GEOPULSE_AUTH_SECURE_COOKIES=true
+```
+
+By setting `GEOPULSE_AUTH_SECURE_COOKIES=true` the `access_token` and `refresh_token` cookies will use flag `Secure`.
 
 3. **Configure reverse proxy** (Nginx/Caddy/Traefik) for HTTPS
 
 You must terminate HTTPS at a reverse proxy and forward traffic to the GeoPulse containers. Here is a basic Nginx
 configuration. You will also need to set up SSL certificates (e.g., using Let's Encrypt).
 
-**Single Domain (Recommended)**
+**Example of nginx configuration**
+
 ```nginx
 # /etc/nginx/sites-available/geopulse.conf
 
@@ -231,6 +236,7 @@ curl http://localhost:8080/api/health
 **Key generation issues:**
 
 - JWT keys are automatically generated in the `keys/` directory on first startup
-- If you see key-related errors, check that the `geopulse-keygen` service completed successfully: `docker compose logs geopulse-keygen`
+- If you see key-related errors, check that the `geopulse-keygen` service completed successfully:
+  `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist
 - To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`

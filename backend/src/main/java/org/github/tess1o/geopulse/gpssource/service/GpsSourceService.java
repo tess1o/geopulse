@@ -30,18 +30,6 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     private final SecurePasswordUtils passwordUtils;
     private final EntityManager em;
 
-    @Getter
-    @ConfigProperty(name = "geopulse.gps.source.owntrack.url")
-    String owntrackUrl;
-
-    @Getter
-    @ConfigProperty(name = "geopulse.gps.source.overland.url")
-    String overlandUrl;
-
-    @Getter
-    @ConfigProperty(name = "geopulse.gps.source.dawarich.url")
-    String dawarichUrl;
-
     @Inject
     public GpsSourceService(GpsSourceRepository gpsSourceRepository,
                             GpsSourceConfigMapper gpsSourceMapper,

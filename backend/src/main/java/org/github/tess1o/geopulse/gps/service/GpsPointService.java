@@ -6,6 +6,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
+import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -55,14 +56,14 @@ public class GpsPointService {
         // Check for location-based duplicates (same coordinates within time threshold)
         if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType)) {
             log.info("Skipping location duplicate OwnTracks GPS point for user {} at coordinates ({}, {})",
-                     userId, message.getLat(), message.getLon());
+                    userId, message.getLat(), message.getLon());
             return;
         }
 
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
         gpsPointRepository.persist(entity);
-        
+
         log.info("Saved OwnTracks GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
@@ -78,7 +79,7 @@ public class GpsPointService {
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
         gpsPointRepository.persist(entity);
-        
+
         log.info("Saved Overland GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
@@ -98,9 +99,25 @@ public class GpsPointService {
 
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
             gpsPointRepository.persist(entity);
-            
+
             log.info("Saved Dawarich GPS point for user {} at timestamp {}", userId, entity.getTimestamp());
         }
+    }
+
+    @Transactional
+    public void saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType) {
+        Instant timestamp = data.getTimestamp();
+
+        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+            log.info("Skipping duplicate Home Assitant GPS point for user {} at timestamp {}", userId, timestamp);
+            return;
+        }
+
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
+        gpsPointRepository.persist(entity);
+
+        log.info("Saved Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
     /**
@@ -132,7 +149,7 @@ public class GpsPointService {
     /**
      * Get summary statistics for GPS points for a user with timezone support.
      *
-     * @param userId The ID of the user
+     * @param userId       The ID of the user
      * @param userTimezone The user's timezone for calculating "today"
      * @return Summary statistics
      */
@@ -143,11 +160,11 @@ public class GpsPointService {
         ZonedDateTime nowInUserTz = ZonedDateTime.now(userTimezone);
         ZonedDateTime todayStartInUserTz = nowInUserTz.toLocalDate().atStartOfDay(userTimezone);
         ZonedDateTime todayEndInUserTz = todayStartInUserTz.plusDays(1);
-        
+
         // Convert to UTC for database query (since timestamps are stored in UTC)
         Instant todayStart = todayStartInUserTz.toInstant();
         Instant todayEnd = todayEndInUserTz.toInstant();
-        
+
         long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3",
                 userId, todayStart, todayEnd);
 
@@ -200,118 +217,118 @@ public class GpsPointService {
     /**
      * Update a GPS point for a user.
      * This method allows updating location (latitude/longitude), speed, and accuracy.
-     * 
+     *
      * @param pointId The ID of the GPS point to update
-     * @param dto The update data
-     * @param userId The ID of the user (for security check)
+     * @param dto     The update data
+     * @param userId  The ID of the user (for security check)
      * @return Updated GPS point DTO
      */
     @Transactional
     public GpsPointDTO updateGpsPoint(Long pointId, EditGpsPointDto dto, UUID userId) {
         log.info("Updating GPS point {} for user {}", pointId, userId);
-        
+
         // Find the GPS point and verify ownership
         Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
         if (optionalPoint.isEmpty()) {
             throw new NotFoundException("GPS point not found with ID: " + pointId);
         }
-        
+
         GpsPointEntity gpsPoint = optionalPoint.get();
         if (!gpsPoint.getUser().getId().equals(userId)) {
             throw new ForbiddenException("GPS point does not belong to the user");
         }
-        
+
         // Store original timestamp for timeline recalculation
         Instant originalTimestamp = gpsPoint.getTimestamp();
-        
+
         // Update the GPS point
         gpsPoint.setCoordinates(GeoUtils.createPoint(dto.getCoordinates().getLng(), dto.getCoordinates().getLat()));
         gpsPoint.setVelocity(dto.getVelocity());
         gpsPoint.setAccuracy(dto.getAccuracy());
-        
+
         gpsPointRepository.persist(gpsPoint);
-        
+
         // Trigger synchronous timeline regeneration if needed
         triggerSynchronousTimelineRegenerationIfNeeded(userId, originalTimestamp);
-        
+
         // Return updated point as DTO
         return gpsPointMapper.toGpsPointDTO(gpsPoint);
     }
 
     /**
      * Delete a GPS point for a user.
-     * 
+     *
      * @param pointId The ID of the GPS point to delete
-     * @param userId The ID of the user (for security check)
+     * @param userId  The ID of the user (for security check)
      */
     @Transactional
     public void deleteGpsPoint(Long pointId, UUID userId) {
         log.info("Deleting GPS point {} for user {}", pointId, userId);
-        
+
         // Find the GPS point and verify ownership
         Optional<GpsPointEntity> optionalPoint = gpsPointRepository.findByIdOptional(pointId);
         if (optionalPoint.isEmpty()) {
             throw new NotFoundException("GPS point not found with ID: " + pointId);
         }
-        
+
         GpsPointEntity gpsPoint = optionalPoint.get();
         if (!gpsPoint.getUser().getId().equals(userId)) {
             throw new ForbiddenException("GPS point does not belong to the user");
         }
-        
+
         // Store timestamp for timeline recalculation
         Instant pointTimestamp = gpsPoint.getTimestamp();
-        
+
         // Delete the GPS point
         gpsPointRepository.delete(gpsPoint);
-        
+
         // Trigger synchronous timeline regeneration if needed
         triggerSynchronousTimelineRegenerationIfNeeded(userId, pointTimestamp);
     }
 
     /**
      * Delete multiple GPS points for a user.
-     * 
+     *
      * @param pointIds List of GPS point IDs to delete
-     * @param userId The ID of the user (for security check)
+     * @param userId   The ID of the user (for security check)
      * @return Number of points deleted
      */
     @Transactional
     public int deleteGpsPoints(List<Long> pointIds, UUID userId) {
         log.info("Deleting {} GPS points for user {}", pointIds.size(), userId);
-        
+
         if (pointIds.isEmpty()) {
             return 0;
         }
-        
+
         // Find all GPS points and verify ownership
         List<GpsPointEntity> gpsPoints = gpsPointRepository.list("id in ?1", pointIds);
-        
+
         // Verify all points belong to the user
         for (GpsPointEntity point : gpsPoints) {
             if (!point.getUser().getId().equals(userId)) {
                 throw new ForbiddenException("One or more GPS points do not belong to the user");
             }
         }
-        
+
         // Find the earliest timestamp among all points to be deleted
         Instant earliestTimestamp = gpsPoints.stream()
-            .map(GpsPointEntity::getTimestamp)
-            .min(Instant::compareTo)
-            .orElse(null);
-        
+                .map(GpsPointEntity::getTimestamp)
+                .min(Instant::compareTo)
+                .orElse(null);
+
         // Delete all points
         int deletedCount = 0;
         for (GpsPointEntity point : gpsPoints) {
             gpsPointRepository.delete(point);
             deletedCount++;
         }
-        
+
         // Trigger synchronous timeline regeneration if needed
         if (earliestTimestamp != null) {
             triggerSynchronousTimelineRegenerationIfNeeded(userId, earliestTimestamp);
         }
-        
+
         log.info("Successfully deleted {} GPS points for user {}", deletedCount, userId);
         return deletedCount;
     }

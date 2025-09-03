@@ -12,7 +12,7 @@
               <h1 class="page-title">Location Data Sources</h1>
               <p class="page-description">
                 Configure how GeoPulse receives your location data from different tracking apps.
-                Set up OwnTracks, Overland, or Dawarich to automatically sync your location history.
+                Set up OwnTracks, Overland, Dawarich, or Home Assistant to automatically sync your location history.
               </p>
             </div>
             <Button 
@@ -80,6 +80,22 @@
                   outlined 
                   size="small"
                   @click="startQuickSetup('DAWARICH')"
+                />
+              </div>
+              
+              <div class="source-option">
+                <div class="source-header">
+                  <i class="pi pi-home text-2xl text-orange-500"></i>
+                  <div>
+                    <h3 class="source-name">Home Assistant</h3>
+                    <p class="source-description">Integrate with Home Assistant automation for automatic location tracking</p>
+                  </div>
+                </div>
+                <Button 
+                  label="Setup Home Assistant"
+                  outlined 
+                  size="small"
+                  @click="startQuickSetup('HOME_ASSISTANT')"
                 />
               </div>
             </div>
@@ -180,12 +196,12 @@
                       <div class="step-content">
                         <div class="step-title">Server URL</div>
                         <div class="copy-field">
-                          <code>{{ gpsSourcesEndpoints?.owntracksUrl }}</code>
+                          <code>{{ getOwntracksUrl() }}</code>
                           <Button 
                             icon="pi pi-copy"
                             size="small"
                             outlined
-                            @click="copyToClipboard(gpsSourcesEndpoints?.owntracksUrl)"
+                            @click="copyToClipboard(getOwntracksUrl())"
                           />
                         </div>
                       </div>
@@ -204,7 +220,9 @@
                       <div class="step-content">
                         <div class="step-title">Authentication</div>
                         <div class="step-value">
-                          Username: <strong>{{ ownTracksHttpSources[0]?.username || 'your-username' }}</strong><br>
+                          Use your configured username
+                        </div>
+                        <div class="step-value">
                           Use your configured password
                         </div>
                       </div>
@@ -264,8 +282,10 @@
                       <div class="step-content">
                         <div class="step-title">Authentication</div>
                         <div class="step-value">
-                          Username: <strong>{{ ownTracksMqttSources[0]?.username || 'your-username' }}</strong><br>
-                          Password: Use your configured password
+                          Use your configured username
+                        </div>
+                        <div class="step-value">
+                          Use your configured password
                         </div>
                       </div>
                     </div>
@@ -294,12 +314,12 @@
                       <div class="step-content">
                         <div class="step-title">Receiver Endpoint URL</div>
                         <div class="copy-field">
-                          <code>{{ gpsSourcesEndpoints?.overlandUrl }}</code>
+                          <code>{{ getOverlandUrl() }}</code>
                           <Button 
                             icon="pi pi-copy"
                             size="small"
                             outlined
-                            @click="copyToClipboard(gpsSourcesEndpoints?.overlandUrl)"
+                            @click="copyToClipboard(getOverlandUrl())"
                           />
                         </div>
                       </div>
@@ -310,14 +330,7 @@
                       <div class="step-content">
                         <div class="step-title">Access Token</div>
                         <div class="copy-field">
-                          <code>{{ overlandToken || 'your-token-here' }}</code>
-                          <Button 
-                            v-if="overlandToken"
-                            icon="pi pi-copy"
-                            size="small"
-                            outlined
-                            @click="copyToClipboard(overlandToken)"
-                          />
+                          <code>Your configured token</code>
                         </div>
                       </div>
                     </div>
@@ -335,12 +348,12 @@
                       <div class="step-content">
                         <div class="step-title">Server URL</div>
                         <div class="copy-field">
-                          <code>{{ gpsSourcesEndpoints?.dawarichUrl }}</code>
+                          <code>{{ getDawarichUrl() }}</code>
                           <Button 
                             icon="pi pi-copy"
                             size="small"
                             outlined
-                            @click="copyToClipboard(gpsSourcesEndpoints?.dawarichUrl)"
+                            @click="copyToClipboard(getDawarichUrl())"
                           />
                         </div>
                       </div>
@@ -351,15 +364,68 @@
                       <div class="step-content">
                         <div class="step-title">API Key</div>
                         <div class="copy-field">
-                          <code>{{ dawarichApiKey || 'your-api-key-here' }}</code>
+                          <code>Your configured API Key</code>
+<!--                          <Button -->
+<!--                            v-if="dawarichApiKey"-->
+<!--                            icon="pi pi-copy"-->
+<!--                            size="small"-->
+<!--                            outlined-->
+<!--                            @click="copyToClipboard(dawarichApiKey)"-->
+<!--                          />-->
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Home Assistant Tab -->
+              <div v-if="activeTab === 'home_assistant' && hasHomeAssistantSource">
+                <div class="instruction-content">
+                  <h3 class="instruction-title">Home Assistant Configuration</h3>
+                  <div class="instruction-steps">
+                    <div class="step">
+                      <div class="step-number">1</div>
+                      <div class="step-content">
+                        <div class="step-title">In configuration.yaml add the following:</div>
+                        <div class="copy-field">
+                          <pre class="yaml-config">{{ getHomeAssistantConfigYaml() }}</pre>
                           <Button 
-                            v-if="dawarichApiKey"
                             icon="pi pi-copy"
                             size="small"
                             outlined
-                            @click="copyToClipboard(dawarichApiKey)"
+                            @click="copyToClipboard(getHomeAssistantConfigYaml())"
                           />
                         </div>
+                        <div class="step-value">
+                          <strong>Replace:</strong><br>
+                          • BACKEND_SERVER_URL with your backend url (e.g., http://192.168.100.1:8080 or https://geopulse.mydomain.com)<br>
+                          • iphone_16 with your device_id (can be found in Home Assistant)<br>
+                          • YOUR_CONFIGURED_TOKEN with the token you just created in GeoPulse
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">2</div>
+                      <div class="step-content">
+                        <div class="step-title">In automations.yaml add the following:</div>
+                        <div class="copy-field">
+                          <pre class="yaml-config">{{ getHomeAssistantAutomationYaml() }}</pre>
+                          <Button 
+                            icon="pi pi-copy"
+                            size="small"
+                            outlined
+                            @click="copyToClipboard(getHomeAssistantAutomationYaml())"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="step">
+                      <div class="step-number">3</div>
+                      <div class="step-content">
+                        <div class="step-title">Restart Home Assistant server to apply the changes.</div>
                       </div>
                     </div>
                   </div>
@@ -472,6 +538,19 @@
                 <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
               </div>
             </div>
+
+            <div v-else-if="formData.type === 'HOME_ASSISTANT'" class="form-section">
+              <div class="form-field">
+                <label for="token" class="form-label">Token</label>
+                <InputText 
+                  id="token"
+                  v-model="formData.token"
+                  placeholder="Enter token"
+                  :invalid="!!formErrors.token"
+                />
+                <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
+              </div>
+            </div>
           </div>
 
           <template #footer>
@@ -511,7 +590,7 @@ import { useGpsSourcesStore } from '@/stores/gpsSources'
 
 // Store setup
 const gpsStore = useGpsSourcesStore()
-const { gpsSourceConfigs, gpsSourcesEndpoints } = storeToRefs(gpsStore)
+const { gpsSourceConfigs } = storeToRefs(gpsStore)
 
 // Services
 const toast = useToast()
@@ -555,6 +634,12 @@ const sourceTypes = [
     label: 'Dawarich',
     description: 'Privacy-focused location tracking with API key authentication',
     icon: 'pi pi-key'
+  },
+  {
+    value: 'HOME_ASSISTANT',
+    label: 'Home Assistant',
+    description: 'Integrate with Home Assistant automation for automatic location tracking',
+    icon: 'pi pi-home'
   }
 ]
 
@@ -593,6 +678,10 @@ const hasDawarichSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'DAWARICH')
 )
 
+const hasHomeAssistantSource = computed(() => 
+  gpsSourceConfigs.value.some(source => source.type === 'HOME_ASSISTANT')
+)
+
 const ownTracksUsername = computed(() => {
   // Show the first OwnTracks source
   const ownTracksSource = gpsSourceConfigs.value.find(s => s.type === 'OWNTRACKS')
@@ -615,6 +704,27 @@ const dawarichApiKey = computed(() => {
   return dawarichSource?.token
 })
 
+const homeAssistantToken = computed(() => {
+  const homeAssistantSource = gpsSourceConfigs.value.find(s => s.type === 'HOME_ASSISTANT')
+  return homeAssistantSource?.token
+})
+
+// Mobile detection
+const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
+
+const isMobile = computed(() => windowWidth.value <= 768)
+
+// Update window width on resize
+if (typeof window !== 'undefined') {
+  const handleResize = () => {
+    windowWidth.value = window.innerWidth
+  }
+  window.addEventListener('resize', handleResize)
+  onMounted(() => {
+    handleResize()
+  })
+}
+
 // Tab configuration
 const tabItems = computed(() => {
   const tabs = []
@@ -622,12 +732,12 @@ const tabItems = computed(() => {
   // Add separate tabs for HTTP and MQTT OwnTracks if both exist
   if (hasOwnTracksHttp.value && hasOwnTracksMqtt.value) {
     tabs.push({
-      label: 'OwnTracks (HTTP)',
+      label: isMobile.value ? 'OT (HTTP)' : 'OwnTracks (HTTP)',
       icon: 'pi pi-globe',
       key: 'owntracks-http'
     })
     tabs.push({
-      label: 'OwnTracks (MQTT)',
+      label: isMobile.value ? 'OT (MQTT)' : 'OwnTracks (MQTT)',
       icon: 'pi pi-send',
       key: 'owntracks-mqtt'
     })
@@ -657,6 +767,13 @@ const tabItems = computed(() => {
       label: 'Dawarich', 
       icon: 'pi pi-key',
       key: 'dawarich'
+    })
+  }
+  if (hasHomeAssistantSource.value) {
+    tabs.push({
+      label: isMobile.value ? 'Home Asst' : 'Home Assistant', 
+      icon: 'pi pi-home',
+      key: 'home_assistant'
     })
   }
   return tabs
@@ -691,6 +808,7 @@ const getSourceIcon = (type) => {
   if (type === 'OWNTRACKS') return 'pi pi-mobile'
   if (type === 'OVERLAND') return 'pi pi-map'
   if (type === 'DAWARICH') return 'pi pi-key'
+  if (type === 'HOME_ASSISTANT') return 'pi pi-home'
   return 'pi pi-question'
 }
 
@@ -698,6 +816,7 @@ const getSourceDisplayName = (type) => {
   if (type === 'OWNTRACKS') return 'OwnTracks'
   if (type === 'OVERLAND') return 'Overland'
   if (type === 'DAWARICH') return 'Dawarich'
+  if (type === 'HOME_ASSISTANT') return 'Home Assistant'
   return type
 }
 
@@ -705,6 +824,7 @@ const getSourceIdentifier = (source) => {
   if (source.type === 'OWNTRACKS') return source.username || 'No username'
   if (source.type === 'OVERLAND') return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
   if (source.type === 'DAWARICH') return source.token ? `API Key: ${source.token.substring(0, 8)}...` : 'No API key'
+  if (source.type === 'HOME_ASSISTANT') return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
   return `Unknown type: ${source.type}`
 }
 
@@ -781,6 +901,10 @@ const validateForm = () => {
     if (!formData.value.token) {
       formErrors.value.token = 'API key is required'
     }
+  } else if (formData.value.type === 'HOME_ASSISTANT') {
+    if (!formData.value.token) {
+      formErrors.value.token = 'Token is required'
+    }
   }
   
   return Object.keys(formErrors.value).length === 0
@@ -804,16 +928,24 @@ const saveSource = async () => {
         life: 3000
       })
     } else {
-      // For non-OwnTracks types, always use HTTP connection type
-      const connectionType = formData.value.type === 'OWNTRACKS' ? formData.value.connectionType : 'HTTP'
-      
-      await gpsStore.addGpsConfigSource(
-        formData.value.type,
-        formData.value.username,
-        formData.value.password,
-        formData.value.token,
-        connectionType
-      )
+      if (formData.value.type === 'OWNTRACKS') {
+        await gpsStore.addGpsConfigSource(
+          formData.value.type,
+          formData.value.username,
+          formData.value.password,
+          null, // token not used for OwnTracks
+          formData.value.connectionType
+        )
+      } else {
+        // For Overland, Dawarich, and Home Assistant - only send token, no username/password
+        await gpsStore.addGpsConfigSource(
+          formData.value.type,
+          null, // username not used
+          null, // password not used
+          formData.value.token,
+          'HTTP' // always HTTP for these types
+        )
+      }
       
       // Set the newly created source's tab as active
       let sourceType = formData.value.type.toLowerCase()
@@ -928,10 +1060,57 @@ const getMqttHost = () => {
   return window.location.hostname
 }
 
+const getOwntracksUrl = () => {
+  return `${window.location.origin}/api/owntracks`
+}
+
+const getOverlandUrl = () => {
+  return `${window.location.origin}/api/overland`
+}
+
+const getDawarichUrl = () => {
+  return `${window.location.origin}/api/dawarich`
+}
+
+
+const getHomeAssistantConfigYaml = () => {
+  return `rest_command:
+  send_gps_data:
+    url: "http://BACKEND_SERVER_URL/api/homeassistant"
+    method: POST
+    headers:
+      content-type: "application/json"
+      Authorization: Bearer YOUR_CONFIGURED_TOKEN
+    payload: >
+      {
+        "device_id": "iphone_16",
+        "timestamp": "{{ now().isoformat() }}",
+        "location": {
+          "latitude": {{ state_attr('device_tracker.iphone_16', 'latitude') }},
+          "longitude": {{ state_attr('device_tracker.iphone_16', 'longitude') }},
+          "accuracy": {{ state_attr('device_tracker.iphone_16', 'gps_accuracy') | default(0) }},
+          "altitude": {{ state_attr('device_tracker.iphone_16', 'altitude') | default(0) }},
+          "speed": {{ state_attr('device_tracker.iphone_16', 'speed') | default(0) }}
+        },
+        "battery": {
+          "level": {{ state_attr('device_tracker.iphone_16', 'battery_level') | default(0) }}
+        }
+      }`
+}
+
+const getHomeAssistantAutomationYaml = () => {
+  return `- alias: Send GPS data to server
+  trigger:
+    - platform: state
+      entity_id: device_tracker.iphone_16
+  action:
+    - service: rest_command.send_gps_data`
+}
+
 // Lifecycle
 onMounted(async () => {
   try {
-    await gpsStore.fetchAllGpsData()
+    await gpsStore.fetchGpsConfigSources()
     // Ensure first tab is active after data loads
     await nextTick()
     setFirstTabActive()
@@ -1123,6 +1302,35 @@ onMounted(async () => {
   margin-bottom: 2rem;
 }
 
+/* Tab wrapping for all screen sizes */
+.instructions-tabs :deep(.tab-nav) {
+  flex-wrap: wrap !important;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.instructions-tabs :deep(.tab-button) {
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* Alternative selectors for PrimeVue TabView */
+.instructions-tabs :deep(.p-tabview-nav) {
+  flex-wrap: wrap !important;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.instructions-tabs :deep(.p-tabview-header) {
+  flex-shrink: 0 !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.instructions-tabs :deep(.p-tabview-nav-link) {
+  white-space: nowrap;
+}
+
 .instruction-content {
   padding: 1rem 0;
   margin-left: 0.5rem;
@@ -1198,6 +1406,16 @@ onMounted(async () => {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   word-break: break-all;
+}
+
+.yaml-config {
+  flex: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9rem;
+  color: var(--gp-text-primary);
+  white-space: pre-wrap;
+  margin: 0;
+  line-height: 1.4;
 }
 
 /* Dialog */
@@ -1401,6 +1619,10 @@ onMounted(async () => {
   color: var(--gp-text-primary);
 }
 
+.p-dark .yaml-config {
+  color: var(--gp-text-primary);
+}
+
 .p-dark .source-type-option {
   background: var(--gp-surface-dark);
   border-color: var(--gp-border-dark);
@@ -1535,6 +1757,26 @@ onMounted(async () => {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
+  }
+  
+  /* Fix tab overflow - allow multiple rows */
+  .instructions-tabs :deep(.tab-nav) {
+    flex-wrap: wrap !important;
+    gap: 0.25rem;
+    align-items: flex-start;
+  }
+  
+  .instructions-tabs :deep(.tab-button) {
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.75rem !important;
+    white-space: nowrap;
+    min-width: auto !important;
+    flex-shrink: 0;
+    margin-bottom: 0.25rem;
+  }
+  
+  .instructions-tabs :deep(.p-button-label) {
+    font-size: 0.75rem !important;
   }
 }
 </style>

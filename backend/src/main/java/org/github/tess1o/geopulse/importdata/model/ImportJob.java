@@ -19,6 +19,7 @@ public class ImportJob {
     private ImportOptions options;
     private String error;
     private int progress;
+    private String progressMessage;
     private Instant createdAt;
     private Instant completedAt;
     private Instant estimatedProcessingTime;
@@ -34,7 +35,13 @@ public class ImportJob {
         this.fileSizeBytes = zipData.length;
         this.status = ImportStatus.VALIDATING;
         this.progress = 0;
+        this.progressMessage = "Validating file format...";
         this.createdAt = Instant.now();
         this.estimatedProcessingTime = Instant.now().plusSeconds(120); // 2 minutes estimate
+    }
+    
+    public void updateProgress(int progress, String message) {
+        this.progress = progress;
+        this.progressMessage = message;
     }
 }

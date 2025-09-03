@@ -20,7 +20,7 @@ After deploying GeoPulse, visit your frontend URL and create your first account:
 3. Complete your profile setup
 
 ### 2. Basic Configuration
-Once logged in, you'll see the onboarding tour. At this stage you need to configure GPS sources (Overland or OwnTracks).
+Once logged in, you'll see the onboarding tour. At this stage you need to configure GPS sources (Overland, OwnTracks, Dawarich, Home Assistant).
 
 ## 📱 GPS Tracking App Setup
 
@@ -132,10 +132,6 @@ Go to **Timeline Preferences** to customize how GeoPulse processes your GPS data
 **Stay Detection:**
 - **Minimum Stay Duration:** How long you need to be in one place (default: 10 minutes)
 - **Maximum Stay Distance:** How far apart points can be in a stay (default: 100 meters)
-
-**Trip Detection:**
-- **Minimum Trip Distance:** Shortest distance to count as a trip (default: 50 meters)
-- **Minimum Trip Duration:** Shortest time to count as a trip (default: 5 minutes)
 
 **Recommended Settings:**
 - **Urban areas:** Lower distance thresholds (50-100m)

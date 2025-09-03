@@ -13,7 +13,8 @@
 
 ---
 
-GeoPulse transforms raw GPS data from tracking apps like OwnTracks, Overland or Dawarich into organized timelines and
+GeoPulse transforms raw GPS data from tracking apps like OwnTracks, Overland, Dawarich or HomeAsssitant into organized
+timelines and
 insights. It automatically categorizes your location data into stays and trips, providing a clear view of your movement
 patterns while keeping everything on your own server. GeoPulse has integration with Immich server so you can view your
 photos directly on the timeline map.
@@ -53,17 +54,16 @@ Once deployed:
 
 **GPS Data Integration**
 
-- Works with OwnTracks (HTTP or MQTT), Overland and Dawarich tracking apps
+- Works with OwnTracks (HTTP or MQTT), Overland, Dawarich and HomeAssistant tracking apps
 - Real-time data sync with GPS tracking apps.
-- Manual import from Google Takeout, GPX files
+- Manual import from Google Timeline, GPX files
 
 **Timeline and Maps**
 
-- Automatic categorization of GPS data into stays and trips
+- Automatic categorization of GPS data into stays, trips and data gap when no GPS is available
 - Interactive maps showing your complete movement history
 - Immich integration to show your photos on the timeline map
 - Flexible date range viewing (single day to months of data)
-- Real-time location display for current day
 
 **Analytics**
 
@@ -87,7 +87,7 @@ Once deployed:
 
 - Save favorite locations and areas
 - Add/Edit/Delete favorite places directly on the map
-- Reverse geocoding using Nomatim, Google Maps or Mapbox API.
+- Reverse geocoding using `Nomatim`, `Google Maps` or `Mapbox API`.
 
 **Customization**
 
@@ -102,7 +102,7 @@ Once deployed:
 
 - **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Comprehensive deployment options and troubleshooting
 - **[Configuration Guide](docs/CONFIGURATION.md)** - Advanced configuration and environment variables
-- **[Setup Guide](docs/SETUP.md)** - GPS apps setup and initial configuration
+- **[Setup Guide](docs/SETUP.md)** - GPS sources setup and initial configuration
 
 ## Architecture
 
@@ -115,23 +115,10 @@ Once deployed:
 
 ## Compatible Apps
 
-**OwnTracks** (iOS, Android, Desktop)
-
-- Configure username/password in app settings
-- High-precision tracking with offline support
-- Supports both HTTP and MQTT protocols
-
+**OwnTracks** (iOS, Android)
 **Overland** (iOS)
-
-- Configure with API token from GeoPulse
-- Battery-efficient background tracking
-- HTTP-based location transmission
-
 **Dawarich** (iOS)
-
-- Configure with API key from GeoPulse
-- Simple setup and configuration
-- HTTP-based location transmission
+**Home Assistant**
 
 ## Privacy and Security
 
@@ -156,6 +143,15 @@ GeoPulse keeps your data under your control:
 <div align="center">
   <img src="docs/images/dashboard.png" alt="GeoPulse Dashboard" width="800"/>
 </div>
+
+### GPS Data
+
+<details>
+<summary>GPS Data Management page</summary>
+<div align="center">
+  <img src="docs/images/gps_data.png" alt="GPS Data Management" width="800"/>
+</div>
+</details>
 
 ### Additional Views
 
@@ -182,23 +178,6 @@ GeoPulse keeps your data under your control:
 ![Import Page](docs/images/import_page.png)
 
 </details>
-
-## Development
-
-```bash
-# Clone repository
-git clone https://github.com/tess1o/geopulse
-cd geopulse
-
-# Backend development
-cd backend
-./mvnw quarkus:dev
-
-# Frontend development  
-cd frontend
-npm install
-npm run dev
-```
 
 ## License
 
