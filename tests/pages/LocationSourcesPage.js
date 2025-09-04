@@ -18,7 +18,8 @@ export class LocationSourcesPage {
         sourceTypeOptions: {
           owntracks: '.source-type-option:has-text("OwnTracks")',
           overland: '.source-type-option:has-text("Overland")',
-          dawarich: '.source-type-option:has-text("Dawarich")'
+          dawarich: '.source-type-option:has-text("Dawarich")',
+          homeassistant: '.source-type-option:has-text("Home Assistant")'
         },
         connectionTypeOptions: {
           http: '.connection-type-option:has-text("HTTP")',
@@ -116,7 +117,9 @@ export class LocationSourcesPage {
    * Select source type in dialog
    */
   async selectSourceType(sourceType) {
+    console.log('Selecting source type: ' + sourceType);
     const selector = this.selectors.dialog.sourceTypeOptions[sourceType.toLowerCase()];
+
     await this.page.locator(selector).click();
   }
 
@@ -321,6 +324,16 @@ export class LocationSourcesPage {
     await this.clickAddNewSource();
     await this.waitForDialog();
     await this.selectSourceType('OVERLAND');
+    await this.fillOverlandForm(token);
+    await this.clickSave();
+    await this.waitForSuccessToast();
+    await this.waitForDialogClose();
+  }
+
+  async createHomeAssistantSource(token) {
+    await this.clickAddNewSource();
+    await this.waitForDialog();
+    await this.selectSourceType('HOMEASSISTANT');
     await this.fillOverlandForm(token);
     await this.clickSave();
     await this.waitForSuccessToast();

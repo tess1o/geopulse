@@ -183,6 +183,45 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
+    test('should create Home Assistant source', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const locationSourcesPage = new LocationSourcesPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await locationSourcesPage.navigate();
+      await locationSourcesPage.waitForPageLoad();
+
+      // Create Overland source using helper method
+      await locationSourcesPage.createHomeAssistantSource('home-assistant-token-12345');
+
+      expect(await locationSourcesPage.getSourceCount()).toBe(1);
+      expect(await locationSourcesPage.areInstructionsVisible()).toBe(true);
+
+      const sourceType = await locationSourcesPage.getSourceType(0);
+      expect(sourceType).toBe('Home Assistant');
+
+      const sourceIdentifier = await locationSourcesPage.getSourceIdentifier(0);
+      expect(sourceIdentifier).toContain('Token:');
+
+      // Verify source exists in database
+      const user = await dbManager.getUserByEmail(testUser.email);
+      const dbSourceCount = await LocationSourcesPage.getGpsSourceCountFromDb(dbManager, user.id);
+      expect(dbSourceCount).toBe(1);
+
+      const dbSource = await LocationSourcesPage.getGpsSourceFromDb(dbManager, user.id, 'HOME_ASSISTANT', 'home-assistant-token-12345');
+      expect(dbSource).toBeTruthy();
+      expect(dbSource.source_type).toBe('HOME_ASSISTANT');
+      expect(dbSource.token).toBe('home-assistant-token-12345');
+      expect(dbSource.active).toBe(true);
+      expect(dbSource.username).toBeNull();
+      expect(dbSource.password_hash).toBe("")
+    });
+
     test('should use quick setup buttons to create sources', async ({page, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
