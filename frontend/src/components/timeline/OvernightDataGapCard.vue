@@ -19,7 +19,7 @@
       <div class="overnight-data-gap-content">
         <p class="duration-detail">
           ⏱️ Total duration:
-          <span class="duration-value">{{ formatSmartDuration(dataGapItem.durationMinutes) }}</span>
+          <span class="duration-value">{{ formatSmartDuration(dataGapItem.durationSeconds) }}</span>
         </p>
         <p class="duration-detail">
           ⏱️ On this day:
@@ -98,9 +98,9 @@ const formatOnThisDayDuration = (dataGapItem, currentDateString) => {
   
   // Calculate duration in minutes for this day only
   const durationMs = thisDayEnd - thisDayStart
-  const durationMinutes = Math.floor(durationMs / (1000 * 60))
+  const durationSeconds = Math.floor(durationMs / (1000 ))
   
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationMinutes)})`
+  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationSeconds)})`
 }
 
 const formatEndTimeWithDate = (endTime, currentDateString) => {
@@ -126,14 +126,18 @@ const formatEndTimeWithDate = (endTime, currentDateString) => {
   }
 }
 
-const formatSmartDuration = (minutes) => {
+const formatSmartDuration = (seconds) => {
+  // formatDuration expects seconds, so use the seconds value directly
+  const totalSeconds = seconds || props.dataGapItem.durationSeconds || 0
+  const totalMinutes = Math.floor(totalSeconds / 60)
+  
   // For durations very close to 24 hours (within 5 minutes), show as "24 hours" or "full day"
-  const hoursFloat = minutes / 60
+  const hoursFloat = totalMinutes / 60
   const nearFullDay = Math.abs(hoursFloat - 24) <= (5/60) // Within 5 minutes of 24 hours
-  const isExactFullDay = minutes % (24 * 60) === 0
+  const isExactFullDay = totalMinutes % (24 * 60) === 0
   
   if (nearFullDay || isExactFullDay) {
-    const days = Math.floor(minutes / (24 * 60))
+    const days = Math.floor(totalMinutes / (24 * 60))
     if (days === 1) {
       return "24 hours"
     } else if (days > 1) {
@@ -141,8 +145,8 @@ const formatSmartDuration = (minutes) => {
     }
   }
   
-  // Otherwise use the regular formatter
-  return formatDuration(minutes)
+  // formatDuration expects seconds as input
+  return formatDuration(totalSeconds)
 }
 
 const handleClick = () => {

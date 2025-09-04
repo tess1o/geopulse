@@ -25,8 +25,8 @@
           ⏱️ On this day:
           <span class="duration-value">{{ formatOnThisDayDuration(tripItem, currentDate) }}</span>
         </p>
-        <p v-if="tripItem.distance" class="distance-detail">
-          📏 Distance: <span class="distance-value">{{ formatDistance(tripItem.distance) }}</span>
+        <p v-if="tripItem.distanceMeters" class="distance-detail">
+          📏 Distance: <span class="distance-value">{{ formatDistance(tripItem.distanceMeters) }}</span>
         </p>
       </div>
     </template>
