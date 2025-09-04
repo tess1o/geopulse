@@ -140,7 +140,7 @@
           <div class="insight-stat-pattern enhanced">
             <div class="pattern-icon">🕐</div>
             <div class="pattern-content">
-              <div class="pattern-value">{{ timePatterns.mostActiveTime || 'N/A' }}</div>
+              <div class="pattern-value">{{ localMostActiveTime }}</div>
               <div class="pattern-label">Most Active Time of Day</div>
               <div class="pattern-insight" v-if="timePatterns.timeInsight">
                 ↳ {{ timePatterns.timeInsight }}
@@ -236,6 +236,38 @@ const geographic = computed(() => journeyInsightsStore.geographic)
 const timePatterns = computed(() => journeyInsightsStore.timePatterns)
 const achievements = computed(() => journeyInsightsStore.achievements)
 const distanceTraveled = computed(() => journeyInsightsStore.distance)
+
+// Convert UTC time to user's local timezone
+const localMostActiveTime = computed(() => {
+  const utcTime = timePatterns.value?.mostActiveTime
+  if (!utcTime) return 'N/A'
+  
+  // Parse the UTC time string (e.g., "3:30 PM")
+  try {
+    // Convert 12-hour format to 24-hour format for parsing
+    const time24 = utcTime.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/i, (match, hours, minutes, period) => {
+      let hour = parseInt(hours, 10)
+      if (period.toUpperCase() === 'PM' && hour !== 12) hour += 12
+      if (period.toUpperCase() === 'AM' && hour === 12) hour = 0
+      return `${hour.toString().padStart(2, '0')}:${minutes}`
+    })
+    
+    // Create a date object with today's date and the UTC time
+    const today = new Date()
+    const [hours, minutes] = time24.split(':').map(Number)
+    const utcDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), hours, minutes))
+    
+    // Convert to local time and format back to 12-hour format
+    return utcDate.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  } catch (error) {
+    console.error('Error converting time to local timezone:', error)
+    return utcTime // fallback to original UTC time
+  }
+})
 
 // Geographic display logic
 const displayedCountries = computed(() => {
