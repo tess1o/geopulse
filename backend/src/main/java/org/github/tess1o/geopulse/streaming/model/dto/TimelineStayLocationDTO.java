@@ -22,6 +22,9 @@ public class TimelineStayLocationDTO implements GpsPoint {
     // Cached location name for display (resolved at creation time)
     private String locationName;
     
+    /**
+     * Duration of stay in seconds
+     */
     private long stayDuration;
     private double latitude;
     private double longitude;

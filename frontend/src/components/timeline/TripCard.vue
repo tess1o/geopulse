@@ -21,11 +21,11 @@
       <div class="trip-content">
         <p class="trip-detail">
           ⏱️ Duration:
-          <span class="font-bold">{{ tripItem.tripDuration }} minutes</span>
+          <span class="font-bold">{{ formatDuration(tripItem.tripDuration) }}</span>
         </p>
         <p class="trip-detail">
           📏 Distance:
-          <span class="font-bold">{{ formatDistance(tripItem.distanceKm) }}</span>
+          <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
         </p>
         <p class="trip-detail">
           🚦 Movement:
@@ -41,7 +41,7 @@
 
 <script setup>
 import { formatDate } from '@/utils/dateHelpers'
-import { formatDistance } from '@/utils/calculationsHelpers'
+import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 
 const props = defineProps({
   tripItem: {

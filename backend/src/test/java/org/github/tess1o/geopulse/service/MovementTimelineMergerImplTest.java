@@ -57,8 +57,8 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1680), 15, 1.5, 40.15, -74.15)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1680), 15, 1500, 40.15, -74.15)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -85,9 +85,9 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 0.2, 40.1, -74.1), // 200m trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 2, 200, 40.1, -74.1), // 200m trip
+                createTrip(baseTime.plusSeconds(2520), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -121,9 +121,9 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 0.4, 40.1, -74.1), // 400m, 2min trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 2, 400, 40.1, -74.1), // 400m, 2min trip
+                createTrip(baseTime.plusSeconds(2520), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -157,9 +157,9 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 5, 0.5, 40.1, -74.1), // 500m, 5min trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 5, 500, 40.1, -74.1), // 500m, 5min trip
+                createTrip(baseTime.plusSeconds(2520), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -184,10 +184,10 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 0.15, 40.1, -74.1), // 150m trip
-                createTrip(baseTime.plusSeconds(2280), 1, 0.1, 40.1, -74.1),   // 100m trip
-                createTrip(baseTime.plusSeconds(3120), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 2, 150, 40.1, -74.1), // 150m trip
+                createTrip(baseTime.plusSeconds(2280), 1, 100, 40.1, -74.1),   // 100m trip
+                createTrip(baseTime.plusSeconds(3120), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -223,11 +223,11 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 0.2, 40.1, -74.1),    // Short trip between Parks
-                createTrip(baseTime.plusSeconds(2520), 10, 1.5, 40.15, -74.15), // To Mall
-                createTrip(baseTime.plusSeconds(4120), 10, 1.5, 40.15, -74.15), // To Park again
-                createTrip(baseTime.plusSeconds(5320), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 2, 200, 40.1, -74.1),    // Short trip between Parks
+                createTrip(baseTime.plusSeconds(2520), 10, 1500, 40.15, -74.15), // To Mall
+                createTrip(baseTime.plusSeconds(4120), 10, 1500, 40.15, -74.15), // To Park again
+                createTrip(baseTime.plusSeconds(5320), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -293,11 +293,11 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 1, 0.1, 40.1, -74.1),   // 100m, 1min
-                createTrip(baseTime.plusSeconds(2100), 1, 0.05, 40.1, -74.1),  // 50m, 1min
-                createTrip(baseTime.plusSeconds(2220), 1, 0.08, 40.1, -74.1),  // 80m, 1min
-                createTrip(baseTime.plusSeconds(3720), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 1, 100, 40.1, -74.1),   // 100m, 1min
+                createTrip(baseTime.plusSeconds(2100), 1, 50, 40.1, -74.1),  // 50m, 1min
+                createTrip(baseTime.plusSeconds(2220), 1, 80, 40.1, -74.1),  // 80m, 1min
+                createTrip(baseTime.plusSeconds(3720), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -331,10 +331,10 @@ public class MovementTimelineMergerImplTest {
         );
 
         List<TimelineTripDTO> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2.0, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 10, 1.5, 40.15, -74.15),
-                createTrip(baseTime.plusSeconds(3780), 10, 1.5, 40.15, -74.15),
-                createTrip(baseTime.plusSeconds(5580), 10, 2.0, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
+                createTrip(baseTime.plusSeconds(1980), 10, 1500, 40.15, -74.15),
+                createTrip(baseTime.plusSeconds(3780), 10, 1500, 40.15, -74.15),
+                createTrip(baseTime.plusSeconds(5580), 10, 2000, 40.05, -74.05)
         );
 
         MovementTimelineDTO timeline = new MovementTimelineDTO(userId, stays, trips);
@@ -359,8 +359,8 @@ public class MovementTimelineMergerImplTest {
                 .build();
     }
 
-    private TimelineTripDTO createTrip(Instant timestamp, long duration, double distanceKm,
+    private TimelineTripDTO createTrip(Instant timestamp, long duration, long distanceMeters,
                                        double lat, double lon) {
-        return new TimelineTripDTO(timestamp, lat, lon, lat + 0.001, lon + 0.001, duration, distanceKm, "WALKING", List.of());
+        return new TimelineTripDTO(timestamp, lat, lon, lat + 0.001, lon + 0.001, duration, distanceMeters, "WALKING", List.of());
     }
 }

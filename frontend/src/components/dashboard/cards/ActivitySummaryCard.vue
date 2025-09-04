@@ -9,7 +9,7 @@
       <MetricItem
         icon="pi pi-map-marker"
         iconColor="primary"
-        :value="stats.totalDistance || 0"
+        :value="stats.totalDistanceMeters || 0"
         label="Total Distance"
         :formatter="formatDistance"
         variant="minimal"
@@ -29,7 +29,7 @@
       <MetricItem
         icon="pi pi-chart-line"
         iconColor="info"
-        :value="stats.dailyAverage || 0"
+        :value="stats.dailyAverageDistanceMeters || 0"
         label="Daily Average"
         :formatter="formatDistance"
         variant="minimal"
@@ -102,9 +102,9 @@ const props = defineProps({
     type: Object,
     required: true,
     default: () => ({
-      totalDistance: 0,
+      totalDistanceMeters: 0,
       timeMoving: 0,
-      dailyAverage: 0,
+      dailyAverageDistanceMeters: 0,
       averageSpeed: 0,
       uniqueLocationsCount: 0,
       mostActiveDay: null,

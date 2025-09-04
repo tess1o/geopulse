@@ -64,15 +64,6 @@ public class TimelineConfigurationProvider {
     }
 
     /**
-     * Get the global default timeline configuration.
-     *
-     * @return global default configuration
-     */
-    public TimelineConfig getGlobalDefaults() {
-        return globalDefaults.getDefaultTimelineConfig();
-    }
-
-    /**
      * Convert timeline preferences to configuration format for merging.
      * This maintains module boundaries while enabling configuration reuse.
      *

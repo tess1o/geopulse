@@ -46,7 +46,7 @@ public class ActivityAnalysisService {
                 .toList();
 
         double distanceTraveled = trips.stream()
-                .mapToDouble(TimelineTripDTO::getDistanceKm)
+                .mapToDouble(trip -> trip.getDistanceMeters() / 1000.0) // Convert meters to km
                 .sum();
 
         double tripDuration = trips.stream()
@@ -77,7 +77,7 @@ public class ActivityAnalysisService {
         Map<LocalDate, Double> distanceByDay = timeline.getTrips().stream()
                 .collect(Collectors.groupingBy(
                         trip -> trip.getTimestamp().atZone(ZoneOffset.UTC).toLocalDate(),
-                        Collectors.summingDouble(TimelineTripDTO::getDistanceKm)
+                        Collectors.summingDouble(trip -> trip.getDistanceMeters() / 1000.0) // Convert meters to km
                 ));
 
         return distanceByDay.entrySet()

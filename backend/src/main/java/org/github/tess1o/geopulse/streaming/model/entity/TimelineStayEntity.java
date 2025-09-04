@@ -39,7 +39,7 @@ public class TimelineStayEntity {
     private Instant timestamp;
 
     /**
-     * Duration of stay in minutes
+     * Duration of stay in seconds
      */
     @Column(name = "stay_duration", nullable = false)
     private long stayDuration;

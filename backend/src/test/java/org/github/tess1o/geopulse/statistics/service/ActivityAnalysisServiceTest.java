@@ -6,6 +6,8 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for ActivityAnalysisService.
  * Tests most active day detection and activity pattern analysis.
  */
+@ExtendWith(MockitoExtension.class)
 class ActivityAnalysisServiceTest {
 
     private ActivityAnalysisService activityAnalysisService;
@@ -191,10 +194,10 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-03T09:00:00Z", "Home", 40.7128, -74.0060, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 5.0, 30),   // Low activity day
-                        createTrip("2024-01-02T10:00:00Z", 20.0, 120), // High activity day
-                        createTrip("2024-01-02T15:00:00Z", 15.0, 90),  // Same day, more activity
-                        createTrip("2024-01-03T10:00:00Z", 8.0, 45)    // Medium activity day
+                        createTrip("2024-01-01T10:00:00Z", 5000, 30),   // Low activity day
+                        createTrip("2024-01-02T10:00:00Z", 20000, 120), // High activity day
+                        createTrip("2024-01-02T15:00:00Z", 15000, 90),  // Same day, more activity
+                        createTrip("2024-01-03T10:00:00Z", 8000, 45)    // Medium activity day
                 ));
     }
 
@@ -205,8 +208,8 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-01T11:00:00Z", "Work", 40.7580, -73.9855, 480)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-01T14:00:00Z", 15.0, 90)
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60),
+                        createTrip("2024-01-01T14:00:00Z", 15000, 90)
                 ));
     }
 
@@ -217,8 +220,8 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-02T09:00:00Z", "Work", 40.7580, -73.9855, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60), // Day 1: 10km
-                        createTrip("2024-01-02T10:00:00Z", 10.0, 60)  // Day 2: 10km (equal)
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60), // Day 1: 10km
+                        createTrip("2024-01-02T10:00:00Z", 10000, 60)  // Day 2: 10km (equal)
                 ));
     }
 
@@ -231,9 +234,9 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-01T20:00:00Z", "Home", 40.7128, -74.0060, 480)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 8.0, 45),
-                        createTrip("2024-01-01T17:30:00Z", 5.0, 30),
-                        createTrip("2024-01-01T19:30:00Z", 7.0, 35)
+                        createTrip("2024-01-01T10:00:00Z", 8000, 45),
+                        createTrip("2024-01-01T17:30:00Z", 5000, 30),
+                        createTrip("2024-01-01T19:30:00Z", 7000, 35)
                 ));
     }
 
@@ -245,8 +248,8 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-01T12:00:00Z", "Home", 40.7128, -74.0060, 45)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 8.0, 45),
-                        createTrip("2024-01-01T11:30:00Z", 7.0, 35)
+                        createTrip("2024-01-01T10:00:00Z", 8000, 45),
+                        createTrip("2024-01-01T11:30:00Z", 7000, 35)
                 ));
     }
 
@@ -257,8 +260,8 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-02T01:00:00Z", "Location2", 40.7580, -73.9855, 60)
                 ),
                 List.of(
-                        createTrip("2024-01-01T23:30:00Z", 10.0, 60), // Late night UTC
-                        createTrip("2024-01-02T00:30:00Z", 5.0, 30)   // Early morning UTC
+                        createTrip("2024-01-01T23:30:00Z", 10000, 60), // Late night UTC
+                        createTrip("2024-01-02T00:30:00Z", 5000, 30)   // Early morning UTC
                 ));
     }
 
@@ -270,16 +273,16 @@ class ActivityAnalysisServiceTest {
                         createStay("2024-01-03T09:00:00Z", "Gym", 40.7505, -73.9934, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60), // Day 1: 10km
-                        createTrip("2024-01-02T10:00:00Z", 30.0, 120), // Day 2: 30km (highest)
-                        createTrip("2024-01-03T10:00:00Z", 15.0, 75)   // Day 3: 15km
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60), // Day 1: 10km
+                        createTrip("2024-01-02T10:00:00Z", 30000, 120), // Day 2: 30km (highest)
+                        createTrip("2024-01-03T10:00:00Z", 15000, 75)   // Day 3: 15km
                 ));
     }
 
-    private TimelineTripDTO createTrip(String timestamp, double distanceKm, long durationMinutes) {
+    private TimelineTripDTO createTrip(String timestamp, long distance, long durationMinutes) {
         return TimelineTripDTO.builder()
                 .timestamp(Instant.parse(timestamp))
-                .distanceKm(distanceKm)
+                .distanceMeters(distance)
                 .tripDuration(durationMinutes)
                 .build();
     }

@@ -381,9 +381,9 @@ class StatisticsResourceTest {
     // Helper method to create sample statistics
     private UserStatistics createSampleStatistics() {
         return UserStatistics.builder()
-                .totalDistance(25.5)
+                .totalDistanceMeters(25.5)
                 .timeMoving(180)
-                .dailyAverage(8.5)
+                .dailyAverageDistanceMeters(8.5)
                 .uniqueLocationsCount(5)
                 .averageSpeed(8.5)
                 .mostActiveDay(MostActiveDayDto.builder()
@@ -409,9 +409,9 @@ class StatisticsResourceTest {
                 ))
                 .routes(RoutesStatistics.builder()
                         .uniqueRoutesCount(3)
-                        .avgTripDuration(45.0)
-                        .longestTripDuration(120.0)
-                        .longestTripDistance(25.0)
+                        .avgTripDurationSeconds(45.0)
+                        .longestTripDurationSeconds(120.0)
+                        .longestTripDistanceMeters(25.0)
                         .mostCommonRoute(new MostCommonRoute("Home -> Work", 4))
                         .build())
                 .distanceCarChart(new BarChartData(

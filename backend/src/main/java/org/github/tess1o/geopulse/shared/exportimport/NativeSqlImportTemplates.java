@@ -56,7 +56,7 @@ public final class NativeSqlImportTemplates {
     public static final String TIMELINE_TRIPS_UPSERT = """
         INSERT INTO timeline_trips 
         (id, user_id, timestamp, start_latitude, start_longitude, end_latitude, end_longitude,
-         distance_km, trip_duration, movement_type, path, created_at, last_updated) 
+         distance_meters, trip_duration, movement_type, path, created_at, last_updated) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ON CONFLICT (id) DO UPDATE SET
             timestamp = EXCLUDED.timestamp,
@@ -64,7 +64,7 @@ public final class NativeSqlImportTemplates {
             start_longitude = EXCLUDED.start_longitude,
             end_latitude = EXCLUDED.end_latitude,
             end_longitude = EXCLUDED.end_longitude,
-            distance_km = EXCLUDED.distance_km,
+            distance_meters = EXCLUDED.distance_meters,
             trip_duration = EXCLUDED.trip_duration,
             movement_type = EXCLUDED.movement_type,
             path = EXCLUDED.path,

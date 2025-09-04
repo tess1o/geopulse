@@ -31,6 +31,10 @@ public class TimelineDataDto {
         private Instant endTime;
         private Double latitude;
         private Double longitude;
+        
+        /**
+         * Duration of stay in seconds
+         */
         private Long duration;
         private String address;
         private Long favoriteId;
@@ -49,7 +53,15 @@ public class TimelineDataDto {
         private Double startLongitude;
         private Double endLatitude;
         private Double endLongitude;
-        private Double distance;
+        
+        /**
+         * Distance traveled in meters
+         */
+        private Long distance;
+        
+        /**
+         * Duration of trip in seconds
+         */
         private Long duration;
         private String transportMode;
         private List<List<Double>> path; // Array of [longitude, latitude] coordinate pairs

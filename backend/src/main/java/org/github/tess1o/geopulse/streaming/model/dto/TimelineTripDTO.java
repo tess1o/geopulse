@@ -20,8 +20,16 @@ public class TimelineTripDTO implements GpsPoint {
     private double longitude; // Start longitude
     private double endLatitude;  // End latitude  
     private double endLongitude; // End longitude
+    
+    /**
+     * Duration of trip in seconds
+     */
     private long tripDuration;
-    private double distanceKm;
+    
+    /**
+     * Distance traveled in meters
+     */
+    private long distanceMeters;
     private String movementType;
     private List<? extends GpsPoint> path; // Only used for TRIP items
 
@@ -33,7 +41,7 @@ public class TimelineTripDTO implements GpsPoint {
                 .endLatitude(entity.getEndLatitude())
                 .endLongitude(entity.getEndLongitude())
                 .tripDuration(entity.getTripDuration())
-                .distanceKm(entity.getDistanceKm())
+                .distanceMeters(entity.getDistanceMeters())
                 .movementType(entity.getMovementType())
                 .build();
     }

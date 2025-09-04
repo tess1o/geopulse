@@ -8,6 +8,8 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
@@ -19,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for ChartDataService.
  * Tests chart generation logic for both daily and weekly grouping modes.
  */
+@ExtendWith(MockitoExtension.class)
 class ChartDataServiceTest {
 
     private ChartDataService chartDataService;
@@ -180,7 +183,7 @@ class ChartDataServiceTest {
                         createStay("2024-01-01T09:00:00Z", "Home", 40.7128, -74.0060, 30),
                         createStay("2024-01-01T11:00:00Z", "Work", 40.7580, -73.9855, 480)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 10.0, 60)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 10000, 60)));
     }
 
     private MovementTimelineDTO createMultiWeekTimeline() {
@@ -191,9 +194,9 @@ class ChartDataServiceTest {
                         createStay("2024-01-15T09:00:00Z", "Home", 40.7128, -74.0060, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60), // Week 1
-                        createTrip("2024-01-08T10:00:00Z", 15.0, 90), // Week 2
-                        createTrip("2024-01-15T10:00:00Z", 8.0, 45)   // Week 3
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60), // Week 1
+                        createTrip("2024-01-08T10:00:00Z", 15000, 90), // Week 2
+                        createTrip("2024-01-15T10:00:00Z", 8000, 45)   // Week 3
                 ));
     }
 
@@ -201,8 +204,8 @@ class ChartDataServiceTest {
         return new MovementTimelineDTO(testUserId,
                 List.of(createStay("2024-01-01T09:00:00Z", "Home", 40.7128, -74.0060, 30)),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-01T11:00:00Z", 5.0, 30)
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60),
+                        createTrip("2024-01-01T11:00:00Z", 5000, 30)
                 ));
     }
 
@@ -210,8 +213,8 @@ class ChartDataServiceTest {
         return new MovementTimelineDTO(testUserId,
                 List.of(createStay("2024-01-01T09:00:00Z", "Home", 40.7128, -74.0060, 30)),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-01T14:00:00Z", 15.0, 90) // Same day
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60),
+                        createTrip("2024-01-01T14:00:00Z", 15000, 90) // Same day
                 ));
     }
 
@@ -222,8 +225,8 @@ class ChartDataServiceTest {
                         createStay("2024-01-02T01:00:00Z", "Location2", 40.7580, -73.9855, 60)
                 ),
                 List.of(
-                        createTrip("2024-01-01T23:30:00Z", 10.0, 60), // Late night UTC
-                        createTrip("2024-01-02T00:30:00Z", 5.0, 30)   // Early morning UTC
+                        createTrip("2024-01-01T23:30:00Z", 10000, 60), // Late night UTC
+                        createTrip("2024-01-02T00:30:00Z", 5000, 30)   // Early morning UTC
                 ));
     }
 
@@ -235,17 +238,17 @@ class ChartDataServiceTest {
                         createStay("2024-01-03T09:00:00Z", "Home", 40.7128, -74.0060, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-02T10:00:00Z", 8.0, 45),
-                        createTrip("2024-01-03T10:00:00Z", 12.0, 75)
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60),
+                        createTrip("2024-01-02T10:00:00Z", 8000, 45),
+                        createTrip("2024-01-03T10:00:00Z", 12000, 75)
                 ));
     }
 
-    private TimelineTripDTO createTrip(String timestamp, double distanceKm, long durationMinutes) {
+    private TimelineTripDTO createTrip(String timestamp, long distanceMeters, long durationSeconds) {
         return TimelineTripDTO.builder()
                 .timestamp(Instant.parse(timestamp))
-                .distanceKm(distanceKm)
-                .tripDuration(durationMinutes)
+                .distanceMeters(distanceMeters)
+                .tripDuration(durationSeconds)
                 .build();
     }
 

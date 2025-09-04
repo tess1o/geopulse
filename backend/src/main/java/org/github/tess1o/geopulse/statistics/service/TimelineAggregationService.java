@@ -20,12 +20,12 @@ public class TimelineAggregationService {
      * Calculates total distance traveled from all trips.
      *
      * @param timeline the movement timeline data
-     * @return total distance in kilometers
+     * @return total distance in meters
      */
-    public double getTotalDistance(MovementTimelineDTO timeline) {
+    public double getTotalDistanceMeters(MovementTimelineDTO timeline) {
         return timeline.getTrips()
                 .stream()
-                .mapToDouble(TimelineTripDTO::getDistanceKm)
+                .mapToDouble(trip -> trip.getDistanceMeters()) // Convert meters to m
                 .sum();
     }
 
@@ -33,9 +33,9 @@ public class TimelineAggregationService {
      * Calculates total time spent moving from all trips.
      *
      * @param timeline the movement timeline data
-     * @return total moving time in minutes
+     * @return total moving time in seconds
      */
-    public long getTimeMoving(MovementTimelineDTO timeline) {
+    public long getTimeMovingSeconds(MovementTimelineDTO timeline) {
         return timeline.getTrips()
                 .stream()
                 .mapToLong(TimelineTripDTO::getTripDuration)
@@ -47,16 +47,16 @@ public class TimelineAggregationService {
      * Groups trips by date and calculates average distance per day.
      *
      * @param timeline the movement timeline data
-     * @return average daily distance in kilometers
+     * @return average daily distance in meters
      */
-    public double getDailyAverage(MovementTimelineDTO timeline) {
+    public double getDailyDistanceAverageMeters(MovementTimelineDTO timeline) {
         Map<LocalDate, Double> collect = timeline.getTrips()
                 .stream()
                 .collect(Collectors.groupingBy(
                         trip -> trip.getTimestamp()
                                 .atZone(ZoneOffset.UTC)
                                 .toLocalDate(),
-                        Collectors.summingDouble(TimelineTripDTO::getDistanceKm)
+                        Collectors.summingDouble(trip -> trip.getDistanceMeters()) // Convert meters to km
                 ));
         return collect.values().stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
     }
@@ -65,14 +65,15 @@ public class TimelineAggregationService {
      * Calculates average speed from total distance and time moving.
      * Handles division by zero gracefully.
      *
-     * @param totalDistanceKm total distance in kilometers
-     * @param timeMovingMinutes total moving time in minutes
+     * @param totalDistanceMeters total distance in meters
+     * @param timeMovingSeconds total moving time in seconds
      * @return average speed in km/h
      */
-    public double getAverageSpeed(double totalDistanceKm, long timeMovingMinutes) {
-        if (timeMovingMinutes <= 0) {
+    public double getAverageSpeed(double totalDistanceMeters, long timeMovingSeconds) {
+        if (timeMovingSeconds <= 0) {
             return 0.0;
         }
-        return totalDistanceKm / (timeMovingMinutes / 60.0);
+        double metersPerSecond = totalDistanceMeters / timeMovingSeconds;
+        return metersPerSecond * 3.6; // convert m/s to km/h
     }
 }

@@ -12,11 +12,11 @@ import java.util.List;
 @Builder
 @Data
 public class UserStatistics {
-    private double totalDistance;
-    private long timeMoving;
-    private double dailyAverage; //in km;
+    private double totalDistanceMeters;
+    private long timeMoving; //seconds
+    private double dailyAverageDistanceMeters; //in m;
     private long uniqueLocationsCount;
-    private double averageSpeed;
+    private double averageSpeed; //km / h
     private MostActiveDayDto mostActiveDay;
     private List<TopPlace> places;
     private RoutesStatistics routes;

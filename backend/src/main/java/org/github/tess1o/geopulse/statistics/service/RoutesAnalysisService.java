@@ -47,7 +47,7 @@ public class RoutesAnalysisService {
 
         double longestTripDistance = timeline.getTrips()
                 .stream()
-                .mapToDouble(TimelineTripDTO::getDistanceKm)
+                .mapToDouble(trip -> trip.getDistanceMeters())
                 .max()
                 .orElse(0.0);
 
@@ -61,11 +61,11 @@ public class RoutesAnalysisService {
                 : new MostCommonRoute("", 0);
 
         return RoutesStatistics.builder()
-                .avgTripDuration(averageTripDuration)
+                .avgTripDurationSeconds(averageTripDuration)
                 .uniqueRoutesCount(routes.size())
                 .mostCommonRoute(mostCommonRouteDto)
-                .longestTripDuration(longestTripDuration)
-                .longestTripDistance(longestTripDistance)
+                .longestTripDurationSeconds(longestTripDuration)
+                .longestTripDistanceMeters(longestTripDistance)
                 .build();
     }
 }

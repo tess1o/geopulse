@@ -58,7 +58,7 @@ public class PathSimplificationService {
                     .latitude(tripDTO.getLatitude())
                     .longitude(tripDTO.getLongitude())
                     .tripDuration(tripDTO.getTripDuration())
-                    .distanceKm(tripDTO.getDistanceKm())
+                    .distanceMeters(tripDTO.getDistanceMeters())
                     .movementType(tripDTO.getMovementType())
                     .path(simplified)
                     .build();

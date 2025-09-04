@@ -135,11 +135,11 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
      * Find trips longer than a specified distance.
      *
      * @param userId user ID
-     * @param minDistanceKm minimum distance in kilometers
+     * @param minDistanceMeters minimum distance in meters
      * @return list of trips meeting the distance criteria
      */
-    public List<TimelineTripEntity> findByUserAndMinDistance(UUID userId, double minDistanceKm) {
-        return find("user.id = ?1 and distanceKm >= ?2 order by timestamp", userId, minDistanceKm).list();
+    public List<TimelineTripEntity> findByUserAndMinDistance(UUID userId, long minDistanceMeters) {
+        return find("user.id = ?1 and distanceMeters >= ?2 order by timestamp", userId, minDistanceMeters).list();
     }
 
     public boolean existsByUserAndTimestamp(UUID userId, Instant timestamp) {
@@ -165,12 +165,12 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
      *
      * @param tripId trip ID to update
      * @param newEndTime new end timestamp for the trip 
-     * @param newDurationMinutes new duration in minutes
+     * @param newDurationSeconds new duration in seconds
      * @return number of rows updated (should be 1 if successful)
      */
-    public long updateEndTimeAndDuration(Long tripId, Instant newEndTime, long newDurationMinutes) {
+    public long updateEndTimeAndDuration(Long tripId, Instant newEndTime, long newDurationSeconds) {
         return update("tripDuration = ?1, lastUpdated = ?2 where id = ?3", 
-                     newDurationMinutes, Instant.now(), tripId);
+                     newDurationSeconds, Instant.now(), tripId);
     }
 
     /**

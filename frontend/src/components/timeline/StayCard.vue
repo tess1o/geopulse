@@ -69,7 +69,7 @@ const getEndOfDayTime = (startTime) => {
 
 const formatOnThisDayDuration = (stayItem) => {
   const stayStart = new Date(stayItem.timestamp)
-  const stayEnd = new Date(stayStart.getTime() + (stayItem.stayDuration * 60 * 1000))
+  const stayEnd = new Date(stayStart.getTime() + (stayItem.stayDuration * 1000)) // stayDuration is now in seconds
   const endOfDay = getEndOfDayTime(stayStart)
   
   // For overnight stays, the "on this day" duration is from start time to end of day
@@ -79,9 +79,9 @@ const formatOnThisDayDuration = (stayItem) => {
   const endTimeStr = formatTime(thisDayEnd)
   
   const durationMs = thisDayEnd - stayStart
-  const durationMinutes = Math.floor(durationMs / (1000 * 60))
+  const durationSeconds = Math.floor(durationMs / 1000)
   
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationMinutes)})`
+  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationSeconds)})`
 }
 </script>
 

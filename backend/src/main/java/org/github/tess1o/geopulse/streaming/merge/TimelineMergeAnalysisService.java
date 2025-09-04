@@ -100,11 +100,11 @@ public class TimelineMergeAnalysisService {
 
         for (TimelineTripDTO trip : trips) {
             if (isTripBetweenStays(trip, firstStayTime, secondStayTime)) {
-                totalDistance += trip.getDistanceKm() * 1000; // Convert to meters
+                totalDistance += trip.getDistanceMeters(); // Already in meters
                 totalDuration += trip.getTripDuration();
 
                 log.debug("Found trip between stays: distance={}m, duration={}min",
-                        trip.getDistanceKm() * 1000, trip.getTripDuration());
+                        trip.getDistanceMeters(), trip.getTripDuration());
             }
         }
 

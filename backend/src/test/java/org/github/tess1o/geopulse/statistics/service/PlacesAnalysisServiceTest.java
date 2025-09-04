@@ -213,7 +213,7 @@ class PlacesAnalysisServiceTest {
                         createStay("2024-01-02T10:30:00Z", "Work", 40.7580, -73.9855, 420), // 2nd visit to Work
                         createStay("2024-01-02T18:00:00Z", "Store", 40.7614, -73.9776, 30)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 5.0, 30)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 5, 30)));
     }
 
     private MovementTimelineDTO createTimelineWithIdenticalLocations() {
@@ -223,7 +223,7 @@ class PlacesAnalysisServiceTest {
                         createStay("2024-01-01T10:30:00Z", "Home", 40.7128, -74.0060, 60),
                         createStay("2024-01-01T11:30:00Z", "Home", 40.7128, -74.0060, 45)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 5.0, 30)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 5, 30)));
     }
 
     private MovementTimelineDTO createTimelineWithSinglePlace() {
@@ -257,11 +257,11 @@ class PlacesAnalysisServiceTest {
                 List.of());
     }
 
-    private TimelineTripDTO createTrip(String timestamp, double distanceKm, long durationMinutes) {
+    private TimelineTripDTO createTrip(String timestamp, long distanceMeters, long durationSeconds) {
         return TimelineTripDTO.builder()
                 .timestamp(Instant.parse(timestamp))
-                .distanceKm(distanceKm)
-                .tripDuration(durationMinutes)
+                .distanceMeters(distanceMeters)
+                .tripDuration(durationSeconds)
                 .build();
     }
 

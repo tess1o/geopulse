@@ -63,19 +63,19 @@ public class StatisticsServiceImpl implements StatisticsService {
         MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, from, to);
         
         // Calculate basic aggregations
-        double totalDistanceKm = timelineAggregationService.getTotalDistance(timeline);
-        long timeMovingMinutes = timelineAggregationService.getTimeMoving(timeline);
+        double totalDistanceMeters = timelineAggregationService.getTotalDistanceMeters(timeline);
+        long timeMovingSeconds = timelineAggregationService.getTimeMovingSeconds(timeline);
         
         // Build complete statistics using specialized services
         return UserStatistics.builder()
-                .totalDistance(totalDistanceKm)
-                .timeMoving(timeMovingMinutes)
-                .dailyAverage(timelineAggregationService.getDailyAverage(timeline))
+                .totalDistanceMeters(totalDistanceMeters)
+                .timeMoving(timeMovingSeconds)
+                .dailyAverageDistanceMeters(timelineAggregationService.getDailyDistanceAverageMeters(timeline))
                 .uniqueLocationsCount(placesAnalysisService.getUniqueLocationsCount(timeline))
                 .routes(routesAnalysisService.getRoutesStatistics(timeline))
                 .places(placesAnalysisService.getPlacesStatistics(timeline))
                 .mostActiveDay(activityAnalysisService.getMostActiveDay(timeline))
-                .averageSpeed(timelineAggregationService.getAverageSpeed(totalDistanceKm, timeMovingMinutes))
+                .averageSpeed(timelineAggregationService.getAverageSpeed(totalDistanceMeters, timeMovingSeconds))
                 .distanceCarChart(chartDataService.getDistanceChartData(timeline, TripType.CAR, chartGroupMode))
                 .distanceWalkChart(chartDataService.getDistanceChartData(timeline, TripType.WALK, chartGroupMode))
                 .build();

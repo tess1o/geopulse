@@ -55,7 +55,7 @@ public class ChartDataService {
                 .collect(Collectors.groupingBy(
                         trip -> getStartOfWeek(trip.getTimestamp().atZone(zone).toLocalDate()),
                         TreeMap::new, // ensures sorted by week
-                        Collectors.summingDouble(TimelineTripDTO::getDistanceKm)
+                        Collectors.summingDouble(trip -> trip.getDistanceMeters() / 1000.0) // Convert meters to km
                 ));
 
         // Build labels and distances
@@ -80,7 +80,7 @@ public class ChartDataService {
                 .filter(matchesTripType(tripType))
                 .collect(Collectors.groupingBy(
                         trip -> trip.getTimestamp().atZone(zone).toLocalDate(),
-                        Collectors.summingDouble(TimelineTripDTO::getDistanceKm)
+                        Collectors.summingDouble(trip -> trip.getDistanceMeters() / 1000.0) // Convert meters to km
                 ));
 
         // Step 2: Sort by LocalDate ascending

@@ -7,6 +7,8 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for RoutesAnalysisService.
  * Tests route statistics calculation, trip duration analysis, and route frequency detection.
  */
+@ExtendWith(MockitoExtension.class)
 class RoutesAnalysisServiceTest {
 
     private RoutesAnalysisService routesAnalysisService;
@@ -39,16 +42,16 @@ class RoutesAnalysisServiceTest {
 
         // Then
         assertNotNull(result);
-        assertTrue(result.getAvgTripDuration() > 0);
+        assertTrue(result.getAvgTripDurationSeconds() > 0);
         assertTrue(result.getUniqueRoutesCount() > 0);
-        assertTrue(result.getLongestTripDuration() > 0);
-        assertTrue(result.getLongestTripDistance() > 0);
+        assertTrue(result.getLongestTripDurationSeconds() > 0);
+        assertTrue(result.getLongestTripDistanceMeters() > 0);
         assertNotNull(result.getMostCommonRoute());
         
         // Verify specific calculations
-        assertEquals(66.67, result.getAvgTripDuration(), 0.1); // (60 + 50 + 90) / 3
-        assertEquals(90.0, result.getLongestTripDuration());
-        assertEquals(15.0, result.getLongestTripDistance());
+        assertEquals(66.67, result.getAvgTripDurationSeconds(), 0.1); // (60 + 50 + 90) / 3
+        assertEquals(90.0, result.getLongestTripDurationSeconds());
+        assertEquals(15000, result.getLongestTripDistanceMeters());
         assertEquals(3, result.getUniqueRoutesCount()); // Home->Work, Work->Home, Home->Store
     }
 
@@ -62,10 +65,10 @@ class RoutesAnalysisServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(0.0, result.getAvgTripDuration());
+        assertEquals(0.0, result.getAvgTripDurationSeconds());
         assertEquals(0, result.getUniqueRoutesCount());
-        assertEquals(0.0, result.getLongestTripDuration());
-        assertEquals(0.0, result.getLongestTripDistance());
+        assertEquals(0.0, result.getLongestTripDurationSeconds());
+        assertEquals(0.0, result.getLongestTripDistanceMeters());
         assertNotNull(result.getMostCommonRoute());
         assertEquals("", result.getMostCommonRoute().getName());
         assertEquals(0, result.getMostCommonRoute().getCount());
@@ -81,10 +84,10 @@ class RoutesAnalysisServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(60.0, result.getAvgTripDuration());
+        assertEquals(60.0, result.getAvgTripDurationSeconds());
         assertEquals(1, result.getUniqueRoutesCount());
-        assertEquals(60.0, result.getLongestTripDuration());
-        assertEquals(10.0, result.getLongestTripDistance());
+        assertEquals(60.0, result.getLongestTripDurationSeconds());
+        assertEquals(10000, result.getLongestTripDistanceMeters());
         
         MostCommonRoute mostCommon = result.getMostCommonRoute();
         assertEquals("Home -> Work", mostCommon.getName());
@@ -114,17 +117,17 @@ class RoutesAnalysisServiceTest {
         // Given - timeline with trips but no stays (edge case)
         MovementTimelineDTO timeline = new MovementTimelineDTO(testUserId,
                 List.of(), // No stays
-                List.of(createTrip("2024-01-01T10:00:00Z", 10.0, 60)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 10000, 60)));
 
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
 
         // Then
         assertNotNull(result);
-        assertEquals(60.0, result.getAvgTripDuration());
+        assertEquals(60.0, result.getAvgTripDurationSeconds());
         assertEquals(0, result.getUniqueRoutesCount()); // No routes without stays
-        assertEquals(60.0, result.getLongestTripDuration());
-        assertEquals(10.0, result.getLongestTripDistance());
+        assertEquals(60.0, result.getLongestTripDurationSeconds());
+        assertEquals(10000, result.getLongestTripDistanceMeters());
         assertEquals("", result.getMostCommonRoute().getName());
         assertEquals(0, result.getMostCommonRoute().getCount());
     }
@@ -144,10 +147,10 @@ class RoutesAnalysisServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(0.0, result.getAvgTripDuration());
+        assertEquals(0.0, result.getAvgTripDurationSeconds());
         assertEquals(1, result.getUniqueRoutesCount()); // One route from Home -> Work
-        assertEquals(0.0, result.getLongestTripDuration());
-        assertEquals(0.0, result.getLongestTripDistance());
+        assertEquals(0.0, result.getLongestTripDurationSeconds());
+        assertEquals(0.0, result.getLongestTripDistanceMeters());
         
         MostCommonRoute mostCommon = result.getMostCommonRoute();
         assertEquals("Home -> Work", mostCommon.getName());
@@ -164,9 +167,9 @@ class RoutesAnalysisServiceTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(60.0, result.getAvgTripDuration(), 0.1); // (30 + 60 + 90) / 3
-        assertEquals(90.0, result.getLongestTripDuration());
-        assertEquals(15.0, result.getLongestTripDistance());
+        assertEquals(60.0, result.getAvgTripDurationSeconds(), 0.1); // (30 + 60 + 90) / 3
+        assertEquals(90.0, result.getLongestTripDurationSeconds());
+        assertEquals(15000, result.getLongestTripDistanceMeters());
     }
 
     @Test
@@ -194,9 +197,9 @@ class RoutesAnalysisServiceTest {
                         createStay("2024-01-02T11:30:00Z", "Store", 40.7614, -73.9776, 60)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-01T18:00:00Z", 10.0, 50),
-                        createTrip("2024-01-02T10:00:00Z", 15.0, 90)
+                        createTrip("2024-01-01T10:00:00Z", 10000, 60),
+                        createTrip("2024-01-01T18:00:00Z", 10000, 50),
+                        createTrip("2024-01-02T10:00:00Z", 15000, 90)
                 ));
     }
 
@@ -206,7 +209,7 @@ class RoutesAnalysisServiceTest {
                         createStay("2024-01-01T09:00:00Z", "Home", 40.7128, -74.0060, 30),
                         createStay("2024-01-01T11:00:00Z", "Work", 40.7580, -73.9855, 420)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 10.0, 60)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 10000, 60)));
     }
 
     private MovementTimelineDTO createTimelineWithRepeatedRoutes() {
@@ -219,9 +222,9 @@ class RoutesAnalysisServiceTest {
                         createStay("2024-01-02T11:00:00Z", "Work", 40.7580, -73.9855, 420)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60), // Home -> Work
-                        createTrip("2024-01-01T18:00:00Z", 10.0, 50), // Work -> Home
-                        createTrip("2024-01-02T10:00:00Z", 10.0, 60)  // Home -> Work (repeat)
+                        createTrip("2024-01-01T10:00:00Z", 10, 60), // Home -> Work
+                        createTrip("2024-01-01T18:00:00Z", 10, 50), // Work -> Home
+                        createTrip("2024-01-02T10:00:00Z", 10, 60)  // Home -> Work (repeat)
                 ));
     }
 
@@ -234,9 +237,9 @@ class RoutesAnalysisServiceTest {
                         createStay("2024-01-01T13:00:00Z", "Store", 40.7614, -73.9776, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T09:30:00Z", 5.0, 30),   // Short trip
-                        createTrip("2024-01-01T11:00:00Z", 10.0, 60),  // Medium trip
-                        createTrip("2024-01-01T12:30:00Z", 15.0, 90)   // Long trip
+                        createTrip("2024-01-01T09:30:00Z", 5000, 30),   // Short trip
+                        createTrip("2024-01-01T11:00:00Z", 10000, 60),  // Medium trip
+                        createTrip("2024-01-01T12:30:00Z", 15000, 90)   // Long trip
                 ));
     }
 
@@ -250,28 +253,28 @@ class RoutesAnalysisServiceTest {
                         createStay("2024-01-01T13:00:00Z", "Restaurant", 40.7589, -73.9851, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T09:30:00Z", 5.0, 30),
-                        createTrip("2024-01-01T10:30:00Z", 3.0, 20),
-                        createTrip("2024-01-01T11:30:00Z", 8.0, 40),
-                        createTrip("2024-01-01T12:30:00Z", 12.0, 60)
+                        createTrip("2024-01-01T09:30:00Z", 5, 30),
+                        createTrip("2024-01-01T10:30:00Z", 3, 20),
+                        createTrip("2024-01-01T11:30:00Z", 8, 40),
+                        createTrip("2024-01-01T12:30:00Z", 12, 60)
                 ));
     }
 
-    private TimelineTripDTO createTrip(String timestamp, double distanceKm, long durationMinutes) {
+    private TimelineTripDTO createTrip(String timestamp, long distanceMeters, long durationSeconds) {
         return TimelineTripDTO.builder()
                 .timestamp(Instant.parse(timestamp))
-                .distanceKm(distanceKm)
-                .tripDuration(durationMinutes)
+                .distanceMeters(distanceMeters)
+                .tripDuration(durationSeconds)
                 .build();
     }
 
-    private TimelineStayLocationDTO createStay(String timestamp, String location, double lat, double lon, long durationMinutes) {
+    private TimelineStayLocationDTO createStay(String timestamp, String location, double lat, double lon, long durationSeconds) {
         return TimelineStayLocationDTO.builder()
                 .timestamp(Instant.parse(timestamp))
                 .locationName(location)
                 .latitude(lat)
                 .longitude(lon)
-                .stayDuration(durationMinutes)
+                .stayDuration(durationSeconds)
                 .build();
     }
 }

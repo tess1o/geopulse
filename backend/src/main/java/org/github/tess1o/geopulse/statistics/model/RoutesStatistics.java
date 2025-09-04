@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @Builder
 public class RoutesStatistics {
     private int uniqueRoutesCount;
-    private double longestTripDuration;
-    private double avgTripDuration;
-    private double longestTripDistance;
+    private double longestTripDurationSeconds;
+    private double avgTripDurationSeconds;
+    private double longestTripDistanceMeters;
     private MostCommonRoute mostCommonRoute;
 }

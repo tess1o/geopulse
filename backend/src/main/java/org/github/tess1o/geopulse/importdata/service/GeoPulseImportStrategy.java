@@ -49,7 +49,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Inject
     SequenceResetService sequenceResetService;
 
-
     @Inject
     TimelineImportHelper timelineImportHelper;
 
@@ -345,7 +344,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         .setParameter(3, stayDto.getTimestamp())
                         .setParameter(4, stayDto.getLatitude())
                         .setParameter(5, stayDto.getLongitude())
-                        .setParameter(6, stayDto.getDuration() != null ? stayDto.getDuration() / 60 : null)
+                        .setParameter(6, stayDto.getDuration())
                         .setParameter(7, stayDto.getAddress())
                         .setParameter(8, "HISTORICAL")
                         .setParameter(9, stayDto.getFavoriteId())
@@ -374,8 +373,8 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         .setParameter(5, tripDto.getStartLongitude())
                         .setParameter(6, tripDto.getEndLatitude())
                         .setParameter(7, tripDto.getEndLongitude())
-                        .setParameter(8, tripDto.getDistance() != null ? tripDto.getDistance() / 1000.0 : null)
-                        .setParameter(9, tripDto.getDuration() != null ? tripDto.getDuration() / 60 : null)
+                        .setParameter(8, tripDto.getDistance())
+                        .setParameter(9, tripDto.getDuration())
                         .setParameter(10, tripDto.getTransportMode())
                         .setParameter(11, pathGeometry)
                         .executeUpdate();

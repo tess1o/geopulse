@@ -41,7 +41,7 @@
     <MetricItem
       icon="pi pi-clock"
       iconColor="secondary"
-      :value="stats.avgTripDuration"
+      :value="stats.avgTripDurationSeconds"
       label="Avg Trip Duration"
       :formatter="formatDuration"
       variant="minimal"
@@ -51,7 +51,7 @@
     <MetricItem
       icon="pi pi-stopwatch"
       iconColor="warning"
-      :value="stats.longestTripDuration"
+      :value="stats.longestTripDurationSeconds"
       label="Longest Trip (duration)"
       :formatter="formatDuration"
       variant="minimal"
@@ -61,7 +61,7 @@
     <MetricItem
       icon="pi pi-map-marker"
       iconColor="info"
-      :value="stats.longestTripDistance"
+      :value="stats.longestTripDistanceMeters"
       label="Longest Trip (distance)"
       :formatter="formatDistance"
       variant="minimal"
@@ -84,9 +84,9 @@ const props = defineProps({
         name: '',
         count: 0
       },
-      avgTripDuration: 0,
-      longestTripDuration: 0,
-      longestTripDistance: 0
+      avgTripDurationSeconds: 0,
+      longestTripDurationSeconds: 0,
+      longestTripDistanceMeters: 0
     })
   }
 })

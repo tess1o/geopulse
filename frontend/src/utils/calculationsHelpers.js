@@ -1,18 +1,19 @@
-export function formatDistance(km) {
-    if (km < 1) {
-        const d = Math.round(km * 1000 * 100) / 100
+export function formatDistance(meters) {
+    if (meters < 1000) {
+        const d = Math.round(meters * 100) / 100
         return `${d} m`;
     } else {
-        const d = Math.round(km * 100) / 100
+        const d = Math.round((meters / 1000) * 100) / 100
         return `${d} km`;
     }
 }
 
-export function formatDuration(minutes) {
-    if (minutes < 1) {
+export function formatDuration(seconds) {
+    if (seconds < 60) {
         return "less than a minute";
     }
-
+    
+    const minutes = seconds / 60;
     const days = Math.floor(minutes / (60 * 24));
     const hrs = Math.floor((minutes % (60 * 24)) / 60);
     const mins = Math.floor(minutes % 60);

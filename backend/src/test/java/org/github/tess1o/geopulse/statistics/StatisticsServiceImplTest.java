@@ -78,9 +78,9 @@ class StatisticsServiceImplTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(15.0, result.getTotalDistance(), 0.01); // 10 + 5
-        assertEquals(120, result.getTimeMoving()); // 60 + 60
-        assertTrue(result.getDailyAverage() > 0);
+        assertEquals(15000, result.getTotalDistanceMeters(), 0.01); // 10 + 5
+        assertEquals(3600+3600, result.getTimeMoving()); // 60 + 60
+        assertTrue(result.getDailyAverageDistanceMeters() > 0);
         assertEquals(2, result.getUniqueLocationsCount()); // Home, Work
         assertEquals(7.5, result.getAverageSpeed(), 0.01); // 15km / 2h
         assertNotNull(result.getMostActiveDay());
@@ -101,9 +101,9 @@ class StatisticsServiceImplTest {
 
         // Then
         assertNotNull(result);
-        assertEquals(0.0, result.getTotalDistance());
+        assertEquals(0.0, result.getTotalDistanceMeters());
         assertEquals(0, result.getTimeMoving());
-        assertEquals(0.0, result.getDailyAverage());
+        assertEquals(0.0, result.getDailyAverageDistanceMeters());
         assertEquals(0, result.getUniqueLocationsCount());
         assertEquals(0.0, result.getAverageSpeed()); // Should handle division by zero
         assertNull(result.getMostActiveDay()); // No active day when no data
@@ -120,7 +120,7 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-01T09:00:00Z", "Home", 40.7128, -74.0060, 30),
                         createStay("2024-01-01T11:00:00Z", "Work", 40.7580, -73.9855, 480)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 10.0, 60)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 10000, 3600)));
         when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
@@ -128,11 +128,11 @@ class StatisticsServiceImplTest {
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
 
         // Then
-        assertEquals(10.0, result.getTotalDistance());
-        assertEquals(60, result.getTimeMoving());
-        assertEquals(10.0, result.getDailyAverage()); // Only one day
+        assertEquals(10000, result.getTotalDistanceMeters());
+        assertEquals(3600, result.getTimeMoving());
+        assertEquals(10000, result.getDailyAverageDistanceMeters()); // Only one day
         assertEquals(2, result.getUniqueLocationsCount());
-        assertEquals(10.0, result.getAverageSpeed()); // 10km / 1h
+        assertEquals(3.6*10000/3600, result.getAverageSpeed(), 0.001); // 10km / 1h
     }
 
     @Test
@@ -220,10 +220,10 @@ class StatisticsServiceImplTest {
         // Then
         RoutesStatistics routes = result.getRoutes();
         assertNotNull(routes);
-        assertTrue(routes.getAvgTripDuration() >= 0);
+        assertTrue(routes.getAvgTripDurationSeconds() >= 0);
         assertTrue(routes.getUniqueRoutesCount() >= 0);
-        assertTrue(routes.getLongestTripDuration() >= 0);
-        assertTrue(routes.getLongestTripDistance() >= 0);
+        assertTrue(routes.getLongestTripDurationSeconds() >= 0);
+        assertTrue(routes.getLongestTripDistanceMeters() >= 0);
         assertNotNull(routes.getMostCommonRoute());
     }
 
@@ -273,7 +273,7 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-01T10:30:00Z", "Home", 40.7128, -74.0060, 60),
                         createStay("2024-01-01T11:30:00Z", "Home", 40.7128, -74.0060, 45)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 5.0, 30)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 5, 30)));
         when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
 
@@ -300,8 +300,8 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-02T02:00:00Z", "Location3", 40.7830, -73.9712, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T23:30:00Z", 10.0, 60), // Late night UTC
-                        createTrip("2024-01-02T01:30:00Z", 5.0, 30)   // Early morning UTC
+                        createTrip("2024-01-01T23:30:00Z", 10, 60), // Late night UTC
+                        createTrip("2024-01-02T01:30:00Z", 5, 30)   // Early morning UTC
                 ));
         when(streamingTimelineAggregator.getTimelineFromDb(any(), any(), any()))
                 .thenReturn(timeline);
@@ -328,8 +328,8 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-02T15:00:00Z", "Work", 40.7580, -73.9855, 420)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-02T14:00:00Z", 5.0, 60)
+                        createTrip("2024-01-01T10:00:00Z", 10000, 3600),
+                        createTrip("2024-01-02T14:00:00Z", 5000, 3600)
                 ));
     }
 
@@ -341,9 +341,9 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-15T09:00:00Z", "Home", 40.7128, -74.0060, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60), // Week 1
-                        createTrip("2024-01-08T10:00:00Z", 15.0, 90), // Week 2
-                        createTrip("2024-01-15T10:00:00Z", 8.0, 45)   // Week 3
+                        createTrip("2024-01-01T10:00:00Z", 10, 60), // Week 1
+                        createTrip("2024-01-08T10:00:00Z", 15, 90), // Week 2
+                        createTrip("2024-01-15T10:00:00Z", 8, 45)   // Week 3
                 ));
     }
 
@@ -357,7 +357,7 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-02T10:30:00Z", "Work", 40.7580, -73.9855, 420), // 2nd visit to Work
                         createStay("2024-01-02T18:00:00Z", "Store", 40.7614, -73.9776, 30)
                 ),
-                List.of(createTrip("2024-01-01T10:00:00Z", 5.0, 30)));
+                List.of(createTrip("2024-01-01T10:00:00Z", 5, 30)));
     }
 
     private MovementTimelineDTO createTimelineWithRoutes() {
@@ -369,9 +369,9 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-02T11:30:00Z", "Store", 40.7614, -73.9776, 60)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 10.0, 60),
-                        createTrip("2024-01-01T18:00:00Z", 10.0, 50),
-                        createTrip("2024-01-02T10:00:00Z", 15.0, 90)
+                        createTrip("2024-01-01T10:00:00Z", 10, 60),
+                        createTrip("2024-01-01T18:00:00Z", 10, 50),
+                        createTrip("2024-01-02T10:00:00Z", 15, 90)
                 ));
     }
 
@@ -385,28 +385,28 @@ class StatisticsServiceImplTest {
                         createStay("2024-01-03T09:00:00Z", "Home", 40.7128, -74.0060, 30)
                 ),
                 List.of(
-                        createTrip("2024-01-01T10:00:00Z", 5.0, 30),   // Low activity day
-                        createTrip("2024-01-02T10:00:00Z", 20.0, 120), // High activity day
-                        createTrip("2024-01-02T15:00:00Z", 15.0, 90),  // Same day, more activity
-                        createTrip("2024-01-03T10:00:00Z", 8.0, 45)    // Medium activity day
+                        createTrip("2024-01-01T10:00:00Z", 5, 30),   // Low activity day
+                        createTrip("2024-01-02T10:00:00Z", 20, 120), // High activity day
+                        createTrip("2024-01-02T15:00:00Z", 15, 90),  // Same day, more activity
+                        createTrip("2024-01-03T10:00:00Z", 8, 45)    // Medium activity day
                 ));
     }
 
-    private TimelineTripDTO createTrip(String timestamp, double distanceKm, long durationMinutes) {
+    private TimelineTripDTO createTrip(String timestamp, long distance, long seconds) {
         return TimelineTripDTO.builder()
                 .timestamp(Instant.parse(timestamp))
-                .distanceKm(distanceKm)
-                .tripDuration(durationMinutes)
+                .distanceMeters(distance)
+                .tripDuration(seconds)
                 .build();
     }
 
-    private TimelineStayLocationDTO createStay(String timestamp, String location, double lat, double lon, long durationMinutes) {
+    private TimelineStayLocationDTO createStay(String timestamp, String location, double lat, double lon, long durationSeconds) {
         return TimelineStayLocationDTO.builder()
                 .timestamp(Instant.parse(timestamp))
                 .locationName(location)
                 .latitude(lat)
                 .longitude(lon)
-                .stayDuration(durationMinutes)
+                .stayDuration(durationSeconds)
                 .build();
     }
 }

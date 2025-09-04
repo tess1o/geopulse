@@ -128,7 +128,7 @@ public class StreamingTimelineConverter {
                 .timestamp(stay.getStartTime())
                 .latitude(stay.getLatitude())
                 .longitude(stay.getLongitude())
-                .stayDuration((int) stay.getDuration().toMinutes())
+                .stayDuration(stay.getDuration().toSeconds())
                 .locationName(locationName == null ? "Unknown location" : locationName)
                 .favoriteId(stay.getFavoriteId())
                 .geocodingId(stay.getGeocodingId())
@@ -147,8 +147,8 @@ public class StreamingTimelineConverter {
                 .longitude(getStartLongitude(trip))
                 .endLatitude(getEndLatitude(trip))
                 .endLongitude(getEndLongitude(trip))
-                .distanceKm(trip.getDistanceMeters() / 1000.0)
-                .tripDuration(trip.getDuration().toMinutes())
+                .distanceMeters((long)trip.getDistanceMeters())
+                .tripDuration(trip.getDuration().toSeconds())
                 .movementType(convertTripType(trip.getTripType()))
                 .path(convertTripPath(trip.getPath()))
                 .build();
@@ -244,7 +244,7 @@ public class StreamingTimelineConverter {
         entity.setTimestamp(stay.getTimestamp());
         entity.setLatitude(stay.getLatitude());
         entity.setLongitude(stay.getLongitude());
-        entity.setStayDuration(stay.getStayDuration() * 60); // Convert minutes to seconds
+        entity.setStayDuration(stay.getStayDuration()); // Already in seconds
         entity.setLocationName(stay.getLocationName());
         entity.setLocationSource(getLocationSource(stay));
 
@@ -281,8 +281,8 @@ public class StreamingTimelineConverter {
         entity.setEndLatitude(trip.getEndLatitude());
         entity.setEndLongitude(trip.getEndLongitude());
 
-        entity.setDistanceKm(trip.getDistanceKm());
-        entity.setTripDuration(trip.getTripDuration() * 60); // Convert minutes to seconds
+        entity.setDistanceMeters(trip.getDistanceMeters());
+        entity.setTripDuration(trip.getTripDuration()); // Already in seconds
         entity.setMovementType(trip.getMovementType());
 
         // Convert path from List<GpsPoint> to LineString
@@ -307,7 +307,7 @@ public class StreamingTimelineConverter {
         entity.setUser(userRef);
         entity.setStartTime(gap.getStartTime());
         entity.setEndTime(gap.getEndTime());
-        entity.setDurationSeconds(gap.getDurationMinutes() * 60);
+        entity.setDurationSeconds(gap.getDurationSeconds());
 
         return entity;
     }
@@ -327,7 +327,7 @@ public class StreamingTimelineConverter {
                 .timestamp(entity.getTimestamp())
                 .latitude(entity.getLatitude())
                 .longitude(entity.getLongitude())
-                .stayDuration(entity.getStayDuration() / 60) // Convert seconds to minutes
+                .stayDuration(entity.getStayDuration()) // Already in seconds
                 .locationName(entity.getLocationName() != null ? entity.getLocationName() : "Unknown location")
                 .favoriteId(entity.getFavoriteLocation() != null ? entity.getFavoriteLocation().getId() : null)
                 .geocodingId(entity.getGeocodingLocation() != null ? entity.getGeocodingLocation().getId() : null)
@@ -349,8 +349,8 @@ public class StreamingTimelineConverter {
                 .longitude(entity.getStartLongitude())
                 .endLatitude(entity.getEndLatitude())
                 .endLongitude(entity.getEndLongitude())
-                .tripDuration(entity.getTripDuration() / 60) // Convert seconds to minutes
-                .distanceKm(entity.getDistanceKm())
+                .tripDuration(entity.getTripDuration()) // Already in seconds
+                .distanceMeters(entity.getDistanceMeters())
                 .movementType(entity.getMovementType());
 
         // Convert LineString path to GPS points if available

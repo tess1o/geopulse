@@ -167,8 +167,8 @@ class ExportImportIntegrationTest {
                 .startLongitude(-122.4194)
                 .endLatitude(37.7849)
                 .endLongitude(-122.4094)
-                .distanceKm(1.5)
-                .tripDuration(30) // 30 minutes
+                .distanceMeters(1500) // 1.5km in meters
+                .tripDuration(1800) // 30 minutes in seconds
                 .movementType("WALKING")
                 .path(tripPath) // Add the LineString path
                 .build();
@@ -401,7 +401,7 @@ class ExportImportIntegrationTest {
         assertEquals(originalTrip.getStartLongitude(), importedTrip.getStartLongitude(), 0.000001, "Start longitude should match");
         assertEquals(originalTrip.getEndLatitude(), importedTrip.getEndLatitude(), 0.000001, "End latitude should match");
         assertEquals(originalTrip.getEndLongitude(), importedTrip.getEndLongitude(), 0.000001, "End longitude should match");
-        assertEquals(originalTrip.getDistanceKm(), importedTrip.getDistanceKm(), 0.001, "Distance should match");
+        assertEquals(originalTrip.getDistanceMeters(), importedTrip.getDistanceMeters(), "Distance should match");
         assertEquals(originalTrip.getTripDuration(), importedTrip.getTripDuration(), "Trip duration should match");
         assertEquals(originalTrip.getMovementType(), importedTrip.getMovementType(), "Movement type should match");
 

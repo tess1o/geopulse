@@ -67,10 +67,10 @@ public class TimelineTripEntity {
     private double endLongitude;
 
     /**
-     * Distance traveled in kilometers
+     * Distance traveled in meters
      */
-    @Column(name = "distance_km", nullable = false)
-    private double distanceKm;
+    @Column(name = "distance_meters", nullable = false)
+    private long distanceMeters;
 
     /**
      * Movement type (e.g., WALKING, DRIVING, CYCLING)

@@ -72,10 +72,10 @@ public class ExportDataMapper {
         return TimelineDataDto.StayDto.builder()
                 .id(stay.getId())
                 .timestamp(stay.getTimestamp())
-                .endTime(stay.getTimestamp().plusSeconds(stay.getStayDuration() * 60))
+                .endTime(stay.getTimestamp().plusSeconds(stay.getStayDuration()))
                 .latitude(stay.getLatitude())
                 .longitude(stay.getLongitude())
-                .duration(stay.getStayDuration() * 60L) // Convert minutes to seconds
+                .duration(stay.getStayDuration()) // Duration in seconds
                 .address(stay.getLocationName())
                 .favoriteId(stay.getFavoriteLocation() != null ? stay.getFavoriteLocation().getId() : null)
                 .geocodingId(stay.getGeocodingLocation() != null ? stay.getGeocodingLocation().getId() : null)
@@ -86,13 +86,13 @@ public class ExportDataMapper {
         TimelineDataDto.TripDto.TripDtoBuilder builder = TimelineDataDto.TripDto.builder()
                 .id(trip.getId())
                 .timestamp(trip.getTimestamp())
-                .endTime(trip.getTimestamp().plusSeconds(trip.getTripDuration() * 60))
+                .endTime(trip.getTimestamp().plusSeconds(trip.getTripDuration()))
                 .startLatitude(trip.getStartLatitude())
                 .startLongitude(trip.getStartLongitude())
                 .endLatitude(trip.getEndLatitude())
                 .endLongitude(trip.getEndLongitude())
-                .distance(trip.getDistanceKm() * 1000) // Convert km to meters
-                .duration(trip.getTripDuration() * 60L) // Convert minutes to seconds
+                .distance(trip.getDistanceMeters()) // Already in meters
+                .duration(trip.getTripDuration()) // Duration in seconds
                 .transportMode(trip.getMovementType());
 
         // Convert LineString path to coordinate array

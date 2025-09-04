@@ -6,6 +6,7 @@ import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.DistanceTraveled;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,7 +21,7 @@ public class DistanceCalculationService {
 
     public DistanceTraveled calculateDistanceTraveled(UUID userId) {
         String sql = """
-                select movement_type, sum(distance_km)
+                select movement_type, sum(distance_meters)
                 from timeline_trips
                 where user_id = :userId
                 group by 1
@@ -40,15 +41,17 @@ public class DistanceCalculationService {
 
         for (Object[] result : results) {
             TripType movementType = TripType.valueOf((String) result[0]);
-            Double distanceKm = (Double) result[1];
-            if (distanceKm == null) {
-                distanceKm = 0.0d;
+            Long distanceMeters = ((BigDecimal) result[1]).longValue();
+            if (distanceMeters == null) {
+                distanceMeters = 0L;
             }
+            // Convert meters to kilometers for display
+            int distanceKm = (int) (distanceMeters / 1000);
             if (movementType == TripType.CAR || movementType == TripType.UNKNOWN) {
-                car = car + distanceKm.intValue();
+                car = car + distanceKm;
             }
             if (movementType == TripType.WALK) {
-                walk = walk + distanceKm.intValue();
+                walk = walk + distanceKm;
             }
         }
         return new DistanceTraveled(car, walk);

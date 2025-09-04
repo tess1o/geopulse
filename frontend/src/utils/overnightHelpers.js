@@ -13,8 +13,8 @@ export function isOvernightStay(stayItem) {
   }
 
   const startDate = new Date(stayItem.timestamp)
-  // Calculate end time from start time + duration (stayDuration is in minutes)
-  const endDate = new Date(startDate.getTime() + (stayItem.stayDuration * 60 * 1000))
+  // Calculate end time from start time + duration (stayDuration is in seconds)
+  const endDate = new Date(startDate.getTime() + (stayItem.stayDuration * 1000))
 
   // Get date parts (ignoring time) to check if they're on different days
   const startDay = startDate.toDateString()
@@ -34,8 +34,8 @@ export function isOvernightTrip(tripItem) {
   }
 
   const startDate = new Date(tripItem.timestamp)
-  // Calculate end time from start time + duration (tripDuration is in minutes)
-  const endDate = new Date(startDate.getTime() + (tripItem.tripDuration * 60 * 1000))
+  // Calculate end time from start time + duration (tripDuration is in seconds)
+  const endDate = new Date(startDate.getTime() + (tripItem.tripDuration * 1000))
 
   // Get date parts (ignoring time) to check if they're on different days
   const startDay = startDate.toDateString()
@@ -156,13 +156,13 @@ export function getEndOfDay(date) {
  * Calculate the duration of a stay that occurs on a specific day
  * @param {Object} stayItem - The stay item with timestamp and stayDuration
  * @param {string} currentDateString - The date to calculate for
- * @returns {number} - Duration in minutes for this specific day
+ * @returns {number} - Duration in seconds for this specific day
  */
 export function calculateDayDuration(stayItem, currentDateString) {
   const currentDate = new Date(currentDateString)
   const stayStart = new Date(stayItem.timestamp)
-  // Calculate end time from start time + duration (stayDuration is in minutes)
-  const stayEnd = new Date(stayStart.getTime() + (stayItem.stayDuration * 60 * 1000))
+  // Calculate end time from start time + duration (stayDuration is in seconds)
+  const stayEnd = new Date(stayStart.getTime() + (stayItem.stayDuration * 1000))
   
   // Get boundaries of the current day
   const dayStart = getStartOfDay(currentDate)
@@ -172,9 +172,9 @@ export function calculateDayDuration(stayItem, currentDateString) {
   const thisDayStart = stayStart < dayStart ? dayStart : stayStart
   const thisDayEnd = stayEnd > dayEnd ? dayEnd : stayEnd
   
-  // Calculate duration in minutes
+  // Calculate duration in seconds
   const durationMs = thisDayEnd - thisDayStart
-  return Math.max(0, Math.floor(durationMs / (1000 * 60)))
+  return Math.max(0, Math.floor(durationMs / 1000))
 }
 
 /**
@@ -233,8 +233,8 @@ export function shouldItemAppearOnDate(timelineItem, dateKey) {
     
     // For overnight trips, check if this date falls within the trip period
     const tripStart = new Date(timelineItem.timestamp)
-    // Calculate end time from start time + duration (tripDuration is in minutes)
-    const tripEnd = new Date(tripStart.getTime() + (timelineItem.tripDuration * 60 * 1000))
+    // Calculate end time from start time + duration (tripDuration is in seconds)
+    const tripEnd = new Date(tripStart.getTime() + (timelineItem.tripDuration * 1000))
     
     // Item appears on this date if the trip overlaps with this day
     return tripStart < dayEnd && tripEnd > dayStart
@@ -250,8 +250,8 @@ export function shouldItemAppearOnDate(timelineItem, dateKey) {
     
     // For overnight stays, check if this date falls within the stay period
     const stayStart = new Date(timelineItem.timestamp)
-    // Calculate end time from start time + duration (stayDuration is in minutes)
-    const stayEnd = new Date(stayStart.getTime() + (timelineItem.stayDuration * 60 * 1000))
+    // Calculate end time from start time + duration (stayDuration is in seconds)
+    const stayEnd = new Date(stayStart.getTime() + (timelineItem.stayDuration * 1000))
     
     // Item appears on this date if the stay overlaps with this day
     return stayStart < dayEnd && stayEnd > dayStart
