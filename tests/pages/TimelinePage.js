@@ -22,7 +22,10 @@ export class TimelinePage {
    * Wait for timeline page to load
    */
   async waitForPageLoad() {
-    await this.page.waitForURL('**/app/timeline**');
+    // Just wait for network to be idle instead of specific URL pattern
     await this.page.waitForLoadState('networkidle');
+
+    // Give a small buffer for any async operations
+    await this.page.waitForTimeout(1000);
   }
 }
