@@ -90,9 +90,6 @@ test.describe('Timeline Page', () => {
           // Format like "57 minutes"
           expect(durationText).toContain(`${expectedTotalMinutes} minute`);
         }
-        
-        console.log(`Stay ${i}: Expected location "${expectedStay.locationName}", got "${locationText.trim()}"`);
-        console.log(`Stay ${i}: Expected duration ${expectedHours}h ${expectedMinutes}m, got "${durationText}"`);
       }
     });
 
@@ -134,10 +131,6 @@ test.describe('Timeline Page', () => {
         const movementText = await tripCard.locator('.trip-detail:has-text("Movement")').textContent();
         const expectedMovementIcon = expectedTrip.movementType === 'CAR' ? '🚗' : '🚶';
         expect(movementText).toContain(expectedMovementIcon);
-        
-        console.log(`Trip ${i}: Expected distance ${expectedDistanceKm}km, got "${distanceText}"`);
-        console.log(`Trip ${i}: Expected duration ${expectedDurationMin}min, got "${durationText}"`);
-        console.log(`Trip ${i}: Expected movement ${expectedTrip.movementType}, got "${movementText}"`);
       }
     });
 
@@ -161,20 +154,26 @@ test.describe('Timeline Page', () => {
         // Data gap should indicate it's a gap in data
         expect(gapText).toMatch(/gap|missing|data/i);
         
-        // The duration might be displayed in various formats, so let's be more flexible
+        // Calculate expected duration values
         const expectedHours = Math.floor(expectedGap.durationSeconds / 3600);
         const expectedMinutes = Math.floor((expectedGap.durationSeconds % 3600) / 60);
         const expectedTotalMinutes = Math.floor(expectedGap.durationSeconds / 60);
         
-        // Check for any reasonable duration representation
-        const hasDuration = gapText.includes(`${expectedHours} hour`) ||
-                           gapText.includes(`${expectedMinutes} minute`) ||
-                           gapText.includes(`${expectedTotalMinutes} minute`) ||
-                           gapText.includes('Duration:');
-        
-        expect(hasDuration).toBe(true);
-        
-        console.log(`Gap ${i}: Expected ${expectedGap.durationSeconds}s (${expectedHours}h ${expectedMinutes}m), total minutes: ${expectedTotalMinutes}, card text: "${gapText.slice(0, 200)}..."`);
+        // Assert the correct duration format based on expected duration
+        if (expectedHours > 0 && expectedMinutes > 0) {
+          // Format like "1 hour 30 minutes" 
+          expect(gapText).toContain(`${expectedHours} hour`);
+          expect(gapText).toContain(`${expectedMinutes} minute`);
+        } else if (expectedHours > 0) {
+          // Format like "1 hour"
+          expect(gapText).toContain(`${expectedHours} hour`);
+        } else if (expectedTotalMinutes > 1) {
+          // Format like "30 minutes"
+          expect(gapText).toContain(`${expectedTotalMinutes} minute`);
+        } else {
+          // Format like "less than a minute" or "1 minute"
+          expect(gapText).toMatch(/less than a minute|1 minute/i);
+        }
       }
     });
   });
@@ -285,23 +284,18 @@ test.describe('Timeline Page', () => {
         // Check that it shows overnight gap indicators
         expect(cardText).toMatch(/continued|overnight|from/i);
         
-        // Debug: Log the expected vs actual duration
+        // Calculate expected duration values
         const totalHours = Math.floor(expectedGap.totalDuration / 3600);
         const totalMinutes = Math.floor(expectedGap.totalDuration / 60);
         
-        console.log(`Overnight Gap ${i} Debug:`);
-        console.log(`  Expected duration: ${expectedGap.totalDuration} seconds = ${totalHours} hours = ${totalMinutes} minutes`);
-        console.log(`  Start time: ${expectedGap.startTime}`);
-        console.log(`  End time: ${expectedGap.endTime}`);
-        console.log(`  Full card text: "${cardText}"`);
-        
-        // BUG: Overnight data gap cards display minutes instead of hours
-        // The component shows "12 minutes" when it should show "12 hours"
+        // Assert the correct duration format based on expected duration
         if (totalHours > 0) {
           expect(cardText).toContain(`${totalHours} hour`);
+        } else if (totalMinutes > 1) {
+          expect(cardText).toContain(`${totalMinutes} minute`);
+        } else {
+          expect(cardText).toMatch(/less than a minute|1 minute/i);
         }
-        
-        console.log(`Overnight Gap ${i}: Expected "${totalHours} hours" but got duration in minutes - this is a BUG`);
         
         // Check "On this day" duration is shown for the current date segment
         expect(cardText).toMatch(/on this day|this day/i);

@@ -64,3 +64,4 @@ npm-debug.log*
 *.temp
 *.log
 /keys/
+/frontend/components.d.ts

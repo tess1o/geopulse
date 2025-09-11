@@ -126,4 +126,23 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
             .setParameter("userId", userId)
             .getResultList();
     }
+
+    /**
+     * Get GPS point summary data in a single optimized query.
+     * Returns: [totalCount, todayCount, firstTimestamp, lastTimestamp]
+     */
+    public Object[] getGpsPointSummaryData(UUID userId, Instant todayStart, Instant todayEnd) {
+        return (Object[]) getEntityManager().createNativeQuery(
+            "SELECT " +
+            "  COUNT(*) as total_count, " +
+            "  COUNT(*) FILTER (WHERE timestamp >= :todayStart AND timestamp < :todayEnd) as today_count, " +
+            "  MIN(timestamp) as first_timestamp, " +
+            "  MAX(timestamp) as last_timestamp " +
+            "FROM gps_points " +
+            "WHERE user_id = :userId")
+            .setParameter("userId", userId)
+            .setParameter("todayStart", todayStart)
+            .setParameter("todayEnd", todayEnd)
+            .getSingleResult();
+    }
 }

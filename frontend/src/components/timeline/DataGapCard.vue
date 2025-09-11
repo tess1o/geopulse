@@ -23,7 +23,7 @@
         </p>
         <p class="gap-detail">
           ⏱️ Duration:
-          <span class="detail-value">{{ formatDuration(dataGapItem.durationMinutes) }}</span>
+          <span class="detail-value">{{ formatDuration(dataGapItem.durationSeconds) }}</span>
         </p>
       </div>
     </template>

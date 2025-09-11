@@ -154,8 +154,6 @@ public class GpsPointService {
      * @return Summary statistics
      */
     public GpsPointSummaryDTO getGpsPointSummary(UUID userId, ZoneId userTimezone) {
-        long totalPoints = gpsPointRepository.count("user.id", userId);
-
         // Calculate "today" in the user's timezone, not UTC
         ZonedDateTime nowInUserTz = ZonedDateTime.now(userTimezone);
         ZonedDateTime todayStartInUserTz = nowInUserTz.toLocalDate().atStartOfDay(userTimezone);
@@ -165,16 +163,28 @@ public class GpsPointService {
         Instant todayStart = todayStartInUserTz.toInstant();
         Instant todayEnd = todayEndInUserTz.toInstant();
 
-        long pointsToday = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp < ?3",
-                userId, todayStart, todayEnd);
 
-        GpsPointEntity firstPoint = gpsPointRepository.find("user.id = ?1 ORDER BY timestamp ASC", userId).firstResult();
-        GpsPointEntity lastPoint = gpsPointRepository.find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
+        log.info("Start = {}, End = {}", todayStart, todayEnd);
 
-        String firstPointDate = firstPoint != null ? DateTimeFormatter.ISO_DATE_TIME.format(firstPoint.getTimestamp().atOffset(ZoneOffset.UTC)) : null;
-        String lastPointDate = lastPoint != null ? DateTimeFormatter.ISO_DATE_TIME.format(lastPoint.getTimestamp().atOffset(ZoneOffset.UTC)) : null;
+        // Get all summary data in a single optimized query
+        Object[] summaryData = gpsPointRepository.getGpsPointSummaryData(userId, todayStart, todayEnd);
+
+
+        long totalPoints = ((Number) summaryData[0]).longValue();
+        long pointsToday = ((Number) summaryData[1]).longValue();
+        Instant firstTimestamp = getInstantSafe(summaryData[2]);
+        Instant lastTimestamp = getInstantSafe(summaryData[3]);
+
+        String firstPointDate = firstTimestamp != null ? DateTimeFormatter.ISO_DATE_TIME.format(firstTimestamp.atOffset(ZoneOffset.UTC)) : null;
+        String lastPointDate = lastTimestamp != null ? DateTimeFormatter.ISO_DATE_TIME.format(lastTimestamp.atOffset(ZoneOffset.UTC)) : null;
+
 
         return new GpsPointSummaryDTO(totalPoints, pointsToday, firstPointDate, lastPointDate);
+    }
+
+    private static Instant getInstantSafe(Object date) {
+        if (date == null || !(date instanceof java.sql.Timestamp)) return null;
+        return ((java.sql.Timestamp) date).toInstant();
     }
 
     /**
