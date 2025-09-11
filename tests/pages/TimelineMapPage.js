@@ -19,8 +19,15 @@ export class TimelineMapPage {
     // Wait for Leaflet map to be initialized (check for leaflet-container class)
     await this.page.waitForSelector('.leaflet-container', { timeout: 10000 });
     
+    // Wait for map loading to complete first
+    await this.waitForMapLoadingToComplete();
+    
     // Wait for map tiles to start loading (check for tile layer)
-    await this.page.waitForSelector('.leaflet-tile-pane', { timeout: 10000 });
+    // Use state: 'attached' instead of visible since tiles might be loading
+    await this.page.waitForSelector('.leaflet-tile-pane', { 
+      state: 'attached',
+      timeout: 10000 
+    });
     
     // Give additional time for tiles to load and map to settle
     await this.page.waitForTimeout(2000);
@@ -34,24 +41,45 @@ export class TimelineMapPage {
    */
   async getMapCenter() {
     return await this.page.evaluate(() => {
+      // Try multiple approaches to get the map instance
       const mapContainer = document.querySelector('.leaflet-container');
+      
+      // Approach 1: Direct _leaflet_map property
       if (mapContainer && mapContainer._leaflet_map) {
         const center = mapContainer._leaflet_map.getCenter();
         return { lat: center.lat, lng: center.lng };
       }
-      return null;
-    });
-  }
-
-  /**
-   * Get the map's current zoom level
-   */
-  async getMapZoom() {
-    return await this.page.evaluate(() => {
-      const mapContainer = document.querySelector('.leaflet-container');
-      if (mapContainer && mapContainer._leaflet_map) {
-        return mapContainer._leaflet_map.getZoom();
+      
+      // Approach 2: Try to find map through Vue component
+      if (window.Vue && mapContainer) {
+        const vueComponent = mapContainer.__vue__;
+        if (vueComponent && vueComponent.map) {
+          const center = vueComponent.map.getCenter();
+          return { lat: center.lat, lng: center.lng };
+        }
       }
+      
+      // Approach 3: Check for global map instances
+      if (window.L && window.L.map) {
+        const center = window.L.map.getCenter();
+        return { lat: center.lat, lng: center.lng };
+      }
+      
+      // Approach 4: Look for any Leaflet map instances in global scope
+      if (typeof window !== 'undefined') {
+        for (const key in window) {
+          if (window[key] && typeof window[key].getCenter === 'function') {
+            try {
+              const center = window[key].getCenter();
+              return { lat: center.lat, lng: center.lng };
+            } catch (e) {
+              // Continue if this wasn't a valid map instance
+            }
+          }
+        }
+      }
+      
+      console.warn('Could not find Leaflet map instance for center coordinates');
       return null;
     });
   }
@@ -69,10 +97,54 @@ export class TimelineMapPage {
    */
   async rightClickOnMap(x, y) {
     const mapContainer = this.page.locator('.leaflet-container');
-    await mapContainer.click({ 
-      position: { x, y }, 
-      button: 'right' 
-    });
+    
+    // First ensure the map container is visible and has size
+    await mapContainer.waitFor({ state: 'visible' });
+    
+    // Try multiple approaches to trigger context menu
+    try {
+      // Approach 1: Regular right-click with position
+      const boundingBox = await mapContainer.boundingBox();
+      if (boundingBox) {
+        const safeX = Math.min(x, boundingBox.width - 10);
+        const safeY = Math.min(y, boundingBox.height - 10);
+        
+        await mapContainer.click({ 
+          position: { x: safeX, y: safeY }, 
+          button: 'right',
+          force: true
+        });
+      } else {
+        // Fallback: click on the center
+        await mapContainer.click({ 
+          button: 'right',
+          force: true
+        });
+      }
+      
+      // Wait for context menu to appear
+      await this.page.waitForTimeout(1000);
+      
+    } catch (error) {
+      console.log('Right-click approach 1 failed, trying alternative...');
+      
+      // Approach 2: Use dispatchEvent for contextmenu
+      await this.page.evaluate((coords) => {
+        const container = document.querySelector('.leaflet-container');
+        if (container) {
+          const event = new MouseEvent('contextmenu', {
+            bubbles: true,
+            cancelable: true,
+            clientX: coords.x,
+            clientY: coords.y,
+            button: 2
+          });
+          container.dispatchEvent(event);
+        }
+      }, { x, y });
+      
+      await this.page.waitForTimeout(1000);
+    }
   }
 
   // ===========================================
@@ -91,11 +163,11 @@ export class TimelineMapPage {
    */
   async toggleLayerControl(layerType) {
     const layerControls = {
-      friends: '[data-testid="toggle-friends"]',
-      favorites: '[data-testid="toggle-favorites"]', 
-      timeline: '[data-testid="toggle-timeline"]',
-      path: '[data-testid="toggle-path"]',
-      immich: '[data-testid="toggle-immich"]'
+      friends: '.control-button[title*="Friends"]',
+      favorites: '.control-button[title*="Favorites"]', 
+      timeline: '.control-button[title*="Timeline"]',
+      path: '.control-button[title*="Path"]',
+      immich: '.control-button[title*="Photos"]'
     };
     
     const selector = layerControls[layerType];
@@ -111,11 +183,11 @@ export class TimelineMapPage {
    */
   async isLayerActive(layerType) {
     const layerControls = {
-      friends: '[data-testid="toggle-friends"]',
-      favorites: '[data-testid="toggle-favorites"]',
-      timeline: '[data-testid="toggle-timeline"]', 
-      path: '[data-testid="toggle-path"]',
-      immich: '[data-testid="toggle-immich"]'
+      friends: '.control-button[title*="Friends"]',
+      favorites: '.control-button[title*="Favorites"]',
+      timeline: '.control-button[title*="Timeline"]', 
+      path: '.control-button[title*="Path"]',
+      immich: '.control-button[title*="Photos"]'
     };
     
     const selector = layerControls[layerType];
@@ -124,15 +196,16 @@ export class TimelineMapPage {
     }
     
     const button = this.page.locator(selector);
-    const isPressed = await button.getAttribute('aria-pressed');
-    return isPressed === 'true';
+    // Check if button has 'active' class instead of aria-pressed
+    const className = await button.getAttribute('class');
+    return className && className.includes('active');
   }
 
   /**
    * Click the "Zoom to Data" button
    */
   async clickZoomToData() {
-    await this.page.click('[data-testid="zoom-to-data"]');
+    await this.page.click('.control-button[title="Zoom to Data"]');
     // Wait for zoom animation to complete
     await this.page.waitForTimeout(1000);
   }
@@ -145,8 +218,7 @@ export class TimelineMapPage {
    * Get all timeline markers on the map
    */
   getTimelineMarkers() {
-    // Timeline markers should have specific classes or data attributes
-    return this.page.locator('.leaflet-marker-icon[data-marker-type="timeline"]');
+    return this.page.locator('.timeline-marker');
   }
 
   /**
@@ -168,7 +240,8 @@ export class TimelineMapPage {
    * Get all favorite markers on the map
    */
   getFavoriteMarkers() {
-    return this.page.locator('.leaflet-marker-icon[data-marker-type="favorite"]');
+    // Favorite markers have a star icon inside them
+    return this.page.locator('.leaflet-marker-pane .fas.fa-star').locator('..');
   }
 
   /**
@@ -184,6 +257,22 @@ export class TimelineMapPage {
    */
   getPathLines() {
     return this.page.locator('.leaflet-interactive[data-layer-type="path"]');
+  }
+
+  /**
+   * Get favorite area polygons on the map
+   */
+  getFavoritePolygons() {
+    // Favorite areas are rendered as SVG polygons or paths in the leaflet overlay pane
+    return this.page.locator('.leaflet-overlay-pane svg polygon, .leaflet-overlay-pane svg path[fill]');
+  }
+
+  /**
+   * Count favorite area polygons
+   */
+  async countFavoritePolygons() {
+    const polygons = this.getFavoritePolygons();
+    return await polygons.count();
   }
 
   /**
@@ -217,14 +306,43 @@ export class TimelineMapPage {
    * Wait for map context menu to appear
    */
   async waitForMapContextMenu() {
-    await this.page.waitForSelector('.p-contextmenu', { timeout: 5000 });
+    try {
+      // Increase timeout and wait for the element to be visible, not just present
+      await this.page.waitForSelector('.p-contextmenu', { 
+        state: 'visible',
+        timeout: 10000 
+      });
+    } catch (error) {
+      // Debug: Check what elements are present
+      const allMenus = await this.page.locator('[class*="menu"]').count();
+      const allContexts = await this.page.locator('[class*="context"]').count();
+      console.log(`Debug: Found ${allMenus} menu elements, ${allContexts} context elements`);
+      
+      // Check for alternative context menu selectors
+      const altSelectors = [
+        '.context-menu',
+        '.contextmenu',
+        '.p-menu',
+        '[role="menu"]',
+        '.leaflet-contextmenu'
+      ];
+      
+      for (const selector of altSelectors) {
+        const count = await this.page.locator(selector).count();
+        if (count > 0) {
+          console.log(`Debug: Found alternative selector: ${selector} (${count} elements)`);
+        }
+      }
+      
+      throw error;
+    }
   }
 
   /**
    * Click a context menu item
    */
   async clickContextMenuItem(text) {
-    const menuItem = this.page.locator('.p-menuitem-text', { hasText: text });
+    const menuItem = this.page.locator('.p-contextmenu-item-label', { hasText: text });
     await menuItem.click();
   }
 
@@ -232,7 +350,8 @@ export class TimelineMapPage {
    * Check if context menu is visible
    */
   async isContextMenuVisible() {
-    return await this.page.locator('.p-contextmenu').isVisible();
+    const contextMenu = this.page.locator('.p-contextmenu');
+    return await contextMenu.isVisible();
   }
 
   // ===========================================
@@ -243,7 +362,9 @@ export class TimelineMapPage {
    * Wait for Add Favorite dialog to appear
    */
   async waitForAddFavoriteDialog() {
-    await this.page.waitForSelector('[data-testid="add-favorite-dialog"]', { timeout: 5000 });
+    // Wait for dialog to appear and ensure it has the correct title
+    await this.page.waitForSelector('.p-dialog', { timeout: 5000 });
+    await this.page.waitForSelector('.p-dialog-title:text("Add To Favorites")', { timeout: 2000 });
   }
 
   /**
@@ -252,10 +373,36 @@ export class TimelineMapPage {
   async submitAddFavoriteDialog(favoriteName) {
     await this.waitForAddFavoriteDialog();
     
-    const nameInput = this.page.locator('[data-testid="favorite-name-input"]');
+    // Use the actual input selector from the HTML
+    const nameInput = this.page.locator('.p-dialog .p-inputtext[placeholder="Location name"]');
     await nameInput.fill(favoriteName);
     
-    const submitButton = this.page.locator('[data-testid="add-favorite-submit"]');
+    // Click the Save button using getByText for reliability
+    const submitButton = this.page.locator('.p-dialog').getByRole('button', { name: 'Save' });
+    await submitButton.click();
+  }
+
+  /**
+   * Wait for Add Area Favorite dialog to appear
+   */
+  async waitForAddAreaFavoriteDialog() {
+    // Wait for dialog to appear and ensure it has the correct title
+    await this.page.waitForSelector('.p-dialog', { timeout: 5000 });
+    await this.page.waitForSelector('.p-dialog-title:text("Add Area To Favorites")', { timeout: 2000 });
+  }
+
+  /**
+   * Fill and submit the Add Area Favorite dialog
+   */
+  async submitAddAreaFavoriteDialog(areaName) {
+    await this.waitForAddAreaFavoriteDialog();
+    
+    // Use the actual input selector from the HTML
+    const nameInput = this.page.locator('.p-dialog .p-inputtext[placeholder="Location name"]');
+    await nameInput.fill(areaName);
+    
+    // Click the Save button
+    const submitButton = this.page.locator('.p-dialog').getByRole('button', { name: 'Save' });
     await submitButton.click();
   }
 
@@ -263,15 +410,18 @@ export class TimelineMapPage {
    * Close Add Favorite dialog
    */
   async closeAddFavoriteDialog() {
-    const closeButton = this.page.locator('[data-testid="add-favorite-close"]');
-    await closeButton.click();
+    // Click the Cancel button
+    const cancelButton = this.page.locator('.p-dialog').getByRole('button', { name: 'Cancel' });
+    await cancelButton.click();
   }
 
   /**
    * Wait for Edit Favorite dialog to appear
    */
   async waitForEditFavoriteDialog() {
-    await this.page.waitForSelector('[data-testid="edit-favorite-dialog"]', { timeout: 5000 });
+    // Wait for dialog to appear and ensure it has the correct title
+    await this.page.waitForSelector('.p-dialog', { timeout: 5000 });
+    await this.page.waitForSelector('.p-dialog-title:text("Edit Favorite")', { timeout: 2000 });
   }
 
   /**
@@ -280,11 +430,11 @@ export class TimelineMapPage {
   async submitEditFavoriteDialog(newName) {
     await this.waitForEditFavoriteDialog();
     
-    const nameInput = this.page.locator('[data-testid="edit-favorite-name-input"]');
+    const nameInput = this.page.locator('.p-dialog .p-inputtext[placeholder="Enter location name"]');
     await nameInput.clear();
     await nameInput.fill(newName);
     
-    const submitButton = this.page.locator('[data-testid="edit-favorite-submit"]');
+    const submitButton = this.page.locator('.p-dialog').getByRole('button', { name: 'Save' });
     await submitButton.click();
   }
 
@@ -292,14 +442,15 @@ export class TimelineMapPage {
    * Wait for Timeline Regeneration modal to appear
    */
   async waitForTimelineRegenerationModal() {
-    await this.page.waitForSelector('[data-testid="timeline-regeneration-modal"]', { timeout: 5000 });
+    await this.page.waitForSelector('.timeline-regeneration-modal', { timeout: 5000 });
+    await this.page.waitForSelector('.p-dialog-title:text("Timeline Regeneration")', { timeout: 2000 });
   }
 
   /**
    * Wait for Timeline Regeneration modal to disappear
    */
   async waitForTimelineRegenerationModalToClose() {
-    await this.page.waitForSelector('[data-testid="timeline-regeneration-modal"]', { 
+    await this.page.waitForSelector('.timeline-regeneration-modal', { 
       state: 'hidden', 
       timeout: 15000 // Regeneration can take time
     });
@@ -309,15 +460,24 @@ export class TimelineMapPage {
    * Wait for Photo Viewer dialog
    */
   async waitForPhotoViewer() {
-    await this.page.waitForSelector('[data-testid="photo-viewer-dialog"]', { timeout: 5000 });
+    await this.page.waitForSelector('.p-dialog', { timeout: 5000 });
+    // Photo viewer has title like "Photos (1/2)"
+    await this.page.waitForSelector('.p-dialog-title:text-matches("Photos \\\\(\\\\d+/\\\\d+\\\\)")', { timeout: 2000 });
   }
 
   /**
    * Close Photo Viewer dialog
    */
   async closePhotoViewer() {
-    const closeButton = this.page.locator('[data-testid="photo-viewer-close"]');
-    await closeButton.click();
+    // Try the Close button in photo actions first
+    const closeButton = this.page.locator('.photo-actions .p-button:has(.p-button-label:text("Close"))');
+    if (await closeButton.count() > 0) {
+      await closeButton.click();
+    } else {
+      // Fallback to X button in header
+      const headerCloseButton = this.page.locator('.p-dialog .p-dialog-close-button');
+      await headerCloseButton.click();
+    }
   }
 
   // ===========================================
@@ -370,7 +530,18 @@ export class TimelineMapPage {
    * Count the number of visible markers of a specific type
    */
   async countMarkers(markerType) {
-    const markers = this.page.locator(`.leaflet-marker-icon[data-marker-type="${markerType}"]`);
+    const markerSelectors = {
+      timeline: '.timeline-marker',
+      favorite: '.leaflet-marker-pane .fas.fa-star',
+      'current-location': '.leaflet-marker-icon[data-marker-type="current-location"]'
+    };
+    
+    const selector = markerSelectors[markerType];
+    if (!selector) {
+      throw new Error(`Unknown marker type: ${markerType}`);
+    }
+    
+    const markers = this.page.locator(selector);
     return await markers.count();
   }
 
@@ -510,8 +681,8 @@ export class TimelineMapPage {
     // Draw rectangle
     await this.drawRectangle(startX, startY, endX, endY);
     
-    // Fill and submit area dialog
-    await this.submitAddFavoriteDialog(areaName);
+    // Fill and submit area dialog (use area-specific method)
+    await this.submitAddAreaFavoriteDialog(areaName);
     
     // Wait for timeline regeneration to complete
     await this.waitForTimelineRegenerationModal();
@@ -551,8 +722,11 @@ export class TimelineMapPage {
     await this.clickContextMenuItem('Delete');
     
     // Confirm deletion in confirmation dialog
-    await this.page.waitForSelector('.p-confirm-dialog', { timeout: 5000 });
-    await this.page.click('.p-confirm-dialog-accept');
+    await this.page.waitForSelector('.p-confirmdialog', { timeout: 5000 });
+    await this.page.waitForSelector('.p-dialog-title:text("Delete Favorite")', { timeout: 2000 });
+    
+    // Click the "Yes" button to confirm deletion
+    await this.page.click('.p-confirmdialog-accept-button');
     
     // Wait for timeline regeneration to complete
     await this.waitForTimelineRegenerationModal();
@@ -560,5 +734,6 @@ export class TimelineMapPage {
     
     // Wait for success notification
     await this.waitForSuccessToast('deleted');
+    await this.page.waitForTimeout(1000)
   }
 }

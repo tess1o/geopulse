@@ -13,7 +13,8 @@ export async function insertVerifiableStaysTestData(dbManager, userId) {
 
   for (let i = 0; i < stayData.length; i++) {
     const stay = stayData[i];
-    const stayTime = new Date(now.getTime() - ((i + 1) * 2 * 60 * 60 * 1000)); // 2, 4, 6 hours ago
+    // Use specific hours: 9:00, 10:00, 11:00 of current day
+    const stayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9 + i, 0, 0);
 
     // Create reverse geocoding location
     const result = await dbManager.client.query(`
@@ -45,7 +46,7 @@ export async function insertVerifiableStaysTestData(dbManager, userId) {
     });
   }
 
-  return results.reverse(); // Reverse to match timeline display order (most recent first)
+  return results;
 }
 
 export async function insertVerifiableTripsTestData(dbManager, userId) {
@@ -60,8 +61,9 @@ export async function insertVerifiableTripsTestData(dbManager, userId) {
 
   for (let i = 0; i < tripData.length; i++) {
     const trip = tripData[i];
-    const tripTime = new Date(now.getTime() - ((i + 1) * 60 * 60 * 1000)); // 1, 2, 3 hours ago
-    
+    // Use specific hours: 12:00, 13:00, 14:00 of current day
+    const tripTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12 + i, 0, 0);
+
     await dbManager.client.query(`
       INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
@@ -85,7 +87,7 @@ export async function insertVerifiableTripsTestData(dbManager, userId) {
     });
   }
 
-  return results.reverse(); // Reverse to match timeline display order (most recent first)
+  return results;
 }
 
 export async function insertVerifiableDataGapsTestData(dbManager, userId) {
@@ -267,7 +269,33 @@ export async function insertRegularStaysTestData(dbManager, userId) {
     { name: 'Gym', lat: 40.7484, lon: -73.9857 }
   ];
 
-  for (const location of locations) {
+  for (let i = 0; i < locations.length; i++) {
+    const location = locations[i];
+    // Use specific hours: 15:00, 16:00, 17:00 of current day
+    const stayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15 + i, 0, 0);
+    
+    // FIRST: Insert GPS points (REQUIRED for map to show)
+    const gpsQuery = `
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `;
+    
+    const gpsValues = [
+      'test-device',
+      userId,
+      `POINT(${location.lon} ${location.lat})`,
+      stayTime,
+      10.0,
+      100,
+      0.0,
+      20.0,
+      'OVERLAND',
+      stayTime
+    ];
+
+    await dbManager.client.query(gpsQuery, gpsValues);
+    
+    // Create reverse geocoding location
     const result = await dbManager.client.query(`
       INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
       VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', 'New York', 'United States', NOW(), NOW())
@@ -276,7 +304,7 @@ export async function insertRegularStaysTestData(dbManager, userId) {
     
     const geocodingId = result.rows[0].id;
     
-    const stayTime = new Date(now.getTime() - (2 * 60 * 60 * 1000)); // 2 hours ago
+    // Insert timeline stay
     await dbManager.client.query(`
       INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())

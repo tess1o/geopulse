@@ -315,7 +315,6 @@ const apiService = {
             const headers = isPublicEndpoint ? {} : this.getSecureHeaders();
             const mergedHeaders = {...headers, ...options.headers};
 
-            console.log('headers: ', mergedHeaders)
 
             let axiosOptions = {
                 withCredentials: true,

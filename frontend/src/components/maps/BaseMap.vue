@@ -120,19 +120,6 @@ const initializeMap = async () => {
           emit('map-contextmenu', e)
         })
 
-        // // Fix touch event issues
-        // const container = map.value.getContainer()
-        // if (container) {
-        //   // Remove problematic touch events that cause warnings
-        //   container.addEventListener('touchstart', (e) => {
-        //     // Handle touchstart silently
-        //   }, { passive: true })
-        //
-        //   container.addEventListener('touchend', (e) => {
-        //     // Handle touchend silently
-        //   }, { passive: true })
-        // }
-
         // Ensure map container size is correct
         setTimeout(() => {
           if (map.value) {
@@ -166,19 +153,9 @@ const initializeMap = async () => {
     } else {
       attempts++
       if (attempts < maxAttempts) {
-       // console.log(`BaseMap retry ${attempts}/${maxAttempts} for ${props.mapId}`)
         setTimeout(tryInit, 150)
       } else {
         isInitializing.value = false
-        // console.error(`BaseMap container not ready after ${maxAttempts} attempts:`, props.mapId)
-        // console.error('Container details:', {
-        //   found: !!container,
-        //   offsetWidth: container?.offsetWidth,
-        //   offsetHeight: container?.offsetHeight,
-        //   clientWidth: container?.clientWidth,
-        //   clientHeight: container?.clientHeight,
-        //   display: container ? getComputedStyle(container).display : 'N/A'
-        // })
       }
     }
   }

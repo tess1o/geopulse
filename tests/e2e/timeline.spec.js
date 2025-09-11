@@ -73,7 +73,12 @@ test.describe('Timeline Page', () => {
         // Check duration is displayed (the UI shows total minutes for stays)
         const expectedTotalMinutes = Math.floor(expectedStay.duration / 60);
         
-        const durationText = await stayCard.locator('.duration-text, .duration-detail, .stay-duration').textContent();
+        // For regular stays, use .duration-text; for overnight stays, use the first .duration-detail
+        const hasDurationText = await stayCard.locator('.duration-text').count() > 0;
+        const durationLocator = hasDurationText 
+          ? stayCard.locator('.duration-text') 
+          : stayCard.locator('.duration-detail').first();
+        const durationText = await durationLocator.textContent();
         
         // The UI shows duration like "57 minutes" or "2 hours 30 minutes"
         const expectedHours = Math.floor(expectedStay.duration / 3600);
@@ -106,11 +111,11 @@ test.describe('Timeline Page', () => {
       for (let i = 0; i < testData.length; i++) {
         const tripCard = tripCards.nth(i);
         const expectedTrip = testData[i];
-        
+
         // Check distance is displayed correctly (convert meters to km)
         const expectedDistanceKm = Math.round(expectedTrip.distanceMeters / 1000 * 100) / 100; // Round to 2 decimal places
         const distanceText = await tripCard.locator('.trip-detail:has-text("Distance")').textContent();
-        
+
         // The UI might show whole numbers without decimals, so check for both formats
         const expectedDistanceStr1 = expectedDistanceKm.toFixed(2); // "12.00"
         const expectedDistanceStr2 = expectedDistanceKm.toString(); // "12" if it's a whole number

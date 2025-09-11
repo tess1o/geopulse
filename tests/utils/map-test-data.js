@@ -34,19 +34,29 @@ export async function insertMapTestStaysData(dbManager, userId) {
 
   for (let i = 0; i < testLocations.length; i++) {
     const location = testLocations[i];
-    const stayTime = new Date(now.getTime() - ((i + 1) * 3 * 60 * 60 * 1000)); // 3, 6, 9 hours ago
+    // Use specific hours: 8:00, 9:00, 10:00 of current day
+    const stayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8 + i, 0, 0);
 
     // FIRST: Insert GPS points (REQUIRED for map to show)
-    await dbManager.client.query(`
-      INSERT INTO gps_points (user_id, coordinates, timestamp, accuracy, created_at)
-      VALUES ($1, ST_Point($2, $3), $4, $5, NOW())
-    `, [
+    const gpsQuery = `
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `;
+    
+    const gpsValues = [
+      'test-device',
       userId,
-      location.lon, // longitude first for PostGIS
-      location.lat, // latitude second
+      `POINT(${location.lon} ${location.lat})`,
       stayTime,
-      10.0 // 10 meter accuracy
-    ]);
+      10.0,
+      100,
+      0.0,
+      20.0,
+      'OVERLAND',
+      stayTime
+    ];
+
+    await dbManager.client.query(gpsQuery, gpsValues);
 
     // Create reverse geocoding location
     const result = await dbManager.client.query(`
@@ -80,7 +90,7 @@ export async function insertMapTestStaysData(dbManager, userId) {
     });
   }
 
-  return results.reverse(); // Most recent first
+  return results;
 }
 
 /**
@@ -119,7 +129,8 @@ export async function insertMapTestTripsData(dbManager, userId) {
 
   for (let i = 0; i < testTrips.length; i++) {
     const trip = testTrips[i];
-    const tripTime = new Date(now.getTime() - ((i + 1) * 2 * 60 * 60 * 1000)); // 2, 4, 6 hours ago
+    // Use specific hours: 11:00, 12:00, 13:00 of current day
+    const tripTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11 + i, 0, 0);
     
     await dbManager.client.query(`
       INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
@@ -148,7 +159,7 @@ export async function insertMapTestTripsData(dbManager, userId) {
     });
   }
 
-  return results.reverse(); // Most recent first
+  return results;
 }
 
 /**
@@ -166,7 +177,8 @@ export async function insertMapTestDataGapsData(dbManager, userId) {
 
   for (let i = 0; i < gapData.length; i++) {
     const gap = gapData[i];
-    const gapStartTime = new Date(now.getTime() - ((i + 1) * 4 * 60 * 60 * 1000)); // 4, 8 hours ago
+    // Use specific hours: 14:00, 15:00 of current day
+    const gapStartTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14 + i, 0, 0);
     const gapEndTime = new Date(gapStartTime.getTime() + (gap.duration * 1000));
     
     await dbManager.client.query(`
@@ -186,7 +198,7 @@ export async function insertMapTestDataGapsData(dbManager, userId) {
     });
   }
 
-  return results.reverse(); // Most recent first
+  return results;
 }
 
 /**
@@ -196,28 +208,40 @@ export async function insertMapTestDataGapsData(dbManager, userId) {
 export async function insertMapTestPathData(dbManager, userId) {
   const now = new Date();
   
-  // Create a path that connects our test locations
+  // Create a path that connects our test locations with specific times
   const pathPoints = [
-    { lat: 40.7589, lon: -73.9851, timestamp: now.getTime() - (8 * 60 * 60 * 1000) }, // Times Square, 8h ago
-    { lat: 40.7650, lon: -73.9800, timestamp: now.getTime() - (7.5 * 60 * 60 * 1000) }, // Intermediate point
-    { lat: 40.7720, lon: -73.9750, timestamp: now.getTime() - (7 * 60 * 60 * 1000) }, // Intermediate point
-    { lat: 40.7829, lon: -73.9654, timestamp: now.getTime() - (6 * 60 * 60 * 1000) }, // Central Park, 6h ago
-    { lat: 40.7750, lon: -73.9800, timestamp: now.getTime() - (4 * 60 * 60 * 1000) }, // Intermediate point
-    { lat: 40.7400, lon: -73.9900, timestamp: now.getTime() - (3.5 * 60 * 60 * 1000) }, // Intermediate point
-    { lat: 40.7061, lon: -73.9969, timestamp: now.getTime() - (3 * 60 * 60 * 1000) }, // Brooklyn Bridge, 3h ago
-  ];
+    { lat: 40.7589, lon: -73.9851, hour: 7, minute: 0 }, // Times Square, 7:00
+    { lat: 40.7650, lon: -73.9800, hour: 7, minute: 30 }, // Intermediate point, 7:30
+    { lat: 40.7720, lon: -73.9750, hour: 8, minute: 0 }, // Intermediate point, 8:00
+    { lat: 40.7829, lon: -73.9654, hour: 9, minute: 0 }, // Central Park, 9:00
+    { lat: 40.7750, lon: -73.9800, hour: 10, minute: 0 }, // Intermediate point, 10:00
+    { lat: 40.7400, lon: -73.9900, hour: 10, minute: 30 }, // Intermediate point, 10:30
+    { lat: 40.7061, lon: -73.9969, hour: 11, minute: 0 }, // Brooklyn Bridge, 11:00
+  ].map(point => ({
+    ...point,
+    timestamp: new Date(now.getFullYear(), now.getMonth(), now.getDate(), point.hour, point.minute, 0).getTime()
+  }));
 
   for (const point of pathPoints) {
-    await dbManager.client.query(`
-      INSERT INTO gps_points (user_id, coordinates, timestamp, accuracy, created_at)
-      VALUES ($1, ST_Point($2, $3), $4, $5, NOW())
-    `, [
+    const gpsQuery = `
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `;
+    
+    const gpsValues = [
+      'test-device',
       userId,
-      point.lon, // longitude first for PostGIS
-      point.lat, // latitude second
+      `POINT(${point.lon} ${point.lat})`,
       new Date(point.timestamp),
-      10.0 // 10 meter accuracy
-    ]);
+      10.0,
+      100,
+      5.0,
+      20.0,
+      'TEST',
+      new Date(point.timestamp)
+    ];
+
+    await dbManager.client.query(gpsQuery, gpsValues);
   }
 
   return pathPoints;
@@ -258,19 +282,29 @@ export async function insertSingleLocationMapTestData(dbManager, userId) {
     duration: 3600 // 1 hour
   };
 
-  const stayTime = new Date(now.getTime() - (2 * 60 * 60 * 1000)); // 2 hours ago
+  // Use specific hour: 16:00 of current day
+  const stayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 16, 0, 0);
 
   // First insert GPS points (REQUIRED for map to show)
-  await dbManager.client.query(`
-    INSERT INTO gps_points (user_id, coordinates, timestamp, accuracy, created_at)
-    VALUES ($1, ST_Point($2, $3), $4, $5, NOW())
-  `, [
+  const gpsQuery = `
+    INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  `;
+  
+  const gpsValues = [
+    'test-device',
     userId,
-    location.lon, // longitude first for PostGIS
-    location.lat, // latitude second
+    `POINT(${location.lon} ${location.lat})`,
     stayTime,
-    10.0 // 10 meter accuracy
-  ]);
+    10.0,
+    100,
+    0.0,
+    20.0,
+    'TEST',
+    stayTime
+  ];
+
+  await dbManager.client.query(gpsQuery, gpsValues);
 
   // Create reverse geocoding location
   const result = await dbManager.client.query(`
