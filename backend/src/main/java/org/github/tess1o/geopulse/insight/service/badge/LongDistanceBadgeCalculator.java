@@ -16,10 +16,10 @@ public class LongDistanceBadgeCalculator implements BadgeCalculator {
 
     private static final int TARGET_DISTANCE = 500;
     private static final String LONG_DISTANCE_TRIP_QUERY = """
-                SELECT distance_km, timestamp
+                SELECT distance_meters, timestamp
                 FROM timeline_trips
                 where user_id = :userId
-                ORDER BY distance_km DESC
+                ORDER BY distance_meters DESC
                 LIMIT 1;
             """;
 
@@ -35,18 +35,19 @@ public class LongDistanceBadgeCalculator implements BadgeCalculator {
         distanceQuery.setParameter("userId", userId);
 
         List<Object[]> result = (List<Object[]>) distanceQuery.getResultList();
-        int maxDistance = result != null ? ((Double) result.get(0)[0]).intValue() : 0;
+        int maxDistance = result != null ? ((Long) result.get(0)[0]).intValue() : 0;
         LocalDateTime maxDate = result != null ? ((Timestamp) result.get(0)[1]).toLocalDateTime() : null;
+        int distanceKm = maxDistance / 1000;
         return Badge.builder()
                 .id("long_distance")
                 .icon("\uD83D\uDEE3\uFE0F")
                 .title("Long Distance")
                 .description("Travelled %dkm in a single trip".formatted(TARGET_DISTANCE))
                 .target(TARGET_DISTANCE)
-                .current(maxDistance)
-                .progress(maxDistance >= TARGET_DISTANCE ? 100 : (maxDistance * 100) / TARGET_DISTANCE)
-                .earned(maxDistance >= TARGET_DISTANCE)
-                .earnedDate(maxDistance >= TARGET_DISTANCE ? maxDate.format(DateTimeFormatter.ISO_DATE) : null)
+                .current(distanceKm)
+                .progress(distanceKm >= TARGET_DISTANCE ? 100 : (distanceKm * 100) / TARGET_DISTANCE)
+                .earned(distanceKm >= TARGET_DISTANCE)
+                .earnedDate(distanceKm >= TARGET_DISTANCE ? maxDate.format(DateTimeFormatter.ISO_DATE) : null)
                 .build();
     }
 }

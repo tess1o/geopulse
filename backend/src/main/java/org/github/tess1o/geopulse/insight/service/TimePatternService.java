@@ -71,56 +71,42 @@ public class TimePatternService {
     }
 
     private String getMonthlyComparison(UUID userId) {
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
-        Instant currentMonthStart = currentMonth.atStartOfDay().toInstant(ZoneOffset.UTC);
-
-        String currentMonthSql = """
-                SELECT COUNT(*)
-                FROM (
-                    SELECT timestamp FROM timeline_stays WHERE user_id = :userId AND timestamp >= :currentMonth
-                    UNION ALL
-                    SELECT timestamp FROM timeline_trips WHERE user_id = :userId AND timestamp >= :currentMonth
-                ) current_activities
-                """;
-
-        Query currentQuery = entityManager.createNativeQuery(currentMonthSql);
-        currentQuery.setParameter("userId", userId);
-        currentQuery.setParameter("currentMonth", currentMonthStart);
-
-        int currentMonthActivity = ((Number) currentQuery.getSingleResult()).intValue();
-
-        String avgSql = """
-                SELECT AVG(monthly_count)
-                FROM (
-                    SELECT 
-                        EXTRACT(YEAR FROM timestamp) as year,
-                        EXTRACT(MONTH FROM timestamp) as month,
-                        COUNT(*) as monthly_count
-                    FROM (
-                        SELECT timestamp FROM timeline_stays WHERE user_id = :userId
-                        UNION ALL
-                        SELECT timestamp FROM timeline_trips WHERE user_id = :userId
-                    ) all_activities
-                    GROUP BY year, month
-                ) monthly_stats
-                """;
-
-        Query avgQuery = entityManager.createNativeQuery(avgSql);
-        avgQuery.setParameter("userId", userId);
-
-        Number avgResult = (Number) avgQuery.getSingleResult();
-        double avgMonthlyActivity = avgResult != null ? avgResult.doubleValue() : 0;
-
-        if (avgMonthlyActivity == 0) {
+        LocalDate now = LocalDate.now();
+        int dayOfMonth = now.getDayOfMonth();
+        
+        // For early days of the month, show encouraging message instead of misleading comparison
+        if (dayOfMonth < 15) {
+            return "Early days - keep exploring!";
+        }
+        
+        // Get current month activity count
+        int currentMonthActivity = getCurrentMonthActivityCount(userId);
+        if (currentMonthActivity == 0) {
+            return "No activity recorded this month yet";
+        }
+        
+        // Get best month details for rate comparison
+        BestMonthDetails bestMonth = getBestMonthDetails(userId);
+        if (bestMonth == null || bestMonth.activityCount == 0) {
             return "First month of tracking";
         }
-
-        double percentageChange = ((currentMonthActivity - avgMonthlyActivity) / avgMonthlyActivity) * 100;
-
-        if (percentageChange > 0) {
-            return String.format("%.0f%% more active than average", percentageChange);
+        
+        // Calculate daily rates for fair comparison
+        double currentRate = (double) currentMonthActivity / dayOfMonth;
+        double bestRate = (double) bestMonth.activityCount / bestMonth.daysInMonth;
+        
+        if (bestRate == 0) {
+            return "Building your activity history";
+        }
+        
+        double rateComparison = ((currentRate - bestRate) / bestRate) * 100;
+        
+        if (Math.abs(rateComparison) < 5) {
+            return "Similar pace to your best month";
+        } else if (rateComparison > 0) {
+            return String.format("%.0f%% faster pace than your best month!", rateComparison);
         } else {
-            return String.format("%.0f%% less active than average", Math.abs(percentageChange));
+            return String.format("%.0f%% slower pace than your best month", Math.abs(rateComparison));
         }
     }
 
@@ -214,5 +200,75 @@ public class TimePatternService {
             }
         }
         return "Active explorer";
+    }
+
+    private int getCurrentMonthActivityCount(UUID userId) {
+        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
+        Instant currentMonthStart = currentMonth.atStartOfDay().toInstant(ZoneOffset.UTC);
+
+        String currentMonthSql = """
+                SELECT COUNT(*)
+                FROM (
+                    SELECT timestamp FROM timeline_stays WHERE user_id = :userId AND timestamp >= :currentMonth
+                    UNION ALL
+                    SELECT timestamp FROM timeline_trips WHERE user_id = :userId AND timestamp >= :currentMonth
+                ) current_activities
+                """;
+
+        Query currentQuery = entityManager.createNativeQuery(currentMonthSql);
+        currentQuery.setParameter("userId", userId);
+        currentQuery.setParameter("currentMonth", currentMonthStart);
+
+        return ((Number) currentQuery.getSingleResult()).intValue();
+    }
+
+    private BestMonthDetails getBestMonthDetails(UUID userId) {
+        String sql = """
+                SELECT 
+                    EXTRACT(YEAR FROM timestamp) as year,
+                    EXTRACT(MONTH FROM timestamp) as month,
+                    COUNT(*) as activity_count
+                FROM (
+                    SELECT timestamp FROM timeline_stays WHERE user_id = :userId
+                    UNION ALL
+                    SELECT timestamp FROM timeline_trips WHERE user_id = :userId
+                ) activities
+                GROUP BY year, month
+                ORDER BY activity_count DESC
+                LIMIT 1
+                """;
+
+        Query query = entityManager.createNativeQuery(sql);
+        query.setParameter("userId", userId);
+
+        List<Object[]> results = query.getResultList();
+        if (results.isEmpty()) {
+            return null;
+        }
+
+        Object[] result = results.get(0);
+        int year = ((Number) result[0]).intValue();
+        int month = ((Number) result[1]).intValue();
+        int activityCount = ((Number) result[2]).intValue();
+        
+        // Calculate days in that specific month
+        YearMonth yearMonth = YearMonth.of(year, month);
+        int daysInMonth = yearMonth.lengthOfMonth();
+        
+        return new BestMonthDetails(year, month, activityCount, daysInMonth);
+    }
+
+    private static class BestMonthDetails {
+        final int year;
+        final int month;
+        final int activityCount;
+        final int daysInMonth;
+        
+        BestMonthDetails(int year, int month, int activityCount, int daysInMonth) {
+            this.year = year;
+            this.month = month;
+            this.activityCount = activityCount;
+            this.daysInMonth = daysInMonth;
+        }
     }
 }

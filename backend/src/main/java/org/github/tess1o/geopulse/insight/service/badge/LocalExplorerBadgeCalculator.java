@@ -44,7 +44,7 @@ public class LocalExplorerBadgeCalculator implements BadgeCalculator {
                     CASE 
                         WHEN ts.favorite_id IS NOT NULL THEN CONCAT('favorite_', ts.favorite_id)
                         WHEN ts.geocoding_id IS NOT NULL THEN CONCAT('geocoding_', ts.geocoding_id)
-                        ELSE CONCAT('location_', ROUND(CAST(ts.latitude AS numeric), 3), '_', ROUND(CAST(ts.longitude AS numeric), 3))
+                        ELSE CONCAT('location_', ST_AsText(ts.location))
                     END
                 )
                 FROM timeline_stays ts

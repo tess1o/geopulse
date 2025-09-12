@@ -112,14 +112,25 @@
       <div class="insights-section">
         <h2 class="insights-section-title">
           <i class="pi pi-calendar"></i>
-          Activity Patterns
+          Time Patterns
         </h2>
         <div class="insights-grid-simple">
           <div class="insight-stat-pattern enhanced">
             <div class="pattern-icon">📅</div>
             <div class="pattern-content">
               <div class="pattern-value">{{ timePatterns.mostActiveMonth || 'N/A' }}</div>
-              <div class="pattern-label">Most Active Month</div>
+              <div class="pattern-label">Most Active Month Ever</div>
+              <div class="pattern-insight">
+                ↳ Your historical peak activity period
+              </div>
+            </div>
+          </div>
+          
+          <div class="insight-stat-pattern enhanced">
+            <div class="pattern-icon">📊</div>
+            <div class="pattern-content">
+              <div class="pattern-value">{{ currentMonthName }}</div>
+              <div class="pattern-label">Current Month Performance</div>
               <div class="pattern-insight" v-if="timePatterns.monthlyComparison">
                 ↳ {{ timePatterns.monthlyComparison }}
               </div>
@@ -236,6 +247,12 @@ const geographic = computed(() => journeyInsightsStore.geographic)
 const timePatterns = computed(() => journeyInsightsStore.timePatterns)
 const achievements = computed(() => journeyInsightsStore.achievements)
 const distanceTraveled = computed(() => journeyInsightsStore.distance)
+
+// Get current month name for display
+const currentMonthName = computed(() => {
+  const now = new Date()
+  return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+})
 
 // Convert UTC time to user's local timezone
 const localMostActiveTime = computed(() => {

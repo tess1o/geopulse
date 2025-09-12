@@ -14,7 +14,7 @@ public class RoadWarriorBadgeCalculator implements BadgeCalculator {
     private static final int TOTAL_DISTANCE_THRESHOLD = 1000;
 
     public static final String TOTAL_DISTANCE_QUERY = """
-            SELECT sum(distance_km)
+            SELECT sum(distance_meters)
             FROM timeline_trips
             WHERE user_id = :userId
             """;
