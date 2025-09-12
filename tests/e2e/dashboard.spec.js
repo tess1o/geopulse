@@ -559,8 +559,8 @@ async function insertDashboardTestData(dbManager, userId) {
     const duration = 3600 + (index * 1800); // 1-4 hours
     
     return dbManager.client.query(`
-      INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
     `, [
       userId,
       date,
@@ -582,8 +582,8 @@ async function insertDashboardTestData(dbManager, userId) {
     const adjustedDistance = transportType === 'WALK' ? distance / 10 : distance; // Shorter walking distances
     
     return dbManager.client.query(`
-      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
     `, [
       userId,
       new Date(date.getTime() + 3600000), // 1 hour after stay
@@ -624,8 +624,8 @@ async function insertDashboardTestDataWithPlaces(dbManager, userId) {
     for (let i = 0; i < 3; i++) {
       const date = new Date(Date.now() - (i * 24 * 60 * 60 * 1000));
       await dbManager.client.query(`
-        INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+        VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
       `, [
         userId,
         date,
@@ -653,8 +653,8 @@ async function insertComprehensiveDashboardData(dbManager, userId) {
     const adjustedDistance = transportType === 'WALK' ? Math.min(distance / 5, 3000) : distance;
     
     await dbManager.client.query(`
-      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
     `, [
       userId,
       date,
@@ -678,8 +678,8 @@ async function insertTimeRangeTestData(dbManager, userId) {
     const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
     
     await dbManager.client.query(`
-      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
     `, [
       userId,
       date,
@@ -698,8 +698,8 @@ async function insertTimeRangeTestData(dbManager, userId) {
     const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
     
     await dbManager.client.query(`
-      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
     `, [
       userId,
       date,
@@ -730,8 +730,8 @@ async function insertSpeedTestData(dbManager, userId) {
     const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
     
     await dbManager.client.query(`
-      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
     `, [
       userId,
       date,
@@ -764,8 +764,8 @@ async function insertMinimalTestData(dbManager, userId) {
     const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
     
     await dbManager.client.query(`
-      INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
     `, [
       userId,
       date,

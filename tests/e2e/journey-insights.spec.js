@@ -476,32 +476,32 @@ async function insertTestTimelineData(dbManager, userId) {
 
   // Insert sample stays data with geocoding references
   await dbManager.client.query(`
-    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
+    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
     VALUES 
-      ($1, '2024-01-01 08:00:00', 36000, 40.7128, -74.0060, 'Home', $2, NOW(), NOW()),
-      ($1, '2024-01-02 09:00:00', 28800, 40.7589, -73.9851, 'Office', $3, NOW(), NOW()),
-      ($1, '2024-01-03 19:00:00', 7200, 48.8566, 2.3522, 'Restaurant', $4, NOW(), NOW())
+      ($1, '2024-01-01 08:00:00', 36000, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326), 'Home', $2, NOW(), NOW()),
+      ($1, '2024-01-02 09:00:00', 28800, ST_SetSRID(ST_MakePoint(-73.9851, 40.7589), 4326), 'Office', $3, NOW(), NOW()),
+      ($1, '2024-01-03 19:00:00', 7200, ST_SetSRID(ST_MakePoint(2.3522, 48.8566), 4326), 'Restaurant', $4, NOW(), NOW())
   `, [userId, geocodingId1, geocodingId2, geocodingId3]);
 
   // Insert sample trips data - let DB auto-generate IDs
   await dbManager.client.query(`
-    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
+    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
     VALUES 
-      ($1, '2024-01-01 18:00:00', 1800, 40.7128, -74.0060, 40.7589, -73.9851, 5000, 'CAR', NOW(), NOW()),
-      ($1, '2024-01-02 08:30:00', 1800, 40.7589, -73.9851, 40.7489, -73.9851, 2000, 'WALK', NOW(), NOW()),
-      ($1, '2024-01-03 17:30:00', 3600, 48.8566, 2.3522, 48.8466, 2.3422, 15000, 'CAR', NOW(), NOW())
+      ($1, '2024-01-01 18:00:00', 1800, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326), ST_SetSRID(ST_MakePoint(-73.9851, 40.7589), 4326), 5000, 'CAR', NOW(), NOW()),
+      ($1, '2024-01-02 08:30:00', 1800, ST_SetSRID(ST_MakePoint(-73.9851, 40.7589), 4326), ST_SetSRID(ST_MakePoint(-73.9851, 40.7489), 4326), 2000, 'WALK', NOW(), NOW()),
+      ($1, '2024-01-03 17:30:00', 3600, ST_SetSRID(ST_MakePoint(2.3522, 48.8566), 4326), ST_SetSRID(ST_MakePoint(2.3422, 48.8466), 4326), 15000, 'CAR', NOW(), NOW())
   `, [userId]);
 }
 
 async function insertTestTimelineDataWithDistances(dbManager, userId) {
   // Insert trips with specific distances for testing
   await dbManager.client.query(`
-    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
+    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
     VALUES 
-      ($1, '2024-01-01 08:00:00', 3600, 40.7128, -74.0060, 40.8128, -74.1060, 50000, 'CAR', NOW(), NOW()),
-      ($1, '2024-01-01 12:00:00', 1800, 40.8128, -74.1060, 40.8140, -74.1080, 3000, 'WALK', NOW(), NOW()),
-      ($1, '2024-01-02 14:00:00', 3600, 40.8140, -74.1080, 40.9140, -74.2080, 25000, 'CAR', NOW(), NOW()),
-      ($1, '2024-01-02 16:00:00', 900, 40.9140, -74.2080, 40.9150, -74.2090, 1000, 'WALK', NOW(), NOW())
+      ($1, '2024-01-01 08:00:00', 3600, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326), ST_SetSRID(ST_MakePoint(-74.1060, 40.8128), 4326), 50000, 'CAR', NOW(), NOW()),
+      ($1, '2024-01-01 12:00:00', 1800, ST_SetSRID(ST_MakePoint(-74.1060, 40.8128), 4326), ST_SetSRID(ST_MakePoint(-74.1080, 40.8140), 4326), 3000, 'WALK', NOW(), NOW()),
+      ($1, '2024-01-02 14:00:00', 3600, ST_SetSRID(ST_MakePoint(-74.1080, 40.8140), 4326), ST_SetSRID(ST_MakePoint(-74.2080, 40.9140), 4326), 25000, 'CAR', NOW(), NOW()),
+      ($1, '2024-01-02 16:00:00', 900, ST_SetSRID(ST_MakePoint(-74.2080, 40.9140), 4326), ST_SetSRID(ST_MakePoint(-74.2090, 40.9150), 4326), 1000, 'WALK', NOW(), NOW())
   `, [userId]);
   
   // Total: 79km, Car: 75km, Walk: 4km
@@ -529,24 +529,24 @@ async function insertComprehensiveTestData(dbManager, userId) {
 
   // Insert diverse geographical stays data
   await dbManager.client.query(`
-    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
+    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
     VALUES 
-      ($1, '2024-01-01 08:00:00', 36000, 40.7128, -74.0060, 'Home', $2, NOW(), NOW()),
-      ($1, '2024-01-15 20:00:00', 43200, 51.5074, -0.1278, 'Hotel', $3, NOW(), NOW()),
-      ($1, '2024-02-01 09:00:00', 28800, 48.8566, 2.3522, 'Office', $4, NOW(), NOW()),
-      ($1, '2024-02-15 14:00:00', 7200, 52.5200, 13.4050, 'Cafe', $5, NOW(), NOW()),
-      ($1, '2024-03-01 12:00:00', 10800, 35.6762, 139.6503, 'Park', $6, NOW(), NOW())
+      ($1, '2024-01-01 08:00:00', 36000, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326), 'Home', $2, NOW(), NOW()),
+      ($1, '2024-01-15 20:00:00', 43200, ST_SetSRID(ST_MakePoint(-0.1278, 51.5074), 4326), 'Hotel', $3, NOW(), NOW()),
+      ($1, '2024-02-01 09:00:00', 28800, ST_SetSRID(ST_MakePoint(2.3522, 48.8566), 4326), 'Office', $4, NOW(), NOW()),
+      ($1, '2024-02-15 14:00:00', 7200, ST_SetSRID(ST_MakePoint(13.4050, 52.5200), 4326), 'Cafe', $5, NOW(), NOW()),
+      ($1, '2024-03-01 12:00:00', 10800, ST_SetSRID(ST_MakePoint(139.6503, 35.6762), 4326), 'Park', $6, NOW(), NOW())
   `, [userId, ...geocodingIds]);
 
   // Insert varied trip data across different times and transportation types
   await dbManager.client.query(`
-    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
+    INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
     VALUES 
-      ($1, '2024-01-01 18:00:00', 3600, 40.7128, -74.0060, 40.8128, -74.1060, 45000, 'CAR', NOW(), NOW()),
-      ($1, '2024-01-15 19:00:00', 1800, 51.5074, -0.1278, 51.5100, -0.1300, 3000, 'WALK', NOW(), NOW()),
-      ($1, '2024-02-01 08:30:00', 1800, 48.8566, 2.3522, 48.8600, 2.3600, 12000, 'CAR', NOW(), NOW()),
-      ($1, '2024-02-15 16:00:00', 2700, 52.5200, 13.4050, 52.5250, 13.4100, 8000, 'WALK', NOW(), NOW()),
-      ($1, '2024-03-01 11:00:00', 3600, 35.6762, 139.6503, 35.6800, 139.6600, 22000, 'CAR', NOW(), NOW()),
-      ($1, '2024-03-01 15:00:00', 1200, 35.6800, 139.6600, 35.6820, 139.6620, 2000, 'WALK', NOW(), NOW())
+      ($1, '2024-01-01 18:00:00', 3600, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326), ST_SetSRID(ST_MakePoint(-74.1060, 40.8128), 4326), 45000, 'CAR', NOW(), NOW()),
+      ($1, '2024-01-15 19:00:00', 1800, ST_SetSRID(ST_MakePoint(-0.1278, 51.5074), 4326), ST_SetSRID(ST_MakePoint(-0.1300, 51.5100), 4326), 3000, 'WALK', NOW(), NOW()),
+      ($1, '2024-02-01 08:30:00', 1800, ST_SetSRID(ST_MakePoint(2.3522, 48.8566), 4326), ST_SetSRID(ST_MakePoint(2.3600, 48.8600), 4326), 12000, 'CAR', NOW(), NOW()),
+      ($1, '2024-02-15 16:00:00', 2700, ST_SetSRID(ST_MakePoint(13.4050, 52.5200), 4326), ST_SetSRID(ST_MakePoint(13.4100, 52.5250), 4326), 8000, 'WALK', NOW(), NOW()),
+      ($1, '2024-03-01 11:00:00', 3600, ST_SetSRID(ST_MakePoint(139.6503, 35.6762), 4326), ST_SetSRID(ST_MakePoint(139.6600, 35.6800), 4326), 22000, 'CAR', NOW(), NOW()),
+      ($1, '2024-03-01 15:00:00', 1200, ST_SetSRID(ST_MakePoint(139.6600, 35.6800), 4326), ST_SetSRID(ST_MakePoint(139.6620, 35.6820), 4326), 2000, 'WALK', NOW(), NOW())
   `, [userId]);
 }

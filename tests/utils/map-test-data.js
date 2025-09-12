@@ -69,14 +69,14 @@ export async function insertMapTestStaysData(dbManager, userId) {
     
     // Insert stay
     await dbManager.client.query(`
-      INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
     `, [
       userId,
       stayTime,
       location.duration,
-      location.lat,
       location.lon,
+      location.lat,
       location.name,
       geocodingId
     ]);
@@ -133,16 +133,16 @@ export async function insertMapTestTripsData(dbManager, userId) {
     const tripTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 11 + i, 0, 0);
     
     await dbManager.client.query(`
-      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_latitude, start_longitude, end_latitude, end_longitude, distance_meters, movement_type, created_at, last_updated)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+      INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
+      VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
     `, [
       userId,
       tripTime,
       trip.duration,
-      trip.startLat,
       trip.startLon,
-      trip.endLat,
+      trip.startLat,
       trip.endLon,
+      trip.endLat,
       trip.distance,
       trip.type
     ]);
@@ -317,14 +317,14 @@ export async function insertSingleLocationMapTestData(dbManager, userId) {
   
   // Insert single stay
   await dbManager.client.query(`
-    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+    VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
   `, [
     userId,
     stayTime,
     location.duration,
-    location.lat,
     location.lon,
+    location.lat,
     location.name,
     geocodingId
   ]);
@@ -364,14 +364,14 @@ export async function insertOvernightMapTestData(dbManager, userId) {
   
   // Insert overnight stay
   await dbManager.client.query(`
-    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, latitude, longitude, location_name, geocoding_id, created_at, last_updated)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+    INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+    VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
   `, [
     userId,
     yesterday,
     location.duration,
-    location.lat,
     location.lon,
+    location.lat,
     location.name,
     geocodingId
   ]);
