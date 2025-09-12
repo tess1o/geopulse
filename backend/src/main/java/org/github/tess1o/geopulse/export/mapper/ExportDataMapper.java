@@ -73,8 +73,8 @@ public class ExportDataMapper {
                 .id(stay.getId())
                 .timestamp(stay.getTimestamp())
                 .endTime(stay.getTimestamp().plusSeconds(stay.getStayDuration()))
-                .latitude(stay.getLatitude())
-                .longitude(stay.getLongitude())
+                .longitude(stay.getLocation().getX())
+                .latitude(stay.getLocation().getY())
                 .duration(stay.getStayDuration()) // Duration in seconds
                 .address(stay.getLocationName())
                 .favoriteId(stay.getFavoriteLocation() != null ? stay.getFavoriteLocation().getId() : null)
@@ -87,10 +87,10 @@ public class ExportDataMapper {
                 .id(trip.getId())
                 .timestamp(trip.getTimestamp())
                 .endTime(trip.getTimestamp().plusSeconds(trip.getTripDuration()))
-                .startLatitude(trip.getStartLatitude())
-                .startLongitude(trip.getStartLongitude())
-                .endLatitude(trip.getEndLatitude())
-                .endLongitude(trip.getEndLongitude())
+                .startLongitude(trip.getStartPoint().getX())
+                .startLatitude(trip.getStartPoint().getY())
+                .endLongitude(trip.getEndPoint().getX())
+                .endLatitude(trip.getEndPoint().getY())
                 .distance(trip.getDistanceMeters()) // Already in meters
                 .duration(trip.getTripDuration()) // Duration in seconds
                 .transportMode(trip.getMovementType());
@@ -116,10 +116,6 @@ public class ExportDataMapper {
                 .durationSeconds(dataGap.getDurationSeconds())
                 .createdAt(dataGap.getCreatedAt())
                 .build();
-    }
-
-    public TimelineDataDto toTimelineDataDto(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, ExportJob job) {
-        return toTimelineDataDto(stays, trips, new ArrayList<>(), job);
     }
 
     public TimelineDataDto toTimelineDataDto(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, List<TimelineDataGapEntity> dataGaps, ExportJob job) {

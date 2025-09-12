@@ -32,17 +32,4 @@ public class TimelineTripDTO implements GpsPoint {
     private long distanceMeters;
     private String movementType;
     private List<? extends GpsPoint> path; // Only used for TRIP items
-
-    public static TimelineTripDTO from(TimelineTripEntity entity) {
-        return TimelineTripDTO.builder()
-                .timestamp(entity.getTimestamp())
-                .latitude(entity.getStartLatitude())
-                .longitude(entity.getStartLongitude())
-                .endLatitude(entity.getEndLatitude())
-                .endLongitude(entity.getEndLongitude())
-                .tripDuration(entity.getTripDuration())
-                .distanceMeters(entity.getDistanceMeters())
-                .movementType(entity.getMovementType())
-                .build();
-    }
 }

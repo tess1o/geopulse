@@ -20,10 +20,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -163,9 +160,6 @@ public class GpsPointService {
         Instant todayStart = todayStartInUserTz.toInstant();
         Instant todayEnd = todayEndInUserTz.toInstant();
 
-
-        log.info("Start = {}, End = {}", todayStart, todayEnd);
-
         // Get all summary data in a single optimized query
         Object[] summaryData = gpsPointRepository.getGpsPointSummaryData(userId, todayStart, todayEnd);
 
@@ -183,9 +177,23 @@ public class GpsPointService {
     }
 
     private static Instant getInstantSafe(Object date) {
-        if (date == null || !(date instanceof java.sql.Timestamp)) return null;
-        return ((java.sql.Timestamp) date).toInstant();
+        if (date == null) return null;
+        if (date instanceof Instant) return (Instant) date;
+        if (date instanceof java.sql.Timestamp) return ((java.sql.Timestamp) date).toInstant();
+        if (date instanceof java.util.Date) return ((java.util.Date) date).toInstant();
+        if (date instanceof Long) return Instant.ofEpochMilli((Long) date);
+        if (date instanceof LocalDateTime) return ((LocalDateTime) date).toInstant(ZoneOffset.UTC);
+        if (date instanceof String) {
+            try {
+                return Instant.parse((String) date);
+            } catch (Exception e) {
+                log.warn("Failed to parse timestamp string: {}", date);
+            }
+        }
+        log.warn("Unsupported timestamp type: {} with value: {}", date.getClass().getName(), date);
+        return null;
     }
+
 
     /**
      * Get paginated GPS points for a user within a time period.

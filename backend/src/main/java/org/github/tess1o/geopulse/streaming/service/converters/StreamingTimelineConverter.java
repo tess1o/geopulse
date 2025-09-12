@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.streaming.service.converters;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
@@ -242,8 +243,7 @@ public class StreamingTimelineConverter {
         TimelineStayEntity entity = new TimelineStayEntity();
         entity.setUser(userRef);
         entity.setTimestamp(stay.getTimestamp());
-        entity.setLatitude(stay.getLatitude());
-        entity.setLongitude(stay.getLongitude());
+        entity.setLocation(GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
         entity.setStayDuration(stay.getStayDuration()); // Already in seconds
         entity.setLocationName(stay.getLocationName());
         entity.setLocationSource(getLocationSource(stay));
@@ -276,10 +276,8 @@ public class StreamingTimelineConverter {
         TimelineTripEntity entity = new TimelineTripEntity();
         entity.setUser(userRef);
         entity.setTimestamp(trip.getTimestamp());
-        entity.setStartLatitude(trip.getLatitude());
-        entity.setStartLongitude(trip.getLongitude());
-        entity.setEndLatitude(trip.getEndLatitude());
-        entity.setEndLongitude(trip.getEndLongitude());
+        entity.setStartPoint(GeoUtils.createPoint(trip.getLongitude(), trip.getLatitude()));
+        entity.setEndPoint(GeoUtils.createPoint(trip.getEndLongitude(), trip.getEndLatitude()));
 
         entity.setDistanceMeters(trip.getDistanceMeters());
         entity.setTripDuration(trip.getTripDuration()); // Already in seconds
@@ -325,8 +323,8 @@ public class StreamingTimelineConverter {
 
         return TimelineStayLocationDTO.builder()
                 .timestamp(entity.getTimestamp())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
+                .longitude(entity.getLocation().getX())
+                .latitude(entity.getLocation().getY())
                 .stayDuration(entity.getStayDuration()) // Already in seconds
                 .locationName(entity.getLocationName() != null ? entity.getLocationName() : "Unknown location")
                 .favoriteId(entity.getFavoriteLocation() != null ? entity.getFavoriteLocation().getId() : null)
@@ -345,10 +343,10 @@ public class StreamingTimelineConverter {
 
         TimelineTripDTO.TimelineTripDTOBuilder builder = TimelineTripDTO.builder()
                 .timestamp(entity.getTimestamp())
-                .latitude(entity.getStartLatitude())
-                .longitude(entity.getStartLongitude())
-                .endLatitude(entity.getEndLatitude())
-                .endLongitude(entity.getEndLongitude())
+                .longitude(entity.getStartPoint().getX())
+                .latitude(entity.getStartPoint().getY())
+                .endLongitude(entity.getEndPoint().getX())
+                .endLatitude(entity.getEndPoint().getY())
                 .tripDuration(entity.getTripDuration()) // Already in seconds
                 .distanceMeters(entity.getDistanceMeters())
                 .movementType(entity.getMovementType());

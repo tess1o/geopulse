@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 
@@ -44,18 +45,8 @@ public class TimelineStayEntity {
     @Column(name = "stay_duration", nullable = false)
     private long stayDuration;
 
-    /**
-     * Latitude coordinate
-     */
-    @Column(name = "latitude", nullable = false)
-    private double latitude;
-
-    /**
-     * Longitude coordinate
-     */
-    @Column(name = "longitude", nullable = false)
-    private double longitude;
-
+    @Column(name = "location", nullable = false)
+    private Point location;
     /**
      * Cached location name for display (resolved at creation time)
      */

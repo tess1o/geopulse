@@ -141,8 +141,7 @@ class ExportImportIntegrationTest {
         testStay = TimelineStayEntity.builder()
                 .user(testUser)
                 .timestamp(Instant.now().minus(2, ChronoUnit.HOURS))
-                .latitude(37.7749)
-                .longitude(-122.4194)
+                .location(GeoUtils.createPoint(-122.4194, 37.7749))
                 .stayDuration(60) // 60 minutes
                 .locationName("Home Location")
                 .locationSource(LocationSource.HISTORICAL)
@@ -163,10 +162,8 @@ class ExportImportIntegrationTest {
         testTrip = TimelineTripEntity.builder()
                 .user(testUser)
                 .timestamp(Instant.now().minus(1, ChronoUnit.HOURS))
-                .startLatitude(37.7749)
-                .startLongitude(-122.4194)
-                .endLatitude(37.7849)
-                .endLongitude(-122.4094)
+                .startPoint(GeoUtils.createPoint(-122.4194, 37.7749))
+                .endPoint(GeoUtils.createPoint(-122.4094, 37.7849))
                 .distanceMeters(1500) // 1.5km in meters
                 .tripDuration(1800) // 30 minutes in seconds
                 .movementType("WALKING")
@@ -382,8 +379,8 @@ class ExportImportIntegrationTest {
         var importedStay = timelineStayRepository.findById(originalStayId);
         assertNotNull(importedStay, "Timeline stay should be imported with exact ID preservation");
         assertEquals(originalStayId, importedStay.getId(), "Timeline stay ID should be preserved exactly");
-        assertEquals(originalStay.getLatitude(), importedStay.getLatitude(), 0.000001, "Latitude should match");
-        assertEquals(originalStay.getLongitude(), importedStay.getLongitude(), 0.000001, "Longitude should match");
+        assertEquals(originalStay.getLocation().getX(), importedStay.getLocation().getX(), 0.000001, "Longitude should match");
+        assertEquals(originalStay.getLocation().getY(), importedStay.getLocation().getY(), 0.000001, "Latitude should match");
         assertEquals(originalStay.getStayDuration(), importedStay.getStayDuration(), "Stay duration should match");
         assertEquals(originalStay.getLocationName(), importedStay.getLocationName(), "Location name should match");
 
@@ -397,10 +394,10 @@ class ExportImportIntegrationTest {
         var importedTrip = timelineTripRepository.findById(originalTripId);
         assertNotNull(importedTrip, "Timeline trip should be imported with exact ID preservation");
         assertEquals(originalTripId, importedTrip.getId(), "Timeline trip ID should be preserved exactly");
-        assertEquals(originalTrip.getStartLatitude(), importedTrip.getStartLatitude(), 0.000001, "Start latitude should match");
-        assertEquals(originalTrip.getStartLongitude(), importedTrip.getStartLongitude(), 0.000001, "Start longitude should match");
-        assertEquals(originalTrip.getEndLatitude(), importedTrip.getEndLatitude(), 0.000001, "End latitude should match");
-        assertEquals(originalTrip.getEndLongitude(), importedTrip.getEndLongitude(), 0.000001, "End longitude should match");
+        assertEquals(originalTrip.getStartPoint().getX(), importedTrip.getStartPoint().getX(), 0.000001, "Start longitude should match");
+        assertEquals(originalTrip.getStartPoint().getY(), importedTrip.getStartPoint().getY(), 0.000001, "Start latitude should match");
+        assertEquals(originalTrip.getEndPoint().getX(), importedTrip.getEndPoint().getX(), 0.000001, "End longitude should match");
+        assertEquals(originalTrip.getEndPoint().getY(), importedTrip.getEndPoint().getY(), 0.000001, "End latitude should match");
         assertEquals(originalTrip.getDistanceMeters(), importedTrip.getDistanceMeters(), "Distance should match");
         assertEquals(originalTrip.getTripDuration(), importedTrip.getTripDuration(), "Trip duration should match");
         assertEquals(originalTrip.getMovementType(), importedTrip.getMovementType(), "Movement type should match");

@@ -338,17 +338,23 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             }
 
             try {
+                // Create Point geometry from lat/lon
+                org.locationtech.jts.geom.Point location = null;
+                if (stayDto.getLatitude() != null && stayDto.getLongitude() != null) {
+                    location = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
+                            stayDto.getLongitude(), stayDto.getLatitude());
+                }
+
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_STAYS_UPSERT)
                         .setParameter(1, stayDto.getId())
                         .setParameter(2, job.getUserId())
                         .setParameter(3, stayDto.getTimestamp())
-                        .setParameter(4, stayDto.getLatitude())
-                        .setParameter(5, stayDto.getLongitude())
-                        .setParameter(6, stayDto.getDuration())
-                        .setParameter(7, stayDto.getAddress())
-                        .setParameter(8, "HISTORICAL")
-                        .setParameter(9, stayDto.getFavoriteId())
-                        .setParameter(10, stayDto.getGeocodingId())
+                        .setParameter(4, location)
+                        .setParameter(5, stayDto.getDuration())
+                        .setParameter(6, stayDto.getAddress())
+                        .setParameter(7, "HISTORICAL")
+                        .setParameter(8, stayDto.getFavoriteId())
+                        .setParameter(9, stayDto.getGeocodingId())
                         .executeUpdate();
                 importedStays++;
             } catch (Exception e) {
@@ -363,20 +369,31 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             }
 
             try {
+                // Create Point geometries from lat/lon
+                org.locationtech.jts.geom.Point startPoint = null;
+                if (tripDto.getStartLatitude() != null && tripDto.getStartLongitude() != null) {
+                    startPoint = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
+                            tripDto.getStartLongitude(), tripDto.getStartLatitude());
+                }
+
+                org.locationtech.jts.geom.Point endPoint = null;
+                if (tripDto.getEndLatitude() != null && tripDto.getEndLongitude() != null) {
+                    endPoint = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
+                            tripDto.getEndLongitude(), tripDto.getEndLatitude());
+                }
+
                 LineString pathGeometry = convertPathToLineString(tripDto.getPath());
 
                 entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_TRIPS_UPSERT)
                         .setParameter(1, tripDto.getId())
                         .setParameter(2, job.getUserId())
                         .setParameter(3, tripDto.getTimestamp())
-                        .setParameter(4, tripDto.getStartLatitude())
-                        .setParameter(5, tripDto.getStartLongitude())
-                        .setParameter(6, tripDto.getEndLatitude())
-                        .setParameter(7, tripDto.getEndLongitude())
-                        .setParameter(8, tripDto.getDistance())
-                        .setParameter(9, tripDto.getDuration())
-                        .setParameter(10, tripDto.getTransportMode())
-                        .setParameter(11, pathGeometry)
+                        .setParameter(4, startPoint)
+                        .setParameter(5, endPoint)
+                        .setParameter(6, tripDto.getDistance())
+                        .setParameter(7, tripDto.getDuration())
+                        .setParameter(8, tripDto.getTransportMode())
+                        .setParameter(9, pathGeometry)
                         .executeUpdate();
                 importedTrips++;
             } catch (Exception e) {

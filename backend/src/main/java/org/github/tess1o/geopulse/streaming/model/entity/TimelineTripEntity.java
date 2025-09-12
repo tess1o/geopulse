@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
 
@@ -42,29 +43,11 @@ public class TimelineTripEntity {
     @Column(name = "trip_duration", nullable = false)
     private long tripDuration;
 
-    /**
-     * Start latitude coordinate
-     */
-    @Column(name = "start_latitude", nullable = false)
-    private double startLatitude;
+    @Column(name = "start_point", nullable = false)
+    private Point startPoint;
 
-    /**
-     * Start longitude coordinate
-     */
-    @Column(name = "start_longitude", nullable = false)
-    private double startLongitude;
-
-    /**
-     * End latitude coordinate
-     */
-    @Column(name = "end_latitude", nullable = false)
-    private double endLatitude;
-
-    /**
-     * End longitude coordinate
-     */
-    @Column(name = "end_longitude", nullable = false)
-    private double endLongitude;
+    @Column(name = "end_point", nullable = false)
+    private Point endPoint;
 
     /**
      * Distance traveled in meters
