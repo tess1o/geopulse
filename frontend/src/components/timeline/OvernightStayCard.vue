@@ -80,9 +80,10 @@ const formatOnThisDayDuration = (stayItem, currentDateString) => {
   const currentDate = new Date(currentDateString)
   const stayStart = new Date(stayItem.timestamp)
   // Use endTime if available, otherwise calculate from duration
+  // stayDuration is in seconds, so multiply by 1000 to get milliseconds
   const stayEnd = stayItem.endTime 
     ? new Date(stayItem.endTime) 
-    : new Date(stayStart.getTime() + (stayItem.stayDuration * 60 * 1000))
+    : new Date(stayStart.getTime() + (stayItem.stayDuration * 1000))
   
   // Calculate start and end times for this specific day
   const dayStart = new Date(currentDate)
@@ -99,11 +100,11 @@ const formatOnThisDayDuration = (stayItem, currentDateString) => {
   const startTimeStr = formatTime(thisDayStart)
   const endTimeStr = formatTime(thisDayEnd)
   
-  // Calculate duration in minutes for this day only
+  // Calculate duration in seconds for this day only
   const durationMs = thisDayEnd - thisDayStart
-  const durationMinutes = Math.floor(durationMs / (1000 * 60))
+  const durationSeconds = Math.floor(durationMs / 1000)
   
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationMinutes)})`
+  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationSeconds)})`
 }
 
 const handleClick = () => {

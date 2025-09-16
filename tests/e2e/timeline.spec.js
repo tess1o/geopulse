@@ -212,10 +212,25 @@ test.describe('Timeline Page', () => {
           expect(cardText).toContain(`${totalHours} hour`);
         }
         
-        // Check "On this day" duration is shown for the current date segment
+        // Check "On this day" duration - validate specific timeframe and duration
         expect(cardText).toMatch(/on this day|this day/i);
         
-        console.log(`Overnight Stay ${i}: Expected location "${expectedStay.locationName}", card text preview: "${cardText.slice(0, 200)}..."`);
+        // Hardcoded expected values for Hotel Downtown in Europe/Kyiv timezone
+        // Test data: 18:00 yesterday UTC (21:00 Europe/Kyiv) + 16 hours = 13:00 today Europe/Kyiv
+        // "On this day" should show: 00:00 - 13:00 (13 hours)
+        if (i === 0 && expectedStay.locationName === 'Hotel Downtown') {
+          // Should show the correct timeframe (00:00 to 13:00 for Europe/Kyiv timezone)
+          expect(cardText).toMatch(/00:00\s*-\s*13:00/);
+          
+          // Should show the correct duration in hours (13 hours, not minutes)
+          expect(cardText).toMatch(/13\s+hours?/);
+          
+          // Should NOT show 23:59 or show duration in minutes for "on this day"
+          expect(cardText).not.toMatch(/23:59/);
+          expect(cardText).not.toMatch(/\(\s*\d+\s+minutes?\s*\)/); // No minutes in parentheses for "on this day"
+        }
+        
+        console.log(`Overnight Stay ${i}: Expected location "${expectedStay.locationName}", card text preview: "${cardText.slice(0, 300)}..."`);
       }
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
