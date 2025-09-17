@@ -664,7 +664,6 @@ const loadPreferences = async () => {
 
 const confirmSavePreferences = () => {
   if (!isFormValid.value) {
-    console.log('Invalid form');
     return;
   }
 

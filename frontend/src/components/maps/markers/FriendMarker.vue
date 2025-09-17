@@ -73,12 +73,8 @@ const popupConfig = computed(() => {
     detailed: true,
     actions: {
       message: (friendId) => {
-        console.log('Message friend:', friendId)
-        // Implement messaging functionality
       },
       locate: (friendId) => {
-        console.log('Locate friend:', friendId)
-        // Implement location functionality
       }
     },
     popupOptions: {

@@ -42,7 +42,6 @@ const isInitializing = ref(false)
 const initializeMap = async () => {
   // Prevent multiple initialization attempts
   if (isInitializing.value || map.value) {
-    console.log('BaseMap already initializing or initialized:', props.mapId)
     return
   }
   
@@ -72,12 +71,8 @@ const initializeMap = async () => {
 
     if (isContainerReady) {
       try {
-        console.log('BaseMap initializing for container:', props.mapId, 
-                   `${container.offsetWidth}x${container.offsetHeight}`)
-        
         // Check if container already has a Leaflet map and clean it up
         if (container._leaflet_id) {
-          console.log('Container already has Leaflet instance, cleaning up:', props.mapId)
           // Remove any existing Leaflet instance
           if (container._leaflet) {
             container._leaflet.remove()
@@ -127,7 +122,6 @@ const initializeMap = async () => {
           }
         }, 100)
 
-        console.log('BaseMap created successfully:', props.mapId)
         isReady.value = true
         isInitializing.value = false
         
@@ -144,7 +138,6 @@ const initializeMap = async () => {
         isInitializing.value = false
         attempts++
         if (attempts < maxAttempts) {
-          console.log(`BaseMap retry attempt ${attempts}/${maxAttempts} for ${props.mapId}`)
           setTimeout(tryInit, 200)
         } else {
           console.error(`BaseMap initialization failed after ${maxAttempts} attempts:`, props.mapId)
@@ -240,7 +233,6 @@ const setupVisibilityObserver = () => {
           if (containerRect.width > 0 && containerRect.height > 0) {
             // Only initialize if map doesn't exist yet and not currently initializing
             if (!map.value && !isInitializing.value) {
-              console.log('BaseMap container became visible, initializing:', props.mapId)
               setTimeout(() => {
                 if (!map.value && !isInitializing.value) {
                   initializeMap()
@@ -276,8 +268,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  console.log('BaseMap unmounting:', props.mapId)
-  
   // Set flag to prevent any pending initialization
   isInitializing.value = false
   isReady.value = false
@@ -312,7 +302,6 @@ onUnmounted(() => {
         delete container._leaflet
       }
       container.innerHTML = ''
-      console.log('BaseMap cleanup completed for:', props.mapId)
     }
   }, 10)
 })

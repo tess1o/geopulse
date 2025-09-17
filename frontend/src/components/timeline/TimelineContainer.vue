@@ -136,6 +136,9 @@ const getMarkerIconForItem = computed(() => (item, dateKey) => {
   if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
     return 'pi pi-moon' // Moon icon for overnight data gaps
   }
+  if (item.type === 'trip' && item.movementType === 'WALK') {
+    return 'fas fa-walking' // Walking person icon for walking trips
+  }
   return getMarkerIcon.value(item.type)
 })
 

@@ -12,6 +12,7 @@ import { ref, watch, computed, readonly } from 'vue'
 import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
 import { createTimelineIcon, createHighlightedTimelineIcon } from '@/utils/mapHelpers'
+import {formatDuration} from "@/utils/calculationsHelpers";
 
 const props = defineProps({
   map: {
@@ -118,41 +119,16 @@ const renderTimelineMarkers = () => {
 }
 
 const createPopupContent = (item) => {
-  let content = '<div class="timeline-popup">'
+  const date = new Date(item.timestamp)
+  const durationText = item.stayDuration ? formatDuration(item.stayDuration) : null
   
-  // Location name
-  if (item.locationName) {
-    content += `<div class="popup-location">${item.locationName}</div>`
-  } else if (item.address) {
-    content += `<div class="popup-address">${item.address}</div>`
-  }
-  
-  // Timestamp
-  if (item.timestamp) {
-    const date = new Date(item.timestamp)
-    content += `<div class="popup-time">${date.toLocaleString()}</div>`
-  }
-  
-  // Stay duration for stay points
-  if (item.stayDuration) {
-    const hours = Math.floor(item.stayDuration / 60)
-    const minutes = item.stayDuration % 60
-    let durationText = ''
-    if (hours > 0) {
-      durationText = `${hours}h ${minutes}m`
-    } else {
-      durationText = `${minutes}m`
-    }
-    content += `<div class="popup-duration">Stay duration: ${durationText}</div>`
-  }
-  
-  // Activity if available
-  if (item.activity) {
-    content += `<div class="popup-activity">Activity: ${item.activity}</div>`
-  }
-  
-  content += '</div>'
-  return content
+  return `
+    <div class="timeline-popup">
+      <div class="popup-location">${item.locationName}</div>
+      <div class="popup-time">${date.toLocaleString()}</div>
+      ${durationText ? `<div class="popup-duration">Stay duration: ${durationText}</div>` : ''}
+    </div>
+  `.trim()
 }
 
 const clearTimelineMarkers = () => {

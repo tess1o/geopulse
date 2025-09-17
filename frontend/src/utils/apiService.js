@@ -500,9 +500,9 @@ const apiService = {
                     fullName: responseData.fullName,
                     id: responseData.id,
                     avatar: responseData.avatar,
-                    createdAt: responseData.createdAt
+                    createdAt: responseData.createdAt,
+                    hasPassword: responseData.hasPassword,
                 };
-
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;
             }

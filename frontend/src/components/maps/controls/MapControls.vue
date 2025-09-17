@@ -140,13 +140,6 @@ const handleTogglePath = () => {
 }
 
 const handleToggleImmich = () => {
-  console.log('MapControls: Immich toggle clicked', {
-    currentShow: props.showImmich,
-    willToggleTo: !props.showImmich,
-    immichLoading: props.immichLoading,
-    immichConfigured: props.immichConfigured,
-    mapExists: !!props.map
-  })
   emit('toggle-immich', !props.showImmich)
 }
 

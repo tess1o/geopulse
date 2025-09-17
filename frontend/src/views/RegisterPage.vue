@@ -111,6 +111,13 @@
                 </div>
               </form>
 
+              <!-- OIDC Providers Section -->
+              <OidcProvidersSection
+                :providers="oidcProviders"
+                :disabled="isLoading"
+                @provider-selected="handleOidcLogin"
+              />
+
               <!-- Login Link -->
               <div class="login-section">
                 <span class="login-text">Already have an account?</span>
@@ -134,6 +141,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
 // Composables
 const router = useRouter()
@@ -143,6 +151,7 @@ const authStore = useAuthStore()
 // State
 const isLoading = ref(false)
 const registerError = ref('')
+const oidcProviders = ref([])
 
 // Form data
 const formData = ref({
@@ -262,11 +271,41 @@ const getErrorMessage = (error) => {
   }
 }
 
+const handleOidcLogin = async (providerName) => {
+  isLoading.value = true;
+  try {
+    await authStore.initiateOidcLogin(providerName);
+    // The browser will be redirected, so no need to set isLoading to false here.
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Registration Failed',
+      detail: `Failed to initialize registration with ${providerName}. Please try again.`,
+      life: 5000
+    });
+    isLoading.value = false;
+  }
+};
+
+
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   // Clear any existing auth data
   if (authStore.isAuthenticated) {
     router.push('/app/location-sources')
+  }
+  
+  // Load available OIDC providers
+  try {
+    oidcProviders.value = await authStore.getOidcProviders()
+  } catch (error) {
+    console.error('Failed to load OIDC providers:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Could not load registration options',
+      detail: 'Failed to retrieve external registration providers. You can still register with email and password.',
+      life: 5000
+    })
   }
 })
 </script>
@@ -523,4 +562,6 @@ onMounted(() => {
     padding: 0.5rem;
   }
 }
+
+
 </style>

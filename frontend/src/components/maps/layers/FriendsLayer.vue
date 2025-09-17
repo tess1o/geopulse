@@ -51,30 +51,18 @@ const handleLayerReady = (layerGroup) => {
 
 const renderFriendMarkers = () => {
   if (!baseLayerRef.value || !hasFriendsData.value) {
-    console.log('FriendsLayer: Cannot render markers - missing baseLayer or data')
     return
   }
-
-  console.log('FriendsLayer: Rendering markers for', props.friendsData.length, 'friends')
 
   // Clear existing markers
   clearFriendMarkers()
 
   props.friendsData.forEach((friend, index) => {
-    console.log('FriendsLayer: Processing friend:', {
-      name: friend.name || friend.fullName,
-      latitude: friend.latitude,
-      longitude: friend.longitude,
-      lastLatitude: friend.lastLatitude,
-      lastLongitude: friend.lastLongitude
-    })
-    
     // Check both latitude/longitude and lastLatitude/lastLongitude
     const lat = friend.latitude || friend.lastLatitude
     const lng = friend.longitude || friend.lastLongitude
     
     if (!lat || !lng || typeof lat !== 'number' || typeof lng !== 'number') {
-      console.log('FriendsLayer: Skipping friend due to invalid coordinates:', friend.name || friend.fullName)
       return
     }
 
@@ -91,8 +79,6 @@ const renderFriendMarkers = () => {
       friendIndex: index,
       ...props.markerOptions
     })
-
-    console.log('FriendsLayer: Created marker for', friend.name || friend.fullName, 'at', [lat, lng])
 
     // Add event listeners
     marker.on('click', (e) => {

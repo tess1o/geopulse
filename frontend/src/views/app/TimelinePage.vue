@@ -295,7 +295,6 @@ const fetchTimelineData = async (startDate, endDate) => {
     await timelineStore.fetchMovementTimeline(startDate, endDate)
 
     if (timelineData.value == null || timelineData.value.length === 0) {
-      console.log('No timeline data')
       toast.add({
         severity: 'info',
         detail: 'No timeline data for given date range',

@@ -99,6 +99,11 @@ const routes = [
         beforeEnter: requireGuest
     },
     {
+        path: '/oidc/callback',
+        name: 'OidcCallback',
+        component: () => import('@/views/OidcCallback.vue')
+    },
+    {
         path: '/app/friends',
         name: 'Friends',
         component: FriendsPage,

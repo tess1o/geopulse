@@ -78,6 +78,10 @@ public class UserService {
         return Optional.ofNullable(userRepository.findById(id));
     }
 
+    public void persist(UserEntity user) {
+        this.userRepository.persist(user);
+    }
+
     @Transactional
     public void resetTimelinePreferencesToDefaults(UUID userId) {
         UserEntity user = userRepository.findById(userId);
@@ -144,8 +148,15 @@ public class UserService {
             throw new UserNotFoundException("User not found");
         }
 
-        if (!securePasswordUtils.isPasswordValid(request.getOldPassword(), user.getPasswordHash())) {
-            throw new InvalidPasswordException("Old password is incorrect");
+        // If user has an existing password, validate the old password
+        // If oldPassword is null/blank, it means user is setting password for the first time (OIDC scenario)
+        if (user.getPasswordHash() != null && !user.getPasswordHash().trim().isEmpty()) {
+            if (request.getOldPassword() == null || request.getOldPassword().trim().isEmpty()) {
+                throw new InvalidPasswordException("Current password is required to change password");
+            }
+            if (!securePasswordUtils.isPasswordValid(request.getOldPassword(), user.getPasswordHash())) {
+                throw new InvalidPasswordException("Old password is incorrect");
+            }
         }
 
         // Set new password using bcrypt

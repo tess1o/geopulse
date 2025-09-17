@@ -76,6 +76,12 @@
                 </div>
               </form>
 
+              <!-- OIDC Providers Section -->
+              <OidcProvidersSection
+                :providers="oidcProviders"
+                :disabled="isLoading"
+                @provider-selected="handleOidcLogin"
+              />
 
               <!-- Register Link -->
               <div class="register-section">
@@ -102,6 +108,7 @@ import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import { formatError } from '@/utils/errorHandler'
+import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
 // Composables
 const router = useRouter()
@@ -112,6 +119,8 @@ const { handleError } = useErrorHandler()
 // State
 const isLoading = ref(false)
 const loginError = ref('')
+
+const oidcProviders = ref([])
 
 // Form data
 const formData = ref({
@@ -216,12 +225,42 @@ const getLoginErrorMessage = (error, formattedError) => {
   }
 }
 
+const handleOidcLogin = async (providerName) => {
+  isLoading.value = true;
+  try {
+    await authStore.initiateOidcLogin(providerName);
+    // The browser will be redirected, so no need to set isLoading to false here.
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Login Failed',
+      detail: `Failed to initialize login with ${providerName}. Please try again.`,
+      life: 5000
+    });
+    isLoading.value = false;
+  }
+};
+
+
 // Lifecycle
 onMounted(() => {
   // Clear any existing auth data
   if (authStore.isAuthenticated) {
     router.push('/app/timeline')
   }
+
+  // Load available OIDC providers
+  authStore.getOidcProviders().then(providers => {
+      oidcProviders.value = providers;
+  }).catch(err => {
+      console.error("Failed to load OIDC providers", err);
+      toast.add({
+          severity: 'error',
+          summary: 'Could not load login options',
+          detail: 'Failed to retrieve external login providers. You can still log in with email and password.',
+          life: 5000
+      });
+  });
 })
 </script>
 
@@ -489,17 +528,18 @@ onMounted(() => {
   .brand-section {
     margin-bottom: 0.5rem;
   }
-  
+
   .brand-title {
     font-size: 1.5rem;
   }
-  
+
   .brand-tagline {
     font-size: 0.9rem;
   }
-  
+
   .login-form-content {
     padding: 0.5rem;
   }
 }
+
 </style>

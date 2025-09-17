@@ -245,13 +245,11 @@ const handleCancel = () => {
 }
 
 const handleMapReady = (map) => {
-  console.log('Map ready:', map)
   mapInstance.value = map
   
   // Set initial view and markers
   if (formData.coordinates.lat && formData.coordinates.lng) {
     setTimeout(() => {
-      console.log('Setting initial view and markers')
       map.setView([formData.coordinates.lat, formData.coordinates.lng], 16)
       
       // Add markers after a short delay to ensure map is fully loaded
@@ -264,17 +262,13 @@ const handleMapReady = (map) => {
 
 const addMarkers = () => {
   if (!mapInstance.value) {
-    console.log('Map instance not available')
     return
   }
   
   if (!L) {
-    console.log('Leaflet not available')
     return
   }
-  
-  console.log('Adding markers to map', formData.coordinates)
-  
+
   // Remove existing current marker
   if (currentMarker.value) {
     mapInstance.value.removeLayer(currentMarker.value)
@@ -302,15 +296,14 @@ const addMarkers = () => {
     })
       .addTo(mapInstance.value)
       .bindPopup('Current Location - Click on map to move')
-      
-    console.log('Added current location marker at:', [formData.coordinates.lat, formData.coordinates.lng])
+
   }
   
   // Add original location marker for reference (if different)
   if (originalLocation.value && 
       (Math.abs(originalLocation.value.lat - formData.coordinates.lat) > 0.000001 ||
        Math.abs(originalLocation.value.lng - formData.coordinates.lng) > 0.000001)) {
-    
+
     L.circleMarker([originalLocation.value.lat, originalLocation.value.lng], {
       radius: 6,
       fillColor: '#ef4444',
@@ -320,23 +313,18 @@ const addMarkers = () => {
       fillOpacity: 0.7,
       isOriginalMarker: true
     })
-      .addTo(mapInstance.value)
-      .bindPopup('Original Location')
-      
-    console.log('Added original location marker at:', [originalLocation.value.lat, originalLocation.value.lng])
+        .addTo(mapInstance.value)
+        .bindPopup('Original Location')
   }
 }
 
 const handleMapClick = (event) => {
-  console.log('Map clicked:', event.latlng)
   const { lat, lng } = event.latlng
   
   // Update form data
   formData.coordinates.lat = parseFloat(lat.toFixed(6))
   formData.coordinates.lng = parseFloat(lng.toFixed(6))
-  
-  console.log('Updated form data:', formData.coordinates)
-  
+
   // Update markers
   nextTick(() => {
     addMarkers()

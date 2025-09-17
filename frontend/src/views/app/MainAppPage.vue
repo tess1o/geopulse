@@ -87,12 +87,10 @@ const onTabChange = (e) => {
 }
 
 const handleDateChange = (dateRange) => {
-  console.log('Date changed:', dateRange)
   // Additional logic if needed
 }
 
 const handleNavigate = (item) => {
-  console.log('Navigation:', item)
   // Additional logic if needed
 }
 

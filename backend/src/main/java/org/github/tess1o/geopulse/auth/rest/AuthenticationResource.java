@@ -33,10 +33,6 @@ public class AuthenticationResource {
     private final CookieService cookieService;
 
     @Inject
-    @ConfigProperty(name = "geopulse.test.mode", defaultValue = "false")
-    boolean testMode;
-
-    @Inject
     public AuthenticationResource(AuthenticationService authenticationService,
                                   CookieService cookieService) {
         this.authenticationService = authenticationService;
@@ -60,18 +56,7 @@ public class AuthenticationResource {
             var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
             var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            // In test mode, return tokens in response body for compatibility
-            // In production, exclude tokens from response body for security
-            AuthResponse responseData = testMode ? authResponse : AuthResponse.builder()
-                    .id(authResponse.getId())
-                    .email(authResponse.getEmail())
-                    .fullName(authResponse.getFullName())
-                    .avatar(authResponse.getAvatar())
-                    .expiresIn(authResponse.getExpiresIn())
-                    .createdAt(authResponse.getCreatedAt())
-                    .build(); // NO tokens in production
-
-            return Response.ok(ApiResponse.success(responseData))
+            return Response.ok(ApiResponse.success(authResponse))
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)

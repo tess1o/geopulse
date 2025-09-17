@@ -17,29 +17,47 @@ export const useAuthStore = defineStore('auth', {
         userEmail: (state) => state.user?.email || '',
         userId: (state) => state.user?.userId || null,
         userAvatar: (state) => state.user?.avatar || '',
+        hasPassword: (state) => state.user?.hasPassword || false,
     },
 
     actions: {
-        // Set user data (replaces SET_USER mutation)
+        // Set user data in the state
         setUser(user) {
-            this.user = user
-            this.isAuthenticated = !!user
+            this.user = user;
+            this.isAuthenticated = !!user;
+            if (user) {
+                // Persist essential, non-sensitive data to localStorage
+                const userInfo = {
+                    id: user.id,
+                    userId: user.id, // For backward compatibility with other parts of the app
+                    fullName: user.fullName,
+                    email: user.email,
+                    avatar: user.avatar,
+                    createdAt: user.createdAt,
+                    hasPassword: user.hasPassword
+                };
+                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            } else {
+                localStorage.removeItem('userInfo');
+            }
         },
 
-        // Clear user data (used in logout)
+        // Clear user data from state and storage
         clearUser() {
-            this.user = null
-            this.isAuthenticated = false
+            this.user = null;
+            this.isAuthenticated = false;
+            localStorage.removeItem('userInfo');
+            apiService.clearAuthData();
         },
 
         async login(email, password) {
             try {
-                const loginResponse = await apiService.login(email, password)
-                this.setUser(loginResponse)
+                const loginResponse = await apiService.login(email, password);
+                this.setUser(loginResponse); // setUser will handle localStorage
                 return loginResponse;
             } catch (error) {
-                apiService.clearAuthData()
-                throw error
+                this.clearUser();
+                throw error;
             }
         },
 
@@ -119,11 +137,13 @@ export const useAuthStore = defineStore('auth', {
                 
                 // Use user data from localStorage (profile info only)
                 const user = {
+                    id: userInfo.id,
                     userId: userInfo.id,
                     fullName: userInfo.fullName,
                     email: userInfo.email,
                     avatar: userInfo.avatar,
                     createdAt: userInfo.createdAt,
+                    hasPassword: userInfo.hasPassword,
                 }
                 
                 this.setUser(user)
@@ -132,6 +152,70 @@ export const useAuthStore = defineStore('auth', {
                 apiService.clearAuthData()
                 this.clearUser()
                 return null
+            }
+        },
+
+        // OIDC Actions
+        async getOidcProviders() {
+            try {
+                const response = await apiService.get('/auth/oidc/providers');
+                // Defensively return an array to prevent template errors
+                return response?.data || [];
+            } catch (error) {
+                console.error('Failed to get OIDC providers:', error);
+                return [];
+            }
+        },
+
+        async initiateOidcLogin(providerName) {
+            try {
+                const response = await apiService.post(`/auth/oidc/login/${providerName}`);
+                // Redirect to provider's authorization URL
+                window.location.href = response.data.authorizationUrl;
+            } catch (error) {
+                console.error('Failed to initiate OIDC login:', error);
+                throw error;
+            }
+        },
+
+        async handleOidcCallback(code, state) {
+            try {
+                const response = await apiService.post('/auth/oidc/callback', { code, state });
+                this.setUser(response.data);
+                return response.data;
+            } catch (error) {
+                this.clearUser();
+                throw error;
+            }
+        },
+
+        async linkOidcProvider(providerName) {
+            try {
+                const response = await apiService.post(`/auth/oidc/link/${providerName}`);
+                // Redirect to provider for linking
+                window.location.href = response.data.authorizationUrl;
+            } catch (error) {
+                console.error('Failed to initiate OIDC linking:', error);
+                throw error;
+            }
+        },
+
+        async unlinkOidcProvider(providerName) {
+            try {
+                await apiService.delete(`/auth/oidc/unlink/${providerName}`);
+            } catch (error) {
+                console.error('Failed to unlink OIDC provider:', error);
+                throw error;
+            }
+        },
+
+        async getLinkedProviders() {
+            try {
+                const response = await apiService.get('/auth/oidc/connections');
+                return response.data;
+            } catch (error) {
+                console.error('Failed to get linked OIDC providers:', error);
+                return [];
             }
         }
     }

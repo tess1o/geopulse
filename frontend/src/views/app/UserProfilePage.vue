@@ -112,15 +112,15 @@
                           <i class="pi pi-lock"></i>
                         </div>
                         <div class="security-info">
-                          <h3 class="security-title">Change Password</h3>
+                          <h3 class="security-title">{{ hasPassword ? 'Change Password' : 'Set Password' }}</h3>
                           <p class="security-description">
-                            Update your password to keep your account secure
+                            {{ hasPassword ? 'Update your password to keep your account secure' : 'Set a password for your account' }}
                           </p>
                         </div>
                       </div>
 
                       <div class="form-section">
-                        <div class="form-field">
+                        <div v-if="hasPassword" class="form-field">
                           <label for="currentPassword" class="form-label">Current Password</label>
                           <Password 
                             id="currentPassword"
@@ -180,7 +180,7 @@
                         />
                         <Button 
                           type="submit"
-                          label="Change Password"
+                          :label="hasPassword ? 'Change Password' : 'Set Password'"
                           :loading="passwordLoading"
                           :disabled="!hasPasswordChanges"
                         />
@@ -188,6 +188,8 @@
                     </form>
                   </template>
                 </Card>
+
+                <OidcManagement class="mt-6" />
             </div>
 
             <!-- Immich Integration Tab -->
@@ -322,6 +324,7 @@ import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
+import OidcManagement from '@/components/auth/OidcManagement.vue';
 
 // Store
 import { useAuthStore } from '@/stores/auth'
@@ -333,7 +336,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -346,7 +349,7 @@ const selectedAvatar = ref('')
 // Tab configuration
 const tabItems = ref([
   {
-    label: 'Profile Information',
+    label: 'Profile',
     icon: 'pi pi-user',
     key: 'profile'
   },
@@ -356,7 +359,7 @@ const tabItems = ref([
     key: 'security'
   },
   {
-    label: 'Immich Integration',
+    label: 'Immich',
     icon: 'pi pi-images',
     key: 'immich'
   }
@@ -465,7 +468,8 @@ const validateProfile = () => {
 const validatePassword = () => {
   passwordErrors.value = {}
   
-  if (!passwordForm.value.currentPassword) {
+  // Only require current password if user has a password
+  if (hasPassword.value && !passwordForm.value.currentPassword) {
     passwordErrors.value.currentPassword = 'Current password is required'
   }
   
@@ -545,23 +549,31 @@ const changePassword = async () => {
   
   try {
     await authStore.changePassword(
-      passwordForm.value.currentPassword,
+      hasPassword.value ? passwordForm.value.currentPassword : null,
       passwordForm.value.newPassword,
       userId.value
     )
     
     resetPasswordForm()
     
+    // Update hasPassword flag if this was the first time setting a password
+    if (!hasPassword.value && authStore.user) {
+      authStore.user.hasPassword = true
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      userInfo.hasPassword = true
+      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    }
+    
     toast.add({
       severity: 'success',
-      summary: 'Password Changed',
-      detail: 'Your password has been changed successfully',
+      summary: hasPassword.value ? 'Password Changed' : 'Password Set',
+      detail: hasPassword.value ? 'Your password has been changed successfully' : 'Your password has been set successfully',
       life: 3000
     })
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Password Change Failed',
+      summary: hasPassword.value ? 'Password Change Failed' : 'Password Set Failed',
       detail: getErrorMessage(error),
       life: 5000
     })
@@ -728,6 +740,20 @@ onMounted(async () => {
   width: 100%;
 }
 
+/* Fixed width tabs for consistent appearance */
+.profile-tabs :deep(.p-tabmenu-item) {
+  flex: 1;
+  min-width: 120px;
+}
+
+.profile-tabs :deep(.p-tabmenu-item .p-tabmenu-item-link) {
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  min-width: 120px;
+  padding: var(--gp-spacing-md) var(--gp-spacing-sm);
+}
+
 /* Profile Info Card */
 .profile-info-card,
 .security-card,
@@ -735,6 +761,31 @@ onMounted(async () => {
   background: var(--gp-surface-white);
   border: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Ensure all tab content areas have consistent width */
+.profile-tabs :deep(.gp-tab-content) {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.profile-tabs :deep(.gp-tab-content > div) {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Force consistent card widths */
+.profile-info-card :deep(.p-card-content),
+.security-card :deep(.p-card-content),
+.immich-card :deep(.p-card-content) {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 1.5rem;
 }
 
 /* Avatar Section */
@@ -1067,6 +1118,8 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .user-profile-page {
     padding: 0 0.5rem;
+    max-width: calc(100vw - 1rem);
+    box-sizing: border-box;
   }
   
   .page-title {
@@ -1103,8 +1156,63 @@ onMounted(async () => {
 }
 
 @media (max-width: 480px) {
+  .user-profile-page {
+    padding: 0 0.75rem;
+    max-width: calc(100vw - 1.5rem);
+    box-sizing: border-box;
+  }
+  
   .avatar-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .page-header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .page-title {
+    font-size: 1.3rem;
+  }
+  
+  .page-description {
+    font-size: 1rem;
+  }
+  
+  .form-actions .p-button {
+    width: 100%;
+    min-height: 48px;
+  }
+  
+  .form-label {
+    font-size: 0.9rem;
+  }
+  
+  .help-text {
+    font-size: 0.75rem;
+  }
+  
+  .error-message {
+    font-size: 0.8rem;
+  }
+}
+
+/* iPhone 16 Pro Max and similar large phones */
+@media (max-width: 480px) and (min-width: 430px) {
+  .user-profile-page {
+    padding: 0 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+  
+  .profile-tabs :deep(.gp-tab-content > div) {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  
+  .profile-info-card,
+  .security-card,
+  .immich-card {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 </style>

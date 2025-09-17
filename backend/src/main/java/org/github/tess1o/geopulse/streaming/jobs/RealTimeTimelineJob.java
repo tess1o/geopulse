@@ -44,7 +44,7 @@ public class RealTimeTimelineJob {
         }
     }
 
-    @Scheduled(every = "2m")
+    @Scheduled(every = "2m", delay = 2)
     public void processRealTimeUpdates() {
         List<UserEntity> users = UserEntity.list("timelineStatus", TimelineStatus.IDLE);
         log.debug("Starting real-time timeline processing for {} users", users.size());

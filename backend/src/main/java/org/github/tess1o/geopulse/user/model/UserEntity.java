@@ -38,8 +38,7 @@ public class UserEntity extends PanacheEntityBase {
 
     private boolean emailVerified;
 
-    @NotBlank(message = "Password hash is required")
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash", nullable = true)
     private String passwordHash;
 
     @Size(min = 1, max = 100, message = "Full name must be between 1 and 100 characters")

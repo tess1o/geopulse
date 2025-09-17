@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
-        <version>1.0.0-rc.7</version>
+        <version>1.0.0-rc.8</version>
     </parent>
     <artifactId>backend</artifactId>
 
@@ -241,6 +241,22 @@
             <groupId>org.eclipse.paho</groupId>
             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
             <version>${org.eclipse.paho.client.mqttv3.version}</version>
+        </dependency>
+
+        <!-- OIDC and OAuth2 Support -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-oidc-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>9.37.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>oauth2-oidc-sdk</artifactId>
+            <version>11.9.1</version>
         </dependency>
 
     </dependencies>

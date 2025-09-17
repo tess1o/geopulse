@@ -101,6 +101,29 @@ public class AuthenticationService {
                 .fullName(user.getFullName())
                 .createdAt(user.getCreatedAt())
                 .expiresIn(accessTokenLifespan)
+                .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
+                .build();
+    }
+
+    /**
+     * Create an AuthResponse for an already authenticated user (e.g., via OIDC).
+     * This bypasses password validation since the user has already been authenticated by external provider.
+     */
+    public AuthResponse createAuthResponse(UserEntity user) {
+        // Generate JWT tokens
+        String accessToken = createAccessToken(user);
+        String refreshToken = createRefreshToken(user);
+
+        return AuthResponse.builder()
+                .id(user.getId().toString())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .email(user.getEmail())
+                .avatar(user.getAvatar())
+                .fullName(user.getFullName())
+                .createdAt(user.getCreatedAt())
+                .expiresIn(accessTokenLifespan)
+                .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
                 .build();
     }
 

@@ -340,12 +340,10 @@ const loadCountries = async () => {
     
     if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
       countriesCache = JSON.parse(cachedData)
-      console.log('Loaded countries from cache')
       return
     }
     
     // Fetch fresh data
-    console.log('Fetching countries data from API...')
     const res = await fetch("https://restcountries.com/v3.1/all?fields=name,flags")
     countriesCache = await res.json()
     
@@ -353,14 +351,12 @@ const loadCountries = async () => {
     localStorage.setItem(COUNTRIES_CACHE_KEY, JSON.stringify(countriesCache))
     localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
     
-    console.log('Countries data cached successfully')
   } catch (error) {
     console.error('Failed to load countries data:', error)
     // Try to use stale cache if available
     const cachedData = localStorage.getItem(COUNTRIES_CACHE_KEY)
     if (cachedData) {
       countriesCache = JSON.parse(cachedData)
-      console.log('Using stale cache due to fetch error')
     }
   }
 }

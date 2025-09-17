@@ -120,6 +120,22 @@ Once deployed:
 **Dawarich** (iOS)
 **Home Assistant**
 
+## Authentication
+
+GeoPulse supports multiple authentication methods:
+
+**Traditional Authentication**
+- Username/password registration and login
+- Secure password hashing and JWT tokens
+
+**OIDC/SSO Authentication** 
+- OpenID Connect support for enterprise SSO
+- Compatible with Google, Microsoft, Keycloak, Auth0, and more
+- Multiple providers can be configured simultaneously
+- Account linking for users with existing accounts
+
+See the [Configuration Guide](docs/CONFIGURATION.md#oidc-authentication) for OIDC setup instructions.
+
 ## Privacy and Security
 
 GeoPulse keeps your data under your control:
@@ -127,6 +143,7 @@ GeoPulse keeps your data under your control:
 - Self-hosted - your data stays on your server
 - No third-party tracking or external data sharing
 - Secure HTTP-only cookies with JWT tokens for API access
+- OIDC/SSO integration for enterprise environments
 - Granular sharing controls
 - Full data export capabilities
 

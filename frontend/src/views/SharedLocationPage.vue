@@ -4,11 +4,11 @@
     <div class="shared-header">
       <div class="header-content">
         <div class="logo-section" @click="navigateToHome">
-          <img src="/geopulse-logo.svg" alt="GeoPulse" class="logo" />
+          <img src="/geopulse-logo.svg" alt="GeoPulse" class="logo"/>
           <h1 class="app-title">GeoPulse</h1>
         </div>
         <div class="header-right">
-          <DarkModeSwitcher class="large-theme-toggle" />
+          <DarkModeSwitcher class="large-theme-toggle"/>
         </div>
       </div>
     </div>
@@ -17,7 +17,7 @@
     <div class="shared-content">
       <!-- Loading State -->
       <div v-if="loading" class="loading-state">
-        <ProgressSpinner />
+        <ProgressSpinner/>
         <p>Loading shared location...</p>
       </div>
 
@@ -30,10 +30,10 @@
               <div class="error-message">
                 <h3>Error Loading Location</h3>
                 <p>{{ error }}</p>
-                <Button 
-                  label="Try Again" 
-                  @click="initializeSharedView"
-                  class="retry-btn"
+                <Button
+                    label="Try Again"
+                    @click="initializeSharedView"
+                    class="retry-btn"
                 />
               </div>
             </div>
@@ -52,18 +52,18 @@
                 <p>This shared location is password protected.</p>
                 <form @submit.prevent="verifyPassword" class="password-input-form">
                   <div class="input-group">
-                    <Password 
-                      v-model="password"
-                      placeholder="Enter password"
-                      :feedback="false"
-                      class="password-input"
-                      autofocus
+                    <Password
+                        v-model="password"
+                        placeholder="Enter password"
+                        :feedback="false"
+                        class="password-input"
+                        autofocus
                     />
-                    <Button 
-                      type="submit"
-                      label="Access"
-                      :loading="loading"
-                      class="access-btn"
+                    <Button
+                        type="submit"
+                        label="Access"
+                        :loading="loading"
+                        class="access-btn"
                     />
                   </div>
                 </form>
@@ -81,7 +81,7 @@
             <div class="location-info">
               <h2 class="share-title">{{ shareData.shareName || 'Shared Location' }}</h2>
               <p v-if="shareData.description" class="share-description">{{ shareData.description }}</p>
-              
+
               <div class="info-grid">
                 <div class="info-item">
                   <span class="info-label">Shared by:</span>
@@ -97,71 +97,88 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">Scope:</span>
-                  <span class="info-value">{{ shareLinksStore.getSharedLocationInfo?.show_history ? 'Location History' : 'Current Location Only' }}</span>
+                  <span class="info-value">{{
+                      shareLinksStore.getSharedLocationInfo?.show_history ? 'Location History' : 'Current Location Only'
+                    }}</span>
                 </div>
               </div>
             </div>
           </template>
         </Card>
 
-        <!-- Map Container -->
-        <Card class="map-card">
-          <template #header>
-            <div class="map-header">
-              <h3 class="map-title">{{ hasHistoryData ? 'Location & History' : 'Current Location' }}</h3>
-              <Button 
-                icon="pi pi-refresh"
-                @click="refreshLocationData"
-                :loading="refreshing"
-                severity="secondary"
-                outlined
-                size="small"
-                class="refresh-btn"
-                v-tooltip.bottom="'Refresh location data'"
-              />
-            </div>
-          </template>
-          <template #content>
-            <div class="map-container">
-              <MapContainer
-                ref="mapContainerRef"
-                map-id="shared-location-map"
-                :center="[shareData.latitude, shareData.longitude]"
-                :zoom="15"
-                height="100%"
-                width="100%"
-                :show-controls="false"
-                @map-ready="handleMapReady"
-              >
-                <template #overlays="{ map, isReady }">
-                  <!-- Path Layer for history -->
-                  <PathLayer
-                    v-if="map && isReady && hasHistoryData"
-                    :map="map"
-                    :path-data="pathData"
-                    :visible="true"
-                    :path-options="{
+        <div v-if="shareData.latitude">
+          <!-- Map Container -->
+          <Card class="map-card">
+            <template #header>
+              <div class="map-header">
+                <h3 class="map-title">{{ hasHistoryData ? 'Location & History' : 'Current Location' }}</h3>
+                <Button
+                    icon="pi pi-refresh"
+                    @click="refreshLocationData"
+                    :loading="refreshing"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                    class="refresh-btn"
+                    v-tooltip.bottom="'Refresh location data'"
+                />
+              </div>
+            </template>
+            <template #content>
+              <div class="map-container">
+                <MapContainer
+                    ref="mapContainerRef"
+                    map-id="shared-location-map"
+                    :center="[shareData.latitude, shareData.longitude]"
+                    :zoom="15"
+                    height="100%"
+                    width="100%"
+                    :show-controls="false"
+                    @map-ready="handleMapReady"
+                >
+                  <template #overlays="{ map, isReady }">
+                    <!-- Path Layer for history -->
+                    <PathLayer
+                        v-if="map && isReady && hasHistoryData"
+                        :map="map"
+                        :path-data="pathData"
+                        :visible="true"
+                        :path-options="{
                       color: '#007bff',
                       weight: 3,
                       opacity: 0.7,
                       smoothFactor: 1
                     }"
-                  />
-                  
-                  <!-- Current location marker -->
-                  <SharedLocationMarker
-                    v-if="map && isReady"
-                    :map="map"
-                    :latitude="shareData.latitude"
-                    :longitude="shareData.longitude"
-                    :share-data="shareData"
-                    :open-popup="true"
-                  />
-                </template>
-              </MapContainer>
-            </div>
-          </template>
-        </Card>
+                    />
+
+                    <!-- Current location marker -->
+                    <SharedLocationMarker
+                        v-if="map && isReady"
+                        :map="map"
+                        :latitude="shareData.latitude"
+                        :longitude="shareData.longitude"
+                        :share-data="shareData"
+                        :open-popup="true"
+                    />
+                  </template>
+                </MapContainer>
+              </div>
+            </template>
+          </Card>
+        </div>
+        <div v-else class="no-data-state">
+          <Card class="no-data-card">
+            <template #content>
+              <div class="no-data-content">
+                <i class="pi pi-info-circle no-data-icon"></i>
+                <div class="no-data-message">
+                  <h3>No Location Data Available</h3>
+                  <p>The user hasn't recorded any GPS location data yet.</p>
+                </div>
+              </div>
+            </template>
+          </Card>
+        </div>
       </div>
     </div>
 
@@ -171,11 +188,11 @@
         <p class="footer-text">
           Powered by <strong>GeoPulse</strong> - Location Analytics Platform
         </p>
-        <Button 
-          label="Get GeoPulse"
-          severity="secondary"
-          @click="visitGeoPulse"
-          class="get-app-btn"
+        <Button
+            label="Get GeoPulse"
+            severity="secondary"
+            @click="visitGeoPulse"
+            class="get-app-btn"
         />
       </div>
     </div>
@@ -212,9 +229,9 @@ const mapContainerRef = ref(null)
 
 // Computed
 const hasHistoryData = computed(() => {
-  return shareLinksStore.getSharedLocationInfo?.show_history && 
-         pathData.value && 
-         pathData.value.length > 0
+  return shareLinksStore.getSharedLocationInfo?.show_history &&
+      pathData.value &&
+      pathData.value.length > 0
 })
 
 // Check if we have a valid stored access token for this link
@@ -222,12 +239,12 @@ const hasValidStoredToken = () => {
   try {
     const tokenData = localStorage.getItem(`shareLink_${linkId}`)
     if (!tokenData) return false
-    
-    const { access_token, expires_at } = JSON.parse(tokenData)
+
+    const {access_token, expires_at} = JSON.parse(tokenData)
     const now = Date.now()
     const timeLeft = expires_at - now
     const bufferTime = 5 * 60 * 1000 // 5 minutes
-    
+
     // Check if token exists and hasn't expired (with buffer)
     if (access_token && expires_at && timeLeft > bufferTime) {
       shareLinksStore.sharedAccessToken = access_token
@@ -248,10 +265,10 @@ const initializeSharedView = async () => {
   try {
     loading.value = true
     error.value = null
-    
+
     // Step 1: Get link info (this works without authentication for public access)
     const linkInfo = await shareLinksStore.fetchSharedLocationInfo(linkId)
-    
+
     if (linkInfo.has_password) {
       // Check if we have a valid stored token first
       if (hasValidStoredToken()) {
@@ -265,21 +282,21 @@ const initializeSharedView = async () => {
     } else {
       // For public links, verify with no password to get access token
       const tokenResponse = await shareLinksStore.verifySharedLink(linkId)
-      
+
       // Store the token for future use (even for public links)
       storeAccessToken(tokenResponse)
-      
+
       await loadLocationData()
     }
   } catch (err) {
     // Clean up stored token if link is not found, expired, or invalid
-    if (err.message?.includes('not found') || 
-        err.message?.includes('expired') || 
+    if (err.message?.includes('not found') ||
+        err.message?.includes('expired') ||
         err.message?.includes('invalid') ||
         err.status === 404) {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
-    
+
     error.value = err.message || 'Failed to load shared location'
     loading.value = false
   }
@@ -303,12 +320,12 @@ const verifyPassword = async () => {
   try {
     loading.value = true
     error.value = null
-    
+
     const tokenResponse = await shareLinksStore.verifySharedLink(linkId, password.value)
-    
+
     // Store the token for future use
     storeAccessToken(tokenResponse)
-    
+
     needsPassword.value = false
     await loadLocationData()
   } catch (err) {
@@ -316,7 +333,7 @@ const verifyPassword = async () => {
     if (err.message?.includes('Invalid password') || err.status === 401) {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
-    
+
     error.value = err.message || 'Invalid password'
     loading.value = false
   }
@@ -326,23 +343,24 @@ const verifyPassword = async () => {
 const loadLocationData = async () => {
   try {
     loading.value = true
-    
+
     await shareLinksStore.fetchSharedLocation(linkId)
     const locationData = shareLinksStore.getSharedLocationData
-    
+
     // Convert to expected format
     if (locationData) {
       // Handle both current-only and current+history response formats
       const currentLocation = locationData.current || locationData
-      
+
       shareData.value = {
+        sharedBy: shareLinksStore.getSharedLocationInfo?.shared_by,
         shareName: shareLinksStore.getSharedLocationInfo?.name || 'Shared Location',
         description: shareLinksStore.getSharedLocationInfo?.description || '',
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
-        sharedAt: currentLocation.timestamp || new Date().toISOString()
+        sharedAt: currentLocation.timestamp
       }
-      
+
       // Process history data if available
       if (shareLinksStore.getSharedLocationInfo?.show_history && locationData.history && locationData.history.length > 0) {
         pathData.value = [locationData.history.map(point => ({
@@ -354,16 +372,16 @@ const loadLocationData = async () => {
         pathData.value = []
       }
     }
-    
+
     loading.value = false
   } catch (err) {
     // Clean up stored token if it's no longer valid for location access
-    if (err.message?.includes('No access token') || 
+    if (err.message?.includes('No access token') ||
         err.message?.includes('Access denied') ||
-        err.status === 401 || 
+        err.status === 401 ||
         err.status === 403) {
       localStorage.removeItem(`shareLink_${linkId}`)
-      
+
       // If token was invalid, redirect back to password entry for protected links
       if (shareLinksStore.getSharedLocationInfo?.has_password) {
         needsPassword.value = true
@@ -372,7 +390,7 @@ const loadLocationData = async () => {
         return
       }
     }
-    
+
     error.value = err.message || 'Failed to load location data'
     loading.value = false
   }
@@ -382,22 +400,22 @@ const loadLocationData = async () => {
 const refreshLocationData = async () => {
   try {
     refreshing.value = true
-    
+
     await shareLinksStore.fetchSharedLocation(linkId)
     const locationData = shareLinksStore.getSharedLocationData
-    
+
     // Update shareData with new location info
     if (locationData) {
       // Handle both current-only and current+history response formats
       const currentLocation = locationData.current || locationData
-      
+
       shareData.value = {
         ...shareData.value, // Keep existing name, description
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
         sharedAt: currentLocation.timestamp || new Date().toISOString()
       }
-      
+
       // Update history data if available
       if (shareLinksStore.getSharedLocationInfo?.show_history && locationData.history && locationData.history.length > 0) {
         pathData.value = [locationData.history.map(point => ({
@@ -411,12 +429,12 @@ const refreshLocationData = async () => {
     }
   } catch (err) {
     // Clean up stored token if refresh fails due to invalid token
-    if (err.message?.includes('No access token') || 
+    if (err.message?.includes('No access token') ||
         err.message?.includes('Access denied') ||
-        err.status === 401 || 
+        err.status === 401 ||
         err.status === 403) {
       localStorage.removeItem(`shareLink_${linkId}`)
-      
+
       // If token was invalid, redirect back to password entry for protected links
       if (shareLinksStore.getSharedLocationInfo?.has_password) {
         needsPassword.value = true
@@ -437,28 +455,28 @@ const handleMapReady = (mapInstance) => {
 // Format time until expiration (like timeAgo but for future dates)
 const timeUntil = (futureDate) => {
   if (!futureDate) return 'Never'
-  
+
   const dateObj = typeof futureDate === 'string' ? new Date(futureDate) : futureDate
-  
+
   if (isNaN(dateObj.getTime())) {
     return 'Invalid date'
   }
-  
+
   const now = new Date()
   const diffMs = dateObj - now
-  
+
   if (diffMs <= 0) {
     return 'Expired'
   }
-  
+
   const diffMinutes = Math.floor(diffMs / (1000 * 60))
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  
+
   if (diffMinutes < 60) return `In ${diffMinutes} min`
   if (diffHours < 24) return `In ${diffHours} hours`
   if (diffDays < 30) return `In ${diffDays} days`
-  
+
   // For longer periods, show actual date
   return `On ${formatDate(futureDate)}`
 }
@@ -473,18 +491,18 @@ const formatExpiration = () => {
 const getExpirationClass = () => {
   const expiresAt = shareLinksStore.getSharedLocationInfo?.expires_at
   if (!expiresAt) return ''
-  
+
   const expiration = new Date(expiresAt)
   const now = new Date()
   const timeLeft = expiration - now
   const hoursLeft = timeLeft / (1000 * 60 * 60)
-  
+
   if (expiration < now) {
     return 'expired'
   } else if (hoursLeft < 24) {
     return 'expiring-soon'
   }
-  
+
   return ''
 }
 
@@ -639,6 +657,49 @@ onMounted(() => {
   flex: 1;
 }
 
+/* No Data State */
+.no-data-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.no-data-card {
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.no-data-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+}
+
+.no-data-icon {
+  font-size: 2rem;
+  color: var(--p-blue-500);
+  flex-shrink: 0;
+}
+
+.no-data-message {
+  flex: 1;
+}
+
+.no-data-message h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: var(--p-text-color);
+}
+
+.no-data-message p {
+  color: var(--p-text-color-secondary);
+  margin: 0;
+}
 
 .location-display {
   display: flex;
@@ -817,17 +878,28 @@ onMounted(() => {
   border-bottom-color: var(--gp-border-dark) !important;
 }
 
+.p-dark .shared-location-page .no-data-message h3 {
+  color: var(--gp-text-primary) !important;
+}
+
+.p-dark .shared-location-page .no-data-message p {
+  color: var(--gp-text-secondary) !important;
+}
+
+.p-dark .shared-location-page .no-data-icon {
+  color: var(--gp-primary) !important;
+}
 
 /* Responsive */
 @media (max-width: 768px) {
   .shared-content {
     padding: 1rem 1rem;
   }
-  
+
   .location-display {
     gap: 1rem;
   }
-  
+
   .location-info {
     margin-top: 0;
   }
@@ -850,7 +922,7 @@ onMounted(() => {
   .map-container {
     height: 400px;
   }
-  
+
   .large-theme-toggle :deep(.p-button) {
     width: 2.5rem;
     height: 2.5rem;

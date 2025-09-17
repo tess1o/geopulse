@@ -12,6 +12,7 @@ import { ref, watch, computed, readonly } from 'vue'
 import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
 import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
+import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
 
 const props = defineProps({
   map: {
@@ -148,7 +149,6 @@ const tripEndMarker = ref(null)
 
 // Watch for trip highlighting
 watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
-  
   // Remove previous trip path and markers
   if (tripPathLayer.value) {
     baseLayerRef.value?.removeFromLayer(tripPathLayer.value)
@@ -202,10 +202,10 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           ${newTrip.movementType || 'Movement'} Trip
         </div>
         <div class="trip-detail">
-          Duration: ${newTrip.tripDuration} minutes
+          Duration: ${formatDuration(newTrip.tripDuration)}
         </div>
         <div class="trip-detail">
-          Distance: ${(newTrip.distanceKm || 0).toFixed(2)} km
+          Distance: ${formatDistance(newTrip.distanceMeters || 0)}
         </div>
         <div class="trip-detail">
           ${new Date(newTrip.timestamp).toLocaleString()}
@@ -226,17 +226,17 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           Start: ${startTime.toLocaleString()}
         </div>
         <div class="trip-detail">
-          Duration: ${newTrip.tripDuration} minutes
+          Duration: ${formatDuration(newTrip.tripDuration)}
         </div>
         <div class="trip-detail">
-          Distance: ${(newTrip.distanceKm || 0).toFixed(2)} km
+          Distance: ${formatDistance(newTrip.distanceMeters || 0)}
         </div>
         <div class="trip-detail">
           Mode: ${newTrip.movementType || 'Unknown'}
         </div>
       </div>
     `
-    
+
     const endInfo = `
       <div class="trip-popup">
         <div class="trip-title trip-end">
@@ -246,10 +246,10 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           End: ${endTime.toLocaleString()}
         </div>
         <div class="trip-detail">
-          Duration: ${newTrip.tripDuration} minutes
+          Duration: ${formatDuration(newTrip.tripDuration)}
         </div>
         <div class="trip-detail">
-          Distance: ${(newTrip.distanceKm || 0).toFixed(2)} km
+          Distance: ${formatDistance(newTrip.distanceMeters || 0)}
         </div>
         <div class="trip-detail">
           Mode: ${newTrip.movementType || 'Unknown'}
@@ -265,6 +265,13 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
         event: e
       })
     })
+
+    tripStartMarker.value.on('mouseover', function (e) {
+      this.openPopup();
+    });
+    tripStartMarker.value.on('mouseout', function (e) {
+      this.closePopup();
+    });
     
     tripEndMarker.value.on('click', (e) => {
       emit('trip-marker-click', {
@@ -273,6 +280,13 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
         event: e
       })
     })
+
+    tripEndMarker.value.on('mouseover', function (e) {
+      this.openPopup();
+    });
+    tripEndMarker.value.on('mouseout', function (e) {
+      this.closePopup();
+    });
     
     tripPathLayer.value.bindPopup(tripInfo)
     tripStartMarker.value.bindPopup(startInfo)

@@ -50,7 +50,7 @@ const createMarker = () => {
       .addTo(props.map)
       .bindPopup(`
       <div style="text-align: center;">
-        <strong>${props.shareData.shareName || 'Shared Location'}</strong><br/>
+        <strong>${props.shareData.sharedBy}</strong><br/>
         ${props.shareData.description ? `<em>${props.shareData.description}</em><br/>` : ''}
         <small>Last seen ${timeAgo(props.shareData.sharedAt)}</small>
       </div>

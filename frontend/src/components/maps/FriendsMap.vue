@@ -103,11 +103,7 @@ const processedFriendsData = computed(() => {
   if (!props.friends) return []
   
   // Debug logging
-  console.log('FriendsMap: Raw friends data:', props.friends)
-  const processed = processFriendsForMap(props.friends)
-  console.log('FriendsMap: Processed friends data:', processed)
-  
-  return processed
+  return processFriendsForMap(props.friends)
 })
 
 const dataBounds = computed(() => {
@@ -159,7 +155,6 @@ const mapZoom = ref(15)
 // Computed
 const hasLocations = computed(() => {
   if (!props.friends || !Array.isArray(props.friends) || props.friends.length === 0) {
-    console.log('FriendsMap: No friends data or empty array')
     return false
   }
 
@@ -171,7 +166,7 @@ const hasLocations = computed(() => {
         !isNaN(friend.lastLatitude) &&
         !isNaN(friend.lastLongitude)
     )
-    
+
     if (!hasValidLocation) {
       console.log('FriendsMap: Friend without valid location:', {
         friend: friend?.fullName || friend?.email,
@@ -181,17 +176,15 @@ const hasLocations = computed(() => {
         lngType: typeof friend?.lastLongitude
       })
     }
-    
+
     return hasValidLocation
   })
   
-  console.log('FriendsMap: hasLocations result:', result)
   return result
 })
 
 // Methods
 const handleMapReady = (mapInstance) => {
-  console.log('FriendsMap: Map ready', mapInstance)
   map.value = mapInstance
   
   // Fit map to friends data if available
@@ -325,7 +318,6 @@ watch(dataBounds, (newBounds) => {
 
 // Watch for friends prop changes to trigger map refresh if needed
 watch(() => props.friends, (newFriends) => {
-  console.log('FriendsMap: Friends prop changed:', newFriends)
   // Force re-render if we transition from no friends to having friends
   if (newFriends && newFriends.length > 0 && !map.value) {
     mapKey.value++

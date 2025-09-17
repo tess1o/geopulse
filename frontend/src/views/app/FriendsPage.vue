@@ -728,7 +728,6 @@ const handleCancelAllInvites = async () => {
 }
 
 const handleFriendLocated = (friend) => {
-  console.log(`Located friend: ${friend.fullName}`)
 }
 
 // Utility functions

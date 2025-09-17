@@ -21,4 +21,5 @@ public class AuthResponse {
     private String refreshToken;
     private long expiresIn;
     private Instant createdAt;
+    private boolean hasPassword;
 }
