@@ -22,13 +22,18 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
     }
 
     @Override
+    public String getBadgeId() {
+        return "first_month";
+    }
+
+    @Override
     public Badge calculateBadge(UUID userId) {
         int[] trackingData = getTrackingDays(userId);
         int trackedDays = trackingData[0];
         boolean firstMonthComplete = trackedDays >= 30;
 
         return new Badge(
-                "first_month",
+                getBadgeId(),
                 "First Month Complete!",
                 "Successfully tracked for 30 days",
                 "🎉",

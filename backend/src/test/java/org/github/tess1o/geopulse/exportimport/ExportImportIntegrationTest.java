@@ -287,6 +287,7 @@ class ExportImportIntegrationTest {
         // Step 3: Validate export contents (should include auto-collected dependencies)
         log.info("Step 3: Validating export includes dependencies");
         ImportOptions validateOptions = new ImportOptions();
+        // Note: Including TIMELINE for validation to ensure it's in export, but won't be imported 
         validateOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS, 
                                              ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES, 
                                              ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
@@ -297,8 +298,8 @@ class ExportImportIntegrationTest {
         List<String> detectedDataTypes = importDataService.validateAndDetectDataTypes(validateJob);
         log.info("Detected data types in export: {}", detectedDataTypes);
 
-        // Should include auto-collected dependencies
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.TIMELINE), "Timeline data should be included");
+        // Should include auto-collected dependencies (note: timeline will be regenerated from GPS, not imported)
+        assertFalse(detectedDataTypes.contains(ExportImportConstants.DataTypes.TIMELINE), "Timeline data should not be imported - will be regenerated from GPS");
         assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES), "Favorites should be auto-included due to timeline dependency");
         assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION), "Reverse geocoding should be auto-included due to timeline dependency");
         assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS), "Raw GPS data should be included");
@@ -346,7 +347,8 @@ class ExportImportIntegrationTest {
         // Step 5: Import data from exported file
         log.info("Step 5: Importing data");
         ImportOptions importOptions = new ImportOptions();
-        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS, 
+        // Note: Excluding TIMELINE from import - it will be regenerated from GPS data
+        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS, 
                                            ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES, 
                                            ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
         importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
@@ -458,7 +460,8 @@ class ExportImportIntegrationTest {
         // Export data first
         ExportJob exportJob = new ExportJob();
         exportJob.setUserId(testUser.getId());
-        exportJob.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.FAVORITES));
+        // Export GPS data as well since timeline will be regenerated from it
+        exportJob.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS, ExportImportConstants.DataTypes.FAVORITES));
         exportJob.setFormat(ExportImportConstants.Formats.JSON);
 
         ExportDateRange dateRange = new ExportDateRange();
@@ -486,9 +489,10 @@ class ExportImportIntegrationTest {
         assertNotNull(favoritesRepository.findByIdOptional(originalFavoriteId).orElse(null));
         assertNotNull(reverseGeocodingLocationRepository.findByIdOptional(originalGeocodingId).orElse(null));
 
-        // Import should restore timeline and preserve existing dependencies
+        // Import will regenerate timeline from GPS data and preserve existing dependencies
         ImportOptions importOptions = new ImportOptions();
-        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
+        // Note: Timeline will be regenerated from GPS data, not imported directly
+        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS, ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
         importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
 
         ImportJob importJob = new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData);

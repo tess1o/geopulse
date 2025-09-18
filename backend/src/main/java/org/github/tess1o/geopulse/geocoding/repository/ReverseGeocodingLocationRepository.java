@@ -166,8 +166,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         }
 
         // Step 2: Get all matching entities in a single query and build coordinate mapping
-        List<Long> geocodingIds = new ArrayList<>();
-        Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // Changed: One ID can map to multiple coordinates
+        Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // One ID can map to multiple coordinates
         
         for (Object[] row : matchingResults) {
             Long id = ((Number) row[0]).longValue();
@@ -175,26 +174,16 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             Double inputLat = (Double) row[2];
             String coordKey = inputLon + "," + inputLat;
             
-            geocodingIds.add(id);
             idToCoordListMap.computeIfAbsent(id, k -> new ArrayList<>()).add(coordKey);
         }
         
-        log.debug("Batch geocoding ID mapping: {} unique entity IDs for {} input coordinates", 
-                 idToCoordListMap.size(), matchingResults.size());
+        // Get unique IDs for the query (removes duplicates)
+        List<Long> uniqueGeocodingIds = new ArrayList<>(idToCoordListMap.keySet());
 
         // Get all entities in a single IN query
-        List<ReverseGeocodingLocationEntity> entities = find("id in ?1", geocodingIds).list();
+        List<ReverseGeocodingLocationEntity> entities = find("id in ?1", uniqueGeocodingIds).list();
         
-        // Debug logging
-        log.debug("Batch geocoding debug: {} input coordinates, {} spatial matches found, {} entities loaded",
-                 coordinates.size(), matchingResults.size(), entities.size());
-        
-        if (log.isDebugEnabled() && matchingResults.size() != entities.size()) {
-            log.debug("Batch geocoding mismatch: expected {} entities for spatial matches, got {}",
-                     matchingResults.size(), entities.size());
-        }
-        
-        // Build result map and update access timestamps
+        // Build result map
         Map<String, ReverseGeocodingLocationEntity> resultMap = new HashMap<>();
         for (ReverseGeocodingLocationEntity entity : entities) {
             List<String> coordKeys = idToCoordListMap.get(entity.getId());
@@ -203,13 +192,11 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 for (String coordKey : coordKeys) {
                     resultMap.put(coordKey, entity);
                 }
-                // Update timestamp asynchronously (non-critical) - once per entity
-                updateAccessTimestampAsync(entity.getId());
             }
         }
         
-        log.debug("Batch geocoding final result: {} coordinate mappings from {} entities", 
-                 resultMap.size(), entities.size());
+        log.debug("Batch geocoding found {} cached results for {} coordinates", 
+                 resultMap.size(), coordinates.size());
 
         return resultMap;
     }

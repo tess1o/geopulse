@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepositor
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Service for cleaning up expired OIDC-related data.
@@ -59,7 +60,7 @@ public class OidcCleanupService {
      * Clean up old OIDC session states (older than 24 hours).
      * Runs daily to remove very old session states that might have been missed.
      */
-    @Scheduled(every = "24h")
+    @Scheduled(every = "24h", delay = 1, delayUnit = TimeUnit.HOURS)
     @Transactional
     public void cleanupOldSessionStates() {
         if (!sessionStatesCleanupEnabled) {
@@ -83,7 +84,7 @@ public class OidcCleanupService {
      * Clean up expired linking tokens from memory.
      * Runs every 10 minutes to prevent memory leaks in the token service.
      */
-    @Scheduled(every = "10m")
+    @Scheduled(every = "10m", delay = 30, delayUnit = TimeUnit.MINUTES)
     public void cleanupExpiredLinkingTokens() {
         if (!linkingTokensCleanupEnabled) {
             return;

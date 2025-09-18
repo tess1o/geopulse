@@ -9,11 +9,18 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
+import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
+import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
+import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.importdata.mapper.ImportDataMapper;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.locationtech.jts.geom.Coordinate;
@@ -55,6 +62,15 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Inject
     ImportDataClearingService dataClearingService;
 
+    @Inject
+    BatchProcessor batchProcessor;
+
+    @Inject
+    FavoritesRepository favoritesRepository;
+
+    @Inject
+    GpsSourceRepository gpsSourceRepository;
+
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -88,10 +104,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         detectedDataTypes.add(ExportImportConstants.DataTypes.RAW_GPS);
                         break;
                     case ExportImportConstants.FileNames.TIMELINE_DATA:
-                        detectedDataTypes.add(ExportImportConstants.DataTypes.TIMELINE);
+                        // Timeline data will be regenerated from GPS data - skip detection
+                        log.debug("Timeline data found in export - will be regenerated from GPS data");
                         break;
                     case ExportImportConstants.FileNames.DATA_GAPS:
-                        detectedDataTypes.add(ExportImportConstants.DataTypes.DATA_GAPS);
+                        // Data gaps will be regenerated during timeline generation - skip detection
+                        log.debug("Data gaps found in export - will be regenerated during timeline generation");
                         break;
                     case ExportImportConstants.FileNames.FAVORITES:
                         detectedDataTypes.add(ExportImportConstants.DataTypes.FAVORITES);
@@ -182,8 +200,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
 
-        // Track whether timeline data is being imported
-        boolean hasTimelineData = fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA);
+        // Check if GPS data exists for import
         boolean hasGpsData = fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA);
 
         // Handle data clearing before import if requested
@@ -193,34 +210,20 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             job.setProgress(totalProgress);
         }
 
-        // 3. Import timeline data (depends on favorites and reverse geocoding)
-        if (hasTimelineData) {
-            importTimelineData(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job);
-            totalProgress += 20;
-            job.setProgress(totalProgress);
-        }
-
-        // 3.1. Import data gaps (no dependencies)
-        if (fileContents.containsKey(ExportImportConstants.FileNames.DATA_GAPS)) {
-            importDataGapsData(fileContents.get(ExportImportConstants.FileNames.DATA_GAPS), job);
-            totalProgress += 5;
-            job.setProgress(totalProgress);
-        }
-
-        // 4. Import GPS data
+        // 3. Import GPS data first
         Instant firstGpsTimestamp = null;
         if (hasGpsData) {
             firstGpsTimestamp = importRawGpsData(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
             log.info("Successfully imported raw GPS data for user {} - first timestamp: {}", job.getUserId(), firstGpsTimestamp);
-            totalProgress += 25;
+            totalProgress += 35;
             job.setProgress(totalProgress);
         }
 
-        // LAYER 3 FIX: Handle GPS-only imports (timeline generation needed)
-        if (hasGpsData && !hasTimelineData) {
-            log.info("GeoPulse import contains GPS data but no timeline data - will trigger timeline generation");
+        // 4. Always regenerate timeline after GPS import (skipping timeline/gaps data in export)
+        if (hasGpsData && firstGpsTimestamp != null) {
+            log.info("Regenerating timeline from imported GPS data starting from timestamp: {}", firstGpsTimestamp);
             timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
-            totalProgress += 10;
+            totalProgress += 25;
             job.setProgress(totalProgress);
         }
 
@@ -278,10 +281,53 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Transactional
     public Instant importRawGpsData(byte[] content, ImportJob job) throws IOException {
         RawGpsDataDto gpsData = objectMapper.readValue(content, RawGpsDataDto.class);
-        log.info("Importing {} GPS points for user {} using native SQL", gpsData.getPoints().size(), job.getUserId());
+        log.info("Importing {} GPS points for user {} using BatchProcessor", gpsData.getPoints().size(), job.getUserId());
 
-        int imported = 0;
-        for (RawGpsDataDto.GpsPointDto pointDto : gpsData.getPoints()) {
+        // Get user entity
+        UserEntity user = userRepository.findById(job.getUserId());
+        if (user == null) {
+            throw new IllegalStateException("User not found: " + job.getUserId());
+        }
+
+        // Convert DTOs to entities without preserving IDs
+        List<GpsPointEntity> gpsEntities = convertDtosToGpsEntities(gpsData.getPoints(), user, job);
+        
+        if (gpsEntities.isEmpty()) {
+            log.warn("No GPS points to import for user {}", job.getUserId());
+            return null;
+        }
+
+        // Use BatchProcessor with Clear/Merge mode based on user preference
+        boolean clearMode = job.getOptions().isClearDataBeforeImport();
+        int batchSize = clearMode ? 500 : 250; // Use appropriate batch size
+        
+        BatchProcessor.BatchResult result = batchProcessor.processInBatches(
+            gpsEntities, batchSize, clearMode, job, 35, 85);
+        
+        log.info("Successfully imported {} GPS points using BatchProcessor (skipped {} duplicates)", 
+                result.imported, result.skipped);
+
+        // Return the earliest timestamp from imported GPS data
+        return gpsEntities.stream()
+                .map(GpsPointEntity::getTimestamp)
+                .min(Instant::compareTo)
+                .orElse(null);
+    }
+
+    /**
+     * Convert GPS point DTOs to entities without preserving original IDs
+     */
+    private List<GpsPointEntity> convertDtosToGpsEntities(List<RawGpsDataDto.GpsPointDto> pointDtos, 
+                                                         UserEntity user, ImportJob job) {
+        List<GpsPointEntity> gpsEntities = new ArrayList<>();
+        
+        for (RawGpsDataDto.GpsPointDto pointDto : pointDtos) {
+            // Skip points without valid coordinates or timestamp
+            if (pointDto.getTimestamp() == null ||
+                pointDto.getLatitude() == null || pointDto.getLongitude() == null) {
+                continue;
+            }
+
             // Apply date range filter if specified
             if (job.getOptions().getDateRangeFilter() != null) {
                 if (pointDto.getTimestamp().isBefore(job.getOptions().getDateRangeFilter().getStartDate()) ||
@@ -291,219 +337,164 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             }
 
             try {
-                // Use native SQL UPSERT to preserve IDs and avoid duplicates
-                org.locationtech.jts.geom.Point coordinates = null;
-                if (pointDto.getLatitude() != null && pointDto.getLongitude() != null) {
-                    coordinates = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                            pointDto.getLongitude(), pointDto.getLatitude());
-                }
-
-                entityManager.createNativeQuery(NativeSqlImportTemplates.GPS_POINTS_UPSERT)
-                        .setParameter(1, pointDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, pointDto.getTimestamp())
-                        .setParameter(4, coordinates)
-                        .setParameter(5, pointDto.getAccuracy())
-                        .setParameter(6, pointDto.getAltitude())
-                        .setParameter(7, pointDto.getSpeed())
-                        .setParameter(8, pointDto.getBattery())
-                        .setParameter(9, pointDto.getDeviceId())
-                        .setParameter(10, pointDto.getSource())
-                        .setParameter(11, pointDto.getTimestamp()) // created_at - use same as timestamp
-                        .executeUpdate();
-                imported++;
-            } catch (Exception e) {
-                log.warn("Failed to import GPS point with ID {}: {}", pointDto.getId(), e.getMessage());
-            }
-        }
-
-        log.info("Successfully imported {} GPS points using native SQL", imported);
-
-        return gpsData.getPoints().stream().map(RawGpsDataDto.GpsPointDto::getTimestamp).min(Instant::compareTo).orElse(null);
-    }
-
-    @Transactional
-    public void importTimelineData(byte[] content, ImportJob job) throws IOException {
-        TimelineDataDto timelineData = objectMapper.readValue(content, TimelineDataDto.class);
-        log.info("Importing {} stays and {} trips for user {} using native SQL",
-                timelineData.getStays().size(), timelineData.getTrips().size(), job.getUserId());
-
-        int importedStays = 0;
-        int importedTrips = 0;
-
-        // Import stays using native SQL UPSERT
-        for (TimelineDataDto.StayDto stayDto : timelineData.getStays()) {
-            if (shouldSkipDueToDateFilter(stayDto.getTimestamp(), job)) {
-                continue;
-            }
-
-            try {
-                // Create Point geometry from lat/lon
-                org.locationtech.jts.geom.Point location = null;
-                if (stayDto.getLatitude() != null && stayDto.getLongitude() != null) {
-                    location = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                            stayDto.getLongitude(), stayDto.getLatitude());
-                }
-
-                entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_STAYS_UPSERT)
-                        .setParameter(1, stayDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, stayDto.getTimestamp())
-                        .setParameter(4, location)
-                        .setParameter(5, stayDto.getDuration())
-                        .setParameter(6, stayDto.getAddress())
-                        .setParameter(7, "HISTORICAL")
-                        .setParameter(8, stayDto.getFavoriteId())
-                        .setParameter(9, stayDto.getGeocodingId())
-                        .executeUpdate();
-                importedStays++;
-            } catch (Exception e) {
-                log.warn("Failed to import timeline stay with ID {}: {}", stayDto.getId(), e.getMessage());
-            }
-        }
-
-        // Import trips using native SQL UPSERT
-        for (TimelineDataDto.TripDto tripDto : timelineData.getTrips()) {
-            if (shouldSkipDueToDateFilter(tripDto.getTimestamp(), job)) {
-                continue;
-            }
-
-            try {
-                // Create Point geometries from lat/lon
-                org.locationtech.jts.geom.Point startPoint = null;
-                if (tripDto.getStartLatitude() != null && tripDto.getStartLongitude() != null) {
-                    startPoint = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                            tripDto.getStartLongitude(), tripDto.getStartLatitude());
-                }
-
-                org.locationtech.jts.geom.Point endPoint = null;
-                if (tripDto.getEndLatitude() != null && tripDto.getEndLongitude() != null) {
-                    endPoint = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
-                            tripDto.getEndLongitude(), tripDto.getEndLatitude());
-                }
-
-                LineString pathGeometry = convertPathToLineString(tripDto.getPath());
-
-                entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_TRIPS_UPSERT)
-                        .setParameter(1, tripDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, tripDto.getTimestamp())
-                        .setParameter(4, startPoint)
-                        .setParameter(5, endPoint)
-                        .setParameter(6, tripDto.getDistance())
-                        .setParameter(7, tripDto.getDuration())
-                        .setParameter(8, tripDto.getTransportMode())
-                        .setParameter(9, pathGeometry)
-                        .executeUpdate();
-                importedTrips++;
-            } catch (Exception e) {
-                log.warn("Failed to import timeline trip with ID {}: {}", tripDto.getId(), e.getMessage());
-            }
-        }
-
-        // Import data gaps if included in timeline data
-        int importedDataGaps = 0;
-        if (timelineData.getDataGaps() != null) {
-            for (TimelineDataDto.DataGapDto dataGapDto : timelineData.getDataGaps()) {
-                if (shouldSkipDueToDateFilter(dataGapDto.getStartTime(), job)) {
-                    continue;
-                }
-
+                GpsPointEntity gpsEntity = new GpsPointEntity();
+                gpsEntity.setUser(user);
+                gpsEntity.setDeviceId(pointDto.getDeviceId() != null ? pointDto.getDeviceId() : "geopulse-import");
+                gpsEntity.setCoordinates(org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
+                        pointDto.getLongitude(), pointDto.getLatitude()));
+                gpsEntity.setTimestamp(pointDto.getTimestamp());
+                // Use original source type from export data
                 try {
-                    entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_DATA_GAPS_UPSERT)
-                            .setParameter(1, dataGapDto.getId())
-                            .setParameter(2, job.getUserId())
-                            .setParameter(3, dataGapDto.getStartTime())
-                            .setParameter(4, dataGapDto.getEndTime())
-                            .setParameter(5, dataGapDto.getDurationSeconds())
-                            .setParameter(6, dataGapDto.getCreatedAt())
-                            .executeUpdate();
-                    importedDataGaps++;
-                } catch (Exception e) {
-                    log.warn("Failed to import timeline data gap with ID {}: {}", dataGapDto.getId(), e.getMessage());
+                    org.github.tess1o.geopulse.shared.gps.GpsSourceType sourceType = 
+                        org.github.tess1o.geopulse.shared.gps.GpsSourceType.valueOf(pointDto.getSource());
+                    gpsEntity.setSourceType(sourceType);
+                } catch (IllegalArgumentException e) {
+                    // Fallback to GPX if original source is invalid/unknown
+                    log.warn("Unknown source type '{}' for GPS point, using GPX as fallback", pointDto.getSource());
+                    gpsEntity.setSourceType(org.github.tess1o.geopulse.shared.gps.GpsSourceType.GPX);
                 }
-            }
-        }
-
-        log.info("Successfully imported {} stays, {} trips and {} data gaps using native SQL", importedStays, importedTrips, importedDataGaps);
-    }
-
-    @Transactional
-    public void importDataGapsData(byte[] content, ImportJob job) throws IOException {
-        DataGapsDataDto dataGapsData = objectMapper.readValue(content, DataGapsDataDto.class);
-        log.info("Importing {} data gaps for user {} using native SQL",
-                dataGapsData.getDataGaps().size(), job.getUserId());
-
-        int imported = 0;
-        for (TimelineDataDto.DataGapDto dataGapDto : dataGapsData.getDataGaps()) {
-            // Apply date range filter if specified
-            if (shouldSkipDueToDateFilter(dataGapDto.getStartTime(), job)) {
-                continue;
-            }
-
-            try {
-                entityManager.createNativeQuery(NativeSqlImportTemplates.TIMELINE_DATA_GAPS_UPSERT)
-                        .setParameter(1, dataGapDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, dataGapDto.getStartTime())
-                        .setParameter(4, dataGapDto.getEndTime())
-                        .setParameter(5, dataGapDto.getDurationSeconds())
-                        .setParameter(6, dataGapDto.getCreatedAt())
-                        .executeUpdate();
-                imported++;
+                gpsEntity.setCreatedAt(Instant.now());
+                
+                // Set optional fields if available
+                if (pointDto.getAccuracy() != null) {
+                    gpsEntity.setAccuracy(pointDto.getAccuracy());
+                }
+                if (pointDto.getAltitude() != null) {
+                    gpsEntity.setAltitude(pointDto.getAltitude());
+                }
+                if (pointDto.getSpeed() != null) {
+                    gpsEntity.setVelocity(pointDto.getSpeed());
+                }
+                if (pointDto.getBattery() != null) {
+                    gpsEntity.setBattery(pointDto.getBattery());
+                }
+                
+                gpsEntities.add(gpsEntity);
+                
             } catch (Exception e) {
-                log.warn("Failed to import data gap with ID {}: {}", dataGapDto.getId(), e.getMessage());
+                log.warn("Failed to create GPS entity from DTO with timestamp {}: {}", 
+                        pointDto.getTimestamp(), e.getMessage());
             }
         }
-
-        log.info("Successfully imported {} data gaps using native SQL", imported);
+        
+        return gpsEntities;
     }
+
+    // Timeline import removed - timeline is now always regenerated from GPS data
+
+    // Data gaps import removed - data gaps are now regenerated during timeline generation
 
     @Transactional
     public void importFavoritesData(byte[] content, ImportJob job) throws IOException {
         FavoritesDataDto favoritesData = objectMapper.readValue(content, FavoritesDataDto.class);
-        log.info("Importing {} favorite points and {} favorite areas for user {} using native SQL",
+        log.info("Importing {} favorite points and {} favorite areas for user {} using duplicate detection",
                 favoritesData.getPoints().size(), favoritesData.getAreas().size(), job.getUserId());
 
-        int importedFavorites = 0;
+        // Get user entity
+        UserEntity user = userRepository.findById(job.getUserId());
+        if (user == null) {
+            throw new IllegalStateException("User not found: " + job.getUserId());
+        }
 
-        // Import favorite points
+        int importedFavorites = 0;
+        int skippedFavorites = 0;
+
+        // Import favorite points with duplicate detection
         for (FavoritesDataDto.FavoritePointDto pointDto : favoritesData.getPoints()) {
             try {
-                entityManager.createNativeQuery(NativeSqlImportTemplates.FAVORITES_UPSERT)
-                        .setParameter(1, pointDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, pointDto.getName())
-                        .setParameter(4, pointDto.getCity())
-                        .setParameter(5, pointDto.getCountry())
-                        .setParameter(6, "POINT")
-                        .setParameter(7, importDataMapper.createPointFromCoordinates(pointDto.getLongitude(), pointDto.getLatitude()))
-                        .executeUpdate();
-                importedFavorites++;
+                // Create Point geometry
+                org.locationtech.jts.geom.Point geometry = importDataMapper.createPointFromCoordinates(
+                        pointDto.getLongitude(), pointDto.getLatitude());
+
+                // Check for duplicates by user + name + location
+                List<FavoritesEntity> duplicates = favoritesRepository.findByUserAndNameAndLocation(
+                        job.getUserId(), pointDto.getName(), geometry);
+
+                if (duplicates.isEmpty()) {
+                    // Create new favorite entity
+                    FavoritesEntity favorite = new FavoritesEntity();
+                    favorite.setUser(user);
+                    favorite.setName(pointDto.getName());
+                    favorite.setCity(pointDto.getCity());
+                    favorite.setCountry(pointDto.getCountry());
+                    favorite.setType(FavoriteLocationType.POINT);
+                    favorite.setGeometry(geometry);
+                    favorite.setMergeImpact(false);
+
+                    favoritesRepository.persist(favorite);
+                    importedFavorites++;
+                } else {
+                    // Update existing favorite with potentially better data
+                    FavoritesEntity existing = duplicates.get(0);
+                    updateFavoriteIfNecessary(existing, pointDto.getCity(), pointDto.getCountry());
+                    skippedFavorites++;
+                }
             } catch (Exception e) {
-                log.warn("Failed to import favorite point with ID {}: {}", pointDto.getId(), e.getMessage());
+                log.warn("Failed to import favorite point '{}': {}", pointDto.getName(), e.getMessage());
             }
         }
 
-        // Import favorite areas
+        // Import favorite areas with duplicate detection
         for (FavoritesDataDto.FavoriteAreaDto areaDto : favoritesData.getAreas()) {
             try {
-                entityManager.createNativeQuery(NativeSqlImportTemplates.FAVORITES_UPSERT)
-                        .setParameter(1, areaDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, areaDto.getName())
-                        .setParameter(4, areaDto.getCity())
-                        .setParameter(5, areaDto.getCountry())
-                        .setParameter(6, "AREA")
-                        .setParameter(7, importDataMapper.createPolygonFromCoordinates(areaDto))
-                        .executeUpdate();
-                importedFavorites++;
+                // Create Polygon geometry
+                org.locationtech.jts.geom.Polygon geometry = importDataMapper.createPolygonFromCoordinates(areaDto);
+                // Convert to Point for duplicate detection (use centroid)
+                org.locationtech.jts.geom.Point centroid = geometry.getCentroid();
+
+                // Check for duplicates by user + name + location (centroid)
+                List<FavoritesEntity> duplicates = favoritesRepository.findByUserAndNameAndLocation(
+                        job.getUserId(), areaDto.getName(), centroid);
+
+                if (duplicates.isEmpty()) {
+                    // Create new favorite entity
+                    FavoritesEntity favorite = new FavoritesEntity();
+                    favorite.setUser(user);
+                    favorite.setName(areaDto.getName());
+                    favorite.setCity(areaDto.getCity());
+                    favorite.setCountry(areaDto.getCountry());
+                    favorite.setType(FavoriteLocationType.AREA);
+                    favorite.setGeometry(geometry);
+                    favorite.setMergeImpact(false);
+
+                    favoritesRepository.persist(favorite);
+                    importedFavorites++;
+                } else {
+                    // Update existing favorite with potentially better data
+                    FavoritesEntity existing = duplicates.get(0);
+                    updateFavoriteIfNecessary(existing, areaDto.getCity(), areaDto.getCountry());
+                    skippedFavorites++;
+                }
             } catch (Exception e) {
-                log.warn("Failed to import favorite area with ID {}: {}", areaDto.getId(), e.getMessage());
+                log.warn("Failed to import favorite area '{}': {}", areaDto.getName(), e.getMessage());
             }
         }
 
-        log.info("Successfully imported {} favorites using native SQL", importedFavorites);
+        log.info("Successfully imported {} favorites using duplicate detection (skipped {} duplicates)", 
+                importedFavorites, skippedFavorites);
+    }
+
+    /**
+     * Update existing favorite with better data if available
+     */
+    private void updateFavoriteIfNecessary(FavoritesEntity existing, String newCity, String newCountry) {
+        boolean updated = false;
+
+        // Update city if current is null and new has value
+        if (newCity != null && existing.getCity() == null) {
+            existing.setCity(newCity);
+            updated = true;
+        }
+
+        // Update country if current is null and new has value
+        if (newCountry != null && existing.getCountry() == null) {
+            existing.setCountry(newCountry);
+            updated = true;
+        }
+
+        if (updated) {
+            favoritesRepository.persist(existing);
+        }
     }
 
     @Transactional
@@ -530,26 +521,88 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Transactional
     public void importLocationSourcesData(byte[] content, ImportJob job) throws IOException {
         LocationSourcesDataDto sourcesData = objectMapper.readValue(content, LocationSourcesDataDto.class);
-        log.info("Importing {} location sources for user {} using native SQL", sourcesData.getSources().size(), job.getUserId());
+        log.info("Importing {} location sources for user {} using duplicate detection", sourcesData.getSources().size(), job.getUserId());
+
+        // Get user entity
+        UserEntity user = userRepository.findById(job.getUserId());
+        if (user == null) {
+            throw new IllegalStateException("User not found: " + job.getUserId());
+        }
 
         int imported = 0;
+        int skipped = 0;
+        
         for (LocationSourcesDataDto.SourceDto sourceDto : sourcesData.getSources()) {
             try {
-                entityManager.createNativeQuery(NativeSqlImportTemplates.GPS_SOURCE_CONFIG_UPSERT)
-                        .setParameter(1, sourceDto.getId())
-                        .setParameter(2, job.getUserId())
-                        .setParameter(3, sourceDto.getUsername())
-                        .setParameter(4, sourceDto.getType())
-                        .setParameter(5, sourceDto.isActive())
-                        .setParameter(6, sourceDto.getConnectionType() != null ? sourceDto.getConnectionType() : "HTTP")
-                        .executeUpdate();
-                imported++;
+                // Convert string type to enum
+                org.github.tess1o.geopulse.shared.gps.GpsSourceType sourceType = 
+                    org.github.tess1o.geopulse.shared.gps.GpsSourceType.valueOf(sourceDto.getType());
+
+                // Check for duplicates by user + username + type
+                List<GpsSourceConfigEntity> duplicates = gpsSourceRepository.findByUserAndUsernameAndType(
+                        job.getUserId(), sourceDto.getUsername(), sourceType);
+
+                if (duplicates.isEmpty()) {
+                    // Create new GPS source configuration
+                    GpsSourceConfigEntity sourceConfig = new GpsSourceConfigEntity();
+                    sourceConfig.setUser(user);
+                    sourceConfig.setUsername(sourceDto.getUsername());
+                    sourceConfig.setSourceType(sourceType);
+                    sourceConfig.setActive(sourceDto.isActive());
+                    
+                    // Set connection type
+                    GpsSourceConfigEntity.ConnectionType connectionType = 
+                        sourceDto.getConnectionType() != null ? 
+                        GpsSourceConfigEntity.ConnectionType.valueOf(sourceDto.getConnectionType()) : 
+                        GpsSourceConfigEntity.ConnectionType.HTTP;
+                    sourceConfig.setConnectionType(connectionType);
+
+                    gpsSourceRepository.persist(sourceConfig);
+                    imported++;
+                } else {
+                    // Update existing source configuration with potentially better data
+                    GpsSourceConfigEntity existing = duplicates.get(0);
+                    updateSourceConfigIfNecessary(existing, sourceDto.isActive(), 
+                        sourceDto.getConnectionType());
+                    skipped++;
+                }
             } catch (Exception e) {
-                log.warn("Failed to import GPS source with ID {}: {}", sourceDto.getId(), e.getMessage());
+                log.warn("Failed to import GPS source '{}': {}", sourceDto.getUsername(), e.getMessage());
             }
         }
 
-        log.info("Successfully imported {} GPS sources using native SQL", imported);
+        log.info("Successfully imported {} GPS sources using duplicate detection (skipped {} duplicates)", imported, skipped);
+    }
+
+    /**
+     * Update existing GPS source configuration with better data if available
+     */
+    private void updateSourceConfigIfNecessary(GpsSourceConfigEntity existing, boolean newActive, String newConnectionType) {
+        boolean updated = false;
+
+        // Update active status to true if new source is active and existing is not
+        if (newActive && !existing.isActive()) {
+            existing.setActive(true);
+            updated = true;
+        }
+
+        // Update connection type if it's provided and different
+        if (newConnectionType != null) {
+            try {
+                GpsSourceConfigEntity.ConnectionType newType = 
+                    GpsSourceConfigEntity.ConnectionType.valueOf(newConnectionType);
+                if (!newType.equals(existing.getConnectionType())) {
+                    existing.setConnectionType(newType);
+                    updated = true;
+                }
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid connection type: {}", newConnectionType);
+            }
+        }
+
+        if (updated) {
+            gpsSourceRepository.persist(existing);
+        }
     }
 
     @Transactional
@@ -564,13 +617,13 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                 // Create geometry objects for coordinates and bounding box
                 org.locationtech.jts.geom.Point requestCoordinates = null;
                 if (locationDto.getRequestLatitude() != null && locationDto.getRequestLongitude() != null) {
-                    requestCoordinates = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
+                    requestCoordinates = GeoUtils.createPoint(
                             locationDto.getRequestLongitude(), locationDto.getRequestLatitude());
                 }
 
                 org.locationtech.jts.geom.Point resultCoordinates = null;
                 if (locationDto.getResultLatitude() != null && locationDto.getResultLongitude() != null) {
-                    resultCoordinates = org.github.tess1o.geopulse.shared.geo.GeoUtils.createPoint(
+                    resultCoordinates = GeoUtils.createPoint(
                             locationDto.getResultLongitude(), locationDto.getResultLatitude());
                 }
 
@@ -579,7 +632,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         locationDto.getBoundingBoxNorthEastLongitude() != null &&
                         locationDto.getBoundingBoxSouthWestLatitude() != null &&
                         locationDto.getBoundingBoxSouthWestLongitude() != null) {
-                    boundingBox = org.github.tess1o.geopulse.shared.geo.GeoUtils.buildBoundingBoxPolygon(
+                    boundingBox = GeoUtils.buildBoundingBoxPolygon(
                             locationDto.getBoundingBoxSouthWestLatitude(),
                             locationDto.getBoundingBoxNorthEastLatitude(),
                             locationDto.getBoundingBoxSouthWestLongitude(),
@@ -640,20 +693,18 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     }
 
     /**
-     * Clear existing data before GeoPulse import based on the data types and date ranges in the import file.
+     * Clear existing GPS data before GeoPulse import based on the date ranges in the import file.
+     * Timeline data will be cleared automatically during timeline regeneration.
      */
     private void clearExistingDataBeforeImport(Map<String, byte[]> fileContents, ImportJob job) throws IOException {
-        log.info("Clearing existing data before GeoPulse import for user {}", job.getUserId());
+        log.info("Clearing existing GPS data before GeoPulse import for user {} (timeline will be regenerated)", job.getUserId());
         
         // Calculate deletion range for GPS data if present
         if (fileContents.containsKey(ExportImportConstants.FileNames.RAW_GPS_DATA)) {
             clearGpsDataForImport(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
         }
         
-        // Calculate deletion range for timeline data if present
-        if (fileContents.containsKey(ExportImportConstants.FileNames.TIMELINE_DATA)) {
-            clearTimelineDataForImport(fileContents.get(ExportImportConstants.FileNames.TIMELINE_DATA), job);
-        }
+        // Timeline data clearing is not needed - regeneration process handles it
     }
     
     private void clearGpsDataForImport(byte[] content, ImportJob job) throws IOException {
@@ -694,69 +745,6 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         }
     }
     
-    private void clearTimelineDataForImport(byte[] content, ImportJob job) throws IOException {
-        try {
-            TimelineDataDto timelineData = objectMapper.readValue(content, TimelineDataDto.class);
-            
-            // Extract date range from timeline data (stays and trips)
-            Instant minTimestamp = null;
-            Instant maxTimestamp = null;
-            
-            // Check stays
-            if (!timelineData.getStays().isEmpty()) {
-                Instant staysMin = timelineData.getStays().stream()
-                    .map(TimelineDataDto.StayDto::getTimestamp)
-                    .filter(timestamp -> timestamp != null)
-                    .min(Instant::compareTo)
-                    .orElse(null);
-                    
-                Instant staysMax = timelineData.getStays().stream()
-                    .map(TimelineDataDto.StayDto::getTimestamp)
-                    .filter(timestamp -> timestamp != null)
-                    .max(Instant::compareTo)
-                    .orElse(null);
-                    
-                minTimestamp = staysMin;
-                maxTimestamp = staysMax;
-            }
-            
-            // Check trips
-            if (!timelineData.getTrips().isEmpty()) {
-                Instant tripsMin = timelineData.getTrips().stream()
-                    .map(TimelineDataDto.TripDto::getTimestamp)
-                    .filter(timestamp -> timestamp != null)
-                    .min(Instant::compareTo)
-                    .orElse(null);
-                    
-                Instant tripsMax = timelineData.getTrips().stream()
-                    .map(TimelineDataDto.TripDto::getTimestamp)
-                    .filter(timestamp -> timestamp != null)
-                    .max(Instant::compareTo)
-                    .orElse(null);
-                
-                if (minTimestamp == null || (tripsMin != null && tripsMin.isBefore(minTimestamp))) {
-                    minTimestamp = tripsMin;
-                }
-                if (maxTimestamp == null || (tripsMax != null && tripsMax.isAfter(maxTimestamp))) {
-                    maxTimestamp = tripsMax;
-                }
-            }
-            
-            if (minTimestamp != null && maxTimestamp != null) {
-                ImportDataClearingService.DateRange fileDataRange = 
-                    new ImportDataClearingService.DateRange(minTimestamp, maxTimestamp);
-                
-                ImportDataClearingService.DateRange deletionRange = 
-                    dataClearingService.calculateDeletionRange(job, fileDataRange);
-                
-                if (deletionRange != null) {
-                    int deletedCount = dataClearingService.clearTimelineDataInRange(job.getUserId(), deletionRange);
-                    log.info("Cleared {} existing timeline items before GeoPulse import", deletedCount);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to clear timeline data before import: {}", e.getMessage());
-        }
-    }
+    // Timeline clearing removed - timeline regeneration handles clearing automatically
 
 }

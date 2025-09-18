@@ -29,6 +29,11 @@ public class GlobeTrotterBadgeCalculator implements BadgeCalculator {
     }
 
     @Override
+    public String getBadgeId() {
+        return "globe_trotter";
+    }
+
+    @Override
     public Badge calculateBadge(UUID userId) {
         Query citiesQuery = entityManager.createNativeQuery(QUERY);
         citiesQuery.setParameter("userId", userId);

@@ -25,6 +25,11 @@ public class RoadWarriorBadgeCalculator implements BadgeCalculator {
     }
 
     @Override
+    public String getBadgeId() {
+        return "road_warrior";
+    }
+
+    @Override
     public Badge calculateBadge(UUID userId) {
         Query distanceQuery = entityManager.createNativeQuery(TOTAL_DISTANCE_QUERY);
         distanceQuery.setParameter("userId", userId);

@@ -32,25 +32,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
     }
 
-    public GpsPointEntity findByUserIdFirstGpsPoint(UUID userId) {
-        return find("user.id = ?1 ORDER BY timestamp ASC", userId).firstResult();
-    }
-
-    /**
-     * Find the latest GPS timestamp for a user within a specific time range.
-     * Used for data gap detection in multi-day timeline processing.
-     *
-     * @param userId The ID of the user
-     * @param startTime The start of the time range
-     * @param endTime The end of the time range
-     * @return The timestamp of the latest GPS point in the range, or null if none found
-     */
-    public Instant findLatestTimestamp(UUID userId, Instant startTime, Instant endTime) {
-        GpsPointEntity latestPoint = find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp DESC",
-                userId, startTime, endTime).firstResult();
-        return latestPoint != null ? latestPoint.getTimestamp() : null;
-    }
-
     /**
      * Find the latest GPS point for a user and source type.
      * Used for location-based duplicate detection.
@@ -79,15 +60,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .page(page, pageSize)
                 .list();
     }
-
-    public boolean existsByUserAndTimestamp(UUID userId, Instant timestamp) {
-        return count("user.id = ?1 AND timestamp = ?2", userId, timestamp) > 0;
-    }
-
-    public long deleteByUserAndDateRange(UUID userId, Instant startTime, Instant endTime) {
-        return delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", userId, startTime, endTime);
-    }
-
     /**
      * Find GPS points by user, timestamp and coordinates for duplicate detection.
      * Uses a small time window (5 seconds) and spatial tolerance for near-duplicates.
@@ -116,18 +88,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
-     * Find distinct timestamps (dates) that have GPS data for a user.
-     * Used for determining date ranges that need timeline generation after imports.
-     */
-    public List<Instant> findDistinctTimestampsByUser(UUID userId) {
-        return getEntityManager().createQuery(
-            "SELECT DISTINCT DATE_TRUNC('day', g.timestamp) FROM GpsPointEntity g WHERE g.user.id = :userId ORDER BY DATE_TRUNC('day', g.timestamp)",
-            Instant.class)
-            .setParameter("userId", userId)
-            .getResultList();
-    }
-
-    /**
      * Get GPS point summary data in a single optimized query.
      * Returns: [totalCount, todayCount, firstTimestamp, lastTimestamp]
      */
@@ -144,5 +104,13 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
             .setParameter("todayStart", todayStart)
             .setParameter("todayEnd", todayEnd)
             .getSingleResult();
+    }
+
+    public void deleteByUserId(UUID userId) {
+        delete("user.id = ?1", userId);
+    }
+
+    public List<GpsPointEntity> findByUserId(UUID userId) {
+        return list("user.id = ?1", userId);
     }
 }

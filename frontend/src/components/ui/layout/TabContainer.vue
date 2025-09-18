@@ -163,6 +163,15 @@ const handleTabChange = (event) => {
   overflow: hidden;
 }
 
+/* Override overflow for mobile/tablet */
+@media (max-width: 1024px) {
+  .gp-tab-menu .p-tabmenu-tablist {
+    overflow: visible;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+
 .gp-tab-menu .p-tabmenu-item {
   margin: 0;
   flex-shrink: 0;
@@ -271,6 +280,26 @@ const handleTabChange = (event) => {
 /* Dark Mode styles are handled globally in style.css */
 
 /* Responsive */
+/* Tablet and mobile - enable wrapping instead of horizontal scrolling */
+@media (max-width: 1024px) {
+  .gp-tab-menu .p-tabmenu-tablist {
+    padding: 0 var(--gp-spacing-lg);
+    flex-wrap: wrap;
+    gap: var(--gp-spacing-xs);
+    align-items: flex-start;
+  }
+
+  .gp-tab-menu .p-tabmenu-item {
+    flex-shrink: 0;
+    margin-bottom: var(--gp-spacing-xs);
+  }
+
+  .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
+    white-space: nowrap;
+    min-width: auto;
+  }
+}
+
 @media (max-width: 768px) {
   .gp-tab-menu .p-tabmenu-tablist {
     padding: 0 var(--gp-spacing-lg);
@@ -291,19 +320,7 @@ const handleTabChange = (event) => {
 @media (max-width: 480px) {
   .gp-tab-menu .p-tabmenu-tablist {
     padding: 0 var(--gp-spacing-md);
-    overflow-x: auto;
-    overflow-y: hidden;
-    white-space: nowrap;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .gp-tab-menu .p-tabmenu-tablist::-webkit-scrollbar {
-    display: none;
-  }
-
-  .gp-tab-menu .p-tabmenu-item {
-    flex-shrink: 0;
+    gap: var(--gp-spacing-xs);
   }
 
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {

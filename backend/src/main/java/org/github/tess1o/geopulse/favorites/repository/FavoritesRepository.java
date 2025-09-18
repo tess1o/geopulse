@@ -68,12 +68,32 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         return Optional.empty();
     }
 
-    public boolean existsByUserAndName(UUID userId, String name) {
-        return count("user.id = ?1 AND name = ?2", userId, name) > 0;
-    }
-
-    public long deleteByUserId(UUID userId) {
-        return delete("user.id = ?1", userId);
+    /**
+     * Find existing favorites by user, name and location for duplicate detection during import.
+     * Uses spatial tolerance to detect near-duplicates.
+     * 
+     * @param userId The user ID
+     * @param name The favorite name
+     * @param geometry The geometry (Point or Polygon)
+     * @return List of potential duplicate favorites
+     */
+    public List<FavoritesEntity> findByUserAndNameAndLocation(UUID userId, String name, Point geometry) {
+        // Use small spatial tolerance (~10 meters) for duplicate detection
+        String query = """
+                SELECT f.* FROM favorite_locations f
+                WHERE f.user_id = :userId 
+                AND f.name = :name
+                AND ST_DWithin(f.geometry::geography, (:geometry)::geography, 10)
+                """;
+        
+        @SuppressWarnings("unchecked")
+        List<FavoritesEntity> results = em.createNativeQuery(query, FavoritesEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("name", name)
+                .setParameter("geometry", geometry)
+                .getResultList();
+                
+        return results;
     }
 
     /**

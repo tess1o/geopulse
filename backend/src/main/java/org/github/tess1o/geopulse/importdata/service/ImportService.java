@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.model.ImportStatus;
+import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -23,6 +24,9 @@ public class ImportService {
 
     @Inject
     ImportDataService importDataService;
+
+    @Inject
+    BadgeRecalculationService badgeRecalculationService;
 
     private final ConcurrentHashMap<UUID, ImportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
@@ -243,6 +247,16 @@ public class ImportService {
                 job.setProgress(100);
                 
                 log.info("Completed import job {}", job.getJobId());
+                
+                // Trigger badge recalculation after successful import
+                try {
+                    badgeRecalculationService.recalculateAllBadgesForUser(job.getUserId());
+                    log.info("Triggered badge recalculation for user {} after import completion", job.getUserId());
+                } catch (Exception e) {
+                    log.error("Failed to recalculate badges for user {} after import: {}", 
+                             job.getUserId(), e.getMessage(), e);
+                    // Don't fail the import job if badge calculation fails
+                }
                 
             } catch (Exception e) {
                 log.error("Failed to process import job {}: {}", job.getJobId(), e.getMessage(), e);

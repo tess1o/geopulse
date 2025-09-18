@@ -432,8 +432,8 @@ export const useExportImportStore = defineStore('exportImport', {
         getDataTypeDisplayName(dataType) {
             const displayNames = {
                 rawgps: 'Raw GPS Data',
-                timeline: 'Timeline Data',
                 favorites: 'Favorite Locations',
+                reversegeocodinglocation: 'Reverse Geocoding Data',
                 locationsources: 'Location Sources',
                 userinfo: 'User Information',
                 statistics: 'Statistics'

@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
+import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
@@ -24,6 +25,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
 import java.time.Instant;
 import java.util.List;
@@ -73,6 +75,9 @@ public class StreamingTimelineGenerationService {
     @Inject
     PathSimplificationService pathSimplificationService;
 
+    @Inject
+    BadgeRecalculationService badgeRecalculationService;
+
     /**
      * Regenerates timeline starting from the earliest affected GPS point timestamp.
      * This method finds the latest stay before the affected timestamp, deletes all timeline
@@ -88,7 +93,7 @@ public class StreamingTimelineGenerationService {
 
         if (!acquireLock(userId)) {
             log.warn("Could not acquire lock for user {}. Timeline regeneration already in progress.", userId);
-            throw new RuntimeException("Timeline regeneration already in progress for user " + userId);
+            throw new TimelineGenerationLockException(userId);
         }
 
         try {
@@ -144,6 +149,15 @@ public class StreamingTimelineGenerationService {
     @Transactional
     public boolean regenerateFullTimeline(UUID userId) {
         this.generateTimelineFromTimestamp(userId, DEFAULT_START_DATE);
+        // Trigger badge recalculation after successful timeline regeneration
+        try {
+            badgeRecalculationService.recalculateAllBadgesForUser(userId);
+            log.info("Triggered badge recalculation for user {} after timeline regeneration", userId);
+        } catch (Exception e) {
+            log.error("Failed to recalculate badges for user {} after timeline regeneration: {}",
+                    userId, e.getMessage(), e);
+            // Don't fail the timeline generation if badge calculation fails
+        }
         return true;
     }
 

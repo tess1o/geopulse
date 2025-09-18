@@ -732,12 +732,12 @@ const tabItems = computed(() => {
   // Add separate tabs for HTTP and MQTT OwnTracks if both exist
   if (hasOwnTracksHttp.value && hasOwnTracksMqtt.value) {
     tabs.push({
-      label: isMobile.value ? 'OT (HTTP)' : 'OwnTracks (HTTP)',
+      label: isMobile.value ? 'OT-HTTP' : 'OwnTracks (HTTP)',
       icon: 'pi pi-globe',
       key: 'owntracks-http'
     })
     tabs.push({
-      label: isMobile.value ? 'OT (MQTT)' : 'OwnTracks (MQTT)',
+      label: isMobile.value ? 'OT-MQTT' : 'OwnTracks (MQTT)',
       icon: 'pi pi-send',
       key: 'owntracks-mqtt'
     })
@@ -771,7 +771,7 @@ const tabItems = computed(() => {
   }
   if (hasHomeAssistantSource.value) {
     tabs.push({
-      label: isMobile.value ? 'Home Asst' : 'Home Assistant', 
+      label: isMobile.value ? 'HA' : 'Home Assistant', 
       icon: 'pi pi-home',
       key: 'home_assistant'
     })
@@ -1302,38 +1302,13 @@ onMounted(async () => {
   margin-bottom: 2rem;
 }
 
-/* Tab wrapping for all screen sizes */
-.instructions-tabs :deep(.tab-nav) {
-  flex-wrap: wrap !important;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.instructions-tabs :deep(.tab-button) {
-  white-space: nowrap;
-  flex-shrink: 0;
-  margin-bottom: 0.5rem;
-}
-
-/* Alternative selectors for PrimeVue TabView */
-.instructions-tabs :deep(.p-tabview-nav) {
-  flex-wrap: wrap !important;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.instructions-tabs :deep(.p-tabview-header) {
-  flex-shrink: 0 !important;
-  margin-bottom: 0.5rem !important;
-}
-
-.instructions-tabs :deep(.p-tabview-nav-link) {
-  white-space: nowrap;
-}
+/* Let TabContainer handle the responsive behavior */
 
 .instruction-content {
   padding: 1rem 0;
   margin-left: 0.5rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .instruction-title {
@@ -1347,6 +1322,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .step {
@@ -1371,6 +1348,8 @@ onMounted(async () => {
 
 .step-content {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .step-title {
@@ -1392,12 +1371,14 @@ onMounted(async () => {
 
 .copy-field {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   padding: 0.75rem;
   background: var(--gp-surface-light);
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-small);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .copy-field code {
@@ -1406,6 +1387,8 @@ onMounted(async () => {
   font-size: 0.9rem;
   color: var(--gp-text-primary);
   word-break: break-all;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .yaml-config {
@@ -1416,6 +1399,10 @@ onMounted(async () => {
   white-space: pre-wrap;
   margin: 0;
   line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  max-width: 100%;
 }
 
 /* Dialog */
@@ -1759,24 +1746,16 @@ onMounted(async () => {
     gap: 0.75rem;
   }
   
-  /* Fix tab overflow - allow multiple rows */
-  .instructions-tabs :deep(.tab-nav) {
-    flex-wrap: wrap !important;
-    gap: 0.25rem;
-    align-items: flex-start;
+  .step-value {
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   
-  .instructions-tabs :deep(.tab-button) {
-    font-size: 0.75rem !important;
-    padding: 0.5rem 0.75rem !important;
-    white-space: nowrap;
-    min-width: auto !important;
-    flex-shrink: 0;
-    margin-bottom: 0.25rem;
+  .yaml-config {
+    font-size: 0.8rem !important;
+    line-height: 1.3;
   }
   
-  .instructions-tabs :deep(.p-button-label) {
-    font-size: 0.75rem !important;
-  }
+  /* TabContainer handles mobile tab styling */
 }
 </style>

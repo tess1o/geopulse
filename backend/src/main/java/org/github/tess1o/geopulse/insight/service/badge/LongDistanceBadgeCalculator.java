@@ -30,6 +30,11 @@ public class LongDistanceBadgeCalculator implements BadgeCalculator {
     }
 
     @Override
+    public String getBadgeId() {
+        return "long_distance";
+    }
+
+    @Override
     public Badge calculateBadge(UUID userId) {
         Query distanceQuery = entityManager.createNativeQuery(LONG_DISTANCE_TRIP_QUERY);
         distanceQuery.setParameter("userId", userId);

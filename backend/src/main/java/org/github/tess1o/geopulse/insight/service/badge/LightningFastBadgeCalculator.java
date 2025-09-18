@@ -18,6 +18,11 @@ public class LightningFastBadgeCalculator implements BadgeCalculator{
     }
 
     @Override
+    public String getBadgeId() {
+        return "speed_deamon_%d".formatted(TARGET_SPEED);
+    }
+
+    @Override
     public Badge calculateBadge(UUID userId) {
         return speedBadgeCalculator.calculateSpeedBadget(userId, TITLE, TARGET_SPEED);
     }

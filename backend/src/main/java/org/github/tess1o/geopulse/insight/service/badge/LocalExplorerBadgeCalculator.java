@@ -19,6 +19,11 @@ public class LocalExplorerBadgeCalculator implements BadgeCalculator {
     }
 
     @Override
+    public String getBadgeId() {
+        return "local_explorer";
+    }
+
+    @Override
     public Badge calculateBadge(UUID userId) {
         int uniquePlaces = getUniquePlaces(userId);
         int target = 25;

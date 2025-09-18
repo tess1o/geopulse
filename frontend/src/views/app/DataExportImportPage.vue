@@ -90,6 +90,10 @@
                           class="select-all-button"
                         />
                       </div>
+                      <div class="timeline-info">
+                        <i class="pi pi-info-circle"></i>
+                        <span><strong>Timeline Data:</strong> Will be automatically regenerated from your GPS data after import</span>
+                      </div>
                       <div class="data-types-grid">
                         <div
                             v-for="dataType in availableDataTypes"
@@ -382,6 +386,10 @@
                               class="select-all-button"
                             />
                           </div>
+                          <div class="timeline-info">
+                            <i class="pi pi-info-circle"></i>
+                            <span><strong>Timeline Data:</strong> Will be automatically regenerated from your GPS data after import</span>
+                          </div>
                           <div class="import-data-types">
                             <div
                                 v-for="dataType in availableDataTypes"
@@ -655,7 +663,7 @@ const {
 
 // State
 const activeTab = ref('export')
-const selectedDataTypes = ref(['rawgps', 'timeline', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo'])
+const selectedDataTypes = ref(['rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo'])
 const exportStartDate = ref(null)
 const exportEndDate = ref(null)
 const exportFormat = ref('geopulse')
@@ -667,7 +675,7 @@ const clearDataBeforeImport = ref(false)
 const importStartDate = ref(null)
 const importEndDate = ref(null)
 const importOptions = ref({
-  dataTypes: ['rawgps', 'timeline', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo']
+  dataTypes: ['rawgps', 'favorites', 'reversegeocodinglocation', 'locationsources', 'userinfo']
 })
 
 // Tab configuration
@@ -695,12 +703,6 @@ const availableDataTypes = ref([
     label: 'Raw GPS Data',
     description: 'All your location points with timestamps and accuracy',
     icon: 'pi pi-map-marker'
-  },
-  {
-    key: 'timeline',
-    label: 'Timeline Data',
-    description: 'Processed stays and trips from your location data',
-    icon: 'pi pi-clock'
   },
   {
     key: 'favorites',
@@ -1046,20 +1048,10 @@ const initializeDateRange = () => {
   setDateRange(30)
 }
 
-// Smart selection logic
+// Smart selection logic (simplified - timeline removed)
 const handleDataTypeChange = (dataTypes, isImport = false) => {
-  // If timeline is selected, automatically select favorites and reverse geocoding data
-  if (dataTypes.includes('timeline')) {
-    if (!dataTypes.includes('favorites')) {
-      dataTypes.push('favorites')
-    }
-    if (!dataTypes.includes('reversegeocodinglocation')) {
-      dataTypes.push('reversegeocodinglocation')
-    }
-  }
-
-  // If timeline is deselected, optionally deselect favorites and reverse geocoding (but only if user hasn't manually selected it)
-  // For now, we'll keep them selected to be safe
+  // No automatic dependencies since timeline is no longer available for import
+  // Timeline will always be regenerated from GPS data automatically
 }
 
 // Toggle all export data types
@@ -1883,6 +1875,30 @@ onMounted(async () => {
   color: var(--gp-text-secondary);
   margin-top: 0.5rem;
   text-align: center;
+}
+
+/* Timeline Info */
+.timeline-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-primary-200);
+  border-radius: var(--gp-radius-small);
+  color: var(--gp-text-primary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.timeline-info i {
+  color: var(--gp-primary);
+  font-size: 1rem;
+}
+
+.p-dark .timeline-info {
+  background: var(--gp-surface-dark) !important;
+  border: 1px solid var(--gp-primary-300) !important;
 }
 
 /* Format Info */

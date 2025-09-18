@@ -79,7 +79,7 @@ public class TimelineMergeExecutionService {
             }
         }
         
-        log.debug("Total stay group duration: {}min from {} stays", totalDuration, mergeGroup.size());
+        log.debug("Total stay group duration: {}sec from {} stays", totalDuration, mergeGroup.size());
         return totalDuration;
     }
     
