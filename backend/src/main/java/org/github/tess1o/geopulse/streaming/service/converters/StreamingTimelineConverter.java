@@ -22,6 +22,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Coordinate;
 
 import jakarta.persistence.EntityManager;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -42,45 +43,6 @@ public class StreamingTimelineConverter {
         this.entityManager = entityManager;
     }
 
-    /**
-     * Convert GPS point entities to lightweight streaming GPS points.
-     *
-     * @param gpsEntities list of GPS point entities from database
-     * @return list of streaming GPS points
-     */
-    public List<GPSPoint> convertToStreamingGpsPoints(List<GpsPointEntity> gpsEntities) {
-        List<GPSPoint> streamingPoints = new ArrayList<>();
-
-        for (GpsPointEntity entity : gpsEntities) {
-            GPSPoint streamingPoint = convertToStreamingGpsPoint(entity);
-            if (streamingPoint != null) {
-                streamingPoints.add(streamingPoint);
-            }
-        }
-
-        log.debug("Converted {} GPS entities to streaming points", streamingPoints.size());
-        return streamingPoints;
-    }
-
-    /**
-     * Convert a single GPS point entity to streaming GPS point.
-     *
-     * @param entity GPS point entity
-     * @return streaming GPS point or null if conversion fails
-     */
-    private GPSPoint convertToStreamingGpsPoint(GpsPointEntity entity) {
-        if (entity == null || entity.getCoordinates() == null) {
-            return null;
-        }
-
-        return GPSPoint.builder()
-                .timestamp(entity.getTimestamp())
-                .latitude(entity.getCoordinates().getY())
-                .longitude(entity.getCoordinates().getX())
-                .speed(entity.getVelocity() != null ? entity.getVelocity() / 3.6 : 0.0) // Convert km/h to m/s
-                .accuracy(entity.getAccuracy() != null ? entity.getAccuracy() : 0.0)
-                .build();
-    }
 
     /**
      * Convert streaming timeline events to the existing MovementTimelineDTO format.
@@ -148,7 +110,7 @@ public class StreamingTimelineConverter {
                 .longitude(getStartLongitude(trip))
                 .endLatitude(getEndLatitude(trip))
                 .endLongitude(getEndLongitude(trip))
-                .distanceMeters((long)trip.getDistanceMeters())
+                .distanceMeters((long) trip.getDistanceMeters())
                 .tripDuration(trip.getDuration().toSeconds())
                 .movementType(convertTripType(trip.getTripType()))
                 .path(convertTripPath(trip.getPath()))
@@ -233,7 +195,7 @@ public class StreamingTimelineConverter {
     /**
      * Convert TimelineStayLocationDTO to TimelineStayEntity.
      *
-     * @param stay DTO to convert
+     * @param stay    DTO to convert
      * @param userRef user entity reference for the stay
      * @return converted entity
      */
@@ -264,9 +226,58 @@ public class StreamingTimelineConverter {
     }
 
     /**
+     * Convert TimelineStayLocationDTO to TimelineStayEntity using pre-loaded entity maps
+     * to eliminate N+1 queries. This is an optimized version for batch processing.
+     *
+     * @param stay         DTO to convert
+     * @param userRef      user entity reference for the stay
+     * @param favoriteMap  pre-loaded map of favorite ID to FavoritesEntity
+     * @param geocodingMap pre-loaded map of geocoding ID to ReverseGeocodingLocationEntity
+     * @return converted entity
+     */
+    public TimelineStayEntity convertStayToEntityWithBatchData(
+            TimelineStayLocationDTO stay, 
+            UserEntity userRef,
+            java.util.Map<Long, FavoritesEntity> favoriteMap,
+            java.util.Map<Long, ReverseGeocodingLocationEntity> geocodingMap) {
+        
+        if (stay == null) return null;
+
+        TimelineStayEntity entity = new TimelineStayEntity();
+        entity.setUser(userRef);
+        entity.setTimestamp(stay.getTimestamp());
+        entity.setLocation(GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
+        entity.setStayDuration(stay.getStayDuration()); // Already in seconds
+        entity.setLocationName(stay.getLocationName());
+        entity.setLocationSource(getLocationSource(stay));
+
+        // Set favorite location reference using pre-loaded map (O(1) lookup)
+        if (stay.getFavoriteId() != null && stay.getFavoriteId() != 0) {
+            FavoritesEntity favorite = favoriteMap.get(stay.getFavoriteId());
+            if (favorite != null) {
+                entity.setFavoriteLocation(favorite);
+            } else {
+                log.warn("Favorite entity with ID {} not found in batch-loaded map", stay.getFavoriteId());
+            }
+        }
+
+        // Set geocoding location reference using pre-loaded map (O(1) lookup)
+        if (stay.getGeocodingId() != null && stay.getGeocodingId() != 0) {
+            ReverseGeocodingLocationEntity geocodingEntity = geocodingMap.get(stay.getGeocodingId());
+            if (geocodingEntity != null) {
+                entity.setGeocodingLocation(geocodingEntity);
+            } else {
+                log.warn("Geocoding entity with ID {} not found in batch-loaded map", stay.getGeocodingId());
+            }
+        }
+
+        return entity;
+    }
+
+    /**
      * Convert TimelineTripDTO to TimelineTripEntity.
      *
-     * @param trip DTO to convert
+     * @param trip    DTO to convert
      * @param userRef user entity reference for the trip
      * @return converted entity
      */
@@ -294,7 +305,7 @@ public class StreamingTimelineConverter {
     /**
      * Convert TimelineDataGapDTO to TimelineDataGapEntity.
      *
-     * @param gap DTO to convert
+     * @param gap     DTO to convert
      * @param userRef user entity reference for the gap
      * @return converted entity
      */

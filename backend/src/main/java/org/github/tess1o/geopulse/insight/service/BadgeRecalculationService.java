@@ -52,9 +52,9 @@ public class BadgeRecalculationService {
             // Calculate and store all badges
             List<UserBadgeEntity> newBadges = calculateAllBadgesForUser(user);
 
-            // Persist all badges
-            for (UserBadgeEntity badge : newBadges) {
-                userBadgeRepository.persist(badge);
+            // Persist all badges using batch operation
+            if (!newBadges.isEmpty()) {
+                userBadgeRepository.persist(newBadges);
             }
 
             log.info("Successfully recalculated {} badges for user: {}", newBadges.size(), userId);

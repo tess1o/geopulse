@@ -240,3 +240,192 @@ curl http://localhost:8080/api/health
   `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist
 - To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`
+
+---
+
+## Performance Optimization
+
+<details>
+<summary><strong>🚀 Advanced Performance Tuning (Click to expand)</strong></summary>
+
+### Memory Configuration by Use Case
+
+GeoPulse automatically optimizes JVM memory usage based on container limits. Here are recommended configurations:
+
+#### Minimal Deployment (1-2 users)
+```yaml
+# docker-compose.yml
+services:
+  geopulse-backend:
+    deploy:
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 256Mi
+    # Uses ~384MB heap automatically (75% of 512MB)
+```
+
+#### Standard Deployment (3-10 users)
+```yaml
+# docker-compose.yml  
+services:
+  geopulse-backend:
+    deploy:
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 512Mi
+    # Uses ~768MB heap automatically (75% of 1GB)
+```
+
+#### High-Performance Deployment (10+ users, large datasets)
+```yaml
+# docker-compose.yml with custom resource limits
+services:
+  geopulse-backend:
+    deploy:
+      resources:
+        limits:
+          memory: 2Gi
+        requests:
+          memory: 1Gi
+    environment:
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:G1HeapRegionSize=16m -XX:+FlightRecorder -XX:StartFlightRecording=duration=0,filename=/app/logs/performance.jfr
+    volumes:
+      - ./logs:/app/logs
+      - ./dumps:/app/dumps
+```
+
+### Custom JVM Tuning
+
+#### Override Default Settings
+```yaml
+# docker-compose.yml
+services:
+  geopulse-backend:
+    environment:
+      # Example: Use 80% of container memory instead of default 75%
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=80 -XX:+UseG1GC
+```
+
+#### Development Monitoring Setup
+```yaml
+# docker-compose-dev.yml (already configured)
+services:
+  geopulse-backend-dev:
+    ports:
+      - "9999:9999"  # JMX monitoring port
+    environment:
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+    volumes:
+      - ./logs:/app/logs  # Performance recordings
+```
+
+### Database Performance Tuning
+
+GeoPulse includes optimized PostgreSQL/PostGIS configurations tailored for GPS tracking workloads. Different deployment sizes use appropriate memory allocations and query optimization settings.
+
+#### Deployment-Specific Database Settings
+
+**Standard Deployment (docker-compose.yml and docker-compose-complete.yml)** - Minimal resource usage:
+- `shared_buffers=256MB` - Conservative memory allocation for typical deployments
+- `work_mem=8MB` - Low memory per connection, suitable for 1-10 concurrent users
+- `effective_cache_size=1GB` - Assumes minimal system memory available
+- `log_min_duration_statement=5000ms` - Only log very slow queries
+- Both files use identical PostgreSQL settings; complete version adds MQTT support only
+
+**Development (docker-compose-dev.yml)** - Enhanced debugging with minimal resources:
+- `shared_buffers=128MB` - Very low memory usage for local development
+- `work_mem=6MB` - Minimal memory per connection
+- `log_min_duration_statement=1000ms` - Detailed query monitoring for optimization
+- `track_functions=all` - Comprehensive function performance tracking
+
+#### Environment Variable Configuration
+
+All PostgreSQL settings can be customized using environment variables in your `.env` file:
+
+```bash
+# Memory Settings
+GEOPULSE_POSTGRES_SHARED_BUFFERS=512MB          # Main PostgreSQL buffer cache
+GEOPULSE_POSTGRES_WORK_MEM=16MB                 # Memory per connection for sorting/hashing
+GEOPULSE_POSTGRES_MAINTENANCE_WORK_MEM=128MB    # Memory for maintenance operations
+GEOPULSE_POSTGRES_EFFECTIVE_CACHE_SIZE=2GB      # Expected available OS cache
+
+# WAL and Checkpoint Settings
+GEOPULSE_POSTGRES_MAX_WAL_SIZE=1GB              # Maximum WAL size before checkpoint
+GEOPULSE_POSTGRES_WAL_BUFFERS=32MB              # WAL buffer size in memory
+GEOPULSE_POSTGRES_CHECKPOINT_TARGET=0.9         # Checkpoint completion target (0.0-1.0)
+
+# Performance Settings
+GEOPULSE_POSTGRES_RANDOM_PAGE_COST=1.1          # Cost of random page access (SSD optimized)
+GEOPULSE_POSTGRES_IO_CONCURRENCY=100            # Expected concurrent I/O operations
+GEOPULSE_POSTGRES_PARALLEL_WORKERS=2            # Max parallel workers per query
+
+# Autovacuum Settings
+GEOPULSE_POSTGRES_AUTOVACUUM_NAPTIME=60s        # Time between autovacuum runs
+GEOPULSE_POSTGRES_VACUUM_SCALE_FACTOR=0.2       # Vacuum threshold as fraction of table size
+
+# Logging Settings
+GEOPULSE_POSTGRES_LOG_SLOW_QUERIES=2000         # Log queries slower than this (ms)
+GEOPULSE_POSTGRES_LOG_CHECKPOINTS=off           # Log checkpoint activity
+GEOPULSE_POSTGRES_LOG_STATEMENT=none            # Log SQL statements (none/ddl/mod/all)
+GEOPULSE_POSTGRES_LOG_AUTOVACUUM=0              # Log autovacuum activity duration (ms)
+GEOPULSE_POSTGRES_TRACK_FUNCTIONS=none          # Track function performance (none/pl/all)
+GEOPULSE_POSTGRES_SYNC_COMMIT=on                # Synchronous commit mode
+```
+
+#### Example Custom Configuration for High-Performance Setup
+
+```bash
+# High-performance .env settings (requires 4GB+ container)
+GEOPULSE_POSTGRES_SHARED_BUFFERS=1GB
+GEOPULSE_POSTGRES_WORK_MEM=24MB
+GEOPULSE_POSTGRES_MAINTENANCE_WORK_MEM=256MB
+GEOPULSE_POSTGRES_EFFECTIVE_CACHE_SIZE=3GB
+GEOPULSE_POSTGRES_MAX_WAL_SIZE=2GB
+GEOPULSE_POSTGRES_WAL_BUFFERS=64MB
+GEOPULSE_POSTGRES_PARALLEL_WORKERS=4
+GEOPULSE_POSTGRES_IO_CONCURRENCY=200
+GEOPULSE_POSTGRES_LOG_SLOW_QUERIES=1000
+```
+
+#### GPS Workload Optimizations
+
+The database configurations include optimizations specific to GPS tracking applications:
+
+- **Spatial Query Performance**: `random_page_cost=1.1` optimized for SSD storage
+- **Bulk GPS Inserts**: Enhanced `wal_buffers` and checkpoint settings
+- **Timeline Processing**: Optimized for large sequential scans and complex spatial joins
+- **Concurrent Users**: `work_mem` tuned to prevent memory exhaustion with multiple users
+
+#### Monitoring Database Performance
+
+**Query Performance**:
+```sql
+-- Monitor slow queries
+SELECT query, mean_exec_time, calls, total_exec_time 
+FROM pg_stat_statements 
+WHERE mean_exec_time > 1000 
+ORDER BY mean_exec_time DESC;
+```
+
+**Memory Usage**:
+```sql
+-- Check buffer hit ratio (should be >99%)
+SELECT 
+  round(100.0 * blks_hit / (blks_hit + blks_read), 2) AS hit_ratio
+FROM pg_stat_database 
+WHERE datname = current_database();
+```
+
+**Storage and Vacuum**:
+```sql
+-- Monitor autovacuum performance
+SELECT schemaname, tablename, last_vacuum, last_autovacuum
+FROM pg_stat_user_tables 
+WHERE tablename LIKE '%gps%' OR tablename LIKE '%timeline%';
+```
+
+</details>

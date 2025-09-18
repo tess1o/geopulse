@@ -5,8 +5,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
-import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
@@ -38,9 +36,6 @@ import java.util.stream.Collectors;
 public class StreamingTimelineGenerationService {
 
     public static final Instant DEFAULT_START_DATE = Instant.parse("1970-01-01T00:00:00Z");
-
-    @Inject
-    GpsPointRepository gpsPointRepository;
 
     @Inject
     TimelineConfigurationProvider configurationProvider;
@@ -78,6 +73,9 @@ public class StreamingTimelineGenerationService {
     @Inject
     BadgeRecalculationService badgeRecalculationService;
 
+    @Inject
+    GpsDataLoader gpsDataLoader;
+
     /**
      * Regenerates timeline starting from the earliest affected GPS point timestamp.
      * This method finds the latest stay before the affected timestamp, deletes all timeline
@@ -100,10 +98,10 @@ public class StreamingTimelineGenerationService {
             // Find latest stay before the affected timestamp and clean up from that point
             Instant regenerationStartTime = deleteFromStayBeforeTimestampAndCleanup(userId, earliestAffectedTimestamp);
 
-            List<GpsPointEntity> newPoints = gpsPointRepository.find("user.id = :userId and timestamp >= :timestamp order by timestamp",
-                    Parameters.with("userId", userId).and("timestamp", regenerationStartTime)).list();
-
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
+
+            // Load GPS data using lightweight DTOs with automatic chunking
+            List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime);
 
             if (newPoints.isEmpty()) {
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
@@ -112,12 +110,17 @@ public class StreamingTimelineGenerationService {
                 return;
             }
 
-            List<GpsPointEntity> contextPoints = findGpsPointsForProcessing(userId, regenerationStartTime);
+            // Load context points for algorithm state
+            List<GPSPoint> contextPoints = gpsDataLoader.loadContextPoints(userId, regenerationStartTime);
 
-            List<GPSPoint> streamingContextPoints = streamingTimelineConverter.convertToStreamingGpsPoints(contextPoints);
-            List<GPSPoint> streamingNewPoints = streamingTimelineConverter.convertToStreamingGpsPoints(newPoints);
+            // Log memory usage for monitoring
+            GpsDataLoader.MemoryStats stats = gpsDataLoader.getMemoryStats(newPoints);
+            log.info("Processing timeline for user {} with {} GPS points ({}MB memory) + {} context points",
+                    userId, newPoints.size(), String.format("%.1f", stats.estimatedMB), contextPoints.size());
 
-            List<TimelineEvent> rawEvents = processor.processPoints(streamingContextPoints, streamingNewPoints, config, userId);
+            // Convert to algorithm format (lightweight conversion)
+
+            List<TimelineEvent> rawEvents = processor.processPoints(contextPoints, newPoints, config, userId);
 
             // Apply trip detection algorithm and validation
             List<TimelineEvent> events = tripPostProcessor.postProcessTrips(rawEvents, config);
@@ -233,24 +236,6 @@ public class StreamingTimelineGenerationService {
 
         // Return early date to ensure we process all GPS points from the beginning
         return DEFAULT_START_DATE;
-    }
-
-    /**
-     * Find GPS points that provide context for processing.
-     * Gets a small number of points before the regeneration start time to provide algorithm context.
-     */
-    private List<GpsPointEntity> findGpsPointsForProcessing(UUID userId, Instant regenerationStartTime) {
-        if (regenerationStartTime != null) {
-            // Get context points from BEFORE the regeneration start time
-            List<GpsPointEntity> contextPoints = gpsPointRepository.find("user.id = :userId and timestamp < :timestamp order by timestamp desc",
-                    Parameters.with("userId", userId).and("timestamp", regenerationStartTime)).page(0, 10).list();
-            return contextPoints;
-        } else {
-            // Fallback to getting recent points if no specific start time
-            List<GpsPointEntity> contextPoints = gpsPointRepository.find("user.id = :userId order by timestamp desc",
-                    Parameters.with("userId", userId)).page(0, 5).list();
-            return contextPoints;
-        }
     }
 
     private MovementTimelineDTO applyPathSimplification(TimelineConfig config, MovementTimelineDTO timeline) {
