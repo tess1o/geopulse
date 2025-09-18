@@ -9,7 +9,7 @@ services:
     command: sh /generate-keys.sh
 
   geopulse-backend:
-    image: tess1o/geopulse-backend:1.0.0-rc.9
+    image: tess1o/geopulse-backend:1.0.0-rc.10
     container_name: geopulse-backend
     restart: unless-stopped
     env_file:
@@ -28,6 +28,12 @@ services:
         condition: service_completed_successfully
       geopulse-postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q -S http://localhost:8080/api/health 2>&1 | grep -E 'HTTP/[0-9\\.]+ 200' || exit 1"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
     # Optional: Memory limits (uncomment and adjust based on your needs)
     # Minimal deployment (1-2 users): 512Mi
     # Standard deployment (3-10 users): 1Gi  
@@ -40,7 +46,7 @@ services:
     #       memory: 512Mi
 
   geopulse-ui:
-    image: tess1o/geopulse-ui:1.0.0-rc.9
+    image: tess1o/geopulse-ui:1.0.0-rc.10
     container_name: geopulse-ui
     restart: unless-stopped
     env_file:
@@ -48,7 +54,8 @@ services:
     ports:
       - 5555:80  # Change left port to customize external access
     depends_on:
-      - geopulse-backend
+      geopulse-backend:
+        condition: service_healthy
 
   geopulse-postgres:
     image: postgis/postgis:17-3.5
@@ -60,6 +67,23 @@ services:
       POSTGRES_DB: ${GEOPULSE_POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+    # Conservative PostgreSQL settings optimized for minimal resource usage
+    # Suitable for small deployments and idle GPS tracking workloads
+    command: >
+      postgres
+      -c shared_buffers=${GEOPULSE_POSTGRES_SHARED_BUFFERS:-256MB}
+      -c work_mem=${GEOPULSE_POSTGRES_WORK_MEM:-8MB}
+      -c maintenance_work_mem=${GEOPULSE_POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+      -c effective_cache_size=${GEOPULSE_POSTGRES_EFFECTIVE_CACHE_SIZE:-1GB}
+      -c max_wal_size=${GEOPULSE_POSTGRES_MAX_WAL_SIZE:-512MB}
+      -c checkpoint_completion_target=${GEOPULSE_POSTGRES_CHECKPOINT_TARGET:-0.9}
+      -c wal_buffers=${GEOPULSE_POSTGRES_WAL_BUFFERS:-16MB}
+      -c random_page_cost=${GEOPULSE_POSTGRES_RANDOM_PAGE_COST:-1.1}
+      -c effective_io_concurrency=${GEOPULSE_POSTGRES_IO_CONCURRENCY:-100}
+      -c autovacuum_naptime=${GEOPULSE_POSTGRES_AUTOVACUUM_NAPTIME:-60s}
+      -c autovacuum_vacuum_scale_factor=${GEOPULSE_POSTGRES_VACUUM_SCALE_FACTOR:-0.2}
+      -c log_min_duration_statement=${GEOPULSE_POSTGRES_LOG_SLOW_QUERIES:-5000}
+      -c track_io_timing=on
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${GEOPULSE_POSTGRES_USERNAME} -d ${GEOPULSE_POSTGRES_DB}" ]
       interval: 5s
