@@ -16,13 +16,28 @@ services:
       - .env
     environment:
       - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
+      # Optional: Custom JVM settings (uncomment to override defaults)
+      # - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC
     volumes:
       - ./keys:/app/keys
+      # Optional: Mount directories for heap dumps and performance logs
+      # - ./dumps:/app/dumps
+      # - ./logs:/app/logs
     depends_on:
       geopulse-keygen:
         condition: service_completed_successfully
       geopulse-postgres:
         condition: service_healthy
+    # Optional: Memory limits (uncomment and adjust based on your needs)
+    # Minimal deployment (1-2 users): 512Mi
+    # Standard deployment (3-10 users): 1Gi  
+    # Production deployment (10+ users): 2Gi or more
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 1Gi
+    #     requests:
+    #       memory: 512Mi
 
   geopulse-ui:
     image: tess1o/geopulse-ui:1.0.0-rc.9

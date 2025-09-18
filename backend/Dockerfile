@@ -15,11 +15,14 @@ WORKDIR /app/backend
 RUN mvn package -DskipTests -Dquarkus.profile=prod
 
 # Stage 2: Create a minimal runtime image
-FROM eclipse-temurin:23-jre-alpine
+FROM eclipse-temurin:23-jdk-alpine
 WORKDIR /app
 
-# Create a non-root user to run the application
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Create directories for dumps and logs, and setup user
+RUN mkdir -p /app/dumps /app/logs && \
+    addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    chown -R appuser:appgroup /app
+
 USER appuser
 
 # Copy the built application from the build stage
@@ -31,5 +34,16 @@ COPY --from=build /app/backend/target/quarkus-app/quarkus/ /app/quarkus/
 # Expose the application port
 EXPOSE 8080
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "/app/quarkus-run.jar"]
+# Default JVM options optimized for container environments
+# Users can override by setting JAVA_OPTS environment variable
+ENV JAVA_OPTS_DEFAULT="-XX:+UseContainerSupport \
+                       -XX:InitialRAMPercentage=25 \
+                       -XX:MaxRAMPercentage=75 \
+                       -XX:+UseG1GC \
+                       -XX:MaxGCPauseMillis=200 \
+                       -XX:+HeapDumpOnOutOfMemoryError \
+                       -XX:HeapDumpPath=/app/dumps/ \
+                       -XX:+ExitOnOutOfMemoryError"
+
+# Use JAVA_OPTS if provided by user, otherwise use container-aware defaults
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS:-$JAVA_OPTS_DEFAULT} -jar /app/quarkus-run.jar"]

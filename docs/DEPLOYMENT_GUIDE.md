@@ -240,3 +240,87 @@ curl http://localhost:8080/api/health
   `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist
 - To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`
+
+---
+
+## Performance Optimization
+
+<details>
+<summary><strong>🚀 Advanced Performance Tuning (Click to expand)</strong></summary>
+
+### Memory Configuration by Use Case
+
+GeoPulse automatically optimizes JVM memory usage based on container limits. Here are recommended configurations:
+
+#### Minimal Deployment (1-2 users)
+```yaml
+# docker-compose.yml
+services:
+  geopulse-backend:
+    deploy:
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          memory: 256Mi
+    # Uses ~384MB heap automatically (75% of 512MB)
+```
+
+#### Standard Deployment (3-10 users)
+```yaml
+# docker-compose.yml  
+services:
+  geopulse-backend:
+    deploy:
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          memory: 512Mi
+    # Uses ~768MB heap automatically (75% of 1GB)
+```
+
+#### Production Deployment (10+ users)
+```yaml
+# docker-compose.yml
+services:
+  geopulse-backend:
+    deploy:
+      resources:
+        limits:
+          memory: 2Gi
+        requests:
+          memory: 1Gi
+    environment:
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:G1HeapRegionSize=16m -XX:+FlightRecorder -XX:StartFlightRecording=duration=0,filename=/app/logs/performance.jfr
+    volumes:
+      - ./logs:/app/logs
+      - ./dumps:/app/dumps
+```
+
+### Custom JVM Tuning
+
+#### Override Default Settings
+```yaml
+# docker-compose.yml
+services:
+  geopulse-backend:
+    environment:
+      # Example: Use 80% of container memory instead of default 75%
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=80 -XX:+UseG1GC
+```
+
+#### Development Monitoring Setup
+```yaml
+# docker-compose-dev.yml (already configured)
+services:
+  geopulse-backend-dev:
+    ports:
+      - "9999:9999"  # JMX monitoring port
+    environment:
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
+    volumes:
+      - ./logs:/app/logs  # Performance recordings
+```
+
+</details>
