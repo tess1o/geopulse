@@ -141,6 +141,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import { getBrowserTimezone } from '@/utils/timezoneUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
 // Composables
@@ -228,10 +229,14 @@ const handleSubmit = async () => {
   registerError.value = ''
   
   try {
+    // Auto-detect user's timezone (normalized for Java compatibility)
+    const detectedTimezone = getBrowserTimezone()
+    
     await authStore.register(
       formData.value.email.trim(),
       formData.value.password,
-      formData.value.fullName.trim()
+      formData.value.fullName.trim(),
+      detectedTimezone
     )
     
     toast.add({

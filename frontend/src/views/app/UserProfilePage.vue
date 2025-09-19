@@ -79,6 +79,29 @@
                           />
                           <small class="help-text">Email cannot be changed</small>
                         </div>
+
+                        <div class="form-field">
+                          <label for="timezone" class="form-label">Timezone</label>
+                          <Dropdown
+                            id="timezone"
+                            v-model="profileForm.timezone"
+                            :options="timezoneOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Select your timezone"
+                            filter
+                            :filterMatchMode="'contains'"
+                            :invalid="!!profileErrors.timezone"
+                            class="w-full"
+                            scrollHeight="300px"
+                          />
+                          <small v-if="profileErrors.timezone" class="error-message">
+                            {{ profileErrors.timezone }}
+                          </small>
+                          <small v-else class="help-text">
+                            Your timezone is used for date displays and statistics
+                          </small>
+                        </div>
                       </div>
 
                       <!-- Action Buttons -->
@@ -336,7 +359,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -371,7 +394,8 @@ const activeTabIndex = computed(() => {
 
 // Form data
 const profileForm = ref({
-  fullName: ''
+  fullName: '',
+  timezone: ''
 })
 
 const passwordForm = ref({
@@ -390,6 +414,58 @@ const immichForm = ref({
 const profileErrors = ref({})
 const passwordErrors = ref({})
 const immichErrors = ref({})
+
+// Timezone options (common timezones)
+const timezoneOptions = [
+  { label: 'UTC', value: 'UTC' },
+  { label: 'Europe/London (GMT/BST)', value: 'Europe/London' },
+  { label: 'Europe/Paris (CET/CEST)', value: 'Europe/Paris' },
+  { label: 'Europe/Berlin (CET/CEST)', value: 'Europe/Berlin' },
+  { label: 'Europe/Rome (CET/CEST)', value: 'Europe/Rome' },
+  { label: 'Europe/Madrid (CET/CEST)', value: 'Europe/Madrid' },
+  { label: 'Europe/Amsterdam (CET/CEST)', value: 'Europe/Amsterdam' },
+  { label: 'Europe/Brussels (CET/CEST)', value: 'Europe/Brussels' },
+  { label: 'Europe/Vienna (CET/CEST)', value: 'Europe/Vienna' },
+  { label: 'Europe/Stockholm (CET/CEST)', value: 'Europe/Stockholm' },
+  { label: 'Europe/Copenhagen (CET/CEST)', value: 'Europe/Copenhagen' },
+  { label: 'Europe/Oslo (CET/CEST)', value: 'Europe/Oslo' },
+  { label: 'Europe/Helsinki (EET/EEST)', value: 'Europe/Helsinki' },
+  { label: 'Europe/Athens (EET/EEST)', value: 'Europe/Athens' },
+  { label: 'Europe/Bucharest (EET/EEST)', value: 'Europe/Bucharest' },
+  { label: 'Europe/Kyiv (EET/EEST)', value: 'Europe/Kyiv' },
+  { label: 'Europe/Warsaw (CET/CEST)', value: 'Europe/Warsaw' },
+  { label: 'Europe/Prague (CET/CEST)', value: 'Europe/Prague' },
+  { label: 'Europe/Budapest (CET/CEST)', value: 'Europe/Budapest' },
+  { label: 'Europe/Moscow (MSK)', value: 'Europe/Moscow' },
+  { label: 'America/New_York (EST/EDT)', value: 'America/New_York' },
+  { label: 'America/Chicago (CST/CDT)', value: 'America/Chicago' },
+  { label: 'America/Denver (MST/MDT)', value: 'America/Denver' },
+  { label: 'America/Los_Angeles (PST/PDT)', value: 'America/Los_Angeles' },
+  { label: 'America/Toronto (EST/EDT)', value: 'America/Toronto' },
+  { label: 'America/Vancouver (PST/PDT)', value: 'America/Vancouver' },
+  { label: 'America/Mexico_City (CST/CDT)', value: 'America/Mexico_City' },
+  { label: 'America/Sao_Paulo (BRT/BRST)', value: 'America/Sao_Paulo' },
+  { label: 'America/Argentina/Buenos_Aires (ART)', value: 'America/Argentina/Buenos_Aires' },
+  { label: 'Asia/Tokyo (JST)', value: 'Asia/Tokyo' },
+  { label: 'Asia/Shanghai (CST)', value: 'Asia/Shanghai' },
+  { label: 'Asia/Hong_Kong (HKT)', value: 'Asia/Hong_Kong' },
+  { label: 'Asia/Singapore (SGT)', value: 'Asia/Singapore' },
+  { label: 'Asia/Seoul (KST)', value: 'Asia/Seoul' },
+  { label: 'Asia/Bangkok (ICT)', value: 'Asia/Bangkok' },
+  { label: 'Asia/Jakarta (WIB)', value: 'Asia/Jakarta' },
+  { label: 'Asia/Manila (PHT)', value: 'Asia/Manila' },
+  { label: 'Asia/Kolkata (IST)', value: 'Asia/Kolkata' },
+  { label: 'Asia/Dubai (GST)', value: 'Asia/Dubai' },
+  { label: 'Asia/Tehran (IRST/IRDT)', value: 'Asia/Tehran' },
+  { label: 'Australia/Sydney (AEST/AEDT)', value: 'Australia/Sydney' },
+  { label: 'Australia/Melbourne (AEST/AEDT)', value: 'Australia/Melbourne' },
+  { label: 'Australia/Perth (AWST)', value: 'Australia/Perth' },
+  { label: 'Pacific/Auckland (NZST/NZDT)', value: 'Pacific/Auckland' },
+  { label: 'Africa/Cairo (EET)', value: 'Africa/Cairo' },
+  { label: 'Africa/Johannesburg (SAST)', value: 'Africa/Johannesburg' },
+  { label: 'Africa/Lagos (WAT)', value: 'Africa/Lagos' },
+  { label: 'Africa/Nairobi (EAT)', value: 'Africa/Nairobi' }
+]
 
 // Avatar options
 const avatarOptions = [
@@ -418,7 +494,8 @@ const avatarOptions = [
 // Computed
 const hasProfileChanges = computed(() => {
   return profileForm.value.fullName !== userName.value || 
-         selectedAvatar.value !== userAvatar.value
+         selectedAvatar.value !== userAvatar.value ||
+         profileForm.value.timezone !== userTimezone.value
 })
 
 const hasPasswordChanges = computed(() => {
@@ -521,6 +598,7 @@ const saveProfile = async () => {
     await authStore.updateProfile(
       profileForm.value.fullName.trim(),
       selectedAvatar.value,
+      profileForm.value.timezone,
       userId.value
     )
     
@@ -617,6 +695,7 @@ const saveImmichConfig = async () => {
 
 const resetProfile = () => {
   profileForm.value.fullName = userName.value || ''
+  profileForm.value.timezone = userTimezone.value || 'UTC'
   selectedAvatar.value = userAvatar.value || '/avatars/avatar1.png'
   profileErrors.value = {}
 }

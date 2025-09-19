@@ -40,7 +40,7 @@ public class AuthorizationIntegrationTest {
         userRepository.findAll().stream().forEach(userRepository::delete);
 
         // Create test user
-        userService.registerUser("test@example.com", "password123", "Test User");
+        userService.registerUser("test@example.com", "password123", "Test User", "Europe/Kyiv");
 
         // Generate valid JWT token
         AuthResponse authResponse = authenticationService.authenticate("test@example.com", "password123");

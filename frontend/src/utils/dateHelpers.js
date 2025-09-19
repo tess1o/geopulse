@@ -1,39 +1,48 @@
 /**
  * Date-related utility functions
  */
+import { getUserTimezone } from './timezoneUtils'
 
 /**
- * Format a date string to a locale string
+ * Format a date string to a locale string using user's timezone
  * @param {string} dateString - Date string to format
+ * @param {string} timezone - Optional timezone override
  * @returns {string} - Formatted date string
  */
-export function formatDate(dateString) {
+export function formatDate(dateString, timezone = null) {
     if (!dateString) return 'Unknown';
 
     const date = new Date(dateString);
+    const userTimezone = timezone || getUserTimezone();
+    
     return date.toLocaleString(undefined, {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false, // optional: use false for 24-hour format
+        hour12: false,
+        timeZone: userTimezone
     });
 }
 
 /**
- * Format a date string to time only (HH:MM format)
+ * Format a date string to time only (HH:MM format) using user's timezone
  * @param {string} dateString - Date string to format
+ * @param {string} timezone - Optional timezone override
  * @returns {string} - Formatted time string
  */
-export function formatTime(dateString) {
+export function formatTime(dateString, timezone = null) {
     if (!dateString) return 'Unknown';
 
     const date = new Date(dateString);
+    const userTimezone = timezone || getUserTimezone();
+    
     return date.toLocaleString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
+        timeZone: userTimezone
     });
 }
 

@@ -24,4 +24,7 @@ public class UserRegistrationRequest {
 
     @Size(min = 1, max = 100, message = "Full name must be between 1 and 100 characters")
     private String fullName;
+
+    @Size(max = 255, message = "Timezone cannot exceed 255 characters")
+    private String timezone;
 }

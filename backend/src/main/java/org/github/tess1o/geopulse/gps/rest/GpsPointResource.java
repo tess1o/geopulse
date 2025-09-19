@@ -18,8 +18,10 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.StringWriter;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
@@ -89,38 +91,32 @@ public class GpsPointResource {
 
     /**
      * Get summary statistics for GPS points.
-     * This endpoint requires authentication.
+     * This endpoint requires authentication and uses the user's stored timezone.
      *
-     * @param timezone Optional timezone parameter (e.g., "Europe/Kyiv", "America/New_York").
-     *                 If not provided, defaults to UTC.
      * @return Summary statistics for the user's GPS points
      */
     @GET
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed("USER")
-    public Response getGpsPointSummary(@QueryParam("timezone") String timezone) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS point summary for user {} with timezone {}", userId, timezone);
+    public Response getGpsPointSummary() {
+        UserEntity user = currentUserService.getCurrentUser();
+        log.info("Received request to get GPS point summary for user {} with timezone {}", user.getId(), user.getTimezone());
 
         try {
             GpsPointSummaryDTO summary;
 
-            if (timezone != null && !timezone.trim().isEmpty()) {
-                try {
-                    java.time.ZoneId userTimezone = java.time.ZoneId.of(timezone.trim());
-                    summary = gpsPointService.getGpsPointSummary(userId, userTimezone);
-                } catch (java.time.DateTimeException e) {
-                    log.warn("Invalid timezone '{}' provided for user {}, falling back to UTC", timezone, userId);
-                    summary = gpsPointService.getGpsPointSummary(userId);
-                }
-            } else {
-                summary = gpsPointService.getGpsPointSummary(userId);
+            try {
+                ZoneId userTimezone = ZoneId.of(user.getTimezone());
+                summary = gpsPointService.getGpsPointSummary(user.getId(), userTimezone);
+            } catch (DateTimeException e) {
+                log.warn("Invalid timezone '{}' for user {}, falling back to UTC", user.getTimezone(), user.getId());
+                summary = gpsPointService.getGpsPointSummary(user.getId());
             }
 
             return Response.ok(ApiResponse.success(summary)).build();
         } catch (Exception e) {
-            log.error("Failed to retrieve GPS point summary for user {}", userId, e);
+            log.error("Failed to retrieve GPS point summary for user {}", user.getId(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve GPS point summary: " + e.getMessage()))
                     .build();

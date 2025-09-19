@@ -52,7 +52,8 @@ public class UserResource {
             UserEntity user = userService.registerUser(
                     request.getEmail(),
                     request.getPassword(),
-                    request.getFullName()
+                    request.getFullName(),
+                    request.getTimezone()
             );
             UserResponse response = userMapper.toResponse(user);
             return Response.status(Response.Status.CREATED).entity(ApiResponse.success(response)).build();

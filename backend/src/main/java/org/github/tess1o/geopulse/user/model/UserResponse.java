@@ -19,5 +19,6 @@ public class UserResponse {
     private String fullName;
     private String role;
     private String email;
+    private String timezone;
     // Don't include passwordHash in responses
 }

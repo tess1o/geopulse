@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -29,6 +30,11 @@ public class UserService {
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
+    
+    // Mapping for timezone names that differ between JavaScript and Java
+    private static final Map<String, String> TIMEZONE_MAPPING = Map.of(
+            "Europe/Kiev", "Europe/Kyiv"  // JavaScript may send old name, normalize to new name
+    );
 
     @Inject
     public UserService(UserRepository userRepository,
@@ -44,17 +50,22 @@ public class UserService {
     /**
      * Register a new user.
      *
-     * @param email    The user ID
+     * @param email    The user email
      * @param password The password (will be hashed)
+     * @param fullName The user's full name
+     * @param timezone The user's timezone (IANA format)
      * @return The created user entity
      * @throws IllegalArgumentException if the user already exists
      */
     @Transactional
-    public UserEntity registerUser(String email, String password, String fullName) {
+    public UserEntity registerUser(String email, String password, String fullName, String timezone) {
         // Check if the user already exists
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("User with email " + email + " already exists");
         }
+
+        // Validate and set timezone (defaults to UTC if null/invalid)
+        String validatedTimezone = validateTimezone(timezone);
 
         // Create a new user entity
         UserEntity user = UserEntity.builder()
@@ -64,6 +75,7 @@ public class UserService {
                 .isActive(true)
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
+                .timezone(validatedTimezone)
                 .build();
 
         userRepository.persist(user);
@@ -96,6 +108,33 @@ public class UserService {
                 null, // null indicates reset to defaults
                 true  // wasResetToDefaults = true
         ));
+    }
+
+    /**
+     * Validates timezone to ensure it's a valid IANA timezone identifier.
+     * Returns UTC as default if timezone is null or invalid.
+     * Also handles timezone name mapping (e.g., Europe/Kiev -> Europe/Kyiv).
+     *
+     * @param timezone the timezone to validate
+     * @return validated timezone or "UTC" as default
+     */
+    private String validateTimezone(String timezone) {
+        if (timezone == null || timezone.trim().isEmpty()) {
+            return "UTC";
+        }
+        
+        String normalizedTimezone = timezone.trim();
+        
+        // Apply timezone mapping if needed
+        normalizedTimezone = TIMEZONE_MAPPING.getOrDefault(normalizedTimezone, normalizedTimezone);
+        
+        try {
+            java.time.ZoneId.of(normalizedTimezone);
+            return normalizedTimezone;
+        } catch (java.time.DateTimeException e) {
+            log.warn("Invalid timezone provided: {}, defaulting to UTC", timezone);
+            return "UTC";
+        }
     }
 
     /**
@@ -138,6 +177,13 @@ public class UserService {
             validateAvatarPath(request.getAvatar());
             user.setAvatar(request.getAvatar());
             log.debug("Updated avatar for user {} to {}", user.getId(), request.getAvatar());
+        }
+
+        // Validate and update timezone
+        if (request.getTimezone() != null) {
+            String validatedTimezone = validateTimezone(request.getTimezone());
+            user.setTimezone(validatedTimezone);
+            log.debug("Updated timezone for user {} to {}", user.getId(), validatedTimezone);
         }
     }
 

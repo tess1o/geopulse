@@ -26,6 +26,7 @@ public class UserMapper {
                 .email(entity.getEmail())
                 .fullName(entity.getFullName())
                 .role(entity.getRole())
+                .timezone(entity.getTimezone())
                 .build();
     }
 }
