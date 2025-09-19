@@ -93,6 +93,7 @@ import {
   shouldShowAsOvernightTrip,
   shouldShowAsOvernightDataGap
 } from '@/utils/overnightHelpers'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 
 // Props
 const props = defineProps({
@@ -210,7 +211,8 @@ const groupedTimelineData = computed(() => {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
+        timeZone: getUserTimezone()
       }),
       items: []
     })

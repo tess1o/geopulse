@@ -222,6 +222,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
 // Store
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const toast = useToast()
 const journeyInsightsStore = useJourneyInsightsStore()
@@ -251,7 +252,12 @@ const distanceTraveled = computed(() => journeyInsightsStore.distance)
 // Get current month name for display
 const currentMonthName = computed(() => {
   const now = new Date()
-  return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const userTimezone = getUserTimezone()
+  return now.toLocaleDateString('en-US', { 
+    month: 'long', 
+    year: 'numeric',
+    timeZone: userTimezone
+  })
 })
 
 // Convert UTC time to user's local timezone
@@ -274,11 +280,13 @@ const localMostActiveTime = computed(() => {
     const [hours, minutes] = time24.split(':').map(Number)
     const utcDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), hours, minutes))
     
-    // Convert to local time and format back to 12-hour format
+    // Convert to user's timezone and format back to 12-hour format
+    const userTimezone = getUserTimezone()
     return utcDate.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: userTimezone
     })
   } catch (error) {
     console.error('Error converting time to local timezone:', error)

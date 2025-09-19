@@ -104,6 +104,7 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { imageService } from '@/utils/imageService'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const props = defineProps({
   visible: {
@@ -281,7 +282,10 @@ const formatDate = (dateString) => {
   
   try {
     const date = new Date(dateString)
-    return date.toLocaleString()
+    const userTimezone = getUserTimezone()
+    return date.toLocaleString('en-US', {
+      timeZone: userTimezone
+    })
   } catch (error) {
     return dateString
   }

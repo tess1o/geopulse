@@ -36,6 +36,7 @@
 <script setup>
 import { formatDate, formatTime } from '@/utils/dateHelpers'
 import { formatDuration, formatDistance } from '@/utils/calculationsHelpers'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const props = defineProps({
   tripItem: {
@@ -71,7 +72,11 @@ const formatContinuationText = (startTime, currentDateString) => {
       dateFormatOptions.year = 'numeric'
     }
     
-    const fullDate = startDate.toLocaleDateString('en-US', dateFormatOptions)
+    const userTimezone = getUserTimezone()
+    const fullDate = startDate.toLocaleDateString('en-US', {
+      ...dateFormatOptions,
+      timeZone: userTimezone
+    })
     return `Continued from ${fullDate}, ${formatTime(startTime)}`
   }
 }

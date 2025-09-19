@@ -75,6 +75,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { imageService } from '@/utils/imageService'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const props = defineProps({
   group: {
@@ -105,16 +106,21 @@ const dateRange = computed(() => {
     .sort((a, b) => a - b)
   
   if (dates.length === 0) return null
-  if (dates.length === 1) return dates[0].toLocaleDateString()
   
-  return `${dates[0].toLocaleDateString()} - ${dates[dates.length - 1].toLocaleDateString()}`
+  const userTimezone = getUserTimezone()
+  if (dates.length === 1) return dates[0].toLocaleDateString('en-US', { timeZone: userTimezone })
+  
+  return `${dates[0].toLocaleDateString('en-US', { timeZone: userTimezone })} - ${dates[dates.length - 1].toLocaleDateString('en-US', { timeZone: userTimezone })}`
 })
 
 // Methods
 const formatDate = (dateString) => {
   if (!dateString) return ''
   try {
-    return new Date(dateString).toLocaleString()
+    const userTimezone = getUserTimezone()
+    return new Date(dateString).toLocaleString('en-US', {
+      timeZone: userTimezone
+    })
   } catch (error) {
     return dateString
   }

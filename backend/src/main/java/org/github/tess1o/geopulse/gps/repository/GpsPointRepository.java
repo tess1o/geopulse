@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -231,8 +232,12 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         Double speed = ((Number) row[3]).doubleValue();
         Double accuracy = ((Number) row[4]).doubleValue();
         
+        // Convert timestamp correctly - database stores UTC timestamps
+        // Using toLocalDateTime().toInstant(ZoneOffset.UTC) to avoid timezone conversion
+        Instant timestampInstant = timestamp.toLocalDateTime().toInstant(ZoneOffset.UTC);
+        
         return new GPSPoint(
-            timestamp.toInstant(),
+            timestampInstant,
             latitude,
             longitude,
             speed,

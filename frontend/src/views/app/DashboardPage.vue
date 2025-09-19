@@ -110,6 +110,7 @@ import ActivitySummaryCard from '@/components/dashboard/cards/ActivitySummaryCar
 // Utils and Stores
 import { getLastMonthRange, getLastWeekRange } from "@/utils/dateHelpers"
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 import { useStatisticsStore } from '@/stores/statistics'
 import { useDateRangeStore } from '@/stores/dateRange'
 
@@ -155,7 +156,10 @@ const hasThirtyDaysChartData = computed(() => {
 })
 
 const formattedSelectedPeriodRange = computed(() => {
-  return formatRange([dateRange.value?.[0], dateRange.value?.[1]])
+  console.log(dateRange.value)
+  const r = formatRange([dateRange.value?.[0], dateRange.value?.[1]])
+  console.log(r)
+  return r;
 })
 
 const formattedLastWeekRange = computed(() => {
@@ -171,13 +175,16 @@ const formattedLastMonthRange = computed(() => {
 // Methods
 const formatRange = (range) => {
   const [start, end] = range || []
+  const userTimezone = getUserTimezone()
   return start && end
       ? `${start.toLocaleDateString('en-US', {
         month: '2-digit',
-        day: '2-digit'
+        day: '2-digit',
+        timeZone: userTimezone
       })} - ${end.toLocaleDateString('en-US', {
         month: '2-digit',
-        day: '2-digit'
+        day: '2-digit',
+        timeZone: userTimezone
       })}`
       : ''
 }
