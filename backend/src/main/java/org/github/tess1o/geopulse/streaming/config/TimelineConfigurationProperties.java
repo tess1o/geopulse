@@ -63,7 +63,4 @@ public class TimelineConfigurationProperties {
 
     @ConfigProperty(name = "geopulse.timeline.data_gap.min_duration_seconds", defaultValue = "1800")
     String dataGapMinDurationSeconds;
-
-    @ConfigProperty(name = "geopulse.timeline.timezone.default", defaultValue = "UTC")
-    String timezoneDefault;
 }

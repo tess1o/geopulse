@@ -145,12 +145,4 @@ public class TimelineConfig {
      * This prevents very short connectivity issues from creating unnecessary gap records.
      */
     private Integer dataGapMinDurationSeconds;
-    
-    /**
-     * User's timezone for accurate date calculations in timeline generation.
-     * Used to determine what constitutes "today" from the user's perspective.
-     * Example: "Europe/Kyiv", "America/New_York", "Asia/Tokyo"
-     * If null or empty, defaults to UTC.
-     */
-    private String timezone;
 }

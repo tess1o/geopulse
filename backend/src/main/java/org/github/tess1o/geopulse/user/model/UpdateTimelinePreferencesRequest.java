@@ -65,9 +65,4 @@ public class UpdateTimelinePreferencesRequest {
 
     @Min(value = 1, message = "Data Gap minimum duration (seconds) must be positive")
     private Integer dataGapMinDurationSeconds;
-    
-    // Timezone Settings
-    @Pattern(regexp = "^[A-Za-z_]+/[A-Za-z_]+$", 
-             message = "Timezone must be a valid timezone ID (e.g., 'Europe/Kyiv', 'America/New_York')")
-    private String timezone;
 }
