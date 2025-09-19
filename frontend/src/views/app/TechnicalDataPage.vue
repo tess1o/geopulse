@@ -66,7 +66,7 @@
           icon-color="info"
           :value="summaryStats.lastPointDate"
           label="Latest GPS Point"
-          :formatter="formatDate"
+          :formatter="timeAgo"
         />
       </BaseCard>
     </div>
@@ -297,7 +297,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
-import {formatDate, formatDateMMDDYYYY} from "@/utils/dateHelpers";
+import {formatDate, timeAgo} from "@/utils/dateHelpers";
+import { getUserTimezone } from '@/utils/timezoneUtils';
 
 // Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -363,20 +364,35 @@ const formatNumber = (value) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
   const date = new Date(timestamp)
+  const userTimezone = getUserTimezone()
   return {
-    date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    date: date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      timeZone: userTimezone 
+    }),
     time: date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: false 
+      hour12: false,
+      timeZone: userTimezone
     })
   }
 }
 
 const formatDateRange = (range) => {
   if (!range || range.length < 2) return ''
-  const start = range[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const end = range[1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const userTimezone = getUserTimezone()
+  const start = range[0].toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    timeZone: userTimezone
+  })
+  const end = range[1].toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    timeZone: userTimezone
+  })
   return `${start} - ${end}`
 }
 

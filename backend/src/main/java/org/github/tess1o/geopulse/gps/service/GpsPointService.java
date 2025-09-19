@@ -169,17 +169,17 @@ public class GpsPointService {
         Instant firstTimestamp = getInstantSafe(summaryData[2]);
         Instant lastTimestamp = getInstantSafe(summaryData[3]);
 
-        String firstPointDate = firstTimestamp != null ? DateTimeFormatter.ISO_DATE_TIME.format(firstTimestamp.atOffset(ZoneOffset.UTC)) : null;
-        String lastPointDate = lastTimestamp != null ? DateTimeFormatter.ISO_DATE_TIME.format(lastTimestamp.atOffset(ZoneOffset.UTC)) : null;
-
-
-        return new GpsPointSummaryDTO(totalPoints, pointsToday, firstPointDate, lastPointDate);
+        return new GpsPointSummaryDTO(totalPoints, pointsToday, firstTimestamp, lastTimestamp);
     }
 
     private static Instant getInstantSafe(Object date) {
         if (date == null) return null;
         if (date instanceof Instant) return (Instant) date;
-        if (date instanceof java.sql.Timestamp) return ((java.sql.Timestamp) date).toInstant();
+        if (date instanceof java.sql.Timestamp) {
+            // Database timestamps are stored in UTC, so treat them as UTC
+            java.sql.Timestamp ts = (java.sql.Timestamp) date;
+            return ts.toLocalDateTime().toInstant(ZoneOffset.UTC);
+        }
         if (date instanceof java.util.Date) return ((java.util.Date) date).toInstant();
         if (date instanceof Long) return Instant.ofEpochMilli((Long) date);
         if (date instanceof LocalDateTime) return ((LocalDateTime) date).toInstant(ZoneOffset.UTC);
