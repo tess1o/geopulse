@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 
 import java.sql.Timestamp;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -93,7 +94,10 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
         if (value == null) {
             return null;
         }
-        return ((Timestamp) value).toInstant().toString();
+        // Convert timestamp correctly - database stores UTC timestamps
+        // Using toLocalDateTime().toInstant(ZoneOffset.UTC) to avoid timezone conversion
+        Timestamp timestamp = (Timestamp) value;
+        return timestamp.toLocalDateTime().toInstant(ZoneOffset.UTC).toString();
     }
 
     private static Double getCoordinate(Object value, int index) {

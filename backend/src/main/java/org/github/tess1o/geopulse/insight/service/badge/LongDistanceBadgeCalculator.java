@@ -40,6 +40,19 @@ public class LongDistanceBadgeCalculator implements BadgeCalculator {
         distanceQuery.setParameter("userId", userId);
 
         List<Object[]> result = (List<Object[]>) distanceQuery.getResultList();
+        if (result == null || result.isEmpty()) {
+            return Badge.builder()
+                    .id("long_distance")
+                    .icon("\uD83D\uDEE3\uFE0F")
+                    .title("Long Distance")
+                    .description("Travelled 0km in a single trip")
+                    .target(TARGET_DISTANCE)
+                    .current(0)
+                    .progress(0)
+                    .earned(false)
+                    .build();
+        }
+
         int maxDistance = result != null ? ((Long) result.get(0)[0]).intValue() : 0;
         LocalDateTime maxDate = result != null ? ((Timestamp) result.get(0)[1]).toLocalDateTime() : null;
         int distanceKm = maxDistance / 1000;

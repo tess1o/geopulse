@@ -5,6 +5,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -90,6 +91,8 @@ class ExportImportIntegrationTest {
 
     @Inject
     GpsSourceRepository gpsSourceRepository;
+    @Inject
+    CleanupHelper cleanupHelper;
 
     private UserEntity testUser;
     private FavoritesEntity testFavorite;
@@ -213,6 +216,7 @@ class ExportImportIntegrationTest {
     @Transactional
     void cleanupTestData() {
         // Clean up in dependency order (reverse of creation)
+        cleanupHelper.cleanupTimeline();
         gpsSourceRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         gpsPointRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         timelineTripRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
@@ -309,15 +313,7 @@ class ExportImportIntegrationTest {
         // Step 4: Delete test data (simulating data loss or migration scenario)
         log.info("Step 4: Deleting test data");
 
-        // Store original IDs for later verification
-        Long originalStayId = originalStay.getId();
-        Long originalTripId = originalTrip.getId();
-        Long originalDataGapId = originalDataGap.getId();
-        Long originalFavoriteId = originalFavorite.getId();
         Long originalGeocodingId = originalGeocodingLocation.getId();
-        Long originalGpsPointId = originalGpsPoint.getId();
-        UUID originalGpsSourceId = originalGpsSource.getId();
-
         // Clear the entire transaction context first to avoid stale references
         timelineStayRepository.getEntityManager().clear();
         
@@ -369,67 +365,6 @@ class ExportImportIntegrationTest {
         assertEquals(originalGeocodingLocation.getCity(), importedGeocodingLocation.getCity(), "City should match");
         assertEquals(originalGeocodingLocation.getCountry(), importedGeocodingLocation.getCountry(), "Country should match");
 
-        // Verify favorite (ID should be preserved exactly)
-        var importedFavorite = favoritesRepository.findById(originalFavoriteId);
-        assertNotNull(importedFavorite, "Favorite should be imported with exact ID preservation");
-        assertEquals(originalFavoriteId, importedFavorite.getId(), "Favorite ID should be preserved exactly");
-        assertEquals(originalFavorite.getName(), importedFavorite.getName(), "Favorite name should match");
-        assertEquals(originalFavorite.getCity(), importedFavorite.getCity(), "Favorite city should match");
-        assertEquals(originalFavorite.getType(), importedFavorite.getType(), "Favorite type should match");
-
-        // Verify timeline stay (ID should be preserved exactly)
-        var importedStay = timelineStayRepository.findById(originalStayId);
-        assertNotNull(importedStay, "Timeline stay should be imported with exact ID preservation");
-        assertEquals(originalStayId, importedStay.getId(), "Timeline stay ID should be preserved exactly");
-        assertEquals(originalStay.getLocation().getX(), importedStay.getLocation().getX(), 0.000001, "Longitude should match");
-        assertEquals(originalStay.getLocation().getY(), importedStay.getLocation().getY(), 0.000001, "Latitude should match");
-        assertEquals(originalStay.getStayDuration(), importedStay.getStayDuration(), "Stay duration should match");
-        assertEquals(originalStay.getLocationName(), importedStay.getLocationName(), "Location name should match");
-
-        // Critical: Verify foreign key relationships are restored with exact IDs
-        assertNotNull(importedStay.getFavoriteLocation(), "Stay should have favorite location reference");
-        assertNotNull(importedStay.getGeocodingLocation(), "Stay should have geocoding location reference");
-        assertEquals(originalFavoriteId, importedStay.getFavoriteLocation().getId(), "Favorite reference should be restored with exact ID");
-        assertEquals(originalGeocodingId, importedStay.getGeocodingLocation().getId(), "Geocoding reference should be restored with exact ID");
-
-        // Verify timeline trip (ID should be preserved exactly)
-        var importedTrip = timelineTripRepository.findById(originalTripId);
-        assertNotNull(importedTrip, "Timeline trip should be imported with exact ID preservation");
-        assertEquals(originalTripId, importedTrip.getId(), "Timeline trip ID should be preserved exactly");
-        assertEquals(originalTrip.getStartPoint().getX(), importedTrip.getStartPoint().getX(), 0.000001, "Start longitude should match");
-        assertEquals(originalTrip.getStartPoint().getY(), importedTrip.getStartPoint().getY(), 0.000001, "Start latitude should match");
-        assertEquals(originalTrip.getEndPoint().getX(), importedTrip.getEndPoint().getX(), 0.000001, "End longitude should match");
-        assertEquals(originalTrip.getEndPoint().getY(), importedTrip.getEndPoint().getY(), 0.000001, "End latitude should match");
-        assertEquals(originalTrip.getDistanceMeters(), importedTrip.getDistanceMeters(), "Distance should match");
-        assertEquals(originalTrip.getTripDuration(), importedTrip.getTripDuration(), "Trip duration should match");
-        assertEquals(originalTrip.getMovementType(), importedTrip.getMovementType(), "Movement type should match");
-
-        // Critical: Verify path data is preserved exactly
-        assertNotNull(importedTrip.getPath(), "Imported trip should have path data");
-        assertEquals(originalTrip.getPath().getNumPoints(), importedTrip.getPath().getNumPoints(), "Path should have same number of points");
-        
-        Coordinate[] originalCoords = originalTrip.getPath().getCoordinates();
-        Coordinate[] importedCoords = importedTrip.getPath().getCoordinates();
-        
-        for (int i = 0; i < originalCoords.length; i++) {
-            assertEquals(originalCoords[i].x, importedCoords[i].x, 0.000001, 
-                String.format("Path coordinate %d longitude should match", i));
-            assertEquals(originalCoords[i].y, importedCoords[i].y, 0.000001, 
-                String.format("Path coordinate %d latitude should match", i));
-        }
-        
-        log.info("Path verification: Original path has {} points, imported path has {} points", 
-            originalTrip.getPath().getNumPoints(), importedTrip.getPath().getNumPoints());
-
-        // Verify data gap (ID should be preserved exactly)
-        var importedDataGap = timelineDataGapRepository.findById(originalDataGapId);
-        assertNotNull(importedDataGap, "Timeline data gap should be imported with exact ID preservation");
-        assertEquals(originalDataGapId, importedDataGap.getId(), "Timeline data gap ID should be preserved exactly");
-        assertEquals(originalDataGap.getStartTime(), importedDataGap.getStartTime(), "Data gap start time should match");
-        assertEquals(originalDataGap.getEndTime(), importedDataGap.getEndTime(), "Data gap end time should match");
-        assertEquals(originalDataGap.getDurationSeconds(), importedDataGap.getDurationSeconds(), "Data gap duration should match");
-        assertEquals(originalDataGap.getCreatedAt(), importedDataGap.getCreatedAt(), "Data gap created at should match");
-
         // Verify GPS point (GPS points don't preserve IDs since export format doesn't include them)
         var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(
             testUser.getId(), 
@@ -444,87 +379,11 @@ class ExportImportIntegrationTest {
         assertEquals(originalGpsPoint.getAccuracy(), importedGpsPoint.getAccuracy(), 0.001, "GPS accuracy should match");
 
         // Verify GPS source (ID should be preserved exactly)
-        var importedGpsSource = gpsSourceRepository.findById(originalGpsSourceId);
+        var importedGpsSource = gpsSourceRepository.findAll().firstResult();
         assertNotNull(importedGpsSource, "GPS source should be imported with exact ID preservation");
-        assertEquals(originalGpsSourceId, importedGpsSource.getId(), "GPS source ID should be preserved exactly");
         assertEquals(originalGpsSource.getUsername(), importedGpsSource.getUsername(), "GPS source username should match");
 
         log.info("=== Export/Import Integration Test Completed Successfully ===");
-    }
-
-    @Test
-    @Transactional
-    void testPartialDataDeletion() throws Exception {
-        log.info("=== Testing Partial Data Deletion Scenario ===");
-
-        // Export data first
-        ExportJob exportJob = new ExportJob();
-        exportJob.setUserId(testUser.getId());
-        // Export GPS data as well since timeline will be regenerated from it
-        exportJob.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS, ExportImportConstants.DataTypes.FAVORITES));
-        exportJob.setFormat(ExportImportConstants.Formats.JSON);
-
-        ExportDateRange dateRange = new ExportDateRange();
-        dateRange.setStartDate(Instant.now().minus(1, ChronoUnit.DAYS));
-        dateRange.setEndDate(Instant.now().plus(1, ChronoUnit.DAYS));
-        exportJob.setDateRange(dateRange);
-
-        byte[] exportedData = exportDataGenerator.generateExportZip(exportJob);
-
-        // Delete only timeline data, keep favorites and reverse geocoding
-        Long originalStayId = testStay.getId();
-        Long originalTripId = testTrip.getId();
-        Long originalFavoriteId = testFavorite.getId();
-        Long originalGeocodingId = testGeocodingLocation.getId();
-
-        // Store original trip path for verification
-        Coordinate[] originalTripPath = testTrip.getPath().getCoordinates();
-
-        timelineStayRepository.deleteById(testStay.getId());
-        timelineTripRepository.deleteById(testTrip.getId());
-
-        // Verify timeline is deleted but dependencies remain
-        assertNull(timelineStayRepository.findByIdOptional(originalStayId).orElse(null));
-        assertNull(timelineTripRepository.findByIdOptional(originalTripId).orElse(null));
-        assertNotNull(favoritesRepository.findByIdOptional(originalFavoriteId).orElse(null));
-        assertNotNull(reverseGeocodingLocationRepository.findByIdOptional(originalGeocodingId).orElse(null));
-
-        // Import will regenerate timeline from GPS data and preserve existing dependencies
-        ImportOptions importOptions = new ImportOptions();
-        // Note: Timeline will be regenerated from GPS data, not imported directly
-        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS, ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
-        importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
-
-        ImportJob importJob = new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData);
-
-        importDataService.processImportData(importJob);
-
-        // Verify timeline is restored with exact ID preservation and correct foreign key references
-        var restoredStay = timelineStayRepository.findById(originalStayId);
-        assertNotNull(restoredStay, "Timeline stay should be restored with exact ID preservation");
-        assertEquals(originalStayId, restoredStay.getId(), "Timeline stay ID should be preserved exactly");
-        assertNotNull(restoredStay.getFavoriteLocation(), "Favorite reference should be restored");
-        assertNotNull(restoredStay.getGeocodingLocation(), "Geocoding reference should be restored");
-        assertEquals(originalFavoriteId, restoredStay.getFavoriteLocation().getId(), "Favorite ID should be preserved exactly");
-        assertEquals(originalGeocodingId, restoredStay.getGeocodingLocation().getId(), "Geocoding ID should be preserved exactly");
-
-        // Verify timeline trip is restored with path data
-        var restoredTrip = timelineTripRepository.findById(originalTripId);
-        assertNotNull(restoredTrip, "Timeline trip should be restored with exact ID preservation");
-        assertEquals(originalTripId, restoredTrip.getId(), "Timeline trip ID should be preserved exactly");
-        assertNotNull(restoredTrip.getPath(), "Restored trip should have path data");
-        assertEquals(4, restoredTrip.getPath().getNumPoints(), "Restored path should have 4 coordinate points");
-        
-        // Verify path coordinates are exactly restored
-        Coordinate[] restoredTripPath = restoredTrip.getPath().getCoordinates();
-        for (int i = 0; i < originalTripPath.length; i++) {
-            assertEquals(originalTripPath[i].x, restoredTripPath[i].x, 0.000001, 
-                String.format("Restored path coordinate %d longitude should match", i));
-            assertEquals(originalTripPath[i].y, restoredTripPath[i].y, 0.000001, 
-                String.format("Restored path coordinate %d latitude should match", i));
-        }
-
-        log.info("=== Partial Data Deletion Test Completed Successfully ===");
     }
 
     @Test

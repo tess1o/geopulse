@@ -4,6 +4,7 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -47,12 +48,15 @@ class StreamingStreamingTimelineAggregatorTest {
     TimelineDataGapRepository timelineDataGapRepository;
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
+    @Inject
+    CleanupHelper cleanupHelper;
     private UserEntity testUser;
 
     @BeforeEach
     @Transactional
     void setUp() {
         // Clean up previous test data
+        cleanupHelper.cleanupTimeline();
         timelineDataGapRepository.deleteAll();
         timelineTripRepository.deleteAll();
         timelineStayRepository.deleteAll();

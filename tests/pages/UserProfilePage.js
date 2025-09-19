@@ -4,9 +4,9 @@ export class UserProfilePage {
     
     this.selectors = {
       // Tab navigation - using span with data-pc-section="itemlabel"
-      profileTab: '[data-pc-section="itemlabel"]:has-text("Profile Information")',
+      profileTab: '[data-pc-section="itemlabel"]:has-text("Profile")',
       securityTab: '[data-pc-section="itemlabel"]:has-text("Security")',
-      immichTab: '[data-pc-section="itemlabel"]:has-text("Immich Integration")',
+      immichTab: '[data-pc-section="itemlabel"]:has-text("Immich")',
       
       // Profile Information tab selectors
       profile: {
