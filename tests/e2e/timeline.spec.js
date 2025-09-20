@@ -186,7 +186,12 @@ test.describe('Timeline Page', () => {
   test.describe('Overnight Timeline Elements', () => {
     test('should display overnight stays with correct data and special formatting', async ({page, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData);
+      const testUser = TestData.users.existing;
+      
+      // Set timezone to Europe/Kyiv to match test expectations
+      testUser.timezone = 'Europe/Kyiv';
+      
+      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
       
       await timelinePage.waitForTimelineContent();
       
@@ -235,6 +240,58 @@ test.describe('Timeline Page', () => {
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
       expect(await timelinePage.getDateGroupsCount()).toBeGreaterThanOrEqual(2);
+    });
+
+    test('should calculate "on this day" duration correctly when browser timezone differs from user timezone', async ({page, dbManager}) => {
+      const timelinePage = new TimelinePage(page);
+      const testUser = TestData.users.existing;
+      
+      // Simulate browser in New York timezone but user setting is Europe/London
+      testUser.timezone = 'Europe/London';
+      
+      // Mock browser timezone to America/New_York
+      await page.addInitScript(() => {
+        // Override getTimezoneOffset to simulate New York timezone
+        const originalGetTimezoneOffset = Date.prototype.getTimezoneOffset;
+        Date.prototype.getTimezoneOffset = function() {
+          // New York is UTC-5 (300 minutes) or UTC-4 (240 minutes) depending on DST
+          return 300; // Simulate EST (UTC-5)
+        };
+      });
+      
+      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
+      
+      await timelinePage.waitForTimelineContent();
+      
+      const overnightStayCards = timelinePage.getTimelineCards('overnightStays');
+      expect(await overnightStayCards.count()).toBeGreaterThan(0);
+      
+      // Get the first overnight stay card
+      const firstStayCard = overnightStayCards.nth(0);
+      const cardText = await firstStayCard.textContent();
+      
+      console.log('Browser timezone mismatch test - Card text:', cardText);
+      
+      // The "on this day" calculation should still work correctly despite browser timezone mismatch
+      // It should show the start time as 00:00 (midnight) in Europe/London, NOT affected by browser timezone
+      expect(cardText).toMatch(/on this day|this day/i);
+      
+      // Should show correct start time (00:00) when stay continues from previous day
+      // This tests that getStartOfDay/getEndOfDay use user timezone, not browser timezone
+      if (cardText.includes('Continued from')) {
+        expect(cardText).toMatch(/00:00/);
+        // Should NOT show times that would indicate browser timezone usage like 17:00 or 05:00
+        expect(cardText).not.toMatch(/17:00|05:00/);
+      }
+      
+      // Verify localStorage still contains the correct user timezone
+      const userInfo = await page.evaluate(() => {
+        const userInfoStr = localStorage.getItem('userInfo');
+        return userInfoStr ? JSON.parse(userInfoStr) : null;
+      });
+      
+      expect(userInfo).toBeTruthy();
+      expect(userInfo.timezone).toBe('Europe/London');
     });
 
     test('should display overnight trips with correct data and special formatting', async ({page, dbManager}) => {
@@ -375,6 +432,41 @@ test.describe('Timeline Page', () => {
       
       const dateGroups = page.locator('.date-group');
       expect(await dateGroups.count()).toBeGreaterThan(0);
+    });
+    
+    test('should display date separators in user timezone format', async ({page, dbManager}) => {
+      const timelinePage = new TimelinePage(page);
+      const testUser = TestData.users.existing;
+      
+      // Create user with specific timezone
+      testUser.timezone = 'Europe/London';
+      
+      // Login and navigate
+      await timelinePage.loginAndNavigate(testUser);
+      
+      // Insert test data
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
+      
+      await page.reload();
+      await timelinePage.waitForPageLoad();
+      await timelinePage.waitForTimelineContent();
+      
+      // Check that date separators use proper timezone formatting
+      const dateSeparatorText = page.locator('.date-separator-text').first();
+      const dateText = await dateSeparatorText.textContent();
+      
+      // Verify date format is displayed (should be formatted in user's timezone)
+      expect(dateText).toMatch(/\w+,\s+\w+\s+\d{1,2}/); // Format like "Monday, September 19"
+      
+      // Verify localStorage contains the correct timezone
+      const userInfo = await page.evaluate(() => {
+        const userInfoStr = localStorage.getItem('userInfo');
+        return userInfoStr ? JSON.parse(userInfoStr) : null;
+      });
+      
+      expect(userInfo).toBeTruthy();
+      expect(userInfo.timezone).toBe('Europe/London');
     });
 
     test('should handle timeline item clicks correctly', async ({page, dbManager}) => {

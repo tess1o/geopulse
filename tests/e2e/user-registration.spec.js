@@ -80,4 +80,218 @@ test.describe('User Registration', () => {
         await TestHelpers.waitForNavigation(page, '**/login');
         expect(await loginPage.isOnLoginPage()).toBe(true);
     });
+
+    test.describe('Timezone Auto-Detection', () => {
+        test('should auto-detect timezone during registration (America/New_York)', async ({page, dbManager}) => {
+            const registerPage = new RegisterPage(page);
+            const locationSourcesPage = new LocationSourcesPage(page);
+            const newUser = TestData.generateNewUser();
+
+            // Mock browser timezone to America/New_York
+            await page.addInitScript(() => {
+                const originalDateTimeFormat = Intl.DateTimeFormat;
+                Intl.DateTimeFormat = function(...args) {
+                    const formatter = new originalDateTimeFormat(...args);
+                    const originalResolvedOptions = formatter.resolvedOptions;
+                    formatter.resolvedOptions = function() {
+                        const options = originalResolvedOptions.call(this);
+                        options.timeZone = 'America/New_York';
+                        return options;
+                    };
+                    return formatter;
+                };
+                Object.setPrototypeOf(Intl.DateTimeFormat, originalDateTimeFormat);
+                Object.getOwnPropertyNames(originalDateTimeFormat).forEach(name => {
+                    if (typeof originalDateTimeFormat[name] === 'function') {
+                        Intl.DateTimeFormat[name] = originalDateTimeFormat[name];
+                    }
+                });
+            });
+
+            await registerPage.navigate();
+            await registerPage.waitForPageLoad();
+
+            // Register new user
+            await registerPage.register(
+                newUser.email,
+                newUser.fullName,
+                newUser.password
+            );
+
+            // Wait for successful registration
+            await TestHelpers.waitForNavigation(page, '**/app/location-sources', TestConfig.TIMEOUTS.navigation);
+            expect(await locationSourcesPage.isOnLocationSourcesPage()).toBe(true);
+
+            // Check that timezone was auto-detected and sent to backend
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            // Verify localStorage contains the detected timezone
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('America/New_York');
+
+            // Verify database was updated with the correct timezone
+            const createdUser = await dbManager.getUserByEmail(newUser.email);
+            expect(createdUser).toBeTruthy();
+            expect(createdUser.timezone).toBe('America/New_York');
+        });
+
+        test('should auto-detect timezone during registration (Europe/London)', async ({page, dbManager}) => {
+            const registerPage = new RegisterPage(page);
+            const locationSourcesPage = new LocationSourcesPage(page);
+            const newUser = TestData.generateNewUser();
+
+            // Mock browser timezone to Europe/London
+            await page.addInitScript(() => {
+                const originalDateTimeFormat = Intl.DateTimeFormat;
+                Intl.DateTimeFormat = function(...args) {
+                    const formatter = new originalDateTimeFormat(...args);
+                    const originalResolvedOptions = formatter.resolvedOptions;
+                    formatter.resolvedOptions = function() {
+                        const options = originalResolvedOptions.call(this);
+                        options.timeZone = 'Europe/London';
+                        return options;
+                    };
+                    return formatter;
+                };
+                Object.setPrototypeOf(Intl.DateTimeFormat, originalDateTimeFormat);
+                Object.getOwnPropertyNames(originalDateTimeFormat).forEach(name => {
+                    if (typeof originalDateTimeFormat[name] === 'function') {
+                        Intl.DateTimeFormat[name] = originalDateTimeFormat[name];
+                    }
+                });
+            });
+
+            await registerPage.navigate();
+            await registerPage.waitForPageLoad();
+
+            // Register new user
+            await registerPage.register(
+                newUser.email,
+                newUser.fullName,
+                newUser.password
+            );
+
+            // Wait for successful registration
+            await TestHelpers.waitForNavigation(page, '**/app/location-sources', TestConfig.TIMEOUTS.navigation);
+            expect(await locationSourcesPage.isOnLocationSourcesPage()).toBe(true);
+
+            // Check that timezone was auto-detected and sent to backend
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            // Verify localStorage contains the detected timezone
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Europe/London');
+
+            // Verify database was updated with the correct timezone
+            const createdUser = await dbManager.getUserByEmail(newUser.email);
+            expect(createdUser).toBeTruthy();
+            expect(createdUser.timezone).toBe('Europe/London');
+        });
+
+        test('should handle timezone normalization during registration (Europe/Kiev -> Europe/Kyiv)', async ({page, dbManager}) => {
+            const registerPage = new RegisterPage(page);
+            const locationSourcesPage = new LocationSourcesPage(page);
+            const newUser = TestData.generateNewUser();
+
+            // Mock browser timezone to Europe/Kiev (old spelling)
+            await page.addInitScript(() => {
+                const originalDateTimeFormat = Intl.DateTimeFormat;
+                Intl.DateTimeFormat = function(...args) {
+                    const formatter = new originalDateTimeFormat(...args);
+                    const originalResolvedOptions = formatter.resolvedOptions;
+                    formatter.resolvedOptions = function() {
+                        const options = originalResolvedOptions.call(this);
+                        options.timeZone = 'Europe/Kiev';
+                        return options;
+                    };
+                    return formatter;
+                };
+                Object.setPrototypeOf(Intl.DateTimeFormat, originalDateTimeFormat);
+                Object.getOwnPropertyNames(originalDateTimeFormat).forEach(name => {
+                    if (typeof originalDateTimeFormat[name] === 'function') {
+                        Intl.DateTimeFormat[name] = originalDateTimeFormat[name];
+                    }
+                });
+            });
+
+            await registerPage.navigate();
+            await registerPage.waitForPageLoad();
+
+            // Register new user
+            await registerPage.register(
+                newUser.email,
+                newUser.fullName,
+                newUser.password
+            );
+
+            // Wait for successful registration
+            await TestHelpers.waitForNavigation(page, '**/app/location-sources', TestConfig.TIMEOUTS.navigation);
+            expect(await locationSourcesPage.isOnLocationSourcesPage()).toBe(true);
+
+            // Check that timezone was normalized and sent to backend
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            // Verify localStorage contains the normalized timezone
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Europe/Kyiv'); // Should be normalized to Kyiv
+
+            // Verify database was updated with the normalized timezone
+            const createdUser = await dbManager.getUserByEmail(newUser.email);
+            expect(createdUser).toBeTruthy();
+            expect(createdUser.timezone).toBe('Europe/Kyiv'); // Should be normalized
+        });
+
+        test('should fallback to UTC when timezone detection fails', async ({page, dbManager}) => {
+            const registerPage = new RegisterPage(page);
+            const locationSourcesPage = new LocationSourcesPage(page);
+            const newUser = TestData.generateNewUser();
+
+            // Break timezone detection
+            await page.addInitScript(() => {
+                Object.defineProperty(Intl, 'DateTimeFormat', {
+                    value: function() {
+                        throw new Error('Timezone detection failed');
+                    }
+                });
+            });
+
+            await registerPage.navigate();
+            await registerPage.waitForPageLoad();
+
+            // Register new user
+            await registerPage.register(
+                newUser.email,
+                newUser.fullName,
+                newUser.password
+            );
+
+            // Wait for successful registration
+            await TestHelpers.waitForNavigation(page, '**/app/location-sources', TestConfig.TIMEOUTS.navigation);
+            expect(await locationSourcesPage.isOnLocationSourcesPage()).toBe(true);
+
+            // Check that timezone falls back to UTC
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            // Verify localStorage contains UTC as fallback
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('UTC');
+
+            // Verify database was updated with UTC fallback
+            const createdUser = await dbManager.getUserByEmail(newUser.email);
+            expect(createdUser).toBeTruthy();
+            expect(createdUser.timezone).toBe('UTC');
+        });
+    });
 });

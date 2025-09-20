@@ -36,6 +36,7 @@
 <script setup>
 import { formatDate, formatTime } from '@/utils/dateHelpers'
 import { formatDuration } from '@/utils/calculationsHelpers'
+import { formatOnThisDayDuration as formatOvernightDayDuration } from '@/utils/overnightHelpers'
 import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const props = defineProps({
@@ -82,30 +83,7 @@ const formatContinuationText = (startTime, currentDateString) => {
 }
 
 const formatOnThisDayDuration = (dataGapItem, currentDateString) => {
-  const currentDate = new Date(currentDateString)
-  const gapStart = new Date(dataGapItem.startTime)
-  const gapEnd = new Date(dataGapItem.endTime)
-  
-  // Calculate start and end times for this specific day
-  const dayStart = new Date(currentDate)
-  dayStart.setHours(0, 0, 0, 0)
-  
-  const dayEnd = new Date(currentDate)
-  dayEnd.setHours(23, 59, 59, 999)
-  
-  // Determine the actual start and end times for this day
-  const thisDayStart = gapStart < dayStart ? dayStart : gapStart
-  const thisDayEnd = gapEnd > dayEnd ? dayEnd : gapEnd
-  
-  // Format the time range
-  const startTimeStr = formatTime(thisDayStart)
-  const endTimeStr = formatTime(thisDayEnd)
-  
-  // Calculate duration in minutes for this day only
-  const durationMs = thisDayEnd - thisDayStart
-  const durationSeconds = Math.floor(durationMs / (1000 ))
-  
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationSeconds)})`
+  return formatOvernightDayDuration(dataGapItem, currentDateString, 'dataGap')
 }
 
 const formatEndTimeWithDate = (endTime, currentDateString) => {

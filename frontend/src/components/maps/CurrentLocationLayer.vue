@@ -29,6 +29,7 @@ const props = defineProps({
 // Computed shareData for current location
 const shareData = computed(() => ({
   shareName: 'Your Current Location',
+  sharedBy: 'You',
   description: '',
   sharedAt: props.location?.timestamp || new Date().toISOString()
 }))

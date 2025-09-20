@@ -191,7 +191,7 @@ const groupedTimelineData = computed(() => {
       
       // For overnight stays, also add the end date
       if (item.type === 'stay' && item.stayDuration) {
-        const endDate = new Date(itemDate.getTime() + (item.stayDuration * 60 * 1000))
+        const endDate = new Date(itemDate.getTime() + (item.stayDuration * 1000))
         if (itemDate.toDateString() !== endDate.toDateString()) {
           allDates.add(endDate.toDateString())
         }

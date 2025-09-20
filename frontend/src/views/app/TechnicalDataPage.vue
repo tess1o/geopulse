@@ -396,12 +396,38 @@ const formatDateRange = (range) => {
   return `${start} - ${end}`
 }
 
-const formatDateForAPI = (date) => {
-  // Format date in local timezone to avoid timezone offset issues
+const formatDateForAPI = (date, isEndDate = false) => {
+  // Calculate the exact UTC timestamp for start/end of day in user's timezone
+  const userTimezone = getUserTimezone()
+  
+  // Get the date components from the input date
   const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const month = date.getMonth()
+  const day = date.getDate()
+  
+  // Create a string in user's timezone for the target date
+  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  const timeStr = isEndDate ? '23:59:59.999' : '00:00:00.000'
+  
+  // Create date in user's timezone and convert to UTC
+  const timeInUserTz = new Date(`${dateStr}T${timeStr}`)
+  
+  if (userTimezone === 'UTC') {
+    return timeInUserTz.toISOString()
+  }
+  
+  // For non-UTC timezones, we need to calculate the offset
+  // Create a temporary date to find the timezone offset for this specific date
+  const tempDate = new Date(`${dateStr}T12:00:00`) // Use noon to avoid DST edge cases
+  const utcTime = tempDate.getTime() + (tempDate.getTimezoneOffset() * 60 * 1000)
+  
+  // Get the offset for user's timezone on this date
+  const utcDate = new Date(utcTime)
+  const userTzOffset = new Date(utcDate.toLocaleString('en-US', { timeZone: userTimezone })).getTime() - utcDate.getTime()
+  
+  // Apply the offset to our target time
+  const finalTime = new Date(timeInUserTz.getTime() - userTzOffset)
+  return finalTime.toISOString()
 }
 
 const getSourceSeverity = (sourceType) => {
@@ -467,9 +493,9 @@ const loadGPSPoints = async () => {
     }
     
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      // Format dates in local timezone to avoid timezone offset issues
-      params.startDate = formatDateForAPI(dateRange.value[0])
-      params.endDate = formatDateForAPI(dateRange.value[1])
+      // Send precise UTC timestamps for start/end of day in user timezone
+      params.startTime = formatDateForAPI(dateRange.value[0], false)
+      params.endTime = formatDateForAPI(dateRange.value[1], true)
     }
     
     await technicalDataStore.fetchGPSPoints(params)
@@ -492,9 +518,9 @@ const handleExportCSV = async () => {
     const params = {}
     
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      // Format dates in local timezone to avoid timezone offset issues
-      params.startDate = formatDateForAPI(dateRange.value[0])
-      params.endDate = formatDateForAPI(dateRange.value[1])
+      // Send precise UTC timestamps for start/end of day in user timezone
+      params.startTime = formatDateForAPI(dateRange.value[0], false)
+      params.endTime = formatDateForAPI(dateRange.value[1], true)
     }
     
     await technicalDataStore.exportGPSPoints(params)

@@ -140,10 +140,12 @@ public class GpsPointResource {
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
             @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate) {
+            @QueryParam("endDate") String endDate,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}",
-                userId, page, limit, startDate, endDate);
+        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}, startTime: {}, endTime: {}",
+                userId, page, limit, startDate, endDate, startTime, endTime);
 
         try {
             // Validate pagination parameters
@@ -158,9 +160,9 @@ public class GpsPointResource {
                         .build();
             }
 
-            // Parse date parameters
-            Instant start = parseDate(startDate, true);
-            Instant end = parseDate(endDate, false);
+            // Parse date/time parameters - prioritize precise timestamps over dates
+            Instant start = parseDateTime(startTime, startDate, true);
+            Instant end = parseDateTime(endTime, endDate, false);
 
             GpsPointPageDTO result = gpsPointService.getGpsPointsPage(userId, start, end, page, limit);
             return Response.ok(ApiResponse.success(result)).build();
@@ -189,15 +191,17 @@ public class GpsPointResource {
     @RolesAllowed("USER")
     public Response exportGpsPoints(
             @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate) {
+            @QueryParam("endDate") String endDate,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}",
-                userId, startDate, endDate);
+        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}, startTime: {}, endTime: {}",
+                userId, startDate, endDate, startTime, endTime);
 
         try {
-            // Parse date parameters
-            Instant start = parseDate(startDate, true);
-            Instant end = parseDate(endDate, false);
+            // Parse date/time parameters - prioritize precise timestamps over dates
+            Instant start = parseDateTime(startTime, startDate, true);
+            Instant end = parseDateTime(endTime, endDate, false);
 
             List<GpsPointEntity> points = gpsPointService.getGpsPointsForExport(userId, start, end);
             String csv = generateCsv(points);
@@ -217,6 +221,24 @@ public class GpsPointResource {
                     .entity(ApiResponse.error("Failed to export GPS points: " + e.getMessage()))
                     .build();
         }
+    }
+
+    /**
+     * Parse date/time parameters with fallback support.
+     * Prioritizes ISO-8601 timestamps over date-only strings.
+     */
+    private Instant parseDateTime(String timeStr, String dateStr, boolean isStartDate) {
+        // First try to parse as ISO-8601 timestamp (e.g., 2025-08-10T00:00:00.000Z)
+        if (timeStr != null && !timeStr.trim().isEmpty()) {
+            try {
+                return Instant.parse(timeStr.trim());
+            } catch (DateTimeParseException e) {
+                throw new DateTimeParseException("Invalid timestamp format. Use ISO-8601 format (e.g., 2025-08-10T00:00:00.000Z)", timeStr, 0);
+            }
+        }
+        
+        // Fallback to date-only parsing (e.g., 2025-08-10)
+        return parseDate(dateStr, isStartDate);
     }
 
     /**

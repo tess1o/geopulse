@@ -36,6 +36,7 @@
 <script setup>
 import { formatDate, formatTime } from '@/utils/dateHelpers'
 import { formatDuration } from '@/utils/calculationsHelpers'
+import { formatOnThisDayDuration as formatOvernightDayDuration } from '@/utils/overnightHelpers'
 import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const props = defineProps({
@@ -82,34 +83,7 @@ const formatContinuationText = (startTime, currentDateString) => {
 }
 
 const formatOnThisDayDuration = (stayItem, currentDateString) => {
-  const currentDate = new Date(currentDateString)
-  const stayStart = new Date(stayItem.timestamp)
-  // Use endTime if available, otherwise calculate from duration
-  // stayDuration is in seconds, so multiply by 1000 to get milliseconds
-  const stayEnd = stayItem.endTime 
-    ? new Date(stayItem.endTime) 
-    : new Date(stayStart.getTime() + (stayItem.stayDuration * 1000))
-  
-  // Calculate start and end times for this specific day
-  const dayStart = new Date(currentDate)
-  dayStart.setHours(0, 0, 0, 0)
-  
-  const dayEnd = new Date(currentDate)
-  dayEnd.setHours(23, 59, 59, 999)
-  
-  // Determine the actual start and end times for this day
-  const thisDayStart = stayStart < dayStart ? dayStart : stayStart
-  const thisDayEnd = stayEnd > dayEnd ? dayEnd : stayEnd
-  
-  // Format the time range
-  const startTimeStr = formatTime(thisDayStart)
-  const endTimeStr = formatTime(thisDayEnd)
-  
-  // Calculate duration in seconds for this day only
-  const durationMs = thisDayEnd - thisDayStart
-  const durationSeconds = Math.floor(durationMs / 1000)
-  
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationSeconds)})`
+  return formatOvernightDayDuration(stayItem, currentDateString, 'stay')
 }
 
 const handleClick = () => {
