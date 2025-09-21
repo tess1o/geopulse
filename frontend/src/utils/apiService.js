@@ -1,6 +1,7 @@
 import axios from 'axios';
 import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
 /**
@@ -63,7 +64,8 @@ const apiService = {
                 // Only consider expired if we have user info (logged in)
                 return !!userInfo.id;
             }
-            return dayjs().isAfter(dayjs(expiresAt).subtract(10, 'second'));
+            const timezone = useTimezone()
+            return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
         } catch (error) {
             console.error('Error checking token expiration:', error);
             return false;
@@ -461,7 +463,7 @@ const apiService = {
                 url: error.config?.url,
                 method: error.config?.method?.toUpperCase(),
                 headers: error.config?.headers,
-                timestamp: dayjs().toISOString(),
+                timestamp: useTimezone().now().toISOString(),
                 userAgent: navigator.userAgent,
                 stack: error.stack
             };

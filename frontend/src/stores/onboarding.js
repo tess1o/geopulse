@@ -42,10 +42,12 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   ])
 
   // Actions
-  const initializeOnboarding = (user) => {
+  const initializeOnboarding = async (user) => {
     // Check if this is a first-time user (could be based on registration date, flags, etc.)
-    const now = dayjs()
-    const userCreated = dayjs(user.createdAt || user.created_at)
+    const { useTimezone } = await import('@/composables/useTimezone')
+    const timezone = useTimezone()
+    const now = timezone.now()
+    const userCreated = timezone.fromUtc(user.createdAt || user.created_at)
     const timeDiff = now.diff(userCreated)
     const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
     

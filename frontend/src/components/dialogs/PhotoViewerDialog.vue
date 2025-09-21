@@ -104,9 +104,9 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { imageService } from '@/utils/imageService'
-import { getUserTimezone } from '@/utils/timezoneUtils'
-import { formatDateInTimezone } from '@/utils/dateHelpers'
-import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   visible: {
@@ -283,8 +283,7 @@ const formatDate = (dateString) => {
   if (!dateString) return ''
   
   try {
-    const userTimezone = getUserTimezone()
-    return formatDateInTimezone(dayjs(dateString), userTimezone, 'YYYY-MM-DD HH:mm:ss')
+    return timezone.format(dateString, 'YYYY-MM-DD HH:mm:ss')
   } catch (error) {
     return dateString
   }

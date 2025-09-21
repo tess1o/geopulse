@@ -5,25 +5,24 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatContinuationText(tripItem.timestamp, currentDate) }}
+        🕐 {{ getTimestampText() }}
       </p>
     </template>
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        🚗 Trip - {{ tripItem.movementType }}
+        🚗 {{ getMovementIcon() }} Trip - {{ tripItem.movementType }}
       </div>
     </template>
 
     <template #content>
       <div class="overnight-trip-content">
         <p class="duration-detail">
-          ⏱️ Total duration:
-          <span class="duration-value">{{ formatDuration(tripItem.tripDuration) }}</span>
+          📈 Total duration: <span class="duration-value">{{ timezone.formatSmartDuration(tripItem.tripDuration) }}</span>
         </p>
         <p class="duration-detail">
           ⏱️ On this day:
-          <span class="duration-value">{{ formatOnThisDayDuration(tripItem, currentDate) }}</span>
+          <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
         <p v-if="tripItem.distanceMeters" class="distance-detail">
           📏 Distance: <span class="distance-value">{{ formatDistance(tripItem.distanceMeters) }}</span>
@@ -34,9 +33,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { formatDuration, formatDistance } from '@/utils/calculationsHelpers';
 import { useTimezone } from '@/composables/useTimezone';
+import { formatDistance } from '@/utils/calculationsHelpers';
 
 const props = defineProps({
   tripItem: {
@@ -53,13 +51,28 @@ const emit = defineEmits(['click']);
 
 const timezone = useTimezone();
 
-const formatContinuationText = (startTime, currentDateString) => {
-  return timezone.formatContinuationText(startTime, currentDateString);
-};
+// Methods
+const getTimestampText = () => {
+  return timezone.getOvernightTimestampText(props.tripItem, props.currentDate)
+}
 
-const formatOnThisDayDuration = (tripItem, currentDateString) => {
-  return timezone.formatOnThisDayDuration(tripItem, currentDateString, 'trip');
-};
+const getMovementIcon = () => {
+  switch (props.tripItem.movementType) {
+    case 'WALK': return '🚶‍♂️'
+    case 'RUN': return '🏃‍♂️'
+    case 'BIKE': return '🚴‍♂️'
+    case 'CAR': return '🚗'
+    case 'BUS': return '🚌'
+    case 'TRAIN': return '🚊'
+    case 'PLANE': return '✈️'
+    default: return '🚗'
+  }
+}
+
+const getOnThisDayText = () => {
+  return timezone.getOvernightOnThisDayText(props.tripItem, props.currentDate)
+}
+
 
 const handleClick = () => {
   emit('click', props.tripItem);

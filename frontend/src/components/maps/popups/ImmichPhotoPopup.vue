@@ -75,7 +75,9 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { imageService } from '@/utils/imageService'
-import { getUserTimezone } from '@/utils/timezoneUtils'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   group: {
@@ -102,25 +104,20 @@ const dateRange = computed(() => {
   const dates = props.group.photos
     .map(p => p.takenAt)
     .filter(Boolean)
-    .map(d => new Date(d))
-    .sort((a, b) => a - b)
+    .sort()
   
   if (dates.length === 0) return null
   
-  const userTimezone = getUserTimezone()
-  if (dates.length === 1) return dates[0].toLocaleDateString('en-US', { timeZone: userTimezone })
+  if (dates.length === 1) return timezone.format(dates[0], 'M/D/YYYY')
   
-  return `${dates[0].toLocaleDateString('en-US', { timeZone: userTimezone })} - ${dates[dates.length - 1].toLocaleDateString('en-US', { timeZone: userTimezone })}`
+  return `${timezone.format(dates[0], 'M/D/YYYY')} - ${timezone.format(dates[dates.length - 1], 'M/D/YYYY')}`
 })
 
 // Methods
 const formatDate = (dateString) => {
   if (!dateString) return ''
   try {
-    const userTimezone = getUserTimezone()
-    return new Date(dateString).toLocaleString('en-US', {
-      timeZone: userTimezone
-    })
+    return timezone.format(dateString, 'YYYY-MM-DD HH:mm:ss')
   } catch (error) {
     return dateString
   }

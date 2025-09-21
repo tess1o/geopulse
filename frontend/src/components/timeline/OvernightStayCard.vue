@@ -5,28 +5,24 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatContinuationText(stayItem.timestamp, currentDate) }}
+        🕐 {{ getTimestampText() }}
       </p>
     </template>
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        🏠 Stayed at
-        <span class="location-name">
-          {{ stayItem.locationName }}
-        </span>
+        🏠 Stayed at <span class="location-name">{{ stayItem.locationName }}</span>
       </div>
     </template>
 
     <template #content>
       <div class="overnight-stay-content">
         <p class="duration-detail">
-          ⏱️ Total duration:
-          <span class="duration-value">{{ formatDuration(stayItem.stayDuration) }}</span>
+          📈 Total duration: <span class="duration-value">{{ timezone.formatSmartDuration(stayItem.stayDuration) }}</span>
         </p>
         <p class="duration-detail">
           ⏱️ On this day:
-          <span class="duration-value">{{ formatOnThisDayDuration(stayItem, currentDate) }}</span>
+          <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
       </div>
     </template>
@@ -34,10 +30,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { formatDuration } from '@/utils/calculationsHelpers';
-import { useTimezone } from '@/composables/useTimezone';
+import { useTimezone } from '@/composables/useTimezone'
 
+const timezone = useTimezone()
+
+// Props
 const props = defineProps({
   stayItem: {
     type: Object,
@@ -47,23 +44,23 @@ const props = defineProps({
     type: String,
     required: true
   }
-});
+})
 
-const emit = defineEmits(['click']);
+// Emits
+const emit = defineEmits(['click'])
 
-const timezone = useTimezone();
+// Methods
+const getTimestampText = () => {
+  return timezone.getOvernightTimestampText(props.stayItem, props.currentDate)
+}
 
-const formatContinuationText = (startTime, currentDateString) => {
-  return timezone.formatContinuationText(startTime, currentDateString);
-};
-
-const formatOnThisDayDuration = (stayItem, currentDateString) => {
-  return timezone.formatOnThisDayDuration(stayItem, currentDateString, 'stay');
-};
+const getOnThisDayText = () => {
+  return timezone.getOvernightOnThisDayText(props.stayItem, props.currentDate)
+}
 
 const handleClick = () => {
-  emit('click', props.stayItem);
-};
+  emit('click', props.stayItem)
+}
 </script>
 
 <style scoped>
@@ -97,9 +94,15 @@ const handleClick = () => {
     margin-top: var(--gp-spacing-xs);
   }
   
-  .duration-detail {
+  .duration-detail,
+  .span-detail {
     margin: 2px 0;
     font-size: 0.8rem;
+  }
+  
+  .span-detail {
+    color: var(--gp-text-secondary, #64748b);
+    font-style: italic;
   }
 }
 

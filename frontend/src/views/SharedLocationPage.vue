@@ -89,7 +89,7 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">Last seen:</span>
-                  <span class="info-value">{{ timeAgo(shareData.sharedAt) }}</span>
+                  <span class="info-value">{{ timezone.timeAgo(shareData.sharedAt) }}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Expires:</span>
@@ -208,8 +208,9 @@ import {MapContainer} from '@/components/maps'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import SharedLocationMarker from '@/components/maps/SharedLocationMarker.vue'
 import {useShareLinksStore} from '@/stores/shareLinks'
-import {formatDateInTimezone, timeAgo} from '@/utils/dateHelpers'
-import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 
 const route = useRoute()
@@ -414,7 +415,7 @@ const refreshLocationData = async () => {
         ...shareData.value, // Keep existing name, description
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
-        sharedAt: currentLocation.timestamp || new Date().toISOString()
+        sharedAt: currentLocation.timestamp || timezone.now().toISOString()
       }
 
       // Update history data if available
@@ -457,13 +458,13 @@ const handleMapReady = (mapInstance) => {
 const timeUntil = (futureDate) => {
   if (!futureDate) return 'Never'
 
-  const dateObj = dayjs(futureDate);
+  const dateObj = timezone.fromUtc(futureDate);
 
   if (!dateObj.isValid()) {
     return 'Invalid date'
   }
 
-  const now = dayjs();
+  const now = timezone.now();
   const diffMs = dateObj.diff(now);
 
   if (diffMs <= 0) {
@@ -479,7 +480,7 @@ const timeUntil = (futureDate) => {
   if (diffDays < 30) return `In ${diffDays} days`
 
   // For longer periods, show actual date
-  return `On ${formatDateInTimezone(dateObj, 'UTC', 'YYYY-MM-DD HH:mm')}`
+  return `On ${timezone.format(dateObj, 'YYYY-MM-DD HH:mm')}`
 }
 
 // Format expiration using timeUntil
@@ -493,8 +494,8 @@ const getExpirationClass = () => {
   const expiresAt = shareLinksStore.getSharedLocationInfo?.expires_at
   if (!expiresAt) return ''
 
-  const expiration = new Date(expiresAt)
-  const now = new Date()
+  const expiration = timezone.fromUtc(expiresAt)
+  const now = timezone.now()
   const timeLeft = expiration - now
   const hoursLeft = timeLeft / (1000 * 60 * 60)
 

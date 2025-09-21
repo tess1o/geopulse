@@ -47,7 +47,7 @@
             :class="['min-w-[8rem]', 'max-w-[10rem]']"
         >
           <template #body="slotProps">
-            {{ timeAgo(slotProps.data.lastSeen) }}
+            {{ timezone.timeAgo(slotProps.data.lastSeen) }}
           </template>
         </Column>
         <!-- Desktop version (sortable) -->
@@ -59,7 +59,7 @@
             :class="['min-w-[8rem]', 'max-w-[10rem]']"
         >
           <template #body="slotProps">
-            {{ timeAgo(slotProps.data.lastSeen) }}
+            {{ timezone.timeAgo(slotProps.data.lastSeen) }}
           </template>
         </Column>
         <Column field="lastLocation" header="Last location"
@@ -119,7 +119,9 @@
 
 <script setup>
 import {onMounted, onUnmounted, ref} from 'vue'
-import {timeAgo} from "@/utils/dateHelpers"
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   friends: Array,

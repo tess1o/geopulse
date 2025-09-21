@@ -5,28 +5,24 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatContinuationText(dataGapItem.startTime, currentDate) }}
+        🕐 {{ getTimestampText() }}
       </p>
     </template>
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        <span class="gap-label">❓ Data Gap - Unknown Activity</span>
+        <span class="gap-label">📵 Data Gap - Unknown Activity</span>
       </div>
     </template>
 
     <template #content>
       <div class="overnight-data-gap-content">
         <p class="duration-detail">
-          ⏱️ Total duration:
-          <span class="duration-value">{{ formatSmartDuration(dataGapItem.durationSeconds) }}</span>
+          📈 Total duration: <span class="duration-value">{{ getGapDuration() }}</span>
         </p>
         <p class="duration-detail">
           ⏱️ On this day:
-          <span class="duration-value">{{ formatOnThisDayDuration(dataGapItem, currentDate) }}</span>
-        </p>
-        <p class="end-time-detail">
-          🔄 Final End Time: <span class="time-value">{{ formatEndTimeWithDate(dataGapItem.endTime, currentDate) }}</span>
+          <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
       </div>
     </template>
@@ -34,8 +30,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
-import { formatDuration } from '@/utils/calculationsHelpers';
 import { useTimezone } from '@/composables/useTimezone';
 
 const props = defineProps({
@@ -53,40 +47,21 @@ const emit = defineEmits(['click']);
 
 const timezone = useTimezone();
 
-const formatContinuationText = (startTime, currentDateString) => {
-  return timezone.formatContinuationText(startTime, currentDateString);
-};
+// Methods
+const getTimestampText = () => {
+  return timezone.getOvernightTimestampText(props.dataGapItem, props.currentDate)
+}
 
-const formatOnThisDayDuration = (dataGapItem, currentDateString) => {
-  return timezone.formatOnThisDayDuration(dataGapItem, currentDateString, 'dataGap');
-};
+const getGapDuration = () => {
+  const startTime = timezone.fromUtc(props.dataGapItem.startTime)
+  const endTime = timezone.fromUtc(props.dataGapItem.endTime)
+  const durationSeconds = endTime.diff(startTime, 'second')
+  return timezone.formatSmartDuration(durationSeconds)
+}
 
-const formatEndTimeWithDate = (endTime, currentDateString) => {
-  const endDate = timezone.fromUtc(endTime);
-  const currentDate = timezone.fromUtc(currentDateString);
-
-  if (!timezone.isSameDay(endTime, currentDateString)) {
-    const format = endDate.year() === currentDate.year() ? 'MMM D' : 'MMM D, YYYY';
-    return `${endDate.format(format)}, ${timezone.formatTime(endTime)}`;
-  } else {
-    return timezone.formatTime(endTime);
-  }
-};
-
-const formatSmartDuration = (seconds) => {
-  const totalSeconds = seconds || props.dataGapItem.durationSeconds || 0;
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const hoursFloat = totalMinutes / 60;
-  const nearFullDay = Math.abs(hoursFloat - 24) <= (5 / 60);
-  const isExactFullDay = totalMinutes % (24 * 60) === 0;
-
-  if (nearFullDay || isExactFullDay) {
-    const days = Math.floor(totalMinutes / (24 * 60));
-    if (days === 1) return "24 hours";
-    if (days > 1) return `${days} days`;
-  }
-  return formatDuration(totalSeconds);
-};
+const getOnThisDayText = () => {
+  return timezone.getOvernightOnThisDayText(props.dataGapItem, props.currentDate)
+}
 
 const handleClick = () => {
   emit('click', props.dataGapItem);

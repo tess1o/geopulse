@@ -13,9 +13,9 @@ import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
 import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
 import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
-import {formatDateInTimezone} from "@/utils/dateHelpers";
-import {getUserTimezone} from "@/utils/timezoneUtils";
-import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   map: {
@@ -53,7 +53,7 @@ const pathLayers = ref([])
 
 // Computed
 const hasPathData = computed(() => props.pathData && props.pathData.length > 0)
-const userTimezone = computed(getUserTimezone);
+// Removed - using timezone composable directly
 
 // Layer management
 const handleLayerReady = (layerGroup) => {
@@ -212,14 +212,14 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           Distance: ${formatDistance(newTrip.distanceMeters || 0)}
         </div>
         <div class="trip-detail">
-          ${formatDateInTimezone(dayjs(newTrip.timestamp), userTimezone.value, 'YYYY-MM-DD HH:mm:ss')}
+          ${timezone.format(newTrip.timestamp, 'YYYY-MM-DD HH:mm:ss')}
         </div>
       </div>
     `
     
     // Create detailed tooltips for start and end markers
-    const startTime = dayjs(newTrip.timestamp);
-    const endTime = startTime.add(newTrip.tripDuration, 'minute');
+    const startTime = timezone.fromUtc(newTrip.timestamp);
+    const endTime = startTime.add(newTrip.tripDuration, 'second');
     
     const startInfo = `
       <div class="trip-popup">
@@ -227,7 +227,7 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           🚀 Trip Start
         </div>
         <div class="trip-detail">
-          Start: ${formatDateInTimezone(startTime, userTimezone.value, 'YYYY-MM-DD HH:mm:ss')}
+          Start: ${startTime.format('YYYY-MM-DD HH:mm:ss')}
         </div>
         <div class="trip-detail">
           Duration: ${formatDuration(newTrip.tripDuration)}
@@ -247,7 +247,7 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           🏁 Trip End
         </div>
         <div class="trip-detail">
-          End: ${formatDateInTimezone(endTime, userTimezone.value, 'YYYY-MM-DD HH:mm:ss')}
+          End: ${endTime.format('YYYY-MM-DD HH:mm:ss')}
         </div>
         <div class="trip-detail">
           Duration: ${formatDuration(newTrip.tripDuration)}

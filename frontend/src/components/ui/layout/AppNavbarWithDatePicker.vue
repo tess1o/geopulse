@@ -140,14 +140,6 @@ const setValidDateRange = (value) => {
     // Create UTC date range from picker dates using the timezone composable
     const { start, end } = timezone.createDateRangeFromPicker(newStartDate, newEndDate)
 
-    console.log(`🕰️ Date picker timezone conversion:`, {
-      browser_start: newStartDate.toISOString(),
-      browser_end: newEndDate.toISOString(),
-      user_timezone: timezone.getTimezone(),
-      converted_start: start,
-      converted_end: end
-    })
-
     dateRangeStore.setDateRange([start, end])
     emit('date-change', [start, end])
   }

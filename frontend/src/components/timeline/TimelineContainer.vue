@@ -34,8 +34,9 @@
           </template>
 
           <template #content="slotProps">
+            <!-- Stay Cards -->
             <OvernightStayCard
-              v-if="slotProps.item.type === 'stay' && shouldShowAsOvernightStay(slotProps.item, dateGroup.date)"
+              v-if="slotProps.item.type === 'stay' && isOvernightItem(slotProps.item)"
               :stay-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
@@ -47,8 +48,9 @@
               @click="handleTimelineItemClick"
             />
 
+            <!-- Trip Cards -->
             <OvernightTripCard
-              v-else-if="slotProps.item.type === 'trip' && shouldShowAsOvernightTrip(slotProps.item, dateGroup.date)"
+              v-if="slotProps.item.type === 'trip' && isOvernightItem(slotProps.item)"
               :trip-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
@@ -60,8 +62,9 @@
               @click="handleTimelineItemClick"
             />
 
+            <!-- Data Gap Cards -->
             <OvernightDataGapCard
-              v-else-if="slotProps.item.type === 'dataGap' && shouldShowAsOvernightDataGap(slotProps.item, dateGroup.date)"
+              v-if="slotProps.item.type === 'dataGap' && isOvernightItem(slotProps.item)"
               :data-gap-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
@@ -115,19 +118,10 @@ const emit = defineEmits(['timeline-item-click'])
 // Composables
 const timezone = useTimezone()
 
+// Check if an item spans multiple days (overnight)
 const isOvernightItem = (item) => {
-  const duration = item.stayDuration || (item.tripDuration ? item.tripDuration * 60 : 0);
-  if (!duration) return false;
-  return timezone.isOvernightWithDuration(item.timestamp || item.startTime, duration);
+  return timezone.getTotalDaysSpanned(item) > 1;
 };
-
-const shouldShowAsOvernight = (item, dateKey) => {
-  return timezone.shouldShowAsOvernight(item, dateKey);
-};
-
-const shouldShowAsOvernightStay = (item, dateKey) => item.type === 'stay' && shouldShowAsOvernight(item, dateKey);
-const shouldShowAsOvernightTrip = (item, dateKey) => item.type === 'trip' && shouldShowAsOvernight(item, dateKey);
-const shouldShowAsOvernightDataGap = (item, dateKey) => item.type === 'dataGap' && shouldShowAsOvernight(item, dateKey);
 
 // Computed properties
 const getMarkerIcon = computed(() => (type) => {
@@ -137,16 +131,18 @@ const getMarkerIcon = computed(() => (type) => {
   return 'pi pi-circle'
 })
 
-// Updated to handle overnight items with different markers
+// Marker icons based on item type
 const getMarkerIconForItem = computed(() => (item, dateKey) => {
-  if (shouldShowAsOvernight(item, dateKey)) {
+  // Show moon icon for overnight items
+  if (isOvernightItem(item)) {
     return 'pi pi-moon';
   }
+  // Special walking icon for trips
   if (item.type === 'trip' && item.movementType === 'WALK') {
-    return 'fas fa-walking' // Walking person icon for walking trips
+    return 'fas fa-walking';
   }
-  return getMarkerIcon.value(item.type)
-})
+  return getMarkerIcon.value(item.type);
+});
 
 const getMarkerClass = computed(() => (type) => {
   if (type === 'stay') return 'marker-stay'
@@ -155,18 +151,10 @@ const getMarkerClass = computed(() => (type) => {
   return 'marker-default'
 })
 
-// Updated to handle overnight items with different classes
+// Marker classes based on item type  
 const getMarkerClassForItem = computed(() => (item, dateKey) => {
-  if (shouldShowAsOvernightStay(item, dateKey)) {
-    return 'marker-overnight-stay' // Special class for overnight stays
-  }
-  if (shouldShowAsOvernightTrip(item, dateKey)) {
-    return 'marker-overnight-trip' // Special class for overnight trips
-  }
-  if (shouldShowAsOvernightDataGap(item, dateKey)) {
-    return 'marker-overnight-data-gap' // Special class for overnight data gaps
-  }
-  return getMarkerClass.value(item.type)
+  const baseClass = getMarkerClass.value(item.type);
+  return isOvernightItem(item) ? `${baseClass} marker-overnight` : baseClass;
 })
 
 // Group timeline data by date with proper overnight stay handling
@@ -186,10 +174,13 @@ const groupedTimelineData = computed(() => {
       const itemDate = timezone.fromUtc(itemStartTime)
       allDates.add(itemDate.format('YYYY-MM-DD'));
       
-      if (isOvernightItem(item)) {
-        const duration = item.stayDuration || (item.tripDuration ? item.tripDuration * 60 : 0);
-        const endDate = itemDate.add(duration, 'second');
-        allDates.add(endDate.format('YYYY-MM-DD'));
+      // Add all days this item spans to the date range
+      const totalDays = timezone.getTotalDaysSpanned(item);
+      if (totalDays > 1) {
+        for (let i = 1; i < totalDays; i++) {
+          const spanDate = itemDate.add(i, 'day');
+          allDates.add(spanDate.format('YYYY-MM-DD'));
+        }
       }
     });
   }

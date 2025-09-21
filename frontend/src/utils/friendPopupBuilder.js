@@ -9,9 +9,9 @@
  * Creates a DOM element with specified tag, classes, and content
  */
 
-import {timeAgo} from "@/utils/dateHelpers"
-import {getUserTimezone} from "@/utils/timezoneUtils"
-import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const createElement = (tag, className = '', content = '') => {
   const element = document.createElement(tag)
@@ -83,7 +83,7 @@ const createLastSeenSection = (friend) => {
   if (!lastSeenDate) return null
   
   const lastSeen = createElement('div', 'popup-last-seen')
-  lastSeen.textContent = `Last seen: ${timeAgo(lastSeenDate, getUserTimezone())}`
+  lastSeen.textContent = `Last seen: ${timezone.timeAgo(lastSeenDate)}`
   
   return lastSeen
 }

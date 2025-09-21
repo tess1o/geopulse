@@ -198,44 +198,47 @@ test.describe('Timeline Page', () => {
       const overnightStayCards = timelinePage.getTimelineCards('overnightStays');
       expect(await overnightStayCards.count()).toBeGreaterThan(0);
       
+      // Overnight stays span multiple days, so we expect more cards than test data entries
+      // For Hotel Downtown (16 hours from 21:00 Sept 20 to 13:00 Sept 21), we expect 2 cards
+      const totalCards = await overnightStayCards.count();
+      expect(totalCards).toBe(2); // Hotel Downtown should appear on 2 days
+      
       // Verify each overnight stay card displays correct information
-      for (let i = 0; i < testData.length; i++) {
+      for (let i = 0; i < totalCards; i++) {
         const stayCard = overnightStayCards.nth(i);
-        const expectedStay = testData[i];
-        
-        // Check location name is displayed correctly
-        const locationText = await stayCard.locator('.location-name').textContent();
-        expect(locationText.trim()).toBe(expectedStay.locationName);
-        
-        // Check that it shows "Continued from" or similar overnight indicator
         const cardText = await stayCard.textContent();
-        expect(cardText).toMatch(/continued|overnight|from/i);
         
-        // Check total duration is shown
-        const totalHours = Math.floor(expectedStay.totalDuration / 3600);
-        if (totalHours > 0) {
-          expect(cardText).toContain(`${totalHours} hour`);
-        }
+        // Check location name is displayed correctly - all cards should be Hotel Downtown
+        const locationText = await stayCard.locator('.location-name').textContent();
+        expect(locationText.trim()).toBe('Hotel Downtown');
         
-        // Check "On this day" duration - validate specific timeframe and duration
+        // Check total duration is shown (16 hours for all cards)
+        expect(cardText).toContain('16 hours');
+        
+        // Check "On this day" duration is present
         expect(cardText).toMatch(/on this day|this day/i);
         
-        // Hardcoded expected values for Hotel Downtown in Europe/Kyiv timezone
-        // Test data: 18:00 yesterday UTC (21:00 Europe/Kyiv) + 16 hours = 13:00 today Europe/Kyiv
-        // "On this day" should show: 00:00 - 13:00 (13 hours)
-        if (i === 0 && expectedStay.locationName === 'Hotel Downtown') {
-          // Should show the correct timeframe (00:00 to 13:00 for Europe/Kyiv timezone)
+        // Verify card-specific content based on position
+        if (i === 0) {
+          // First card: Start day (Sept 20) - should show actual start time
+          expect(cardText).toMatch(/09\/20\/2025,\s*21:00/);
+          expect(cardText).not.toMatch(/continued.*from/i);
+          
+          // "On this day" should show: 21:00 - 23:59 (2 hours)
+          expect(cardText).toMatch(/21:00\s*-\s*23:59/);
+          expect(cardText).toMatch(/2\s+hours?/);
+          
+        } else if (i === 1) {
+          // Second card: Continuation day (Sept 21) - should show "Continued from"
+          expect(cardText).toMatch(/continued.*from.*sep.*20.*21:00/i);
+          expect(cardText).not.toMatch(/09\/20\/2025,\s*21:00/);
+          
+          // "On this day" should show: 00:00 - 13:00 (13 hours)
           expect(cardText).toMatch(/00:00\s*-\s*13:00/);
-          
-          // Should show the correct duration in hours (13 hours, not minutes)
           expect(cardText).toMatch(/13\s+hours?/);
-          
-          // Should NOT show 23:59 or show duration in minutes for "on this day"
-          expect(cardText).not.toMatch(/23:59/);
-          expect(cardText).not.toMatch(/\(\s*\d+\s+minutes?\s*\)/); // No minutes in parentheses for "on this day"
         }
         
-        console.log(`Overnight Stay ${i}: Expected location "${expectedStay.locationName}", card text preview: "${cardText.slice(0, 300)}..."`);
+        console.log(`Overnight Stay Card ${i}: "${cardText.slice(0, 300)}..."`);
       }
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
@@ -296,44 +299,65 @@ test.describe('Timeline Page', () => {
 
     test('should display overnight trips with correct data and special formatting', async ({page, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightTripsTestData);
+      const testUser = TestData.users.existing;
+      
+      // Set timezone to Europe/Kyiv to match test expectations
+      testUser.timezone = 'Europe/Kyiv';
+      
+      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightTripsTestData, testUser);
       
       await timelinePage.waitForTimelineContent();
       
       const overnightTripCards = timelinePage.getTimelineCards('overnightTrips');
-      expect(await overnightTripCards.count()).toBeGreaterThan(0);
       
-      // Verify each overnight trip card displays correct information
-      for (let i = 0; i < testData.length; i++) {
+      // The trip (8 PM yesterday to 12 PM today) should appear on 2 days, so expect 2 cards
+      const totalCards = await overnightTripCards.count();
+      expect(totalCards).toBe(2); // Overnight trip should appear on 2 days
+      
+      // Test data contains 1 trip, but it will generate 2 cards (start day + continuation day)
+      const expectedTrip = testData[0];
+      const expectedDistanceKm = Math.round(expectedTrip.distanceMeters / 1000);
+      const totalHours = Math.floor(expectedTrip.totalDuration / 3600);
+      
+      // Verify each card
+      for (let i = 0; i < totalCards; i++) {
         const tripCard = overnightTripCards.nth(i);
-        const expectedTrip = testData[i];
-        
         const cardText = await tripCard.textContent();
         
-        // Check that it shows overnight trip indicators
-        expect(cardText).toMatch(/continued|overnight|from/i);
-        
-        // Calculate expected values
-        const expectedDistanceKm = Math.round(expectedTrip.distanceMeters / 1000);
-        const totalHours = Math.floor(expectedTrip.totalDuration / 3600);
-        
-        // BUG: Overnight trip cards should display total distance but currently don't
+        // Check total distance and duration are shown (should be same on both cards)
         expect(cardText).toContain(`${expectedDistanceKm} km`);
-
-        // Check total duration is shown
-        if (totalHours > 0) {
-          expect(cardText).toContain(`${totalHours} hour`);
-        }
+        expect(cardText).toContain(`${totalHours} hour`);
         
         // Check movement type
-        const expectedIcon = expectedTrip.movementType === 'CAR' ? '🚗' : '🚶';
-        expect(cardText).toContain(expectedIcon);
-        
-        // Check movement type text
-        expect(cardText).toContain(`Trip - ${expectedTrip.movementType}`);
+        expect(cardText).toContain('🚗');
+        expect(cardText).toContain('Trip - CAR');
         
         // Check "On this day" duration is shown for the current date segment
         expect(cardText).toMatch(/on this day|this day/i);
+        
+        // Verify card-specific content based on position
+        if (i === 0) {
+          // First card: Start day (Sept 20) - should show actual start time
+          // 8 PM yesterday UTC = 11 PM yesterday Europe/Kyiv (23:00)
+          expect(cardText).toMatch(/09\/20\/2025,\s*23:00/);
+          expect(cardText).not.toMatch(/continued.*from/i);
+          
+          // "On this day" should show: 23:00 - 23:59 (59m)
+          expect(cardText).toMatch(/23:00\s*-\s*23:59/);
+          expect(cardText).toMatch(/59m/);
+          
+        } else if (i === 1) {
+          // Second card: Continuation day (Sept 21) - should show "Continued from"
+          expect(cardText).toMatch(/continued.*from.*sep.*20.*23:00/i);
+          expect(cardText).not.toMatch(/09\/20\/2025,\s*23:00/);
+          
+          // "On this day" should show: 00:00 - 15:00 (15h)
+          // 12 PM UTC + 3 hours timezone offset = 15:00 Europe/Kyiv
+          expect(cardText).toMatch(/00:00\s*-\s*15:00/);
+          expect(cardText).toMatch(/15h/);
+        }
+        
+        console.log(`Overnight Trip Card ${i}: "${cardText.slice(0, 300)}..."`);
       }
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
@@ -341,41 +365,62 @@ test.describe('Timeline Page', () => {
 
     test('should display overnight data gaps with correct data and special formatting', async ({page, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightDataGapsTestData);
+      const testUser = TestData.users.existing;
+      
+      // Set timezone to Europe/Kyiv to match test expectations
+      testUser.timezone = 'Europe/Kyiv';
+      
+      const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightDataGapsTestData, testUser);
       
       await timelinePage.waitForTimelineContent();
       
       const overnightGapCards = timelinePage.getTimelineCards('overnightGaps');
-      expect(await overnightGapCards.count()).toBeGreaterThan(0);
       
-      // Verify each overnight data gap card displays correct information
-      for (let i = 0; i < testData.length; i++) {
+      // The data gap (8 PM yesterday to 12 PM today) should appear on 2 days, so expect 2 cards
+      const totalCards = await overnightGapCards.count();
+      expect(totalCards).toBe(2); // Overnight data gap should appear on 2 days
+      
+      // Test data contains 1 data gap, but it will generate 2 cards (start day + continuation day)
+      const expectedGap = testData[0];
+      const totalHours = Math.floor(expectedGap.totalDuration / 3600);
+      
+      // Verify each card
+      for (let i = 0; i < totalCards; i++) {
         const gapCard = overnightGapCards.nth(i);
-        const expectedGap = testData[i];
-        
         const cardText = await gapCard.textContent();
         
         // Check that it indicates a data gap
         expect(cardText).toMatch(/gap|missing|data|unknown/i);
         
-        // Check that it shows overnight gap indicators
-        expect(cardText).toMatch(/continued|overnight|from/i);
-        
-        // Calculate expected duration values
-        const totalHours = Math.floor(expectedGap.totalDuration / 3600);
-        const totalMinutes = Math.floor(expectedGap.totalDuration / 60);
-        
-        // Assert the correct duration format based on expected duration
-        if (totalHours > 0) {
-          expect(cardText).toContain(`${totalHours} hour`);
-        } else if (totalMinutes > 1) {
-          expect(cardText).toContain(`${totalMinutes} minute`);
-        } else {
-          expect(cardText).toMatch(/less than a minute|1 minute/i);
-        }
+        // Check total duration is shown (should be same on both cards)
+        expect(cardText).toContain(`${totalHours} hours`);
         
         // Check "On this day" duration is shown for the current date segment
         expect(cardText).toMatch(/on this day|this day/i);
+        
+        // Verify card-specific content based on position
+        if (i === 0) {
+          // First card: Start day (Sept 20) - should show actual start time
+          // 8 PM yesterday UTC = 11 PM yesterday Europe/Kyiv (23:00)
+          expect(cardText).toMatch(/09\/20\/2025,\s*23:00/);
+          expect(cardText).not.toMatch(/continued.*from/i);
+          
+          // "On this day" should show: 23:00 - 23:59 (59m)
+          expect(cardText).toMatch(/23:00\s*-\s*23:59/);
+          expect(cardText).toMatch(/59m/);
+          
+        } else if (i === 1) {
+          // Second card: Continuation day (Sept 21) - should show "Continued from"
+          expect(cardText).toMatch(/continued.*from.*sep.*20.*23:00/i);
+          expect(cardText).not.toMatch(/09\/20\/2025,\s*23:00/);
+          
+          // "On this day" should show: 00:00 - 15:00 (15h)
+          // 12 PM UTC + 3 hours timezone offset = 15:00 Europe/Kyiv
+          expect(cardText).toMatch(/00:00\s*-\s*15:00/);
+          expect(cardText).toMatch(/15h/);
+        }
+        
+        console.log(`Overnight Data Gap Card ${i}: "${cardText.slice(0, 300)}..."`);
       }
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);

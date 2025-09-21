@@ -13,6 +13,9 @@ import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
 import { createTimelineIcon, createHighlightedTimelineIcon } from '@/utils/mapHelpers'
 import {formatDuration} from "@/utils/calculationsHelpers";
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   map: {
@@ -119,13 +122,13 @@ const renderTimelineMarkers = () => {
 }
 
 const createPopupContent = (item) => {
-  const date = new Date(item.timestamp)
+  const dateStr = timezone.format(item.timestamp, 'YYYY-MM-DD HH:mm:ss')
   const durationText = item.stayDuration ? formatDuration(item.stayDuration) : null
   
   return `
     <div class="timeline-popup">
       <div class="popup-location">${item.locationName}</div>
-      <div class="popup-time">${date.toLocaleString()}</div>
+      <div class="popup-time">${dateStr}</div>
       ${durationText ? `<div class="popup-duration">Stay duration: ${durationText}</div>` : ''}
     </div>
   `.trim()

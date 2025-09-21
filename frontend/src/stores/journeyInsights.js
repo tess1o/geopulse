@@ -31,7 +31,9 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
         isStale: (state) => {
             if (!state.lastFetched) return true
             const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
-            return dayjs().diff(dayjs(state.lastFetched)) > oneHour
+            const { useTimezone } = require('@/composables/useTimezone')
+            const timezone = useTimezone()
+            return timezone.now().diff(timezone.fromUtc(state.lastFetched)) > oneHour
         },
         
         // Display helpers for enums
@@ -71,9 +73,11 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
     },
 
     actions: {
-        setInsights(insights) {
+        async setInsights(insights) {
             this.insights = insights
-            this.lastFetched = dayjs().toISOString();
+            const { useTimezone } = await import('@/composables/useTimezone')
+            const timezone = useTimezone()
+            this.lastFetched = timezone.now().toISOString();
         },
 
         setLoading(loading) {

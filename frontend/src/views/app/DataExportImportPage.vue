@@ -635,6 +635,9 @@ import {ref, computed, onMounted, watch} from 'vue'
 import {storeToRefs} from 'pinia'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -818,16 +821,15 @@ const handleTabChange = (event) => {
 }
 
 const setDateRange = (days) => {
-  const end = new Date()
+  const end = timezone.now().toDate()
   exportEndDate.value = end
 
   if (days === null) {
     // All time - set to a very early date
-    exportStartDate.value = new Date('2020-01-01')
+    exportStartDate.value = timezone.create('2020-01-01').toDate()
   } else {
-    const start = new Date()
-    start.setDate(start.getDate() - days)
-    exportStartDate.value = start
+    const start = timezone.now().subtract(days, 'day')
+    exportStartDate.value = start.toDate()
   }
 }
 
@@ -1026,17 +1028,17 @@ const refreshImportJobs = async () => {
 
 const isJobExpired = (job) => {
   if (!job.expiresAt) return false
-  return new Date() > new Date(job.expiresAt)
+  return timezone.now().isAfter(timezone.fromUtc(job.expiresAt))
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleString()
+  return timezone.format(dateString, 'YYYY-MM-DD HH:mm:ss')
 }
 
 const formatDateRange = (dateRange) => {
   if (!dateRange) return 'All time'
-  const start = new Date(dateRange.startDate).toLocaleDateString()
-  const end = new Date(dateRange.endDate).toLocaleDateString()
+  const start = timezone.fromUtc(dateRange.startDate).format('YYYY-MM-DD')
+  const end = timezone.fromUtc(dateRange.endDate).format('YYYY-MM-DD')
   return `${start} - ${end}`
 }
 

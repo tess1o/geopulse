@@ -69,8 +69,10 @@ export const useImmichStore = defineStore('immich', {
       const [currentStart, currentEnd] = currentRange
       const [lastStart, lastEnd] = state.lastFetchedRange
       
-      return !dayjs(currentStart).isSame(dayjs(lastStart)) || 
-             !dayjs(currentEnd).isSame(dayjs(lastEnd))
+      const { useTimezone } = require('@/composables/useTimezone')
+      const timezone = useTimezone()
+      return !timezone.fromUtc(currentStart).isSame(timezone.fromUtc(lastStart)) || 
+             !timezone.fromUtc(currentEnd).isSame(timezone.fromUtc(lastEnd))
     }
   },
 

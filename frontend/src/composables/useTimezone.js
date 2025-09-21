@@ -100,9 +100,11 @@ export function useTimezone() {
     
     // Parse MM/DD/YYYY format from URL
     const date = dayjs.tz(dateString, 'MM/DD/YYYY', userTimezone.value)
+    
     if (!date.isValid()) return null;
     
-    return isEndDate ? endOfDayUtc(date) : startOfDayUtc(date);
+    const result = isEndDate ? endOfDayUtc(date) : startOfDayUtc(date);
+    return result;
   }
 
   const convertUtcRangeToCalendarDates = (utcStart, utcEnd) => {
@@ -164,11 +166,27 @@ export function useTimezone() {
 
   const formatDateUS = (date) => format(date, 'MM/DD/YYYY')
 
-  const formatDateLong = (date) => format(date, 'dddd, MMMM D, YYYY')
+  const formatDateLong = (date) => {
+    // Handle YYYY-MM-DD strings directly in user timezone
+    const dateObj = dayjs.tz(date, userTimezone.value);
+    return dateObj.format('dddd, MMMM D, YYYY');
+  }
 
   const formatDateShort = (date) => format(date, 'MMM D')
 
   const formatDateWithYear = (date) => format(date, 'MMM D, YYYY')
+
+  const timeAgo = (date) => {
+    const dateObj = fromUtc(date)
+    const nowObj = now()
+    
+    if (nowObj.diff(dateObj, 'minute') < 1) return 'Just now'
+    if (nowObj.diff(dateObj, 'minute') < 60) return `${nowObj.diff(dateObj, 'minute')} min ago`
+    if (nowObj.diff(dateObj, 'hour') < 24) return `${nowObj.diff(dateObj, 'hour')} hours ago`
+    if (nowObj.diff(dateObj, 'day') < 30) return `${nowObj.diff(dateObj, 'day')} days ago`
+    
+    return dateObj.format('YYYY-MM-DD')
+  }
 
   // --- Timeline-Specific Helpers ---
 
@@ -201,41 +219,55 @@ export function useTimezone() {
     let itemEnd
     
     if (item.type === 'trip') {
-      // Trip duration in minutes, convert to seconds
-      const durationSeconds = item.tripDuration * 60
+      // Trip duration already in seconds
+      const durationSeconds = item.tripDuration
       itemEnd = itemStart.add(durationSeconds, 'second')
     } else if (item.type === 'stay') {
       // Stay duration already in seconds
       itemEnd = itemStart.add(item.stayDuration, 'second')
     }
 
-    // For non-overnight items, simple same day check
-    if (!isOvernightWithDuration(item.timestamp, item.stayDuration || (item.tripDuration * 60))) {
-      return itemStart.isSame(targetDate, 'day')
-    }
-
-    // For overnight items, check overlap
+    // Show item on any day it overlaps with (start, middle, or end days)
     return itemStart.isBefore(dayEnd) && itemEnd.isAfter(dayStart)
+  }
+
+  const getItemDisplayType = (item, dateKey) => {
+    const targetDate = dayjs.tz(dateKey, userTimezone.value).startOf('day')
+    
+    let itemStart, itemEnd
+    
+    // Get item start and end times based on type
+    if (item.type === 'dataGap') {
+      itemStart = fromUtc(item.startTime).startOf('day')
+      itemEnd = fromUtc(item.endTime).startOf('day')
+    } else {
+      itemStart = fromUtc(item.timestamp).startOf('day')
+      const durationSeconds = item.type === 'trip' ? item.tripDuration : item.stayDuration
+      itemEnd = fromUtc(item.timestamp).add(durationSeconds, 'second').startOf('day')
+    }
+    
+    const isStartDay = itemStart.isSame(targetDate, 'day')
+    const isEndDay = itemEnd.isSame(targetDate, 'day')
+    
+    if (isStartDay && isEndDay) return 'single-day'
+    if (isStartDay) return 'start'
+    if (isEndDay) return 'end'
+    return 'continuation'
   }
 
   const shouldShowAsOvernight = (item, dateKey) => {
     // First check if item is truly overnight
     let durationSeconds = 0
     if (item.type === 'trip') {
-      durationSeconds = item.tripDuration * 60 // minutes to seconds
+      durationSeconds = item.tripDuration // already in seconds
     } else if (item.type === 'stay') {
       durationSeconds = item.stayDuration // already in seconds
     } else if (item.type === 'dataGap') {
-      return isOvernight(item.startTime, item.endTime) && 
-             !isSameDay(item.startTime, dateKey)
+      return isOvernight(item.startTime, item.endTime)
     }
 
-    if (!isOvernightWithDuration(item.timestamp, durationSeconds)) {
-      return false
-    }
-
-    // Show as overnight if item started on different day than current date
-    return !isSameDay(item.timestamp, dateKey)
+    // Show as overnight if the item duration spans multiple days in user's timezone
+    return isOvernightWithDuration(item.timestamp, durationSeconds)
   }
 
   // --- Duration Formatting ---
@@ -264,7 +296,7 @@ export function useTimezone() {
         : itemStart.add(item.stayDuration, 'second')
     } else if (itemType === 'trip') {
       itemStart = fromUtc(item.timestamp)
-      itemEnd = itemStart.add(item.tripDuration * 60, 'second') // minutes to seconds
+      itemEnd = itemStart.add(item.tripDuration, 'second') // already in seconds
     } else if (itemType === 'dataGap') {
       itemStart = fromUtc(item.startTime)
       itemEnd = fromUtc(item.endTime)
@@ -304,11 +336,12 @@ export function useTimezone() {
 
   const getDateRangeArray = (startDate, endDate) => {
     const dates = []
-    let current = dayjs.tz(startDate, userTimezone.value).startOf('day')
-    const end = dayjs.tz(endDate, userTimezone.value).startOf('day')
+    let current = fromUtc(startDate).startOf('day')
+    const end = fromUtc(endDate).startOf('day')
     
     while (current.isSameOrBefore(end)) {
-      dates.push(current.format('YYYY-MM-DD'))
+      const dateStr = current.format('YYYY-MM-DD')
+      dates.push(dateStr)
       current = current.add(1, 'day')
     }
     
@@ -326,6 +359,69 @@ export function useTimezone() {
       groups[dayKey].push(event)
     })
     return groups
+  }
+
+  // --- Smart Duration Helpers ---
+
+  const getTotalDaysSpanned = (item) => {
+    let itemStart, itemEnd
+    
+    if (item.type === 'dataGap') {
+      itemStart = fromUtc(item.startTime).startOf('day')
+      itemEnd = fromUtc(item.endTime).startOf('day')
+    } else {
+      itemStart = fromUtc(item.timestamp).startOf('day')
+      const durationSeconds = item.type === 'trip' ? item.tripDuration : item.stayDuration
+      itemEnd = fromUtc(item.timestamp).add(durationSeconds, 'second').startOf('day')
+    }
+    
+    return itemEnd.diff(itemStart, 'day') + 1
+  }
+
+  const getDayNumber = (item, dateKey) => {
+    const targetDate = dayjs.tz(dateKey, userTimezone.value).startOf('day')
+    
+    let itemStart
+    if (item.type === 'dataGap') {
+      itemStart = fromUtc(item.startTime).startOf('day')
+    } else {
+      itemStart = fromUtc(item.timestamp).startOf('day')
+    }
+    
+    return targetDate.diff(itemStart, 'day') + 1
+  }
+
+
+  const formatSmartDuration = (durationSeconds, displayType = 'start') => {
+    const hours = Math.floor(durationSeconds / 3600)
+    const days = Math.floor(hours / 24)
+    const weeks = Math.floor(days / 7)
+    
+    if (days === 0) {
+      return `${hours} hour${hours === 1 ? '' : 's'}`
+    } else if (days <= 7) {
+      const remainingHours = hours - (days * 24)
+      if (remainingHours === 0) {
+        return `${days} day${days === 1 ? '' : 's'}`
+      } else {
+        return `${days} day${days === 1 ? '' : 's'} ${remainingHours} hour${remainingHours === 1 ? '' : 's'}`
+      }
+    } else if (weeks <= 4) {
+      const remainingDays = days - (weeks * 7)
+      if (remainingDays === 0) {
+        return `${weeks} week${weeks === 1 ? '' : 's'}`
+      } else {
+        return `${weeks} week${weeks === 1 ? '' : 's'} ${remainingDays} day${remainingDays === 1 ? '' : 's'}`
+      }
+    } else {
+      const months = Math.floor(weeks / 4.35) // Approximate months
+      const remainingWeeks = Math.floor(weeks - (months * 4.35))
+      if (remainingWeeks === 0) {
+        return `${months} month${months === 1 ? '' : 's'}`
+      } else {
+        return `${months} month${months === 1 ? '' : 's'} ${remainingWeeks} week${remainingWeeks === 1 ? '' : 's'}`
+      }
+    }
   }
 
   // --- Validation ---
@@ -350,6 +446,48 @@ export function useTimezone() {
       start: today.startOf('day').utc().toISOString(),
       end: today.endOf('day').utc().toISOString()
     }
+  }
+
+  const getLastWeekRange = () => {
+    const nowObj = now()
+    const start = nowObj.subtract(7, 'day').startOf('day').utc().toISOString()
+    const end = nowObj.endOf('day').utc().toISOString()
+    return { start, end }
+  }
+
+  const getLastMonthRange = () => {
+    const nowObj = now()
+    const start = nowObj.subtract(30, 'day').startOf('day').utc().toISOString()
+    const end = nowObj.endOf('day').utc().toISOString()
+    return { start, end }
+  }
+
+  // --- Overnight Timeline Helpers ---
+
+  const getOvernightTimestampText = (item, currentDate) => {
+    const itemStartDate = fromUtc(item.timestamp || item.startTime).format('YYYY-MM-DD')
+    const isStartDay = itemStartDate === currentDate
+    
+    if (isStartDay) {
+      // Show actual start time on start day
+      return format(item.timestamp || item.startTime, 'MM/DD/YYYY, HH:mm')
+    } else {
+      // Show "Continued from" on other days  
+      const startDate = fromUtc(item.timestamp || item.startTime)
+      return `Continued from ${startDate.format('MMM D, HH:mm')}`
+    }
+  }
+
+  const getOvernightOnThisDayText = (item, currentDate) => {
+    // Determine item type for the existing formatOnThisDayDuration function
+    let itemType = 'stay'
+    if (item.distanceMeters !== undefined || item.tripDuration !== undefined) {
+      itemType = 'trip'
+    } else if (item.startTime && item.endTime) {
+      itemType = 'dataGap'
+    }
+    
+    return formatOnThisDayDuration(item, currentDate, itemType)
   }
 
   return {
@@ -378,6 +516,8 @@ export function useTimezone() {
     convertUtcRangeToCalendarDates,
     getDateRangeArray,
     getTodayRangeUtc,
+    getLastWeekRange,
+    getLastMonthRange,
     
     // Math
     add,
@@ -391,27 +531,38 @@ export function useTimezone() {
     
     // Formatting
     format,
+    formatDateInTimezone: format,
     formatTime,
     formatDate,
     formatDateUS,
     formatDateLong,
     formatDateShort,
     formatDateWithYear,
+    timeAgo,
     formatDuration,
     
     // Timeline Specific
     isOvernight,
     isOvernightWithDuration,
     shouldItemAppearOnDate,
+    getItemDisplayType,
     shouldShowAsOvernight,
     formatOnThisDayDuration,
     formatContinuationText,
+    getOvernightTimestampText,
+    getOvernightOnThisDayText,
+    
+    // Smart Duration Helpers
+    getTotalDaysSpanned,
+    getDayNumber,
+    formatSmartDuration,
     
     // Grouping
     groupByDay,
     
     // Validation
     isValidDate,
-    isValidDateRange
+    isValidDateRange,
+    isValidDataRange: isValidDateRange
   }
 }

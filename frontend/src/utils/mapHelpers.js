@@ -4,7 +4,6 @@
  */
 
 import L from 'leaflet'
-import {timeAgo} from "@/utils/dateHelpers";
 
 /**
  * Fix Leaflet default marker images import issues in Vite/Webpack

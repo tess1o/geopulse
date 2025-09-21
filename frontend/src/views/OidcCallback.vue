@@ -30,10 +30,13 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
+import { useTimezone } from '@/composables/useTimezone'
 
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import AccountLinkingModal from '@/components/auth/AccountLinkingModal.vue';
+
+const timezone = useTimezone()
 
 const route = useRoute()
 const router = useRouter()
@@ -104,9 +107,9 @@ const returnToLogin = () => {
 const isUserNew = (createdAt) => {
   if (!createdAt) return false
   
-  const userCreatedAt = new Date(createdAt)
-  const now = new Date()
-  const diffInMinutes = (now - userCreatedAt) / (1000 * 60)
+  const userCreatedAt = timezone.fromUtc(createdAt)
+  const now = timezone.now()
+  const diffInMinutes = now.diff(userCreatedAt, 'minute')
   
   // Consider user "new" if created within the last 5 minutes
   return diffInMinutes <= 5

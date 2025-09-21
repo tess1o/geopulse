@@ -225,7 +225,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone';
 
 defineProps(['receivedInvites', 'isLoading'])
 const emit = defineEmits(['accept-invite', 'reject-invite', 'accept-all-invites', 'reject-all-invites'])
@@ -301,11 +301,12 @@ const confirmBulkAction = async () => {
   bulkAction.value = null
 }
 
+const timezone = useTimezone()
 const formatInviteDate = (date) => {
   if (!date) return 'recently'
 
-  const now = dayjs()
-  const inviteDate = dayjs(date)
+  const now = timezone.now()
+  const inviteDate = timezone.fromUtc(date)
   const diffDays = now.diff(inviteDate, 'day')
   const diffHours = now.diff(inviteDate, 'hour')
   const diffMinutes = now.diff(inviteDate, 'minute')

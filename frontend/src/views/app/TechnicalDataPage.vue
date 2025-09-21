@@ -66,7 +66,7 @@
           icon-color="info"
           :value="summaryStats.lastPointDate"
           label="Latest GPS Point"
-          :formatter="timeAgo"
+          :formatter="timezone.timeAgo"
         />
       </BaseCard>
     </div>
@@ -297,9 +297,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
-import { formatDateInTimezone, timeAgo } from "@/utils/dateHelpers";
-import { getUserTimezone } from '@/utils/timezoneUtils';
-import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 // Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -356,7 +356,7 @@ const hasDateFilter = computed(() =>
   dateRange.value[1]
 )
 
-const userTimezone = computed(getUserTimezone);
+// Removed - using timezone composable directly
 
 // Methods
 const formatNumber = (value) => {
@@ -366,29 +366,26 @@ const formatNumber = (value) => {
 
 const formatDate = (value) => {
   if (!value) return '-';
-  return formatDateInTimezone(dayjs(value), userTimezone.value, 'YYYY-MM-DD');
+  return timezone.format(value, 'YYYY-MM-DD');
 }
 
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
-  const date = dayjs(timestamp).tz(userTimezone.value);
   return {
-    date: date.format('MMM D'),
-    time: date.format('HH:mm')
+    date: timezone.format(timestamp, 'MMM D'),
+    time: timezone.format(timestamp, 'HH:mm')
   }
 }
 
 const formatDateRange = (range) => {
   if (!range || range.length < 2) return ''
-  const start = dayjs(range[0]).tz(userTimezone.value).format('MMM D');
-  const end = dayjs(range[1]).tz(userTimezone.value).format('MMM D');
+  const start = timezone.format(range[0], 'MMM D');
+  const end = timezone.format(range[1], 'MMM D');
   return `${start} - ${end}`
 }
 
 const formatDateForAPI = (date, isEndDate = false) => {
-  const dateInTz = dayjs(date).tz(userTimezone.value);
-  const dayjsDate = isEndDate ? dateInTz.endOf('day') : dateInTz.startOf('day');
-  return dayjsDate.utc().format();
+  return isEndDate ? timezone.endOfDayUtc(date) : timezone.startOfDayUtc(date);
 }
 
 const getSourceSeverity = (sourceType) => {
