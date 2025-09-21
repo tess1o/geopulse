@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useDateRangeStore } from '@/stores/dateRange'
+import dayjs from 'dayjs';
 
 export const useImmichStore = defineStore('immich', {
   state: () => ({
@@ -68,8 +69,8 @@ export const useImmichStore = defineStore('immich', {
       const [currentStart, currentEnd] = currentRange
       const [lastStart, lastEnd] = state.lastFetchedRange
       
-      return currentStart?.getTime() !== lastStart?.getTime() || 
-             currentEnd?.getTime() !== lastEnd?.getTime()
+      return !dayjs(currentStart).isSame(dayjs(lastStart)) || 
+             !dayjs(currentEnd).isSame(dayjs(lastEnd))
     }
   },
 
@@ -155,8 +156,8 @@ export const useImmichStore = defineStore('immich', {
 
       try {
         const params = {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
+          startDate: startDate,
+          endDate: endDate
         }
 
         const response = await apiService.get('/users/me/immich/photos/search', params)

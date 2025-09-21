@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 export const useDateRangeStore = defineStore('dateRange', {
     state: () => ({
-        dateRange: null // [startDate, endDate] or null
+        dateRange: null // [startDateString, endDateString] or null
     }),
 
     getters: {
@@ -18,7 +21,7 @@ export const useDateRangeStore = defineStore('dateRange', {
         isValidRange: (state) => {
             if (!state.dateRange || state.dateRange.length !== 2) return false
             const [start, end] = state.dateRange
-            return start && end && start <= end
+            return start && end && timezone.isBefore(start, end) || timezone.isSameDay(start, end);
         },
 
         // Formatted getters
@@ -27,15 +30,7 @@ export const useDateRangeStore = defineStore('dateRange', {
             const [start, end] = state.dateRange
             if (!start || !end) return ''
 
-            return `${start.toLocaleDateString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric'
-            })} - ${end.toLocaleDateString('en-US', {
-                month: '2-digit',
-                day: '2-digit',
-                year: 'numeric'
-            })}`
+            return `${timezone.formatDateUS(start)} - ${timezone.formatDateUS(end)}`
         },
 
         // Duration getter
@@ -44,8 +39,7 @@ export const useDateRangeStore = defineStore('dateRange', {
             const [start, end] = state.dateRange
             if (!start || !end) return 0
 
-            const diffTime = Math.abs(end - start)
-            return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            return timezone.diffInDays(end, start) + 1;
         }
     },
 
@@ -58,14 +52,18 @@ export const useDateRangeStore = defineStore('dateRange', {
                 return
             }
 
-            const [start, end] = range
+            let [start, end] = range
             if (!start || !end) {
                 this.dateRange = null
                 return
             }
 
+            // Ensure they are ISO strings
+            start = timezone.isValidDate(start) ? start : timezone.toUtc(start).toISOString();
+            end = timezone.isValidDate(end) ? end : timezone.toUtc(end).toISOString();
+
             // Ensure start is before end
-            if (start > end) {
+            if (timezone.isAfter(start, end)) {
                 this.dateRange = [end, start]
             } else {
                 this.dateRange = [start, end]
@@ -80,7 +78,7 @@ export const useDateRangeStore = defineStore('dateRange', {
             if (currentEnd) {
                 this.setDateRange([startDate, currentEnd])
             } else {
-                this.dateRange = [startDate, null]
+                this.dateRange = [timezone.toUtc(startDate).toISOString(), null]
             }
         },
 
@@ -92,7 +90,7 @@ export const useDateRangeStore = defineStore('dateRange', {
             if (currentStart) {
                 this.setDateRange([currentStart, endDate])
             } else {
-                this.dateRange = [null, endDate]
+                this.dateRange = [null, timezone.toUtc(endDate).toISOString()]
             }
         },
 
@@ -103,20 +101,15 @@ export const useDateRangeStore = defineStore('dateRange', {
 
         // Set to today
         setToday() {
-            const today = new Date()
-            today.setHours(0, 0, 0, 0)
-            this.setDateRange([today, today])
+            const { start, end } = timezone.getTodayRangeUtc()
+            this.setDateRange([start, end])
         },
 
         // Set to last N days
         setLastDays(days) {
-            const end = new Date()
-            end.setHours(23, 59, 59, 999)
-
-            const start = new Date()
-            start.setDate(start.getDate() - days + 1)
-            start.setHours(0, 0, 0, 0)
-
+            const nowObj = timezone.now()
+            const start = timezone.subtract(nowObj, days - 1, 'day').startOf('day').utc().toISOString()
+            const end = nowObj.endOf('day').utc().toISOString()
             this.setDateRange([start, end])
         },
 
@@ -132,29 +125,15 @@ export const useDateRangeStore = defineStore('dateRange', {
 
         // Set to current calendar week
         setCurrentWeek() {
-            const today = new Date()
-            const dayOfWeek = today.getDay()
-            const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1) // Adjust when day is Sunday
-
-            const start = new Date(today.setDate(diff))
-            start.setHours(0, 0, 0, 0)
-
-            const end = new Date(start)
-            end.setDate(start.getDate() + 6)
-            end.setHours(23, 59, 59, 999)
-
+            const start = timezone.startOfWeekUtc(timezone.now())
+            const end = timezone.endOfWeekUtc(timezone.now())
             this.setDateRange([start, end])
         },
 
         // Set to current calendar month
         setCurrentMonth() {
-            const today = new Date()
-            const start = new Date(today.getFullYear(), today.getMonth(), 1)
-            start.setHours(0, 0, 0, 0)
-
-            const end = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-            end.setHours(23, 59, 59, 999)
-
+            const start = timezone.startOfMonthUtc(timezone.now())
+            const end = timezone.endOfMonthUtc(timezone.now())
             this.setDateRange([start, end])
         }
     }

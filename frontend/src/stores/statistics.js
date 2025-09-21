@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import dayjs from 'dayjs';
 
 export const useStatisticsStore = defineStore('statistics', {
     state: () => ({
@@ -71,8 +72,8 @@ export const useStatisticsStore = defineStore('statistics', {
         async fetchSelectedRangeStatistics(startTime, endTime) {
             try {
                 const response = await apiService.get(`/statistics`, {
-                    startTime: startTime.toISOString(),
-                    endTime: endTime.toISOString()
+                    startTime: startTime,
+                    endTime: endTime
                 })
                 this.setSelectedRangeStatistics(response)
                 return response

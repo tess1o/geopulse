@@ -59,9 +59,7 @@ import Toolbar from 'primevue/toolbar'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import AppNavigation from './AppNavigation.vue'
-import { isValidDataRange, setToEndOfDay } from '@/utils/dateHelpers'
-import { getStartOfDayInTimezone, getEndOfDayInTimezone } from '@/utils/overnightHelpers'
-import { getUserTimezone } from '@/utils/timezoneUtils'
+import { useTimezone } from '@/composables/useTimezone'
 import { useDateRangeStore } from '@/stores/dateRange'
 
 const props = defineProps({
@@ -89,6 +87,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['navigate', 'date-change'])
+
+// Composables
+const timezone = useTimezone()
 
 // Pinia store
 const dateRangeStore = useDateRangeStore()
@@ -120,64 +121,35 @@ const datePickerStyle = computed(() => ({
 // Two-way binding with DatePicker
 const dateRange = computed({
   get() {
-    return storeDateRange.value
+    // Convert stored UTC dates to calendar dates for the picker
+    if (storeDateRange.value && storeDateRange.value.length === 2) {
+      return timezone.convertUtcRangeToCalendarDates(storeDateRange.value[0], storeDateRange.value[1]);
+    }
+    return null;
   },
   set(value) {
     setValidDateRange(value)
   }
 })
 
-// Helper function to convert calendar date selection to user timezone boundaries
-const convertCalendarDateToUserTimezone = (calendarDate, isEndDate = false) => {
-  const userTimezone = getUserTimezone()
-  
-  // The DatePicker gives us a Date object representing the selected calendar date
-  // in the browser's timezone. We need to extract what calendar date the user intended.
-  // Use toLocaleDateString to get the date components in the browser's timezone.
-  const localDateStr = calendarDate.toLocaleDateString('en-CA') // YYYY-MM-DD format
-  
-  console.log(`🔍 Calendar date extraction:`, {
-    input_date: calendarDate.toISOString(),
-    browser_local_date: localDateStr,
-    isEndDate
-  })
-  
-  // Now interpret this calendar date as a date in the user's timezone
-  const tempDate = new Date(`${localDateStr}T12:00:00`)
-  console.log(`⏰ Temp date for timezone conversion: ${tempDate.toISOString()}`)
-  
-  let result
-  if (isEndDate) {
-    result = getEndOfDayInTimezone(tempDate, userTimezone)
-  } else {
-    result = getStartOfDayInTimezone(tempDate, userTimezone)
-  }
-  
-  console.log(`✅ Final converted result: ${result.toISOString()}`)
-  return result
-}
-
 // Methods
 const setValidDateRange = (value) => {
-  if (isValidDataRange(value)) {
+  if (timezone.isValidDateRange(value)) {
     const [newStartDate, newEndDate] = value
-    
-    const userTimezone = getUserTimezone()
-    
-    // Convert calendar date selections to proper user timezone boundaries
-    const startDate = convertCalendarDateToUserTimezone(newStartDate, false)
-    const endDate = convertCalendarDateToUserTimezone(newEndDate, true)
-    
+
+    // Create UTC date range from picker dates using the timezone composable
+    const { start, end } = timezone.createDateRangeFromPicker(newStartDate, newEndDate)
+
     console.log(`🕰️ Date picker timezone conversion:`, {
       browser_start: newStartDate.toISOString(),
       browser_end: newEndDate.toISOString(),
-      user_timezone: userTimezone,
-      converted_start: startDate.toISOString(),
-      converted_end: endDate.toISOString()
+      user_timezone: timezone.getTimezone(),
+      converted_start: start,
+      converted_end: end
     })
-    
-    dateRangeStore.setDateRange([startDate, endDate])
-    emit('date-change', [startDate, endDate])
+
+    dateRangeStore.setDateRange([start, end])
+    emit('date-change', [start, end])
   }
 }
 

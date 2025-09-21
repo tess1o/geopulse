@@ -297,8 +297,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
-import {formatDate, timeAgo} from "@/utils/dateHelpers";
+import { formatDateInTimezone, timeAgo } from "@/utils/dateHelpers";
 import { getUserTimezone } from '@/utils/timezoneUtils';
+import dayjs from 'dayjs';
 
 // Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -355,79 +356,39 @@ const hasDateFilter = computed(() =>
   dateRange.value[1]
 )
 
+const userTimezone = computed(getUserTimezone);
+
 // Methods
 const formatNumber = (value) => {
   if (!value && value !== 0) return '0'
   return new Intl.NumberFormat().format(value)
 }
 
+const formatDate = (value) => {
+  if (!value) return '-';
+  return formatDateInTimezone(dayjs(value), userTimezone.value, 'YYYY-MM-DD');
+}
+
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
-  const date = new Date(timestamp)
-  const userTimezone = getUserTimezone()
+  const date = dayjs(timestamp).tz(userTimezone.value);
   return {
-    date: date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric',
-      timeZone: userTimezone 
-    }),
-    time: date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false,
-      timeZone: userTimezone
-    })
+    date: date.format('MMM D'),
+    time: date.format('HH:mm')
   }
 }
 
 const formatDateRange = (range) => {
   if (!range || range.length < 2) return ''
-  const userTimezone = getUserTimezone()
-  const start = range[0].toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    timeZone: userTimezone
-  })
-  const end = range[1].toLocaleDateString('en-US', { 
-    month: 'short', 
-    day: 'numeric',
-    timeZone: userTimezone
-  })
+  const start = dayjs(range[0]).tz(userTimezone.value).format('MMM D');
+  const end = dayjs(range[1]).tz(userTimezone.value).format('MMM D');
   return `${start} - ${end}`
 }
 
 const formatDateForAPI = (date, isEndDate = false) => {
-  // Calculate the exact UTC timestamp for start/end of day in user's timezone
-  const userTimezone = getUserTimezone()
-  
-  // Get the date components from the input date
-  const year = date.getFullYear()
-  const month = date.getMonth()
-  const day = date.getDate()
-  
-  // Create a string in user's timezone for the target date
-  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-  const timeStr = isEndDate ? '23:59:59.999' : '00:00:00.000'
-  
-  // Create date in user's timezone and convert to UTC
-  const timeInUserTz = new Date(`${dateStr}T${timeStr}`)
-  
-  if (userTimezone === 'UTC') {
-    return timeInUserTz.toISOString()
-  }
-  
-  // For non-UTC timezones, we need to calculate the offset
-  // Create a temporary date to find the timezone offset for this specific date
-  const tempDate = new Date(`${dateStr}T12:00:00`) // Use noon to avoid DST edge cases
-  const utcTime = tempDate.getTime() + (tempDate.getTimezoneOffset() * 60 * 1000)
-  
-  // Get the offset for user's timezone on this date
-  const utcDate = new Date(utcTime)
-  const userTzOffset = new Date(utcDate.toLocaleString('en-US', { timeZone: userTimezone })).getTime() - utcDate.getTime()
-  
-  // Apply the offset to our target time
-  const finalTime = new Date(timeInUserTz.getTime() - userTzOffset)
-  return finalTime.toISOString()
+  const dateInTz = dayjs(date).tz(userTimezone.value);
+  const dayjsDate = isEndDate ? dateInTz.endOf('day') : dateInTz.startOf('day');
+  return dayjsDate.utc().format();
 }
 
 const getSourceSeverity = (sourceType) => {

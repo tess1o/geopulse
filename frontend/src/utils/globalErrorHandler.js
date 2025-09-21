@@ -3,6 +3,7 @@
  */
 import router from '@/router'
 import { isBackendDown } from './errorHandler'
+import dayjs from 'dayjs';
 
 /**
  * Handle severe errors that require navigation to error page
@@ -21,7 +22,7 @@ export function handleSevereError(error, options = {}) {
       url: error.config?.url,
       method: error.config?.method?.toUpperCase(),
       headers: error.config?.headers,
-      timestamp: new Date().toISOString(),
+      timestamp: dayjs().toISOString(),
       userAgent: navigator.userAgent,
       stack: error.stack,
       userMessage: error.userMessage,

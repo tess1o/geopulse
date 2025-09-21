@@ -34,10 +34,9 @@
 </template>
 
 <script setup>
-import { formatDate, formatTime } from '@/utils/dateHelpers'
-import { formatDuration, formatDistance } from '@/utils/calculationsHelpers'
-import { formatOnThisDayDuration as formatOvernightDayDuration } from '@/utils/overnightHelpers'
-import { getUserTimezone } from '@/utils/timezoneUtils'
+import { computed } from 'vue';
+import { formatDuration, formatDistance } from '@/utils/calculationsHelpers';
+import { useTimezone } from '@/composables/useTimezone';
 
 const props = defineProps({
   tripItem: {
@@ -48,47 +47,23 @@ const props = defineProps({
     type: String,
     required: true
   }
-})
+});
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click']);
+
+const timezone = useTimezone();
 
 const formatContinuationText = (startTime, currentDateString) => {
-  const startDate = new Date(startTime)
-  const currentDate = new Date(currentDateString)
-  
-  // Calculate days difference
-  const daysDiff = Math.floor((currentDate - startDate) / (1000 * 60 * 60 * 24))
-  
-  if (daysDiff === 1) {
-    return `Continued from yesterday, ${formatTime(startTime)}`
-  } else {
-    // Always show full date for clarity with historical data
-    const dateFormatOptions = { 
-      month: 'short', 
-      day: 'numeric'
-    }
-    
-    // Include year if different from current year
-    if (startDate.getFullYear() !== currentDate.getFullYear()) {
-      dateFormatOptions.year = 'numeric'
-    }
-    
-    const userTimezone = getUserTimezone()
-    const fullDate = startDate.toLocaleDateString('en-US', {
-      ...dateFormatOptions,
-      timeZone: userTimezone
-    })
-    return `Continued from ${fullDate}, ${formatTime(startTime)}`
-  }
-}
+  return timezone.formatContinuationText(startTime, currentDateString);
+};
 
 const formatOnThisDayDuration = (tripItem, currentDateString) => {
-  return formatOvernightDayDuration(tripItem, currentDateString, 'trip')
-}
+  return timezone.formatOnThisDayDuration(tripItem, currentDateString, 'trip');
+};
 
 const handleClick = () => {
-  emit('click', props.tripItem)
-}
+  emit('click', props.tripItem);
+};
 </script>
 
 <style scoped>

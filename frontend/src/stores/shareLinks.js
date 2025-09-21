@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
+import dayjs from 'dayjs';
 
 export const useShareLinksStore = defineStore('shareLinks', {
     state: () => ({
@@ -20,14 +21,14 @@ export const useShareLinksStore = defineStore('shareLinks', {
         getActiveLinks: (state) => {
             return state.links.filter(link => {
                 // Handle null/undefined expires_at
-                const isExpired = link.expires_at ? new Date(link.expires_at) < new Date() : false
+                const isExpired = link.expires_at ? dayjs(link.expires_at).isBefore(dayjs()) : false
                 return link.is_active && !isExpired
             })
         },
         getExpiredLinks: (state) => {
             return state.links.filter(link => {
                 // Handle null/undefined expires_at
-                const isExpired = link.expires_at ? new Date(link.expires_at) < new Date() : false
+                const isExpired = link.expires_at ? dayjs(link.expires_at).isBefore(dayjs()) : false
                 return !link.is_active || isExpired
             })
         },
@@ -63,7 +64,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.links = response.data.links
                 this.maxLinks = response.data.max_links
                 // Calculate active count client-side to ensure consistency
-                const isExpired = (link) => link.expires_at ? new Date(link.expires_at) < new Date() : false
+                const isExpired = (link) => link.expires_at ? dayjs(link.expires_at).isBefore(dayjs()) : false
                 this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length
             } catch (error) {
                 console.error('Failed to fetch share links:', error)
@@ -81,9 +82,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
             try {
                 // Set default expiration to 7 days from now if not provided
                 if (!linkData.expires_at) {
-                    const defaultExpiration = new Date()
-                    defaultExpiration.setDate(defaultExpiration.getDate() + 7)
-                    linkData.expires_at = defaultExpiration.toISOString()
+                    linkData.expires_at = dayjs().add(7, 'day').toISOString();
                 }
                 
                 const response = await apiService.post('/share-links', linkData)
@@ -221,16 +220,16 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 return false
             }
             
-            const expirationDate = new Date(link.expires_at)
-            const now = new Date()
+            const expirationDate = dayjs(link.expires_at)
+            const now = dayjs()
             
             // Handle invalid date
-            if (isNaN(expirationDate.getTime())) {
+            if (!expirationDate.isValid()) {
                 console.warn('Invalid expiration date:', link.expires_at)
                 return false // Treat invalid dates as non-expired
             }
             
-            const isExpired = expirationDate < now
+            const isExpired = expirationDate.isBefore(now)
 
             // Debug logging
             console.log('Link expiration check:', {

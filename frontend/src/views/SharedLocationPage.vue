@@ -208,7 +208,8 @@ import {MapContainer} from '@/components/maps'
 import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import SharedLocationMarker from '@/components/maps/SharedLocationMarker.vue'
 import {useShareLinksStore} from '@/stores/shareLinks'
-import {formatDate, timeAgo} from '@/utils/dateHelpers'
+import {formatDateInTimezone, timeAgo} from '@/utils/dateHelpers'
+import dayjs from 'dayjs';
 
 
 const route = useRoute()
@@ -456,14 +457,14 @@ const handleMapReady = (mapInstance) => {
 const timeUntil = (futureDate) => {
   if (!futureDate) return 'Never'
 
-  const dateObj = typeof futureDate === 'string' ? new Date(futureDate) : futureDate
+  const dateObj = dayjs(futureDate);
 
-  if (isNaN(dateObj.getTime())) {
+  if (!dateObj.isValid()) {
     return 'Invalid date'
   }
 
-  const now = new Date()
-  const diffMs = dateObj - now
+  const now = dayjs();
+  const diffMs = dateObj.diff(now);
 
   if (diffMs <= 0) {
     return 'Expired'
@@ -478,7 +479,7 @@ const timeUntil = (futureDate) => {
   if (diffDays < 30) return `In ${diffDays} days`
 
   // For longer periods, show actual date
-  return `On ${formatDate(futureDate)}`
+  return `On ${formatDateInTimezone(dateObj, 'UTC', 'YYYY-MM-DD HH:mm')}`
 }
 
 // Format expiration using timeUntil

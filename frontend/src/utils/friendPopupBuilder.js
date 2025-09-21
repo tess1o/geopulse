@@ -10,6 +10,8 @@
  */
 
 import {timeAgo} from "@/utils/dateHelpers"
+import {getUserTimezone} from "@/utils/timezoneUtils"
+import dayjs from 'dayjs';
 
 const createElement = (tag, className = '', content = '') => {
   const element = document.createElement(tag)
@@ -80,10 +82,8 @@ const createLastSeenSection = (friend) => {
   const lastSeenDate = friend.lastSeen || friend.timestamp
   if (!lastSeenDate) return null
   
-  const date = new Date(lastSeenDate)
-  
   const lastSeen = createElement('div', 'popup-last-seen')
-  lastSeen.textContent = `Last seen: ${timeAgo(lastSeenDate)}`
+  lastSeen.textContent = `Last seen: ${timeAgo(lastSeenDate, getUserTimezone())}`
   
   return lastSeen
 }

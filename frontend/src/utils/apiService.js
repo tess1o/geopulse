@@ -1,5 +1,6 @@
 import axios from 'axios';
 import {formatError, isBackendDown} from './errorHandler';
+import dayjs from 'dayjs';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
 /**
@@ -17,7 +18,7 @@ const apiService = {
      * Get CSRF token from cookie (Quarkus REST CSRF handles this automatically)
      * @returns {string|null} CSRF token or null if not found
      */
-    getCsrfToken() {        
+    getCsrfToken() {
         try {
             // Use proper cookie parsing
             const value = document.cookie.replace(
@@ -62,7 +63,7 @@ const apiService = {
                 // Only consider expired if we have user info (logged in)
                 return !!userInfo.id;
             }
-            return Date.now() > expiresAt - 10000; // 10s buffer for testing
+            return dayjs().isAfter(dayjs(expiresAt).subtract(10, 'second'));
         } catch (error) {
             console.error('Error checking token expiration:', error);
             return false;
@@ -460,7 +461,7 @@ const apiService = {
                 url: error.config?.url,
                 method: error.config?.method?.toUpperCase(),
                 headers: error.config?.headers,
-                timestamp: new Date().toISOString(),
+                timestamp: dayjs().toISOString(),
                 userAgent: navigator.userAgent,
                 stack: error.stack
             };

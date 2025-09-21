@@ -34,10 +34,9 @@
 </template>
 
 <script setup>
-import { formatDate, formatTime } from '@/utils/dateHelpers'
-import { formatDuration } from '@/utils/calculationsHelpers'
-import { formatOnThisDayDuration as formatOvernightDayDuration } from '@/utils/overnightHelpers'
-import { getUserTimezone } from '@/utils/timezoneUtils'
+import { computed } from 'vue';
+import { formatDuration } from '@/utils/calculationsHelpers';
+import { useTimezone } from '@/composables/useTimezone';
 
 const props = defineProps({
   dataGapItem: {
@@ -48,93 +47,50 @@ const props = defineProps({
     type: String,
     required: true
   }
-})
+});
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click']);
+
+const timezone = useTimezone();
 
 const formatContinuationText = (startTime, currentDateString) => {
-  const startDate = new Date(startTime)
-  const currentDate = new Date(currentDateString)
-  
-  // Calculate days difference
-  const daysDiff = Math.floor((currentDate - startDate) / (1000 * 60 * 60 * 24))
-  
-  if (daysDiff === 1) {
-    return `Continued from yesterday, ${formatTime(startTime)}`
-  } else {
-    // Always show full date for clarity with historical data
-    const dateFormatOptions = { 
-      month: 'short', 
-      day: 'numeric'
-    }
-    
-    // Include year if different from current year
-    if (startDate.getFullYear() !== currentDate.getFullYear()) {
-      dateFormatOptions.year = 'numeric'
-    }
-    
-    const userTimezone = getUserTimezone()
-    const fullDate = startDate.toLocaleDateString('en-US', {
-      ...dateFormatOptions,
-      timeZone: userTimezone
-    })
-    return `Continued from ${fullDate}, ${formatTime(startTime)}`
-  }
-}
+  return timezone.formatContinuationText(startTime, currentDateString);
+};
 
 const formatOnThisDayDuration = (dataGapItem, currentDateString) => {
-  return formatOvernightDayDuration(dataGapItem, currentDateString, 'dataGap')
-}
+  return timezone.formatOnThisDayDuration(dataGapItem, currentDateString, 'dataGap');
+};
 
 const formatEndTimeWithDate = (endTime, currentDateString) => {
-  const endDate = new Date(endTime)
-  const currentDate = new Date(currentDateString)
-  
-  // If the end date is different from current date, show the date
-  if (endDate.toDateString() !== currentDate.toDateString()) {
-    const dateFormatOptions = { 
-      month: 'short', 
-      day: 'numeric'
-    }
-    
-    // Include year if different from current year
-    if (endDate.getFullYear() !== currentDate.getFullYear()) {
-      dateFormatOptions.year = 'numeric'
-    }
-    
-    const fullDate = endDate.toLocaleDateString('en-US', dateFormatOptions)
-    return `${fullDate}, ${formatTime(endTime)}`
+  const endDate = timezone.fromUtc(endTime);
+  const currentDate = timezone.fromUtc(currentDateString);
+
+  if (!timezone.isSameDay(endTime, currentDateString)) {
+    const format = endDate.year() === currentDate.year() ? 'MMM D' : 'MMM D, YYYY';
+    return `${endDate.format(format)}, ${timezone.formatTime(endTime)}`;
   } else {
-    return formatTime(endTime)
+    return timezone.formatTime(endTime);
   }
-}
+};
 
 const formatSmartDuration = (seconds) => {
-  // formatDuration expects seconds, so use the seconds value directly
-  const totalSeconds = seconds || props.dataGapItem.durationSeconds || 0
-  const totalMinutes = Math.floor(totalSeconds / 60)
-  
-  // For durations very close to 24 hours (within 5 minutes), show as "24 hours" or "full day"
-  const hoursFloat = totalMinutes / 60
-  const nearFullDay = Math.abs(hoursFloat - 24) <= (5/60) // Within 5 minutes of 24 hours
-  const isExactFullDay = totalMinutes % (24 * 60) === 0
-  
+  const totalSeconds = seconds || props.dataGapItem.durationSeconds || 0;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const hoursFloat = totalMinutes / 60;
+  const nearFullDay = Math.abs(hoursFloat - 24) <= (5 / 60);
+  const isExactFullDay = totalMinutes % (24 * 60) === 0;
+
   if (nearFullDay || isExactFullDay) {
-    const days = Math.floor(totalMinutes / (24 * 60))
-    if (days === 1) {
-      return "24 hours"
-    } else if (days > 1) {
-      return `${days} days`
-    }
+    const days = Math.floor(totalMinutes / (24 * 60));
+    if (days === 1) return "24 hours";
+    if (days > 1) return `${days} days`;
   }
-  
-  // formatDuration expects seconds as input
-  return formatDuration(totalSeconds)
-}
+  return formatDuration(totalSeconds);
+};
 
 const handleClick = () => {
-  emit('click', props.dataGapItem)
-}
+  emit('click', props.dataGapItem);
+};
 </script>
 
 <style scoped>

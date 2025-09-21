@@ -34,10 +34,9 @@
 </template>
 
 <script setup>
-import { formatDate, formatTime } from '@/utils/dateHelpers'
-import { formatDuration } from '@/utils/calculationsHelpers'
-import { formatOnThisDayDuration as formatOvernightDayDuration } from '@/utils/overnightHelpers'
-import { getUserTimezone } from '@/utils/timezoneUtils'
+import { computed } from 'vue';
+import { formatDuration } from '@/utils/calculationsHelpers';
+import { useTimezone } from '@/composables/useTimezone';
 
 const props = defineProps({
   stayItem: {
@@ -48,47 +47,23 @@ const props = defineProps({
     type: String,
     required: true
   }
-})
+});
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click']);
+
+const timezone = useTimezone();
 
 const formatContinuationText = (startTime, currentDateString) => {
-  const startDate = new Date(startTime)
-  const currentDate = new Date(currentDateString)
-  
-  // Calculate days difference
-  const daysDiff = Math.floor((currentDate - startDate) / (1000 * 60 * 60 * 24))
-  
-  if (daysDiff === 1) {
-    return `Continued from yesterday, ${formatTime(startTime)}`
-  } else {
-    // Always show full date for clarity with historical data
-    const dateFormatOptions = { 
-      month: 'short', 
-      day: 'numeric'
-    }
-    
-    // Include year if different from current year
-    if (startDate.getFullYear() !== currentDate.getFullYear()) {
-      dateFormatOptions.year = 'numeric'
-    }
-    
-    const userTimezone = getUserTimezone()
-    const fullDate = startDate.toLocaleDateString('en-US', {
-      ...dateFormatOptions,
-      timeZone: userTimezone
-    })
-    return `Continued from ${fullDate}, ${formatTime(startTime)}`
-  }
-}
+  return timezone.formatContinuationText(startTime, currentDateString);
+};
 
 const formatOnThisDayDuration = (stayItem, currentDateString) => {
-  return formatOvernightDayDuration(stayItem, currentDateString, 'stay')
-}
+  return timezone.formatOnThisDayDuration(stayItem, currentDateString, 'stay');
+};
 
 const handleClick = () => {
-  emit('click', props.stayItem)
-}
+  emit('click', props.stayItem);
+};
 </script>
 
 <style scoped>

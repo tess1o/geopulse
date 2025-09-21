@@ -13,6 +13,9 @@ import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
 import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
 import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
+import {formatDateInTimezone} from "@/utils/dateHelpers";
+import {getUserTimezone} from "@/utils/timezoneUtils";
+import dayjs from 'dayjs';
 
 const props = defineProps({
   map: {
@@ -50,6 +53,7 @@ const pathLayers = ref([])
 
 // Computed
 const hasPathData = computed(() => props.pathData && props.pathData.length > 0)
+const userTimezone = computed(getUserTimezone);
 
 // Layer management
 const handleLayerReady = (layerGroup) => {
@@ -208,14 +212,14 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           Distance: ${formatDistance(newTrip.distanceMeters || 0)}
         </div>
         <div class="trip-detail">
-          ${new Date(newTrip.timestamp).toLocaleString()}
+          ${formatDateInTimezone(dayjs(newTrip.timestamp), userTimezone.value, 'YYYY-MM-DD HH:mm:ss')}
         </div>
       </div>
     `
     
     // Create detailed tooltips for start and end markers
-    const startTime = new Date(newTrip.timestamp)
-    const endTime = new Date(startTime.getTime() + (newTrip.tripDuration * 60 * 1000))
+    const startTime = dayjs(newTrip.timestamp);
+    const endTime = startTime.add(newTrip.tripDuration, 'minute');
     
     const startInfo = `
       <div class="trip-popup">
@@ -223,7 +227,7 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           🚀 Trip Start
         </div>
         <div class="trip-detail">
-          Start: ${startTime.toLocaleString()}
+          Start: ${formatDateInTimezone(startTime, userTimezone.value, 'YYYY-MM-DD HH:mm:ss')}
         </div>
         <div class="trip-detail">
           Duration: ${formatDuration(newTrip.tripDuration)}
@@ -243,7 +247,7 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
           🏁 Trip End
         </div>
         <div class="trip-detail">
-          End: ${endTime.toLocaleString()}
+          End: ${formatDateInTimezone(endTime, userTimezone.value, 'YYYY-MM-DD HH:mm:ss')}
         </div>
         <div class="trip-detail">
           Duration: ${formatDuration(newTrip.tripDuration)}

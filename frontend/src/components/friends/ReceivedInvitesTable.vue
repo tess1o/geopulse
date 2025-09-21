@@ -225,6 +225,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import dayjs from 'dayjs';
 
 defineProps(['receivedInvites', 'isLoading'])
 const emit = defineEmits(['accept-invite', 'reject-invite', 'accept-all-invites', 'reject-all-invites'])
@@ -303,12 +304,11 @@ const confirmBulkAction = async () => {
 const formatInviteDate = (date) => {
   if (!date) return 'recently'
 
-  const now = new Date()
-  const inviteDate = new Date(date)
-  const diffMs = now - inviteDate
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const now = dayjs()
+  const inviteDate = dayjs(date)
+  const diffDays = now.diff(inviteDate, 'day')
+  const diffHours = now.diff(inviteDate, 'hour')
+  const diffMinutes = now.diff(inviteDate, 'minute')
 
   if (diffDays > 0) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
   if (diffHours > 0) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`

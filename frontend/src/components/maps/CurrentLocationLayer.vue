@@ -13,6 +13,7 @@
 <script setup>
 import { computed } from 'vue'
 import SharedLocationMarker from './SharedLocationMarker.vue'
+import dayjs from 'dayjs';
 
 // Props
 const props = defineProps({
@@ -31,7 +32,7 @@ const shareData = computed(() => ({
   shareName: 'Your Current Location',
   sharedBy: 'You',
   description: '',
-  sharedAt: props.location?.timestamp || new Date().toISOString()
+  sharedAt: props.location?.timestamp || dayjs().toISOString()
 }))
 </script>
 

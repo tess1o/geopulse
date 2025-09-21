@@ -51,6 +51,7 @@ import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
 import {useFriendsStore} from "@/stores/friends";
+import dayjs from 'dayjs';
 
 const toast = useToast()
 
@@ -380,17 +381,12 @@ const isToday = computed(() => {
   const [startDate, endDate] = dateRange.value
   if (!startDate || !endDate) return false
   
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = dayjs().startOf('day');
   
-  const startDateOnly = new Date(startDate)
-  startDateOnly.setHours(0, 0, 0, 0)
+  const start = dayjs(startDate).startOf('day');
+  const end = dayjs(endDate).startOf('day');
   
-  const endDateOnly = new Date(endDate)
-  endDateOnly.setHours(0, 0, 0, 0)
-  
-  return startDateOnly.getTime() === today.getTime() && 
-         endDateOnly.getTime() === today.getTime()
+  return start.isSame(today) && end.isSame(today);
 })
 
 watch(dateRange, async (newValue) => {
@@ -398,7 +394,7 @@ watch(dateRange, async (newValue) => {
     const [startDate, endDate] = newValue
 
     // Create a range key to detect if we've already fetched this exact range
-    const rangeKey = `${startDate.getTime()}-${endDate.getTime()}`
+    const rangeKey = `${startDate}-${endDate}`
 
     // Skip if we've already fetched this exact range
     if (lastFetchedRange.value === rangeKey) {

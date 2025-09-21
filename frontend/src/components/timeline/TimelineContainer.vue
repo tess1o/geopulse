@@ -87,13 +87,7 @@ import DataGapCard from './DataGapCard.vue'
 import OvernightStayCard from './OvernightStayCard.vue'
 import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
-import { 
-  shouldItemAppearOnDate, 
-  shouldShowAsOvernightStay,
-  shouldShowAsOvernightTrip,
-  shouldShowAsOvernightDataGap
-} from '@/utils/overnightHelpers'
-import { getUserTimezone } from '@/utils/timezoneUtils'
+import { useTimezone } from '@/composables/useTimezone'
 
 // Props
 const props = defineProps({
@@ -118,6 +112,23 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['timeline-item-click'])
 
+// Composables
+const timezone = useTimezone()
+
+const isOvernightItem = (item) => {
+  const duration = item.stayDuration || (item.tripDuration ? item.tripDuration * 60 : 0);
+  if (!duration) return false;
+  return timezone.isOvernightWithDuration(item.timestamp || item.startTime, duration);
+};
+
+const shouldShowAsOvernight = (item, dateKey) => {
+  return timezone.shouldShowAsOvernight(item, dateKey);
+};
+
+const shouldShowAsOvernightStay = (item, dateKey) => item.type === 'stay' && shouldShowAsOvernight(item, dateKey);
+const shouldShowAsOvernightTrip = (item, dateKey) => item.type === 'trip' && shouldShowAsOvernight(item, dateKey);
+const shouldShowAsOvernightDataGap = (item, dateKey) => item.type === 'dataGap' && shouldShowAsOvernight(item, dateKey);
+
 // Computed properties
 const getMarkerIcon = computed(() => (type) => {
   if (type === 'stay') return 'pi pi-map-marker'
@@ -128,14 +139,8 @@ const getMarkerIcon = computed(() => (type) => {
 
 // Updated to handle overnight items with different markers
 const getMarkerIconForItem = computed(() => (item, dateKey) => {
-  if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
-    return 'pi pi-moon' // Moon icon for overnight stays
-  }
-  if (item.type === 'trip' && shouldShowAsOvernightTrip(item, dateKey)) {
-    return 'pi pi-moon' // Moon icon for overnight trips
-  }
-  if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
-    return 'pi pi-moon' // Moon icon for overnight data gaps
+  if (shouldShowAsOvernight(item, dateKey)) {
+    return 'pi pi-moon';
   }
   if (item.type === 'trip' && item.movementType === 'WALK') {
     return 'fas fa-walking' // Walking person icon for walking trips
@@ -152,13 +157,13 @@ const getMarkerClass = computed(() => (type) => {
 
 // Updated to handle overnight items with different classes
 const getMarkerClassForItem = computed(() => (item, dateKey) => {
-  if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
+  if (shouldShowAsOvernightStay(item, dateKey)) {
     return 'marker-overnight-stay' // Special class for overnight stays
   }
-  if (item.type === 'trip' && shouldShowAsOvernightTrip(item, dateKey)) {
+  if (shouldShowAsOvernightTrip(item, dateKey)) {
     return 'marker-overnight-trip' // Special class for overnight trips
   }
-  if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
+  if (shouldShowAsOvernightDataGap(item, dateKey)) {
     return 'marker-overnight-data-gap' // Special class for overnight data gaps
   }
   return getMarkerClass.value(item.type)
@@ -170,68 +175,45 @@ const groupedTimelineData = computed(() => {
     return []
   }
 
-  // First, determine all the dates we need to show based on the dateRange
-  const allDates = new Set()
-  
-  // Use requested date range if available, otherwise fallback to timeline items
+  const allDates = new Set();
   if (props.dateRange && props.dateRange.length === 2) {
-    const [startDate, endDate] = props.dateRange
-    const currentDate = new Date(startDate)
-    const end = new Date(endDate)
-    
-    while (currentDate <= end) {
-      allDates.add(currentDate.toDateString())
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
+    // Generate date range using timezone composable
+    const dateArray = timezone.getDateRangeArray(props.dateRange[0], props.dateRange[1])
+    dateArray.forEach(date => allDates.add(date))
   } else {
-    // Fallback: add dates from timeline items only if no range specified
     props.timelineData.forEach(item => {
-      const itemDate = new Date(item.timestamp)
-      allDates.add(itemDate.toDateString())
+      const itemStartTime = item.timestamp || item.startTime
+      const itemDate = timezone.fromUtc(itemStartTime)
+      allDates.add(itemDate.format('YYYY-MM-DD'));
       
-      // For overnight stays, also add the end date
-      if (item.type === 'stay' && item.stayDuration) {
-        const endDate = new Date(itemDate.getTime() + (item.stayDuration * 1000))
-        if (itemDate.toDateString() !== endDate.toDateString()) {
-          allDates.add(endDate.toDateString())
-        }
+      if (isOvernightItem(item)) {
+        const duration = item.stayDuration || (item.tripDuration ? item.tripDuration * 60 : 0);
+        const endDate = itemDate.add(duration, 'second');
+        allDates.add(endDate.format('YYYY-MM-DD'));
       }
-    })
+    });
   }
 
-  // Create a map to group items by date
-  const dateGroups = new Map()
-  
-  // Initialize all date groups
+  const dateGroups = new Map();
   allDates.forEach(dateKey => {
-    const date = new Date(dateKey)
     dateGroups.set(dateKey, {
       date: dateKey,
-      dateLabel: date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        timeZone: getUserTimezone()
-      }),
+      dateLabel: timezone.formatDateLong(dateKey),
       items: []
-    })
-  })
-  
-  // Process each timeline item and assign to appropriate dates
+    });
+  });
+
   props.timelineData.forEach(item => {
-    // Check each date to see if this item should appear on it
     allDates.forEach(dateKey => {
-      if (shouldItemAppearOnDate(item, dateKey)) {
-        dateGroups.get(dateKey).items.push(item)
+      if (timezone.shouldItemAppearOnDate(item, dateKey)) {
+        dateGroups.get(dateKey)?.items.push(item);
       }
-    })
-  })
-  
-  // Convert map to array, filter out empty groups, and sort by date
+    });
+  });
+
   return Array.from(dateGroups.values())
     .filter(group => group.items.length > 0)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .sort((a, b) => timezone.diff(a.date, b.date, 'day'));
 })
 
 // Methods
