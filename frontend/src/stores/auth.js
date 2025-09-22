@@ -28,7 +28,6 @@ export const useAuthStore = defineStore('auth', {
             this.user = user;
             this.isAuthenticated = !!user;
             if (user) {
-                // Persist essential, non-sensitive data to localStorage
                 const userInfo = {
                     id: user.id || user.userId || null,
                     userId: user.id, // For backward compatibility with other parts of the app

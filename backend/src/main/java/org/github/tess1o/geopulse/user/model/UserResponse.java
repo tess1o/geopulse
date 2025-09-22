@@ -21,5 +21,6 @@ public class UserResponse {
     private String email;
     private String timezone;
     private String avatar;
+    private boolean hasPassword;
     // Don't include passwordHash in responses
 }

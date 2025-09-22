@@ -27,6 +27,7 @@ public class UserMapper {
                 .avatar(entity.getAvatar())
                 .fullName(entity.getFullName())
                 .role(entity.getRole())
+                .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
                 .build();
     }
