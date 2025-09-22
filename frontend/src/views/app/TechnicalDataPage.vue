@@ -385,7 +385,11 @@ const formatDateRange = (range) => {
 }
 
 const formatDateForAPI = (date, isEndDate = false) => {
-  return isEndDate ? timezone.endOfDayUtc(date) : timezone.startOfDayUtc(date);
+  // Fix: Use createDateRangeFromPicker to properly handle browser timezone dates
+  // The date parameter comes from browser's DatePicker component and needs to be 
+  // converted to user's timezone before getting UTC boundaries
+  const { start, end } = timezone.createDateRangeFromPicker(date, date);
+  return isEndDate ? end : start;
 }
 
 const getSourceSeverity = (sourceType) => {
