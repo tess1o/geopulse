@@ -505,6 +505,7 @@ const apiService = {
                     avatar: responseData.avatar,
                     createdAt: responseData.createdAt,
                     hasPassword: responseData.hasPassword,
+                    timezone: responseData.timezone,
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;

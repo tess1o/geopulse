@@ -19,12 +19,12 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 public class TravelClassification {
 
     // Thresholds (can be adjusted)
-    private static final double WALKING_MAX_AVG_SPEED = 8.0;
-    private static final double WALKING_MAX_MAX_SPEED = 10.0;
+    private static final double WALKING_MAX_AVG_SPEED = 6.0;
+    private static final double WALKING_MAX_MAX_SPEED = 8.0;
 
-    private static final double CAR_MIN_AVG_SPEED = 10.0;
-    private static final double CAR_MIN_MAX_SPEED = 30.0;
-    public static final double SHORT_DISTANCE_KM = 1.5;
+    private static final double CAR_MIN_AVG_SPEED = 8.0;
+    private static final double CAR_MIN_MAX_SPEED = 15.0;
+    public static final double SHORT_DISTANCE_KM = 1.0;
 
     private final VelocityAnalysisService velocityAnalysisService;
 
