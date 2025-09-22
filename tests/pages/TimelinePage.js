@@ -86,13 +86,9 @@ export class TimelinePage {
    * Setup overnight timeline test with yesterday-today date range
    */
   async setupOvernightTimelineWithData(dbManager, dataInsertFunction, testUser = TestData.users.existing) {
-    const now = new Date();
-    const today = new Date(now);
-    const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    
     return await this.setupTimelineWithData(dbManager, dataInsertFunction, testUser, {
-      startDate: yesterday,
-      endDate: today
+      startDate: new Date('2025-09-20'),
+      endDate: new Date('2025-09-22')
     });
   }
 

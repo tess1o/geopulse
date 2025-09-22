@@ -2,7 +2,7 @@
 
 // Verifiable test data functions that return expected values for verification
 export async function insertVerifiableStaysTestData(dbManager, userId) {
-  const now = new Date();
+  // Use fixed date for predictable results
   const stayData = [
     { name: 'Home', duration: 7200, lat: 40.7128, lon: -74.0060 }, // 2 hours
     { name: 'Office', duration: 5400, lat: 40.7589, lon: -73.9851 }, // 1.5 hours
@@ -13,8 +13,10 @@ export async function insertVerifiableStaysTestData(dbManager, userId) {
 
   for (let i = 0; i < stayData.length; i++) {
     const stay = stayData[i];
-    // Use specific hours: 9:00, 10:00, 11:00 of current day
-    const stayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9 + i, 0, 0);
+    // Use specific hours: 09:00, 10:00, 11:00 of Sept 21, 2025
+    const stayTime = new Date(`2025-09-21T${(9 + i).toString().padStart(2, '0')}:00:00Z`);
+
+    console.log(`Inserting stay ${i + 1} of ${stayData.length}... at ${stayTime}`);
 
     // Create reverse geocoding location
     const result = await dbManager.client.query(`
@@ -50,7 +52,7 @@ export async function insertVerifiableStaysTestData(dbManager, userId) {
 }
 
 export async function insertVerifiableTripsTestData(dbManager, userId) {
-  const now = new Date();
+  // Use fixed date for predictable results
   const tripData = [
     { distance: 5500, duration: 1800, type: 'CAR' }, // 5.5km, 30 min, Car
     { distance: 2000, duration: 1200, type: 'WALK' }, // 2km, 20 min, Walk
@@ -61,8 +63,8 @@ export async function insertVerifiableTripsTestData(dbManager, userId) {
 
   for (let i = 0; i < tripData.length; i++) {
     const trip = tripData[i];
-    // Use specific hours: 12:00, 13:00, 14:00 of current day
-    const tripTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12 + i, 0, 0);
+    // Use specific hours: 12:00, 13:00, 14:00 of Sept 21, 2025
+    const tripTime = new Date(`2025-09-21T${(12 + i).toString().padStart(2, '0')}:00:00Z`);
 
     await dbManager.client.query(`
       INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
@@ -91,9 +93,8 @@ export async function insertVerifiableTripsTestData(dbManager, userId) {
 }
 
 export async function insertVerifiableDataGapsTestData(dbManager, userId) {
-  const now = new Date();
+  // Use fixed date for predictable results
   const gapData = [
-    { duration: 1800 }, // 30 minutes
     { duration: 3600 } // 1 hour
   ];
 
@@ -101,7 +102,8 @@ export async function insertVerifiableDataGapsTestData(dbManager, userId) {
 
   for (let i = 0; i < gapData.length; i++) {
     const gap = gapData[i];
-    const gapStartTime = new Date(now.getTime() - ((i + 1) * 3 * 60 * 60 * 1000)); // 3, 6 hours ago
+    // Fixed times: 06:00 and 09:00 Sept 21, 2025 (chronological order)
+    const gapStartTime = new Date(`2025-09-21T${(6 + i * 3).toString().padStart(2, '0')}:00:00Z`);
     const gapEndTime = new Date(gapStartTime.getTime() + (gap.duration * 1000));
     
     await dbManager.client.query(`
@@ -125,9 +127,8 @@ export async function insertVerifiableDataGapsTestData(dbManager, userId) {
 
 // Verifiable overnight test data functions
 export async function insertVerifiableOvernightStaysTestData(dbManager, userId) {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-  yesterday.setUTCHours(18, 0, 0, 0); // Hotel check-in at 6 PM UTC yesterday
+  // Use fixed dates for predictable test results
+  const yesterday = new Date('2025-09-20T18:00:00Z'); // Sept 20, 2025 at 6 PM UTC
 
   // Logical sequence: Hotel stay, then after checkout a trip to airport, then airport stay
   const stayData = [
@@ -190,9 +191,8 @@ export async function insertVerifiableOvernightStaysTestData(dbManager, userId) 
 }
 
 export async function insertVerifiableOvernightTripsTestData(dbManager, userId) {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-  yesterday.setUTCHours(18, 0, 0, 0); // Start at 6 PM UTC yesterday
+  // Use fixed dates for predictable test results  
+  const yesterday = new Date('2025-09-20T18:00:00Z'); // Sept 20, 2025 at 6 PM UTC
 
   const results = [];
 
@@ -211,7 +211,7 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
   `, [
     userId,
-    initialStayTime,
+    initialStayTime.toISOString(),
     2 * 60 * 60, // 2 hours
     -74.0060,
     40.7128,
@@ -219,15 +219,15 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
     initialStayResult.rows[0].id
   ]);
 
-  // 2. Overnight trip (8 PM yesterday for 16 hours, ending at 12 PM today)
-  const tripStartTime = new Date(yesterday.getTime() + (2 * 60 * 60 * 1000)); // 2 hours after initial stay
+  // 2. Overnight trip (starts at 20:00 UTC on Sept 20 = 23:00 Kyiv, duration 10 hours, ends 06:00 UTC on Sept 21 = 09:00 Kyiv)  
+  const tripStartTime = new Date('2025-09-20T20:00:00Z'); // 20:00 UTC on Sept 20 (23:00 Kyiv)
   await dbManager.client.query(`
     INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9, NOW(), NOW())
   `, [
     userId,
-    tripStartTime,
-    16 * 60 * 60, // 16 hours
+    tripStartTime.toISOString(),
+    10 * 60 * 60, // 10 hours (spans midnight)
     -74.0060, 40.7128, // Starting in NYC
     -74.5000, 41.0000, // Ending in another location
     150000, // 150km distance
@@ -236,13 +236,13 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
 
   results.push({
     distanceMeters: 150000,
-    totalDuration: 16 * 60 * 60,
+    totalDuration: 10 * 60 * 60,
     movementType: 'CAR',
     startTime: tripStartTime
   });
 
-  // 3. Final stay (12 PM today for 4 hours)
-  const finalStayTime = new Date(tripStartTime.getTime() + (16 * 60 * 60 * 1000)); // After trip ends
+  // 3. Final stay (08:00 UTC today for 4 hours)
+  const finalStayTime = new Date(tripStartTime.getTime() + (10 * 60 * 60 * 1000)); // After trip ends
   const finalStayResult = await dbManager.client.query(`
     INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
     VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.5000 41.0000)', 'POINT(-74.5000 41.0000)', 'Destination Location, NY', 'test', 'New York', 'United States', NOW(), NOW())
@@ -254,7 +254,7 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
   `, [
     userId,
-    finalStayTime,
+    finalStayTime.toISOString(),
     4 * 60 * 60, // 4 hours
     -74.5000,
     41.0000,
@@ -266,9 +266,8 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
 }
 
 export async function insertVerifiableOvernightDataGapsTestData(dbManager, userId) {
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-  yesterday.setUTCHours(18, 0, 0, 0); // Start at 6 PM UTC yesterday
+  // Use fixed dates for predictable test results
+  const yesterday = new Date('2025-09-20T18:00:00Z'); // Sept 20, 2025 at 6 PM UTC
 
   const results = [];
 
@@ -287,7 +286,7 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
   `, [
     userId,
-    initialStayTime,
+    initialStayTime.toISOString(),
     3 * 60 * 60, // 3 hours (6 PM to 9 PM)
     -74.0060,
     40.7128,
@@ -295,10 +294,10 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
     initialStayResult.rows[0].id
   ]);
 
-  // 2. Overnight data gap (8 PM yesterday to 12 PM today = 16 hours)
-  // In Europe/Kyiv: 8 PM UTC = 11 PM Kyiv (Sept 20), 12 PM UTC = 3 PM Kyiv (Sept 21)
-  const gapStartTime = new Date(yesterday.getTime() + (2 * 60 * 60 * 1000)); // 2 hours after 6 PM = 8 PM yesterday UTC
-  const gapEndTime = new Date(gapStartTime.getTime() + (16 * 60 * 60 * 1000)); // 16 hours later = 12 PM today UTC
+  // 2. Overnight data gap (9 PM yesterday to 8 AM today = 11 hours)
+  // In Europe/Kyiv: 9 PM UTC = 12 AM Kyiv (Sept 21), 8 AM UTC = 11 AM Kyiv (Sept 21)
+  const gapStartTime = new Date(yesterday.getTime() + (2 * 60 * 60 * 1000)); // 3 hours after 6 PM = 9 PM yesterday UTC
+  const gapEndTime = new Date('2025-09-21T08:00:00Z'); // 8 AM next day UTC
   const durationSeconds = Math.floor((gapEndTime.getTime() - gapStartTime.getTime()) / 1000);
   
   await dbManager.client.query(`
@@ -306,8 +305,8 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
     VALUES ($1, $2, $3, $4, NOW())
   `, [
     userId,
-    gapStartTime,
-    gapEndTime,
+    gapStartTime.toISOString(),
+    gapEndTime.toISOString(),
     durationSeconds
   ]);
 
@@ -317,8 +316,8 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
     endTime: gapEndTime
   });
 
-  // 3. Final stay (11 AM today for 4 hours)
-  const finalStayTime = new Date(gapEndTime.getTime());
+  // 3. Final stay (10 AM today for 4 hours)
+  const finalStayTime = new Date('2025-09-21T10:00:00Z'); // 10 AM today UTC (2 hours after gap ends)
   const finalStayResult = await dbManager.client.query(`
     INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
     VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.0100 40.7200)', 'POINT(-74.0100 40.7200)', 'Work Location, New York, NY', 'test', 'New York', 'United States', NOW(), NOW())
@@ -343,7 +342,7 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
 
 // Basic test data functions (for simple tests)
 export async function insertRegularStaysTestData(dbManager, userId) {
-  const now = new Date();
+  // Use fixed date for predictable results
   const locations = [
     { name: 'Home', lat: 40.7128, lon: -74.0060 },
     { name: 'Office', lat: 40.7589, lon: -73.9851 },
@@ -352,8 +351,8 @@ export async function insertRegularStaysTestData(dbManager, userId) {
 
   for (let i = 0; i < locations.length; i++) {
     const location = locations[i];
-    // Use specific hours: 15:00, 16:00, 17:00 of current day
-    const stayTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15 + i, 0, 0);
+    // Use specific hours: 15:00, 16:00, 17:00 of Sept 21, 2025
+    const stayTime = new Date(`2025-09-21T${(15 + i).toString().padStart(2, '0')}:00:00Z`);
     
     // FIRST: Insert GPS points (REQUIRED for map to show)
     const gpsQuery = `
@@ -402,7 +401,7 @@ export async function insertRegularStaysTestData(dbManager, userId) {
 }
 
 export async function insertRegularTripsTestData(dbManager, userId) {
-  const now = new Date();
+  // Use fixed date for predictable results
   const trips = [
     { distance: 5000, duration: 1800, type: 'CAR' }, // 5km, 30 min
     { distance: 2000, duration: 1200, type: 'WALK' }, // 2km, 20 min
@@ -411,7 +410,8 @@ export async function insertRegularTripsTestData(dbManager, userId) {
 
   for (let i = 0; i < trips.length; i++) {
     const trip = trips[i];
-    const tripTime = new Date(now.getTime() - ((i + 1) * 60 * 60 * 1000)); // Hours ago
+    // Fixed times: 1, 2, 3 hours before midnight Sept 22, 2025 (23:00, 22:00, 21:00 Sept 21)
+    const tripTime = new Date(`2025-09-21T${(23 - i).toString().padStart(2, '0')}:00:00Z`);
     
     await dbManager.client.query(`
       INSERT INTO timeline_trips (user_id, timestamp, trip_duration, start_point, end_point, distance_meters, movement_type, created_at, last_updated)

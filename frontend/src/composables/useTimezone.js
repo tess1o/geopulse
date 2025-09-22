@@ -465,15 +465,17 @@ export function useTimezone() {
   // --- Overnight Timeline Helpers ---
 
   const getOvernightTimestampText = (item, currentDate) => {
-    const itemStartDate = fromUtc(item.timestamp || item.startTime).format('YYYY-MM-DD')
+    const utcTimestamp = item.timestamp || item.startTime
+    const convertedTime = fromUtc(utcTimestamp)
+    const itemStartDate = convertedTime.format('YYYY-MM-DD')
     const isStartDay = itemStartDate === currentDate
     
     if (isStartDay) {
       // Show actual start time on start day
-      return format(item.timestamp || item.startTime, 'MM/DD/YYYY, HH:mm')
+      return format(utcTimestamp, 'MM/DD/YYYY, HH:mm')
     } else {
       // Show "Continued from" on other days  
-      const startDate = fromUtc(item.timestamp || item.startTime)
+      const startDate = fromUtc(utcTimestamp)
       return `Continued from ${startDate.format('MMM D, HH:mm')}`
     }
   }
