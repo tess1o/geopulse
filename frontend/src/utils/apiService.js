@@ -228,29 +228,18 @@ const apiService = {
 
     async getRawWithBlob(endpoint, customHeaders = {}, params = {}) {
         try {
-            console.log('apiService.getRawWithBlob: Endpoint:', endpoint)
-            console.log('apiService.getRawWithBlob: Using cookie-based auth')
-            
             await this.checkAuthExpired(endpoint);
-
-            // Always rely on cookies for authentication
-            const headers = { 
+            const headers = {
                 ...customHeaders
             };
-            
-            console.log('apiService.getRawWithBlob: Final headers:', Object.keys(headers))
-
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 params,
                 withCredentials: true,
                 headers,
                 responseType: 'blob'
             });
-            
-            console.log('apiService.getRawWithBlob: Response status:', response.status)
             return response;
         } catch (error) {
-            console.error('apiService.getRawWithBlob: Error:', error)
             this.handleError(error);
             throw error;
         }

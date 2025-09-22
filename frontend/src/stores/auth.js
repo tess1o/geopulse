@@ -30,7 +30,7 @@ export const useAuthStore = defineStore('auth', {
             if (user) {
                 // Persist essential, non-sensitive data to localStorage
                 const userInfo = {
-                    id: user.id,
+                    id: user.id || user.userId || null,
                     userId: user.id, // For backward compatibility with other parts of the app
                     fullName: user.fullName,
                     email: user.email,
@@ -233,6 +233,21 @@ export const useAuthStore = defineStore('auth', {
             } catch (error) {
                 console.error('Failed to get linked OIDC providers:', error);
                 return [];
+            }
+        },
+
+        // Fetch current user profile from backend and update state/localStorage
+        async fetchCurrentUserProfile() {
+            try {
+                const response = await apiService.get('/users/me');
+                const userData = response.data;
+                
+                // Update user state and localStorage with fresh data
+                this.setUser(userData);
+                return userData;
+            } catch (error) {
+                console.error('Failed to fetch current user profile:', error);
+                throw error;
             }
         }
     }

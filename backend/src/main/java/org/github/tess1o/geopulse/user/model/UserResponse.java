@@ -20,5 +20,6 @@ public class UserResponse {
     private String role;
     private String email;
     private String timezone;
+    private String avatar;
     // Don't include passwordHash in responses
 }

@@ -139,4 +139,25 @@ public class UserResource {
         userService.resetTimelinePreferencesToDefaults(userId);
         return Response.noContent().build();
     }
+
+    /**
+     * Get current user profile information.
+     *
+     * @return The current user's profile data
+     */
+    @GET
+    @Path("/me")
+    @RolesAllowed("USER")
+    public Response getCurrentUserProfile() {
+        try {
+            UserEntity user = currentUserService.getCurrentUser();
+            UserResponse response = userMapper.toResponse(user);
+            return Response.ok(ApiResponse.success(response)).build();
+        } catch (Exception e) {
+            log.error("Failed to fetch current user profile", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to fetch user profile"))
+                    .build();
+        }
+    }
 }

@@ -762,6 +762,21 @@ watch(immichConfig, (newConfig) => {
 
 // Lifecycle
 onMounted(async () => {
+  // Fetch fresh profile data from backend first
+  try {
+    await authStore.fetchCurrentUserProfile()
+  } catch (error) {
+    console.warn('Failed to fetch current user profile from backend, using cached data:', error)
+    // Show a toast notification to inform user about using cached data
+    toast.add({
+      severity: 'warn',
+      summary: 'Using Cached Data',
+      detail: 'Unable to fetch latest profile data. Showing cached information.',
+      life: 4000
+    })
+  }
+  
+  // Reset form with current (fresh or cached) data
   resetProfile()
   
   // Load Immich config
