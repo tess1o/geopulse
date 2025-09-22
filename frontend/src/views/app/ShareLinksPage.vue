@@ -318,8 +318,11 @@
 import {ref, reactive, onMounted, computed} from 'vue'
 import {useToast} from 'primevue/usetoast'
 import {useShareLinksStore} from '@/stores/shareLinks'
+import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
+
+const timezone = useTimezone()
 
 const toast = useToast()
 const shareLinksStore = useShareLinksStore()
@@ -340,7 +343,7 @@ const linkForm = reactive({
 })
 
 // Computed
-const minDate = computed(() => new Date())
+const minDate = computed(() => timezone.now().toDate())
 
 // Methods
 const resetForm = () => {
@@ -360,7 +363,7 @@ const closeDialog = () => {
 const editLink = (link) => {
   editingLink.value = link
   linkForm.name = link.name || ''
-  linkForm.expires_at = link.expires_at ? new Date(link.expires_at) : null
+  linkForm.expires_at = link.expires_at ? timezone.fromUtc(link.expires_at).toDate() : null
   linkForm.show_history = link.show_history
   linkForm.has_password = link.has_password
   linkForm.password = '' // Don't pre-fill password for security
@@ -477,13 +480,7 @@ const copyToClipboard = async (text) => {
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  return timezone.format(dateString, 'MMM D, YYYY h:mm A')
 }
 
 // Lifecycle

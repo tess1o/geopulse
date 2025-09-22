@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import dayjs from 'dayjs';
 
 export const useLocationStore = defineStore('location', {
     state: () => ({
@@ -55,9 +56,11 @@ export const useLocationStore = defineStore('location', {
         // Get points within a time range
         getPointsInTimeRange: (state) => (startTime, endTime) => {
             const points = state.locationPath?.points || []
+            const start = dayjs(startTime);
+            const end = dayjs(endTime);
             return points.filter(point => {
-                const pointTime = new Date(point.timestamp)
-                return pointTime >= startTime && pointTime <= endTime
+                const pointTime = dayjs(point.timestamp)
+                return pointTime.isAfter(start) && pointTime.isBefore(end)
             })
         }
     },
@@ -72,8 +75,8 @@ export const useLocationStore = defineStore('location', {
         async fetchLocationPath(startTime, endTime) {
             try {
                 const response = await apiService.get('/gps/path', {
-                    startTime: startTime.toISOString(),
-                    endTime: endTime.toISOString()
+                    startTime: startTime,
+                    endTime: endTime
                 })
 
                 this.setLocationPath(response.data)

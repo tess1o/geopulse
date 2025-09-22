@@ -4,14 +4,18 @@ export class UserProfilePage {
     
     this.selectors = {
       // Tab navigation - using span with data-pc-section="itemlabel"
-      profileTab: '[data-pc-section="itemlabel"]:has-text("Profile Information")',
+      profileTab: '[data-pc-section="itemlabel"]:has-text("Profile")',
       securityTab: '[data-pc-section="itemlabel"]:has-text("Security")',
-      immichTab: '[data-pc-section="itemlabel"]:has-text("Immich Integration")',
+      immichTab: '[data-pc-section="itemlabel"]:has-text("Immich")',
       
       // Profile Information tab selectors
       profile: {
         fullNameInput: '#fullName',
         emailInput: '#email',
+        timezoneDropdown: '#timezone',
+        timezoneDropdownTrigger: '#timezone .p-select-dropdown, #timezone .p-select-label',
+        timezoneOptions: '[role="option"], .p-select-option',
+        timezoneLabel: '#timezone .p-select-label',
         saveButton: 'button[type="submit"]:has-text("Save Changes")',
         resetButton: 'button:has-text("Reset")',
         avatarOptions: '.avatar-option',
@@ -227,6 +231,51 @@ export class UserProfilePage {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Select timezone from dropdown
+   */
+  async selectTimezone(timezone) {
+    // Click on the dropdown to open it
+    await this.page.click(this.selectors.profile.timezoneLabel);
+    
+    // Wait for dropdown options to appear
+    await this.page.waitForSelector(this.selectors.profile.timezoneOptions, { timeout: 10000 });
+    
+    // Click on the specific timezone option
+    const optionSelector = this.page.locator(this.selectors.profile.timezoneOptions).filter({ hasText: timezone });
+    await optionSelector.first().click();
+    
+    // Wait for dropdown to close and selection to be processed
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Get currently selected timezone
+   */
+  async getSelectedTimezone() {
+    // Get the displayed value in the dropdown label
+    const dropdownLabel = this.page.locator(this.selectors.profile.timezoneLabel);
+    const text = await dropdownLabel.textContent();
+    
+    // If showing placeholder text, return empty or handle accordingly
+    if (text === 'Select your timezone') {
+      return null;
+    }
+    
+    return text?.trim();
+  }
+
+  /**
+   * Get timezone value from localStorage
+   */
+  async getTimezoneFromLocalStorage() {
+    const userInfo = await this.page.evaluate(() => {
+      const userInfoStr = localStorage.getItem('userInfo');
+      return userInfoStr ? JSON.parse(userInfoStr) : null;
+    });
+    return userInfo?.timezone || null;
   }
 
   // =============================================================================

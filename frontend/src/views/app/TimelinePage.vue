@@ -44,13 +44,16 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { TimelineContainer } from '@/components/timeline'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
-import { isValidDataRange } from '@/utils/dateHelpers'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useFavoritesStore } from '@/stores/favorites'
 import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
 import {useFriendsStore} from "@/stores/friends";
+import dayjs from 'dayjs';
 
 const toast = useToast()
 
@@ -380,25 +383,20 @@ const isToday = computed(() => {
   const [startDate, endDate] = dateRange.value
   if (!startDate || !endDate) return false
   
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = timezone.now().startOf('day');
   
-  const startDateOnly = new Date(startDate)
-  startDateOnly.setHours(0, 0, 0, 0)
+  const start = timezone.fromUtc(startDate).startOf('day');
+  const end = timezone.fromUtc(endDate).startOf('day');
   
-  const endDateOnly = new Date(endDate)
-  endDateOnly.setHours(0, 0, 0, 0)
-  
-  return startDateOnly.getTime() === today.getTime() && 
-         endDateOnly.getTime() === today.getTime()
+  return start.isSame(today) && end.isSame(today);
 })
 
 watch(dateRange, async (newValue) => {
-  if (newValue && isValidDataRange(newValue)) {
+  if (newValue && timezone.isValidDataRange(newValue)) {
     const [startDate, endDate] = newValue
 
     // Create a range key to detect if we've already fetched this exact range
-    const rangeKey = `${startDate.getTime()}-${endDate.getTime()}`
+    const rangeKey = `${startDate}-${endDate}`
 
     // Skip if we've already fetched this exact range
     if (lastFetchedRange.value === rangeKey) {

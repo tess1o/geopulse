@@ -18,8 +18,10 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.StringWriter;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
@@ -89,38 +91,32 @@ public class GpsPointResource {
 
     /**
      * Get summary statistics for GPS points.
-     * This endpoint requires authentication.
+     * This endpoint requires authentication and uses the user's stored timezone.
      *
-     * @param timezone Optional timezone parameter (e.g., "Europe/Kyiv", "America/New_York").
-     *                 If not provided, defaults to UTC.
      * @return Summary statistics for the user's GPS points
      */
     @GET
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed("USER")
-    public Response getGpsPointSummary(@QueryParam("timezone") String timezone) {
-        UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS point summary for user {} with timezone {}", userId, timezone);
+    public Response getGpsPointSummary() {
+        UserEntity user = currentUserService.getCurrentUser();
+        log.info("Received request to get GPS point summary for user {} with timezone {}", user.getId(), user.getTimezone());
 
         try {
             GpsPointSummaryDTO summary;
 
-            if (timezone != null && !timezone.trim().isEmpty()) {
-                try {
-                    java.time.ZoneId userTimezone = java.time.ZoneId.of(timezone.trim());
-                    summary = gpsPointService.getGpsPointSummary(userId, userTimezone);
-                } catch (java.time.DateTimeException e) {
-                    log.warn("Invalid timezone '{}' provided for user {}, falling back to UTC", timezone, userId);
-                    summary = gpsPointService.getGpsPointSummary(userId);
-                }
-            } else {
-                summary = gpsPointService.getGpsPointSummary(userId);
+            try {
+                ZoneId userTimezone = ZoneId.of(user.getTimezone());
+                summary = gpsPointService.getGpsPointSummary(user.getId(), userTimezone);
+            } catch (DateTimeException e) {
+                log.warn("Invalid timezone '{}' for user {}, falling back to UTC", user.getTimezone(), user.getId());
+                summary = gpsPointService.getGpsPointSummary(user.getId());
             }
 
             return Response.ok(ApiResponse.success(summary)).build();
         } catch (Exception e) {
-            log.error("Failed to retrieve GPS point summary for user {}", userId, e);
+            log.error("Failed to retrieve GPS point summary for user {}", user.getId(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve GPS point summary: " + e.getMessage()))
                     .build();
@@ -144,10 +140,12 @@ public class GpsPointResource {
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
             @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate) {
+            @QueryParam("endDate") String endDate,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}",
-                userId, page, limit, startDate, endDate);
+        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}, startTime: {}, endTime: {}",
+                userId, page, limit, startDate, endDate, startTime, endTime);
 
         try {
             // Validate pagination parameters
@@ -162,9 +160,9 @@ public class GpsPointResource {
                         .build();
             }
 
-            // Parse date parameters
-            Instant start = parseDate(startDate, true);
-            Instant end = parseDate(endDate, false);
+            // Parse date/time parameters - prioritize precise timestamps over dates
+            Instant start = parseDateTime(startTime, startDate, true);
+            Instant end = parseDateTime(endTime, endDate, false);
 
             GpsPointPageDTO result = gpsPointService.getGpsPointsPage(userId, start, end, page, limit);
             return Response.ok(ApiResponse.success(result)).build();
@@ -193,15 +191,17 @@ public class GpsPointResource {
     @RolesAllowed("USER")
     public Response exportGpsPoints(
             @QueryParam("startDate") String startDate,
-            @QueryParam("endDate") String endDate) {
+            @QueryParam("endDate") String endDate,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}",
-                userId, startDate, endDate);
+        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}, startTime: {}, endTime: {}",
+                userId, startDate, endDate, startTime, endTime);
 
         try {
-            // Parse date parameters
-            Instant start = parseDate(startDate, true);
-            Instant end = parseDate(endDate, false);
+            // Parse date/time parameters - prioritize precise timestamps over dates
+            Instant start = parseDateTime(startTime, startDate, true);
+            Instant end = parseDateTime(endTime, endDate, false);
 
             List<GpsPointEntity> points = gpsPointService.getGpsPointsForExport(userId, start, end);
             String csv = generateCsv(points);
@@ -221,6 +221,24 @@ public class GpsPointResource {
                     .entity(ApiResponse.error("Failed to export GPS points: " + e.getMessage()))
                     .build();
         }
+    }
+
+    /**
+     * Parse date/time parameters with fallback support.
+     * Prioritizes ISO-8601 timestamps over date-only strings.
+     */
+    private Instant parseDateTime(String timeStr, String dateStr, boolean isStartDate) {
+        // First try to parse as ISO-8601 timestamp (e.g., 2025-08-10T00:00:00.000Z)
+        if (timeStr != null && !timeStr.trim().isEmpty()) {
+            try {
+                return Instant.parse(timeStr.trim());
+            } catch (DateTimeParseException e) {
+                throw new DateTimeParseException("Invalid timestamp format. Use ISO-8601 format (e.g., 2025-08-10T00:00:00.000Z)", timeStr, 0);
+            }
+        }
+        
+        // Fallback to date-only parsing (e.g., 2025-08-10)
+        return parseDate(dateStr, isStartDate);
     }
 
     /**

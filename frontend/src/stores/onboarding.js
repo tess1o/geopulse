@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import dayjs from 'dayjs';
 
 export const useOnboardingStore = defineStore('onboarding', () => {
   // State
@@ -41,11 +42,13 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   ])
 
   // Actions
-  const initializeOnboarding = (user) => {
+  const initializeOnboarding = async (user) => {
     // Check if this is a first-time user (could be based on registration date, flags, etc.)
-    const now = new Date()
-    const userCreated = new Date(user.createdAt || user.created_at)
-    const timeDiff = now - userCreated
+    const { useTimezone } = await import('@/composables/useTimezone')
+    const timezone = useTimezone()
+    const now = timezone.now()
+    const userCreated = timezone.fromUtc(user.createdAt || user.created_at)
+    const timeDiff = now.diff(userCreated)
     const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
     
     // Consider user "new" if account was created within the last hour

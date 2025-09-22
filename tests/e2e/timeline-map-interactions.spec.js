@@ -67,9 +67,10 @@ test.describe('Timeline Map Interactions', () => {
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
-      
-      await page.reload();
+
+      await timelinePage.navigateWithDateRange(new Date('2025-09-20'), new Date('2025-09-22'));
       await timelinePage.waitForPageLoad();
+
       await mapPage.waitForMapReady();
       
       // Ensure favorites layer is active
@@ -305,8 +306,8 @@ test.describe('Timeline Map Interactions', () => {
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
-      
-      await page.reload();
+
+      await timelinePage.navigateWithDateRange(new Date('2025-09-20'), new Date('2025-09-22'));
       await timelinePage.waitForPageLoad();
       await mapPage.waitForMapReady();
       
@@ -382,8 +383,8 @@ test.describe('Timeline Map Interactions', () => {
       `, [user.id]);
       
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
-      
-      await page.reload();
+
+      await timelinePage.navigateWithDateRange(new Date('2025-09-20'), new Date('2025-09-22'));
       await timelinePage.waitForPageLoad();
       await mapPage.waitForMapReady();
       

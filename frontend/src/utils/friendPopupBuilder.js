@@ -9,7 +9,9 @@
  * Creates a DOM element with specified tag, classes, and content
  */
 
-import {timeAgo} from "@/utils/dateHelpers"
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const createElement = (tag, className = '', content = '') => {
   const element = document.createElement(tag)
@@ -80,10 +82,8 @@ const createLastSeenSection = (friend) => {
   const lastSeenDate = friend.lastSeen || friend.timestamp
   if (!lastSeenDate) return null
   
-  const date = new Date(lastSeenDate)
-  
   const lastSeen = createElement('div', 'popup-last-seen')
-  lastSeen.textContent = `Last seen: ${timeAgo(lastSeenDate)}`
+  lastSeen.textContent = `Last seen: ${timezone.timeAgo(lastSeenDate)}`
   
   return lastSeen
 }

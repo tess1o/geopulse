@@ -6,6 +6,7 @@ import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.user.model.UpdateTimelinePreferencesRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -41,6 +42,8 @@ class TimelineConfigurationIntegrationTest {
 
     @Inject
     jakarta.persistence.EntityManager entityManager;
+    @Inject
+    CleanupHelper cleanupHelper;
 
     private UserEntity testUser;
 
@@ -57,6 +60,7 @@ class TimelineConfigurationIntegrationTest {
     @AfterEach
     @Transactional
     void cleanup() {
+        cleanupHelper.cleanupTimeline();
         userRepository.deleteById(testUser.getId());
     }
 

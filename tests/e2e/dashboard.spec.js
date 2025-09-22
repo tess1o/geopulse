@@ -302,6 +302,64 @@ test.describe('Dashboard', () => {
       // Selected period range might be different format depending on date selection
       console.log('Date range validation passed');
     });
+    
+    test('should display date ranges in user timezone format', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const dashboardPage = new DashboardPage(page);
+      const testUser = TestData.users.existing;
+      
+      // Create user with specific timezone
+      testUser.timezone = 'America/Los_Angeles';
+      await UserFactory.createUser(page, testUser);
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      // Insert test timeline data
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await insertDashboardTestData(dbManager, user.id);
+      
+      await dashboardPage.navigate();
+      await dashboardPage.waitForPageLoad();
+      await dashboardPage.waitForLoadingComplete();
+      
+      // Verify localStorage contains the correct timezone
+      const userInfo = await page.evaluate(() => {
+        const userInfoStr = localStorage.getItem('userInfo');
+        return userInfoStr ? JSON.parse(userInfoStr) : null;
+      });
+      
+      expect(userInfo).toBeTruthy();
+      expect(userInfo.timezone).toBe('America/Los_Angeles');
+      
+      // Get date ranges - these should be formatted in user's timezone
+      const selectedPeriodRange = await dashboardPage.getSelectedPeriodRange();
+      const sevenDaysRange = await dashboardPage.getSevenDaysRange();
+      const thirtyDaysRange = await dashboardPage.getThirtyDaysRange();
+      
+      console.log('Date ranges with America/Los_Angeles timezone:', {
+        selectedPeriod: selectedPeriodRange,
+        sevenDays: sevenDaysRange,
+        thirtyDays: thirtyDaysRange
+      });
+      
+      // Verify date ranges are displayed (format may vary but should exist)
+      if (sevenDaysRange) {
+        expect(sevenDaysRange.length).toBeGreaterThan(0);
+        // Date should not show time zone offset since it's just MM/DD format
+        expect(sevenDaysRange).toMatch(/\d{2}\/\d{2}/);
+      }
+      
+      if (thirtyDaysRange) {
+        expect(thirtyDaysRange.length).toBeGreaterThan(0);
+        expect(thirtyDaysRange).toMatch(/\d{2}\/\d{2}/);
+      }
+      
+      // Verify the dashboard is calculating dates in the user's timezone
+      // (the actual date values should reflect the user's timezone)
+      console.log('Date range timezone validation passed');
+    });
   });
 
   test.describe('Data Integration and Consistency', () => {

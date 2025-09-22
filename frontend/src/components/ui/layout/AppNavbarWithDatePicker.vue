@@ -59,7 +59,7 @@ import Toolbar from 'primevue/toolbar'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
 import AppNavigation from './AppNavigation.vue'
-import { isValidDataRange, setToEndOfDay } from '@/utils/dateHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 import { useDateRangeStore } from '@/stores/dateRange'
 
 const props = defineProps({
@@ -87,6 +87,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['navigate', 'date-change'])
+
+// Composables
+const timezone = useTimezone()
 
 // Pinia store
 const dateRangeStore = useDateRangeStore()
@@ -118,7 +121,11 @@ const datePickerStyle = computed(() => ({
 // Two-way binding with DatePicker
 const dateRange = computed({
   get() {
-    return storeDateRange.value
+    // Convert stored UTC dates to calendar dates for the picker
+    if (storeDateRange.value && storeDateRange.value.length === 2) {
+      return timezone.convertUtcRangeToCalendarDates(storeDateRange.value[0], storeDateRange.value[1]);
+    }
+    return null;
   },
   set(value) {
     setValidDateRange(value)
@@ -127,12 +134,14 @@ const dateRange = computed({
 
 // Methods
 const setValidDateRange = (value) => {
-  if (isValidDataRange(value)) {
+  if (timezone.isValidDateRange(value)) {
     const [newStartDate, newEndDate] = value
-    const startDate = newStartDate
-    const endDate = setToEndOfDay(newEndDate)
-    dateRangeStore.setDateRange([startDate, endDate])
-    emit('date-change', [startDate, endDate])
+
+    // Create UTC date range from picker dates using the timezone composable
+    const { start, end } = timezone.createDateRangeFromPicker(newStartDate, newEndDate)
+
+    dateRangeStore.setDateRange([start, end])
+    emit('date-change', [start, end])
   }
 }
 

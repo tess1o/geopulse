@@ -160,10 +160,9 @@ import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
-import L from 'leaflet'
 
 // Map components
-import {FavoritesLayer, FriendsLayer, MapContainer, MapControls, PathLayer, TimelineLayer} from '@/components/maps'
+import {FavoritesLayer, MapContainer, MapControls, PathLayer, TimelineLayer} from '@/components/maps'
 import CurrentLocationLayer from '@/components/maps/CurrentLocationLayer.vue'
 import ImmichLayer from '@/components/maps/layers/ImmichLayer.vue'
 

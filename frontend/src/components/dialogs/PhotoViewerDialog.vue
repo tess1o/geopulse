@@ -1,4 +1,4 @@
-    <template>
+<template>
   <Dialog
     :visible="visible"
     modal
@@ -104,6 +104,9 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useToast } from 'primevue/usetoast'
 import { imageService } from '@/utils/imageService'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   visible: {
@@ -280,8 +283,7 @@ const formatDate = (dateString) => {
   if (!dateString) return ''
   
   try {
-    const date = new Date(dateString)
-    return date.toLocaleString()
+    return timezone.format(dateString, 'YYYY-MM-DD HH:mm:ss')
   } catch (error) {
     return dateString
   }

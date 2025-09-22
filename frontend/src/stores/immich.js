@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useDateRangeStore } from '@/stores/dateRange'
+import dayjs from 'dayjs';
 
 export const useImmichStore = defineStore('immich', {
   state: () => ({
@@ -68,8 +69,10 @@ export const useImmichStore = defineStore('immich', {
       const [currentStart, currentEnd] = currentRange
       const [lastStart, lastEnd] = state.lastFetchedRange
       
-      return currentStart?.getTime() !== lastStart?.getTime() || 
-             currentEnd?.getTime() !== lastEnd?.getTime()
+      const { useTimezone } = require('@/composables/useTimezone')
+      const timezone = useTimezone()
+      return !timezone.fromUtc(currentStart).isSame(timezone.fromUtc(lastStart)) || 
+             !timezone.fromUtc(currentEnd).isSame(timezone.fromUtc(lastEnd))
     }
   },
 
@@ -155,8 +158,8 @@ export const useImmichStore = defineStore('immich', {
 
       try {
         const params = {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString()
+          startDate: startDate,
+          endDate: endDate
         }
 
         const response = await apiService.get('/users/me/immich/photos/search', params)

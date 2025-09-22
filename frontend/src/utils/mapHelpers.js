@@ -4,7 +4,6 @@
  */
 
 import L from 'leaflet'
-import {timeAgo} from "@/utils/dateHelpers";
 
 /**
  * Fix Leaflet default marker images import issues in Vite/Webpack
@@ -812,27 +811,6 @@ export function formatTooltipContent(data, fields) {
         return field.label ? `<strong>${field.label}:</strong> ${value}` : `<strong>${value}</strong>`
       })
       .join('<br>')
-}
-
-/**
- * Common tooltip configurations for different marker types
- */
-export const TOOLTIP_CONFIGS = {
-  STAY: [
-    { key: 'location', label: null },
-    { key: 'timestamp', label: 'Time', formatter: (val) => new Date(val).toLocaleString() },
-    { key: 'stayDuration', label: 'Duration', formatter: (val) => `${val} minutes` }
-  ],
-  TRIP: [
-    { key: 'timestamp', label: 'Start Time', formatter: (val) => new Date(val).toLocaleString() },
-    { key: 'tripDuration', label: 'Duration', formatter: (val) => `${val} minutes` },
-    { key: 'distanceKm', label: 'Distance', formatter: (val) => `${val.toFixed(2)} km` }
-  ],
-  FRIEND: [
-    { key: 'fullName', label: 'Friend' },
-    { key: 'lastLocation', label: 'Location' },
-    { key: 'lastSeen', label: 'Last seen', formatter: (val) => timeAgo(val) }
-  ]
 }
 
 /**

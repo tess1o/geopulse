@@ -22,7 +22,7 @@ export class JourneyInsightsPage {
       sections: {
         geographic: '.insights-section:has-text("Geographic Adventures")',
         travelStory: '.insights-section:has-text("Your Travel Story")',
-        activityPatterns: '.insights-section:has-text("Activity Patterns")',
+        activityPatterns: '.insights-section:has-text("Time Patterns")',
         milestones: '.insights-section:has-text("Your Journey Milestones")'
       },
       
@@ -58,7 +58,7 @@ export class JourneyInsightsPage {
       
       // Activity patterns section
       activityPatterns: {
-        section: '.insights-section:has-text("Activity Patterns")',
+        section: '.insights-section:has-text("Time Patterns")',
         grid: '.insights-grid-simple',
         monthCard: '.insight-stat-pattern:has-text("Most Active Month")',
         dayCard: '.insight-stat-pattern:has-text("Busiest Day of Week")',

@@ -52,7 +52,8 @@ public class UserResource {
             UserEntity user = userService.registerUser(
                     request.getEmail(),
                     request.getPassword(),
-                    request.getFullName()
+                    request.getFullName(),
+                    request.getTimezone()
             );
             UserResponse response = userMapper.toResponse(user);
             return Response.status(Response.Status.CREATED).entity(ApiResponse.success(response)).build();
@@ -137,5 +138,26 @@ public class UserResource {
         UUID userId = currentUserService.getCurrentUserId();
         userService.resetTimelinePreferencesToDefaults(userId);
         return Response.noContent().build();
+    }
+
+    /**
+     * Get current user profile information.
+     *
+     * @return The current user's profile data
+     */
+    @GET
+    @Path("/me")
+    @RolesAllowed("USER")
+    public Response getCurrentUserProfile() {
+        try {
+            UserEntity user = currentUserService.getCurrentUser();
+            UserResponse response = userMapper.toResponse(user);
+            return Response.ok(ApiResponse.success(response)).build();
+        } catch (Exception e) {
+            log.error("Failed to fetch current user profile", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to fetch user profile"))
+                    .build();
+        }
     }
 }

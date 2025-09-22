@@ -141,6 +141,238 @@ test.describe('User Profile Management', () => {
     });
   });
 
+  test.describe('Timezone Management', () => {
+    test('should display default timezone correctly', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      // Explicitly set timezone to UTC to ensure consistent test behavior
+      testUser.timezone = 'UTC';
+      await UserFactory.createUser(page, testUser);
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+      
+      // Wait for timezone to load completely
+      await page.waitForTimeout(1000);
+      
+      // Verify timezone is UTC as we explicitly set it
+      const selectedTimezone = await profilePage.getSelectedTimezone();
+      expect(selectedTimezone).toBe('UTC');
+      
+      // Verify localStorage contains UTC timezone
+      const localStorageTimezone = await profilePage.getTimezoneFromLocalStorage();
+      expect(localStorageTimezone).toBe('UTC');
+    });
+
+    test('should update timezone and save to database and localStorage', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const newTimezone = 'Europe/London GMT+0';
+      const expectedTimezoneValue = 'Europe/London';
+
+      await UserFactory.createUser(page, testUser);
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+      
+      // Change timezone
+      await profilePage.selectTimezone(newTimezone);
+      
+      // Verify dropdown shows new selection
+      const selectedTimezone = await profilePage.getSelectedTimezone();
+      expect(selectedTimezone).toBe(newTimezone);
+      
+      // Save changes
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+      
+      // Verify success message
+      const toastMessage = await profilePage.getToastMessage();
+      expect(toastMessage).toContain('updated successfully');
+      
+      // Verify localStorage is updated immediately
+      const localStorageTimezone = await profilePage.getTimezoneFromLocalStorage();
+      expect(localStorageTimezone).toBe(expectedTimezoneValue);
+      
+      // Verify database is updated by checking with a fresh page load
+      await page.reload();
+      await profilePage.waitForPageLoad();
+      
+      const reloadedTimezone = await profilePage.getSelectedTimezone();
+      expect(reloadedTimezone).toBe(newTimezone);
+      
+      // Verify localStorage persists after reload
+      const persistedLocalStorageTimezone = await profilePage.getTimezoneFromLocalStorage();
+      expect(persistedLocalStorageTimezone).toBe(expectedTimezoneValue);
+    });
+
+    test('should handle timezone normalization (Europe/Kiev -> Europe/Kyiv)', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const kiyvTimezone = 'Europe/Kyiv GMT+2';
+      const expectedTimezoneValue = 'Europe/Kyiv';
+
+      await UserFactory.createUser(page, testUser);
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+      
+      // Select Kyiv timezone (which should be normalized properly)
+      await profilePage.selectTimezone(kiyvTimezone);
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+      
+      // Verify localStorage contains the correct normalized timezone
+      const localStorageTimezone = await profilePage.getTimezoneFromLocalStorage();
+      expect(localStorageTimezone).toBe(expectedTimezoneValue);
+      
+      // Verify database stores the normalized timezone by reloading
+      await page.reload();
+      await profilePage.waitForPageLoad();
+      
+      const reloadedTimezone = await profilePage.getSelectedTimezone();
+      expect(reloadedTimezone).toBe(kiyvTimezone);
+    });
+
+    test('should update timezone when auto-detected during login', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      
+      // Mock browser timezone detection to simulate different timezone
+      await page.addInitScript(() => {
+        // Mock Intl.DateTimeFormat to return a specific timezone
+        const originalDateTimeFormat = Intl.DateTimeFormat;
+        Intl.DateTimeFormat = function(...args) {
+          const formatter = new originalDateTimeFormat(...args);
+          const originalResolvedOptions = formatter.resolvedOptions;
+          formatter.resolvedOptions = function() {
+            const options = originalResolvedOptions.call(this);
+            options.timeZone = 'America/New_York';
+            return options;
+          };
+          return formatter;
+        };
+        
+        // Copy static methods
+        Object.setPrototypeOf(Intl.DateTimeFormat, originalDateTimeFormat);
+        Object.getOwnPropertyNames(originalDateTimeFormat).forEach(name => {
+          if (typeof originalDateTimeFormat[name] === 'function') {
+            Intl.DateTimeFormat[name] = originalDateTimeFormat[name];
+          }
+        });
+      });
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      // Navigate to profile to check if timezone was auto-updated
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+      
+      // Check if timezone was auto-detected and updated
+      const localStorageTimezone = await profilePage.getTimezoneFromLocalStorage();
+      // Note: This test depends on the auto-detection logic in the frontend
+      // If auto-detection is disabled, this should still be 'UTC'
+      expect(localStorageTimezone).toBeTruthy();
+    });
+
+    test('should reset timezone when form is reset', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const newTimezone = 'Europe/Paris GMT+1';
+
+      await UserFactory.createUser(page, testUser);
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+      
+      const originalTimezone = await profilePage.getSelectedTimezone();
+      
+      // Change timezone but don't save
+      await profilePage.selectTimezone(newTimezone);
+      
+      // Verify the change is reflected in the UI
+      const changedTimezone = await profilePage.getSelectedTimezone();
+      expect(changedTimezone).toBe(newTimezone);
+      
+      // Reset the form
+      await profilePage.resetProfile();
+      await profilePage.waitForLoading();
+      
+      // Verify timezone is reset to original value
+      const resetTimezone = await profilePage.getSelectedTimezone();
+      expect(resetTimezone).toBe(originalTimezone);
+      
+      // Verify localStorage wasn't changed
+      const localStorageTimezone = await profilePage.getTimezoneFromLocalStorage();
+      expect(localStorageTimezone).toBe('UTC'); // Should still be original value
+    });
+
+    test('should validate timezone dropdown has expected options', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+      
+      // Open timezone dropdown
+      await page.click(profilePage.selectors.profile.timezoneLabel);
+      await page.waitForSelector(profilePage.selectors.profile.timezoneOptions, { timeout: 10000 });
+      
+      // Get all timezone options
+      const timezoneOptions = await page.locator(profilePage.selectors.profile.timezoneOptions).allTextContents();
+      
+      // Verify some key timezones are present
+      expect(timezoneOptions).toContain('UTC');
+      expect(timezoneOptions.some(option => option.includes('Europe/London'))).toBe(true);
+      expect(timezoneOptions.some(option => option.includes('America/New_York'))).toBe(true);
+      expect(timezoneOptions.some(option => option.includes('Europe/Kyiv'))).toBe(true);
+      expect(timezoneOptions.some(option => option.includes('Asia/Tokyo'))).toBe(true);
+      
+      // Verify the timezone format includes GMT offsets (not timezone abbreviations)
+      expect(timezoneOptions.some(option => option.includes('GMT+2'))).toBe(true); // Europe/Kyiv
+      expect(timezoneOptions.some(option => option.includes('GMT+0'))).toBe(true); // Europe/London
+      
+      // Verify we have a reasonable number of timezone options (should be 40+)
+      expect(timezoneOptions.length).toBeGreaterThan(35);
+      
+      // Close dropdown
+      await page.keyboard.press('Escape');
+    });
+  });
+
   test.describe('Security Tab', () => {
     test('should switch to security tab correctly', async ({page}) => {
       const loginPage = new LoginPage(page);

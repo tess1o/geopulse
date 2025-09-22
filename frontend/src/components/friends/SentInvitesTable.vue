@@ -41,7 +41,7 @@
               <div class="flex items-center gap-1 mt-1">
                 <i class="pi pi-clock text-xs text-surface-500"></i>
                 <p class="text-xs text-surface-500">
-                  Sent {{ timeAgo(invite.sentAt) }}
+                  Sent {{ timezone.timeAgo(invite.sentAt) }}
                 </p>
               </div>
             </div>
@@ -137,7 +137,9 @@
 
 <script setup>
 import { ref } from 'vue'
-import {timeAgo} from "@/utils/dateHelpers";
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 defineProps(['sentInvites', 'isLoading'])
 const emit = defineEmits(['cancel-invite', 'cancel-all-invites'])

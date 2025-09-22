@@ -59,6 +59,12 @@ public class UserEntity extends PanacheEntityBase {
     @Size(max = 500, message = "Avatar URL cannot exceed 500 characters")
     private String avatar;
 
+    @NotBlank(message = "Timezone is required")
+    @Size(max = 255, message = "Timezone cannot exceed 255 characters")
+    @Column(name = "timezone", nullable = false)
+    @Builder.Default
+    private String timezone = "UTC";
+
     @Type(JsonType.class)
     @Column(columnDefinition = "jsonb", name = "timeline_preferences")
     public TimelinePreferences timelinePreferences;

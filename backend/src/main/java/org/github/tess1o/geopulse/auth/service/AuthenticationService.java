@@ -89,20 +89,7 @@ public class AuthenticationService {
             throw new InvalidPasswordException("Invalid password");
         }
         // Generate JWT tokens
-        String accessToken = createAccessToken(user);
-        String refreshToken = createRefreshToken(user);
-
-        return AuthResponse.builder()
-                .id(user.getId().toString())
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .email(user.getEmail())
-                .avatar(user.getAvatar())
-                .fullName(user.getFullName())
-                .createdAt(user.getCreatedAt())
-                .expiresIn(accessTokenLifespan)
-                .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
-                .build();
+        return getAuthResponse(user);
     }
 
     /**
@@ -111,6 +98,10 @@ public class AuthenticationService {
      */
     public AuthResponse createAuthResponse(UserEntity user) {
         // Generate JWT tokens
+        return getAuthResponse(user);
+    }
+
+    private AuthResponse getAuthResponse(UserEntity user) {
         String accessToken = createAccessToken(user);
         String refreshToken = createRefreshToken(user);
 
@@ -121,6 +112,7 @@ public class AuthenticationService {
                 .email(user.getEmail())
                 .avatar(user.getAvatar())
                 .fullName(user.getFullName())
+                .timezone(user.getTimezone())
                 .createdAt(user.getCreatedAt())
                 .expiresIn(accessTokenLifespan)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())

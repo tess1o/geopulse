@@ -41,7 +41,7 @@ public class UserServiceTest {
     @Test
     public void testUserRegistration() {
         Instant startOfTheTest = Instant.now();
-        UserEntity user = userService.registerUser("email@test.com", "test", "test");
+        UserEntity user = userService.registerUser("email@test.com", "test", "test", "Europe/Kyiv");
         assertEquals(1, userRepository.count());
         assertEquals("email@test.com", user.getEmail());
         assertEquals("test", user.getFullName());
@@ -55,7 +55,7 @@ public class UserServiceTest {
     @Transactional
     public void testValidAvatarPaths() {
         // Create a test user
-        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User");
+        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
         
         // Test valid avatar paths
         String[] validPaths = {
@@ -84,7 +84,7 @@ public class UserServiceTest {
     @Transactional
     public void testInvalidAvatarPaths() {
         // Create a test user
-        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User");
+        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
         
         // Test invalid avatar paths
         String[] invalidPaths = {
@@ -124,7 +124,7 @@ public class UserServiceTest {
     @Transactional
     public void testNullAvatarPath() {
         // Create a test user
-        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User");
+        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
         
         UpdateProfileRequest request = new UpdateProfileRequest();
         request.setUserId(user.getId());

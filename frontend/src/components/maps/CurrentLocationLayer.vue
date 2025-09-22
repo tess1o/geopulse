@@ -13,6 +13,7 @@
 <script setup>
 import { computed } from 'vue'
 import SharedLocationMarker from './SharedLocationMarker.vue'
+import { useTimezone } from '@/composables/useTimezone';
 
 // Props
 const props = defineProps({
@@ -27,10 +28,12 @@ const props = defineProps({
 })
 
 // Computed shareData for current location
+const timezone = useTimezone()
 const shareData = computed(() => ({
   shareName: 'Your Current Location',
+  sharedBy: 'You',
   description: '',
-  sharedAt: props.location?.timestamp || new Date().toISOString()
+  sharedAt: props.location?.timestamp || timezone.now().toISOString()
 }))
 </script>
 

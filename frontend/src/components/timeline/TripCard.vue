@@ -5,7 +5,7 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatDate(tripItem.timestamp) }}
+        🕐 {{ formattedTimestamp }}
       </p>
     </template>
 
@@ -40,8 +40,9 @@
 </template>
 
 <script setup>
-import { formatDate } from '@/utils/dateHelpers'
+import { computed } from 'vue'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 
 const props = defineProps({
   tripItem: {
@@ -51,6 +52,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['click'])
+
+const timezone = useTimezone()
 
 // Movement type mapping
 const movementTypeMap = {
@@ -66,6 +69,11 @@ const formatMovementType = (type) => {
 const handleClick = () => {
   emit('click', props.tripItem)
 }
+
+const formattedTimestamp = computed(() => {
+  if (!props.tripItem.timestamp) return '';
+  return timezone.format(props.tripItem.timestamp);
+});
 </script>
 
 <style scoped>

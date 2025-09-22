@@ -66,7 +66,7 @@
           icon-color="info"
           :value="summaryStats.lastPointDate"
           label="Latest GPS Point"
-          :formatter="formatDate"
+          :formatter="timezone.timeAgo"
         />
       </BaseCard>
     </div>
@@ -297,7 +297,9 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
-import {formatDate, formatDateMMDDYYYY} from "@/utils/dateHelpers";
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 // Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -354,38 +356,40 @@ const hasDateFilter = computed(() =>
   dateRange.value[1]
 )
 
+// Removed - using timezone composable directly
+
 // Methods
 const formatNumber = (value) => {
   if (!value && value !== 0) return '0'
   return new Intl.NumberFormat().format(value)
 }
 
+const formatDate = (value) => {
+  if (!value) return '-';
+  return timezone.format(value, 'YYYY-MM-DD');
+}
+
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
-  const date = new Date(timestamp)
   return {
-    date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    time: date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    })
+    date: timezone.format(timestamp, 'MMM D'),
+    time: timezone.format(timestamp, 'HH:mm')
   }
 }
 
 const formatDateRange = (range) => {
   if (!range || range.length < 2) return ''
-  const start = range[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-  const end = range[1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  const start = timezone.format(range[0], 'MMM D');
+  const end = timezone.format(range[1], 'MMM D');
   return `${start} - ${end}`
 }
 
-const formatDateForAPI = (date) => {
-  // Format date in local timezone to avoid timezone offset issues
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+const formatDateForAPI = (date, isEndDate = false) => {
+  // Fix: Use createDateRangeFromPicker to properly handle browser timezone dates
+  // The date parameter comes from browser's DatePicker component and needs to be 
+  // converted to user's timezone before getting UTC boundaries
+  const { start, end } = timezone.createDateRangeFromPicker(date, date);
+  return isEndDate ? end : start;
 }
 
 const getSourceSeverity = (sourceType) => {
@@ -451,9 +455,9 @@ const loadGPSPoints = async () => {
     }
     
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      // Format dates in local timezone to avoid timezone offset issues
-      params.startDate = formatDateForAPI(dateRange.value[0])
-      params.endDate = formatDateForAPI(dateRange.value[1])
+      // Send precise UTC timestamps for start/end of day in user timezone
+      params.startTime = formatDateForAPI(dateRange.value[0], false)
+      params.endTime = formatDateForAPI(dateRange.value[1], true)
     }
     
     await technicalDataStore.fetchGPSPoints(params)
@@ -476,9 +480,9 @@ const handleExportCSV = async () => {
     const params = {}
     
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      // Format dates in local timezone to avoid timezone offset issues
-      params.startDate = formatDateForAPI(dateRange.value[0])
-      params.endDate = formatDateForAPI(dateRange.value[1])
+      // Send precise UTC timestamps for start/end of day in user timezone
+      params.startTime = formatDateForAPI(dateRange.value[0], false)
+      params.endTime = formatDateForAPI(dateRange.value[1], true)
     }
     
     await technicalDataStore.exportGPSPoints(params)
@@ -1289,7 +1293,8 @@ watch(pageSize, async () => {
   border-color: var(--gp-border-medium) !important;
 }
 
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight) {
+.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
+.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
   background: var(--gp-primary) !important;
   color: white !important;
   border-color: var(--gp-primary) !important;
@@ -1327,6 +1332,14 @@ watch(pageSize, async () => {
   border-top: 1px solid var(--gp-border-light) !important;
   border-radius: 0 0 0 0 !important;
   overflow: hidden !important;
+}
+
+/* Light mode selected page styling */
+.gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
+.gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
+  background: var(--gp-primary) !important;
+  color: white !important;
+  border-color: var(--gp-primary) !important;
 }
 
 /* Remove unwanted focus/active borders on page header */

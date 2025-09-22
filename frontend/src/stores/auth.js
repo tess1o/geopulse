@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
+import { setUserTimezone } from '../utils/timezoneUtils'
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -17,6 +18,7 @@ export const useAuthStore = defineStore('auth', {
         userEmail: (state) => state.user?.email || '',
         userId: (state) => state.user?.userId || null,
         userAvatar: (state) => state.user?.avatar || '',
+        userTimezone: (state) => state.user?.timezone || 'UTC',
         hasPassword: (state) => state.user?.hasPassword || false,
     },
 
@@ -26,13 +28,13 @@ export const useAuthStore = defineStore('auth', {
             this.user = user;
             this.isAuthenticated = !!user;
             if (user) {
-                // Persist essential, non-sensitive data to localStorage
                 const userInfo = {
-                    id: user.id,
+                    id: user.id || user.userId || null,
                     userId: user.id, // For backward compatibility with other parts of the app
                     fullName: user.fullName,
                     email: user.email,
                     avatar: user.avatar,
+                    timezone: user.timezone || 'UTC',
                     createdAt: user.createdAt,
                     hasPassword: user.hasPassword
                 };
@@ -61,12 +63,13 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async register(email, password, fullName) {
+        async register(email, password, fullName, timezone) {
             try {
                 await apiService.post('/users/register', {
                     email,
                     password,
-                    fullName
+                    fullName,
+                    timezone
                 });
                 await this.login(email, password);
             } catch (error) {
@@ -80,11 +83,12 @@ export const useAuthStore = defineStore('auth', {
         },
 
         //TODO: remove userId, find it on backend.
-        async updateProfile(fullName, avatar, userId) {
+        async updateProfile(fullName, avatar, timezone, userId) {
             try {
                 await apiService.post(`/users/update`, {
                     fullName,
                     avatar,
+                    timezone,
                     userId
                 });
                 
@@ -92,14 +96,25 @@ export const useAuthStore = defineStore('auth', {
                 const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
                 userInfo.fullName = fullName;
                 userInfo.avatar = avatar;
+                userInfo.timezone = timezone;
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
                 // Update the user in store
                 if (this.user) {
-                    this.user = {...this.user, fullName, avatar}
+                    this.user = {...this.user, fullName, avatar, timezone}
                 }
             } catch (error) {
                 throw error
+            }
+        },
+
+        // Update user's timezone in store and localStorage
+        updateUserTimezone(timezone) {
+            if (this.user) {
+                this.user.timezone = timezone
+                
+                // Update localStorage with normalized timezone
+                setUserTimezone(timezone)
             }
         },
 
@@ -142,6 +157,7 @@ export const useAuthStore = defineStore('auth', {
                     fullName: userInfo.fullName,
                     email: userInfo.email,
                     avatar: userInfo.avatar,
+                    timezone: userInfo.timezone || 'UTC',
                     createdAt: userInfo.createdAt,
                     hasPassword: userInfo.hasPassword,
                 }
@@ -216,6 +232,21 @@ export const useAuthStore = defineStore('auth', {
             } catch (error) {
                 console.error('Failed to get linked OIDC providers:', error);
                 return [];
+            }
+        },
+
+        // Fetch current user profile from backend and update state/localStorage
+        async fetchCurrentUserProfile() {
+            try {
+                const response = await apiService.get('/users/me');
+                const userData = response.data;
+                
+                // Update user state and localStorage with fresh data
+                this.setUser(userData);
+                return userData;
+            } catch (error) {
+                console.error('Failed to fetch current user profile:', error);
+                throw error;
             }
         }
     }

@@ -135,13 +135,6 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::getDataGapMinDurationSeconds,
                         TimelineConfig::setDataGapMinDurationSeconds,
                         Integer::valueOf
-                ))
-                .register(new ConfigField<>(
-                        "geopulse.timeline.timezone.default",
-                        properties.getTimezoneDefault(),
-                        TimelineConfig::getTimezone,
-                        TimelineConfig::setTimezone,
-                        String::valueOf
                 ));
     }
 }

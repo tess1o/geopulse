@@ -164,6 +164,9 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Toast from 'primevue/toast'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 const props = defineProps({
   errorType: {
@@ -198,14 +201,14 @@ const toast = useToast()
 const retrying = ref(false)
 const isOnline = ref(navigator.onLine)
 const backendOnline = ref(false)
-const lastUpdated = ref(new Date().toLocaleTimeString())
+const lastUpdated = ref(timezone.now().format('HH:mm:ss'))
 const checkingStatus = ref(false)
 let statusCheckInterval = null
 
 // Update connection status
 const updateConnectionStatus = async () => {
   isOnline.value = navigator.onLine
-  lastUpdated.value = new Date().toLocaleTimeString()
+  lastUpdated.value = timezone.now().format('HH:mm:ss')
   
   // Also check backend status
   await checkBackendConnectivity()
@@ -413,7 +416,7 @@ const getStatusClass = (status) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return 'N/A'
   try {
-    return new Date(timestamp).toLocaleString()
+    return timezone.format(timestamp, 'YYYY-MM-DD HH:mm:ss')
   } catch (error) {
     return timestamp
   }

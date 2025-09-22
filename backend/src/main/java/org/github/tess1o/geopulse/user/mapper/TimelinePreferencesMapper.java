@@ -75,8 +75,6 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "dataGapMinDurationSeconds", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "timezone", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void mergeImportIntoExisting(TimelinePreferences fromImport, @MappingTarget TimelinePreferences existing);
 
     /**
@@ -108,7 +106,6 @@ public interface TimelinePreferencesMapper {
                     .pathAdaptiveSimplification(fromImport.getPathAdaptiveSimplification())
                     .dataGapThresholdSeconds(fromImport.getDataGapThresholdSeconds())
                     .dataGapMinDurationSeconds(fromImport.getDataGapMinDurationSeconds())
-                    .timezone(fromImport.getTimezone())
                     .build();
         }
         
@@ -130,7 +127,6 @@ public interface TimelinePreferencesMapper {
                 .pathAdaptiveSimplification(existing.getPathAdaptiveSimplification())
                 .dataGapThresholdSeconds(existing.getDataGapThresholdSeconds())
                 .dataGapMinDurationSeconds(existing.getDataGapMinDurationSeconds())
-                .timezone(existing.getTimezone())
                 .build();
         
         // Use MapStruct to merge non-null import values into the result

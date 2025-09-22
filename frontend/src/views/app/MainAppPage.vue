@@ -19,25 +19,20 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useTimezone } from '@/composables/useTimezone'
 
 // New Layout Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import AppNavbarWithDatePicker from '@/components/ui/layout/AppNavbarWithDatePicker.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 
-// Utils and Stores
-import {
-  formatDateMMDDYYYY,
-  getTodayRange,
-  isValidDataRange,
-  isValidDate,
-  setToEndOfDay
-} from "@/utils/dateHelpers"
+// Stores
 import { useDateRangeStore } from '@/stores/dateRange'
 
 // Composables
 const route = useRoute()
 const router = useRouter()
+const timezone = useTimezone()
 
 // Pinia store
 const dateRangeStore = useDateRangeStore()
@@ -59,20 +54,6 @@ const tabItems = ref([
     to: '/app/dashboard',
     class: 'dashboard-tab'
   },
-/*  {
-    label: 'Places',
-    icon: 'pi pi-map-marker',
-    to: '/app/places',
-    disabled: true,
-    class: 'places-tab'
-  },
-  {
-    label: 'Stats',
-    icon: 'pi pi-chart-line',
-    to: '/app/stats',
-    disabled: true,
-    class: 'stats-tab'
-  },*/
 ])
 
 // Methods
@@ -95,15 +76,14 @@ const handleNavigate = (item) => {
 }
 
 const initializeDateRangeFromQuery = () => {
-  const todayRange = getTodayRange()
+  const todayRange = timezone.getTodayRangeUtc();
+  const startFromQuery = timezone.parseUrlDate(route.query.start, false);
+  const endFromQuery = timezone.parseUrlDate(route.query.end, true);
 
-  const startFromQuery = new Date(route.query.start)
-  const endFromQuery = new Date(route.query.end)
+  const startDate = timezone.isValidDate(startFromQuery) ? startFromQuery : todayRange.start;
+  const endDate = timezone.isValidDate(endFromQuery) ? endFromQuery : todayRange.end;
 
-  const startDate = isValidDate(startFromQuery) ? startFromQuery : todayRange.start
-  const endDate = setToEndOfDay(isValidDate(endFromQuery) ? endFromQuery : todayRange.end)
-
-  dateRangeStore.setDateRange([startDate, endDate])
+  dateRangeStore.setDateRange([startDate, endDate]);
 }
 
 // Initialize date range on mount
@@ -120,28 +100,23 @@ watch(() => route.path, (path) => {
 
 // Watch date range changes to update URL
 watch(dates, (newValue) => {
-  if (newValue && isValidDataRange(newValue)) {
-    const [newStartDate, newEndDate] = newValue
-    const startDate = newStartDate
-    const endDate = setToEndOfDay(newEndDate)
+  if (newValue && timezone.isValidDateRange(newValue)) {
+    const [newStartDate, newEndDate] = newValue;
 
-    // Only update URL if the dates are different from current query params
-    const currentStart = route.query.start
-    const currentEnd = route.query.end
-    const newStart = formatDateMMDDYYYY(startDate)
-    const newEnd = formatDateMMDDYYYY(endDate)
+    const newStart = timezone.formatDateUS(newStartDate);
+    const newEnd = timezone.formatDateUS(newEndDate);
 
-    if (currentStart !== newStart || currentEnd !== newEnd) {
+    if (route.query.start !== newStart || route.query.end !== newEnd) {
       router.replace({
         query: {
           ...route.query,
           start: newStart,
           end: newEnd,
         },
-      })
+      });
     }
   }
-})
+}, { deep: true });
 </script>
 
 <style scoped>

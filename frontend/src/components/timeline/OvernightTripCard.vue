@@ -5,28 +5,36 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatContinuationText(tripItem.timestamp, currentDate) }}
+        🕐 {{ getTimestampText() }}
       </p>
     </template>
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        🚗 Trip - {{ tripItem.movementType }}
+        <p class="transition-title">
+          🔄 Transition to new place
+        </p>
       </div>
     </template>
 
     <template #content>
-      <div class="overnight-trip-content">
-        <p class="duration-detail">
-          ⏱️ Total duration:
-          <span class="duration-value">{{ formatDuration(tripItem.tripDuration) }}</span>
+      <div class="trip-content">
+        <p class="trip-detail">
+          📈 Total duration: <span class="font-bold">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
         </p>
-        <p class="duration-detail">
+        <p class="trip-detail">
           ⏱️ On this day:
-          <span class="duration-value">{{ formatOnThisDayDuration(tripItem, currentDate) }}</span>
+          <span class="font-bold"> {{ getOnThisDayText() }}</span>
         </p>
-        <p v-if="tripItem.distanceMeters" class="distance-detail">
-          📏 Distance: <span class="distance-value">{{ formatDistance(tripItem.distanceMeters) }}</span>
+        <p v-if="tripItem.distanceMeters" class="trip-detail">
+          📏 Distance: <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
+        </p>
+        <p class="trip-detail">
+          🚦 Movement:
+          <span class="font-bold">
+            {{ getMovementIcon() }}
+            {{ formatMovementType(tripItem.movementType) }}
+          </span>
         </p>
       </div>
     </template>
@@ -34,8 +42,8 @@
 </template>
 
 <script setup>
-import { formatDate, formatTime } from '@/utils/dateHelpers'
-import { formatDuration, formatDistance } from '@/utils/calculationsHelpers'
+import { useTimezone } from '@/composables/useTimezone';
+import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 
 const props = defineProps({
   tripItem: {
@@ -46,67 +54,46 @@ const props = defineProps({
     type: String,
     required: true
   }
-})
+});
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click']);
 
-const formatContinuationText = (startTime, currentDateString) => {
-  const startDate = new Date(startTime)
-  const currentDate = new Date(currentDateString)
-  
-  // Calculate days difference
-  const daysDiff = Math.floor((currentDate - startDate) / (1000 * 60 * 60 * 24))
-  
-  if (daysDiff === 1) {
-    return `Continued from yesterday, ${formatTime(startTime)}`
-  } else {
-    // Always show full date for clarity with historical data
-    const dateFormatOptions = { 
-      month: 'short', 
-      day: 'numeric'
-    }
-    
-    // Include year if different from current year
-    if (startDate.getFullYear() !== currentDate.getFullYear()) {
-      dateFormatOptions.year = 'numeric'
-    }
-    
-    const fullDate = startDate.toLocaleDateString('en-US', dateFormatOptions)
-    return `Continued from ${fullDate}, ${formatTime(startTime)}`
+const timezone = useTimezone();
+
+// Methods
+const getTimestampText = () => {
+  return timezone.getOvernightTimestampText(props.tripItem, props.currentDate)
+}
+
+const getMovementIcon = () => {
+  switch (props.tripItem.movementType) {
+    case 'WALK': return '🚶‍♂️'
+    case 'RUN': return '🏃‍♂️'
+    case 'BIKE': return '🚴‍♂️'
+    case 'CAR': return '🚗'
+    case 'BUS': return '🚌'
+    case 'TRAIN': return '🚊'
+    case 'PLANE': return '✈️'
+    default: return '🚗'
   }
 }
 
-const formatOnThisDayDuration = (tripItem, currentDateString) => {
-  const currentDate = new Date(currentDateString)
-  const tripStart = new Date(tripItem.timestamp)
-  // Calculate end time from start time + duration (tripDuration is in minutes)
-  const tripEnd = new Date(tripStart.getTime() + (tripItem.tripDuration * 60 * 1000))
-  
-  // Calculate start and end times for this specific day
-  const dayStart = new Date(currentDate)
-  dayStart.setHours(0, 0, 0, 0)
-  
-  const dayEnd = new Date(currentDate)
-  dayEnd.setHours(23, 59, 59, 999)
-  
-  // Determine the actual start and end times for this day
-  const thisDayStart = tripStart < dayStart ? dayStart : tripStart
-  const thisDayEnd = tripEnd > dayEnd ? dayEnd : tripEnd
-  
-  // Format the time range
-  const startTimeStr = formatTime(thisDayStart)
-  const endTimeStr = formatTime(thisDayEnd)
-  
-  // Calculate duration in minutes for this day only
-  const durationMs = thisDayEnd - thisDayStart
-  const durationMinutes = Math.floor(durationMs / (1000 * 60))
-  
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationMinutes)})`
+const getOnThisDayText = () => {
+  return timezone.getOvernightOnThisDayText(props.tripItem, props.currentDate)
+}
+
+const formatMovementType = (type) => {
+  const movementTypeMap = {
+    WALK: 'Walk',
+    CAR: 'Car',
+    UNKNOWN: 'Unknown'
+  }
+  return movementTypeMap[type] || type
 }
 
 const handleClick = () => {
-  emit('click', props.tripItem)
-}
+  emit('click', props.tripItem);
+};
 </script>
 
 <style scoped>
@@ -136,14 +123,17 @@ const handleClick = () => {
     font-size: 0.875rem;
   }
   
-  .overnight-trip-content {
+  .trip-content {
     margin-top: var(--gp-spacing-xs);
   }
   
-  .duration-detail,
-  .distance-detail {
+  .trip-detail {
     margin: 2px 0;
     font-size: 0.8rem;
+  }
+  
+  .transition-title {
+    font-size: 0.875rem;
   }
 }
 
@@ -158,7 +148,7 @@ const handleClick = () => {
 }
 
 .timeline-timestamp {
-  color: var(--gp-success-dark);
+  color: var(--gp-primary);
   font-weight: 600;
   font-size: 0.95rem;
   margin: 0;
@@ -168,27 +158,31 @@ const handleClick = () => {
 .timeline-subtitle {
   margin: var(--gp-spacing-xs) 0 0 0;
   color: var(--gp-text-primary);
+}
+
+.transition-title {
+  color: var(--gp-primary);
+  font-weight: 700;
+  margin: 0;
   font-size: 0.9rem;
   line-height: 1.3;
 }
 
-.overnight-trip-content {
+.trip-content {
   margin-top: var(--gp-spacing-xs);
   color: var(--gp-text-primary);
 }
 
-.duration-detail,
-.distance-detail {
+.trip-detail {
   margin: var(--gp-spacing-xs) 0;
   color: var(--gp-text-primary);
   font-size: 0.875rem;
   line-height: 1.3;
 }
 
-.duration-detail .duration-value,
-.distance-detail .distance-value {
+.trip-detail .font-bold {
   font-weight: 700;
-  color: var(--gp-success-dark);
+  color: var(--gp-primary);
 }
 
 /* Dark mode adjustments */
@@ -202,15 +196,17 @@ const handleClick = () => {
 }
 
 .p-dark .timeline-timestamp,
-.p-dark .duration-detail .duration-value,
-.p-dark .distance-detail .distance-value {
-  color: var(--gp-success);
+.p-dark .transition-title {
+  color: var(--gp-primary);
+}
+
+.p-dark .trip-detail .font-bold {
+  color: var(--gp-primary);
 }
 
 .p-dark .timeline-subtitle,
-.p-dark .overnight-trip-content,
-.p-dark .duration-detail,
-.p-dark .distance-detail {
+.p-dark .trip-content,
+.p-dark .trip-detail {
   color: var(--gp-text-primary);
 }
 

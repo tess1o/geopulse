@@ -15,6 +15,9 @@
 <script setup>
 import { computed } from 'vue'
 import BaseMarker from './BaseMarker.vue'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 import { createCustomDivIcon, MARKER_COLORS, MARKER_SIZES } from '@/utils/mapHelpers'
 
 const props = defineProps({
@@ -114,8 +117,8 @@ const popupConfig = computed(() => {
   
   // Created date
   if (props.favorite.createdAt) {
-    const date = new Date(props.favorite.createdAt)
-    content += `<div class="popup-created">Added ${date.toLocaleDateString()}</div>`
+    const dateStr = timezone.formatDate(props.favorite.createdAt)
+    content += `<div class="popup-created">Added ${dateStr}</div>`
   }
   
   // Actions

@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 /**
  * DTO for GPS point summary statistics.
  */
@@ -13,6 +15,6 @@ import lombok.NoArgsConstructor;
 public class GpsPointSummaryDTO {
     private long totalPoints;
     private long pointsToday;
-    private String firstPointDate;
-    private String lastPointDate;
+    private Instant firstPointDate;
+    private Instant lastPointDate;
 }

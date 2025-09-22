@@ -5,7 +5,7 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatDate(stayItem.timestamp) }}
+        🕐 {{ formattedTimestamp }}
       </p>
     </template>
 
@@ -41,9 +41,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { formatDate, formatTime } from '@/utils/dateHelpers'
 import { formatDuration } from '@/utils/calculationsHelpers'
-import { isOvernightStay } from '@/utils/overnightHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 
 const props = defineProps({
   stayItem: {
@@ -54,35 +53,26 @@ const props = defineProps({
 
 const emit = defineEmits(['click'])
 
+const timezone = useTimezone()
+
 const handleClick = () => {
   emit('click', props.stayItem)
 }
 
-const isOvernight = computed(() => isOvernightStay(props.stayItem))
-
-const getEndOfDayTime = (startTime) => {
-  const date = new Date(startTime)
-  const endOfDay = new Date(date)
-  endOfDay.setHours(23, 59, 59, 999)
-  return endOfDay
-}
+const isOvernight = computed(() => {
+  if (!props.stayItem.timestamp || !props.stayItem.stayDuration) return false;
+  return timezone.isOvernightWithDuration(props.stayItem.timestamp, props.stayItem.stayDuration);
+});
 
 const formatOnThisDayDuration = (stayItem) => {
-  const stayStart = new Date(stayItem.timestamp)
-  const stayEnd = new Date(stayStart.getTime() + (stayItem.stayDuration * 1000)) // stayDuration is now in seconds
-  const endOfDay = getEndOfDayTime(stayStart)
-  
-  // For overnight stays, the "on this day" duration is from start time to end of day
-  const thisDayEnd = stayEnd < endOfDay ? stayEnd : endOfDay
-  
-  const startTimeStr = formatTime(stayStart)
-  const endTimeStr = formatTime(thisDayEnd)
-  
-  const durationMs = thisDayEnd - stayStart
-  const durationSeconds = Math.floor(durationMs / 1000)
-  
-  return `${startTimeStr} - ${endTimeStr} (${formatDuration(durationSeconds)})`
+  const dateStr = stayItem.timestamp.substring(0, 10);
+  return timezone.formatOnThisDayDuration(stayItem, dateStr, 'stay');
 }
+
+const formattedTimestamp = computed(() => {
+  if (!props.stayItem.timestamp) return '';
+  return timezone.format(props.stayItem.timestamp);
+});
 </script>
 
 <style scoped>

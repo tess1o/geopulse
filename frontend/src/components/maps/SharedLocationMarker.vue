@@ -4,7 +4,9 @@
 
 <script setup>
 import {ref, watch, onUnmounted} from 'vue'
-import {timeAgo} from '@/utils/dateHelpers'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 import L from 'leaflet'
 
 // Props
@@ -52,7 +54,7 @@ const createMarker = () => {
       <div style="text-align: center;">
         <strong>${props.shareData.sharedBy}</strong><br/>
         ${props.shareData.description ? `<em>${props.shareData.description}</em><br/>` : ''}
-        <small>Last seen ${timeAgo(props.shareData.sharedAt)}</small>
+        <small>Last seen ${timezone.timeAgo(props.shareData.sharedAt)}</small>
       </div>
     `)
 

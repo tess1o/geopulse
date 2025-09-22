@@ -34,8 +34,9 @@
           </template>
 
           <template #content="slotProps">
+            <!-- Stay Cards -->
             <OvernightStayCard
-              v-if="slotProps.item.type === 'stay' && shouldShowAsOvernightStay(slotProps.item, dateGroup.date)"
+              v-if="slotProps.item.type === 'stay' && isOvernightItem(slotProps.item)"
               :stay-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
@@ -47,8 +48,9 @@
               @click="handleTimelineItemClick"
             />
 
+            <!-- Trip Cards -->
             <OvernightTripCard
-              v-else-if="slotProps.item.type === 'trip' && shouldShowAsOvernightTrip(slotProps.item, dateGroup.date)"
+              v-if="slotProps.item.type === 'trip' && isOvernightItem(slotProps.item)"
               :trip-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
@@ -60,8 +62,9 @@
               @click="handleTimelineItemClick"
             />
 
+            <!-- Data Gap Cards -->
             <OvernightDataGapCard
-              v-else-if="slotProps.item.type === 'dataGap' && shouldShowAsOvernightDataGap(slotProps.item, dateGroup.date)"
+              v-if="slotProps.item.type === 'dataGap' && isOvernightItem(slotProps.item)"
               :data-gap-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
@@ -87,12 +90,7 @@ import DataGapCard from './DataGapCard.vue'
 import OvernightStayCard from './OvernightStayCard.vue'
 import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
-import { 
-  shouldItemAppearOnDate, 
-  shouldShowAsOvernightStay,
-  shouldShowAsOvernightTrip,
-  shouldShowAsOvernightDataGap
-} from '@/utils/overnightHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 
 // Props
 const props = defineProps({
@@ -117,6 +115,14 @@ const props = defineProps({
 // Emits
 const emit = defineEmits(['timeline-item-click'])
 
+// Composables
+const timezone = useTimezone()
+
+// Check if an item spans multiple days (overnight)
+const isOvernightItem = (item) => {
+  return timezone.getTotalDaysSpanned(item) > 1;
+};
+
 // Computed properties
 const getMarkerIcon = computed(() => (type) => {
   if (type === 'stay') return 'pi pi-map-marker'
@@ -125,22 +131,18 @@ const getMarkerIcon = computed(() => (type) => {
   return 'pi pi-circle'
 })
 
-// Updated to handle overnight items with different markers
+// Marker icons based on item type
 const getMarkerIconForItem = computed(() => (item, dateKey) => {
-  if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
-    return 'pi pi-moon' // Moon icon for overnight stays
+  // Show moon icon for overnight items
+  if (isOvernightItem(item)) {
+    return 'pi pi-moon';
   }
-  if (item.type === 'trip' && shouldShowAsOvernightTrip(item, dateKey)) {
-    return 'pi pi-moon' // Moon icon for overnight trips
-  }
-  if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
-    return 'pi pi-moon' // Moon icon for overnight data gaps
-  }
+  // Special walking icon for trips
   if (item.type === 'trip' && item.movementType === 'WALK') {
-    return 'fas fa-walking' // Walking person icon for walking trips
+    return 'fas fa-walking';
   }
-  return getMarkerIcon.value(item.type)
-})
+  return getMarkerIcon.value(item.type);
+});
 
 const getMarkerClass = computed(() => (type) => {
   if (type === 'stay') return 'marker-stay'
@@ -149,18 +151,10 @@ const getMarkerClass = computed(() => (type) => {
   return 'marker-default'
 })
 
-// Updated to handle overnight items with different classes
+// Marker classes based on item type  
 const getMarkerClassForItem = computed(() => (item, dateKey) => {
-  if (item.type === 'stay' && shouldShowAsOvernightStay(item, dateKey)) {
-    return 'marker-overnight-stay' // Special class for overnight stays
-  }
-  if (item.type === 'trip' && shouldShowAsOvernightTrip(item, dateKey)) {
-    return 'marker-overnight-trip' // Special class for overnight trips
-  }
-  if (item.type === 'dataGap' && shouldShowAsOvernightDataGap(item, dateKey)) {
-    return 'marker-overnight-data-gap' // Special class for overnight data gaps
-  }
-  return getMarkerClass.value(item.type)
+  const baseClass = getMarkerClass.value(item.type);
+  return isOvernightItem(item) ? `${baseClass} marker-overnight` : baseClass;
 })
 
 // Group timeline data by date with proper overnight stay handling
@@ -169,67 +163,48 @@ const groupedTimelineData = computed(() => {
     return []
   }
 
-  // First, determine all the dates we need to show based on the dateRange
-  const allDates = new Set()
-  
-  // Use requested date range if available, otherwise fallback to timeline items
+  const allDates = new Set();
   if (props.dateRange && props.dateRange.length === 2) {
-    const [startDate, endDate] = props.dateRange
-    const currentDate = new Date(startDate)
-    const end = new Date(endDate)
-    
-    while (currentDate <= end) {
-      allDates.add(currentDate.toDateString())
-      currentDate.setDate(currentDate.getDate() + 1)
-    }
+    // Generate date range using timezone composable
+    const dateArray = timezone.getDateRangeArray(props.dateRange[0], props.dateRange[1])
+    dateArray.forEach(date => allDates.add(date))
   } else {
-    // Fallback: add dates from timeline items only if no range specified
     props.timelineData.forEach(item => {
-      const itemDate = new Date(item.timestamp)
-      allDates.add(itemDate.toDateString())
+      const itemStartTime = item.timestamp || item.startTime
+      const itemDate = timezone.fromUtc(itemStartTime)
+      allDates.add(itemDate.format('YYYY-MM-DD'));
       
-      // For overnight stays, also add the end date
-      if (item.type === 'stay' && item.stayDuration) {
-        const endDate = new Date(itemDate.getTime() + (item.stayDuration * 60 * 1000))
-        if (itemDate.toDateString() !== endDate.toDateString()) {
-          allDates.add(endDate.toDateString())
+      // Add all days this item spans to the date range
+      const totalDays = timezone.getTotalDaysSpanned(item);
+      if (totalDays > 1) {
+        for (let i = 1; i < totalDays; i++) {
+          const spanDate = itemDate.add(i, 'day');
+          allDates.add(spanDate.format('YYYY-MM-DD'));
         }
       }
-    })
+    });
   }
 
-  // Create a map to group items by date
-  const dateGroups = new Map()
-  
-  // Initialize all date groups
+  const dateGroups = new Map();
   allDates.forEach(dateKey => {
-    const date = new Date(dateKey)
     dateGroups.set(dateKey, {
       date: dateKey,
-      dateLabel: date.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
+      dateLabel: timezone.formatDateLong(dateKey),
       items: []
-    })
-  })
-  
-  // Process each timeline item and assign to appropriate dates
+    });
+  });
+
   props.timelineData.forEach(item => {
-    // Check each date to see if this item should appear on it
     allDates.forEach(dateKey => {
-      if (shouldItemAppearOnDate(item, dateKey)) {
-        dateGroups.get(dateKey).items.push(item)
+      if (timezone.shouldItemAppearOnDate(item, dateKey)) {
+        dateGroups.get(dateKey)?.items.push(item);
       }
-    })
-  })
-  
-  // Convert map to array, filter out empty groups, and sort by date
+    });
+  });
+
   return Array.from(dateGroups.values())
     .filter(group => group.items.length > 0)
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
+    .sort((a, b) => timezone.diff(a.date, b.date, 'day'));
 })
 
 // Methods

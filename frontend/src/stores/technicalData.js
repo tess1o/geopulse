@@ -53,12 +53,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             try {
                 this.setLoading(true)
                 
-                // Get user's timezone
-                const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-                
-                const response = await apiService.get('/gps/summary', {
-                    timezone: userTimezone
-                })
+                const response = await apiService.get('/gps/summary')
                 // Extract data from wrapper response
                 const summaryData = response.data || response
                 this.setSummaryStats(summaryData)

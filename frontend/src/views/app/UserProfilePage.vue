@@ -79,6 +79,29 @@
                           />
                           <small class="help-text">Email cannot be changed</small>
                         </div>
+
+                        <div class="form-field">
+                          <label for="timezone" class="form-label">Timezone</label>
+                          <Dropdown
+                            id="timezone"
+                            v-model="profileForm.timezone"
+                            :options="timezoneOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Select your timezone"
+                            filter
+                            :filterMatchMode="'contains'"
+                            :invalid="!!profileErrors.timezone"
+                            class="w-full"
+                            scrollHeight="300px"
+                          />
+                          <small v-if="profileErrors.timezone" class="error-message">
+                            {{ profileErrors.timezone }}
+                          </small>
+                          <small v-else class="help-text">
+                            Your timezone is used for date displays and statistics
+                          </small>
+                        </div>
                       </div>
 
                       <!-- Action Buttons -->
@@ -336,7 +359,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -371,7 +394,8 @@ const activeTabIndex = computed(() => {
 
 // Form data
 const profileForm = ref({
-  fullName: ''
+  fullName: '',
+  timezone: ''
 })
 
 const passwordForm = ref({
@@ -390,6 +414,58 @@ const immichForm = ref({
 const profileErrors = ref({})
 const passwordErrors = ref({})
 const immichErrors = ref({})
+
+// Timezone options (common timezones)
+const timezoneOptions = [
+  { label: 'UTC', value: 'UTC' },
+  { label: 'Europe/London GMT+0', value: 'Europe/London' },
+  { label: 'Europe/Paris GMT+1', value: 'Europe/Paris' },
+  { label: 'Europe/Berlin GMT+1', value: 'Europe/Berlin' },
+  { label: 'Europe/Rome GMT+1', value: 'Europe/Rome' },
+  { label: 'Europe/Madrid GMT+1', value: 'Europe/Madrid' },
+  { label: 'Europe/Amsterdam GMT+1', value: 'Europe/Amsterdam' },
+  { label: 'Europe/Brussels GMT+1', value: 'Europe/Brussels' },
+  { label: 'Europe/Vienna GMT+1', value: 'Europe/Vienna' },
+  { label: 'Europe/Stockholm GMT+1', value: 'Europe/Stockholm' },
+  { label: 'Europe/Copenhagen GMT+1', value: 'Europe/Copenhagen' },
+  { label: 'Europe/Oslo GMT+1', value: 'Europe/Oslo' },
+  { label: 'Europe/Helsinki GMT+2', value: 'Europe/Helsinki' },
+  { label: 'Europe/Athens GMT+2', value: 'Europe/Athens' },
+  { label: 'Europe/Bucharest GMT+2', value: 'Europe/Bucharest' },
+  { label: 'Europe/Kyiv GMT+2', value: 'Europe/Kyiv' },
+  { label: 'Europe/Warsaw GMT+1', value: 'Europe/Warsaw' },
+  { label: 'Europe/Prague GMT+1', value: 'Europe/Prague' },
+  { label: 'Europe/Budapest GMT+1', value: 'Europe/Budapest' },
+  { label: 'Europe/Moscow GMT+3', value: 'Europe/Moscow' },
+  { label: 'America/New_York GMT-5', value: 'America/New_York' },
+  { label: 'America/Chicago GMT-6', value: 'America/Chicago' },
+  { label: 'America/Denver GMT-7', value: 'America/Denver' },
+  { label: 'America/Los_Angeles GMT-8', value: 'America/Los_Angeles' },
+  { label: 'America/Toronto GMT-5', value: 'America/Toronto' },
+  { label: 'America/Vancouver GMT-8', value: 'America/Vancouver' },
+  { label: 'America/Mexico_City GMT-6', value: 'America/Mexico_City' },
+  { label: 'America/Sao_Paulo GMT-3', value: 'America/Sao_Paulo' },
+  { label: 'America/Argentina/Buenos_Aires GMT-3', value: 'America/Argentina/Buenos_Aires' },
+  { label: 'Asia/Tokyo GMT+9', value: 'Asia/Tokyo' },
+  { label: 'Asia/Shanghai GMT+8', value: 'Asia/Shanghai' },
+  { label: 'Asia/Hong_Kong GMT+8', value: 'Asia/Hong_Kong' },
+  { label: 'Asia/Singapore GMT+8', value: 'Asia/Singapore' },
+  { label: 'Asia/Seoul GMT+9', value: 'Asia/Seoul' },
+  { label: 'Asia/Bangkok GMT+7', value: 'Asia/Bangkok' },
+  { label: 'Asia/Jakarta GMT+7', value: 'Asia/Jakarta' },
+  { label: 'Asia/Manila GMT+8', value: 'Asia/Manila' },
+  { label: 'Asia/Kolkata GMT+5:30', value: 'Asia/Kolkata' },
+  { label: 'Asia/Dubai GMT+4', value: 'Asia/Dubai' },
+  { label: 'Asia/Tehran GMT+3:30', value: 'Asia/Tehran' },
+  { label: 'Australia/Sydney GMT+10', value: 'Australia/Sydney' },
+  { label: 'Australia/Melbourne GMT+10', value: 'Australia/Melbourne' },
+  { label: 'Australia/Perth GMT+8', value: 'Australia/Perth' },
+  { label: 'Pacific/Auckland GMT+12', value: 'Pacific/Auckland' },
+  { label: 'Africa/Cairo GMT+2', value: 'Africa/Cairo' },
+  { label: 'Africa/Johannesburg GMT+2', value: 'Africa/Johannesburg' },
+  { label: 'Africa/Lagos GMT+1', value: 'Africa/Lagos' },
+  { label: 'Africa/Nairobi GMT+3', value: 'Africa/Nairobi' }
+]
 
 // Avatar options
 const avatarOptions = [
@@ -418,7 +494,8 @@ const avatarOptions = [
 // Computed
 const hasProfileChanges = computed(() => {
   return profileForm.value.fullName !== userName.value || 
-         selectedAvatar.value !== userAvatar.value
+         selectedAvatar.value !== userAvatar.value ||
+         profileForm.value.timezone !== userTimezone.value
 })
 
 const hasPasswordChanges = computed(() => {
@@ -521,6 +598,7 @@ const saveProfile = async () => {
     await authStore.updateProfile(
       profileForm.value.fullName.trim(),
       selectedAvatar.value,
+      profileForm.value.timezone,
       userId.value
     )
     
@@ -617,6 +695,7 @@ const saveImmichConfig = async () => {
 
 const resetProfile = () => {
   profileForm.value.fullName = userName.value || ''
+  profileForm.value.timezone = userTimezone.value || 'UTC'
   selectedAvatar.value = userAvatar.value || '/avatars/avatar1.png'
   profileErrors.value = {}
 }
@@ -683,6 +762,21 @@ watch(immichConfig, (newConfig) => {
 
 // Lifecycle
 onMounted(async () => {
+  // Fetch fresh profile data from backend first
+  try {
+    await authStore.fetchCurrentUserProfile()
+  } catch (error) {
+    console.warn('Failed to fetch current user profile from backend, using cached data:', error)
+    // Show a toast notification to inform user about using cached data
+    toast.add({
+      severity: 'warn',
+      summary: 'Using Cached Data',
+      detail: 'Unable to fetch latest profile data. Showing cached information.',
+      life: 4000
+    })
+  }
+  
+  // Reset form with current (fresh or cached) data
   resetProfile()
   
   // Load Immich config

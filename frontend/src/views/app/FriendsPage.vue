@@ -387,6 +387,9 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -734,9 +737,9 @@ const handleFriendLocated = (friend) => {
 const getFriendStatus = (friend) => {
   if (!friend.lastSeen) return 'No Location'
   
-  const lastSeen = new Date(friend.lastSeen)
-  const now = new Date()
-  const diffMinutes = (now - lastSeen) / (1000 * 60)
+  const lastSeen = timezone.fromUtc(friend.lastSeen)
+  const now = timezone.now()
+  const diffMinutes = now.diff(lastSeen, 'minute')
   
   if (diffMinutes < 5) return 'Online'
   if (diffMinutes < 60) return 'Recent'
@@ -755,9 +758,9 @@ const getFriendStatusSeverity = (friend) => {
 const getLastSeenText = (lastSeen) => {
   if (!lastSeen) return 'Never'
   
-  const date = new Date(lastSeen)
-  const now = new Date()
-  const diffMinutes = (now - date) / (1000 * 60)
+  const date = timezone.fromUtc(lastSeen)
+  const now = timezone.now()
+  const diffMinutes = now.diff(date, 'minute')
   
   if (diffMinutes < 1) return 'Just now'
   if (diffMinutes < 60) return `${Math.floor(diffMinutes)}m ago`
@@ -790,12 +793,7 @@ const refreshFriendsData = async () => {
 }
 
 const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
+  return timezone.format(dateString, 'MMM D, YYYY')
 }
 
 // Lifecycle

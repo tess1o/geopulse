@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import { STREAK_STATUS, ACTIVITY_LEVEL } from '../constants/journeyInsights'
+import dayjs from 'dayjs';
 
 export const useJourneyInsightsStore = defineStore('journeyInsights', {
     state: () => ({
@@ -30,7 +31,9 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
         isStale: (state) => {
             if (!state.lastFetched) return true
             const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
-            return Date.now() - state.lastFetched > oneHour
+            const { useTimezone } = require('@/composables/useTimezone')
+            const timezone = useTimezone()
+            return timezone.now().diff(timezone.fromUtc(state.lastFetched)) > oneHour
         },
         
         // Display helpers for enums
@@ -70,9 +73,11 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
     },
 
     actions: {
-        setInsights(insights) {
+        async setInsights(insights) {
             this.insights = insights
-            this.lastFetched = Date.now()
+            const { useTimezone } = await import('@/composables/useTimezone')
+            const timezone = useTimezone()
+            this.lastFetched = timezone.now().toISOString();
         },
 
         setLoading(loading) {

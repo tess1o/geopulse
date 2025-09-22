@@ -32,7 +32,4 @@ public class TimelinePreferences {
     // Data Gap Detection Settings
     private Integer dataGapThresholdSeconds;
     private Integer dataGapMinDurationSeconds;
-    
-    // Timezone Settings
-    private String timezone; // User's timezone (e.g., "Europe/Kyiv", "America/New_York")
 }

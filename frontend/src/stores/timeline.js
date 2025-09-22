@@ -1,5 +1,8 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 export const useTimelineStore = defineStore('timeline', {
     state: () => ({
@@ -64,9 +67,11 @@ export const useTimelineStore = defineStore('timeline', {
         // Get timeline items within a time range
         getItemsInTimeRange: (state) => (startTime, endTime) => {
             if (!state.timelineData) return []
+            const start = timezone.fromUtc(startTime);
+            const end = timezone.fromUtc(endTime);
             return state.timelineData.filter(item => {
-                const itemTime = new Date(item.timestamp)
-                return itemTime >= startTime && itemTime <= endTime
+                const itemTime = timezone.fromUtc(item.timestamp)
+                return timezone.isAfter(itemTime, start) && timezone.isBefore(itemTime, end)
             })
         },
 
@@ -74,10 +79,10 @@ export const useTimelineStore = defineStore('timeline', {
         getTimelineBounds: (state) => {
             if (!state.timelineData || state.timelineData.length === 0) return null
 
-            const timestamps = state.timelineData.map(item => new Date(item.timestamp))
+            const timestamps = state.timelineData.map(item => timezone.fromUtc(item.timestamp))
             return {
-                earliest: new Date(Math.min(...timestamps)),
-                latest: new Date(Math.max(...timestamps))
+                earliest: timezone.min(timestamps).toISOString(),
+                latest: timezone.max(timestamps).toISOString()
             }
         },
 
@@ -115,8 +120,8 @@ export const useTimelineStore = defineStore('timeline', {
         async fetchMovementTimeline(startTime, endTime) {
             try {
                 const response = await apiService.get('/streaming-timeline', {
-                    startTime: startTime.toISOString(),
-                    endTime: endTime.toISOString()
+                    startTime: startTime,
+                    endTime: endTime
                 })
 
                 const normalizedStays = response.data.stays.map(stay => ({
@@ -136,7 +141,7 @@ export const useTimelineStore = defineStore('timeline', {
                 }))
 
                 const results = [...normalizedStays, ...normalizedTrips, ...normalizedDataGaps].sort(
-                    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+                    (a, b) => timezone.fromUtc(a.timestamp).valueOf() - timezone.fromUtc(b.timestamp).valueOf()
                 )
 
                 this.setTimelineData(results)
@@ -204,7 +209,7 @@ export const useTimelineStore = defineStore('timeline', {
             return {
                 timelineData: this.timelineData,
                 summary: this.getTimelineSummary(),
-                exportDate: new Date().toISOString()
+                exportDate: timezone.now().toISOString()
             }
         }
     }

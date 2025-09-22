@@ -24,8 +24,11 @@ public class UserMapper {
         return UserResponse.builder()
                 .userId(entity.getId())
                 .email(entity.getEmail())
+                .avatar(entity.getAvatar())
                 .fullName(entity.getFullName())
                 .role(entity.getRole())
+                .hasPassword(entity.getPasswordHash() != null)
+                .timezone(entity.getTimezone())
                 .build();
     }
 }

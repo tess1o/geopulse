@@ -1,5 +1,6 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
+import dayjs from 'dayjs';
 
 export const useShareLinksStore = defineStore('shareLinks', {
     state: () => ({
@@ -20,14 +21,18 @@ export const useShareLinksStore = defineStore('shareLinks', {
         getActiveLinks: (state) => {
             return state.links.filter(link => {
                 // Handle null/undefined expires_at
-                const isExpired = link.expires_at ? new Date(link.expires_at) < new Date() : false
+                const { useTimezone } = require('@/composables/useTimezone')
+                const timezone = useTimezone()
+                const isExpired = link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
                 return link.is_active && !isExpired
             })
         },
         getExpiredLinks: (state) => {
             return state.links.filter(link => {
                 // Handle null/undefined expires_at
-                const isExpired = link.expires_at ? new Date(link.expires_at) < new Date() : false
+                const { useTimezone } = require('@/composables/useTimezone')
+                const timezone = useTimezone()
+                const isExpired = link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
                 return !link.is_active || isExpired
             })
         },
@@ -63,7 +68,9 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.links = response.data.links
                 this.maxLinks = response.data.max_links
                 // Calculate active count client-side to ensure consistency
-                const isExpired = (link) => link.expires_at ? new Date(link.expires_at) < new Date() : false
+                const { useTimezone } = await import('@/composables/useTimezone')
+                const timezone = useTimezone()
+                const isExpired = (link) => link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
                 this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length
             } catch (error) {
                 console.error('Failed to fetch share links:', error)
@@ -81,9 +88,9 @@ export const useShareLinksStore = defineStore('shareLinks', {
             try {
                 // Set default expiration to 7 days from now if not provided
                 if (!linkData.expires_at) {
-                    const defaultExpiration = new Date()
-                    defaultExpiration.setDate(defaultExpiration.getDate() + 7)
-                    linkData.expires_at = defaultExpiration.toISOString()
+                    const { useTimezone } = await import('@/composables/useTimezone')
+                    const timezone = useTimezone()
+                    linkData.expires_at = timezone.add(timezone.now(), 7, 'day').toISOString();
                 }
                 
                 const response = await apiService.post('/share-links', linkData)
@@ -215,22 +222,24 @@ export const useShareLinksStore = defineStore('shareLinks', {
         },
 
         // Helper method to check if link is expired
-        isLinkExpired(link) {
+        async isLinkExpired(link) {
             // Handle null/undefined expires_at (should never expire)
             if (!link.expires_at) {
                 return false
             }
             
-            const expirationDate = new Date(link.expires_at)
-            const now = new Date()
+            const { useTimezone } = await import('@/composables/useTimezone')
+            const timezone = useTimezone()
+            const expirationDate = timezone.fromUtc(link.expires_at)
+            const now = timezone.now()
             
             // Handle invalid date
-            if (isNaN(expirationDate.getTime())) {
+            if (!timezone.isValidDate(link.expires_at)) {
                 console.warn('Invalid expiration date:', link.expires_at)
                 return false // Treat invalid dates as non-expired
             }
             
-            const isExpired = expirationDate < now
+            const isExpired = expirationDate.isBefore(now)
 
             // Debug logging
             console.log('Link expiration check:', {

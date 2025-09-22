@@ -108,8 +108,10 @@ import RouteAnalysisContent from '@/components/dashboard/cards/RouteAnalysisCont
 import ActivitySummaryCard from '@/components/dashboard/cards/ActivitySummaryCard.vue'
 
 // Utils and Stores
-import { getLastMonthRange, getLastWeekRange } from "@/utils/dateHelpers"
+import { useTimezone } from '@/composables/useTimezone'
 import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
+
+const timezone = useTimezone()
 import { useStatisticsStore } from '@/stores/statistics'
 import { useDateRangeStore } from '@/stores/dateRange'
 
@@ -155,16 +157,16 @@ const hasThirtyDaysChartData = computed(() => {
 })
 
 const formattedSelectedPeriodRange = computed(() => {
-  return formatRange([dateRange.value?.[0], dateRange.value?.[1]])
+  return formatRange([dateRange.value?.[0], dateRange.value?.[1]]);
 })
 
 const formattedLastWeekRange = computed(() => {
-  const range = getLastWeekRange()
+  const range = timezone.getLastWeekRange()
   return formatRange([range.start, range.end])
 })
 
 const formattedLastMonthRange = computed(() => {
-  const range = getLastMonthRange()
+  const range = timezone.getLastMonthRange()
   return formatRange([range.start, range.end])
 })
 
@@ -172,13 +174,7 @@ const formattedLastMonthRange = computed(() => {
 const formatRange = (range) => {
   const [start, end] = range || []
   return start && end
-      ? `${start.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit'
-      })} - ${end.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit'
-      })}`
+      ? `${timezone.format(start, 'MM/DD')} - ${timezone.format(end, 'MM/DD')}`
       : ''
 }
 

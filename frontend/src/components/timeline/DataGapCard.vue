@@ -5,7 +5,7 @@
   >
     <template #title>
       <p class="timeline-timestamp">
-        🕐 {{ formatDate(dataGapItem.startTime) }}
+        🕐 {{ formattedStartTime }}
       </p>
     </template>
 
@@ -19,7 +19,7 @@
       <div class="data-gap-content">
         <p class="gap-detail">
           📅 End Time:
-          <span class="detail-value">{{ formatDate(dataGapItem.endTime) }}</span>
+          <span class="detail-value">{{ formattedEndTime }}</span>
         </p>
         <p class="gap-detail">
           ⏱️ Duration:
@@ -31,8 +31,9 @@
 </template>
 
 <script setup>
-import { formatDate } from '@/utils/dateHelpers'
+import { computed } from 'vue'
 import { formatDuration } from '@/utils/calculationsHelpers'
+import { useTimezone } from '@/composables/useTimezone'
 
 const props = defineProps({
   dataGapItem: {
@@ -43,9 +44,21 @@ const props = defineProps({
 
 const emit = defineEmits(['click'])
 
+const timezone = useTimezone()
+
 const handleClick = () => {
   emit('click', props.dataGapItem)
 }
+
+const formattedStartTime = computed(() => {
+  if (!props.dataGapItem.startTime) return '';
+  return timezone.format(props.dataGapItem.startTime);
+});
+
+const formattedEndTime = computed(() => {
+  if (!props.dataGapItem.endTime) return '';
+  return timezone.format(props.dataGapItem.endTime);
+});
 </script>
 
 <style scoped>

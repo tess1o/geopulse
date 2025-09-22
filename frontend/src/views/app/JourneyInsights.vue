@@ -215,6 +215,9 @@ import { storeToRefs } from 'pinia'
 import { useToast } from "primevue/usetoast"
 import ProgressSpinner from 'primevue/progressspinner'
 import { useErrorHandler } from '@/composables/useErrorHandler'
+import { useTimezone } from '@/composables/useTimezone'
+
+const timezone = useTimezone()
 
 // Layout Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -222,6 +225,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
 // Store
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
+import { getUserTimezone } from '@/utils/timezoneUtils'
 
 const toast = useToast()
 const journeyInsightsStore = useJourneyInsightsStore()
@@ -250,8 +254,7 @@ const distanceTraveled = computed(() => journeyInsightsStore.distance)
 
 // Get current month name for display
 const currentMonthName = computed(() => {
-  const now = new Date()
-  return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  return timezone.format(timezone.now(), 'MMMM YYYY')
 })
 
 // Convert UTC time to user's local timezone
@@ -269,17 +272,13 @@ const localMostActiveTime = computed(() => {
       return `${hour.toString().padStart(2, '0')}:${minutes}`
     })
     
-    // Create a date object with today's date and the UTC time
-    const today = new Date()
+    // Create a UTC datetime with today's date and the provided time
+    const today = timezone.now().startOf('day')
     const [hours, minutes] = time24.split(':').map(Number)
-    const utcDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), hours, minutes))
+    const utcDateTime = today.utc().hour(hours).minute(minutes)
     
-    // Convert to local time and format back to 12-hour format
-    return utcDate.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
+    // Convert to user timezone and format as 12-hour time
+    return timezone.fromUtc(utcDateTime.toISOString()).format('h:mm A')
   } catch (error) {
     console.error('Error converting time to local timezone:', error)
     return utcTime // fallback to original UTC time

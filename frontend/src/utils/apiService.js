@@ -1,5 +1,7 @@
 import axios from 'axios';
 import {formatError, isBackendDown} from './errorHandler';
+import dayjs from 'dayjs';
+import { useTimezone } from '@/composables/useTimezone';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
 /**
@@ -17,7 +19,7 @@ const apiService = {
      * Get CSRF token from cookie (Quarkus REST CSRF handles this automatically)
      * @returns {string|null} CSRF token or null if not found
      */
-    getCsrfToken() {        
+    getCsrfToken() {
         try {
             // Use proper cookie parsing
             const value = document.cookie.replace(
@@ -62,7 +64,8 @@ const apiService = {
                 // Only consider expired if we have user info (logged in)
                 return !!userInfo.id;
             }
-            return Date.now() > expiresAt - 10000; // 10s buffer for testing
+            const timezone = useTimezone()
+            return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
         } catch (error) {
             console.error('Error checking token expiration:', error);
             return false;
@@ -225,29 +228,18 @@ const apiService = {
 
     async getRawWithBlob(endpoint, customHeaders = {}, params = {}) {
         try {
-            console.log('apiService.getRawWithBlob: Endpoint:', endpoint)
-            console.log('apiService.getRawWithBlob: Using cookie-based auth')
-            
             await this.checkAuthExpired(endpoint);
-
-            // Always rely on cookies for authentication
-            const headers = { 
+            const headers = {
                 ...customHeaders
             };
-            
-            console.log('apiService.getRawWithBlob: Final headers:', Object.keys(headers))
-
             const response = await axios.get(`${API_BASE_URL}${endpoint}`, {
                 params,
                 withCredentials: true,
                 headers,
                 responseType: 'blob'
             });
-            
-            console.log('apiService.getRawWithBlob: Response status:', response.status)
             return response;
         } catch (error) {
-            console.error('apiService.getRawWithBlob: Error:', error)
             this.handleError(error);
             throw error;
         }
@@ -460,7 +452,7 @@ const apiService = {
                 url: error.config?.url,
                 method: error.config?.method?.toUpperCase(),
                 headers: error.config?.headers,
-                timestamp: new Date().toISOString(),
+                timestamp: useTimezone().now().toISOString(),
                 userAgent: navigator.userAgent,
                 stack: error.stack
             };
@@ -502,6 +494,7 @@ const apiService = {
                     avatar: responseData.avatar,
                     createdAt: responseData.createdAt,
                     hasPassword: responseData.hasPassword,
+                    timezone: responseData.timezone,
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;

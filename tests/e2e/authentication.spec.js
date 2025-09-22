@@ -115,4 +115,219 @@ test.describe('Authentication Flow', () => {
             expect(await loginPage.isOnLoginPage()).toBe(true);
         });
     });
+
+    test.describe('Timezone Persistence', () => {
+        test('should preserve custom timezone in localStorage after login', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with custom timezone (not UTC)
+            testUser.timezone = 'America/Los_Angeles';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify authentication
+            expect(await TestHelpers.isAuthenticated(page)).toBe(true);
+
+            // Check localStorage contains the user's timezone (not UTC or browser timezone)
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('America/Los_Angeles');
+            expect(userInfo.timezone).not.toBe('UTC');
+            expect(userInfo.timezone).not.toBe('Europe/Kyiv');
+        });
+
+        test('should preserve Europe/London timezone after login', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with Europe/London timezone
+            testUser.timezone = 'Europe/London';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify authentication
+            expect(await TestHelpers.isAuthenticated(page)).toBe(true);
+
+            // Check localStorage contains Europe/London timezone
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Europe/London');
+        });
+
+        test('should preserve Asia/Tokyo timezone after login', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with Asia/Tokyo timezone
+            testUser.timezone = 'Asia/Tokyo';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify authentication
+            expect(await TestHelpers.isAuthenticated(page)).toBe(true);
+
+            // Check localStorage contains Asia/Tokyo timezone
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Asia/Tokyo');
+        });
+
+        test('should handle UTC timezone correctly after login', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with explicit UTC timezone
+            testUser.timezone = 'UTC';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify authentication
+            expect(await TestHelpers.isAuthenticated(page)).toBe(true);
+
+            // Check localStorage contains UTC timezone
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('UTC');
+        });
+
+        test('should handle normalized timezone (Europe/Kyiv) after login', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with normalized Europe/Kyiv timezone
+            testUser.timezone = 'Europe/Kyiv';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify authentication
+            expect(await TestHelpers.isAuthenticated(page)).toBe(true);
+
+            // Check localStorage contains normalized timezone
+            const userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Europe/Kyiv');
+        });
+
+        test('should persist timezone across page reloads', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const timelinePage = new TimelinePage(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with custom timezone
+            testUser.timezone = 'Australia/Sydney';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify initial timezone in localStorage
+            let userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Australia/Sydney');
+
+            // Reload the page
+            await page.reload();
+            await page.waitForLoadState('networkidle');
+
+            // Should still be authenticated and on timeline page
+            expect(await timelinePage.isOnTimelinePage()).toBe(true);
+            expect(await TestHelpers.isAuthenticated(page)).toBe(true);
+
+            // Check that timezone persists in localStorage after reload
+            userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('Australia/Sydney');
+        });
+
+        test('should clear timezone from localStorage after logout', async ({page, dbManager}) => {
+            const loginPage = new LoginPage(page);
+            const appNavigation = new AppNavigation(page);
+            const testUser = TestData.users.existing;
+            
+            // Create user with custom timezone
+            testUser.timezone = 'America/Chicago';
+            await UserFactory.createUser(page, testUser);
+
+            // Login
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            // Verify timezone is set in localStorage
+            let userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            expect(userInfo).toBeTruthy();
+            expect(userInfo.timezone).toBe('America/Chicago');
+
+            // Logout
+            await appNavigation.logout();
+
+            // Should be redirected to home page
+            expect(await TestHelpers.isHomePage(page)).toBe(true);
+            expect(await TestHelpers.isAuthenticated(page)).toBe(false);
+
+            // Check that userInfo is cleared from localStorage
+            userInfo = await page.evaluate(() => {
+                const userInfoStr = localStorage.getItem('userInfo');
+                return userInfoStr ? JSON.parse(userInfoStr) : null;
+            });
+
+            // userInfo should be null or empty after logout
+            expect(userInfo).toBeFalsy();
+        });
+    });
 });
