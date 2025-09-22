@@ -392,13 +392,23 @@ export function useTimezone() {
   }
 
 
-  const formatSmartDuration = (durationSeconds, displayType = 'start') => {
+  const formatSmartDuration = (durationSeconds) => {
+    const minutes = Math.floor(durationSeconds / 60)
     const hours = Math.floor(durationSeconds / 3600)
     const days = Math.floor(hours / 24)
     const weeks = Math.floor(days / 7)
     
-    if (days === 0) {
-      return `${hours} hour${hours === 1 ? '' : 's'}`
+    if (hours === 0) {
+      // Less than 1 hour - show minutes
+      return `${minutes} minute${minutes === 1 ? '' : 's'}`
+    } else if (days === 0) {
+      // Less than 1 day - show hours and optionally minutes
+      const remainingMinutes = minutes - (hours * 60)
+      if (remainingMinutes === 0) {
+        return `${hours} hour${hours === 1 ? '' : 's'}`
+      } else {
+        return `${hours} hour${hours === 1 ? '' : 's'} ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}`
+      }
     } else if (days <= 7) {
       const remainingHours = hours - (days * 24)
       if (remainingHours === 0) {
