@@ -1293,7 +1293,8 @@ watch(pageSize, async () => {
   border-color: var(--gp-border-medium) !important;
 }
 
-.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight) {
+.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
+.p-dark .gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
   background: var(--gp-primary) !important;
   color: white !important;
   border-color: var(--gp-primary) !important;
@@ -1331,6 +1332,14 @@ watch(pageSize, async () => {
   border-top: 1px solid var(--gp-border-light) !important;
   border-radius: 0 0 0 0 !important;
   overflow: hidden !important;
+}
+
+/* Light mode selected page styling */
+.gps-data-table :deep(.p-paginator .p-paginator-page.p-highlight),
+.gps-data-table :deep(.p-paginator .p-paginator-page-selected) {
+  background: var(--gp-primary) !important;
+  color: white !important;
+  border-color: var(--gp-primary) !important;
 }
 
 /* Remove unwanted focus/active borders on page header */

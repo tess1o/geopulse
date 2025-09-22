@@ -174,7 +174,7 @@ test.describe('User Profile Management', () => {
       const loginPage = new LoginPage(page);
       const profilePage = new UserProfilePage(page);
       const testUser = TestData.users.existing;
-      const newTimezone = 'Europe/London (GMT/BST)';
+      const newTimezone = 'Europe/London GMT+0';
       const expectedTimezoneValue = 'Europe/London';
 
       await UserFactory.createUser(page, testUser);
@@ -221,7 +221,7 @@ test.describe('User Profile Management', () => {
       const loginPage = new LoginPage(page);
       const profilePage = new UserProfilePage(page);
       const testUser = TestData.users.existing;
-      const kiyvTimezone = 'Europe/Kyiv (EET/EEST)';
+      const kiyvTimezone = 'Europe/Kyiv GMT+2';
       const expectedTimezoneValue = 'Europe/Kyiv';
 
       await UserFactory.createUser(page, testUser);
@@ -300,7 +300,7 @@ test.describe('User Profile Management', () => {
       const loginPage = new LoginPage(page);
       const profilePage = new UserProfilePage(page);
       const testUser = TestData.users.existing;
-      const newTimezone = 'Europe/Paris (CET/CEST)';
+      const newTimezone = 'Europe/Paris GMT+1';
 
       await UserFactory.createUser(page, testUser);
       
@@ -361,9 +361,9 @@ test.describe('User Profile Management', () => {
       expect(timezoneOptions.some(option => option.includes('Europe/Kyiv'))).toBe(true);
       expect(timezoneOptions.some(option => option.includes('Asia/Tokyo'))).toBe(true);
       
-      // Verify the timezone format includes timezone abbreviations (not GMT offsets)
-      expect(timezoneOptions.some(option => option.includes('EET/EEST'))).toBe(true); // Europe/Kyiv
-      expect(timezoneOptions.some(option => option.includes('GMT/BST'))).toBe(true); // Europe/London
+      // Verify the timezone format includes GMT offsets (not timezone abbreviations)
+      expect(timezoneOptions.some(option => option.includes('GMT+2'))).toBe(true); // Europe/Kyiv
+      expect(timezoneOptions.some(option => option.includes('GMT+0'))).toBe(true); // Europe/London
       
       // Verify we have a reasonable number of timezone options (should be 40+)
       expect(timezoneOptions.length).toBeGreaterThan(35);
