@@ -18,7 +18,7 @@
     <template #content>
       <div class="overnight-stay-content">
         <p class="duration-detail">
-          📈 Total duration: <span class="duration-value">{{ timezone.formatSmartDuration(stayItem.stayDuration) }}</span>
+          📈 Total duration: <span class="duration-value">{{ formatDurationSmart(stayItem.stayDuration) }}</span>
         </p>
         <p class="duration-detail">
           ⏱️ On this day:
@@ -31,6 +31,7 @@
 
 <script setup>
 import { useTimezone } from '@/composables/useTimezone'
+import { formatDurationSmart } from '@/utils/calculationsHelpers'
 
 const timezone = useTimezone()
 

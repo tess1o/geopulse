@@ -31,6 +31,7 @@
 
 <script setup>
 import { useTimezone } from '@/composables/useTimezone';
+import { formatDurationSmart } from '@/utils/calculationsHelpers';
 
 const props = defineProps({
   dataGapItem: {
@@ -56,7 +57,7 @@ const getGapDuration = () => {
   const startTime = timezone.fromUtc(props.dataGapItem.startTime)
   const endTime = timezone.fromUtc(props.dataGapItem.endTime)
   const durationSeconds = endTime.diff(startTime, 'second')
-  return timezone.formatSmartDuration(durationSeconds)
+  return formatDurationSmart(durationSeconds)
 }
 
 const getOnThisDayText = () => {

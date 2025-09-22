@@ -18,7 +18,7 @@
     <template #content>
       <div class="overnight-trip-content">
         <p class="duration-detail">
-          📈 Total duration: <span class="duration-value">{{ timezone.formatSmartDuration(tripItem.tripDuration) }}</span>
+          📈 Total duration: <span class="duration-value">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
         </p>
         <p class="duration-detail">
           ⏱️ On this day:
@@ -34,7 +34,7 @@
 
 <script setup>
 import { useTimezone } from '@/composables/useTimezone';
-import { formatDistance } from '@/utils/calculationsHelpers';
+import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers';
 
 const props = defineProps({
   tripItem: {
