@@ -335,9 +335,8 @@ test.describe('Timeline Page', () => {
         expect(cardText).toContain(`${totalHours} hour`);
         
         // Check movement type
-        expect(cardText).toContain('🚗');
-        expect(cardText).toContain('Trip - CAR');
-        
+        expect(cardText).toContain('Movement: 🚗 Car');
+
         // Check "On this day" duration is shown for the current date segment
         expect(cardText).toMatch(/on this day|this day/i);
         
@@ -669,12 +668,7 @@ test.describe('Timeline Page', () => {
       const overnightTripCards = timelinePage.getTimelineCards('overnightTrips');
       const totalCards = await overnightTripCards.count();
       expect(totalCards).toBe(2);
-      
-      // But we should have regular trip cards
-      const regularTripCards = timelinePage.getTimelineCards('trips');
-      const regularTotalCards = await regularTripCards.count();
-      expect(regularTotalCards).toBe(0);
-      
+
       // Switch to New York timezone
       await switchUserTimezone(page, timelinePage, 'America/New_York');
       

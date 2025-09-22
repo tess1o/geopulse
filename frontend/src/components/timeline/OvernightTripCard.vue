@@ -11,21 +11,30 @@
 
     <template #subtitle>
       <div class="timeline-subtitle">
-        🚗 {{ getMovementIcon() }} Trip - {{ tripItem.movementType }}
+        <p class="transition-title">
+          🔄 Transition to new place
+        </p>
       </div>
     </template>
 
     <template #content>
-      <div class="overnight-trip-content">
-        <p class="duration-detail">
-          📈 Total duration: <span class="duration-value">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
+      <div class="trip-content">
+        <p class="trip-detail">
+          📈 Total duration: <span class="font-bold">{{ formatDurationSmart(tripItem.tripDuration) }}</span>
         </p>
-        <p class="duration-detail">
+        <p class="trip-detail">
           ⏱️ On this day:
-          <span class="duration-value"> {{ getOnThisDayText() }}</span>
+          <span class="font-bold"> {{ getOnThisDayText() }}</span>
         </p>
-        <p v-if="tripItem.distanceMeters" class="distance-detail">
-          📏 Distance: <span class="distance-value">{{ formatDistance(tripItem.distanceMeters) }}</span>
+        <p v-if="tripItem.distanceMeters" class="trip-detail">
+          📏 Distance: <span class="font-bold">{{ formatDistance(tripItem.distanceMeters) }}</span>
+        </p>
+        <p class="trip-detail">
+          🚦 Movement:
+          <span class="font-bold">
+            {{ getMovementIcon() }}
+            {{ formatMovementType(tripItem.movementType) }}
+          </span>
         </p>
       </div>
     </template>
@@ -73,6 +82,14 @@ const getOnThisDayText = () => {
   return timezone.getOvernightOnThisDayText(props.tripItem, props.currentDate)
 }
 
+const formatMovementType = (type) => {
+  const movementTypeMap = {
+    WALK: 'Walk',
+    CAR: 'Car',
+    UNKNOWN: 'Unknown'
+  }
+  return movementTypeMap[type] || type
+}
 
 const handleClick = () => {
   emit('click', props.tripItem);
@@ -106,14 +123,17 @@ const handleClick = () => {
     font-size: 0.875rem;
   }
   
-  .overnight-trip-content {
+  .trip-content {
     margin-top: var(--gp-spacing-xs);
   }
   
-  .duration-detail,
-  .distance-detail {
+  .trip-detail {
     margin: 2px 0;
     font-size: 0.8rem;
+  }
+  
+  .transition-title {
+    font-size: 0.875rem;
   }
 }
 
@@ -128,7 +148,7 @@ const handleClick = () => {
 }
 
 .timeline-timestamp {
-  color: var(--gp-success-dark);
+  color: var(--gp-primary);
   font-weight: 600;
   font-size: 0.95rem;
   margin: 0;
@@ -138,27 +158,31 @@ const handleClick = () => {
 .timeline-subtitle {
   margin: var(--gp-spacing-xs) 0 0 0;
   color: var(--gp-text-primary);
+}
+
+.transition-title {
+  color: var(--gp-primary);
+  font-weight: 700;
+  margin: 0;
   font-size: 0.9rem;
   line-height: 1.3;
 }
 
-.overnight-trip-content {
+.trip-content {
   margin-top: var(--gp-spacing-xs);
   color: var(--gp-text-primary);
 }
 
-.duration-detail,
-.distance-detail {
+.trip-detail {
   margin: var(--gp-spacing-xs) 0;
   color: var(--gp-text-primary);
   font-size: 0.875rem;
   line-height: 1.3;
 }
 
-.duration-detail .duration-value,
-.distance-detail .distance-value {
+.trip-detail .font-bold {
   font-weight: 700;
-  color: var(--gp-success-dark);
+  color: var(--gp-primary);
 }
 
 /* Dark mode adjustments */
@@ -172,15 +196,17 @@ const handleClick = () => {
 }
 
 .p-dark .timeline-timestamp,
-.p-dark .duration-detail .duration-value,
-.p-dark .distance-detail .distance-value {
-  color: var(--gp-success);
+.p-dark .transition-title {
+  color: var(--gp-primary);
+}
+
+.p-dark .trip-detail .font-bold {
+  color: var(--gp-primary);
 }
 
 .p-dark .timeline-subtitle,
-.p-dark .overnight-trip-content,
-.p-dark .duration-detail,
-.p-dark .distance-detail {
+.p-dark .trip-content,
+.p-dark .trip-detail {
   color: var(--gp-text-primary);
 }
 
