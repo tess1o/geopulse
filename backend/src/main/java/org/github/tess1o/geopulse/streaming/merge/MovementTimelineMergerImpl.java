@@ -3,11 +3,12 @@ package org.github.tess1o.geopulse.streaming.merge;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
+import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
+import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 
 import java.util.*;
 
@@ -37,7 +38,7 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
      * @return A new MovementTimelineDTO with merged stays and updated trips
      */
     @Override
-    public MovementTimelineDTO mergeSameNamedLocations(TimelineConfig timelineConfig, MovementTimelineDTO timeline) {
+    public RawTimeline mergeSameNamedLocations(TimelineConfig timelineConfig, RawTimeline timeline) {
         log.info("Merging same named locations for user {}", timeline != null ? timeline.getUserId() : "null");
         
         if (timeline == null || timeline.getStays() == null || timeline.getTrips() == null) {
@@ -45,8 +46,8 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
             return timeline;
         }
 
-        List<TimelineStayLocationDTO> stays = new ArrayList<>(timeline.getStays());
-        List<TimelineTripDTO> trips = new ArrayList<>(timeline.getTrips());
+        List<Stay> stays = timeline.getStays();
+        List<Trip> trips = timeline.getTrips();
 
         if (stays.size() <= 1) {
             log.debug("Only {} stays found - nothing to merge", stays.size());
@@ -54,8 +55,8 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
         }
 
         // Sort both lists by timestamp to ensure proper order
-        stays.sort(Comparator.comparing(TimelineStayLocationDTO::getTimestamp));
-        trips.sort(Comparator.comparing(TimelineTripDTO::getTimestamp));
+        stays.sort(Comparator.comparing(Stay::getStartTime));
+        trips.sort(Comparator.comparing(Trip::getStartTime));
 
         log.debug("Processing {} stays and {} trips for merging", stays.size(), trips.size());
 
@@ -65,16 +66,13 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
         log.info("Merge completed: {} stays merged to {}, {} trips remain", 
                 stays.size(), result.mergedStays.size(), result.remainingTrips.size());
 
-        MovementTimelineDTO mergedTimeline = new MovementTimelineDTO(
+        RawTimeline mergedTimeline = new RawTimeline(
                 timeline.getUserId(),
                 result.mergedStays,
                 result.remainingTrips,
                 timeline.getDataGaps()
         );
-        
-        // Preserve metadata from original timeline
-        mergedTimeline.setLastUpdated(timeline.getLastUpdated());
-        
+
         return mergedTimeline;
     }
 
@@ -82,21 +80,21 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
      * Perform the merge operation using the injected services.
      * This method orchestrates the merge analysis, execution, and trip filtering.
      */
-    private MergeResult performMerges(TimelineConfig timelineConfig, 
-                                    List<TimelineStayLocationDTO> stays, 
-                                    List<TimelineTripDTO> trips,
-                                    List<TimelineDataGapDTO> dataGaps) {
-        List<TimelineStayLocationDTO> mergedStays = new ArrayList<>();
+    private MergeResult performMerges(TimelineConfig timelineConfig,
+                                      List<Stay> stays,
+                                      List<Trip> trips,
+                                      List<DataGap> dataGaps) {
+        List<Stay> mergedStays = new ArrayList<>();
         Set<Integer> allRemovedTripIndices = new HashSet<>();
 
         int i = 0;
         while (i < stays.size()) {
-            TimelineStayLocationDTO currentStay = stays.get(i);
+            Stay currentStay = stays.get(i);
             List<Integer> mergeGroup = findMergeGroup(timelineConfig, stays, trips, dataGaps, i);
 
             if (mergeGroup.size() > 1) {
                 // Create merged stay using execution service
-                TimelineStayLocationDTO mergedStay = executionService.createMergedStay(stays, mergeGroup, trips);
+                Stay mergedStay = executionService.createMergedStay(stays, mergeGroup, trips);
                 mergedStays.add(mergedStay);
 
                 // Mark trips for removal using filtering service
@@ -116,7 +114,7 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
         }
 
         // Filter trips using filtering service
-        List<TimelineTripDTO> remainingTrips = tripFilteringService.filterTrips(trips, allRemovedTripIndices);
+        List<Trip> remainingTrips = tripFilteringService.filterTrips(trips, allRemovedTripIndices);
 
         return new MergeResult(mergedStays, remainingTrips);
     }
@@ -126,10 +124,10 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
      * Uses the analysis service to determine merge eligibility.
      */
     private List<Integer> findMergeGroup(TimelineConfig timelineConfig,
-                                       List<TimelineStayLocationDTO> stays,
-                                       List<TimelineTripDTO> trips,
-                                       List<TimelineDataGapDTO> dataGaps,
-                                       int startIndex) {
+                                         List<Stay> stays,
+                                         List<Trip> trips,
+                                         List<DataGap> dataGaps,
+                                         int startIndex) {
         List<Integer> mergeGroup = new ArrayList<>();
         mergeGroup.add(startIndex);
         
@@ -137,14 +135,14 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
             return mergeGroup;
         }
         
-        TimelineStayLocationDTO currentStay = stays.get(startIndex);
+        Stay currentStay = stays.get(startIndex);
 
         // Look for consecutive stays with same location that can be merged
         int j = startIndex + 1;
         while (j < stays.size() && isSameLocation(currentStay, stays.get(j))) {
             // Check if the trip(s) between the last merged stay and current candidate allow merging
-            TimelineStayLocationDTO lastMergedStay = stays.get(mergeGroup.getLast());
-            TimelineStayLocationDTO candidateStay = stays.get(j);
+            Stay lastMergedStay = stays.get(mergeGroup.getLast());
+            Stay candidateStay = stays.get(j);
             
             if (analysisService.canMergeStays(timelineConfig, lastMergedStay, candidateStay, trips, dataGaps)) {
                 mergeGroup.add(j);
@@ -167,7 +165,7 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
      * @param stay2 second stay location  
      * @return true if they represent the same location
      */
-    private boolean isSameLocation(TimelineStayLocationDTO stay1, TimelineStayLocationDTO stay2) {
+    private boolean isSameLocation(Stay stay1, Stay stay2) {
         // Same favorite location
         if (stay1.getFavoriteId() != null && stay2.getFavoriteId() != null) {
             return stay1.getFavoriteId().equals(stay2.getFavoriteId());
@@ -190,6 +188,6 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
     /**
      * Result record for merge operations.
      */
-    private record MergeResult(List<TimelineStayLocationDTO> mergedStays, List<TimelineTripDTO> remainingTrips) {
+    private record MergeResult(List<Stay> mergedStays, List<Trip> remainingTrips) {
     }
 }

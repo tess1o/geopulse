@@ -3,12 +3,13 @@ package org.github.tess1o.geopulse.streaming.merge;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 
 import java.time.Instant;
 import java.util.List;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
+
 
 /**
  * Service responsible for analyzing potential timeline merges.
@@ -30,10 +31,10 @@ public class TimelineMergeAnalysisService {
      * @return true if stays can be merged
      */
     public boolean canMergeStays(TimelineConfig timelineConfig,
-                                 TimelineStayLocationDTO firstStay,
-                                 TimelineStayLocationDTO secondStay,
-                                 List<TimelineTripDTO> trips,
-                                 List<TimelineDataGapDTO> dataGaps) {
+                                 Stay firstStay,
+                                 Stay secondStay,
+                                 List<Trip> trips,
+                                 List<DataGap> dataGaps) {
         if (timelineConfig == null || firstStay == null || secondStay == null) {
             return false;
         }
@@ -45,13 +46,13 @@ public class TimelineMergeAnalysisService {
 
         // Don't merge stays if there's a data gap between them
         if (hasDataGapBetweenStays(firstStay, secondStay, dataGaps)) {
-            log.debug("Cannot merge stays - data gap found between {} and {}", 
-                     firstStay.getTimestamp(), secondStay.getTimestamp());
+            log.debug("Cannot merge stays - data gap found between {} and {}",
+                    firstStay.getStartTime(), secondStay.getStartTime());
             return false;
         }
 
         log.debug("Analyzing merge potential between stays at '{}' from {} to {}",
-                firstStay.getLocationName(), firstStay.getTimestamp(), secondStay.getTimestamp());
+                firstStay.getLocationName(), firstStay.getStartTime(), secondStay.getStartTime());
 
         MergeCriteria criteria = calculateMergeCriteria(firstStay, secondStay, trips);
 
@@ -69,9 +70,9 @@ public class TimelineMergeAnalysisService {
      * This version will allow merging as long as distance/duration criteria are met.
      */
     public boolean canMergeStays(TimelineConfig timelineConfig,
-                                 TimelineStayLocationDTO firstStay,
-                                 TimelineStayLocationDTO secondStay,
-                                 List<TimelineTripDTO> trips) {
+                                 Stay firstStay,
+                                 Stay secondStay,
+                                 List<Trip> trips) {
         return canMergeStays(timelineConfig, firstStay, secondStay, trips, null);
     }
 
@@ -84,9 +85,9 @@ public class TimelineMergeAnalysisService {
      * @param trips      all trips to analyze
      * @return merge criteria with total distance and duration
      */
-    public MergeCriteria calculateMergeCriteria(TimelineStayLocationDTO firstStay,
-                                                TimelineStayLocationDTO secondStay,
-                                                List<TimelineTripDTO> trips) {
+    public MergeCriteria calculateMergeCriteria(Stay firstStay,
+                                                Stay secondStay,
+                                                List<Trip> trips) {
         if (firstStay == null || secondStay == null || trips == null) {
             return new MergeCriteria(0.0, 0);
         }
@@ -95,16 +96,16 @@ public class TimelineMergeAnalysisService {
         long totalDuration = 0;
 
         // Find trips between the two stays chronologically
-        Instant firstStayTime = firstStay.getTimestamp();
-        Instant secondStayTime = secondStay.getTimestamp();
+        Instant firstStayTime = firstStay.getStartTime();
+        Instant secondStayTime = secondStay.getStartTime();
 
-        for (TimelineTripDTO trip : trips) {
+        for (Trip trip : trips) {
             if (isTripBetweenStays(trip, firstStayTime, secondStayTime)) {
                 totalDistance += trip.getDistanceMeters(); // Already in meters
-                totalDuration += trip.getTripDuration();
+                totalDuration += trip.getDuration().getSeconds();
 
                 log.debug("Found trip between stays: distance={}m, duration={}min",
-                        trip.getDistanceMeters(), trip.getTripDuration());
+                        trip.getDistanceMeters(), trip.getDuration().getSeconds() / 60);
             }
         }
 
@@ -119,13 +120,13 @@ public class TimelineMergeAnalysisService {
      * @param secondStayTime timestamp of second stay
      * @return true if trip is between the stays
      */
-    public boolean isTripBetweenStays(TimelineTripDTO trip, Instant firstStayTime, Instant secondStayTime) {
+    public boolean isTripBetweenStays(Trip trip, Instant firstStayTime, Instant secondStayTime) {
         if (trip == null || firstStayTime == null || secondStayTime == null) {
             return false;
         }
 
-        return trip.getTimestamp().isAfter(firstStayTime) &&
-                trip.getTimestamp().isBefore(secondStayTime);
+        return trip.getStartTime().isAfter(firstStayTime) &&
+                trip.getStartTime().isBefore(secondStayTime);
     }
 
     /**
@@ -137,21 +138,21 @@ public class TimelineMergeAnalysisService {
      * @param dataGaps   all data gaps to check
      * @return true if there's a data gap between the stays
      */
-    public boolean hasDataGapBetweenStays(TimelineStayLocationDTO firstStay,
-                                          TimelineStayLocationDTO secondStay,
-                                          List<TimelineDataGapDTO> dataGaps) {
+    public boolean hasDataGapBetweenStays(Stay firstStay,
+                                          Stay secondStay,
+                                          List<DataGap> dataGaps) {
         if (firstStay == null || secondStay == null || dataGaps == null || dataGaps.isEmpty()) {
             return false;
         }
 
-        Instant firstStayTime = firstStay.getTimestamp();
-        Instant secondStayTime = secondStay.getTimestamp();
+        Instant firstStayTime = firstStay.getStartTime();
+        Instant secondStayTime = secondStay.getStartTime();
 
         // Check if any data gap overlaps with the time period between the two stays
-        for (TimelineDataGapDTO gap : dataGaps) {
+        for (DataGap gap : dataGaps) {
             if (isDataGapBetweenStays(gap, firstStayTime, secondStayTime)) {
                 log.debug("Found data gap between stays: gap from {} to {}, stays at {} and {}",
-                         gap.getStartTime(), gap.getEndTime(), firstStayTime, secondStayTime);
+                        gap.getStartTime(), gap.getEndTime(), firstStayTime, secondStayTime);
                 return true;
             }
         }
@@ -167,7 +168,7 @@ public class TimelineMergeAnalysisService {
      * @param secondStayTime timestamp of second stay
      * @return true if gap overlaps with the time period between stays
      */
-    private boolean isDataGapBetweenStays(TimelineDataGapDTO gap, Instant firstStayTime, Instant secondStayTime) {
+    private boolean isDataGapBetweenStays(DataGap gap, Instant firstStayTime, Instant secondStayTime) {
         if (gap == null || firstStayTime == null || secondStayTime == null) {
             return false;
         }
@@ -177,8 +178,8 @@ public class TimelineMergeAnalysisService {
         // 2. Gap ends after first stay and before second stay, OR  
         // 3. Gap completely spans the time between stays
         return (gap.getStartTime().isAfter(firstStayTime) && gap.getStartTime().isBefore(secondStayTime)) ||
-               (gap.getEndTime().isAfter(firstStayTime) && gap.getEndTime().isBefore(secondStayTime)) ||
-               (gap.getStartTime().isBefore(firstStayTime) && gap.getEndTime().isAfter(secondStayTime));
+                (gap.getEndTime().isAfter(firstStayTime) && gap.getEndTime().isBefore(secondStayTime)) ||
+                (gap.getStartTime().isBefore(firstStayTime) && gap.getEndTime().isAfter(secondStayTime));
     }
 
     /**

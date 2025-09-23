@@ -2,7 +2,6 @@ package org.github.tess1o.geopulse.streaming.service.converters;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
@@ -19,6 +18,7 @@ import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculato
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Coordinate;
 
@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Service responsible for converting between streaming timeline models and existing DTOs.
@@ -47,123 +48,6 @@ public class StreamingTimelineConverter {
         this.gpsStatisticsCalculator = gpsStatisticsCalculator;
     }
 
-    /**
-     * Convert streaming timeline events to the existing MovementTimelineDTO format.
-     *
-     * @param userId user identifier
-     * @param events list of streaming timeline events
-     * @return MovementTimelineDTO compatible with existing API
-     */
-    public MovementTimelineDTO convertToMovementTimelineDTO(UUID userId, List<TimelineEvent> events) {
-        List<TimelineStayLocationDTO> stays = new ArrayList<>();
-        List<TimelineTripDTO> trips = new ArrayList<>();
-        List<TimelineDataGapDTO> dataGaps = new ArrayList<>();
-
-        for (TimelineEvent event : events) {
-            switch (event.getType()) {
-                case STAY:
-                    TimelineStayLocationDTO stay = convertStay((Stay) event);
-                    if (stay != null) stays.add(stay);
-                    break;
-
-                case TRIP:
-                    TimelineTripDTO trip = convertTrip((Trip) event);
-                    if (trip != null) trips.add(trip);
-                    break;
-
-                case DATA_GAP:
-                    TimelineDataGapDTO gap = convertDataGap((DataGap) event);
-                    if (gap != null) dataGaps.add(gap);
-                    break;
-            }
-        }
-
-        log.info("Converted {} events to MovementTimelineDTO: {} stays, {} trips, {} gaps",
-                events.size(), stays.size(), trips.size(), dataGaps.size());
-
-        return new MovementTimelineDTO(userId, stays, trips, dataGaps);
-    }
-
-    /**
-     * Convert streaming Stay to TimelineStayLocationDTO.
-     */
-    private TimelineStayLocationDTO convertStay(Stay stay) {
-        if (stay == null) return null;
-        String locationName = stay.getLocationName();
-        return TimelineStayLocationDTO.builder()
-                .timestamp(stay.getStartTime())
-                .latitude(stay.getLatitude())
-                .longitude(stay.getLongitude())
-                .stayDuration(stay.getDuration().toSeconds())
-                .locationName(locationName == null ? "Unknown location" : locationName)
-                .favoriteId(stay.getFavoriteId())
-                .geocodingId(stay.getGeocodingId())
-                .build();
-    }
-
-    /**
-     * Convert streaming Trip to TimelineTripDTO.
-     */
-    private TimelineTripDTO convertTrip(Trip trip) {
-        if (trip == null) return null;
-
-        return TimelineTripDTO.builder()
-                .timestamp(trip.getStartTime())
-                .latitude(getStartLatitude(trip))
-                .longitude(getStartLongitude(trip))
-                .endLatitude(getEndLatitude(trip))
-                .endLongitude(getEndLongitude(trip))
-                .distanceMeters((long) trip.getDistanceMeters())
-                .tripDuration(trip.getDuration().toSeconds())
-                .movementType(convertTripType(trip.getTripType()))
-                .path(convertTripPath(trip.getPath()))
-                .build();
-    }
-
-    /**
-     * Convert streaming DataGap to TimelineDataGapDTO.
-     */
-    private TimelineDataGapDTO convertDataGap(DataGap gap) {
-        if (gap == null) return null;
-
-        return new TimelineDataGapDTO(gap.getStartTime(), gap.getEndTime());
-    }
-
-    /**
-     * Convert trip path to GPS point list for DTO.
-     */
-    private List<org.github.tess1o.geopulse.shared.geo.GpsPoint> convertTripPath(List<GPSPoint> path) {
-        if (path == null || path.isEmpty()) {
-            return List.of();
-        }
-
-        return path.stream()
-                .map(this::convertToGpsPoint)
-                .collect(Collectors.toList());
-    }
-
-
-    /**
-     * Convert streaming GPS point to shared GPS point interface.
-     */
-    private GpsPoint convertToGpsPoint(GPSPoint streamingPoint) {
-        return new org.github.tess1o.geopulse.shared.geo.GpsPoint() {
-            @Override
-            public double getLatitude() {
-                return streamingPoint.getLatitude();
-            }
-
-            @Override
-            public double getLongitude() {
-                return streamingPoint.getLongitude();
-            }
-
-            @Override
-            public java.time.Instant getTimestamp() {
-                return streamingPoint.getTimestamp();
-            }
-        };
-    }
 
     /**
      * Convert domain GPS point to shared GPS point interface for LineString conversion.
@@ -188,69 +72,6 @@ public class StreamingTimelineConverter {
     }
 
     /**
-     * Convert streaming TripType to string representation.
-     */
-    private String convertTripType(TripType tripType) {
-        if (tripType == null) return "UNKNOWN";
-        return tripType.name();
-    }
-
-    private double getStartLatitude(Trip trip) {
-        GPSPoint start = trip.getStartLocation();
-        return start != null ? start.getLatitude() : 0.0;
-    }
-
-    private double getStartLongitude(Trip trip) {
-        GPSPoint start = trip.getStartLocation();
-        return start != null ? start.getLongitude() : 0.0;
-    }
-
-    private double getEndLatitude(Trip trip) {
-        GPSPoint end = trip.getEndLocation();
-        return end != null ? end.getLatitude() : 0.0;
-    }
-
-    private double getEndLongitude(Trip trip) {
-        GPSPoint end = trip.getEndLocation();
-        return end != null ? end.getLongitude() : 0.0;
-    }
-
-    // =================== DTO to Entity Conversions ===================
-
-    /**
-     * Convert TimelineStayLocationDTO to TimelineStayEntity.
-     *
-     * @param stay    DTO to convert
-     * @param userRef user entity reference for the stay
-     * @return converted entity
-     */
-    public TimelineStayEntity convertStayToEntity(TimelineStayLocationDTO stay, UserEntity userRef) {
-        if (stay == null) return null;
-
-        TimelineStayEntity entity = new TimelineStayEntity();
-        entity.setUser(userRef);
-        entity.setTimestamp(stay.getTimestamp());
-        entity.setLocation(GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
-        entity.setStayDuration(stay.getStayDuration()); // Already in seconds
-        entity.setLocationName(stay.getLocationName());
-        entity.setLocationSource(getLocationSource(stay));
-
-        // Set favorite location reference if ID exists
-        if (stay.getFavoriteId() != null && stay.getFavoriteId() != 0) {
-            FavoritesEntity favorite = entityManager.getReference(FavoritesEntity.class, stay.getFavoriteId());
-            entity.setFavoriteLocation(favorite);
-        }
-
-        // Set geocoding location reference if ID exists
-        if (stay.getGeocodingId() != null && stay.getGeocodingId() != 0) {
-            ReverseGeocodingLocationEntity geocodingEntity = entityManager.getReference(ReverseGeocodingLocationEntity.class, stay.getGeocodingId());
-            entity.setGeocodingLocation(geocodingEntity);
-        }
-
-        return entity;
-    }
-
-    /**
      * Convert TimelineStayLocationDTO to TimelineStayEntity using pre-loaded entity maps
      * to eliminate N+1 queries. This is an optimized version for batch processing.
      *
@@ -261,7 +82,7 @@ public class StreamingTimelineConverter {
      * @return converted entity
      */
     public TimelineStayEntity convertStayToEntityWithBatchData(
-            TimelineStayLocationDTO stay, 
+            Stay stay,
             UserEntity userRef,
             java.util.Map<Long, FavoritesEntity> favoriteMap,
             java.util.Map<Long, ReverseGeocodingLocationEntity> geocodingMap) {
@@ -270,9 +91,9 @@ public class StreamingTimelineConverter {
 
         TimelineStayEntity entity = new TimelineStayEntity();
         entity.setUser(userRef);
-        entity.setTimestamp(stay.getTimestamp());
+        entity.setTimestamp(stay.getStartTime());
         entity.setLocation(GeoUtils.createPoint(stay.getLongitude(), stay.getLatitude()));
-        entity.setStayDuration(stay.getStayDuration()); // Already in seconds
+        entity.setStayDuration(stay.getDuration().toSeconds()); // Already in seconds
         entity.setLocationName(stay.getLocationName());
         entity.setLocationSource(getLocationSource(stay));
 
@@ -343,10 +164,6 @@ public class StreamingTimelineConverter {
                 entity.setMaxGpsSpeed(stats.maxGpsSpeed());
                 entity.setSpeedVariance(stats.speedVariance());
                 entity.setLowAccuracyPointsCount(stats.lowAccuracyPointsCount());
-
-                log.debug("Stored GPS statistics for trip: avgSpeed={} m/s, maxSpeed={} m/s, variance={}, lowAccuracy={}",
-                        String.format("%.2f", stats.avgGpsSpeed()), String.format("%.2f", stats.maxGpsSpeed()),
-                        String.format("%.2f", stats.speedVariance()), stats.lowAccuracyPointsCount());
             } else {
                 log.debug("No valid GPS statistics calculated for trip with {} points", tripPath.size());
             }
@@ -363,18 +180,18 @@ public class StreamingTimelineConverter {
      * @param userRef user entity reference for the trip
      * @return converted entity
      */
-    public TimelineTripEntity convertTripToEntity(TimelineTripDTO trip, UserEntity userRef) {
+    public TimelineTripEntity convertTripToEntity(Trip trip, UserEntity userRef) {
         if (trip == null) return null;
 
         TimelineTripEntity entity = new TimelineTripEntity();
         entity.setUser(userRef);
-        entity.setTimestamp(trip.getTimestamp());
-        entity.setStartPoint(GeoUtils.createPoint(trip.getLongitude(), trip.getLatitude()));
-        entity.setEndPoint(GeoUtils.createPoint(trip.getEndLongitude(), trip.getEndLatitude()));
+        entity.setTimestamp(trip.getStartTime());
+        entity.setStartPoint(GeoUtils.createPoint(trip.getStartLocation().getLongitude(), trip.getStartLocation().getLatitude()));
+        entity.setEndPoint(GeoUtils.createPoint(trip.getEndLocation().getLongitude(), trip.getEndLocation().getLatitude()));
 
-        entity.setDistanceMeters(trip.getDistanceMeters());
-        entity.setTripDuration(trip.getTripDuration()); // Already in seconds
-        entity.setMovementType(trip.getMovementType());
+        entity.setDistanceMeters(Double.valueOf(trip.getDistanceMeters()).longValue());
+        entity.setTripDuration(trip.getDuration().toSeconds()); // Already in seconds
+        entity.setMovementType(trip.getTripType().name());
 
         // Convert path from List<GpsPoint> to LineString
         if (trip.getPath() != null && !trip.getPath().isEmpty()) {
@@ -391,14 +208,14 @@ public class StreamingTimelineConverter {
      * @param userRef user entity reference for the gap
      * @return converted entity
      */
-    public TimelineDataGapEntity convertGapToEntity(TimelineDataGapDTO gap, UserEntity userRef) {
+    public TimelineDataGapEntity convertGapToEntity(DataGap gap, UserEntity userRef) {
         if (gap == null) return null;
 
         TimelineDataGapEntity entity = new TimelineDataGapEntity();
         entity.setUser(userRef);
         entity.setStartTime(gap.getStartTime());
         entity.setEndTime(gap.getEndTime());
-        entity.setDurationSeconds(gap.getDurationSeconds());
+        entity.setDurationSeconds(gap.getDuration().getSeconds());
 
         return entity;
     }
@@ -458,7 +275,7 @@ public class StreamingTimelineConverter {
     /**
      * Determine location source based on DTO fields.
      */
-    private LocationSource getLocationSource(TimelineStayLocationDTO stay) {
+    private LocationSource getLocationSource(Stay stay) {
         if (stay.getFavoriteId() != null && stay.getFavoriteId() != 0) {
             return LocationSource.FAVORITE;
         }
@@ -471,15 +288,15 @@ public class StreamingTimelineConverter {
     /**
      * Convert GPS point path to JTS LineString geometry.
      */
-    private org.locationtech.jts.geom.LineString convertPathToLineString(java.util.List<? extends org.github.tess1o.geopulse.shared.geo.GpsPoint> path) {
+    private LineString convertPathToLineString(List<? extends GpsPoint> path) {
         if (path == null || path.size() < 2) {
             return null;
         }
 
-        org.locationtech.jts.geom.GeometryFactory geometryFactory = new org.locationtech.jts.geom.GeometryFactory();
-        org.locationtech.jts.geom.Coordinate[] coordinates = path.stream()
-                .map(point -> new org.locationtech.jts.geom.Coordinate(point.getLongitude(), point.getLatitude()))
-                .toArray(org.locationtech.jts.geom.Coordinate[]::new);
+        GeometryFactory geometryFactory = new GeometryFactory();
+        Coordinate[] coordinates = path.stream()
+                .map(point -> new Coordinate(point.getLongitude(), point.getLatitude()))
+                .toArray(Coordinate[]::new);
 
         return geometryFactory.createLineString(coordinates);
     }
@@ -488,7 +305,7 @@ public class StreamingTimelineConverter {
      * Convert JTS LineString to GPS points.
      */
     private List<GpsPoint> convertLineStringToGpsPoints(LineString lineString) {
-        return java.util.stream.IntStream.range(0, lineString.getNumPoints())
+        return IntStream.range(0, lineString.getNumPoints())
                 .mapToObj(i -> {
                     Coordinate coord = lineString.getCoordinateN(i);
                     return new GPSPoint(coord.y, coord.x, 0, 0); // Note: y=lat, x=lon
