@@ -96,7 +96,7 @@ public class DataGapDetectionEngine {
                 return finalizationService.finalizeStayWithoutLocation(userState, config);
 
             case IN_TRIP:
-                return finalizationService.finalizeTripForGap(userState, lastPoint);
+                return finalizationService.finalizeTripForGap(userState, lastPoint, config);
 
             case UNKNOWN:
             default:

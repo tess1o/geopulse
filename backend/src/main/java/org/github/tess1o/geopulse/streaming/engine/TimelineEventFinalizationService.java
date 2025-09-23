@@ -178,7 +178,7 @@ public class TimelineEventFinalizationService {
      * @param endPoint  optional additional endpoint to include in the trip
      * @return finalized trip event with unknown type
      */
-    public Trip finalizeTripForGap(UserState userState, GPSPoint endPoint) {
+    public Trip finalizeTripForGap(UserState userState, GPSPoint endPoint, TimelineConfig config) {
         List<GPSPoint> tripPath = userState.copyActivePoints();
         if (endPoint != null) {
             tripPath.add(endPoint);
@@ -194,13 +194,14 @@ public class TimelineEventFinalizationService {
 
         Duration tripDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
         double totalDistance = calculateTripDistance(tripPath);
+        TripType tripType = tripClassificationEngine.classifyTrip(tripPath, config);
 
         return Trip.builder()
                 .startTime(firstPoint.getTimestamp())
                 .duration(tripDuration)
                 .path(tripPath)
                 .distanceMeters(totalDistance)
-                .tripType(TripType.UNKNOWN) // Will be classified later in post-processing
+                .tripType(tripType) // Will be classified later in post-processing
                 .build();
     }
 
