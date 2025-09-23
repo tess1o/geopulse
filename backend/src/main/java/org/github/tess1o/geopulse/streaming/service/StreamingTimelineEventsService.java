@@ -11,6 +11,8 @@ import org.github.tess1o.geopulse.streaming.events.FavoriteAddedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
+import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
+import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 
 import java.util.UUID;
@@ -27,6 +29,9 @@ public class StreamingTimelineEventsService {
 
     @Inject
     StreamingTimelineGenerationService streamingTimelineGenerationService;
+    
+    @Inject
+    org.github.tess1o.geopulse.streaming.service.trips.TripReclassificationService tripReclassificationService;
 
     @Transactional
     public void onFavoriteAdded(@Observes FavoriteAddedEvent event) {
@@ -68,6 +73,33 @@ public class StreamingTimelineEventsService {
             log.error("Failed to process timeline preferences updated event for user {}: {}",
                     userId, e.getMessage(), e);
         }
+    }
+    
+    /**
+     * Handle travel classification updated events - fast trip type recalculation.
+     * This is much faster than full timeline regeneration.
+     */
+    @Transactional
+    public void onTravelClassificationUpdated(@Observes TravelClassificationUpdatedEvent event) {
+        log.info("Processing travel classification updated event for user {} (resetToDefaults={})",
+                event.getUserId(), event.isWasResetToDefaults());
+        try {
+            tripReclassificationService.reclassifyUserTrips(event.getUserId());
+        } catch (Exception e) {
+            log.error("Failed to process travel classification updated event for user {}: {}",
+                    event.getUserId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Handle timeline structure updated events - full timeline regeneration.
+     * Used when structural parameters (staypoint detection, merging, etc.) change.
+     */
+    @Transactional
+    public void onTimelineStructureUpdated(@Observes TimelineStructureUpdatedEvent event) {
+        log.info("Processing timeline structure updated event for user {} (resetToDefaults={})",
+                event.getUserId(), event.isWasResetToDefaults());
+        regenerateTimeline(event.getUserId());
     }
 
     private void renameTimelineLocation(FavoriteRenamedEvent event) {

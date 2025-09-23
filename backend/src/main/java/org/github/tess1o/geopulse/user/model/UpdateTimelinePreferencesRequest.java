@@ -65,4 +65,25 @@ public class UpdateTimelinePreferencesRequest {
 
     @Min(value = 1, message = "Data Gap minimum duration (seconds) must be positive")
     private Integer dataGapMinDurationSeconds;
+    
+    // Travel Classification Settings
+    @DecimalMin(value = "3.0", message = "Walking max average speed must be at least 3.0 km/h")
+    @DecimalMax(value = "10.0", message = "Walking max average speed must be at most 10.0 km/h")
+    private Double walkingMaxAvgSpeed;
+    
+    @DecimalMin(value = "5.0", message = "Walking max maximum speed must be at least 5.0 km/h") 
+    @DecimalMax(value = "15.0", message = "Walking max maximum speed must be at most 15.0 km/h")
+    private Double walkingMaxMaxSpeed;
+    
+    @DecimalMin(value = "5.0", message = "Car min average speed must be at least 5.0 km/h")
+    @DecimalMax(value = "25.0", message = "Car min average speed must be at most 25.0 km/h")
+    private Double carMinAvgSpeed;
+    
+    @DecimalMin(value = "10.0", message = "Car min maximum speed must be at least 10.0 km/h")
+    @DecimalMax(value = "50.0", message = "Car min maximum speed must be at most 50.0 km/h")
+    private Double carMinMaxSpeed;
+    
+    @DecimalMin(value = "0.1", message = "Short distance threshold must be at least 0.1 km")
+    @DecimalMax(value = "3.0", message = "Short distance threshold must be at most 3.0 km")
+    private Double shortDistanceKm;
 }

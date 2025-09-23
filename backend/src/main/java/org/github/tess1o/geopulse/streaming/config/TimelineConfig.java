@@ -145,4 +145,36 @@ public class TimelineConfig {
      * This prevents very short connectivity issues from creating unnecessary gap records.
      */
     private Integer dataGapMinDurationSeconds;
+    
+    // Travel Classification Configuration
+    /**
+     * Maximum average speed in km/h to classify movement as walking.
+     * Trips with average speeds below this threshold are likely walking trips.
+     */
+    private Double walkingMaxAvgSpeed;
+    
+    /**
+     * Maximum peak speed in km/h to classify movement as walking.
+     * Trips with maximum speeds below this threshold are likely walking trips.
+     */
+    private Double walkingMaxMaxSpeed;
+    
+    /**
+     * Minimum average speed in km/h to classify movement as car travel.
+     * Trips with average speeds above this threshold are likely car trips.
+     */
+    private Double carMinAvgSpeed;
+    
+    /**
+     * Minimum peak speed in km/h to classify movement as car travel.
+     * Trips with maximum speeds above this threshold are likely car trips.
+     */
+    private Double carMinMaxSpeed;
+    
+    /**
+     * Distance threshold in km for applying relaxed walking speed classification.
+     * Trips shorter than this distance get slightly more lenient walking speed 
+     * classification to account for GPS inaccuracies.
+     */
+    private Double shortDistanceKm;
 }

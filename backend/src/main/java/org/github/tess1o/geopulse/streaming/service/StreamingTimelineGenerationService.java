@@ -6,15 +6,15 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
+import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
+import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
-import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
-import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 import org.github.tess1o.geopulse.streaming.service.trips.StreamingTripPostProcessor;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.merge.MovementTimelineMerger;
@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -60,9 +59,6 @@ public class StreamingTimelineGenerationService {
 
     @Inject
     StreamingTripPostProcessor tripPostProcessor;
-
-    @Inject
-    StreamingTimelineConverter streamingTimelineConverter;
 
     @Inject
     StreamingDataGapService dataGapService;
@@ -100,7 +96,6 @@ public class StreamingTimelineGenerationService {
 
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
 
-            // Load GPS data using lightweight DTOs with automatic chunking
             List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime);
 
             if (newPoints.isEmpty()) {
@@ -126,17 +121,22 @@ public class StreamingTimelineGenerationService {
             List<TimelineEvent> events = tripPostProcessor.postProcessTrips(rawEvents, config);
 
             if (!events.isEmpty()) {
-                MovementTimelineDTO timelineDto = streamingTimelineConverter.convertToMovementTimelineDTO(userId, events);
+                // Create RawTimeline from events to preserve rich GPS data
+                RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
+
+                // Apply merging on raw objects
                 if (config.getIsMergeEnabled()) {
-                    timelineDto = timelineMerger.mergeSameNamedLocations(config, timelineDto);
+                    rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);
                 }
 
+                // Apply path simplification on raw objects
                 if (isPathSimplificationEnabled(config)) {
-                    log.debug("Applying GPS path simplification for user {}", timelineDto.getUserId());
-                    timelineDto = applyPathSimplification(config, timelineDto);
+                    log.debug("Applying GPS path simplification for user {}", rawTimeline.getUserId());
+                    rawTimeline = applyPathSimplification(config, rawTimeline);
                 }
 
-                persistenceManager.persistTimeline(userId, timelineDto);
+                // Persist raw timeline with GPS statistics calculation
+                persistenceManager.persistRawTimeline(userId, rawTimeline);
             }
 
             dataGapService.checkAndCreateOngoingDataGap(userId, config);
@@ -238,20 +238,51 @@ public class StreamingTimelineGenerationService {
         return DEFAULT_START_DATE;
     }
 
-    private MovementTimelineDTO applyPathSimplification(TimelineConfig config, MovementTimelineDTO timeline) {
+    /**
+     * Apply path simplification to a RawTimeline, preserving rich GPS data.
+     */
+    private RawTimeline applyPathSimplification(TimelineConfig config, RawTimeline timeline) {
         if (timeline == null || timeline.getTrips() == null || timeline.getTrips().isEmpty()) {
             return timeline;
         }
 
-        log.debug("Simplifying paths for {} trips", timeline.getTrips().size());
+        log.debug("Simplifying paths for {} trips in raw timeline", timeline.getTrips().size());
 
-        List<TimelineTripDTO> simplifiedTrips = timeline.getTrips().stream()
-                .map(trip -> pathSimplificationService.simplifyTripPath(trip, config))
-                .collect(Collectors.toList());
+        List<Trip> simplifiedTrips = timeline.getTrips().stream()
+                .map(trip -> simplifyTripPath(trip, config))
+                .toList();
 
-        MovementTimelineDTO result = new MovementTimelineDTO(timeline.getUserId(), timeline.getStays(), simplifiedTrips, timeline.getDataGaps());
-        result.setLastUpdated(timeline.getLastUpdated());
-        return result;
+        return RawTimeline.builder()
+                .userId(timeline.getUserId())
+                .stays(timeline.getStays())
+                .trips(simplifiedTrips)
+                .dataGaps(timeline.getDataGaps())
+                .build();
+    }
+
+    /**
+     * Simplify the path of a single Trip domain object.
+     * Preserves rich GPS data (speed, accuracy) throughout simplification.
+     */
+    private Trip simplifyTripPath(Trip trip, TimelineConfig config) {
+
+        if (trip.getPath() == null || trip.getPath().isEmpty()) {
+            return trip; // No path to simplify
+        }
+
+        List<? extends GpsPoint> simplifiedPoints = pathSimplificationService.simplify(trip.getPath(), config);
+
+        @SuppressWarnings("unchecked")
+        List<GPSPoint> simplifiedDomainPoints = (List<GPSPoint>) simplifiedPoints;
+
+        return Trip.builder()
+                .startTime(trip.getStartTime())
+                .duration(trip.getDuration())
+                .path(simplifiedDomainPoints)
+                .statistics(trip.getStatistics())
+                .distanceMeters(trip.getDistanceMeters())
+                .tripType(trip.getTripType())
+                .build();
     }
 
     private boolean isPathSimplificationEnabled(TimelineConfig config) {

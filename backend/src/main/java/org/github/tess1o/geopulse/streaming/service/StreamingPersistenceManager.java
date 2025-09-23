@@ -7,10 +7,10 @@ import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
-import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
+import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
@@ -20,6 +20,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -29,7 +30,6 @@ import java.util.stream.StreamSupport;
 
 /**
  * Manages persistence of streaming timeline results to existing database tables.
- * Converts MovementTimelineDTO components to entities and performs batch persistence.
  */
 @ApplicationScoped
 @Slf4j
@@ -54,42 +54,66 @@ public class StreamingPersistenceManager {
     ReverseGeocodingLocationRepository geocodingRepository;
 
     /**
-     * Persist timeline data to database using injected repositories.
+     * Persist raw timeline with GPS statistics calculation.
+     * This method processes trips with rich GPS data while maintaining optimized stays/gaps persistence.
      *
-     * @param userId   user identifier
-     * @param timeline timeline data to persist
+     * @param userId      user identifier
+     * @param rawTimeline raw timeline container with domain objects
      */
-    public void persistTimeline(UUID userId, MovementTimelineDTO timeline) {
+    public void persistRawTimeline(UUID userId, RawTimeline rawTimeline) {
+        log.debug("Starting raw timeline persistence for user {} with {} events",
+                userId, rawTimeline.getTotalEventCount());
 
-        log.debug("Starting timeline persistence for user {}: {} stays, {} trips, {} gaps",
-                userId, timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
-
-        // Create user reference for entities
+        // Create user reference for entities  
         UserEntity userRef = converter.createUserReference(userId);
 
-        // Persist stays
-        if (timeline.getStays() != null && !timeline.getStays().isEmpty()) {
-            persistStays(timeline.getStays(), userRef);
-        }
+        int tripCount = persistTripsWithGpsStats(rawTimeline.getTrips(), userRef);
+        int stayCount = persistStaysFromDomain(rawTimeline.getStays(), userRef);
+        int gapCount = persistDataGapsFromDomain(rawTimeline.getDataGaps(), userRef);
 
-        // Persist trips
-        if (timeline.getTrips() != null && !timeline.getTrips().isEmpty()) {
-            persistTrips(timeline.getTrips(), userRef);
-        }
+        log.debug("Raw timeline persistence completed for user {}: {} trips with GPS stats, {} stays, {} gaps",
+                userId, tripCount, stayCount, gapCount);
+    }
 
-        // Persist data gaps
-        if (timeline.getDataGaps() != null && !timeline.getDataGaps().isEmpty()) {
-            persistDataGaps(timeline.getDataGaps(), userRef);
+    /**
+     * Persist trips with GPS statistics calculation from rich domain objects.
+     */
+    private int persistTripsWithGpsStats(List<Trip> trips, UserEntity userRef) {
+        int tripCount = 0;
+        for (Trip trip : trips) {
+            TimelineTripEntity tripEntity = converter.convertStreamingTripToEntity(trip, userRef);
+            if (tripEntity != null) {
+                tripRepository.persist(tripEntity);
+                tripCount++;
+            }
         }
+        log.debug("Persisted {} trip entities with GPS statistics", tripCount);
+        return tripCount;
+    }
 
-        log.debug("Timeline persistence completed for user {}", userId);
+    private int persistStaysFromDomain(List<Stay> stays, UserEntity userRef) {
+        if (stays.isEmpty()) {
+            return 0;
+        }
+        // Use existing optimized stay persistence with batch loading
+        persistStays(stays, userRef);
+        return stays.size();
+    }
+
+    private int persistDataGapsFromDomain(List<DataGap> dataGaps, UserEntity userRef) {
+        if (dataGaps.isEmpty()) {
+            return 0;
+        }
+        // Use existing data gap persistence
+        persistDataGaps(dataGaps, userRef);
+        return dataGaps.size();
     }
 
     /**
      * Persist stay locations to database using batch loading to eliminate N+1 queries.
      */
-    private void persistStays(Iterable<TimelineStayLocationDTO> stays, UserEntity userRef) {
-        java.util.List<TimelineStayLocationDTO> stayList = StreamSupport.stream(stays.spliterator(), false)
+    private void persistStays(Iterable<Stay> stays, UserEntity userRef) {
+        List<Stay> stayList = StreamSupport.stream(stays.spliterator(), false)
                 .collect(Collectors.toList());
 
         if (stayList.isEmpty()) {
@@ -98,13 +122,13 @@ public class StreamingPersistenceManager {
 
         // Step 1: Collect all favorite and geocoding IDs
         Set<Long> favoriteIds = stayList.stream()
-                .map(TimelineStayLocationDTO::getFavoriteId)
+                .map(Stay::getFavoriteId)
                 .filter(java.util.Objects::nonNull)
                 .filter(id -> id != 0)
                 .collect(java.util.stream.Collectors.toSet());
 
         Set<Long> geocodingIds = stayList.stream()
-                .map(TimelineStayLocationDTO::getGeocodingId)
+                .map(Stay::getGeocodingId)
                 .filter(java.util.Objects::nonNull)
                 .filter(id -> id != 0)
                 .collect(java.util.stream.Collectors.toSet());
@@ -135,7 +159,7 @@ public class StreamingPersistenceManager {
 
         // Step 3: Convert and persist stays using pre-loaded entity maps
         int stayCount = 0;
-        for (TimelineStayLocationDTO stay : stayList) {
+        for (Stay stay : stayList) {
             TimelineStayEntity entity = converter.convertStayToEntityWithBatchData(stay, userRef, favoriteMap, geocodingMap);
             if (entity != null) {
                 stayRepository.persist(entity);
@@ -147,26 +171,11 @@ public class StreamingPersistenceManager {
     }
 
     /**
-     * Persist trips to database.
-     */
-    private void persistTrips(Iterable<TimelineTripDTO> trips, UserEntity userRef) {
-        int tripCount = 0;
-        for (TimelineTripDTO trip : trips) {
-            TimelineTripEntity entity = converter.convertTripToEntity(trip, userRef);
-            if (entity != null) {
-                tripRepository.persist(entity);
-                tripCount++;
-            }
-        }
-        log.debug("Persisted {} trip entities", tripCount);
-    }
-
-    /**
      * Persist data gaps to database.
      */
-    private void persistDataGaps(Iterable<TimelineDataGapDTO> gaps, UserEntity userRef) {
+    private void persistDataGaps(Iterable<DataGap> gaps, UserEntity userRef) {
         int gapCount = 0;
-        for (TimelineDataGapDTO gap : gaps) {
+        for (DataGap gap : gaps) {
             TimelineDataGapEntity entity = converter.convertGapToEntity(gap, userRef);
             if (entity != null) {
                 gapRepository.persist(entity);

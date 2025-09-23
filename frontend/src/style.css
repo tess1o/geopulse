@@ -620,6 +620,7 @@ body {
         border: 1px solid var(--gp-border-light) !important;
         box-shadow: var(--gp-shadow-dialog) !important;
         background: var(--gp-surface-white) !important;
+        --p-confirmdialog-icon-color: var(--gp-text-primary) !important;
         overflow: hidden !important;
     }
     

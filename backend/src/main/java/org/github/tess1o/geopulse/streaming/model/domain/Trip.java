@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -26,6 +27,7 @@ public class Trip implements TimelineEvent {
     private TripType tripType;
     private List<GPSPoint> path;
     private double distanceMeters;
+    private TripGpsStatistics statistics;
 
     @Override
     public TimelineEventType getType() {

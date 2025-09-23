@@ -539,8 +539,8 @@ test.describe('Timeline Page', () => {
       const user = await dbManager.getUserByEmail(testUser.email);
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
       await TimelineTestData.insertRegularTripsTestData(dbManager, user.id);
-      
-      await page.reload();
+
+      await timelinePage.navigateWithDateRange(new Date('2025-09-20'), new Date('2025-09-22'));
       await timelinePage.waitForPageLoad();
       await timelinePage.waitForTimelineContent();
       

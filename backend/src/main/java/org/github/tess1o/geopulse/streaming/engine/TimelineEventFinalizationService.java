@@ -9,6 +9,9 @@ import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
+import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculator;
+import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
+import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Duration;
@@ -30,7 +33,10 @@ public class TimelineEventFinalizationService {
     LocationPointResolver locationPointResolver;
 
     @Inject
-    TripClassificationEngine tripClassificationEngine;
+    TravelClassification travelClassification;
+
+    @Inject
+    GpsStatisticsCalculator gpsStatisticsCalculator;
 
     /**
      * Finalize a stay event from user state without location resolution.
@@ -157,12 +163,14 @@ public class TimelineEventFinalizationService {
 
         Duration tripDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
         double totalDistance = calculateTripDistance(tripPath);
-        TripType tripType = tripClassificationEngine.classifyTrip(tripPath, config);
+        TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
+        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, Double.valueOf(totalDistance).longValue(), config);
 
         Trip trip = Trip.builder()
                 .startTime(firstPoint.getTimestamp())
                 .duration(tripDuration)
                 .path(tripPath)
+                .statistics(gpsStatistics)
                 .distanceMeters(totalDistance)
                 .tripType(tripType)
                 .build();
@@ -178,7 +186,7 @@ public class TimelineEventFinalizationService {
      * @param endPoint  optional additional endpoint to include in the trip
      * @return finalized trip event with unknown type
      */
-    public Trip finalizeTripForGap(UserState userState, GPSPoint endPoint) {
+    public Trip finalizeTripForGap(UserState userState, GPSPoint endPoint, TimelineConfig config) {
         List<GPSPoint> tripPath = userState.copyActivePoints();
         if (endPoint != null) {
             tripPath.add(endPoint);
@@ -194,13 +202,16 @@ public class TimelineEventFinalizationService {
 
         Duration tripDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
         double totalDistance = calculateTripDistance(tripPath);
+        TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
+        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, Double.valueOf(totalDistance).longValue(), config);
 
         return Trip.builder()
                 .startTime(firstPoint.getTimestamp())
                 .duration(tripDuration)
                 .path(tripPath)
+                .statistics(gpsStatistics)
                 .distanceMeters(totalDistance)
-                .tripType(TripType.UNKNOWN) // Will be classified later in post-processing
+                .tripType(tripType)
                 .build();
     }
 

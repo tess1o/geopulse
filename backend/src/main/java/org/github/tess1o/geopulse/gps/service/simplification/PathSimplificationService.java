@@ -43,30 +43,6 @@ public class PathSimplificationService {
     }
 
     /**
-     * Apply path simplification to a timeline trip DTO.
-     *
-     * @param tripDTO The timeline trip DTO to simplify
-     * @param config Timeline configuration containing simplification settings
-     * @return New trip DTO with simplified path, or original if simplification is disabled
-     */
-    public TimelineTripDTO simplifyTripPath(TimelineTripDTO tripDTO, TimelineConfig config) {
-        List<? extends GpsPoint> simplified = simplify(tripDTO.getPath(), config);
-
-        if (simplified.size() < tripDTO.getPath().size()) {
-            return TimelineTripDTO.builder()
-                    .timestamp(tripDTO.getTimestamp())
-                    .latitude(tripDTO.getLatitude())
-                    .longitude(tripDTO.getLongitude())
-                    .tripDuration(tripDTO.getTripDuration())
-                    .distanceMeters(tripDTO.getDistanceMeters())
-                    .movementType(tripDTO.getMovementType())
-                    .path(simplified)
-                    .build();
-        }
-        return tripDTO;
-    }
-
-    /**
      * Simplify a GPS path with flexible tolerance based on trip characteristics.
      * This implements the context-aware simplification strategy mentioned in the proposal.
      *

@@ -63,4 +63,20 @@ public class TimelineConfigurationProperties {
 
     @ConfigProperty(name = "geopulse.timeline.data_gap.min_duration_seconds", defaultValue = "1800")
     String dataGapMinDurationSeconds;
+
+    // Travel Classification
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.walking.max_avg_speed", defaultValue = "6.0")
+    String walkingMaxAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.walking.max_max_speed", defaultValue = "8.0")
+    String walkingMaxMaxSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.car.min_avg_speed", defaultValue = "8.0")
+    String carMinAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.car.min_max_speed", defaultValue = "15.0")
+    String carMinMaxSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.short_distance_km", defaultValue = "1.0")
+    String shortDistanceKm;
 }

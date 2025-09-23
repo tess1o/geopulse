@@ -25,6 +25,13 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         getShowDistance: (state) => state.timelinePreferences?.showDistance ?? true,
         getTimeFormat: (state) => state.timelinePreferences?.timeFormat ?? '24h',
         getDateFormat: (state) => state.timelinePreferences?.dateFormat ?? 'MM/dd/yyyy',
+        
+        // Travel classification preference getters with defaults
+        getWalkingMaxAvgSpeed: (state) => state.timelinePreferences?.walkingMaxAvgSpeed ?? 6.0,
+        getWalkingMaxMaxSpeed: (state) => state.timelinePreferences?.walkingMaxMaxSpeed ?? 8.0,
+        getCarMinAvgSpeed: (state) => state.timelinePreferences?.carMinAvgSpeed ?? 8.0,
+        getCarMinMaxSpeed: (state) => state.timelinePreferences?.carMinMaxSpeed ?? 15.0,
+        getShortDistanceKm: (state) => state.timelinePreferences?.shortDistanceKm ?? 1.0,
 
         // Check if preferences are at default values
         isDefaultSettings: (state) => {

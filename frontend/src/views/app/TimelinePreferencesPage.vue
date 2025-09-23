@@ -50,7 +50,7 @@
                 <p class="banner-description">
                   Your GPS data is processed to identify meaningful stays and trips.
                   These settings control the sensitivity of this detection and apply only to your account.
-                  Changing them will trigger a full timeline re-generation, which may take some time depending on your GPS data volume.
+                  Some changes (like speed thresholds) will quickly update trip classifications, while others may require full timeline re-generation depending on your GPS data volume.
                 </p>
               </div>
             </div>
@@ -113,6 +113,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointRadiusMeters }}m</div>
                       <SliderControl
+                        v-if="prefs.staypointRadiusMeters !== undefined"
                         v-model="prefs.staypointRadiusMeters"
                         :min="10"
                         :max="500"
@@ -138,6 +139,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointMinDurationMinutes }} minutes</div>
                       <SliderControl
+                          v-if="prefs.staypointMinDurationMinutes !== undefined"
                           v-model="prefs.staypointMinDurationMinutes"
                           :min="1"
                           :max="60"
@@ -179,6 +181,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointVelocityThreshold }} km/h</div>
                       <SliderControl
+                        v-if="prefs.staypointVelocityThreshold !== undefined"
                         v-model="prefs.staypointVelocityThreshold"
                         :min="1"
                         :max="20"
@@ -205,6 +208,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointMaxAccuracyThreshold }}m</div>
                       <SliderControl
+                        v-if="prefs.staypointMaxAccuracyThreshold !== undefined"
                         v-model="prefs.staypointMaxAccuracyThreshold"
                         :min="5"
                         :max="200"
@@ -228,6 +232,7 @@
                     <template #control>
                       <div class="control-value">{{ Math.round(prefs.staypointMinAccuracyRatio * 100) }}%</div>
                       <SliderControl
+                        v-if="prefs.staypointMinAccuracyRatio !== undefined"
                         v-model="prefs.staypointMinAccuracyRatio"
                         :min="0.1"
                         :max="1.0"
@@ -243,13 +248,13 @@
               </div>
           </div>
 
-          <!-- Trip Detection Tab -->
+          <!-- Trip Classification Tab -->
           <div v-if="activeTab === 'trips'">
               <div class="preferences-section">
                 <div class="section-header">
-                  <h2 class="section-title">Trip Detection Settings</h2>
+                  <h2 class="section-title">Trip Classification Settings</h2>
                   <p class="section-description">
-                    Configure how movements between stay points are identified as trips
+                    Configure how trips are detected and classified by movement type
                   </p>
                 </div>
 
@@ -272,6 +277,94 @@
                         optionValue="value"
                         placeholder="Select algorithm"
                         class="w-full"
+                      />
+                    </template>
+                  </SettingCard>
+                  
+                  <!-- Walking Speed Settings -->
+                  <SettingCard
+                    title="Walking Speed Thresholds"
+                    description="Speed limits that determine when movement is classified as walking vs other transportation modes"
+                    :details="{
+                      'Average Speed': 'Maximum sustained speed for walking classification. Trips with average speeds above this threshold will be classified as non-walking',
+                      'Maximum Speed': 'Maximum instantaneous speed allowed within walking trips. Brief speed bursts above this (like running to catch a bus) will reclassify the entire trip as non-walking'
+                    }"
+                  >
+                    <template #control>
+                      <div class="speed-setting-group">
+                        <div class="speed-setting">
+                          <div class="control-value">{{ prefs.walkingMaxAvgSpeed }} km/h (avg)</div>
+                          <SliderControl
+                            v-if="prefs.walkingMaxAvgSpeed !== undefined"
+                            v-model="prefs.walkingMaxAvgSpeed"
+                            :min="3.0" :max="10.0" :step="0.5"
+                            :labels="['3.0 km/h (Slow)', '5.5 km/h (Normal)', '10.0 km/h (Fast)']"
+                            suffix=" km/h" :decimal-places="1"
+                          />
+                        </div>
+                        <div class="speed-setting">
+                          <div class="control-value">{{ prefs.walkingMaxMaxSpeed }} km/h (max)</div>
+                          <SliderControl
+                            v-if="prefs.walkingMaxMaxSpeed !== undefined"
+                            v-model="prefs.walkingMaxMaxSpeed"
+                            :min="5.0" :max="15.0" :step="0.5"
+                            :labels="['5.0 km/h (Conservative)', '8.0 km/h (Normal)', '15.0 km/h (Generous)']"
+                            suffix=" km/h" :decimal-places="1"
+                          />
+                        </div>
+                      </div>
+                    </template>
+                  </SettingCard>
+
+                  <!-- Car Speed Settings -->
+                  <SettingCard
+                    title="Car Speed Thresholds"  
+                    description="Speed requirements that determine when movement is classified as driving vs other transportation modes"
+                    :details="{
+                      'Average Speed': 'Minimum sustained speed required for car classification. Trips with average speeds below this threshold will be classified as walking',
+                      'Maximum Speed': 'Minimum peak speed required for car classification. Trips that never reach this speed will not be classified as driving, even if average speed is high'
+                    }"
+                  >
+                    <template #control>
+                      <div class="speed-setting-group">
+                        <div class="speed-setting">
+                          <div class="control-value">{{ prefs.carMinAvgSpeed }} km/h (min avg)</div>
+                          <SliderControl
+                            v-if="prefs.carMinAvgSpeed !== undefined"
+                            v-model="prefs.carMinAvgSpeed"
+                            :min="5.0" :max="25.0" :step="0.5"
+                            :labels="['5.0 km/h (Sensitive)', '12.0 km/h (Normal)', '25.0 km/h (Conservative)']"
+                            suffix=" km/h" :decimal-places="1"
+                          />
+                        </div>
+                        <div class="speed-setting">
+                          <div class="control-value">{{ prefs.carMinMaxSpeed }} km/h (min max)</div>
+                          <SliderControl
+                            v-if="prefs.carMinMaxSpeed !== undefined"
+                            v-model="prefs.carMinMaxSpeed"
+                            :min="10.0" :max="50.0" :step="5.0"
+                            :labels="['10.0 km/h (City)', '25.0 km/h (Normal)', '50.0 km/h (Highway)']"
+                            suffix=" km/h" :decimal-places="1"
+                          />
+                        </div>
+                      </div>
+                    </template>
+                  </SettingCard>
+
+                  <!-- Short Distance Threshold -->
+                  <SettingCard
+                    title="Short Trip Distance Threshold"
+                    description="Distance threshold for applying relaxed walking speed detection"
+                    details="Trips shorter than this distance get slightly more lenient walking speed classification to account for GPS inaccuracies"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.shortDistanceKm }} km</div>
+                      <SliderControl
+                        v-if="prefs.shortDistanceKm !== undefined"
+                        v-model="prefs.shortDistanceKm"
+                        :min="0.1" :max="3.0" :step="0.1"
+                        :labels="['0.1 km (Strict)', '1.0 km (Normal)', '3.0 km (Lenient)']"
+                        suffix=" km" :decimal-places="1"
                       />
                     </template>
                   </SettingCard>
@@ -299,6 +392,7 @@
                     <template #control>
                       <div class="control-value">{{ Math.floor(prefs.dataGapThresholdSeconds / 60) }} minutes ({{ prefs.dataGapThresholdSeconds }}s)</div>
                       <SliderControl
+                        v-if="prefs.dataGapThresholdSeconds !== undefined"
                         v-model="prefs.dataGapThresholdSeconds"
                         :min="300"
                         :max="21600"
@@ -321,6 +415,7 @@
                     <template #control>
                       <div class="control-value">{{ Math.floor(prefs.dataGapMinDurationSeconds / 60) }} minutes ({{ prefs.dataGapMinDurationSeconds }}s)</div>
                       <SliderControl
+                        v-if="prefs.dataGapMinDurationSeconds !== undefined"
                         v-model="prefs.dataGapMinDurationSeconds"
                         :min="300"
                         :max="7200"
@@ -376,6 +471,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.mergeMaxDistanceMeters }}m</div>
                       <SliderControl
+                        v-if="prefs.mergeMaxDistanceMeters !== undefined"
                         v-model="prefs.mergeMaxDistanceMeters"
                         :min="20"
                         :max="500"
@@ -402,6 +498,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.mergeMaxTimeGapMinutes }} minutes</div>
                       <SliderControl
+                        v-if="prefs.mergeMaxTimeGapMinutes !== undefined"
                         v-model="prefs.mergeMaxTimeGapMinutes"
                         :min="1"
                         :max="60"
@@ -457,6 +554,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.pathSimplificationTolerance }}m</div>
                       <SliderControl
+                        v-if="prefs.pathSimplificationTolerance !== undefined"
                         v-model="prefs.pathSimplificationTolerance"
                         :min="1"
                         :max="50"
@@ -480,6 +578,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.pathMaxPoints === 0 ? 'No limit' : prefs.pathMaxPoints + ' points' }}</div>
                       <SliderControl
+                        v-if="prefs.pathMaxPoints !== undefined"
                         v-model="prefs.pathMaxPoints"
                         :min="0"
                         :max="500"
@@ -567,7 +666,7 @@ const tabItems = ref([
     key: 'staypoints'
   },
   {
-    label: 'Trip Detection',
+    label: 'Trip Classification',
     icon: 'pi pi-route',
     key: 'trips'
   },
@@ -598,16 +697,7 @@ const regenerateLoading = ref(false)
 const timelineRegenerationVisible = ref(false)
 const timelineRegenerationType = ref('general')
 
-const prefs = ref({
-  // Path simplification defaults
-  pathSimplificationEnabled: true,
-  pathSimplificationTolerance: 15,
-  pathMaxPoints: 100,
-  pathAdaptiveSimplification: true,
-  // GPS gaps detection defaults
-  dataGapThresholdSeconds: 10800,
-  dataGapMinDurationSeconds: 1800
-})
+const prefs = ref({})
 
 // Algorithm options
 const algorithmOptions = [
@@ -640,9 +730,19 @@ const handleTabChange = (event) => {
 
 const getChangedPrefs = () => {
   const changed = {}
+  
   for (const key in prefs.value) {
-    if (prefs.value[key] !== originalPrefs.value?.[key]) {
-      changed[key] = prefs.value[key]
+    const currentValue = prefs.value[key]
+    const originalValue = originalPrefs.value?.[key]
+    
+    // Skip null values (they indicate no change requested)
+    if (currentValue === null) {
+      continue
+    }
+    
+    // Only include fields that have actually changed from their original values
+    if (currentValue !== originalValue) {
+      changed[key] = currentValue
     }
   }
   return changed
@@ -678,21 +778,67 @@ const confirmSavePreferences = () => {
     return
   }
 
-  confirm.require({
-    message: 'Changing timeline preferences will trigger a complete re-generation of all your timeline data according to the new settings. This process may take some time depending on the volume of your GPS data. Do you want to proceed?',
-    header: 'Save Timeline Preferences',
-    icon: 'pi pi-exclamation-triangle',
-    rejectProps: {
-      label: 'Cancel',
-      severity: 'secondary',
-      outlined: true
-    },
-    acceptProps: {
-      label: 'Save & Regenerate',
-      severity: 'primary'
-    },
-    accept: savePreferences
-  })
+  // Categorize changes
+  const hasClassificationChanges = hasClassificationParameters(changes)
+  const hasStructuralChanges = hasStructuralParameters(changes)
+  
+  if (hasClassificationChanges && !hasStructuralChanges) {
+    // Fast path - classification only
+    confirm.require({
+      message: 'These changes will recalculate movement types for your existing trips. Do you want to proceed?',
+      header: 'Update Trip Classifications',
+      icon: 'pi pi-refresh',
+      rejectProps: {
+        label: 'Cancel',
+        severity: 'secondary',
+        outlined: true
+      },
+      acceptProps: {
+        label: 'Update Classifications',
+        severity: 'success'
+      },
+      accept: () => savePreferences('classification')
+    })
+  } else {
+    // Full regeneration path (current behavior)
+    confirm.require({
+      message: 'Changing these timeline preferences will trigger a complete re-generation of all your timeline data according to the new settings. This process may take some time depending on the volume of your GPS data. Do you want to proceed?',
+      header: 'Save Timeline Preferences', 
+      icon: 'pi pi-exclamation-triangle',
+      rejectProps: {
+        label: 'Cancel',
+        severity: 'secondary',
+        outlined: true
+      },
+      acceptProps: {
+        label: 'Save & Regenerate',
+        severity: 'primary'
+      },
+      accept: () => savePreferences('full')
+    })
+  }
+}
+
+// Parameter categorization functions
+const hasClassificationParameters = (changes) => {
+  const classificationFields = [
+    'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed', 
+    'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm'
+  ]
+  return classificationFields.some(field => field in changes)
+}
+
+const hasStructuralParameters = (changes) => {
+  const structuralFields = [
+    'staypointVelocityThreshold', 'staypointRadiusMeters',
+    'staypointMinDurationMinutes', 'tripDetectionAlgorithm',
+    'useVelocityAccuracy', 'staypointMaxAccuracyThreshold', 'staypointMinAccuracyRatio',
+    'isMergeEnabled', 'mergeMaxDistanceMeters', 'mergeMaxTimeGapMinutes',
+    'pathSimplificationEnabled', 'pathSimplificationTolerance',
+    'pathMaxPoints', 'pathAdaptiveSimplification',
+    'dataGapThresholdSeconds', 'dataGapMinDurationSeconds'
+  ]
+  return structuralFields.some(field => field in changes)
 }
 
 // Helper function to ensure minimum modal duration for better UX
@@ -708,11 +854,11 @@ const ensureMinimumDuration = async (operation, minDuration = 3000) => {
   return result
 }
 
-const savePreferences = async () => {
+const savePreferences = async (saveType = 'full') => {
   if (!isFormValid.value) return
 
-  // Show modal and set type
-  timelineRegenerationType.value = 'preferences'
+  // Show modal for both classification and full regeneration
+  timelineRegenerationType.value = saveType === 'classification' ? 'classification' : 'preferences'
   timelineRegenerationVisible.value = true
   
   try {
@@ -732,12 +878,22 @@ const savePreferences = async () => {
       await timelinePreferencesStore.updateTimelinePreferences(changes)
     })
 
-    toast.add({
-      severity: 'success',
-      summary: 'Preferences Saved',
-      detail: 'Timeline preferences updated and timeline is successfully recalculated',
-      life: 5000
-    })
+    // Enhanced toast messages based on save type
+    if (saveType === 'classification') {
+      toast.add({
+        severity: 'success',
+        summary: 'Trip Classifications Updated',
+        detail: 'Movement types have been recalculated for your existing trips',
+        life: 5000
+      })
+    } else {
+      toast.add({
+        severity: 'success',
+        summary: 'Timeline Fully Regenerated',
+        detail: 'All timeline data has been regenerated with your new preferences',
+        life: 5000
+      })
+    }
   } catch (error) {
     console.error('Error saving preferences:', error)
     toast.add({
@@ -747,6 +903,7 @@ const savePreferences = async () => {
       life: 5000
     })
   } finally {
+    // Hide the modal for both classification and full regeneration
     timelineRegenerationVisible.value = false
   }
 }
@@ -861,17 +1018,7 @@ const regenerateTimeline = async () => {
 // Watchers
 watch(originalPrefs, (newVal) => {
   if (newVal) {
-    prefs.value = {
-      ...newVal,
-      // Ensure path simplification properties have defaults if not present
-      pathSimplificationEnabled: newVal.pathSimplificationEnabled ?? true,
-      pathSimplificationTolerance: newVal.pathSimplificationTolerance ?? 15,
-      pathMaxPoints: newVal.pathMaxPoints ?? 100,
-      pathAdaptiveSimplification: newVal.pathAdaptiveSimplification ?? true,
-      // Ensure GPS gaps detection properties have defaults if not present
-      dataGapThresholdSeconds: newVal.dataGapThresholdSeconds ?? 10800,
-      dataGapMinDurationSeconds: newVal.dataGapMinDurationSeconds ?? 1800
-    }
+    prefs.value = { ...newVal }
   }
 }, { immediate: true })
 
@@ -1326,6 +1473,48 @@ onMounted(() => {
   
   :deep(.p-tabs-tab .pi) {
     font-size: 0.9rem;
+  }
+}
+
+/* Speed Setting Groups */
+.speed-setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.speed-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.speed-setting .control-value {
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
+  font-weight: 500;
+  text-align: center;
+  padding: 0.25rem 0;
+}
+
+@media (max-width: 768px) {
+  .speed-setting-group {
+    gap: 1.25rem;
+  }
+  
+  .speed-setting .control-value {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .speed-setting-group {
+    gap: 1rem;
+  }
+  
+  .speed-setting .control-value {
+    font-size: 0.8rem;
   }
 }
 </style>
