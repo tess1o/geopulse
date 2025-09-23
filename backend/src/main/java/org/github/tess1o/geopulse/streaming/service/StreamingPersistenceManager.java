@@ -113,7 +113,7 @@ public class StreamingPersistenceManager {
      * Persist stay locations to database using batch loading to eliminate N+1 queries.
      */
     private void persistStays(Iterable<Stay> stays, UserEntity userRef) {
-        java.util.List<Stay> stayList = StreamSupport.stream(stays.spliterator(), false)
+        List<Stay> stayList = StreamSupport.stream(stays.spliterator(), false)
                 .collect(Collectors.toList());
 
         if (stayList.isEmpty()) {
@@ -168,21 +168,6 @@ public class StreamingPersistenceManager {
         }
         log.debug("Persisted {} stay entities using batch loading (reduced from 1+{}+{} to 3 queries)",
                 stayCount, favoriteIds.size(), geocodingIds.size());
-    }
-
-    /**
-     * Persist trips to database.
-     */
-    private void persistTrips(Iterable<Trip> trips, UserEntity userRef) {
-        int tripCount = 0;
-        for (Trip trip : trips) {
-            TimelineTripEntity entity = converter.convertTripToEntity(trip, userRef);
-            if (entity != null) {
-                tripRepository.persist(entity);
-                tripCount++;
-            }
-        }
-        log.debug("Persisted {} trip entities", tripCount);
     }
 
     /**

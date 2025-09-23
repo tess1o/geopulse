@@ -22,9 +22,9 @@ public class GpsStatisticsCalculator {
      * @param gpsPoints list of GPS points with speed and accuracy data
      * @return GPS statistics object
      */
-    public GpsStatistics calculateStatistics(List<GPSPoint> gpsPoints) {
+    public TripGpsStatistics calculateStatistics(List<GPSPoint> gpsPoints) {
         if (gpsPoints == null || gpsPoints.isEmpty()) {
-            return GpsStatistics.empty();
+            return TripGpsStatistics.empty();
         }
 
         // Filter out points without speed data
@@ -34,7 +34,7 @@ public class GpsStatisticsCalculator {
 
         if (validSpeedPoints.isEmpty()) {
             log.debug("No valid GPS speed data found in {} points", gpsPoints.size());
-            return GpsStatistics.empty();
+            return TripGpsStatistics.empty();
         }
 
         // Calculate speed statistics
@@ -62,36 +62,6 @@ public class GpsStatisticsCalculator {
             sumSquaredDifferences += diff * diff;
         }
         double speedVariance = sumSquaredDifferences / validSpeedPoints.size();
-
-        log.debug("Calculated GPS statistics from {} points: avgSpeed={} m/s, maxSpeed={} m/s, " +
-                "variance={}, lowAccuracy={}", 
-                validSpeedPoints.size(), String.format("%.2f", avgSpeed), 
-                String.format("%.2f", maxSpeed), String.format("%.2f", speedVariance), lowAccuracyCount);
-
-        return new GpsStatistics(avgSpeed, maxSpeed, speedVariance, lowAccuracyCount);
-    }
-
-    /**
-     * Container for GPS-derived statistics.
-     */
-    public record GpsStatistics(
-            Double avgGpsSpeed,      // Average GPS speed in m/s
-            Double maxGpsSpeed,      // Maximum GPS speed in m/s  
-            Double speedVariance,    // Speed variance (consistency indicator)
-            Integer lowAccuracyPointsCount // Count of low-accuracy GPS points
-    ) {
-        /**
-         * Create empty statistics for cases with no valid GPS data.
-         */
-        public static GpsStatistics empty() {
-            return new GpsStatistics(null, null, null, null);
-        }
-
-        /**
-         * Check if statistics contain valid data.
-         */
-        public boolean hasValidData() {
-            return avgGpsSpeed != null && maxGpsSpeed != null;
-        }
+        return new TripGpsStatistics(avgSpeed, maxSpeed, speedVariance, lowAccuracyCount);
     }
 }

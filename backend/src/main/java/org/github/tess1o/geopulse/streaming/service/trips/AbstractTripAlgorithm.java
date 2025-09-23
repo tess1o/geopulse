@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.streaming.service.trips;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
@@ -11,7 +13,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Slf4j
+@ApplicationScoped
 public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
+
+    @Inject
+    TravelClassification travelClassification;
+    @Inject
+    GpsStatisticsCalculator gpsStatisticsCalculator;
 
     /**
      * Validate trip against minimum distance and duration requirements.
@@ -63,13 +71,15 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
         );
 
         // Classify the overall trip mode
-        TripType overallTripType = classifyMergedTrip(trips, combinedPath, config);
+        TripGpsStatistics tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(combinedPath);
+        TripType overallTripType = classifyMergedTrip(totalDistance, tripGpsStatistics, config);
 
         Trip mergedTrip = Trip.builder()
                 .startTime(firstTrip.getStartTime())
                 .duration(totalDuration)
                 .path(combinedPath)
                 .distanceMeters(totalDistance)
+                .statistics(tripGpsStatistics)
                 .tripType(overallTripType)
                 .build();
 
@@ -82,19 +92,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
     /**
      * Classify the overall trip type for merged trips.
      */
-    protected TripType classifyMergedTrip(List<Trip> trips, List<GPSPoint> combinedPath, TimelineConfig config) {
-        // Use the dominant trip type by distance
-        double carDistance = trips.stream().filter(t -> t.getTripType() == TripType.CAR).mapToDouble(Trip::getDistanceMeters).sum();
-        double walkDistance = trips.stream().filter(t -> t.getTripType() == TripType.WALK).mapToDouble(Trip::getDistanceMeters).sum();
-        double otherDistance = trips.stream().filter(t -> t.getTripType() != TripType.CAR && t.getTripType() != TripType.WALK).mapToDouble(Trip::getDistanceMeters).sum();
-
-        if (carDistance > walkDistance && carDistance > otherDistance) {
-            return TripType.CAR;
-        } else if (walkDistance > otherDistance) {
-            return TripType.WALK;
-        } else {
-            // Fall back to first trip's type or reclassify
-            return trips.getFirst().getTripType();
-        }
+    protected TripType classifyMergedTrip(double totalDistance, TripGpsStatistics tripGpsStatistics, TimelineConfig config) {
+        return travelClassification.classifyTravelType(tripGpsStatistics, Double.valueOf(totalDistance).longValue(), config);
     }
 }

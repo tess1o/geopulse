@@ -113,6 +113,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointRadiusMeters }}m</div>
                       <SliderControl
+                        v-if="prefs.staypointRadiusMeters !== undefined"
                         v-model="prefs.staypointRadiusMeters"
                         :min="10"
                         :max="500"
@@ -138,6 +139,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointMinDurationMinutes }} minutes</div>
                       <SliderControl
+                          v-if="prefs.staypointMinDurationMinutes !== undefined"
                           v-model="prefs.staypointMinDurationMinutes"
                           :min="1"
                           :max="60"
@@ -179,6 +181,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointVelocityThreshold }} km/h</div>
                       <SliderControl
+                        v-if="prefs.staypointVelocityThreshold !== undefined"
                         v-model="prefs.staypointVelocityThreshold"
                         :min="1"
                         :max="20"
@@ -205,6 +208,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.staypointMaxAccuracyThreshold }}m</div>
                       <SliderControl
+                        v-if="prefs.staypointMaxAccuracyThreshold !== undefined"
                         v-model="prefs.staypointMaxAccuracyThreshold"
                         :min="5"
                         :max="200"
@@ -228,6 +232,7 @@
                     <template #control>
                       <div class="control-value">{{ Math.round(prefs.staypointMinAccuracyRatio * 100) }}%</div>
                       <SliderControl
+                        v-if="prefs.staypointMinAccuracyRatio !== undefined"
                         v-model="prefs.staypointMinAccuracyRatio"
                         :min="0.1"
                         :max="1.0"
@@ -290,6 +295,7 @@
                         <div class="speed-setting">
                           <div class="control-value">{{ prefs.walkingMaxAvgSpeed }} km/h (avg)</div>
                           <SliderControl
+                            v-if="prefs.walkingMaxAvgSpeed !== undefined"
                             v-model="prefs.walkingMaxAvgSpeed"
                             :min="3.0" :max="10.0" :step="0.5"
                             :labels="['3.0 km/h (Slow)', '5.5 km/h (Normal)', '10.0 km/h (Fast)']"
@@ -299,6 +305,7 @@
                         <div class="speed-setting">
                           <div class="control-value">{{ prefs.walkingMaxMaxSpeed }} km/h (max)</div>
                           <SliderControl
+                            v-if="prefs.walkingMaxMaxSpeed !== undefined"
                             v-model="prefs.walkingMaxMaxSpeed"
                             :min="5.0" :max="15.0" :step="0.5"
                             :labels="['5.0 km/h (Conservative)', '8.0 km/h (Normal)', '15.0 km/h (Generous)']"
@@ -323,6 +330,7 @@
                         <div class="speed-setting">
                           <div class="control-value">{{ prefs.carMinAvgSpeed }} km/h (min avg)</div>
                           <SliderControl
+                            v-if="prefs.carMinAvgSpeed !== undefined"
                             v-model="prefs.carMinAvgSpeed"
                             :min="5.0" :max="25.0" :step="0.5"
                             :labels="['5.0 km/h (Sensitive)', '12.0 km/h (Normal)', '25.0 km/h (Conservative)']"
@@ -332,6 +340,7 @@
                         <div class="speed-setting">
                           <div class="control-value">{{ prefs.carMinMaxSpeed }} km/h (min max)</div>
                           <SliderControl
+                            v-if="prefs.carMinMaxSpeed !== undefined"
                             v-model="prefs.carMinMaxSpeed"
                             :min="10.0" :max="50.0" :step="5.0"
                             :labels="['10.0 km/h (City)', '25.0 km/h (Normal)', '50.0 km/h (Highway)']"
@@ -351,6 +360,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.shortDistanceKm }} km</div>
                       <SliderControl
+                        v-if="prefs.shortDistanceKm !== undefined"
                         v-model="prefs.shortDistanceKm"
                         :min="0.1" :max="3.0" :step="0.1"
                         :labels="['0.1 km (Strict)', '1.0 km (Normal)', '3.0 km (Lenient)']"
@@ -382,6 +392,7 @@
                     <template #control>
                       <div class="control-value">{{ Math.floor(prefs.dataGapThresholdSeconds / 60) }} minutes ({{ prefs.dataGapThresholdSeconds }}s)</div>
                       <SliderControl
+                        v-if="prefs.dataGapThresholdSeconds !== undefined"
                         v-model="prefs.dataGapThresholdSeconds"
                         :min="300"
                         :max="21600"
@@ -404,6 +415,7 @@
                     <template #control>
                       <div class="control-value">{{ Math.floor(prefs.dataGapMinDurationSeconds / 60) }} minutes ({{ prefs.dataGapMinDurationSeconds }}s)</div>
                       <SliderControl
+                        v-if="prefs.dataGapMinDurationSeconds !== undefined"
                         v-model="prefs.dataGapMinDurationSeconds"
                         :min="300"
                         :max="7200"
@@ -459,6 +471,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.mergeMaxDistanceMeters }}m</div>
                       <SliderControl
+                        v-if="prefs.mergeMaxDistanceMeters !== undefined"
                         v-model="prefs.mergeMaxDistanceMeters"
                         :min="20"
                         :max="500"
@@ -485,6 +498,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.mergeMaxTimeGapMinutes }} minutes</div>
                       <SliderControl
+                        v-if="prefs.mergeMaxTimeGapMinutes !== undefined"
                         v-model="prefs.mergeMaxTimeGapMinutes"
                         :min="1"
                         :max="60"
@@ -540,6 +554,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.pathSimplificationTolerance }}m</div>
                       <SliderControl
+                        v-if="prefs.pathSimplificationTolerance !== undefined"
                         v-model="prefs.pathSimplificationTolerance"
                         :min="1"
                         :max="50"
@@ -563,6 +578,7 @@
                     <template #control>
                       <div class="control-value">{{ prefs.pathMaxPoints === 0 ? 'No limit' : prefs.pathMaxPoints + ' points' }}</div>
                       <SliderControl
+                        v-if="prefs.pathMaxPoints !== undefined"
                         v-model="prefs.pathMaxPoints"
                         :min="0"
                         :max="500"

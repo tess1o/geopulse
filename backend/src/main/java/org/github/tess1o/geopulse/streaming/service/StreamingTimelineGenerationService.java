@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -97,7 +96,6 @@ public class StreamingTimelineGenerationService {
 
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
 
-            // Load GPS data using lightweight DTOs with automatic chunking
             List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime);
 
             if (newPoints.isEmpty()) {
@@ -242,7 +240,6 @@ public class StreamingTimelineGenerationService {
 
     /**
      * Apply path simplification to a RawTimeline, preserving rich GPS data.
-     * This directly modifies Trip domain objects without DTO conversion.
      */
     private RawTimeline applyPathSimplification(TimelineConfig config, RawTimeline timeline) {
         if (timeline == null || timeline.getTrips() == null || timeline.getTrips().isEmpty()) {
@@ -282,6 +279,7 @@ public class StreamingTimelineGenerationService {
                 .startTime(trip.getStartTime())
                 .duration(trip.getDuration())
                 .path(simplifiedDomainPoints)
+                .statistics(trip.getStatistics())
                 .distanceMeters(trip.getDistanceMeters())
                 .tripType(trip.getTripType())
                 .build();
