@@ -69,6 +69,34 @@ public class TimelineTripEntity {
     private LineString path;
 
     /**
+     * Average GPS speed from actual GPS readings (m/s)
+     * Used for more accurate travel classification
+     */
+    @Column(name = "avg_gps_speed")
+    private Double avgGpsSpeed;
+
+    /**
+     * Maximum GPS speed from actual GPS readings (m/s)
+     * Used for more accurate travel classification
+     */
+    @Column(name = "max_gps_speed")
+    private Double maxGpsSpeed;
+
+    /**
+     * Speed variance indicating consistency of movement
+     * Lower values = steady movement (walking), higher = variable (driving)
+     */
+    @Column(name = "speed_variance")
+    private Double speedVariance;
+
+    /**
+     * Count of GPS points with low accuracy (> threshold)
+     * Used to assess data quality for classification reliability
+     */
+    @Column(name = "low_accuracy_points_count")
+    private Integer lowAccuracyPointsCount;
+
+    /**
      * When this trip was last updated/regenerated
      */
     @Column(name = "last_updated", nullable = false)

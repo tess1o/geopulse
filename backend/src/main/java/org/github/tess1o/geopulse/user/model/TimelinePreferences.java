@@ -32,4 +32,11 @@ public class TimelinePreferences {
     // Data Gap Detection Settings
     private Integer dataGapThresholdSeconds;
     private Integer dataGapMinDurationSeconds;
+    
+    // Travel Classification Settings
+    private Double walkingMaxAvgSpeed;
+    private Double walkingMaxMaxSpeed;
+    private Double carMinAvgSpeed;
+    private Double carMinMaxSpeed;
+    private Double shortDistanceKm;
 }

@@ -2,9 +2,11 @@ package org.github.tess1o.geopulse.streaming.service.trips;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.core.VelocityAnalysisService;
 import org.github.tess1o.geopulse.streaming.util.TimelineConstants;
@@ -16,15 +18,8 @@ import java.util.List;
 import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 
 @ApplicationScoped
+@Slf4j
 public class TravelClassification {
-
-    // Thresholds (can be adjusted)
-    private static final double WALKING_MAX_AVG_SPEED = 6.0;
-    private static final double WALKING_MAX_MAX_SPEED = 8.0;
-
-    private static final double CAR_MIN_AVG_SPEED = 8.0;
-    private static final double CAR_MIN_MAX_SPEED = 15.0;
-    public static final double SHORT_DISTANCE_KM = 1.0;
 
     private final VelocityAnalysisService velocityAnalysisService;
 
@@ -33,6 +28,123 @@ public class TravelClassification {
         this.velocityAnalysisService = velocityAnalysisService;
     }
 
+    /**
+     * Classify travel type using pre-calculated GPS statistics from TimelineTripEntity.
+     * This method provides more accurate classification using real GPS data.
+     *
+     * @param trip the timeline trip with pre-calculated GPS statistics
+     * @param config timeline configuration containing classification thresholds
+     * @return classified trip type
+     */
+    public TripType classifyTravelType(TimelineTripEntity trip, TimelineConfig config) {
+        // If GPS statistics are available, use enhanced classification
+        if (trip.getAvgGpsSpeed() != null && trip.getMaxGpsSpeed() != null) {
+            return classifyWithGpsStatistics(trip, config);
+        }
+        
+        // Fallback to path-based classification for legacy trips
+        log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
+        
+        // Convert distance and duration for fallback calculation
+        double distanceKm = trip.getDistanceMeters() / 1000.0;
+        double hours = trip.getTripDuration() / 3600.0;
+        double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+        
+        return classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+    }
+
+    /**
+     * Enhanced classification using pre-calculated GPS statistics.
+     * Provides more accurate results by using real GPS speed data and variance analysis.
+     */
+    private TripType classifyWithGpsStatistics(TimelineTripEntity trip, TimelineConfig config) {
+        // Convert speeds from m/s to km/h
+        double avgSpeedKmh = trip.getAvgGpsSpeed() * 3.6;
+        double maxSpeedKmh = trip.getMaxGpsSpeed() * 3.6;
+        double distanceKm = trip.getDistanceMeters() / 1000.0;
+        
+        // Enhanced classification using speed variance
+        Double speedVariance = trip.getSpeedVariance();
+        Integer lowAccuracyCount = trip.getLowAccuracyPointsCount();
+        
+        // Log for debugging misclassifications
+        if (trip.getTripDuration() > 1800 && log.isDebugEnabled()) { // > 30 minutes
+            log.debug("Classifying long trip {}: avgSpeed={}km/h, maxSpeed={}km/h, distance={}km, " +
+                    "variance={}, lowAccuracy={}", 
+                    trip.getId(), String.format("%.1f", avgSpeedKmh), String.format("%.1f", maxSpeedKmh), 
+                    String.format("%.1f", distanceKm), speedVariance, lowAccuracyCount);
+        }
+        
+        TripType result = classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, 
+                                         lowAccuracyCount, config);
+        
+        // Log potential misclassifications for analysis
+        if (result == WALK && (avgSpeedKmh > 15.0 || maxSpeedKmh > 20.0)) {
+            log.warn("Potential walking misclassification for trip {}: avgSpeed={}km/h, maxSpeed={}km/h", 
+                    trip.getId(), String.format("%.1f", avgSpeedKmh), String.format("%.1f", maxSpeedKmh));
+        }
+        
+        return result;
+    }
+
+    /**
+     * Enhanced classification algorithm using GPS statistics and speed variance analysis.
+     */
+    private TripType classifyEnhanced(double avgSpeedKmh, double maxSpeedKmh, double distanceKm, 
+                                    Double speedVariance, Integer lowAccuracyCount, TimelineConfig config) {
+        
+        // Get thresholds from config
+        double walkingMaxAvg = config.getWalkingMaxAvgSpeed();
+        double walkingMaxMax = config.getWalkingMaxMaxSpeed();
+        double carMinAvg = config.getCarMinAvgSpeed();
+        double carMinMax = config.getCarMinMaxSpeed();
+        double shortDistanceKm = config.getShortDistanceKm();
+        
+        // Data quality assessment
+        boolean hasReliableData = lowAccuracyCount == null || lowAccuracyCount < 5; // Fewer than 5 low-accuracy points
+        
+        // Speed variance analysis (if available)
+        boolean steadyMovement = speedVariance != null && speedVariance < 10.0; // Low variance = steady movement
+        boolean variableMovement = speedVariance != null && speedVariance > 25.0; // High variance = stop-and-go
+        
+        // Short trip handling with enhanced logic
+        boolean shortTrip = distanceKm <= shortDistanceKm;
+        
+        // Enhanced walking detection
+        boolean avgSpeedWithinWalking = avgSpeedKmh <= walkingMaxAvg;
+        boolean maxSpeedWithinWalking = maxSpeedKmh <= walkingMaxMax;
+        boolean avgSpeedSlightlyAboveWalking = avgSpeedKmh <= (walkingMaxAvg + (shortTrip ? 2.0 : 1.0));
+        
+        // Enhanced car detection
+        boolean avgSpeedIndicatesCar = avgSpeedKmh >= carMinAvg;
+        boolean maxSpeedIndicatesCar = maxSpeedKmh >= carMinMax;
+        
+        // Classification logic with variance analysis
+        if (avgSpeedWithinWalking && maxSpeedWithinWalking) {
+            // Clear walking case
+            return WALK;
+        } else if (avgSpeedIndicatesCar || maxSpeedIndicatesCar) {
+            // Clear driving case
+            return CAR;
+        } else if (shortTrip && avgSpeedSlightlyAboveWalking && maxSpeedWithinWalking) {
+            // Short trip with slightly elevated speed - likely walking
+            return WALK;
+        } else if (hasReliableData && steadyMovement && avgSpeedKmh < (walkingMaxAvg + 2.0)) {
+            // Steady movement at moderate speed with good data quality - likely walking
+            return WALK;
+        } else if (variableMovement && avgSpeedKmh > (walkingMaxAvg - 1.0)) {
+            // Variable speed (stop-and-go) suggests driving
+            return CAR;
+        } else {
+            // Fallback to original classification logic
+            return classify(avgSpeedKmh, maxSpeedKmh, distanceKm, config);
+        }
+    }
+
+    /**
+     * Original method for classifying travel type from GPS point list.
+     * Used during timeline generation when processing raw GPS data.
+     */
     public TripType classifyTravelType(List<? extends GpsPoint> path, Duration duration, TimelineConfig config) {
         if (path == null || path.size() < 2) {
             return UNKNOWN;
@@ -85,7 +197,7 @@ public class TravelClassification {
                 }
                 
                 double fallbackAvgSpeed = hours > 0 ? straightLineDistance / hours : 0.0;
-                return classify(fallbackAvgSpeed, fallbackAvgSpeed, straightLineDistance);
+                return classify(fallbackAvgSpeed, fallbackAvgSpeed, straightLineDistance, config);
             }
             return UNKNOWN;
         }
@@ -96,7 +208,7 @@ public class TravelClassification {
         double hours = duration.toMillis() / 3600000.0;
         double avgSpeedKmh = totalDistanceKm / hours;
         double maxSpeedKmh = smoothedSpeeds.stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
-        return classify(avgSpeedKmh, maxSpeedKmh, totalDistanceKm);
+        return classify(avgSpeedKmh, maxSpeedKmh, totalDistanceKm, config);
     }
 
     /**
@@ -105,19 +217,27 @@ public class TravelClassification {
      * @param avgSpeedKmh average speed in km/h
      * @param maxSpeedKmh maximum speed in km/h
      * @param totalDistanceKm total distance in km
+     * @param config timeline configuration containing classification thresholds
      * @return classified trip type
      */
-    private TripType classify(double avgSpeedKmh, double maxSpeedKmh, double totalDistanceKm) {
+    private TripType classify(double avgSpeedKmh, double maxSpeedKmh, double totalDistanceKm, TimelineConfig config) {
+        // Get thresholds from config
+        double walkingMaxAvg = config.getWalkingMaxAvgSpeed();
+        double walkingMaxMax = config.getWalkingMaxMaxSpeed();
+        double carMinAvg = config.getCarMinAvgSpeed();
+        double carMinMax = config.getCarMinMaxSpeed();
+        double shortDistanceKm = config.getShortDistanceKm();
+        
         // Short trip walking tolerance
-        boolean shortTrip = totalDistanceKm <= SHORT_DISTANCE_KM;
-        boolean avgSpeedWithinWalking = avgSpeedKmh < WALKING_MAX_AVG_SPEED;
-        boolean maxSpeedWithinWalking = maxSpeedKmh < WALKING_MAX_MAX_SPEED;
-        boolean avgSpeedSlightlyAboveWalking = avgSpeedKmh < (WALKING_MAX_AVG_SPEED + 1.0); // 1 km/h delta
+        boolean shortTrip = totalDistanceKm <= shortDistanceKm;
+        boolean avgSpeedWithinWalking = avgSpeedKmh < walkingMaxAvg;
+        boolean maxSpeedWithinWalking = maxSpeedKmh < walkingMaxMax;
+        boolean avgSpeedSlightlyAboveWalking = avgSpeedKmh < (walkingMaxAvg + 1.0); // 1 km/h delta
 
         if ((avgSpeedWithinWalking && maxSpeedWithinWalking) ||
                 (shortTrip && avgSpeedSlightlyAboveWalking && maxSpeedWithinWalking)) {
             return WALK;
-        } else if (avgSpeedKmh > CAR_MIN_AVG_SPEED || maxSpeedKmh > CAR_MIN_MAX_SPEED) {
+        } else if (avgSpeedKmh > carMinAvg || maxSpeedKmh > carMinMax) {
             return CAR;
         } else {
             return UNKNOWN;

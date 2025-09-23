@@ -75,6 +75,16 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "dataGapMinDurationSeconds", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "walkingMaxAvgSpeed", 
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "walkingMaxMaxSpeed", 
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "carMinAvgSpeed", 
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "carMinMaxSpeed", 
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "shortDistanceKm", 
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void mergeImportIntoExisting(TimelinePreferences fromImport, @MappingTarget TimelinePreferences existing);
 
     /**
@@ -106,6 +116,11 @@ public interface TimelinePreferencesMapper {
                     .pathAdaptiveSimplification(fromImport.getPathAdaptiveSimplification())
                     .dataGapThresholdSeconds(fromImport.getDataGapThresholdSeconds())
                     .dataGapMinDurationSeconds(fromImport.getDataGapMinDurationSeconds())
+                    .walkingMaxAvgSpeed(fromImport.getWalkingMaxAvgSpeed())
+                    .walkingMaxMaxSpeed(fromImport.getWalkingMaxMaxSpeed())
+                    .carMinAvgSpeed(fromImport.getCarMinAvgSpeed())
+                    .carMinMaxSpeed(fromImport.getCarMinMaxSpeed())
+                    .shortDistanceKm(fromImport.getShortDistanceKm())
                     .build();
         }
         
@@ -127,6 +142,11 @@ public interface TimelinePreferencesMapper {
                 .pathAdaptiveSimplification(existing.getPathAdaptiveSimplification())
                 .dataGapThresholdSeconds(existing.getDataGapThresholdSeconds())
                 .dataGapMinDurationSeconds(existing.getDataGapMinDurationSeconds())
+                .walkingMaxAvgSpeed(existing.getWalkingMaxAvgSpeed())
+                .walkingMaxMaxSpeed(existing.getWalkingMaxMaxSpeed())
+                .carMinAvgSpeed(existing.getCarMinAvgSpeed())
+                .carMinMaxSpeed(existing.getCarMinMaxSpeed())
+                .shortDistanceKm(existing.getShortDistanceKm())
                 .build();
         
         // Use MapStruct to merge non-null import values into the result

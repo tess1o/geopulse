@@ -7,6 +7,8 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
+import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
+import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -27,6 +29,8 @@ public class UserService {
     private final SecurePasswordUtils securePasswordUtils;
     private final TimelinePreferencesUpdater preferencesUpdater;
     private final Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent;
+    private final Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent;
+    private final Event<TimelineStructureUpdatedEvent> structureUpdatedEvent;
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
@@ -40,11 +44,15 @@ public class UserService {
     public UserService(UserRepository userRepository,
                        SecurePasswordUtils securePasswordUtils,
                        TimelinePreferencesUpdater preferencesUpdater,
-                       Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent) {
+                       Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent,
+                       Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent,
+                       Event<TimelineStructureUpdatedEvent> structureUpdatedEvent) {
         this.userRepository = userRepository;
         this.securePasswordUtils = securePasswordUtils;
         this.preferencesUpdater = preferencesUpdater;
         this.preferencesUpdatedEvent = preferencesUpdatedEvent;
+        this.classificationUpdatedEvent = classificationUpdatedEvent;
+        this.structureUpdatedEvent = structureUpdatedEvent;
     }
 
     /**
@@ -223,11 +231,67 @@ public class UserService {
         // Use registry-based updater - eliminates all the manual if/else logic
         preferencesUpdater.updatePreferences(user.timelinePreferences, update);
 
-        // Fire event to trigger timeline invalidation
-        preferencesUpdatedEvent.fire(new TimelinePreferencesUpdatedEvent(
-                userId,
-                user.timelinePreferences,
-                false // wasResetToDefaults = false
-        ));
+        // Determine which type of event to fire based on parameter types
+        boolean hasClassificationChanges = hasClassificationParameters(update);
+        boolean hasStructuralChanges = hasStructuralParameters(update);
+        
+        if (hasClassificationChanges && !hasStructuralChanges) {
+            // Fire classification-only event for fast trip type recalculation
+            log.info("Firing travel classification updated event for user {} (classification-only changes)", userId);
+            classificationUpdatedEvent.fire(new TravelClassificationUpdatedEvent(
+                    userId,
+                    user.timelinePreferences,
+                    false // wasResetToDefaults = false
+            ));
+        } else if (hasStructuralChanges) {
+            // Fire structural event for full timeline regeneration
+            log.info("Firing timeline structure updated event for user {} (structural changes)", userId);
+            structureUpdatedEvent.fire(new TimelineStructureUpdatedEvent(
+                    userId,
+                    user.timelinePreferences,
+                    false // wasResetToDefaults = false
+            ));
+        } else {
+            // Fallback to original event for backward compatibility
+            log.info("Firing timeline preferences updated event for user {} (no parameter changes detected)", userId);
+            preferencesUpdatedEvent.fire(new TimelinePreferencesUpdatedEvent(
+                    userId,
+                    user.timelinePreferences,
+                    false // wasResetToDefaults = false
+            ));
+        }
+    }
+    
+    /**
+     * Check if the update contains travel classification parameters.
+     */
+    private boolean hasClassificationParameters(UpdateTimelinePreferencesRequest update) {
+        return update.getWalkingMaxAvgSpeed() != null ||
+               update.getWalkingMaxMaxSpeed() != null ||
+               update.getCarMinAvgSpeed() != null ||
+               update.getCarMinMaxSpeed() != null ||
+               update.getShortDistanceKm() != null;
+    }
+    
+    /**
+     * Check if the update contains structural timeline parameters.
+     */
+    private boolean hasStructuralParameters(UpdateTimelinePreferencesRequest update) {
+        return update.getStaypointVelocityThreshold() != null ||
+               update.getStaypointRadiusMeters() != null ||
+               update.getStaypointMinDurationMinutes() != null ||
+               update.getTripDetectionAlgorithm() != null ||
+               update.getUseVelocityAccuracy() != null ||
+               update.getStaypointMaxAccuracyThreshold() != null ||
+               update.getStaypointMinAccuracyRatio() != null ||
+               update.getIsMergeEnabled() != null ||
+               update.getMergeMaxDistanceMeters() != null ||
+               update.getMergeMaxTimeGapMinutes() != null ||
+               update.getPathSimplificationEnabled() != null ||
+               update.getPathSimplificationTolerance() != null ||
+               update.getPathMaxPoints() != null ||
+               update.getPathAdaptiveSimplification() != null ||
+               update.getDataGapThresholdSeconds() != null ||
+               update.getDataGapMinDurationSeconds() != null;
     }
 }

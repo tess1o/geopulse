@@ -135,6 +135,42 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::getDataGapMinDurationSeconds,
                         TimelineConfig::setDataGapMinDurationSeconds,
                         Integer::valueOf
+                ))
+                // Travel Classification
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.walking.max_avg_speed",
+                        properties.getWalkingMaxAvgSpeed(),
+                        TimelineConfig::getWalkingMaxAvgSpeed,
+                        TimelineConfig::setWalkingMaxAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.walking.max_max_speed",
+                        properties.getWalkingMaxMaxSpeed(),
+                        TimelineConfig::getWalkingMaxMaxSpeed,
+                        TimelineConfig::setWalkingMaxMaxSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.car.min_avg_speed",
+                        properties.getCarMinAvgSpeed(),
+                        TimelineConfig::getCarMinAvgSpeed,
+                        TimelineConfig::setCarMinAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.car.min_max_speed",
+                        properties.getCarMinMaxSpeed(),
+                        TimelineConfig::getCarMinMaxSpeed,
+                        TimelineConfig::setCarMinMaxSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.short_distance_km",
+                        properties.getShortDistanceKm(),
+                        TimelineConfig::getShortDistanceKm,
+                        TimelineConfig::setShortDistanceKm,
+                        Double::valueOf
                 ));
     }
 }

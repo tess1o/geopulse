@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
+import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculator;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -38,11 +39,13 @@ import java.util.stream.Collectors;
 public class StreamingTimelineConverter {
 
     private final EntityManager entityManager;
+    private final GpsStatisticsCalculator gpsStatisticsCalculator;
 
-    public StreamingTimelineConverter(EntityManager entityManager) {
+    public StreamingTimelineConverter(EntityManager entityManager, 
+                                    GpsStatisticsCalculator gpsStatisticsCalculator) {
         this.entityManager = entityManager;
+        this.gpsStatisticsCalculator = gpsStatisticsCalculator;
     }
-
 
     /**
      * Convert streaming timeline events to the existing MovementTimelineDTO format.
@@ -163,6 +166,28 @@ public class StreamingTimelineConverter {
     }
 
     /**
+     * Convert domain GPS point to shared GPS point interface for LineString conversion.
+     */
+    private GpsPoint convertDomainToSharedGpsPoint(GPSPoint domainPoint) {
+        return new org.github.tess1o.geopulse.shared.geo.GpsPoint() {
+            @Override
+            public double getLatitude() {
+                return domainPoint.getLatitude();
+            }
+
+            @Override
+            public double getLongitude() {
+                return domainPoint.getLongitude();
+            }
+
+            @Override
+            public java.time.Instant getTimestamp() {
+                return domainPoint.getTimestamp();
+            }
+        };
+    }
+
+    /**
      * Convert streaming TripType to string representation.
      */
     private String convertTripType(TripType tripType) {
@@ -275,7 +300,64 @@ public class StreamingTimelineConverter {
     }
 
     /**
+     * Convert streaming Trip domain object to TimelineTripEntity with GPS statistics.
+     * This method calculates and stores GPS-based speed statistics for enhanced classification.
+     *
+     * @param trip    streaming Trip domain object to convert
+     * @param userRef user entity reference for the trip
+     * @return converted entity with GPS statistics
+     */
+    public TimelineTripEntity convertStreamingTripToEntity(Trip trip, UserEntity userRef) {
+        if (trip == null) return null;
+
+        TimelineTripEntity entity = new TimelineTripEntity();
+        entity.setUser(userRef);
+        entity.setTimestamp(trip.getStartTime());
+        entity.setTripDuration(trip.getDuration().toSeconds());
+        entity.setDistanceMeters((long) trip.getDistanceMeters());
+        entity.setMovementType(trip.getTripType() != null ? trip.getTripType().name() : "UNKNOWN");
+
+        // Set start and end points
+        GPSPoint startLocation = trip.getStartLocation();
+        GPSPoint endLocation = trip.getEndLocation();
+        if (startLocation != null) {
+            entity.setStartPoint(GeoUtils.createPoint(startLocation.getLongitude(), startLocation.getLatitude()));
+        }
+        if (endLocation != null) {
+            entity.setEndPoint(GeoUtils.createPoint(endLocation.getLongitude(), endLocation.getLatitude()));
+        }
+
+        // Convert path and calculate GPS statistics
+        List<GPSPoint> tripPath = trip.getPath();
+        if (tripPath != null && !tripPath.isEmpty()) {
+            // Convert domain GPS points to shared GPS points for LineString conversion
+            List<GpsPoint> sharedGpsPoints = tripPath.stream()
+                    .map(this::convertDomainToSharedGpsPoint)
+                    .toList();
+            entity.setPath(convertPathToLineString(sharedGpsPoints));
+
+            // Calculate and store GPS statistics
+            GpsStatisticsCalculator.GpsStatistics stats = gpsStatisticsCalculator.calculateStatistics(tripPath);
+            if (stats.hasValidData()) {
+                entity.setAvgGpsSpeed(stats.avgGpsSpeed());
+                entity.setMaxGpsSpeed(stats.maxGpsSpeed());
+                entity.setSpeedVariance(stats.speedVariance());
+                entity.setLowAccuracyPointsCount(stats.lowAccuracyPointsCount());
+
+                log.debug("Stored GPS statistics for trip: avgSpeed={} m/s, maxSpeed={} m/s, variance={}, lowAccuracy={}",
+                        String.format("%.2f", stats.avgGpsSpeed()), String.format("%.2f", stats.maxGpsSpeed()),
+                        String.format("%.2f", stats.speedVariance()), stats.lowAccuracyPointsCount());
+            } else {
+                log.debug("No valid GPS statistics calculated for trip with {} points", tripPath.size());
+            }
+        }
+
+        return entity;
+    }
+
+    /**
      * Convert TimelineTripDTO to TimelineTripEntity.
+     * This is the legacy method for DTO-based conversion without GPS statistics.
      *
      * @param trip    DTO to convert
      * @param userRef user entity reference for the trip
