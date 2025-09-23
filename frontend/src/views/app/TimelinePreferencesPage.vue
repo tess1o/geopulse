@@ -50,7 +50,7 @@
                 <p class="banner-description">
                   Your GPS data is processed to identify meaningful stays and trips.
                   These settings control the sensitivity of this detection and apply only to your account.
-                  Changing them will trigger a full timeline re-generation, which may take some time depending on your GPS data volume.
+                  Some changes (like speed thresholds) will quickly update trip classifications, while others may require full timeline re-generation depending on your GPS data volume.
                 </p>
               </div>
             </div>
@@ -284,10 +284,10 @@
                   <!-- Walking Speed Settings -->
                   <SettingCard
                     title="Walking Speed Thresholds"
-                    description="Maximum speeds to classify movement as walking"
+                    description="Speed limits that determine when movement is classified as walking vs other transportation modes"
                     :details="{
-                      'Average Speed': 'Typical sustained walking speed',
-                      'Maximum Speed': 'Fastest brief walking speed (e.g., rushing)'
+                      'Average Speed': 'Maximum sustained speed for walking classification. Trips with average speeds above this threshold will be classified as non-walking',
+                      'Maximum Speed': 'Maximum instantaneous speed allowed within walking trips. Brief speed bursts above this (like running to catch a bus) will reclassify the entire trip as non-walking'
                     }"
                   >
                     <template #control>
@@ -319,10 +319,10 @@
                   <!-- Car Speed Settings -->
                   <SettingCard
                     title="Car Speed Thresholds"  
-                    description="Minimum speeds to classify movement as driving"
+                    description="Speed requirements that determine when movement is classified as driving vs other transportation modes"
                     :details="{
-                      'Average Speed': 'Minimum sustained speed for car classification',
-                      'Maximum Speed': 'Minimum peak speed for car classification'
+                      'Average Speed': 'Minimum sustained speed required for car classification. Trips with average speeds below this threshold will be classified as walking',
+                      'Maximum Speed': 'Minimum peak speed required for car classification. Trips that never reach this speed will not be classified as driving, even if average speed is high'
                     }"
                   >
                     <template #control>
@@ -785,9 +785,9 @@ const confirmSavePreferences = () => {
   if (hasClassificationChanges && !hasStructuralChanges) {
     // Fast path - classification only
     confirm.require({
-      message: 'These changes will recalculate movement types for your existing trips. This is much faster than full timeline regeneration and will complete in seconds.',
+      message: 'These changes will recalculate movement types for your existing trips. Do you want to proceed?',
       header: 'Update Trip Classifications',
-      icon: 'pi pi-sync',
+      icon: 'pi pi-refresh',
       rejectProps: {
         label: 'Cancel',
         severity: 'secondary',
@@ -857,11 +857,9 @@ const ensureMinimumDuration = async (operation, minDuration = 3000) => {
 const savePreferences = async (saveType = 'full') => {
   if (!isFormValid.value) return
 
-  // Only show regeneration modal for full timeline regeneration, not for classification-only changes
-  if (saveType !== 'classification') {
-    timelineRegenerationType.value = 'preferences'
-    timelineRegenerationVisible.value = true
-  }
+  // Show modal for both classification and full regeneration
+  timelineRegenerationType.value = saveType === 'classification' ? 'classification' : 'preferences'
+  timelineRegenerationVisible.value = true
   
   try {
     await ensureMinimumDuration(async () => {
@@ -905,10 +903,8 @@ const savePreferences = async (saveType = 'full') => {
       life: 5000
     })
   } finally {
-    // Only hide the modal if it was shown (i.e., not for classification-only changes)
-    if (saveType !== 'classification') {
-      timelineRegenerationVisible.value = false
-    }
+    // Hide the modal for both classification and full regeneration
+    timelineRegenerationVisible.value = false
   }
 }
 

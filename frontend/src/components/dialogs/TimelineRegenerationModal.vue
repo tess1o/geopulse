@@ -51,8 +51,8 @@ const props = defineProps({
   },
   type: {
     type: String,
-    default: 'general', // 'favorite', 'favorite-delete', 'preferences', 'general'
-    validator: (value) => ['favorite', 'favorite-delete', 'preferences', 'general'].includes(value)
+    default: 'general', // 'favorite', 'favorite-delete', 'preferences', 'general', 'classification'
+    validator: (value) => ['favorite', 'favorite-delete', 'preferences', 'general', 'classification'].includes(value)
   }
 })
 
@@ -71,6 +71,8 @@ const title = computed(() => {
       return 'Deleting Favorite & Regenerating Timeline'
     case 'preferences':
       return 'Applying Preferences & Regenerating Timeline'
+    case 'classification':
+      return 'Updating Trip Classifications'
     default:
       return 'Regenerating Timeline'
   }
@@ -84,6 +86,8 @@ const message = computed(() => {
       return 'We\'re removing your favorite location and regenerating your complete timeline to reflect this change. This ensures all timeline data remains accurate and up-to-date.'
     case 'preferences':
       return 'We\'re applying your new preferences and regenerating your complete timeline based on the updated settings. This ensures optimal timeline accuracy with your preferences.'
+    case 'classification':
+      return 'We\'re recalculating movement types for your existing trips based on your updated speed thresholds. This process will update how your trips are classified without changing the underlying timeline structure.'
     default:
       return 'We\'re regenerating your complete timeline from your GPS data. This process ensures your timeline is accurate and reflects all available location information.'
   }
