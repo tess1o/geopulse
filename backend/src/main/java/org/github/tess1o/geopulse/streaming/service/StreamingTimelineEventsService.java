@@ -14,6 +14,7 @@ import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEve
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.service.trips.TripReclassificationService;
 
 import java.util.UUID;
 
@@ -31,7 +32,7 @@ public class StreamingTimelineEventsService {
     StreamingTimelineGenerationService streamingTimelineGenerationService;
     
     @Inject
-    org.github.tess1o.geopulse.streaming.service.trips.TripReclassificationService tripReclassificationService;
+    TripReclassificationService tripReclassificationService;
 
     @Transactional
     public void onFavoriteAdded(@Observes FavoriteAddedEvent event) {

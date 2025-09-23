@@ -4,9 +4,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
-import org.locationtech.jts.triangulate.tri.Tri;
 
 import java.time.Duration;
 import java.time.Instant;

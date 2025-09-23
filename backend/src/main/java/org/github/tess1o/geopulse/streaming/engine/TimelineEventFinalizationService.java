@@ -136,10 +136,6 @@ public class TimelineEventFinalizationService {
         stay.setLocationName(locationResult.getLocationName());
         stay.setFavoriteId(locationResult.getFavoriteId());
         stay.setGeocodingId(locationResult.getGeocodingId());
-
-        log.debug("Updated stay location: {} -> {}",
-                stay.getLongitude() + "," + stay.getLatitude(),
-                locationResult.getLocationName());
     }
 
     /**

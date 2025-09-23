@@ -66,17 +66,6 @@ public class TimelineMergeAnalysisService {
     }
 
     /**
-     * Backward compatible overload without data gaps.
-     * This version will allow merging as long as distance/duration criteria are met.
-     */
-    public boolean canMergeStays(TimelineConfig timelineConfig,
-                                 Stay firstStay,
-                                 Stay secondStay,
-                                 List<Trip> trips) {
-        return canMergeStays(timelineConfig, firstStay, secondStay, trips, null);
-    }
-
-    /**
      * Calculate merge criteria (distance and duration) between two stays.
      * Analyzes all trips that occur between the two stays chronologically.
      *
