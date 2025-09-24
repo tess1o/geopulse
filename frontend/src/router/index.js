@@ -14,6 +14,7 @@ import TimelinePreferencesPage from "@/views/app/TimelinePreferencesPage.vue";
 import UserProfilePage from "@/views/app/UserProfilePage.vue";
 import ShareLinksPage from "@/views/app/ShareLinksPage.vue";
 import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
+import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
@@ -74,6 +75,7 @@ const routes = [
         children: [
             {path: '', redirect: '/app/timeline'},
             {path: 'timeline', component: TimelinePage},
+            {path: 'timeline-reports', component: TimelineReportsPage},
             {path: 'dashboard', component: DashboardPage},
             {path: 'places', component: PlacesPage},
             {path: 'stats', component: StatsPage},

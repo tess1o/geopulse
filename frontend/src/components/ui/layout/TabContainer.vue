@@ -1,12 +1,22 @@
 <template>
   <div class="gp-tab-container" :class="containerClasses">
-    <TabMenu
-      :model="tabs"
-      :activeIndex="activeIndex"
-      @tab-change="handleTabChange"
-      class="gp-tab-menu"
-      :class="tabMenuClasses"
-    />
+    <!-- Custom Tab Navigation -->
+    <div class="p-tabmenu p-component gp-tab-menu" :class="tabMenuClasses" v-if="tabs && tabs.length > 0">
+      <div class="p-tabmenu-tablist">
+        <div 
+          v-for="(tab, index) in tabs" 
+          :key="tab.key || index"
+          class="p-tabmenu-item"
+          :class="{ 'p-tabmenu-item-active': index === activeIndex }"
+          @click="handleTabClick(index)"
+        >
+          <div class="p-tabmenu-item-link">
+            <i v-if="tab.icon" :class="['p-tabmenu-item-icon', tab.icon]"></i>
+            <span class="p-tabmenu-item-label">{{ tab.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="gp-tab-content" :class="contentClasses">
       <slot />
     </div>
@@ -15,7 +25,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import TabMenu from 'primevue/tabmenu'
 
 const props = defineProps({
   tabs: {
@@ -59,8 +68,8 @@ const contentClasses = computed(() => ({
   'gp-tab-content--full-height': props.fullHeight
 }))
 
-const handleTabChange = (event) => {
-  emit('tab-change', event)
+const handleTabClick = (index) => {
+  emit('tab-change', { index })
 }
 </script>
 
@@ -180,7 +189,7 @@ const handleTabChange = (event) => {
 .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
   background-color: var(--gp-surface-light);
   border-radius: var(--gp-radius-medium) var(--gp-radius-medium) 0 0;
-  padding: var(--gp-spacing-md) var(--gp-spacing-lg);
+  padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
   transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: 1px solid var(--gp-border-light);
   border-bottom: none;

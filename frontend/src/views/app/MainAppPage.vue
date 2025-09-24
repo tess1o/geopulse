@@ -49,6 +49,12 @@ const tabItems = ref([
     'data-tour': 'timeline-tab'
   },
   {
+    label: 'Timeline Reports',
+    icon: 'pi pi-table',
+    to: '/app/timeline-reports',
+    class: 'data-tables-tab'
+  },
+  {
     label: 'Dashboard',
     icon: 'pi pi-home',
     to: '/app/dashboard',
