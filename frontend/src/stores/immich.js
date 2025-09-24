@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { useTimezone } from "@/composables/useTimezone";
 import dayjs from 'dayjs';
 
 export const useImmichStore = defineStore('immich', {
@@ -69,7 +70,6 @@ export const useImmichStore = defineStore('immich', {
       const [currentStart, currentEnd] = currentRange
       const [lastStart, lastEnd] = state.lastFetchedRange
       
-      const { useTimezone } = require('@/composables/useTimezone')
       const timezone = useTimezone()
       return !timezone.fromUtc(currentStart).isSame(timezone.fromUtc(lastStart)) || 
              !timezone.fromUtc(currentEnd).isSame(timezone.fromUtc(lastEnd))
@@ -174,12 +174,6 @@ export const useImmichStore = defineStore('immich', {
         }))
         
         this.lastFetchedRange = [startDate, endDate]
-        
-        console.log(`Fetched ${this.photos.length} Immich photos for date range`)
-        if (this.photos.length > 0) {
-          console.log('Sample thumbnail endpoint (after /api removal):', this.photos[0].thumbnailUrl)
-          console.log('Sample download endpoint (after /api removal):', this.photos[0].downloadUrl)
-        }
         
         // Clear any previous errors if successful
         this.photosError = null
