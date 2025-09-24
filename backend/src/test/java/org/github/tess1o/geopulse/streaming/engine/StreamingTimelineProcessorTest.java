@@ -31,7 +31,7 @@ class StreamingTimelineProcessorTest {
 
     @InjectMocks
     private StreamingTimelineProcessor processor;
-    
+
     @Mock
     private DataGapDetectionEngine dataGapEngine;
     
@@ -71,7 +71,7 @@ class StreamingTimelineProcessorTest {
             createGpsPoint(Instant.parse("2024-08-15T08:04:00Z"), 40.7589, -73.9851, 0.0, 40.0)  // good
         );
 
-        List<TimelineEvent> result = processor.processPoints(contextPoints, newPoints, config, testUserId);
+        List<TimelineEvent> result = processor.processPoints(newPoints, config, testUserId);
 
         // Result should not be null
         assertNotNull(result);
@@ -94,7 +94,7 @@ class StreamingTimelineProcessorTest {
             createGpsPoint(Instant.parse("2024-08-15T08:01:00Z"), 40.7589, -73.9851, 0.0, 300.0)  // normally bad
         );
 
-        List<TimelineEvent> result = processor.processPoints(points, Arrays.asList(), configNoAccuracy, testUserId);
+        List<TimelineEvent> result = processor.processPoints(Arrays.asList(), configNoAccuracy, testUserId);
 
         // Should not filter when threshold is not set
         assertNotNull(result);
@@ -110,11 +110,7 @@ class StreamingTimelineProcessorTest {
             .useVelocityAccuracy(false) // but validation disabled
             .build();
 
-        List<GPSPoint> points = Arrays.asList(
-            createGpsPoint(Instant.parse("2024-08-15T08:00:00Z"), 40.7589, -73.9851, 0.0, 100.0) // normally bad
-        );
-
-        List<TimelineEvent> result = processor.processPoints(points, Arrays.asList(), configDisabled, testUserId);
+        List<TimelineEvent> result = processor.processPoints(Arrays.asList(), configDisabled, testUserId);
 
         assertNotNull(result);
     }
@@ -133,7 +129,7 @@ class StreamingTimelineProcessorTest {
             // Only 1/4 points are accurate (25%) < 70% required
         );
 
-        List<TimelineEvent> result = processor.processPoints(Arrays.asList(), points, config, testUserId);
+        List<TimelineEvent> result = processor.processPoints(points, config, testUserId);
 
         assertNotNull(result);
         // The exact behavior depends on state transitions, but stays should be rejected due to low accuracy ratio

@@ -105,17 +105,9 @@ public class StreamingTimelineGenerationService {
                 return;
             }
 
-            // Load context points for algorithm state
-            List<GPSPoint> contextPoints = gpsDataLoader.loadContextPoints(userId, regenerationStartTime);
-
-            // Log memory usage for monitoring
-            GpsDataLoader.MemoryStats stats = gpsDataLoader.getMemoryStats(newPoints);
-            log.info("Processing timeline for user {} with {} GPS points ({}MB memory) + {} context points",
-                    userId, newPoints.size(), String.format("%.1f", stats.estimatedMB), contextPoints.size());
-
             // Convert to algorithm format (lightweight conversion)
 
-            List<TimelineEvent> rawEvents = processor.processPoints(contextPoints, newPoints, config, userId);
+            List<TimelineEvent> rawEvents = processor.processPoints(newPoints, config, userId);
 
             // Apply trip detection algorithm and validation
             List<TimelineEvent> events = tripPostProcessor.postProcessTrips(rawEvents, config);

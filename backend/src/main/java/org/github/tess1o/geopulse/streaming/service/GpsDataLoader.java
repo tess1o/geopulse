@@ -27,7 +27,6 @@ public class GpsDataLoader {
 
     // Configuration constants
     private static final int DEFAULT_CHUNK_SIZE = 10_000;
-    private static final int CONTEXT_POINTS_LIMIT = 10;
     private static final int ESTIMATED_BYTES_PER_POINT = 40; // Lightweight DTO size
 
     /**
@@ -60,24 +59,6 @@ public class GpsDataLoader {
             // Large dataset - use chunked loading
             return loadInChunks(userId, fromTimestamp, estimatedCount.intValue(), startTime);
         }
-    }
-
-    /**
-     * Load context points before timeline regeneration start time.
-     * These points provide algorithm context while keeping memory usage minimal.
-     * 
-     * @param userId The user ID
-     * @param beforeTimestamp Get points before this timestamp
-     * @return List of lightweight context GPS points
-     */
-    public List<GPSPoint> loadContextPoints(UUID userId, Instant beforeTimestamp) {
-        log.debug("Loading context points for user {} before timestamp {}", userId, beforeTimestamp);
-        
-        List<GPSPoint> contextPoints = gpsPointRepository.findEssentialContextData(
-            userId, beforeTimestamp, CONTEXT_POINTS_LIMIT);
-        
-        log.debug("Loaded {} context points for user {}", contextPoints.size(), userId);
-        return contextPoints;
     }
 
     /**
@@ -150,34 +131,5 @@ public class GpsDataLoader {
                  chunkCount > 0 ? (double) totalTime / chunkCount : 0);
         
         return allPoints;
-    }
-
-    /**
-     * Get memory statistics for the loaded dataset.
-     * Useful for monitoring and capacity planning.
-     */
-    public MemoryStats getMemoryStats(List<GPSPoint> points) {
-        long estimatedBytes = points.size() * ESTIMATED_BYTES_PER_POINT;
-        return new MemoryStats(points.size(), estimatedBytes);
-    }
-
-    /**
-     * Memory statistics for loaded GPS data.
-     */
-    public static class MemoryStats {
-        public final int pointCount;
-        public final long estimatedBytes;
-        public final double estimatedMB;
-
-        public MemoryStats(int pointCount, long estimatedBytes) {
-            this.pointCount = pointCount;
-            this.estimatedBytes = estimatedBytes;
-            this.estimatedMB = estimatedBytes / (1024.0 * 1024.0);
-        }
-
-        @Override
-        public String toString() {
-            return String.format("MemoryStats{points=%d, memory=%.1fMB}", pointCount, estimatedMB);
-        }
     }
 }
