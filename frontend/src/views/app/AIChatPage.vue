@@ -83,9 +83,6 @@
                     <div class="message-content">
                       <p>{{ message.content }}</p>
                     </div>
-                    <div class="message-avatar">
-                      <Avatar icon="pi pi-user" class="p-avatar-sm" />
-                    </div>
                   </div>
 
                   <!-- AI Response -->
@@ -96,7 +93,7 @@
                       </Avatar>
                     </div>
                     <div class="message-content">
-                      <p class="whitespace-pre-wrap">{{ message.content }}</p>
+                      <div class="whitespace-pre-wrap" v-html="sanitizeAndFormatMessage(message.content)"></div>
                     </div>
                   </div>
                 </div>
@@ -286,6 +283,59 @@ const scrollToBottom = () => {
   }
 }
 
+const sanitizeAndFormatMessage = (content) => {
+  if (!content) return ''
+  
+  // Escape HTML first to prevent XSS
+  let sanitized = content
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+  
+  // Convert markdown to HTML
+  sanitized = sanitized
+    // Bold text: **text** or __text__
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.*?)__/g, '<strong>$1</strong>')
+    
+    // Italic text: *text* or _text_
+    .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>')
+    
+    // Code: `code`
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    
+    // Headers: # Header, ## Header, etc.
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    
+    // Bullet points: - item or * item
+    .replace(/^[\s]*[-*]\s+(.*)$/gm, '<li>$1</li>')
+    
+    // Numbered lists: 1. item
+    .replace(/^[\s]*\d+\.\s+(.*)$/gm, '<li>$1</li>')
+    
+    // Line breaks
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+  
+  // Wrap consecutive <li> elements in <ul>
+  sanitized = sanitized
+    .replace(/(<li>.*?<\/li>)(\s*<li>.*?<\/li>)*/gs, (match) => {
+      return '<ul>' + match + '</ul>'
+    })
+  
+  // Wrap in paragraph tags if not already wrapped
+  if (!sanitized.includes('<p>') && !sanitized.includes('<h1>') && !sanitized.includes('<h2>') && !sanitized.includes('<ul>')) {
+    sanitized = '<p>' + sanitized + '</p>'
+  }
+  
+  return sanitized
+}
+
 // Check AI configuration on mount
 onMounted(async () => {
   await checkAIAvailability()
@@ -342,6 +392,10 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0; /* Allow flex item to shrink below content size */
+  overflow: hidden;
 }
 
 .chat-card {
@@ -350,6 +404,10 @@ onMounted(async () => {
   flex-direction: column;
   height: calc(100vh - 250px);
   min-height: 600px;
+  width: 100%;
+  max-width: 1200px; /* Set maximum width to prevent excessive expansion */
+  margin: 0 auto; /* Center the chat card */
+  overflow: hidden;
 }
 
 .chat-card :deep(.p-card-body) {
@@ -371,10 +429,14 @@ onMounted(async () => {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem 0;
+  padding: 1.5rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .empty-state {
@@ -431,12 +493,50 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  margin: 1.25rem 0;
+  position: relative;
+}
+
+.message-wrapper:first-child {
+  margin-top: 0;
+}
+
+.message-wrapper:last-child {
+  margin-bottom: 0;
+}
+
+/* Add subtle separator after user messages */
+.message-wrapper:has(.user-message):not(:last-child)::after {
+  content: '';
+  position: absolute;
+  bottom: -0.75rem;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.3) 50%, transparent 100%);
+  border-radius: 1px;
+}
+
+/* Alternative fallback for browsers without :has() support */
+.user-message-wrapper::after {
+  content: '';
+  position: absolute;
+  bottom: -0.75rem;
+  left: 15%;
+  right: 15%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.3) 50%, transparent 100%);
+  border-radius: 1px;
 }
 
 .message {
   display: flex;
   gap: 0.75rem;
   max-width: 80%;
+  width: fit-content;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .user-message {
@@ -452,27 +552,158 @@ onMounted(async () => {
   padding: 0.75rem 1rem;
   border-radius: 1rem;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .user-message .message-content {
   background: var(--primary-color);
   color: var(--primary-color-text);
   border-bottom-right-radius: 0.25rem;
+  border: 2px solid var(--primary-600);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
 }
 
 .ai-message .message-content {
-  background: var(--surface-100);
+  background: var(--surface-ground);
   color: var(--text-color);
   border-bottom-left-radius: 0.25rem;
+  border: 2px solid var(--surface-400);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.ai-message .message-content::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+  border-radius: 1rem;
+  z-index: -1;
+  opacity: 0.8;
+}
+
+/* AI Message HTML Formatting */
+.ai-message .message-content h1,
+.ai-message .message-content h2,
+.ai-message .message-content h3 {
+  font-weight: bold;
+  color: var(--text-color);
+  margin: 0.5rem 0 0.25rem 0;
+  line-height: 1.3;
+}
+
+.ai-message .message-content h1 {
+  font-size: 1.25rem;
+}
+
+.ai-message .message-content h2 {
+  font-size: 1.1rem;
+}
+
+.ai-message .message-content h3 {
+  font-size: 1rem;
+}
+
+.ai-message .message-content strong {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.ai-message .message-content em {
+  font-style: italic;
+  color: var(--text-color-secondary);
+}
+
+.ai-message .message-content code {
+  background: var(--surface-200);
+  color: var(--primary-600);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.875rem;
+  border: 1px solid var(--surface-300);
+}
+
+.ai-message .message-content ul {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.ai-message .message-content li {
+  margin: 0.25rem 0;
+  list-style-type: disc;
+  color: var(--text-color);
+}
+
+.ai-message .message-content p {
+  margin: 0.5rem 0;
+  line-height: 1.5;
+}
+
+.ai-message .message-content p:first-child {
+  margin-top: 0;
+}
+
+.ai-message .message-content p:last-child {
+  margin-bottom: 0;
 }
 
 .message-avatar {
   flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px var(--surface-300));
+}
+
+.user-message .message-avatar {
+  background: var(--primary-color) !important;
+  color: var(--primary-color-text) !important;
+  border: 2px solid var(--primary-600) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  overflow: hidden;
+}
+
+.user-message .message-avatar :deep(.p-avatar) {
+  background: var(--primary-color) !important;
+  border: none !important;
+  border-radius: 50% !important;
+}
+
+.user-message .message-avatar :deep(.p-avatar-icon) {
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  border: none !important;
 }
 
 .ai-avatar {
-  background: var(--blue-500);
-  color: white;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  border: 2px solid rgba(102, 126, 234, 0.5) !important;
+  animation: subtle-pulse 3s ease-in-out infinite;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+  overflow: hidden;
+}
+
+.ai-avatar :deep(.p-avatar) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  border-radius: 50% !important;
+}
+
+.ai-avatar i {
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  border: none !important;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
 }
 
 .loading-message .message-content {
@@ -521,6 +752,9 @@ onMounted(async () => {
   display: flex;
   gap: 0.75rem;
   align-items: flex-end;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .message-input {

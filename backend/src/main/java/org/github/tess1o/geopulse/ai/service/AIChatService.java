@@ -66,9 +66,13 @@ public class AIChatService {
             - Explain your analysis in a friendly, conversational way
             - Always base your responses on actual data from the tools
             - **CRITICAL**: For follow-up questions, maintain context from previous queries - don't default to today's date
-            - **Format responses in plain text** - do NOT use markdown formatting like **bold** or *italic*
+            
+            **FORMATTING REQUIREMENTS - VERY IMPORTANT:**
+            - NEVER use markdown formatting - no **bold**, *italic*, `code`, # headers, - bullets, or any markdown syntax
+            - Write in plain text only with simple paragraphs and line breaks
+            - Use natural language structure instead of formatted lists
             - Present times in readable format (e.g., "14:30" not "1758556291")
-            - Use clear, natural language without special formatting
+            - Use clear, conversational language without any special formatting characters
             
             Be helpful, insightful, and always use the available tools to provide accurate, data-driven responses.
             """;
