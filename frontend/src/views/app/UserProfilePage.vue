@@ -273,14 +273,30 @@
                             </small>
                           </div>
                           <div class="form-group">
+                            <label for="openai-api-url" class="form-label">API Base URL</label>
+                            <InputText
+                              id="openai-api-url"
+                              v-model="aiSettings.openaiApiUrl"
+                              placeholder="https://api.openai.com/v1"
+                              class="w-full"
+                            />
+                            <small class="text-secondary">
+                              Use default OpenAI URL or enter a custom OpenAI-compatible API endpoint
+                            </small>
+                          </div>
+                          <div class="form-group">
                             <label for="openai-model" class="form-label">Model</label>
                             <Dropdown
                               id="openai-model"
                               v-model="aiSettings.openaiModel"
                               :options="openaiModels"
-                              placeholder="Select model"
+                              placeholder="Select or enter model name"
                               class="w-full"
+                              editable
                             />
+                            <small class="text-secondary">
+                              Choose from common models or enter a custom model name
+                            </small>
                           </div>
                         </div>
                       </div>
@@ -518,6 +534,7 @@ const immichForm = ref({
 const aiSettings = ref({
   enabled: false,
   openaiApiKey: '',
+  openaiApiUrl: 'https://api.openai.com/v1',
   openaiModel: 'gpt-3.5-turbo',
   openaiApiKeyConfigured: false
 })
@@ -927,6 +944,7 @@ const saveAISettings = async () => {
     // Prepare payload - only include openaiApiKey if user entered a new one
     const payload = {
       enabled: aiSettings.value.enabled,
+      openaiApiUrl: aiSettings.value.openaiApiUrl,
       openaiModel: aiSettings.value.openaiModel
     }
     
@@ -975,6 +993,7 @@ const testAIConnection = async () => {
   try {
     await apiService.post('/ai/test-openai', {
       apiKey: aiSettings.value.openaiApiKey,
+      apiUrl: aiSettings.value.openaiApiUrl,
       model: aiSettings.value.openaiModel
     })
     
@@ -1005,6 +1024,7 @@ const loadAISettings = async () => {
       aiSettings.value = {
         enabled: data.enabled === true,
         openaiApiKey: '', // Always empty since backend doesn't send actual key
+        openaiApiUrl: data.openaiApiUrl || 'https://api.openai.com/v1',
         openaiModel: data.openaiModel || 'gpt-3.5-turbo',
         openaiApiKeyConfigured: data.openaiApiKeyConfigured === true
       }

@@ -31,7 +31,6 @@ public class SimpleAITools {
     public String getTodayDate(){
         LocalDate today = LocalDate.now();
         log.info("🔧 AI TOOL EXECUTED: getTodayDate() - returning: {}", today);
-        System.out.println("🔧 AI TOOL EXECUTED: getTodayDate() - returning: " + today);
         return "Today's date is: " + today.toString() + " (current year is " + today.getYear() + ")";
     }
 

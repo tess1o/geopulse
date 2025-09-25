@@ -17,6 +17,7 @@ public class UserAISettings {
 
     private boolean enabled;
     private String openaiApiKey; // Used for saving only, not returned in GET requests
+    private String openaiApiUrl; // Custom OpenAI API URL (defaults to https://api.openai.com/v1)
     private String openaiModel;
     private boolean openaiApiKeyConfigured; // Frontend-safe flag to indicate if key is set
 
@@ -24,6 +25,7 @@ public class UserAISettings {
         return UserAISettings.builder()
                 .enabled(this.enabled)
                 .openaiApiKey(this.openaiApiKey)
+                .openaiApiUrl(this.openaiApiUrl)
                 .openaiModel(this.openaiModel)
                 .openaiApiKeyConfigured(this.openaiApiKeyConfigured)
                 .build();

@@ -51,6 +51,7 @@ public class UserAISettingsService {
                 // Create settings with preserved API key
                 settingsToSave = UserAISettings.builder()
                         .enabled(settings.isEnabled())
+                        .openaiApiUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : "https://api.openai.com/v1")
                         .openaiModel(settings.getOpenaiModel())
                         .openaiApiKey(existingSettings != null ? existingSettings.getOpenaiApiKey() : "")
                         .build();
@@ -88,6 +89,7 @@ public class UserAISettingsService {
                 return UserAISettings.builder()
                         .enabled(false)
                         .openaiApiKey(null) // Never send actual key to frontend
+                        .openaiApiUrl("https://api.openai.com/v1") // Default OpenAI API URL
                         .openaiModel("gpt-3.5-turbo")
                         .openaiApiKeyConfigured(false)
                         .build();
@@ -108,6 +110,7 @@ public class UserAISettingsService {
             return UserAISettings.builder()
                     .enabled(settings.isEnabled())
                     .openaiApiKey(null) // Never send actual key to frontend
+                    .openaiApiUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : "https://api.openai.com/v1")
                     .openaiModel(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : "gpt-3.5-turbo")
                     .openaiApiKeyConfigured(hasApiKey)
                     .build();
@@ -133,6 +136,7 @@ public class UserAISettingsService {
                 return UserAISettings.builder()
                         .enabled(false)
                         .openaiApiKey("")
+                        .openaiApiUrl("https://api.openai.com/v1")
                         .openaiModel("gpt-3.5-turbo")
                         .openaiApiKeyConfigured(false)
                         .build();
@@ -154,6 +158,11 @@ public class UserAISettingsService {
                 settings.setOpenaiApiKeyConfigured(true);
             } else {
                 settings.setOpenaiApiKeyConfigured(false);
+            }
+
+            // Ensure we have a default URL if none is set
+            if (settings.getOpenaiApiUrl() == null || settings.getOpenaiApiUrl().isBlank()) {
+                settings.setOpenaiApiUrl("https://api.openai.com/v1");
             }
 
             return settings;

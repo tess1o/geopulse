@@ -146,6 +146,7 @@ public class AIChatService {
 
         return OpenAiChatModel.builder()
                 .apiKey(settings.getOpenaiApiKey())
+                .baseUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : "https://api.openai.com/v1")
                 .modelName(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : "gpt-3.5-turbo")
                 .timeout(Duration.ofSeconds(60))
                 .build();
