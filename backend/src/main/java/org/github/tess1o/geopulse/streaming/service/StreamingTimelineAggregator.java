@@ -3,9 +3,7 @@ package org.github.tess1o.geopulse.streaming.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.ai.model.AIMovementTimelineDTO;
-import org.github.tess1o.geopulse.ai.model.AITimelineStayDTO;
-import org.github.tess1o.geopulse.ai.model.AITimelineTripDTO;
+import org.github.tess1o.geopulse.ai.model.*;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
@@ -17,7 +15,8 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
 import java.time.Instant;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -156,5 +155,97 @@ public class StreamingTimelineAggregator {
                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
 
         return timeline;
+    }
+
+    /**
+     * Get aggregated stay statistics grouped by the specified criteria.
+     * 
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @param groupBy   how to group the statistics
+     * @return list of stay statistics ordered by significance
+     */
+    public List<AIStayStatsDTO> getStayStats(UUID userId, Instant startTime, Instant endTime, StayGroupBy groupBy) {
+        log.debug("Getting stay statistics for user {} from {} to {} grouped by {}", userId, startTime, endTime, groupBy);
+        
+        List<AIStayStatsDTO> stats = timelineStayRepository.findStayStatistics(userId, startTime, endTime, groupBy);
+        
+        log.debug("Retrieved {} stay statistics groups", stats.size());
+        return stats;
+    }
+
+    /**
+     * Get aggregated trip statistics grouped by the specified criteria.
+     * Handles complex origin/destination grouping at the service layer.
+     * 
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @param groupBy   how to group the statistics
+     * @return list of trip statistics ordered by significance
+     */
+    public List<AITripStatsDTO> getTripStats(UUID userId, Instant startTime, Instant endTime, TripGroupBy groupBy) {
+        log.debug("Getting trip statistics for user {} from {} to {} grouped by {}", userId, startTime, endTime, groupBy);
+        
+        // For simple groupings, delegate to repository
+        if (groupBy != TripGroupBy.ORIGIN_LOCATION_NAME && groupBy != TripGroupBy.DESTINATION_LOCATION_NAME) {
+            List<AITripStatsDTO> stats = timelineTripRepository.findTripStatistics(userId, startTime, endTime, groupBy);
+            log.debug("Retrieved {} trip statistics groups", stats.size());
+            return stats;
+        }
+        
+        // For origin/destination grouping, we need to compute these at service layer
+        return getTripStatsWithOriginDestination(userId, startTime, endTime, groupBy);
+    }
+
+    /**
+     * Handle complex origin/destination trip statistics by computing origin/destination in memory.
+     */
+    private List<AITripStatsDTO> getTripStatsWithOriginDestination(UUID userId, Instant startTime, Instant endTime, TripGroupBy groupBy) {
+        log.debug("Computing trip statistics with origin/destination grouping");
+        
+        // Get all trips and stays to compute origin/destination
+        var aiTrips = timelineTripRepository.findAITimelineTripsWithoutPath(userId, startTime, endTime);
+        var aiStays = timelineStayRepository.findAITimelineStaysWithLocationData(userId, startTime, endTime);
+        
+        // Populate origin/destination information
+        populateOriginDestination(aiTrips, aiStays);
+        
+        // Group trips by the specified field
+        String groupType = groupBy.getValue();
+        Map<String, List<AITimelineTripDTO>> groupedTrips = aiTrips.stream()
+                .collect(Collectors.groupingBy(trip -> {
+                    return switch (groupBy) {
+                        case ORIGIN_LOCATION_NAME -> 
+                            trip.getOriginLocationName() != null ? trip.getOriginLocationName() : "Unknown Origin";
+                        case DESTINATION_LOCATION_NAME -> 
+                            trip.getDestinationLocationName() != null ? trip.getDestinationLocationName() : "Unknown Destination";
+                        default -> "Unknown";
+                    };
+                }));
+        
+        // Calculate statistics for each group
+        return groupedTrips.entrySet().stream()
+                .map(entry -> {
+                    String groupKey = entry.getKey();
+                    List<AITimelineTripDTO> trips = entry.getValue();
+                    
+                    long tripCount = trips.size();
+                    long totalDistance = trips.stream().mapToLong(AITimelineTripDTO::getDistanceMeters).sum();
+                    long totalDuration = trips.stream().mapToLong(AITimelineTripDTO::getTripDuration).sum();
+                    
+                    double avgDistance = tripCount > 0 ? (double) totalDistance / tripCount : 0.0;
+                    double avgDuration = tripCount > 0 ? (double) totalDuration / tripCount : 0.0;
+                    
+                    long minDistance = trips.stream().mapToLong(AITimelineTripDTO::getDistanceMeters).min().orElse(0L);
+                    long maxDistance = trips.stream().mapToLong(AITimelineTripDTO::getDistanceMeters).max().orElse(0L);
+                    
+                    return new AITripStatsDTO(groupKey, groupType, tripCount, 
+                                            totalDistance, avgDistance, minDistance, maxDistance,
+                                            totalDuration, avgDuration);
+                })
+                .sorted((a, b) -> Long.compare(b.getTripCount(), a.getTripCount())) // Order by count desc
+                .toList();
     }
 }

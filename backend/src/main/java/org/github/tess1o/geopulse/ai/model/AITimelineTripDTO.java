@@ -13,32 +13,26 @@ import java.time.Instant;
 @NoArgsConstructor
 public class AITimelineTripDTO {
     private Instant timestamp;
-    
-    private double startLatitude;
-    private double startLongitude;
-    private double endLatitude;
-    private double endLongitude;
-    
+
     /**
      * Duration of trip in seconds
      */
     private long tripDuration;
-    
+
     /**
      * Distance traveled in meters
      */
     private long distanceMeters;
-    
+
     private String movementType;
-    
+
     /**
      * Origin location name from the stay closest to trip start
      */
     private String originLocationName;
-    
+
     /**
      * Destination location name from the stay closest to trip end
      */
     private String destinationLocationName;
-    
 }
