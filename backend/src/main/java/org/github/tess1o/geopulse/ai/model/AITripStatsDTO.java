@@ -1,14 +1,14 @@
 package org.github.tess1o.geopulse.ai.model;
 
+import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * AI-optimized DTO for aggregated trip statistics.
- * Contains statistical analysis of trips grouped by various criteria including distance and duration metrics.
+ * Contains statistical analysis of trips grouped by various criteria including distance, duration, and performance metrics.
  */
 @Data
-@NoArgsConstructor
+@Builder
 public class AITripStatsDTO {
     
     /**
@@ -55,22 +55,20 @@ public class AITripStatsDTO {
      * Average duration per trip in this group (seconds)
      */
     private double avgDurationSeconds;
-
+    
     /**
-     * Constructor for database query mapping
+     * Duration of the shortest trip in this group (seconds)
      */
-    public AITripStatsDTO(String groupKey, String groupType, long tripCount,
-                         long totalDistanceMeters, double avgDistanceMeters, 
-                         long minDistanceMeters, long maxDistanceMeters,
-                         long totalDurationSeconds, double avgDurationSeconds) {
-        this.groupKey = groupKey;
-        this.groupType = groupType;
-        this.tripCount = tripCount;
-        this.totalDistanceMeters = totalDistanceMeters;
-        this.avgDistanceMeters = avgDistanceMeters;
-        this.minDistanceMeters = minDistanceMeters;
-        this.maxDistanceMeters = maxDistanceMeters;
-        this.totalDurationSeconds = totalDurationSeconds;
-        this.avgDurationSeconds = avgDurationSeconds;
-    }
+    private long minDurationSeconds;
+    
+    /**
+     * Duration of the longest trip in this group (seconds)
+     */
+    private long maxDurationSeconds;
+    
+    /**
+     * Average speed across all trips in this group (km/h)
+     * Calculated from total distance and total duration
+     */
+    private double avgSpeedKmh;
 }

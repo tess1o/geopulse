@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
+import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
 
 import java.time.Duration;
 import java.util.UUID;
@@ -34,10 +35,10 @@ public class AIChatService {
             - Base all responses on the data returned by the tools.
 
             **Tool Selection Priority:**
-            1. Use STATISTICAL TOOLS (`getStayStats`, `getTripStats`) for: comparisons, patterns, "how much/many", "which most/least", counting, aggregated analysis
-            2. Use BASIC TOOLS (`queryTimeline`, `getVisitedLocations`, `getTripMovements`) for: specific events, detailed timeline data, listing items
-            3. For total distance, duration, or trip counts, ALWAYS use `getTripStats`
-            4. For counting cities, locations, or unique places, ALWAYS use `getStayStats`
+            1. Use STAY STATS (`getStayStats`) for: time spent at locations, visit frequency, city/location counting, "how much time", "which places"
+            2. Use TRIP STATS (`getTripStats`) for: transportation modes, travel distances by mode, speed analysis, "how far by walking/driving"  
+            3. Use ROUTE PATTERNS (`getRoutePatterns`) for: most common routes, route frequency, "Home→Office", travel pattern diversity
+            4. Use BASIC TOOLS (`queryTimeline`, `getVisitedLocations`, `getTripMovements`) for: specific events, detailed timeline data, listing items
             5. Any question with "which month/week/day had most/least" MUST use statistical tools with appropriate time grouping
 
             **Key Examples:**
@@ -49,12 +50,21 @@ public class AIChatService {
             - "Which week had most travel diversity?" → getStayStats with WEEK grouping (use uniqueLocationCount)
             - "When did I first visit New York?" → getStayStats with CITY grouping (use firstStayStart)
             - "Where do I spend most time each week?" → getStayStats with WEEK grouping (use dominantLocation)
+            - "Did I walk more or drive more?" → getTripStats with MOVEMENT_TYPE grouping
+            - "How far did I travel by car vs walking?" → getTripStats with MOVEMENT_TYPE grouping
+            - "What's my average travel speed?" → getTripStats (use avgSpeedKmh field)
+            - "What's my most common route?" → getRoutePatterns (use mostCommonRoute field)
+            - "How many unique routes do I take?" → getRoutePatterns (use uniqueRoutesCount field)
+            - "What's my longest trip?" → getRoutePatterns (use longestTripDistance/Duration fields)
 
             **Enhanced Fields Usage:**
             - Use uniqueCityCount for counting distinct cities in each group
             - Use uniqueLocationCount for counting distinct locations in each group
             - Use firstStayStart for "when did I first visit X" questions
             - Use dominantLocation for "where do I spend most time" questions
+            - Use avgSpeedKmh for speed analysis and efficiency comparisons
+            - Use minDurationSeconds/maxDurationSeconds for trip duration ranges
+            - Use mostCommonRoute for identifying primary travel patterns
 
             **MANDATORY Unit Conversions:**
             - NEVER show raw seconds - ALWAYS convert to human-readable time:
@@ -79,6 +89,9 @@ public class AIChatService {
 
     @Inject
     StreamingTimelineAggregator streamingTimelineAggregator;
+    
+    @Inject
+    RoutesAnalysisService routesAnalysisService;
 
     interface Assistant {
         @SystemMessage(SYSTEM_MESSAGE)
@@ -105,7 +118,7 @@ public class AIChatService {
             ChatModel model = createChatModel(settings);
 
             // Create simple tools instance without CDI proxy
-            AITimelineTools simpleTools = new AITimelineTools(streamingTimelineAggregator, currentUserService);
+            AITimelineTools simpleTools = new AITimelineTools(streamingTimelineAggregator, currentUserService, routesAnalysisService);
             ChatMemory chatMemory = MessageWindowChatMemory.builder()
                     .id(userId.toString()) // Use user-specific chat memory
                     .maxMessages(20)

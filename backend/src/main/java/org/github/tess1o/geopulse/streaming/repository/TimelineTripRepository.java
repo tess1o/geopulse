@@ -141,7 +141,9 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                    MIN(t.distanceMeters) as minDistanceMeters,
                    MAX(t.distanceMeters) as maxDistanceMeters,
                    SUM(t.tripDuration) as totalDurationSeconds,
-                   AVG(t.tripDuration) as avgDurationSeconds
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
             FROM TimelineTripEntity t
             WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
               AND t.movementType IS NOT NULL
@@ -157,17 +159,28 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 .getResultList();
         
         return results.stream()
-                .map(row -> new AITripStatsDTO(
-                    (String) row[0],           // groupKey (movementType)
-                    "movementType",            // groupType
-                    ((Number) row[1]).longValue(),    // tripCount
-                    ((Number) row[2]).longValue(),    // totalDistanceMeters
-                    ((Number) row[3]).doubleValue(),  // avgDistanceMeters
-                    ((Number) row[4]).longValue(),    // minDistanceMeters
-                    ((Number) row[5]).longValue(),    // maxDistanceMeters
-                    ((Number) row[6]).longValue(),    // totalDurationSeconds
-                    ((Number) row[7]).doubleValue()   // avgDurationSeconds
-                ))
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey((String) row[0])
+                        .groupType("movementType")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
                 .toList();
     }
     
@@ -180,7 +193,9 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                    MIN(t.distanceMeters) as minDistanceMeters,
                    MAX(t.distanceMeters) as maxDistanceMeters,
                    SUM(t.tripDuration) as totalDurationSeconds,
-                   AVG(t.tripDuration) as avgDurationSeconds
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
             FROM TimelineTripEntity t
             WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
             GROUP BY FUNCTION('DATE', t.timestamp)
@@ -195,17 +210,28 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 .getResultList();
         
         return results.stream()
-                .map(row -> new AITripStatsDTO(
-                    String.valueOf(row[0]),    // groupKey (day as YYYY-MM-DD)
-                    "day",                     // groupType
-                    ((Number) row[1]).longValue(),    // tripCount
-                    ((Number) row[2]).longValue(),    // totalDistanceMeters
-                    ((Number) row[3]).doubleValue(),  // avgDistanceMeters
-                    ((Number) row[4]).longValue(),    // minDistanceMeters
-                    ((Number) row[5]).longValue(),    // maxDistanceMeters
-                    ((Number) row[6]).longValue(),    // totalDurationSeconds
-                    ((Number) row[7]).doubleValue()   // avgDurationSeconds
-                ))
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey(String.valueOf(row[0]))
+                        .groupType("day")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
                 .toList();
     }
     
@@ -218,7 +244,9 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                    MIN(t.distanceMeters) as minDistanceMeters,
                    MAX(t.distanceMeters) as maxDistanceMeters,
                    SUM(t.tripDuration) as totalDurationSeconds,
-                   AVG(t.tripDuration) as avgDurationSeconds
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
             FROM TimelineTripEntity t
             WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
             GROUP BY 1
@@ -233,17 +261,28 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 .getResultList();
         
         return results.stream()
-                .map(row -> new AITripStatsDTO(
-                    (String) row[0],           // groupKey (week as YYYY-Www)
-                    "week",                    // groupType
-                    ((Number) row[1]).longValue(),    // tripCount
-                    ((Number) row[2]).longValue(),    // totalDistanceMeters
-                    ((Number) row[3]).doubleValue(),  // avgDistanceMeters
-                    ((Number) row[4]).longValue(),    // minDistanceMeters
-                    ((Number) row[5]).longValue(),    // maxDistanceMeters
-                    ((Number) row[6]).longValue(),    // totalDurationSeconds
-                    ((Number) row[7]).doubleValue()   // avgDurationSeconds
-                ))
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey((String) row[0])
+                        .groupType("week")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
                 .toList();
     }
     
@@ -256,7 +295,9 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                    MIN(t.distanceMeters) as minDistanceMeters,
                    MAX(t.distanceMeters) as maxDistanceMeters,
                    SUM(t.tripDuration) as totalDurationSeconds,
-                   AVG(t.tripDuration) as avgDurationSeconds
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
             FROM TimelineTripEntity t
             WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
             GROUP BY 1
@@ -271,17 +312,28 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                 .getResultList();
         
         return results.stream()
-                .map(row -> new AITripStatsDTO(
-                    (String) row[0],           // groupKey (month as YYYY-MM)
-                    "month",                   // groupType
-                    ((Number) row[1]).longValue(),    // tripCount
-                    ((Number) row[2]).longValue(),    // totalDistanceMeters
-                    ((Number) row[3]).doubleValue(),  // avgDistanceMeters
-                    ((Number) row[4]).longValue(),    // minDistanceMeters
-                    ((Number) row[5]).longValue(),    // maxDistanceMeters
-                    ((Number) row[6]).longValue(),    // totalDurationSeconds
-                    ((Number) row[7]).doubleValue()   // avgDurationSeconds
-                ))
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey((String) row[0])
+                        .groupType("month")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
                 .toList();
     }
     

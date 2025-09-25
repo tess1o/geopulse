@@ -10,6 +10,10 @@
               <p class="page-description">
                 Ask questions about your location data and get intelligent insights
               </p>
+              <div class="ai-disclaimer">
+                <i class="pi pi-info-circle"></i>
+                <span>AI responses are based on data analysis but may contain errors. Please verify important information independently.</span>
+              </div>
             </div>
           </div>
         </div>
@@ -386,6 +390,24 @@ onMounted(async () => {
 .page-description {
   color: var(--text-color-secondary);
   margin: 0.5rem 0 0 0;
+}
+
+.ai-disclaimer {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background-color: var(--surface-50);
+  border: 1px solid var(--surface-200);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
+}
+
+.ai-disclaimer i {
+  font-size: 1.125rem;
+  color: var(--primary-color);
 }
 
 .chat-container {

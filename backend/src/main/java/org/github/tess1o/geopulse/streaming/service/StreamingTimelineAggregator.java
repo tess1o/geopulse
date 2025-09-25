@@ -240,10 +240,25 @@ public class StreamingTimelineAggregator {
                     
                     long minDistance = trips.stream().mapToLong(AITimelineTripDTO::getDistanceMeters).min().orElse(0L);
                     long maxDistance = trips.stream().mapToLong(AITimelineTripDTO::getDistanceMeters).max().orElse(0L);
+                    long minDuration = trips.stream().mapToLong(AITimelineTripDTO::getTripDuration).min().orElse(0L);
+                    long maxDuration = trips.stream().mapToLong(AITimelineTripDTO::getTripDuration).max().orElse(0L);
                     
-                    return new AITripStatsDTO(groupKey, groupType, tripCount, 
-                                            totalDistance, avgDistance, minDistance, maxDistance,
-                                            totalDuration, avgDuration);
+                    double avgSpeedKmh = totalDuration > 0 ? (totalDistance * 3.6) / totalDuration : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey(groupKey)
+                        .groupType(groupType)
+                        .tripCount(tripCount)
+                        .totalDistanceMeters(totalDistance)
+                        .avgDistanceMeters(avgDistance)
+                        .minDistanceMeters(minDistance)
+                        .maxDistanceMeters(maxDistance)
+                        .totalDurationSeconds(totalDuration)
+                        .avgDurationSeconds(avgDuration)
+                        .minDurationSeconds(minDuration)
+                        .maxDurationSeconds(maxDuration)
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
                 })
                 .sorted((a, b) -> Long.compare(b.getTripCount(), a.getTripCount())) // Order by count desc
                 .toList();
