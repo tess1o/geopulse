@@ -28,7 +28,7 @@ public class AITimelineTools {
         this.currentUserService = currentUserService;
     }
 
-    @Tool("Query user's timeline data for specific date ranges and analyze stays/trips/data gaps. Returns enriched timeline data with city/country info and trip origins/destinations. End date must be after start date at least by 1 day")
+    @Tool("Retrieves a user's complete timeline for a date range, including all stays, trips, and data gaps. Use for detailed, chronological views of user activity.")
     public AIMovementTimelineDTO queryTimeline(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
         log.info("🔧 AI TOOL EXECUTED: queryTimeline({}, {})", startDate, endDate);
         AIMovementTimelineDTO timeline = getTimeline(startDate, endDate);
@@ -36,11 +36,7 @@ public class AITimelineTools {
         return timeline;
     }
 
-    @Tool("""
-            Get the detailed list of locations/places the user visited (stays) for a specific date range.
-            Use this for listing specific locations visited on particular dates, NOT for counting or comparing.
-            For questions like 'which month had most cities' or 'how many cities' use getStayStats instead.
-            """)
+    @Tool("Lists all locations/places a user has stayed at within a date range. Use this ONLY for listing specific places. For counting or statistical analysis, use getStayStats.")
     public java.util.List<AITimelineStayDTO> getVisitedLocations(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
         log.info("🔧 AI TOOL EXECUTED: getVisitedLocations({}, {})", startDate, endDate);
         AIMovementTimelineDTO timeline = getTimeline(startDate, endDate);
@@ -48,10 +44,7 @@ public class AITimelineTools {
         return timeline.getStays();
     }
 
-    @Tool("""
-            Get only the trips/movements the user made for a specific date range with origin/destination information
-            Do NOT use for totals, comparisons, or aggregations. This tool is only for listing individual trips
-            """)
+    @Tool("Lists all trips/movements a user made within a date range. Use this ONLY for listing individual trips. For totals, distances, or other aggregations, use getTripStats.")
     public java.util.List<AITimelineTripDTO> getTripMovements(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
         log.info("🔧 AI TOOL EXECUTED: getTripMovements({}, {})", startDate, endDate);
         AIMovementTimelineDTO timeline = getTimeline(startDate, endDate);
@@ -74,27 +67,25 @@ public class AITimelineTools {
     }
 
     @Tool("""
-        Get comprehensive aggregated STAY statistics for analyzing location patterns and time spent at places. 
-        Use this for questions about WHERE and HOW LONG the user stayed at different locations.
-        ALWAYS use this for counting cities, comparing months/periods, or finding patterns.
+        Calculates comprehensive aggregated statistics about user stays. Use for questions about time spent at locations, 
+        visit frequency, and unique counts of cities or places. Returns enhanced data including unique counts, temporal info, and dominant locations.
         
-        Returns enhanced statistics including:
-        - Basic counts and durations (stayCount, totalDuration, avgDuration, min/max)
-        - Unique counts (uniqueCityCount, uniqueLocationCount, uniqueCountryCount) 
-        - Temporal info (firstStayStart for "when did I first visit X")
-        - Dominant location (location with most time in each group)
+        Enhanced fields returned:
+        - uniqueCityCount: Number of distinct cities in each group
+        - uniqueLocationCount: Number of distinct locations in each group  
+        - uniqueCountryCount: Number of distinct countries in each group
+        - firstStayStart: Earliest stay timestamp in each group
+        - dominantLocation: Location with most time in each group
         
-        Perfect for questions like:
-        • "How much time did I spend at home vs office last month?"
-        • "Which city did I visit most this year?" 
-        • "What was my longest stay at any location?"
-        • "Which day/week/month did I spend most time at home?"
-        • "How many different places did I visit in September?"
-        • "In which month did I visit the most number of cities?" (use month groupBy, check uniqueCityCount)
-        • "Which month had the most unique locations?" (use month groupBy, check uniqueLocationCount)
-        • "How many cities did I visit each month?" (use month groupBy, check uniqueCityCount)
-        • "When did I first visit New York?" (use city groupBy, check firstStayStart)
-        • "Where do I spend most time each week?" (use week groupBy, check dominantLocation)
+        Grouping examples:
+        - LOCATION_NAME: "How much time at each location?" "Which location did I visit most?"
+        - CITY: "How much time in each city?" "Which city did I visit most frequently?" "What locations did I visit in Boston?"
+        - COUNTRY: "How much time per country?" "Which country has most unique cities?"
+        - MONTH: "Which month had most cities?" "How many unique locations each month?"
+        - WEEK: "Where do I spend most time each week?" "Which week had most travel diversity?"
+        - DAY: "Which day had most unique locations?" "How many cities visited per day?"
+        
+        Perfect for: counting, comparisons, patterns, "how much/many", "which most/least", statistical analysis.
         """)
     public List<AIStayStatsDTO> getStayStats(
             @P("Start date") LocalDate startDate,
@@ -122,18 +113,13 @@ public class AITimelineTools {
     }
 
     @Tool("""
-        Get aggregated TRIP statistics for analyzing travel patterns, distances, and movement types.
-        Use this for questions about HOW the user traveled and trip characteristics.
-        Always use this tool for totals (distance, duration, count) and comparisons.
-        
-        Perfect for questions like:
-        • "Did I walk more or drive more in August?"
-        • "How many trips did I take last week?"
-        • "What was my longest trip distance/time?" 
-        • "Which routes do I travel most frequently?" (use originLocationName or destinationLocationName)
-        • "How far did I travel by car vs walking this month?"
-        • "Which day/week/month did I travel the most?"
-               
+        Calculates aggregated statistics about user trips. Use for questions about travel patterns, distances, and movement types. Ideal for answering questions about total distance, duration, trip counts, and transportation modes.
+
+        Grouping examples:
+        - movementType: "Did I walk more or drive more?" "How far did I travel by car vs. walking?"
+        - originLocationName: "Which routes do I travel most frequently?"
+        - destinationLocationName: "Which are my most common destinations?"
+        - day/week/month: "Which day had the most travel?" "How many trips per month?"
         """)
     public List<AITripStatsDTO> getTripStats(
             @P("Start date") LocalDate startDate,
