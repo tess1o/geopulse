@@ -1,14 +1,14 @@
 package org.github.tess1o.geopulse.ai.model;
 
+import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * AI-optimized DTO for aggregated stay statistics.
  * Contains statistical analysis of stays grouped by various criteria.
  */
 @Data
-@NoArgsConstructor
+@Builder
 public class AIStayStatsDTO {
     
     /**
@@ -45,19 +45,30 @@ public class AIStayStatsDTO {
      * Duration of the longest stay in this group (seconds)
      */
     private long maxDurationSeconds;
-
+    
     /**
-     * Constructor for database query mapping
+     * Number of unique cities in this group
      */
-    public AIStayStatsDTO(String groupKey, String groupType, long stayCount, 
-                         long totalDurationSeconds, double avgDurationSeconds,
-                         long minDurationSeconds, long maxDurationSeconds) {
-        this.groupKey = groupKey;
-        this.groupType = groupType;
-        this.stayCount = stayCount;
-        this.totalDurationSeconds = totalDurationSeconds;
-        this.avgDurationSeconds = avgDurationSeconds;
-        this.minDurationSeconds = minDurationSeconds;
-        this.maxDurationSeconds = maxDurationSeconds;
-    }
+    private long uniqueCityCount;
+    
+    /**
+     * Number of unique location names in this group
+     */
+    private long uniqueLocationCount;
+    
+    /**
+     * Number of unique countries in this group
+     */
+    private long uniqueCountryCount;
+    
+    /**
+     * Timestamp of the earliest stay in this group
+     */
+    private java.time.Instant firstStayStart;
+    
+    /**
+     * Location name that had the most total time in this group
+     */
+    private String dominantLocation;
+
 }

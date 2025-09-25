@@ -74,9 +74,15 @@ public class AITimelineTools {
     }
 
     @Tool("""
-        Get aggregated STAY statistics for analyzing location patterns and time spent at places. 
+        Get comprehensive aggregated STAY statistics for analyzing location patterns and time spent at places. 
         Use this for questions about WHERE and HOW LONG the user stayed at different locations.
         ALWAYS use this for counting cities, comparing months/periods, or finding patterns.
+        
+        Returns enhanced statistics including:
+        - Basic counts and durations (stayCount, totalDuration, avgDuration, min/max)
+        - Unique counts (uniqueCityCount, uniqueLocationCount, uniqueCountryCount) 
+        - Temporal info (firstStayStart for "when did I first visit X")
+        - Dominant location (location with most time in each group)
         
         Perfect for questions like:
         • "How much time did I spend at home vs office last month?"
@@ -84,9 +90,11 @@ public class AITimelineTools {
         • "What was my longest stay at any location?"
         • "Which day/week/month did I spend most time at home?"
         • "How many different places did I visit in September?"
-        • "In which month did I visit the most number of cities?" (use month groupBy)
-        • "Which month had the most unique locations?" (use month groupBy)
-        • "How many cities did I visit each month?" (use month groupBy)
+        • "In which month did I visit the most number of cities?" (use month groupBy, check uniqueCityCount)
+        • "Which month had the most unique locations?" (use month groupBy, check uniqueLocationCount)
+        • "How many cities did I visit each month?" (use month groupBy, check uniqueCityCount)
+        • "When did I first visit New York?" (use city groupBy, check firstStayStart)
+        • "Where do I spend most time each week?" (use week groupBy, check dominantLocation)
         """)
     public List<AIStayStatsDTO> getStayStats(
             @P("Start date") LocalDate startDate,
