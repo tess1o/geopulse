@@ -16,6 +16,7 @@ import ShareLinksPage from "@/views/app/ShareLinksPage.vue";
 import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
 import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
+import AIChatPage from "@/views/app/AIChatPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
@@ -77,8 +78,6 @@ const routes = [
             {path: 'timeline', component: TimelinePage},
             {path: 'timeline-reports', component: TimelineReportsPage},
             {path: 'dashboard', component: DashboardPage},
-            {path: 'places', component: PlacesPage},
-            {path: 'stats', component: StatsPage},
         ],
         beforeEnter: requireAuth,
     },
@@ -157,6 +156,11 @@ const routes = [
         path: '/shared/:linkId',
         name: 'Shared Location',
         component: SharedLocationPage
+    },
+    {
+        path: '/app/ai/chat',
+        name: 'AI Assistant',
+        component: AIChatPage
     },
     {
         path: '/error',
