@@ -406,6 +406,7 @@ onMounted(async () => {
   min-height: 600px;
   width: 100%;
   max-width: 1200px; /* Set maximum width to prevent excessive expansion */
+  min-width: 800px; /* Ensure consistent width from the start */
   margin: 0 auto; /* Center the chat card */
   overflow: hidden;
 }
@@ -474,8 +475,8 @@ onMounted(async () => {
 
 .example-question {
   padding: 0.75rem 1rem;
-  background: var(--surface-100);
-  border: 1px solid var(--surface-300);
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
   border-radius: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;
@@ -484,7 +485,7 @@ onMounted(async () => {
 }
 
 .example-question:hover {
-  background: var(--surface-200);
+  background: var(--surface-hover);
   border-color: var(--primary-color);
   color: var(--text-color);
 }
@@ -568,12 +569,14 @@ onMounted(async () => {
 }
 
 .ai-message .message-content {
-  background: var(--surface-ground);
+  background: var(--surface-card);
   color: var(--text-color);
   border-bottom-left-radius: 0.25rem;
-  border: 2px solid var(--surface-400);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  border: 2px solid var(--surface-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   position: relative;
+  /* Ensure better contrast in dark mode */
+  filter: contrast(1.1) brightness(1.05);
 }
 
 .ai-message .message-content::before {
@@ -622,13 +625,13 @@ onMounted(async () => {
 }
 
 .ai-message .message-content code {
-  background: var(--surface-200);
-  color: var(--primary-600);
+  background: var(--surface-100);
+  color: var(--primary-color);
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 0.875rem;
-  border: 1px solid var(--surface-300);
+  border: 1px solid var(--surface-border);
 }
 
 .ai-message .message-content ul {
@@ -880,6 +883,7 @@ onMounted(async () => {
   .chat-card {
     height: calc(100vh - 200px);
     min-height: 500px;
+    min-width: 0; /* Remove min-width on mobile */
   }
 
   .message {

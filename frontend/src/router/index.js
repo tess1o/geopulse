@@ -153,14 +153,15 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
+        path: '/app/ai/chat',
+        name: 'AI Assistant',
+        component: AIChatPage,
+        beforeEnter: requireAuth
+    },
+    {
         path: '/shared/:linkId',
         name: 'Shared Location',
         component: SharedLocationPage
-    },
-    {
-        path: '/app/ai/chat',
-        name: 'AI Assistant',
-        component: AIChatPage
     },
     {
         path: '/error',
