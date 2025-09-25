@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.streaming.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.ai.model.AITimelineStayDTO;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 
 import java.time.Instant;
@@ -60,4 +62,50 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         ") ORDER BY timestamp",
                 userId, startTime, endTime).list();
     }
+
+    /**
+     * Find AI-optimized timeline stays with city/country information for a user within a time range.
+     * Uses SQL joins to fetch city and country from favorites or geocoding tables.
+     * Manual mapping approach for better control.
+     * 
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @return list of AI timeline stays with enriched location data, ordered by timestamp
+     */
+    public List<AITimelineStayDTO> findAITimelineStaysWithLocationData(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+            SELECT s.timestamp, s.locationName, s.stayDuration, 
+                   COALESCE(f.city, g.city) as city,
+                   COALESCE(f.country, g.country) as country
+            FROM TimelineStayEntity s
+            LEFT JOIN s.favoriteLocation f
+            LEFT JOIN s.geocodingLocation g
+            WHERE s.user.id = ?1 AND (
+                (s.timestamp >= ?2 AND s.timestamp <= ?3) OR 
+                (s.timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, s.stayDuration, s.timestamp) > ?2)
+            )
+            ORDER BY s.timestamp
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    AITimelineStayDTO dto = new AITimelineStayDTO();
+                    dto.setTimestamp(TimestampUtils.getInstantSafe(row[0]));
+                    dto.setLocationName((String) row[1]);
+                    dto.setStayDurationSeconds((Long) row[2]);
+                    dto.setCity((String) row[3]);
+                    dto.setCountry((String) row[4]);
+                    return dto;
+                })
+                .toList();
+    }
+    
 }

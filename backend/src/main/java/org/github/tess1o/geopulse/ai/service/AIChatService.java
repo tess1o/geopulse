@@ -76,6 +76,8 @@ public class AIChatService {
             
             Be helpful, insightful, and always use the available tools to provide accurate, data-driven responses.
             """;
+    public static final String OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
+
     @Inject
     UserAISettingsService aiSettingsService;
 
@@ -110,7 +112,7 @@ public class AIChatService {
             ChatModel model = createChatModel(settings);
 
             // Create simple tools instance without CDI proxy
-            SimpleAITools simpleTools = new SimpleAITools(streamingTimelineAggregator, currentUserService);
+            AITimelineTools simpleTools = new AITimelineTools(streamingTimelineAggregator, currentUserService);
             ChatMemory chatMemory = MessageWindowChatMemory.builder()
                     .id(userId.toString()) // Use user-specific chat memory
                     .maxMessages(20)
@@ -119,7 +121,7 @@ public class AIChatService {
 
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(model)
-                    .tools(simpleTools)
+                    .tools(simpleTools, new SimpleAITools())
                     .chatMemory(chatMemory)
                     .build();
 
@@ -146,7 +148,7 @@ public class AIChatService {
 
         return OpenAiChatModel.builder()
                 .apiKey(settings.getOpenaiApiKey())
-                .baseUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : "https://api.openai.com/v1")
+                .baseUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
                 .modelName(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : "gpt-3.5-turbo")
                 .timeout(Duration.ofSeconds(60))
                 .build();

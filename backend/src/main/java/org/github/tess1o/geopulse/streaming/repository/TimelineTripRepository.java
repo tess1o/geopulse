@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.streaming.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.ai.model.AITimelineTripDTO;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 
 import java.time.Instant;
@@ -218,4 +220,49 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
         return delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
                      userId, startTime, endTime);
     }
+
+    /**
+     * Find AI-optimized timeline trips without GPS path data for a user within a time range.
+     * Returns trips with basic information, origin/destination will be populated at service layer.
+     * Manual mapping approach for better control.
+     * 
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @return list of AI timeline trips without path data, ordered by timestamp
+     */
+    public List<AITimelineTripDTO> findAITimelineTripsWithoutPath(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+            SELECT t.timestamp,
+                   t.tripDuration,
+                   t.distanceMeters,
+                   t.movementType
+            FROM TimelineTripEntity t
+            WHERE t.user.id = ?1 AND (
+                (t.timestamp >= ?2 AND t.timestamp <= ?3) OR 
+                (t.timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, t.tripDuration, t.timestamp) > ?2)
+            )
+            ORDER BY t.timestamp
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    AITimelineTripDTO dto = new AITimelineTripDTO();
+                    dto.setTimestamp(TimestampUtils.getInstantSafe(row[0]));
+                    dto.setTripDuration((Long) row[1]);
+                    dto.setDistanceMeters((Long) row[2]);
+                    dto.setMovementType((String) row[3]);
+                    // Origin/destination will be populated by service layer
+                    return dto;
+                })
+                .toList();
+    }
+    
 }
