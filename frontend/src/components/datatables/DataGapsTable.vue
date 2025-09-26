@@ -146,7 +146,7 @@ const {
 } = useTableFilters({
   durationOptions: [
     {label: 'Less than 1 hour', value: 'short', maxDuration: 3600},
-    {label: '1 hour - 2 hours', value: 'medium', minDuration: 3600, maxDuration: 7200},
+    {label: '1-2 hours  ', value: 'medium', minDuration: 3600, maxDuration: 7200},
     {label: '2-8 hours', value: 'long', minDuration: 7200, maxDuration: 28800},
     {label: 'More than 8 hours', value: 'very-long', minDuration: 28800}
   ]

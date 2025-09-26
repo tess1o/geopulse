@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.ai.service;
 
+import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -98,7 +99,6 @@ public class AIChatService {
         String chat(String userMessage);
     }
 
-
     public String chat(String userMessage) {
         UUID userId = currentUserService.getCurrentUserId();
         try {
@@ -141,6 +141,9 @@ public class AIChatService {
             log.info("AI chat response generated for user {}, response: {}", userId, response);
             return response;
 
+        } catch (RateLimitException e) {
+            log.warn("Rate limit exceeded for user {}: {}", userId, e.getMessage());
+            return "I'm currently experiencing high demand and have reached my rate limit. Please wait a moment and try again, or consider upgrading your plan for higher limits.";
         } catch (Exception e) {
             log.error("Error processing AI chat for user {}: {}", userId, e.getMessage(), e);
             return "I apologize, but I encountered an error while processing your request. Please check your AI settings and try again.";

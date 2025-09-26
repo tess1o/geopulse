@@ -131,13 +131,17 @@
                   </div>
 
                   <!-- AI Response -->
-                  <div v-else class="message ai-message">
+                  <div v-else class="message ai-message" :class="{ 'error-message': isErrorMessage(message.content) }">
                     <div class="message-avatar">
-                      <Avatar class="p-avatar-sm ai-avatar">
-                        <i class="pi pi-sparkles"></i>
+                      <Avatar class="p-avatar-sm" :class="isErrorMessage(message.content) ? 'error-avatar' : 'ai-avatar'">
+                        <i :class="isErrorMessage(message.content) ? 'pi pi-exclamation-triangle' : 'pi pi-sparkles'"></i>
                       </Avatar>
                     </div>
                     <div class="message-content">
+                      <div v-if="isErrorMessage(message.content)" class="error-indicator">
+                        <i class="pi pi-exclamation-triangle"></i>
+                        <span>Error</span>
+                      </div>
                       <div class="whitespace-pre-wrap" v-html="sanitizeAndFormatMessage(message.content)"></div>
                       <div class="message-timestamp ai-timestamp">
                         {{ formatTimestamp(message.timestamp) }}
@@ -444,6 +448,24 @@ const scrollToBottom = () => {
   }
 }
 
+const isErrorMessage = (content) => {
+  if (!content) return false
+  
+  const errorPatterns = [
+    /I apologize.*error/i,
+    /I'm currently experiencing.*rate limit/i,
+    /AI Assistant is.*disabled/i,
+    /not configured/i,
+    /encountered an error/i,
+    /check your.*settings/i,
+    /^Sorry.*error/i,
+    /Please wait.*try again/i,
+    /upgrading.*API plan/i
+  ]
+  
+  return errorPatterns.some(pattern => pattern.test(content))
+}
+
 const sanitizeAndFormatMessage = (content) => {
   if (!content) return ''
   
@@ -604,6 +626,7 @@ onMounted(async () => {
   max-width: 100%;
   min-width: 0; /* Allow flex item to shrink below content size */
   overflow: hidden;
+  min-height: 0;
 }
 
 .chat-card {
@@ -611,7 +634,8 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 250px);
-  min-height: 600px;
+  min-height: 500px;
+  max-height: calc(100vh - 250px);
   width: 100%;
   max-width: 1200px; /* Set maximum width to prevent excessive expansion */
   min-width: 800px; /* Ensure consistent width from the start */
@@ -653,9 +677,10 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
   text-align: center;
   padding: 2rem;
+  min-height: 0;
 }
 
 .empty-icon {
@@ -785,6 +810,35 @@ onMounted(async () => {
   position: relative;
   /* Ensure better contrast in dark mode */
   filter: contrast(1.1) brightness(1.05);
+}
+
+.error-message .message-content {
+  background: var(--red-50);
+  border: 2px solid var(--red-200);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+}
+
+.error-message .message-content::before {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+}
+
+.error-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--red-100);
+  border: 1px solid var(--red-200);
+  border-radius: 0.5rem;
+  color: var(--red-700);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.error-indicator i {
+  color: var(--red-500);
+  font-size: 1rem;
 }
 
 .ai-message .message-content::before {
@@ -919,6 +973,26 @@ onMounted(async () => {
   overflow: hidden;
 }
 
+.error-avatar {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  border: 2px solid rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+  overflow: hidden;
+}
+
+.error-avatar :deep(.p-avatar) {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border: none !important;
+  border-radius: 50% !important;
+}
+
+.error-avatar i {
+  font-size: 1rem !important;
+  line-height: 1 !important;
+  border: none !important;
+}
+
 .ai-avatar :deep(.p-avatar) {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   border: none !important;
@@ -975,7 +1049,8 @@ onMounted(async () => {
 .chat-input-container {
   border-top: 1px solid var(--surface-300);
   padding-top: 1rem;
-  margin-top: 1rem;
+  margin-top: auto;
+  flex-shrink: 0;
 }
 
 .chat-input {
@@ -1107,10 +1182,111 @@ onMounted(async () => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .ai-chat-page {
+    padding: 0;
+    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height for mobile browsers */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .page-header {
+    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+  }
+  
+  .page-title {
+    font-size: 1.5rem;
+    margin: 0;
+  }
+  
+  .page-description {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.9rem;
+  }
+  
+  .ai-disclaimer {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  
+  .chat-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  
   .chat-card {
-    height: calc(100vh - 200px);
-    min-height: 500px;
-    min-width: 0; /* Remove min-width on mobile */
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .chat-card :deep(.p-card-content) {
+    padding: 0.75rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  
+  .chat-messages {
+    flex: 0 1 auto;
+    min-height: 0;
+    padding: 0.5rem 0;
+    gap: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .chat-messages::after {
+    content: '';
+    flex: 1;
+    min-height: 2rem;
+    max-height: 4rem;
+  }
+  
+  .empty-state {
+    padding: 0.5rem;
+    flex: 0 1 auto;
+    min-height: 0;
+    justify-content: flex-start;
+    padding-top: 1rem;
+    max-height: fit-content;
+  }
+  
+  .empty-title {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .empty-description {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .example-questions {
+    gap: 0.5rem;
+  }
+  
+  .example-question {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .chat-input-container {
+    padding-top: 0.75rem;
+    margin-top: 0;
+    flex-shrink: 0;
+    border-top: 1px solid var(--surface-300);
   }
 
   .message {
