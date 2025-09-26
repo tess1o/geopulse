@@ -964,13 +964,15 @@ const saveAISettings = async () => {
     toast.add({
       severity: 'success',
       summary: 'Success',
-      detail: 'AI settings saved successfully'
+      detail: 'AI settings saved successfully',
+      life: 3000
     })
   } catch (error) {
     console.error('Error saving AI settings:', error)
     toast.add({
       severity: 'error',
       summary: 'Error',
+      life: 5000,
       detail: getErrorMessage(error)
     })
   } finally {
