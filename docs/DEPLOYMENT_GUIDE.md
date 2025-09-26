@@ -235,7 +235,7 @@ curl http://localhost:8080/api/health
 
 **Key generation issues:**
 
-- JWT keys are automatically generated in the `keys/` directory on first startup
+- JWT keys and AI encryption keys are automatically generated in the `keys/` directory on first startup
 - If you see key-related errors, check that the `geopulse-keygen` service completed successfully:
   `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist

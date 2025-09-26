@@ -2,6 +2,10 @@ package org.github.tess1o.geopulse.streaming.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.ai.model.AITimelineTripDTO;
+import org.github.tess1o.geopulse.ai.model.AITripStatsDTO;
+import org.github.tess1o.geopulse.ai.model.TripGroupBy;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 
 import java.time.Instant;
@@ -30,41 +34,6 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
                    userId, from, to).list();
     }
 
-    public Optional<TimelineTripEntity> findLatestByUserId(UUID userId) {
-        return find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResultOptional();
-    }
-
-    /**
-     * Find timeline trips for a user on a specific date (UTC).
-     *
-     * @param userId user ID
-     * @param date   date in UTC
-     * @return list of timeline trips for that date ordered by timestamp
-     */
-    public List<TimelineTripEntity> findByUserAndDate(UUID userId, Instant date) {
-        LocalDate localDate = date.atZone(ZoneOffset.UTC).toLocalDate();
-        Instant startOfDay = localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant endOfDay = localDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        
-        return findByUserAndDateRange(userId, startOfDay, endOfDay);
-    }
-
-    /**
-     * Find stale timeline trips for a user on a specific date.
-     *
-     * @param userId user ID
-     * @param date   date in UTC
-     * @return list of stale timeline trips for that date
-     */
-    public List<TimelineTripEntity> findStaleByUserAndDate(UUID userId, Instant date) {
-        LocalDate localDate = date.atZone(ZoneOffset.UTC).toLocalDate();
-        Instant startOfDay = localDate.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant endOfDay = localDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        
-        return find("user.id = ?1 and timestamp >= ?2 and timestamp < ?3 and isStale = true order by timestamp",
-                userId, startOfDay, endOfDay).list();
-    }
-
     /**
      * Find timeline trips for a user.
      *
@@ -75,103 +44,6 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
         return find("user.id = ?1 order by timestamp", userId).list();
     }
 
-    /**
-     * Mark timeline trips as stale by setting the isStale flag.
-     *
-     * @param tripIds list of trip IDs to mark as stale
-     * @return number of trips updated
-     */
-    public long markAsStale(List<Long> tripIds) {
-        if (tripIds.isEmpty()) {
-            return 0;
-        }
-        return update("isStale = true, lastUpdated = ?1 where id in ?2", Instant.now(), tripIds);
-    }
-
-    /**
-     * Delete timeline trips older than the given timestamp.
-     *
-     * @param cutoffTime entries older than this will be deleted
-     * @return number of entries deleted
-     */
-    public long deleteOlderThan(Instant cutoffTime) {
-        return delete("createdAt < ?1", cutoffTime);
-    }
-
-    /**
-     * Delete timeline trips for dates before a certain date (cleanup).
-     * Used for data retention policies.
-     *
-     * @param userId user ID
-     * @param beforeDate delete trips before this date
-     * @return number of trips deleted
-     */
-    public long deleteByUserBeforeDate(UUID userId, Instant beforeDate) {
-        return delete("user.id = ?1 and timestamp < ?2", userId, beforeDate);
-    }
-
-    /**
-     * Count timeline trips for a user.
-     *
-     * @param userId user ID
-     * @return count of timeline trips
-     */
-    public long countByUser(UUID userId) {
-        return count("user.id = ?1", userId);
-    }
-
-    /**
-     * Find trips by movement type for analysis.
-     *
-     * @param userId user ID
-     * @param movementType movement type (e.g., "WALKING", "DRIVING")
-     * @return list of trips with that movement type
-     */
-    public List<TimelineTripEntity> findByUserAndMovementType(UUID userId, String movementType) {
-        return find("user.id = ?1 and movementType = ?2 order by timestamp", userId, movementType).list();
-    }
-
-    /**
-     * Find trips longer than a specified distance.
-     *
-     * @param userId user ID
-     * @param minDistanceMeters minimum distance in meters
-     * @return list of trips meeting the distance criteria
-     */
-    public List<TimelineTripEntity> findByUserAndMinDistance(UUID userId, long minDistanceMeters) {
-        return find("user.id = ?1 and distanceMeters >= ?2 order by timestamp", userId, minDistanceMeters).list();
-    }
-
-    public boolean existsByUserAndTimestamp(UUID userId, Instant timestamp) {
-        return count("user.id = ?1 AND timestamp = ?2", userId, timestamp) > 0;
-    }
-
-    /**
-     * Find the latest timeline trip for a user that started before the given timestamp.
-     * Used for prepending previous context to timeline requests.
-     *
-     * @param userId user ID
-     * @param beforeTimestamp find trips starting before this timestamp
-     * @return the most recent trip starting before the given timestamp, or null if none found
-     */
-    public TimelineTripEntity findLatestBefore(UUID userId, Instant beforeTimestamp) {
-        return find("user.id = ?1 and timestamp < ?2 order by timestamp desc", userId, beforeTimestamp)
-                .firstResult();
-    }
-
-    /**
-     * Update the end time and duration of an existing timeline trip.
-     * Used during overnight processing to extend a trip from previous day.
-     *
-     * @param tripId trip ID to update
-     * @param newEndTime new end timestamp for the trip 
-     * @param newDurationSeconds new duration in seconds
-     * @return number of rows updated (should be 1 if successful)
-     */
-    public long updateEndTimeAndDuration(Long tripId, Instant newEndTime, long newDurationSeconds) {
-        return update("tripDuration = ?1, lastUpdated = ?2 where id = ?3", 
-                     newDurationSeconds, Instant.now(), tripId);
-    }
 
     /**
      * Find timeline trips for a user within a time range, including boundary expansion.
@@ -194,28 +66,275 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
     }
 
     /**
-     * Find timeline trips for a user within a time range (exact range, no expansion).
+     * Find AI-optimized timeline trips without GPS path data for a user within a time range.
+     * Returns trips with basic information, origin/destination will be populated at service layer.
+     * Manual mapping approach for better control.
      * 
-     * @param userId user ID
+     * @param userId    user ID
      * @param startTime start of time range
-     * @param endTime end of time range
-     * @return list of trips within the exact time range, ordered by timestamp
+     * @param endTime   end of time range
+     * @return list of AI timeline trips without path data, ordered by timestamp
      */
-    public List<TimelineTripEntity> findByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
-        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp", 
-                   userId, startTime, endTime).list();
+    public List<AITimelineTripDTO> findAITimelineTripsWithoutPath(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+            SELECT t.timestamp,
+                   t.tripDuration,
+                   t.distanceMeters,
+                   t.movementType
+            FROM TimelineTripEntity t
+            WHERE t.user.id = ?1 AND (
+                (t.timestamp >= ?2 AND t.timestamp <= ?3) OR 
+                (t.timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, t.tripDuration, t.timestamp) > ?2)
+            )
+            ORDER BY t.timestamp
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    AITimelineTripDTO dto = new AITimelineTripDTO();
+                    dto.setTimestamp(TimestampUtils.getInstantSafe(row[0]));
+                    dto.setTripDuration((Long) row[1]);
+                    dto.setDistanceMeters((Long) row[2]);
+                    dto.setMovementType((String) row[3]);
+                    // Origin/destination will be populated by service layer
+                    return dto;
+                })
+                .toList();
     }
-
+    
     /**
-     * Delete timeline trips for a user within a specific time range.
+     * Get aggregated trip statistics grouped by the specified criteria.
+     * Note: Origin/destination grouping is handled at the service layer due to complexity.
      * 
-     * @param userId user ID
+     * @param userId    user ID
      * @param startTime start of time range
-     * @param endTime end of time range
-     * @return number of trips deleted
+     * @param endTime   end of time range
+     * @param groupBy   how to group the statistics
+     * @return list of trip statistics ordered by count descending
      */
-    public long deleteByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
-        return delete("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3", 
-                     userId, startTime, endTime);
+    public List<AITripStatsDTO> findTripStatistics(UUID userId, Instant startTime, Instant endTime, TripGroupBy groupBy) {
+        return switch (groupBy) {
+            case MOVEMENT_TYPE -> findTripStatsByMovementType(userId, startTime, endTime);
+            case DAY -> findTripStatsByDay(userId, startTime, endTime);
+            case WEEK -> findTripStatsByWeek(userId, startTime, endTime);
+            case MONTH -> findTripStatsByMonth(userId, startTime, endTime);
+            case ORIGIN_LOCATION_NAME, DESTINATION_LOCATION_NAME -> {
+                // These require service-layer processing due to origin/destination computation complexity
+                yield List.of();
+            }
+        };
     }
+    
+    private List<AITripStatsDTO> findTripStatsByMovementType(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+            SELECT t.movementType,
+                   COUNT(*) as tripCount,
+                   SUM(t.distanceMeters) as totalDistanceMeters,
+                   AVG(t.distanceMeters) as avgDistanceMeters,
+                   MIN(t.distanceMeters) as minDistanceMeters,
+                   MAX(t.distanceMeters) as maxDistanceMeters,
+                   SUM(t.tripDuration) as totalDurationSeconds,
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
+            FROM TimelineTripEntity t
+            WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
+              AND t.movementType IS NOT NULL
+            GROUP BY t.movementType
+            ORDER BY tripCount DESC, totalDistanceMeters DESC
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey((String) row[0])
+                        .groupType("movementType")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
+                .toList();
+    }
+    
+    private List<AITripStatsDTO> findTripStatsByDay(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+            SELECT FUNCTION('DATE', t.timestamp) as day,
+                   COUNT(*) as tripCount,
+                   SUM(t.distanceMeters) as totalDistanceMeters,
+                   AVG(t.distanceMeters) as avgDistanceMeters,
+                   MIN(t.distanceMeters) as minDistanceMeters,
+                   MAX(t.distanceMeters) as maxDistanceMeters,
+                   SUM(t.tripDuration) as totalDurationSeconds,
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
+            FROM TimelineTripEntity t
+            WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
+            GROUP BY FUNCTION('DATE', t.timestamp)
+            ORDER BY day DESC
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey(String.valueOf(row[0]))
+                        .groupType("day")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
+                .toList();
+    }
+    
+    private List<AITripStatsDTO> findTripStatsByWeek(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+                SELECT to_char(t.timestamp, 'IYYY') || '-W' || to_char(t.timestamp, 'IW') AS week,
+                   COUNT(*) as tripCount,
+                   SUM(t.distanceMeters) as totalDistanceMeters,
+                   AVG(t.distanceMeters) as avgDistanceMeters,
+                   MIN(t.distanceMeters) as minDistanceMeters,
+                   MAX(t.distanceMeters) as maxDistanceMeters,
+                   SUM(t.tripDuration) as totalDurationSeconds,
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
+            FROM TimelineTripEntity t
+            WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
+            GROUP BY 1
+            ORDER BY week DESC
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey((String) row[0])
+                        .groupType("week")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
+                .toList();
+    }
+    
+    private List<AITripStatsDTO> findTripStatsByMonth(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+            SELECT to_char(t.timestamp, 'IYYY-MM') as month,
+                   COUNT(*) as tripCount,
+                   SUM(t.distanceMeters) as totalDistanceMeters,
+                   AVG(t.distanceMeters) as avgDistanceMeters,
+                   MIN(t.distanceMeters) as minDistanceMeters,
+                   MAX(t.distanceMeters) as maxDistanceMeters,
+                   SUM(t.tripDuration) as totalDurationSeconds,
+                   AVG(t.tripDuration) as avgDurationSeconds,
+                   MIN(t.tripDuration) as minDurationSeconds,
+                   MAX(t.tripDuration) as maxDurationSeconds
+            FROM TimelineTripEntity t
+            WHERE t.user.id = ?1 AND t.timestamp >= ?2 AND t.timestamp <= ?3
+            GROUP BY 1
+            ORDER BY month DESC
+            """;
+        
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+        
+        return results.stream()
+                .map(row -> {
+                    long totalDistanceMeters = ((Number) row[2]).longValue();
+                    long totalDurationSeconds = ((Number) row[6]).longValue();
+                    double avgSpeedKmh = totalDurationSeconds > 0 
+                        ? (totalDistanceMeters * 3.6) / totalDurationSeconds 
+                        : 0.0;
+                    
+                    return AITripStatsDTO.builder()
+                        .groupKey((String) row[0])
+                        .groupType("month")
+                        .tripCount(((Number) row[1]).longValue())
+                        .totalDistanceMeters(totalDistanceMeters)
+                        .avgDistanceMeters(((Number) row[3]).doubleValue())
+                        .minDistanceMeters(((Number) row[4]).longValue())
+                        .maxDistanceMeters(((Number) row[5]).longValue())
+                        .totalDurationSeconds(totalDurationSeconds)
+                        .avgDurationSeconds(((Number) row[7]).doubleValue())
+                        .minDurationSeconds(((Number) row[8]).longValue())
+                        .maxDurationSeconds(((Number) row[9]).longValue())
+                        .avgSpeedKmh(avgSpeedKmh)
+                        .build();
+                })
+                .toList();
+    }
+    
 }

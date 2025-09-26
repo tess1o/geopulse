@@ -215,6 +215,119 @@
                 <OidcManagement class="mt-6" />
             </div>
 
+            <!-- AI Assistant Settings Tab -->
+            <div v-if="activeTab === 'ai'">
+                <Card class="ai-settings-card">
+                  <template #content>
+                    <form @submit.prevent="saveAISettings" class="ai-settings-form">
+                      <div class="ai-header">
+                        <div class="ai-icon">
+                          <i class="pi pi-sparkles text-4xl text-blue-600"></i>
+                        </div>
+                        <div class="ai-info">
+                          <h3 class="ai-title">AI Assistant Configuration</h3>
+                          <p class="ai-description">
+                            Configure your AI assistant settings to enable AI chat
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="ai-form-grid">
+                        <!-- Enable/Disable Toggle -->
+                        <div class="form-group">
+                          <label for="ai-enabled" class="form-label">Enable AI Assistant</label>
+                          <ToggleSwitch
+                            id="ai-enabled"
+                            v-model="aiSettings.enabled"
+                            class="w-full"
+                          />
+                          <small class="text-secondary">
+                            Enable or disable the AI Assistant functionality
+                          </small>
+                        </div>
+
+                        <!-- OpenAI Settings -->
+                        <div class="provider-settings">
+                          <div class="form-group">
+                            <label for="openai-api-key" class="form-label">OpenAI API Key</label>
+                            <Password
+                              id="openai-api-key"
+                              v-model="aiSettings.openaiApiKey"
+                              :placeholder="aiSettings.openaiApiKeyConfigured ? 'API key is configured (enter new key to replace)' : 'Enter your OpenAI API key'"
+                              class="w-full"
+                              :feedback="false"
+                              toggleMask
+                              autocomplete="new-password"
+                              :inputProps="{ 
+                                autocomplete: 'new-password',
+                                'data-lpignore': 'true',
+                                'data-form-type': 'other'
+                              }"
+                            />
+                            <small v-if="aiSettings.openaiApiKeyConfigured && !aiSettings.openaiApiKey" class="text-secondary">
+                              <i class="pi pi-check-circle" style="color: var(--gp-success);"></i>
+                              API key is configured. Leave empty to keep current key.
+                            </small>
+                            <small v-else-if="!aiSettings.openaiApiKeyConfigured" class="text-secondary">
+                              Enter your OpenAI API key to enable the assistant
+                            </small>
+                          </div>
+                          <div class="form-group">
+                            <label for="openai-api-url" class="form-label">API Base URL</label>
+                            <InputText
+                              id="openai-api-url"
+                              v-model="aiSettings.openaiApiUrl"
+                              placeholder="https://api.openai.com/v1"
+                              class="w-full"
+                            />
+                            <small class="text-secondary">
+                              Use default OpenAI URL or enter a custom OpenAI-compatible API endpoint
+                            </small>
+                          </div>
+                          <div class="form-group">
+                            <label for="openai-model" class="form-label">Model</label>
+                            <Dropdown
+                              id="openai-model"
+                              v-model="aiSettings.openaiModel"
+                              :options="openaiModels"
+                              placeholder="Select or enter model name"
+                              class="w-full"
+                              editable
+                            />
+                            <small class="text-secondary">
+                              Choose from common models or enter a custom model name
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Test Connection Button -->
+                      <div class="test-connection-section">
+                        <Button
+                          type="button"
+                          label="Test Connection"
+                          icon="pi pi-wifi"
+                          class="p-button-outlined"
+                          @click="testAIConnection"
+                          :loading="testConnectionLoading"
+                        />
+                      </div>
+
+                      <!-- Form Actions -->
+                      <div class="form-actions">
+                        <Button
+                          type="submit"
+                          label="Save AI Settings"
+                          icon="pi pi-save"
+                          :loading="aiSaveLoading"
+                          class="p-button-primary"
+                        />
+                      </div>
+                    </form>
+                  </template>
+                </Card>
+            </div>
+
             <!-- Immich Integration Tab -->
             <div v-if="activeTab === 'immich'">
                 <Card class="immich-card">
@@ -342,6 +455,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
+import { useRoute } from 'vue-router'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -352,9 +466,11 @@ import OidcManagement from '@/components/auth/OidcManagement.vue';
 // Store
 import { useAuthStore } from '@/stores/auth'
 import { useImmichStore } from '@/stores/immich'
+import apiService from "@/utils/apiService";
 
 // Composables
 const toast = useToast()
+const route = useRoute()
 const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
@@ -380,6 +496,11 @@ const tabItems = ref([
     label: 'Security',
     icon: 'pi pi-shield',
     key: 'security'
+  },
+  {
+    label: 'AI Assistant',
+    icon: 'pi pi-sparkles',
+    key: 'ai'
   },
   {
     label: 'Immich',
@@ -410,10 +531,20 @@ const immichForm = ref({
   enabled: false
 })
 
+const aiSettings = ref({
+  enabled: false,
+  openaiApiKey: '',
+  openaiApiUrl: 'https://api.openai.com/v1',
+  openaiModel: 'gpt-3.5-turbo',
+  openaiApiKeyConfigured: false
+})
+
 // Form errors
 const profileErrors = ref({})
 const passwordErrors = ref({})
 const immichErrors = ref({})
+const aiSaveLoading = ref(false)
+const testConnectionLoading = ref(false)
 
 // Timezone options (common timezones)
 const timezoneOptions = [
@@ -489,6 +620,15 @@ const avatarOptions = [
   '/avatars/avatar18.png',
   '/avatars/avatar19.png',
   '/avatars/avatar20.png',
+]
+
+// Removed unused providerOptions - keeping only OpenAI for simplified implementation
+
+const openaiModels = [
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-3.5-turbo',
+  'gpt-4-turbo'
 ]
 
 // Computed
@@ -785,7 +925,116 @@ onMounted(async () => {
   } catch (error) {
     console.warn('Failed to load Immich config:', error)
   }
+  
+  // Load AI settings
+  await loadAISettings()
+  
+  // Handle tab query parameter
+  const tabParam = route.query.tab
+  if (tabParam && ['profile', 'security', 'ai', 'immich'].includes(tabParam)) {
+    activeTab.value = tabParam
+  }
 })
+
+// AI Methods
+const saveAISettings = async () => {
+  aiSaveLoading.value = true
+  
+  try {
+    // Prepare payload - only include openaiApiKey if user entered a new one
+    const payload = {
+      enabled: aiSettings.value.enabled,
+      openaiApiUrl: aiSettings.value.openaiApiUrl,
+      openaiModel: aiSettings.value.openaiModel
+    }
+    
+    // Only include API key if user entered a new one
+    if (aiSettings.value.openaiApiKey && aiSettings.value.openaiApiKey.trim()) {
+      payload.openaiApiKey = aiSettings.value.openaiApiKey.trim()
+    }
+    
+    await apiService.post('/ai/settings', payload)
+    
+    // Clear the API key field after successful save
+    aiSettings.value.openaiApiKey = ''
+    
+    // Reload settings to get updated configuration status
+    await loadAISettings()
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'AI settings saved successfully',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Error saving AI settings:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      life: 5000,
+      detail: getErrorMessage(error)
+    })
+  } finally {
+    aiSaveLoading.value = false
+  }
+}
+
+const testAIConnection = async () => {
+  if (!aiSettings.value.openaiApiKey) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Warning',
+      detail: 'Please enter your OpenAI API key first'
+    })
+    return
+  }
+  
+  testConnectionLoading.value = true
+  
+  try {
+    await apiService.post('/ai/test-openai', {
+      apiKey: aiSettings.value.openaiApiKey,
+      apiUrl: aiSettings.value.openaiApiUrl,
+      model: aiSettings.value.openaiModel
+    })
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Connection test successful!'
+    })
+  } catch (error) {
+    console.error('Error testing AI connection:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Connection Failed',
+      detail: getErrorMessage(error)
+    })
+  } finally {
+    testConnectionLoading.value = false
+  }
+}
+
+const loadAISettings = async () => {
+  try {
+    const response = await apiService.get('/ai/settings')
+    
+    // Update AI settings with loaded data
+    const data = response.data || response
+    if (data) {
+      aiSettings.value = {
+        enabled: data.enabled === true,
+        openaiApiKey: '', // Always empty since backend doesn't send actual key
+        openaiApiUrl: data.openaiApiUrl || 'https://api.openai.com/v1',
+        openaiModel: data.openaiModel || 'gpt-3.5-turbo',
+        openaiApiKeyConfigured: data.openaiApiKeyConfigured === true
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load AI settings:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -851,7 +1100,8 @@ onMounted(async () => {
 /* Profile Info Card */
 .profile-info-card,
 .security-card,
-.immich-card {
+.immich-card,
+.ai-settings-card {
   background: var(--gp-surface-white);
   border: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
@@ -876,7 +1126,8 @@ onMounted(async () => {
 /* Force consistent card widths */
 .profile-info-card :deep(.p-card-content),
 .security-card :deep(.p-card-content),
-.immich-card :deep(.p-card-content) {
+.immich-card :deep(.p-card-content),
+.ai-settings-card :deep(.p-card-content) {
   width: 100%;
   box-sizing: border-box;
   padding: 1.5rem;
@@ -997,6 +1248,129 @@ onMounted(async () => {
   color: var(--gp-text-secondary);
   margin: 0;
   line-height: 1.4;
+}
+
+/* AI Assistant Section */
+.ai-settings-card {
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  box-shadow: var(--gp-shadow-light);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ai-settings-form {
+  width: 100%;
+}
+
+.ai-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+}
+
+.ai-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.ai-info {
+  flex: 1;
+}
+
+.ai-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.ai-description {
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.ai-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.provider-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+  border-left: 4px solid var(--gp-primary);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.test-connection-section {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+/* Toggle Switch Styling */
+:deep(.p-toggleswitch) {
+  width: auto;
+}
+
+:deep(.p-toggleswitch .p-toggleswitch-slider) {
+  background: var(--gp-border-medium);
+  border-radius: 1rem;
+  width: 3rem;
+  height: 1.5rem;
+  transition: background 0.3s;
+}
+
+:deep(.p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider) {
+  background: var(--gp-primary);
+}
+
+:deep(.p-toggleswitch .p-toggleswitch-slider:before) {
+  background: white;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  top: 0.125rem;
+  left: 0.125rem;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+:deep(.p-toggleswitch.p-toggleswitch-checked .p-toggleswitch-slider:before) {
+  transform: translateX(1.5rem);
 }
 
 /* Immich Section */
@@ -1161,6 +1535,8 @@ onMounted(async () => {
 
 :deep(.p-password) {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.p-password-input) {
@@ -1169,6 +1545,10 @@ onMounted(async () => {
   padding: 0.75rem 1rem;
   transition: all 0.2s ease;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 :deep(.p-password-input:focus) {
@@ -1232,7 +1612,8 @@ onMounted(async () => {
   }
   
   .security-header,
-  .immich-header {
+  .immich-header,
+  .ai-header {
     flex-direction: column;
     text-align: center;
     gap: 1rem;
@@ -1304,7 +1685,8 @@ onMounted(async () => {
   
   .profile-info-card,
   .security-card,
-  .immich-card {
+  .immich-card,
+  .ai-settings-card {
     width: 100% !important;
     max-width: 100% !important;
   }

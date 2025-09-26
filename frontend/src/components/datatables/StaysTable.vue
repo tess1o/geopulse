@@ -213,7 +213,7 @@ const {
   durationOptions: [
     { label: 'Less than 1 hour', value: 'short', maxDuration: 3600 },
     { label: '1-4 hours', value: 'medium', minDuration: 3600, maxDuration: 14400 },
-    { label: 'More than 4 hours', value: 'long', minDuration: 14400, maxDuration: 28800 },
+    { label: '4-8 hours', value: 'long', minDuration: 14400, maxDuration: 28800 },
     { label: 'More than 8 hours', value: 'overnight', minDuration: 28800 }
   ]
 })

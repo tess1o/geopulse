@@ -373,6 +373,40 @@ GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
 - **High-volume**: Use Google Maps or Mapbox with Nominatim as fallback
 - **Reliability**: Configure both primary and fallback services
 
+### AI Chat Configuration
+
+GeoPulse includes an AI chat assistant that can analyze your location data and provide intelligent insights.
+
+#### AI Encryption Key
+
+The AI encryption key is automatically generated during the initial setup process and stored securely in the keys directory. For advanced users who need to customize the key location:
+
+```bash
+# Optional: Custom AI encryption key location (advanced users only)
+GEOPULSE_AI_ENCRYPTION_KEY_LOCATION=file:/app/keys/ai-encryption-key.txt
+```
+
+#### AI Configuration
+
+AI features are configured through the web interface and support any OpenAI-compatible API:
+- API key and model selection
+- Custom API URL (for OpenAI-compatible services) or leave empty for OpenAI
+- AI assistant preferences and settings
+- All AI settings are encrypted using the automatically generated encryption key
+
+**Supported AI Providers:**
+- **OpenAI** (default) - Leave API URL empty to use OpenAI's official API
+- **OpenAI-compatible services** - Specify custom API URL for services like:
+  - Local AI deployments (Ollama, LocalAI, etc.)
+  - Alternative providers with OpenAI-compatible APIs
+  - Self-hosted LLM services
+
+**Setup Process:**
+1. Configure API key in Profile → AI Assistant
+2. (Optional) Set custom API URL for OpenAI-compatible services
+3. Select preferred AI model (GPT-3.5-turbo, GPT-4, or custom models)
+4. Start asking questions about your location data
+
 ## Environment Variables Reference
 
 ### User-Customizable Timeline Settings

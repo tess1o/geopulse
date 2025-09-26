@@ -78,6 +78,12 @@ public class UserEntity extends PanacheEntityBase {
     @Builder.Default
     private TimelineStatus timelineStatus = TimelineStatus.IDLE;
 
+    @Column(name = "ai_settings_encrypted", columnDefinition = "TEXT")
+    private String aiSettingsEncrypted;
+
+    @Column(name = "ai_settings_key_id")
+    private String aiSettingsKeyId;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

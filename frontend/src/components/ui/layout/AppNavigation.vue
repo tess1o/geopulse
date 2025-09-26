@@ -157,6 +157,12 @@ const mainItems = computed(() => [
     key: 'journey-insights'
   },
   {
+    label: 'AI Chat',
+    icon: 'pi pi-sparkles',
+    to: '/app/ai/chat',
+    key: 'ai-chat'
+  },
+  {
     label: 'Friends',
     icon: 'pi pi-users',
     to: '/app/friends',
