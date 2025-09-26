@@ -15,6 +15,16 @@
                 <span>AI responses are based on data analysis but may contain errors. Please verify important information independently.</span>
               </div>
             </div>
+            <div class="header-actions" v-if="hasMessages">
+              <Button
+                icon="pi pi-trash"
+                class="p-button-text p-button-sm clear-history-btn"
+                @click="clearMessageHistory"
+                :disabled="isLoading"
+                v-tooltip="'Clear conversation history'"
+                aria-label="Clear conversation history"
+              />
+            </div>
           </div>
         </div>
 
@@ -60,7 +70,7 @@
                 </div>
 
                 <!-- Ready State -->
-                <div v-else-if="messages.length === 0" class="empty-state">
+                <div v-else-if="showExamples" class="empty-state">
                   <div class="empty-icon">
                     <i class="pi pi-sparkles text-6xl text-blue-500"></i>
                   </div>
@@ -69,23 +79,54 @@
                     Ask me about your location data. For example:
                   </p>
                   <div class="example-questions">
-                    <div class="example-question" @click="sendMessage('Show me my timeline for last week')">
-                      "Show me my timeline for last week"
+                    <div class="example-question" @click="sendMessage('Do I walk more or drive more?')">
+                      "Do I walk more or drive more?"
                     </div>
-                    <div class="example-question" @click="sendMessage('What are my favorite locations?')">
-                      "What are my favorite locations?"
+                    <div class="example-question" @click="sendMessage('Which day of the week do I travel most?')">
+                      "Which day of the week do I travel most?"
                     </div>
-                    <div class="example-question" @click="sendMessage('How much did I travel this month?')">
-                      "How much did I travel this month?"
+                    <div class="example-question" @click="sendMessage('How many different cities did I visit this month?')">
+                      "How many different cities did I visit this month?"
+                    </div>
+                    <div class="example-question" @click="sendMessage('What\'s my most common route?')">
+                      "What's my most common route?"
                     </div>
                   </div>
                 </div>
 
-                <div v-for="(message, index) in messages" :key="index" class="message-wrapper">
+                <!-- Expired Conversation State -->
+                <div v-else-if="hasExpiredConversation && !hasMessages" class="empty-state">
+                  <div class="empty-icon">
+                    <i class="pi pi-refresh text-6xl text-orange-500"></i>
+                  </div>
+                  <h3 class="empty-title">Ready for a new conversation!</h3>
+                  <p class="empty-description">
+                    Your previous conversation has expired. Ask me about your location data:
+                  </p>
+                  <div class="example-questions">
+                    <div class="example-question" @click="sendMessage('Do I walk more or drive more?')">
+                      "Do I walk more or drive more?"
+                    </div>
+                    <div class="example-question" @click="sendMessage('Which day of the week do I travel most?')">
+                      "Which day of the week do I travel most?"
+                    </div>
+                    <div class="example-question" @click="sendMessage('How many different cities did I visit this month?')">
+                      "How many different cities did I visit this month?"
+                    </div>
+                    <div class="example-question" @click="sendMessage('What\'s my most common route?')">
+                      "What's my most common route?"
+                    </div>
+                  </div>
+                </div>
+
+                <div v-for="message in messages" :key="message.id" class="message-wrapper">
                   <!-- User Message -->
                   <div v-if="message.type === 'user'" class="message user-message">
                     <div class="message-content">
                       <p>{{ message.content }}</p>
+                      <div class="message-timestamp">
+                        {{ formatTimestamp(message.timestamp) }}
+                      </div>
                     </div>
                   </div>
 
@@ -98,6 +139,9 @@
                     </div>
                     <div class="message-content">
                       <div class="whitespace-pre-wrap" v-html="sanitizeAndFormatMessage(message.content)"></div>
+                      <div class="message-timestamp ai-timestamp">
+                        {{ formatTimestamp(message.timestamp) }}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -169,7 +213,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -177,11 +221,18 @@ import apiService from '@/utils/apiService.js'
 
 const toast = useToast()
 
+// Constants
+const MESSAGE_RETENTION_DAYS = 7
+const MAX_STORED_MESSAGES = 10
+const STORAGE_KEY = 'geopulse-ai-messages'
+const EXPIRED_FLAG_KEY = 'geopulse-ai-messages-expired'
+
 // Reactive data
 const messages = ref([])
 const currentMessage = ref('')
 const isLoading = ref(false)
 const messagesContainer = ref(null)
+const hasExpiredConversation = ref(false)
 const aiSettings = ref({
   enabled: false,
   openaiApiKeyConfigured: false,
@@ -189,6 +240,97 @@ const aiSettings = ref({
 })
 const isAIAvailable = ref(false)
 const checkingAIStatus = ref(true)
+
+// Computed properties
+const hasMessages = computed(() => messages.value.length > 0)
+const showExamples = computed(() => !hasMessages.value && !hasExpiredConversation.value)
+
+// Utility functions
+const generateMessageId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9)
+}
+
+const formatTimestamp = (date) => {
+  const now = new Date()
+  const messageDate = new Date(date)
+  const diffMs = now - messageDate
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  
+  if (diffMs < 60000) return 'Just now'
+  if (diffMs < 3600000) return `${diffMins}m ago`
+  
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const msgDate = new Date(messageDate)
+  msgDate.setHours(0, 0, 0, 0)
+  
+  if (msgDate.getTime() === today.getTime()) {
+    return messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+  
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  if (msgDate.getTime() === yesterday.getTime()) {
+    return `Yesterday ${messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  }
+  
+  return messageDate.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+const saveMessagesToStorage = (messagesToSave) => {
+  try {
+    const conversationData = {
+      messages: messagesToSave.slice(-MAX_STORED_MESSAGES),
+      lastActivity: new Date().toISOString(),
+      created: new Date().toISOString()
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversationData))
+  } catch (error) {
+    console.warn('Failed to save messages to localStorage:', error)
+  }
+}
+
+const loadMessagesFromStorage = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return { messages: [], hasExpired: false }
+    
+    const conversationData = JSON.parse(stored)
+    const cutoffDate = new Date(Date.now() - (MESSAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000))
+    
+    // Check if any message is within retention period
+    const hasRecentMessages = conversationData.messages.some(msg => 
+      new Date(msg.timestamp) > cutoffDate
+    )
+    
+    if (hasRecentMessages) {
+      return { messages: conversationData.messages, hasExpired: false }
+    } else {
+      // Mark as expired and clear storage
+      localStorage.setItem(EXPIRED_FLAG_KEY, 'true')
+      localStorage.removeItem(STORAGE_KEY)
+      return { messages: [], hasExpired: true }
+    }
+  } catch (error) {
+    console.warn('Failed to load messages from localStorage:', error)
+    return { messages: [], hasExpired: false }
+  }
+}
+
+const clearMessageHistory = () => {
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(EXPIRED_FLAG_KEY)
+  messages.value = []
+  hasExpiredConversation.value = false
+  
+  toast.add({
+    severity: 'info',
+    summary: 'Chat Cleared',
+    detail: 'Your conversation history has been cleared.',
+    life: 3000
+  })
+}
 
 // Methods
 const checkAIAvailability = async () => {
@@ -216,12 +358,17 @@ const sendMessage = async (messageText) => {
   const message = messageText || currentMessage.value.trim()
   if (!message || isLoading.value || !isAIAvailable.value) return
 
-  // Add user message
-  messages.value.push({
+  // Clear expired conversation flag if showing
+  hasExpiredConversation.value = false
+
+  // Add user message with enhanced structure
+  const userMessage = {
+    id: generateMessageId(),
     type: 'user',
     content: message,
-    timestamp: new Date()
-  })
+    timestamp: new Date().toISOString()
+  }
+  messages.value.push(userMessage)
 
   // Clear input
   currentMessage.value = ''
@@ -239,12 +386,17 @@ const sendMessage = async (messageText) => {
 
     console.log('AI Response:', data)
     
-    // Add AI response
-    messages.value.push({
+    // Add AI response with enhanced structure
+    const aiMessage = {
+      id: generateMessageId(),
       type: 'ai',
       content: data.response,
-      timestamp: new Date()
-    })
+      timestamp: new Date().toISOString()
+    }
+    messages.value.push(aiMessage)
+    
+    // Save updated conversation to localStorage
+    saveMessagesToStorage(messages.value)
 
     // Scroll to bottom
     await nextTick()
@@ -253,19 +405,24 @@ const sendMessage = async (messageText) => {
   } catch (error) {
     console.error('Error sending message:', error)
     
-    let errorMessage = 'Sorry, I encountered an error while processing your request.'
+    let errorContent = 'Sorry, I encountered an error while processing your request.'
     
     if (error.response?.status === 400) {
-      errorMessage = 'Please check your AI settings in your profile before using the chat assistant.'
+      errorContent = 'Please check your AI settings in your profile before using the chat assistant.'
     } else if (error.response?.data?.response) {
-      errorMessage = error.response.data.response
+      errorContent = error.response.data.response
     }
 
-    messages.value.push({
+    const errorMessage = {
+      id: generateMessageId(),
       type: 'ai',
-      content: errorMessage,
-      timestamp: new Date()
-    })
+      content: errorContent,
+      timestamp: new Date().toISOString()
+    }
+    messages.value.push(errorMessage)
+    
+    // Save updated conversation to localStorage
+    saveMessagesToStorage(messages.value)
 
     toast.add({
       severity: 'error',
@@ -340,9 +497,23 @@ const sanitizeAndFormatMessage = (content) => {
   return sanitized
 }
 
-// Check AI configuration on mount
+// Check AI configuration and load saved messages on mount
 onMounted(async () => {
   await checkAIAvailability()
+  
+  // Load saved messages and handle expiration
+  const { messages: savedMessages, hasExpired } = loadMessagesFromStorage()
+  
+  if (savedMessages.length > 0) {
+    messages.value = savedMessages
+    console.log(`Loaded ${savedMessages.length} messages from localStorage`)
+  }
+  
+  // Check if we had expired messages
+  if (hasExpired || localStorage.getItem(EXPIRED_FLAG_KEY)) {
+    hasExpiredConversation.value = true
+    localStorage.removeItem(EXPIRED_FLAG_KEY)
+  }
   
   if (!isAIAvailable.value) {
     let detail = 'Please configure your AI settings in your profile to use the chat assistant.'
@@ -378,6 +549,21 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.clear-history-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.clear-history-btn:hover {
+  opacity: 1;
 }
 
 .page-title {
@@ -678,6 +864,25 @@ onMounted(async () => {
 
 .ai-message .message-content p:last-child {
   margin-bottom: 0;
+}
+
+.message-timestamp {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  margin-top: 0.375rem;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.user-message .message-timestamp {
+  text-align: right;
+  color: var(--text-color-secondary);
+  opacity: 0.8;
+}
+
+.ai-timestamp {
+  text-align: left;
+  margin-top: 0.5rem;
 }
 
 .message-avatar {

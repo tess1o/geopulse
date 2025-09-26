@@ -141,7 +141,6 @@ public class AITimelineTools {
         try {
             List<AITripStatsDTO> stats = streamingTimelineAggregator.getTripStats(userId, start, end, groupBy);
             log.debug("Returned {} trip statistics groups", stats.size());
-            log.info("Trip statistics: {}", stats);
             return stats;
         } catch (IllegalArgumentException e) {
             log.error("Invalid groupBy parameter for trip stats: {}", groupBy, e);

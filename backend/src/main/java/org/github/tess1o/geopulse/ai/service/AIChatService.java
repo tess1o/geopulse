@@ -121,7 +121,7 @@ public class AIChatService {
             AITimelineTools simpleTools = new AITimelineTools(streamingTimelineAggregator, currentUserService, routesAnalysisService);
             ChatMemory chatMemory = MessageWindowChatMemory.builder()
                     .id(userId.toString()) // Use user-specific chat memory
-                    .maxMessages(20)
+                    .maxMessages(10)
                     .chatMemoryStore(CHAT_MEMORY_STORE) // Use singleton store to persist across requests
                     .build();
 
