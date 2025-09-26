@@ -70,6 +70,13 @@ Once deployed:
 - Dashboard with distance traveled and visit statistics
 - Journey insights showing countries and cities visited
 - Movement pattern analysis and activity tracking
+- AI-powered location insights and intelligent data analysis
+
+**AI Chat Assistant**
+
+- Ask questions about your location data and get intelligent insights
+- Natural language queries about travel patterns, visits, and habits
+- Powered by OpenAI with secure API key encryption (each user needs to provide their own API Key)
 
 **Social Features**
 

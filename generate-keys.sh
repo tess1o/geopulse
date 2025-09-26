@@ -55,5 +55,21 @@ else
     exit 1
 fi
 
+# Generate AI encryption key
+AI_ENCRYPTION_KEY="$KEYS_DIR/ai-encryption-key.txt"
+
+echo ""
+echo "🤖 Generating AI encryption key..."
+
+if [ -f "$AI_ENCRYPTION_KEY" ]; then
+    echo "✅ AI encryption key already exists, skipping generation"
+    echo "   AI encryption key: $AI_ENCRYPTION_KEY"
+else
+    echo "🔑 Generating AI encryption key..."
+    openssl rand -base64 32 > "$AI_ENCRYPTION_KEY"
+    chmod 644 "$AI_ENCRYPTION_KEY"
+    echo "✅ AI encryption key generated: $AI_ENCRYPTION_KEY"
+fi
+
 echo ""
 echo "🎉 Key generation completed successfully!"

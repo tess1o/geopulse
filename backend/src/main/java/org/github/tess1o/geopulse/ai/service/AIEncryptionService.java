@@ -7,7 +7,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -22,12 +28,38 @@ public class AIEncryptionService {
     private final String currentKeyId;
 
     @Inject
-    public AIEncryptionService(@ConfigProperty(name = "geopulse.ai.encryption.master-key") String masterKey) {
-        if (masterKey == null || masterKey.isBlank()) {
-            throw new IllegalStateException("geopulse.ai.encryption.master-key is not configured.");
+    public AIEncryptionService(@ConfigProperty(name = "geopulse.ai.encryption.key.location") String keyLocation) {
+        try {
+            String masterKey = loadEncryptionKey(keyLocation);
+            if (masterKey == null || masterKey.isBlank()) {
+                throw new IllegalStateException("AI encryption key could not be loaded from: " + keyLocation);
+            }
+            this.secretKey = new SecretKeySpec(Base64.getDecoder().decode(masterKey), "AES");
+            this.currentKeyId = "v1"; // For key rotation support
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to initialize AI encryption service", e);
         }
-        this.secretKey = new SecretKeySpec(Base64.getDecoder().decode(masterKey), "AES");
-        this.currentKeyId = "v1"; // For key rotation support
+    }
+
+    private String loadEncryptionKey(String keyLocation) throws IOException {
+        try {
+            if (keyLocation.startsWith("classpath:")) {
+                // Handle classpath resources
+                String resourcePath = keyLocation.substring("classpath:".length());
+                try (InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourcePath)) {
+                    if (inputStream == null) {
+                        throw new IOException("Classpath resource not found: " + resourcePath);
+                    }
+                    return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+                }
+            } else {
+                // Handle file:// URLs and regular file paths
+                Path keyPath = Paths.get(URI.create(keyLocation));
+                return Files.readString(keyPath, StandardCharsets.UTF_8).trim();
+            }
+        } catch (Exception e) {
+            throw new IOException("Failed to load AI encryption key from: " + keyLocation, e);
+        }
     }
 
     public String encrypt(String plaintext) {
