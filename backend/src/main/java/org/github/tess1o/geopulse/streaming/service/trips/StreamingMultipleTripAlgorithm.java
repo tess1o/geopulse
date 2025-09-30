@@ -14,7 +14,14 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @ApplicationScoped
-public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
+    public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
+
+    /**
+     * Minimum contribution ratio for a travel mode to be considered significant.
+     * Each mode must account for at least this percentage of total distance to justify keeping trips separate.
+     * Example: 0.20 means walking must be at least 20% of total distance to be considered legitimate.
+     */
+    private static final double MIN_MODE_CONTRIBUTION_RATIO = 0.20;
 
     /**
      * Apply multi trip algorithm: allow multiple trips between stays if confident about mode changes.
@@ -104,25 +111,74 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
             return trips;
         }
 
-        // Check if we have legitimate mode diversity (not just traffic fragmentation)
-        boolean hasSignificantModeChanges = hasLegitimateModChanges(trips, config);
+        // Step 1: Merge consecutive same-type trips first to avoid fragmentation
+        List<Trip> condensedTrips = mergeConsecutiveSameTypeTrips(trips, config);
+
+        if (condensedTrips.size() == 1) {
+            return condensedTrips;
+        }
+
+        // Step 2: Check if we have legitimate mode diversity (not just traffic fragmentation)
+        boolean hasSignificantModeChanges = hasLegitimateModChanges(condensedTrips, config);
 
         if (hasSignificantModeChanges) {
-            log.debug("Multi algorithm: keeping {} separate trips due to significant mode changes", trips.size());
-            return trips;
+            log.debug("Multi algorithm: keeping {} separate trips due to significant mode changes", condensedTrips.size());
+            return condensedTrips;
         } else {
-            // Merge similar/fragmented trips
-            log.debug("Multi algorithm: merging {} similar trips", trips.size());
-            Trip merged = mergeTripSegments(trips, config);
+            // Merge remaining trips
+            log.debug("Multi algorithm: merging {} similar trips", condensedTrips.size());
+            Trip merged = mergeTripSegments(condensedTrips, config);
             return merged != null ? List.of(merged) : new ArrayList<>();
         }
     }
 
     /**
+     * Merge consecutive trips of the same type to eliminate fragmentation.
+     * For example: [WALK, WALK, WALK, CAR] -> [WALK, CAR]
+     */
+    private List<Trip> mergeConsecutiveSameTypeTrips(List<Trip> trips, TimelineConfig config) {
+        if (trips.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Trip> result = new ArrayList<>();
+        List<Trip> currentGroup = new ArrayList<>();
+        TripType currentType = null;
+
+        for (Trip trip : trips) {
+            if (currentType == null || currentType == trip.getTripType()) {
+                // Same type or first trip - add to current group
+                currentGroup.add(trip);
+                currentType = trip.getTripType();
+            } else {
+                // Different type - merge current group and start new one
+                Trip merged = mergeTripSegments(currentGroup, config);
+                if (merged != null) {
+                    result.add(merged);
+                }
+                currentGroup.clear();
+                currentGroup.add(trip);
+                currentType = trip.getTripType();
+            }
+        }
+
+        // Merge final group
+        if (!currentGroup.isEmpty()) {
+            Trip merged = mergeTripSegments(currentGroup, config);
+            if (merged != null) {
+                result.add(merged);
+            }
+        }
+
+        log.debug("Merged {} trips into {} condensed trips", trips.size(), result.size());
+        return result;
+    }
+
+    /**
      * Determine if trip segments represent legitimate mode changes vs traffic fragmentation.
+     * Uses relative contribution analysis: both modes must contribute meaningfully to total distance.
      */
     private boolean hasLegitimateModChanges(List<Trip> trips, TimelineConfig config) {
-        // Check 1: Do we have meaningful distance/duration differences?
         long walkingTrips = trips.stream().filter(t -> t.getTripType() == TripType.WALK).count();
         long drivingTrips = trips.stream().filter(t -> t.getTripType() == TripType.CAR).count();
 
@@ -131,20 +187,27 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
             return false;
         }
 
-        // Check 2: Are the walking segments significant? (not just short connections)
-        boolean hasSignificantWalking = trips.stream()
+        // Calculate total distance for each mode
+        double totalWalkDistance = trips.stream()
                 .filter(t -> t.getTripType() == TripType.WALK)
-                .anyMatch(t -> t.getDistanceMeters() > 100 && t.getDuration().toMinutes() >= 2);
+                .mapToDouble(Trip::getDistanceMeters)
+                .sum();
 
-        // Check 3: Are the driving segments significant?
-        boolean hasSignificantDriving = trips.stream()
+        double totalDriveDistance = trips.stream()
                 .filter(t -> t.getTripType() == TripType.CAR)
-                .anyMatch(t -> t.getDistanceMeters() > 200 && t.getDuration().toMinutes() >= 3);
+                .mapToDouble(Trip::getDistanceMeters)
+                .sum();
 
-        boolean legitimate = hasSignificantWalking && hasSignificantDriving;
+        // Both modes should contribute meaningfully (at least MIN_MODE_CONTRIBUTION_RATIO of total distance each)
+        double totalDistance = totalWalkDistance + totalDriveDistance;
+        double walkRatio = totalDistance > 0 ? totalWalkDistance / totalDistance : 0;
+        double driveRatio = totalDistance > 0 ? totalDriveDistance / totalDistance : 0;
 
-        log.debug("Mode change analysis: walking={}, driving={}, significantWalk={}, significantDrive={}, legitimate={}",
-                walkingTrips, drivingTrips, hasSignificantWalking, hasSignificantDriving, legitimate);
+        boolean legitimate = walkRatio >= MIN_MODE_CONTRIBUTION_RATIO && driveRatio >= MIN_MODE_CONTRIBUTION_RATIO;
+
+        log.debug("Mode change analysis: walking={} ({}m, {:.1f}%), driving={} ({}m, {:.1f}%), legitimate={}",
+                walkingTrips, (long)totalWalkDistance, walkRatio * 100,
+                drivingTrips, (long)totalDriveDistance, driveRatio * 100, legitimate);
 
         return legitimate;
     }
