@@ -1,0 +1,17 @@
+{{- if .Values.keygen.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "geopulse.fullname" . }}-keys
+  labels:
+    {{- include "geopulse.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.keygen.persistence.accessMode }}
+  {{- if .Values.keygen.persistence.storageClass }}
+  storageClassName: {{ .Values.keygen.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.keygen.persistence.size }}
+{{- end }}

@@ -1,0 +1,179 @@
+# Production values for GeoPulse Helm Chart
+# This is an example configuration suitable for production deployments
+# Copy this file and customize for your environment
+
+# Backend configuration
+backend:
+  replicaCount: 2
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 2000m
+    requests:
+      memory: 1Gi
+      cpu: 1000m
+
+  # Optional: Custom JVM settings for production
+  # javaOpts: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC"
+
+# Frontend configuration
+frontend:
+  replicaCount: 2
+  resources:
+    limits:
+      memory: 256Mi
+      cpu: 200m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+
+# PostgreSQL configuration
+postgres:
+  enabled: true
+
+  persistence:
+    enabled: true
+    size: 50Gi
+    # Specify your storage class for better performance
+    storageClass: "fast-ssd"
+
+  # Production-grade PostgreSQL tuning
+  config:
+    sharedBuffers: "512MB"
+    workMem: "16MB"
+    maintenanceWorkMem: "128MB"
+    effectiveCacheSize: "2GB"
+    maxWalSize: "1GB"
+    checkpointCompletionTarget: "0.9"
+    walBuffers: "16MB"
+    randomPageCost: "1.1"
+    effectiveIoConcurrency: "200"
+    autovacuumNaptime: "60s"
+    autovacuumVacuumScaleFactor: "0.1"
+    logMinDurationStatement: "1000"
+
+  resources:
+    limits:
+      memory: 4Gi
+      cpu: 2000m
+    requests:
+      memory: 2Gi
+      cpu: 1000m
+
+# MQTT Broker (optional) - Enable if using OwnTracks MQTT
+mosquitto:
+  enabled: false
+
+  # If enabled, configure these:
+  # username: geopulse_mqtt_admin
+  # service:
+  #   type: LoadBalancer
+  # persistence:
+  #   enabled: true
+  #   data:
+  #     size: 5Gi
+  #   logs:
+  #     size: 2Gi
+
+# JWT key generation
+keygen:
+  persistence:
+    enabled: true
+    storageClass: "standard"
+
+# Application configuration
+config:
+  # Update with your domain
+  uiUrl: "https://geopulse.example.com"
+
+  # Cookie configuration for production
+  cookieDomain: ".example.com"
+  authSecureCookies: true
+
+  # OIDC Configuration (optional)
+  oidc:
+    enabled: false
+
+    # Google OIDC example
+    # google:
+    #   enabled: true
+    #   clientId: "your-google-client-id"
+    #   clientSecret: "your-google-client-secret"
+
+    # Microsoft OIDC example
+    # microsoft:
+    #   enabled: true
+    #   clientId: "your-microsoft-client-id"
+    #   clientSecret: "your-microsoft-client-secret"
+
+    # Generic OIDC (Keycloak, Authentik, etc.)
+    # generic:
+    #   enabled: true
+    #   name: "Company SSO"
+    #   clientId: "your-client-id"
+    #   clientSecret: "your-client-secret"
+    #   discoveryUrl: "https://sso.example.com/.well-known/openid-configuration"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+
+  # Your domain name
+  hostname: geopulse.example.com
+
+  # TLS configuration
+  tls:
+    enabled: true
+    secretName: geopulse-tls
+
+  # Annotations for ingress controller
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+
+# Pod Disruption Budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Autoscaling (optional)
+autoscaling:
+  enabled: false
+
+  # If enabled:
+  # backend:
+  #   minReplicas: 2
+  #   maxReplicas: 10
+  #   targetCPUUtilizationPercentage: 70
+  #   targetMemoryUtilizationPercentage: 80
+  # frontend:
+  #   minReplicas: 2
+  #   maxReplicas: 5
+  #   targetCPUUtilizationPercentage: 80
+
+# Network Policies (optional, requires network plugin support)
+networkPolicy:
+  enabled: false
+
+# Secrets configuration
+secrets:
+  # Use existing secret if you manage secrets externally
+  useExistingSecret: false
+  # existingSecretName: "geopulse-secrets"
+
+  # If not using existing secret, these are auto-generated
+  # You can specify them here, but it's recommended to use external secret management
+  postgres:
+    password: ""  # Auto-generated if empty
+
+  mosquitto:
+    password: ""  # Auto-generated if empty

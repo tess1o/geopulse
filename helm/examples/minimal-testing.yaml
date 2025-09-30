@@ -1,0 +1,38 @@
+# Minimal GeoPulse for Testing
+# Install with: helm install geopulse ./helm/geopulse -f helm/examples/minimal-testing.yaml
+#
+# ⚠️ WARNING: No persistence - all data lost on pod restart!
+# Use only for testing/development
+
+# Disable persistence for quick testing
+postgres:
+  persistence:
+    enabled: false
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+keygen:
+  persistence:
+    enabled: false
+
+# Minimal backend resources
+backend:
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
+
+# Minimal frontend resources
+frontend:
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 100m
+    requests:
+      memory: 64Mi
+      cpu: 50m

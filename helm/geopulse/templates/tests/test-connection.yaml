@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "geopulse.fullname" . }}-test-connection"
+  labels:
+    {{- include "geopulse.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  restartPolicy: Never
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command: ['sh', '-c']
+      args:
+        - |
+          echo "Testing GeoPulse deployment..."
+          echo ""
+          echo "1. Testing Backend health endpoint..."
+          if wget --spider -q -S http://{{ include "geopulse.fullname" . }}-backend:{{ .Values.backend.service.port }}/api/health 2>&1 | grep -E 'HTTP/[0-9\.]+ 200'; then
+            echo "✓ Backend health check passed"
+          else
+            echo "✗ Backend health check failed"
+            exit 1
+          fi
+          echo ""
+          echo "2. Testing Frontend availability..."
+          if wget --spider -q http://{{ include "geopulse.fullname" . }}-frontend:{{ .Values.frontend.service.port }}; then
+            echo "✓ Frontend is available"
+          else
+            echo "✗ Frontend is not available"
+            exit 1
+          fi
+          echo ""
+          echo "3. Testing PostgreSQL connection..."
+          if nc -z {{ include "geopulse.postgres.host" . }} {{ include "geopulse.postgres.port" . }}; then
+            echo "✓ PostgreSQL is reachable"
+          else
+            echo "✗ PostgreSQL is not reachable"
+            exit 1
+          fi
+          {{- if .Values.mosquitto.enabled }}
+          echo ""
+          echo "4. Testing MQTT broker connection..."
+          if nc -z {{ include "geopulse.mosquitto.host" . }} {{ .Values.mosquitto.service.port }}; then
+            echo "✓ MQTT broker is reachable"
+          else
+            echo "✗ MQTT broker is not reachable"
+            exit 1
+          fi
+          {{- end }}
+          echo ""
+          echo "All tests passed! GeoPulse is ready to use."

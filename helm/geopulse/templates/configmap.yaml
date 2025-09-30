@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "geopulse.fullname" . }}-config
+  labels:
+    {{- include "geopulse.labels" . | nindent 4 }}
+data:
+  # Frontend URLs
+  GEOPULSE_UI_URL: {{ .Values.config.uiUrl | quote }}
+
+  # Cookie configuration
+  GEOPULSE_COOKIE_DOMAIN: {{ .Values.config.cookieDomain | quote }}
+  GEOPULSE_AUTH_SECURE_COOKIES: {{ .Values.config.authSecureCookies | quote }}
+
+  # Backend URL (internal)
+  GEOPULSE_BACKEND_URL: {{ include "geopulse.backend.url" . | quote }}
+
+  # PostgreSQL connection
+  GEOPULSE_POSTGRES_HOST: {{ include "geopulse.postgres.host" . | quote }}
+  GEOPULSE_POSTGRES_PORT: {{ include "geopulse.postgres.port" . | quote }}
+  GEOPULSE_POSTGRES_DB: {{ include "geopulse.postgres.database" . | quote }}
+  GEOPULSE_POSTGRES_USERNAME: {{ include "geopulse.postgres.username" . | quote }}
+  GEOPULSE_POSTGRES_URL: {{ include "geopulse.postgres.jdbcUrl" . | quote }}
+
+  {{- if .Values.mosquitto.enabled }}
+  # MQTT configuration
+  GEOPULSE_MQTT_ENABLED: "true"
+  GEOPULSE_MQTT_BROKER_HOST: {{ include "geopulse.mosquitto.host" . | quote }}
+  GEOPULSE_MQTT_BROKER_PORT: {{ .Values.mosquitto.service.port | quote }}
+  GEOPULSE_MQTT_USERNAME: {{ .Values.mosquitto.username | quote }}
+  {{- else }}
+  GEOPULSE_MQTT_ENABLED: "false"
+  {{- end }}
+
+  # OIDC Configuration
+  GEOPULSE_OIDC_ENABLED: {{ .Values.config.oidc.enabled | quote }}
+
+  {{- if .Values.config.oidc.google.enabled }}
+  GEOPULSE_OIDC_GOOGLE_ENABLED: "true"
+  GEOPULSE_OIDC_GOOGLE_CLIENT_ID: {{ .Values.config.oidc.google.clientId | quote }}
+  {{- end }}
+
+  {{- if .Values.config.oidc.microsoft.enabled }}
+  GEOPULSE_OIDC_MICROSOFT_ENABLED: "true"
+  GEOPULSE_OIDC_MICROSOFT_CLIENT_ID: {{ .Values.config.oidc.microsoft.clientId | quote }}
+  {{- end }}
+
+  {{- if .Values.config.oidc.generic.enabled }}
+  GEOPULSE_OIDC_GENERIC_ENABLED: "true"
+  GEOPULSE_OIDC_GENERIC_NAME: {{ .Values.config.oidc.generic.name | quote }}
+  GEOPULSE_OIDC_GENERIC_CLIENT_ID: {{ .Values.config.oidc.generic.clientId | quote }}
+  GEOPULSE_OIDC_GENERIC_DISCOVERY_URL: {{ .Values.config.oidc.generic.discoveryUrl | quote }}
+  {{- end }}
+
+  {{- if .Values.postgres.enabled }}
+  # PostgreSQL tuning parameters
+  GEOPULSE_POSTGRES_SHARED_BUFFERS: {{ .Values.postgres.config.sharedBuffers | quote }}
+  GEOPULSE_POSTGRES_WORK_MEM: {{ .Values.postgres.config.workMem | quote }}
+  GEOPULSE_POSTGRES_MAINTENANCE_WORK_MEM: {{ .Values.postgres.config.maintenanceWorkMem | quote }}
+  GEOPULSE_POSTGRES_EFFECTIVE_CACHE_SIZE: {{ .Values.postgres.config.effectiveCacheSize | quote }}
+  GEOPULSE_POSTGRES_MAX_WAL_SIZE: {{ .Values.postgres.config.maxWalSize | quote }}
+  GEOPULSE_POSTGRES_CHECKPOINT_TARGET: {{ .Values.postgres.config.checkpointCompletionTarget | quote }}
+  GEOPULSE_POSTGRES_WAL_BUFFERS: {{ .Values.postgres.config.walBuffers | quote }}
+  GEOPULSE_POSTGRES_RANDOM_PAGE_COST: {{ .Values.postgres.config.randomPageCost | quote }}
+  GEOPULSE_POSTGRES_IO_CONCURRENCY: {{ .Values.postgres.config.effectiveIoConcurrency | quote }}
+  GEOPULSE_POSTGRES_AUTOVACUUM_NAPTIME: {{ .Values.postgres.config.autovacuumNaptime | quote }}
+  GEOPULSE_POSTGRES_VACUUM_SCALE_FACTOR: {{ .Values.postgres.config.autovacuumVacuumScaleFactor | quote }}
+  GEOPULSE_POSTGRES_LOG_SLOW_QUERIES: {{ .Values.postgres.config.logMinDurationStatement | quote }}
+  {{- end }}

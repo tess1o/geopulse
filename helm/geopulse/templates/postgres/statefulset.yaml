@@ -1,0 +1,139 @@
+{{- if .Values.postgres.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "geopulse.fullname" . }}-postgres
+  labels:
+    {{- include "geopulse.postgres.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "geopulse.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "geopulse.postgres.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "geopulse.postgres.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: postgres
+          image: {{ include "geopulse.postgres.image" . }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          args:
+            - -c
+            - shared_buffers={{ .Values.postgres.config.sharedBuffers }}
+            - -c
+            - work_mem={{ .Values.postgres.config.workMem }}
+            - -c
+            - maintenance_work_mem={{ .Values.postgres.config.maintenanceWorkMem }}
+            - -c
+            - effective_cache_size={{ .Values.postgres.config.effectiveCacheSize }}
+            - -c
+            - max_wal_size={{ .Values.postgres.config.maxWalSize }}
+            - -c
+            - checkpoint_completion_target={{ .Values.postgres.config.checkpointCompletionTarget }}
+            - -c
+            - wal_buffers={{ .Values.postgres.config.walBuffers }}
+            - -c
+            - random_page_cost={{ .Values.postgres.config.randomPageCost }}
+            - -c
+            - effective_io_concurrency={{ .Values.postgres.config.effectiveIoConcurrency }}
+            - -c
+            - autovacuum_naptime={{ .Values.postgres.config.autovacuumNaptime }}
+            - -c
+            - autovacuum_vacuum_scale_factor={{ .Values.postgres.config.autovacuumVacuumScaleFactor }}
+            - -c
+            - log_min_duration_statement={{ .Values.postgres.config.logMinDurationStatement }}
+            - -c
+            - track_io_timing=on
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "geopulse.fullname" . }}-config
+                  key: GEOPULSE_POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "geopulse.fullname" . }}-config
+                  key: GEOPULSE_POSTGRES_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "geopulse.secretName" . }}
+                  key: GEOPULSE_POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          {{- if .Values.postgres.livenessProbe.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.postgres.username }} -d {{ .Values.postgres.database }}
+            initialDelaySeconds: {{ .Values.postgres.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.postgres.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.postgres.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.postgres.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.postgres.readinessProbe.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U {{ .Values.postgres.username }} -d {{ .Values.postgres.database }}
+            initialDelaySeconds: {{ .Values.postgres.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.postgres.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.postgres.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.postgres.readinessProbe.failureThreshold }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+      {{- with .Values.postgres.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgres.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.postgres.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.postgres.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.postgres.persistence.accessMode }}
+        {{- if .Values.postgres.persistence.storageClass }}
+        storageClassName: {{ .Values.postgres.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.persistence.size }}
+  {{- else }}
+  volumes:
+    - name: data
+      emptyDir: {}
+  {{- end }}
+{{- end }}

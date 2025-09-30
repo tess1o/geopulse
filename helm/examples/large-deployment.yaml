@@ -1,0 +1,74 @@
+# Large Deployment Configuration
+# Install with: helm install geopulse ./helm/geopulse -f helm/examples/large-deployment.yaml
+#
+# Suitable for: 50+ users, high data volumes
+
+# Backend configuration
+backend:
+  replicaCount: 3
+  resources:
+    limits:
+      memory: 4Gi
+      cpu: 2000m
+    requests:
+      memory: 2Gi
+      cpu: 1000m
+
+# Frontend configuration
+frontend:
+  replicaCount: 2
+  resources:
+    limits:
+      memory: 256Mi
+      cpu: 200m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+
+# PostgreSQL configuration
+postgres:
+  persistence:
+    enabled: true
+    size: 100Gi
+    # Specify fast storage class if available
+    # storageClass: "fast-ssd"
+
+  # Production-grade PostgreSQL tuning
+  config:
+    sharedBuffers: "2GB"
+    workMem: "32MB"
+    maintenanceWorkMem: "512MB"
+    effectiveCacheSize: "8GB"
+    maxWalSize: "2GB"
+    checkpointCompletionTarget: "0.9"
+    walBuffers: "32MB"
+    randomPageCost: "1.1"
+    effectiveIoConcurrency: "200"
+    autovacuumNaptime: "30s"
+    autovacuumVacuumScaleFactor: "0.05"
+    logMinDurationStatement: "1000"
+
+  resources:
+    limits:
+      memory: 8Gi
+      cpu: 4000m
+    requests:
+      memory: 4Gi
+      cpu: 2000m
+
+# Optional: Enable MQTT for large deployment
+mosquitto:
+  enabled: true
+  persistence:
+    enabled: true
+    data:
+      size: 10Gi
+    logs:
+      size: 5Gi
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
