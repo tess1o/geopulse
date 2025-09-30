@@ -561,10 +561,12 @@ onMounted(async () => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .page-header {
   margin-bottom: 1.5rem;
+  flex-shrink: 0;
 }
 
 .header-content {
@@ -619,48 +621,45 @@ onMounted(async () => {
 }
 
 .chat-container {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 100%;
-  min-width: 0; /* Allow flex item to shrink below content size */
-  overflow: hidden;
+  min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chat-card {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 250px);
-  min-height: 500px;
-  max-height: calc(100vh - 250px);
+  min-height: 0;
   width: 100%;
-  max-width: 1200px; /* Set maximum width to prevent excessive expansion */
-  min-width: 800px; /* Ensure consistent width from the start */
-  margin: 0 auto; /* Center the chat card */
+  max-width: 1200px;
+  margin: 0 auto;
   overflow: hidden;
 }
 
 .chat-card :deep(.p-card-body) {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
   padding: 0;
 }
 
 .chat-card :deep(.p-card-content) {
-  flex: 1;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
   padding: 1rem;
 }
 
 .chat-messages {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   padding: 1.5rem 0;
   display: flex;
@@ -669,6 +668,7 @@ onMounted(async () => {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  min-height: 0;
   box-sizing: border-box;
 }
 
@@ -1051,6 +1051,7 @@ onMounted(async () => {
   padding-top: 1rem;
   margin-top: auto;
   flex-shrink: 0;
+  flex-grow: 0;
 }
 
 .chat-input {
@@ -1097,6 +1098,7 @@ onMounted(async () => {
   background: var(--surface-50);
   padding: 1rem;
   margin: 1rem 0;
+  flex-shrink: 0;
 }
 
 .progress-content {

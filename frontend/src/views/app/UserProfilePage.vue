@@ -301,18 +301,6 @@
                         </div>
                       </div>
 
-                      <!-- Test Connection Button -->
-                      <div class="test-connection-section">
-                        <Button
-                          type="button"
-                          label="Test Connection"
-                          icon="pi pi-wifi"
-                          class="p-button-outlined"
-                          @click="testAIConnection"
-                          :loading="testConnectionLoading"
-                        />
-                      </div>
-
                       <!-- Form Actions -->
                       <div class="form-actions">
                         <Button
@@ -544,7 +532,6 @@ const profileErrors = ref({})
 const passwordErrors = ref({})
 const immichErrors = ref({})
 const aiSaveLoading = ref(false)
-const testConnectionLoading = ref(false)
 
 // Timezone options (common timezones)
 const timezoneOptions = [
@@ -980,42 +967,6 @@ const saveAISettings = async () => {
   }
 }
 
-const testAIConnection = async () => {
-  if (!aiSettings.value.openaiApiKey) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Warning',
-      detail: 'Please enter your OpenAI API key first'
-    })
-    return
-  }
-  
-  testConnectionLoading.value = true
-  
-  try {
-    await apiService.post('/ai/test-openai', {
-      apiKey: aiSettings.value.openaiApiKey,
-      apiUrl: aiSettings.value.openaiApiUrl,
-      model: aiSettings.value.openaiModel
-    })
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Connection test successful!'
-    })
-  } catch (error) {
-    console.error('Error testing AI connection:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Connection Failed',
-      detail: getErrorMessage(error)
-    })
-  } finally {
-    testConnectionLoading.value = false
-  }
-}
-
 const loadAISettings = async () => {
   try {
     const response = await apiService.get('/ai/settings')
@@ -1333,12 +1284,6 @@ const loadAISettings = async () => {
   max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
-}
-
-.test-connection-section {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 1rem;
 }
 
 /* Toggle Switch Styling */
