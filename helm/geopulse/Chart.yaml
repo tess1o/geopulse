@@ -1,0 +1,20 @@
+apiVersion: v2
+name: geopulse
+description: A self-hosted location tracking and analysis platform with PostGIS and optional MQTT support
+type: application
+version: 1.0.0
+appVersion: "1.0.0-rc.14"
+keywords:
+  - gps
+  - tracking
+  - location
+  - postgis
+  - mqtt
+  - self-hosted
+home: https://github.com/tess1o/geopulse
+sources:
+  - https://github.com/tess1o/geopulse
+maintainers:
+  - name: GeoPulse Team
+    email: support@geopulse.io
+icon: https://raw.githubusercontent.com/tess1o/geopulse/main/frontend/public/geopulse-logo.svg

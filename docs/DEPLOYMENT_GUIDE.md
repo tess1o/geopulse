@@ -198,6 +198,207 @@ server {
 
 ---
 
+## Kubernetes Deployment with Helm
+
+GeoPulse can be deployed to Kubernetes clusters using the provided Helm chart. This is ideal for production environments, homelab Kubernetes setups, or multi-instance deployments.
+
+### Prerequisites
+
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured for your cluster
+- [Helm 3.x](https://helm.sh/docs/intro/install/) installed
+- Kubernetes cluster (local: k3s, k8s, Minikube, or cloud: EKS, GKE, AKS)
+
+### Quick Start
+
+**1. Clone the repository (or download helm chart):**
+
+```bash
+git clone https://github.com/tess1o/GeoPulse.git
+cd GeoPulse
+```
+
+**2. Review and customize values:**
+
+Edit `helm/geopulse/values.yaml` to configure your deployment. Key settings:
+
+```yaml
+# Enable/disable components
+mosquitto:
+  enabled: true  # Set to false if not using OwnTracks MQTT
+
+# Service types
+backend:
+  service:
+    type: ClusterIP  # or NodePort/LoadBalancer
+
+# Mosquitto NodePort configuration (for external IoT devices)
+mosquitto:
+  service:
+    type: NodePort
+    port: 1883
+    nodePort: 31883  # Fixed port for external access
+
+# Frontend URL configuration
+config:
+  uiUrl: "http://localhost:5555"  # Update for your environment
+  cookieDomain: ""                # Set for production (e.g., ".yourdomain.com")
+  authSecureCookies: false        # Set to true for HTTPS
+```
+
+**3. Install GeoPulse:**
+
+```bash
+# Install with default values
+helm install geopulse ./helm/geopulse --namespace default
+
+# Or install with mosquitto enabled
+helm install geopulse ./helm/geopulse \
+  --namespace default \
+  --set mosquitto.enabled=true
+```
+
+**4. Verify installation:**
+
+```bash
+# Check all pods are running
+kubectl get pods -n default
+
+# Check services
+kubectl get svc -n default
+
+# View helm release
+helm list -n default
+```
+
+### Accessing GeoPulse
+
+**Option 1: Port Forwarding (for testing/development)**
+
+```bash
+# Frontend UI
+kubectl port-forward svc/geopulse-frontend 5555:80 -n default
+
+# Backend API
+kubectl port-forward svc/geopulse-backend 8080:8080 -n default
+
+# PostgreSQL (for direct database access)
+kubectl port-forward svc/geopulse-postgres 5432:5432 -n default
+
+# Mosquitto MQTT (if using ClusterIP)
+kubectl port-forward svc/geopulse-mosquitto 1883:1883 -n default
+```
+
+Then access at:
+- Frontend: http://localhost:5555
+- API: http://localhost:8080/api
+
+**Option 2: NodePort (for direct node access)**
+
+```bash
+# Get node IP
+kubectl get nodes -o wide
+
+# Access services
+# Frontend: http://<node-ip>:<nodeport>
+# Check assigned NodePorts:
+kubectl get svc -n default
+```
+
+**Option 3: Ingress (for production)**
+
+Configure ingress in `values.yaml`:
+
+```yaml
+ingress:
+  enabled: true
+  className: "nginx"
+  hostname: geopulse.yourdomain.com
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    enabled: true
+    secretName: geopulse-tls
+```
+
+### Mosquitto MQTT Access
+
+If mosquitto is enabled with `NodePort` service type:
+
+```bash
+# Find node IP and port
+kubectl get nodes -o wide
+kubectl get svc geopulse-mosquitto -n default
+
+# Connect IoT devices to: <node-ip>:31883
+# Get MQTT credentials:
+kubectl get secret geopulse-secrets -n default -o jsonpath='{.data.GEOPULSE_MQTT_PASSWORD}' | base64 -d
+echo
+```
+
+Default username: `geopulse_mqtt_admin` (or as configured in values.yaml)
+
+### Updating Configuration
+
+**Update helm release with new values:**
+
+```bash
+helm upgrade geopulse ./helm/geopulse \
+  --namespace default \
+  --values ./helm/geopulse/values.yaml
+```
+
+**Note:** Secrets are preserved across upgrades (using `"helm.sh/resource-policy": keep`). To regenerate secrets:
+
+```bash
+kubectl delete secret geopulse-secrets -n default
+helm upgrade geopulse ./helm/geopulse --namespace default
+```
+
+### Uninstalling
+
+```bash
+# Uninstall helm release
+helm uninstall geopulse -n default
+
+# Delete persistent data (optional - THIS DELETES ALL DATA!)
+kubectl delete pvc -l app.kubernetes.io/instance=geopulse -n default
+```
+
+### Advanced Configuration
+
+For detailed configuration options, see:
+- `helm/geopulse/values.yaml` - All available configuration parameters
+- `helm/geopulse/README.md` - Helm chart documentation
+- Resource limits, persistence, ingress, OIDC, and more
+
+### Kubernetes-Specific Troubleshooting
+
+**Pods not starting:**
+```bash
+kubectl describe pod <pod-name> -n default
+kubectl logs <pod-name> -n default
+```
+
+**Database connection issues:**
+```bash
+# Check postgres service
+kubectl get svc geopulse-postgres -n default
+
+# Test DNS resolution from backend pod
+kubectl exec -it <backend-pod> -n default -- nslookup geopulse-postgres
+```
+
+**Storage issues:**
+```bash
+# Check PVCs
+kubectl get pvc -n default
+
+# Check storage class
+kubectl get storageclass
+```
+
+---
+
 ## Troubleshooting
 
 **Port conflicts:**

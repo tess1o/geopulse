@@ -1,0 +1,52 @@
+{{- if .Values.mosquitto.enabled }}
+{{- if .Values.mosquitto.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "geopulse.fullname" . }}-mosquitto-data
+  labels:
+    {{- include "geopulse.mosquitto.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.mosquitto.persistence.data.accessMode }}
+  {{- if .Values.mosquitto.persistence.storageClass }}
+  storageClassName: {{ .Values.mosquitto.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.mosquitto.persistence.data.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "geopulse.fullname" . }}-mosquitto-logs
+  labels:
+    {{- include "geopulse.mosquitto.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.mosquitto.persistence.logs.accessMode }}
+  {{- if .Values.mosquitto.persistence.storageClass }}
+  storageClassName: {{ .Values.mosquitto.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.mosquitto.persistence.logs.size }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "geopulse.fullname" . }}-mosquitto-config
+  labels:
+    {{- include "geopulse.mosquitto.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.mosquitto.persistence.config.accessMode }}
+  {{- if .Values.mosquitto.persistence.storageClass }}
+  storageClassName: {{ .Values.mosquitto.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.mosquitto.persistence.config.size }}
+{{- end }}
+{{- end }}

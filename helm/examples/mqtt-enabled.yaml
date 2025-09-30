@@ -1,0 +1,39 @@
+# GeoPulse with MQTT Broker
+# Install with: helm install geopulse ./helm/geopulse -f helm/examples/mqtt-enabled.yaml
+
+# Enable MQTT broker for OwnTracks/Overland
+mosquitto:
+  enabled: true
+
+  # MQTT admin credentials
+  username: geopulse_mqtt_admin
+  # Password is auto-generated (retrieve with: kubectl get secret geopulse-secrets -o jsonpath='{.data.GEOPULSE_MQTT_PASSWORD}' | base64 -d)
+
+  # Expose MQTT externally (optional)
+  service:
+    type: LoadBalancer  # Change to NodePort or ClusterIP if LoadBalancer not available
+
+  # Persistent storage for MQTT data
+  persistence:
+    enabled: true
+    data:
+      size: 5Gi
+    logs:
+      size: 2Gi
+    config:
+      size: 100Mi
+
+# Optionally increase backend resources for MQTT load
+backend:
+  resources:
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+    requests:
+      memory: 1Gi
+      cpu: 500m
+
+# PostgreSQL storage
+postgres:
+  persistence:
+    size: 20Gi

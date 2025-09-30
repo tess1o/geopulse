@@ -26,9 +26,13 @@ photos directly on the timeline map.
 
 ## 🚀 Getting Started
 
-Deploy GeoPulse in under 5 minutes with Docker:
+GeoPulse can be deployed using **Docker Compose** or **Kubernetes (Helm)**.
 
-**Choose your deployment:**
+### Quick Start with Docker
+
+Deploy GeoPulse in under 5 minutes:
+
+**Choose your deployment scenario:**
 
 - 🏠 **Local Deployment** - Deploy on your local machine (zero configuration required)
 - 🌐 **Production** - Deploy on server with domain and reverse proxy
@@ -41,12 +45,22 @@ Both scenarios optionally support MQTT for real-time OwnTracks integration.
 2. Download `docker-compose` file
 3. Run `docker compose up -d`
 
-**👉 [Complete Step-by-Step Instructions](docs/DEPLOYMENT_GUIDE.md)**
+**👉 [Docker Deployment Instructions](docs/DEPLOYMENT_GUIDE.md)**
 
 Once deployed:
 
 - **Local Deployment**: http://localhost:5555
 - **Production**: https://your-domain.com
+
+### Kubernetes Deployment
+
+For Kubernetes clusters, GeoPulse provides official Helm charts:
+
+```bash
+helm install geopulse ./helm/geopulse --namespace default --set mosquitto.enabled=true
+```
+
+**👉 [Kubernetes/Helm Deployment Instructions](docs/DEPLOYMENT_GUIDE.md#kubernetes-deployment-with-helm)**
 
 ---
 
@@ -117,7 +131,7 @@ Once deployed:
 - **Database**: PostGIS (PostgreSQL with geographic extensions)
 - **Frontend**: Vue.js 3 with PrimeVue components
 - **Maps**: Leaflet with OpenStreetMap
-- **Deployment**: Docker Compose
+- **Deployment**: Docker Compose, Kubernetes (Helm Charts)
 - **MQTT broker**: Mosquitto (optional, used for OwnTracks MQTT integration)
 
 ## Compatible Apps

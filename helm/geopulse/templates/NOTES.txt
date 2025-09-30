@@ -1,0 +1,149 @@
+******************************************************************************
+*                                                                            *
+*                   GeoPulse has been deployed successfully!                 *
+*                                                                            *
+******************************************************************************
+
+GeoPulse is a self-hosted location tracking and analysis platform.
+
+Chart version: {{ .Chart.Version }}
+App version:   {{ .Chart.AppVersion }}
+Release name:  {{ .Release.Name }}
+Namespace:     {{ .Release.Namespace }}
+
+--------------------------------------------------------------------------------
+ACCESSING GEOPULSE
+--------------------------------------------------------------------------------
+
+{{- if .Values.ingress.enabled }}
+
+GeoPulse is accessible via Ingress at:
+
+  https://{{ .Values.ingress.hostname }}
+
+Make sure your DNS is configured to point to your ingress controller.
+
+{{- else }}
+
+To access GeoPulse, you need to expose the frontend service. You have several options:
+
+1. Port-forward (for testing):
+
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "geopulse.fullname" . }}-frontend 5555:80
+
+   Then visit: http://localhost:5555
+
+2. Create an Ingress (recommended for production):
+
+   Upgrade your release with ingress enabled:
+
+   helm upgrade {{ .Release.Name }} geopulse \
+     --set ingress.enabled=true \
+     --set ingress.hostname=geopulse.yourdomain.com \
+     --set ingress.tls.enabled=true
+
+3. Change the service type to LoadBalancer or NodePort:
+
+   helm upgrade {{ .Release.Name }} geopulse \
+     --set frontend.service.type=LoadBalancer
+
+{{- end }}
+
+--------------------------------------------------------------------------------
+DEPLOYMENT STATUS
+--------------------------------------------------------------------------------
+
+You can check the status of your deployment with:
+
+  kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+Wait for all pods to be in 'Running' state:
+
+  kubectl wait --for=condition=ready pod -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }} --timeout=300s
+
+--------------------------------------------------------------------------------
+CREDENTIALS
+--------------------------------------------------------------------------------
+
+{{- if not .Values.secrets.useExistingSecret }}
+
+Database credentials and secrets are stored in:
+
+  kubectl get secret -n {{ .Release.Namespace }} {{ include "geopulse.secretName" . }}
+
+To retrieve the PostgreSQL password:
+
+  kubectl get secret -n {{ .Release.Namespace }} {{ include "geopulse.secretName" . }} -o jsonpath='{.data.GEOPULSE_POSTGRES_PASSWORD}' | base64 -d
+
+{{- if .Values.mosquitto.enabled }}
+
+To retrieve the MQTT admin password:
+
+  kubectl get secret -n {{ .Release.Namespace }} {{ include "geopulse.secretName" . }} -o jsonpath='{.data.GEOPULSE_MQTT_PASSWORD}' | base64 -d
+
+{{- end }}
+{{- end }}
+
+JWT keys have been generated and stored in the persistent volume.
+
+--------------------------------------------------------------------------------
+COMPONENTS DEPLOYED
+--------------------------------------------------------------------------------
+
+✓ Backend (API server)
+✓ Frontend (Web UI)
+✓ PostgreSQL with PostGIS
+{{- if .Values.mosquitto.enabled }}
+✓ Mosquitto MQTT Broker
+{{- end }}
+
+{{- if .Values.mosquitto.enabled }}
+
+MQTT broker is available at:
+  Host: {{ include "geopulse.mosquitto.host" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  Port: {{ .Values.mosquitto.service.port }}
+
+Note: MQTT is accessible from within the cluster. To expose it externally,
+configure a LoadBalancer or NodePort service.
+
+{{- end }}
+
+--------------------------------------------------------------------------------
+NEXT STEPS
+--------------------------------------------------------------------------------
+
+1. Access the GeoPulse web interface
+2. Create your first user account
+3. Configure GPS tracking apps (OwnTracks, Overland, Dawarich, or Home Assistant)
+4. Start tracking your location data!
+
+For detailed setup instructions, visit:
+  https://github.com/tess1o/geopulse/tree/main/docs
+
+For support and issues:
+  https://github.com/tess1o/geopulse/issues
+
+--------------------------------------------------------------------------------
+TROUBLESHOOTING
+--------------------------------------------------------------------------------
+
+View logs for a specific component:
+
+  # Backend
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=backend --tail=100
+
+  # Frontend
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=frontend --tail=100
+
+  # PostgreSQL
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=database --tail=100
+
+{{- if .Values.mosquitto.enabled }}
+  # MQTT
+  kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/component=mqtt --tail=100
+{{- end }}
+
+For more help, run:
+  helm status {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+******************************************************************************

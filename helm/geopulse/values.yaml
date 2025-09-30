@@ -1,0 +1,419 @@
+# GeoPulse Helm Chart Values
+# For detailed configuration information, see: https://github.com/tess1o/geopulse
+
+# Global settings
+global:
+  # Image pull policy for all containers
+  imagePullPolicy: IfNotPresent
+  # Image pull secrets (if using private registry)
+  imagePullSecrets: []
+  # storageClass: ""
+
+# Backend configuration
+backend:
+  image:
+    repository: tess1o/geopulse-backend
+    tag: 1.0.0-rc.14
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 500m
+
+  # Health check configuration
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /api/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /api/health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # JVM options (optional - leave empty to use defaults)
+  javaOpts: ""
+  # Example: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC"
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+# Frontend configuration
+frontend:
+  image:
+    repository: tess1o/geopulse-ui
+    tag: 1.0.0-rc.14
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 100m
+    requests:
+      memory: 64Mi
+      cpu: 50m
+
+  # Health check configuration
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+  # Security context
+  # Frontend nginx image needs to run entrypoint as root to setup files
+  securityContext: {}
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+# PostgreSQL (PostGIS) configuration
+postgres:
+  # Set to false if using external PostgreSQL
+  enabled: true
+
+  image:
+    repository: postgis/postgis
+    tag: "17-3.5"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  # Database configuration
+  database: geopulse
+  username: geopulse-user
+  # Password is generated if not provided (see secrets section)
+  # password: ""
+
+  # Persistence configuration
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    annotations: {}
+
+  # PostgreSQL tuning parameters
+  # Values optimized for minimal resource usage (1-2 users)
+  # For production with 10+ users, increase these values
+  config:
+    sharedBuffers: "256MB"
+    workMem: "8MB"
+    maintenanceWorkMem: "64MB"
+    effectiveCacheSize: "1GB"
+    maxWalSize: "512MB"
+    checkpointCompletionTarget: "0.9"
+    walBuffers: "16MB"
+    randomPageCost: "1.1"
+    effectiveIoConcurrency: "100"
+    autovacuumNaptime: "60s"
+    autovacuumVacuumScaleFactor: "0.2"
+    logMinDurationStatement: "5000"
+
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 250m
+
+  # Health check configuration
+  livenessProbe:
+    enabled: true
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - pg_isready -U geopulse-user -d geopulse
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+
+  readinessProbe:
+    enabled: true
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - pg_isready -U geopulse-user -d geopulse
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # Security context
+  # PostgreSQL image handles user/group automatically
+  securityContext:
+    fsGroup: 999
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+# External PostgreSQL configuration (if postgres.enabled = false)
+externalPostgres:
+  host: ""
+  port: 5432
+  database: geopulse
+  username: geopulse-user
+  password: ""
+
+# MQTT Broker (Mosquitto) configuration - OPTIONAL
+mosquitto:
+  # Set to true to enable MQTT broker
+  enabled: false
+
+  image:
+    repository: iegomez/mosquitto-go-auth
+    tag: "3.0.0-mosquitto_2.0.18"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: NodePort
+    port: 1883
+    nodePort: 31883  # Fixed port for external access (optional, auto-assigned if not set)
+
+  # MQTT admin credentials
+  username: geopulse_mqtt_admin
+  # Password is generated if not provided
+  # password: ""
+
+  # Persistence configuration
+  persistence:
+    enabled: true
+    storageClass: ""
+
+    # Data persistence
+    data:
+      accessMode: ReadWriteOnce
+      size: 1Gi
+
+    # Log persistence
+    logs:
+      accessMode: ReadWriteOnce
+      size: 1Gi
+
+    # Config persistence
+    config:
+      accessMode: ReadWriteOnce
+      size: 100Mi
+
+  resources:
+    limits:
+      memory: 256Mi
+      cpu: 200m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1883
+    fsGroup: 1883
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+# Key generation job
+keygen:
+  image:
+    repository: alpine
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Persistence for generated keys
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Mi
+
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 100m
+    requests:
+      memory: 64Mi
+      cpu: 50m
+
+# Application configuration
+config:
+  # Frontend URLs - used in CORS policies (comma-separated)
+  # Examples:
+  # - Local: http://localhost:5555
+  # - Production: https://geopulse.yourdomain.com
+  uiUrl: "http://localhost:5555"
+
+  # Cookie domain for authentication
+  # Leave empty for localhost, set to parent domain in production (e.g., ".yourdomain.com")
+  cookieDomain: ""
+
+  # Set to true in production to ensure auth cookies are only sent over HTTPS
+  authSecureCookies: false
+
+  # OIDC Configuration (Optional)
+  oidc:
+    enabled: false
+
+    # Google OIDC
+    google:
+      enabled: false
+      clientId: ""
+      clientSecret: ""
+
+    # Microsoft OIDC
+    microsoft:
+      enabled: false
+      clientId: ""
+      clientSecret: ""
+
+    # Generic OIDC (Keycloak, Authentik, Okta, etc.)
+    generic:
+      enabled: false
+      name: "Custom OIDC"
+      clientId: ""
+      clientSecret: ""
+      discoveryUrl: ""
+
+# Ingress configuration
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+  # Hostname for the ingress
+  hostname: geopulse.example.com
+
+  # TLS configuration
+  tls:
+    enabled: false
+    secretName: geopulse-tls
+
+  # Additional paths (for load balancers, etc.)
+  extraPaths: []
+
+# Service Account
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+# Pod Disruption Budget (for high availability)
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Autoscaling (optional)
+autoscaling:
+  enabled: false
+  backend:
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+  frontend:
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
+# Network Policies (optional)
+networkPolicy:
+  enabled: false
+  policyTypes:
+    - Ingress
+    - Egress
+
+# Secrets configuration
+secrets:
+  # If true, use existing secret instead of creating one
+  useExistingSecret: false
+  existingSecretName: ""
+
+  # Generate passwords if not provided
+  # These are used only if not using existing secret
+  postgres:
+    password: ""  # Auto-generated if empty
+
+  mosquitto:
+    password: ""  # Auto-generated if empty
