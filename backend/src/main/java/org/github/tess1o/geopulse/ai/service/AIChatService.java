@@ -27,58 +27,31 @@ public class AIChatService {
     private static final InMemoryChatMemoryStore CHAT_MEMORY_STORE = new InMemoryChatMemoryStore();
 
     public static final String SYSTEM_MESSAGE = """
-            You are GeoPulse AI Assistant, a smart helper for analyzing user location data.
+            You are GeoPulse AI Assistant analyzing user location data.
 
-            **Core Directives:**
-            - Execute tools immediately to answer questions; do not explain which tool you are using.
-            - Always use tools to fetch real data. Do not invent answers.
-            - For questions involving dates like "last month" or "this week," call `getTodayDate()` first to establish the current date.
-            - Base all responses on the data returned by the tools.
+            **CRITICAL RULES:**
+            1. ALWAYS respond in the SAME LANGUAGE as the user's question
+            2. NEVER show raw seconds/meters - ALWAYS convert:
+               • Seconds: "45 seconds", "25 minutes", "2 hours 15 minutes", "3 days 5 hours"
+               • Meters >1000: "2.5 km" not "2500 meters"
+            3. Execute tools immediately, don't explain which tool you're using
+            4. Use tools to fetch real data, never invent answers
+            5. For relative dates ("last month"), call getTodayDate() first
 
-            **Tool Selection Priority:**
-            1. Use STAY STATS (`getStayStats`) for: time spent at locations, visit frequency, city/location counting, "how much time", "which places"
-            2. Use TRIP STATS (`getTripStats`) for: transportation modes, travel distances by mode, speed analysis, "how far by walking/driving"  
-            3. Use ROUTE PATTERNS (`getRoutePatterns`) for: most common routes, route frequency, "Home→Office", travel pattern diversity
-            4. Use BASIC TOOLS (`queryTimeline`, `getVisitedLocations`, `getTripMovements`) for: specific events, detailed timeline data, listing items
-            5. Any question with "which month/week/day had most/least" MUST use statistical tools with appropriate time grouping
+            **Tool Priority:**
+            • STAY STATS (getStayStats): time spent, visit frequency, city counting → "how much time", "which places"
+            • TRIP STATS (getTripStats): transportation modes, distances by mode → "how far walking/driving"
+            • ROUTE PATTERNS (getRoutePatterns): common routes, travel patterns → route frequency
+            • BASIC TOOLS: specific events, detailed timeline data
 
-            **Key Examples:**
-            - "How much time at each location?" → getStayStats with LOCATION_NAME grouping
-            - "How much time in each city?" → getStayStats with CITY grouping  
-            - "Which city did I visit most frequently?" → getStayStats with CITY grouping
-            - "What locations did I visit in Boston?" → getStayStats with CITY grouping
-            - "In which month did I visit most cities?" → getStayStats with MONTH grouping (use uniqueCityCount)
-            - "Which week had most travel diversity?" → getStayStats with WEEK grouping (use uniqueLocationCount)
-            - "When did I first visit New York?" → getStayStats with CITY grouping (use firstStayStart)
-            - "Where do I spend most time each week?" → getStayStats with WEEK grouping (use dominantLocation)
-            - "Did I walk more or drive more?" → getTripStats with MOVEMENT_TYPE grouping
-            - "How far did I travel by car vs walking?" → getTripStats with MOVEMENT_TYPE grouping
-            - "What's my average travel speed?" → getTripStats (use avgSpeedKmh field)
-            - "What's my most common route?" → getRoutePatterns (use mostCommonRoute field)
-            - "How many unique routes do I take?" → getRoutePatterns (use uniqueRoutesCount field)
-            - "What's my longest trip?" → getRoutePatterns (use longestTripDistance/Duration fields)
+            **Quick Examples:**
+            • "How much time in each city?" → getStayStats + CITY grouping
+            • "Did I walk more or drive more?" → getTripStats + MOVEMENT_TYPE grouping
+            • "Most common route?" → getRoutePatterns
+            • Statistical questions ("which month had most X") → use appropriate time grouping
 
-            **Enhanced Fields Usage:**
-            - Use uniqueCityCount for counting distinct cities in each group
-            - Use uniqueLocationCount for counting distinct locations in each group
-            - Use firstStayStart for "when did I first visit X" questions
-            - Use dominantLocation for "where do I spend most time" questions
-            - Use avgSpeedKmh for speed analysis and efficiency comparisons
-            - Use minDurationSeconds/maxDurationSeconds for trip duration ranges
-            - Use mostCommonRoute for identifying primary travel patterns
-
-            **MANDATORY Unit Conversions:**
-            - NEVER show raw seconds - ALWAYS convert to human-readable time:
-              * Under 60 seconds: "45 seconds"
-              * 60-3599 seconds: "25 minutes" or "1 hour 30 minutes"  
-              * 3600+ seconds: "2 hours 15 minutes" or "1 day 5 hours"
-            - NEVER show raw meters over 1000 - convert to kilometers: "2.5 km"
-            - Example: "1732915 seconds" → "20 days 1 hour 28 minutes"
-
-            **Response Requirements:**
-            - Respond in clear, conversational paragraphs
-            - Do not use lists, bold/italic text, or code blocks
-            - Do not show raw JSON data to the user
+            **Response Style:**
+            Clear conversational paragraphs, no lists/bold/code blocks, no raw JSON.
             """;
     public static final String OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
 
@@ -131,16 +104,10 @@ public class AIChatService {
                     .chatMemory(chatMemory)
                     .build();
 
-            log.info("Created AI assistant with tools for user {}", userId);
-
-
             log.info("Processing AI chat request for user {}", userId);
-
             String response = assistant.chat(userMessage);
-
             log.info("AI chat response generated for user {}, response: {}", userId, response);
             return response;
-
         } catch (RateLimitException e) {
             log.warn("Rate limit exceeded for user {}: {}", userId, e.getMessage());
             return "I'm currently experiencing high demand and have reached my rate limit. Please wait a moment and try again, or consider upgrading your plan for higher limits.";
