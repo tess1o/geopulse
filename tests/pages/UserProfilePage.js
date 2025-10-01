@@ -3,10 +3,11 @@ export class UserProfilePage {
     this.page = page;
     
     this.selectors = {
-      // Tab navigation - using span with data-pc-section="itemlabel"
-      profileTab: '[data-pc-section="itemlabel"]:has-text("Profile")',
-      securityTab: '[data-pc-section="itemlabel"]:has-text("Security")',
-      immichTab: '[data-pc-section="itemlabel"]:has-text("Immich")',
+      // Tab navigation - using PrimeVue TabMenu structure
+      profileTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Profile"))',
+      securityTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Security"))',
+      aiAssistantTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("AI Assistant"))',
+      immichTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Immich"))',
       
       // Profile Information tab selectors
       profile: {
@@ -103,6 +104,14 @@ export class UserProfilePage {
   }
 
   /**
+   * Switch to AI Assistant tab
+   */
+  async switchToAiAssistantTab() {
+    await this.page.locator(this.selectors.aiAssistantTab).click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
    * Switch to Immich Integration tab
    */
   async switchToImmichTab() {
@@ -114,31 +123,36 @@ export class UserProfilePage {
    * Check if Profile Information tab is active
    */
   async isProfileTabActive() {
-    // Look for the li element that contains our span - go up two levels: span -> a -> li
-    const tabItem = this.page.locator(this.selectors.profileTab).locator('xpath=../..'); 
+    const tabItem = this.page.locator(this.selectors.profileTab);
     const classes = await tabItem.getAttribute('class');
-    const dataActive = await tabItem.getAttribute('data-p-active');
-    return (classes && classes.includes('p-tabmenu-item-active')) || dataActive === 'true';
+    return classes && classes.includes('p-tabmenu-item-active');
   }
 
   /**
    * Check if Security tab is active
    */
   async isSecurityTabActive() {
-    const tabItem = this.page.locator(this.selectors.securityTab).locator('xpath=../..'); 
+    const tabItem = this.page.locator(this.selectors.securityTab);
     const classes = await tabItem.getAttribute('class');
-    const dataActive = await tabItem.getAttribute('data-p-active');
-    return (classes && classes.includes('p-tabmenu-item-active')) || dataActive === 'true';
+    return classes && classes.includes('p-tabmenu-item-active');
+  }
+
+  /**
+   * Check if AI Assistant tab is active
+   */
+  async isAiAssistantTabActive() {
+    const tabItem = this.page.locator(this.selectors.aiAssistantTab);
+    const classes = await tabItem.getAttribute('class');
+    return classes && classes.includes('p-tabmenu-item-active');
   }
 
   /**
    * Check if Immich Integration tab is active
    */
   async isImmichTabActive() {
-    const tabItem = this.page.locator(this.selectors.immichTab).locator('xpath=../..'); 
+    const tabItem = this.page.locator(this.selectors.immichTab);
     const classes = await tabItem.getAttribute('class');
-    const dataActive = await tabItem.getAttribute('data-p-active');
-    return (classes && classes.includes('p-tabmenu-item-active')) || dataActive === 'true';
+    return classes && classes.includes('p-tabmenu-item-active');
   }
 
   // =============================================================================

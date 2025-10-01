@@ -130,7 +130,7 @@ export const useFriendsStore = defineStore('friends', {
         async fetchSentInvitations() {
             try {
                 const response = await apiService.get('/friends/invitations/sent')
-                this.setSentInvitations(response)
+                this.setSentInvitations(response.data)
                 return response
             } catch (error) {
                 throw error

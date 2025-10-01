@@ -242,8 +242,7 @@
                             class="invite-avatar"
                           />
                           <div class="invite-details">
-                            <div class="invite-name">{{ invite.senderName }}</div>
-                            <div class="invite-email">{{ invite.senderEmail }}</div>
+                            <div class="invite-email">{{ invite.senderName }}</div>
                             <div class="invite-date">{{ formatDate(invite.createdAt) }}</div>
                           </div>
                         </div>
@@ -301,8 +300,7 @@
                             class="invite-avatar"
                           />
                           <div class="invite-details">
-                            <div class="invite-name">{{ invite.receiverName || invite.receiverEmail }}</div>
-                            <div class="invite-email">{{ invite.receiverEmail }}</div>
+                            <div class="invite-email">{{ invite.receiverName }}</div>
                             <div class="invite-date">{{ formatDate(invite.createdAt) }}</div>
                           </div>
                         </div>
@@ -708,10 +706,11 @@ const handleRejectAllInvites = async () => {
 
 const handleCancelAllInvites = async () => {
   bulkActionsLoading.cancelAll = true
-  
+
   try {
     const inviteIds = sentInvites.value.map(invite => invite.id)
-    await friendsStore.rejectMultipleInvitations(inviteIds)
+    // Cancel each invitation individually
+    await Promise.all(inviteIds.map(id => friendsStore.cancelInvitation(id)))
     toast.add({
       severity: 'success',
       summary: 'All Invitations Cancelled',
@@ -1179,12 +1178,6 @@ onMounted(async () => {
 .invite-details {
   flex: 1;
   min-width: 0;
-}
-
-.invite-name {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin-bottom: 0.25rem;
 }
 
 .invite-email {
