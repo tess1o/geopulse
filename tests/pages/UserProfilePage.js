@@ -34,6 +34,18 @@ export class UserProfilePage {
         cancelButton: 'button:has-text("Cancel")',
         errorMessage: '.error-message'
       },
+
+      // AI Assistant tab selectors
+      ai: {
+        enableToggle: '#ai-enabled',
+        openaiApiKeyInput: '#openai-api-key input',
+        openaiApiUrlInput: '#openai-api-url',
+        openaiModelDropdown: '#openai-model',
+        openaiModelInput: '#openai-model input',
+        saveButton: 'button[type="submit"]:has-text("Save AI Settings")',
+        configuredIndicator: 'small:has-text("API key is configured")',
+        errorMessage: '.error-message'
+      },
       
       // Immich Integration tab selectors
       immich: {
@@ -350,6 +362,105 @@ export class UserProfilePage {
     const confirm = await this.page.inputValue(this.selectors.security.confirmPasswordInput);
     
     return !current && !newPassword && !confirm;
+  }
+
+  // =============================================================================
+  // AI ASSISTANT TAB
+  // =============================================================================
+
+  /**
+   * Toggle AI Assistant
+   */
+  async toggleAIAssistant() {
+    await this.page.click(this.selectors.ai.enableToggle);
+  }
+
+  /**
+   * Check if AI Assistant is enabled
+   */
+  async isAIAssistantEnabled() {
+    const toggle = this.page.locator(this.selectors.ai.enableToggle);
+    const classes = await toggle.getAttribute('class');
+    return classes && classes.includes('p-toggleswitch-checked');
+  }
+
+  /**
+   * Fill OpenAI API Key
+   */
+  async fillOpenAIApiKey(apiKey) {
+    await this.page.fill(this.selectors.ai.openaiApiKeyInput, apiKey);
+  }
+
+  /**
+   * Fill OpenAI API URL
+   */
+  async fillOpenAIApiUrl(apiUrl) {
+    await this.page.fill(this.selectors.ai.openaiApiUrlInput, apiUrl);
+  }
+
+  /**
+   * Select or enter OpenAI model
+   */
+  async selectOpenAIModel(modelName) {
+    // Click the dropdown
+    await this.page.click(this.selectors.ai.openaiModelDropdown);
+    await this.page.waitForTimeout(300);
+
+    // Type the model name (dropdown is editable)
+    await this.page.fill(this.selectors.ai.openaiModelInput, modelName);
+
+    // Try to click the option if it exists, otherwise just blur
+    try {
+      await this.page.locator(`[role="option"]:has-text("${modelName}")`).click({ timeout: 1000 });
+    } catch {
+      // Model name was typed directly, just press Enter or blur
+      await this.page.keyboard.press('Enter');
+    }
+
+    await this.page.waitForTimeout(300);
+  }
+
+  /**
+   * Get OpenAI API URL value
+   */
+  async getOpenAIApiUrl() {
+    return await this.page.inputValue(this.selectors.ai.openaiApiUrlInput);
+  }
+
+  /**
+   * Check if OpenAI API key is configured
+   */
+  async isOpenAIApiKeyConfigured() {
+    return await this.page.locator(this.selectors.ai.configuredIndicator).isVisible();
+  }
+
+  /**
+   * Check if Save AI Settings button is enabled
+   */
+  async isAISaveButtonEnabled() {
+    return !await this.page.isDisabled(this.selectors.ai.saveButton);
+  }
+
+  /**
+   * Save AI settings
+   */
+  async saveAISettings() {
+    await this.page.click(this.selectors.ai.saveButton);
+  }
+
+  /**
+   * Get AI Assistant validation error message
+   */
+  async getAIErrorMessage() {
+    try {
+      const errorElement = this.page.locator(this.selectors.ai.errorMessage).first();
+      if (await errorElement.isVisible({ timeout: 2000 })) {
+        return await errorElement.textContent();
+      }
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   // =============================================================================

@@ -767,4 +767,224 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getImmichServerUrl()).toBe('https://test.com');
     });
   });
+
+  test.describe('AI Assistant Tab', () => {
+    test('should display AI Assistant settings correctly', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+      expect(await profilePage.isAiAssistantTabActive()).toBe(true);
+
+      // Verify AI Assistant is disabled by default
+      expect(await profilePage.isAIAssistantEnabled()).toBe(false);
+
+      // Verify Save button is enabled (can save even when disabled)
+      expect(await profilePage.isAISaveButtonEnabled()).toBe(true);
+    });
+
+    test('should allow enabling and configuring AI Assistant', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+
+      // Enable AI Assistant
+      await profilePage.toggleAIAssistant();
+      expect(await profilePage.isAIAssistantEnabled()).toBe(true);
+
+      // Fill in OpenAI settings
+      await profilePage.fillOpenAIApiKey('sk-test-api-key-1234567890');
+      await profilePage.fillOpenAIApiUrl('https://api.openai.com/v1');
+      await profilePage.selectOpenAIModel('gpt-4');
+
+      // Save settings
+      await profilePage.saveAISettings();
+
+      // Wait for success toast
+      await profilePage.waitForSuccessToast();
+      await page.waitForTimeout(1000);
+
+      // Verify API key is now marked as configured
+      expect(await profilePage.isOpenAIApiKeyConfigured()).toBe(true);
+
+      // Verify API URL is saved
+      expect(await profilePage.getOpenAIApiUrl()).toBe('https://api.openai.com/v1');
+    });
+
+    test('should allow using custom OpenAI-compatible API endpoint', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+
+      // Enable AI Assistant
+      await profilePage.toggleAIAssistant();
+
+      // Configure with custom endpoint
+      await profilePage.fillOpenAIApiKey('custom-api-key-12345');
+      await profilePage.fillOpenAIApiUrl('https://my-custom-llm-provider.com/v1');
+      await profilePage.selectOpenAIModel('custom-model-name');
+
+      // Save settings
+      await profilePage.saveAISettings();
+
+      // Wait for success toast
+      await profilePage.waitForSuccessToast();
+      await page.waitForTimeout(1000);
+
+      // Verify custom API URL is saved
+      expect(await profilePage.getOpenAIApiUrl()).toBe('https://my-custom-llm-provider.com/v1');
+    });
+
+    test('should allow disabling AI Assistant', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+
+      // Enable AI Assistant
+      await profilePage.toggleAIAssistant();
+      expect(await profilePage.isAIAssistantEnabled()).toBe(true);
+
+      // Configure settings
+      await profilePage.fillOpenAIApiKey('sk-test-key');
+      await profilePage.fillOpenAIApiUrl('https://api.openai.com/v1');
+      await profilePage.selectOpenAIModel('gpt-3.5-turbo');
+      await profilePage.saveAISettings();
+      await profilePage.waitForSuccessToast();
+      await page.waitForTimeout(1000);
+
+      // Disable AI Assistant
+      await profilePage.toggleAIAssistant();
+      expect(await profilePage.isAIAssistantEnabled()).toBe(false);
+
+      // Save the disabled state
+      await profilePage.saveAISettings();
+      await profilePage.waitForSuccessToast();
+      await page.waitForTimeout(1000);
+
+      // Reload page to verify it persisted
+      await page.reload();
+      await profilePage.waitForPageLoad();
+      await profilePage.switchToAiAssistantTab();
+
+      // Verify AI Assistant is still disabled
+      expect(await profilePage.isAIAssistantEnabled()).toBe(false);
+    });
+
+    test('should preserve API key when updating other settings', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+
+      // Enable and configure AI Assistant
+      await profilePage.toggleAIAssistant();
+      await profilePage.fillOpenAIApiKey('sk-original-key-12345');
+      await profilePage.fillOpenAIApiUrl('https://api.openai.com/v1');
+      await profilePage.selectOpenAIModel('gpt-4');
+      await profilePage.saveAISettings();
+      await profilePage.waitForSuccessToast();
+      await page.waitForTimeout(1000);
+
+      // Verify API key is configured
+      expect(await profilePage.isOpenAIApiKeyConfigured()).toBe(true);
+
+      // Update only the model without changing API key
+      await profilePage.selectOpenAIModel('gpt-4-turbo');
+      await profilePage.saveAISettings();
+      await profilePage.waitForSuccessToast();
+      await page.waitForTimeout(1000);
+
+      // API key should still be configured (not replaced)
+      expect(await profilePage.isOpenAIApiKeyConfigured()).toBe(true);
+    });
+
+    test('should switch between AI Assistant and other tabs', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Default tab should be Profile
+      expect(await profilePage.isProfileTabActive()).toBe(true);
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+      expect(await profilePage.isAiAssistantTabActive()).toBe(true);
+      expect(await profilePage.isProfileTabActive()).toBe(false);
+
+      // Switch to Security tab
+      await profilePage.switchToSecurityTab();
+      expect(await profilePage.isSecurityTabActive()).toBe(true);
+      expect(await profilePage.isAiAssistantTabActive()).toBe(false);
+
+      // Switch back to AI Assistant
+      await profilePage.switchToAiAssistantTab();
+      expect(await profilePage.isAiAssistantTabActive()).toBe(true);
+
+      // Switch to Immich tab
+      await profilePage.switchToImmichTab();
+      expect(await profilePage.isImmichTabActive()).toBe(true);
+      expect(await profilePage.isAiAssistantTabActive()).toBe(false);
+    });
+  });
 });
