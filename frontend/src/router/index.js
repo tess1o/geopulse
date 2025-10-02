@@ -3,7 +3,6 @@ import LoginPage from '../views/LoginPage.vue'
 import RegisterPage from '../views/RegisterPage.vue'
 import Home from "@/views/Home.vue";
 import FriendsPage from "@/views/app/FriendsPage.vue";
-import StatsPage from "@/views/app/StatsPage.vue";
 import MainAppPage from "@/views/app/MainAppPage.vue";
 import TimelinePage from "@/views/app/TimelinePage.vue";
 import PlacesPage from "@/views/app/PlacesPage.vue";
