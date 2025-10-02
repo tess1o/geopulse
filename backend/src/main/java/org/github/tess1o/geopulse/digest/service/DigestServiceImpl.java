@@ -33,16 +33,17 @@ public class DigestServiceImpl implements DigestService {
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMMM");
 
     @Override
-    public TimeDigest getMonthlyDigest(UUID userId, int year, int month) {
+    public TimeDigest getMonthlyDigest(UUID userId, int year, int month, String timezone) {
         log.info("Generating monthly digest for user {} - {}/{}", userId, year, month);
 
-        // Calculate time range for the month
+        // Calculate time range for the month using user's timezone
+        ZoneId zoneId = ZoneId.of(timezone);
         YearMonth yearMonth = YearMonth.of(year, month);
         LocalDate firstDay = yearMonth.atDay(1);
         LocalDate lastDay = yearMonth.atEndOfMonth();
 
-        Instant start = firstDay.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant end = lastDay.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+        Instant start = firstDay.atStartOfDay(zoneId).toInstant();
+        Instant end = lastDay.plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
 
         // Get current period statistics - use WEEKS for better chart readability
         UserStatistics currentStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
@@ -50,54 +51,55 @@ public class DigestServiceImpl implements DigestService {
 
         // Get previous month for comparison
         YearMonth previousMonth = yearMonth.minusMonths(1);
-        Instant prevStart = previousMonth.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant prevEnd = previousMonth.atEndOfMonth().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+        Instant prevStart = previousMonth.atDay(1).atStartOfDay(zoneId).toInstant();
+        Instant prevEnd = previousMonth.atEndOfMonth().plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
         UserStatistics previousStats = statisticsService.getStatistics(userId, prevStart, prevEnd, ChartGroupMode.WEEKS);
 
         // Build digest
         return TimeDigest.builder()
                 .period(buildPeriodInfo(year, month))
-                .metrics(buildMetrics(currentStats, timeline))
+                .metrics(buildMetrics(currentStats, timeline, zoneId))
                 .comparison(buildComparison(currentStats, previousStats))
-                .highlights(buildHighlights(currentStats, timeline, start, end))
+                .highlights(buildHighlights(currentStats, timeline, start, end, zoneId))
                 .topPlaces(currentStats.getPlaces() != null ? currentStats.getPlaces() : List.of())
-                .activityChart(combineChartData(currentStats.getDistanceCarChart(), currentStats.getDistanceWalkChart()))
-                .milestones(buildMilestones(currentStats, timeline, "monthly"))
+                .activityChart(buildActivityChartData(currentStats.getDistanceCarChart(), currentStats.getDistanceWalkChart()))
+                .milestones(buildMilestones(currentStats, timeline, "monthly", zoneId))
                 .build();
     }
 
     @Override
-    public TimeDigest getYearlyDigest(UUID userId, int year) {
+    public TimeDigest getYearlyDigest(UUID userId, int year, String timezone) {
         log.info("Generating yearly digest for user {} - {}", userId, year);
 
-        // Calculate time range for the year
+        // Calculate time range for the year using user's timezone
+        ZoneId zoneId = ZoneId.of(timezone);
         LocalDate firstDay = LocalDate.of(year, 1, 1);
         LocalDate lastDay = LocalDate.of(year, 12, 31);
 
-        Instant start = firstDay.atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant end = lastDay.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+        Instant start = firstDay.atStartOfDay(zoneId).toInstant();
+        Instant end = lastDay.plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
 
         // Get current year statistics for overall metrics
         UserStatistics currentStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
         MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, start, end);
 
         // Get previous year for comparison
-        Instant prevStart = firstDay.minusYears(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant prevEnd = lastDay.minusYears(1).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+        Instant prevStart = firstDay.minusYears(1).atStartOfDay(zoneId).toInstant();
+        Instant prevEnd = lastDay.minusYears(1).plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
         UserStatistics previousStats = statisticsService.getStatistics(userId, prevStart, prevEnd, ChartGroupMode.WEEKS);
 
         // Generate monthly chart data for yearly view (12 bars)
-        BarChartData monthlyChart = buildMonthlyChartForYear(userId, year);
+        ActivityChartData monthlyChart = buildMonthlyChartForYear(userId, year, zoneId);
 
         // Build digest
         return TimeDigest.builder()
                 .period(buildPeriodInfo(year, null))
-                .metrics(buildMetrics(currentStats, timeline))
+                .metrics(buildMetrics(currentStats, timeline, zoneId))
                 .comparison(buildComparison(currentStats, previousStats))
-                .highlights(buildHighlights(currentStats, timeline, start, end))
+                .highlights(buildHighlights(currentStats, timeline, start, end, zoneId))
                 .topPlaces(currentStats.getPlaces() != null ? currentStats.getPlaces() : List.of())
                 .activityChart(monthlyChart)
-                .milestones(buildMilestones(currentStats, timeline, "yearly"))
+                .milestones(buildMilestones(currentStats, timeline, "yearly", zoneId))
                 .build();
     }
 
@@ -121,20 +123,20 @@ public class DigestServiceImpl implements DigestService {
         }
     }
 
-    private DigestMetrics buildMetrics(UserStatistics stats, MovementTimelineDTO timeline) {
+    private DigestMetrics buildMetrics(UserStatistics stats, MovementTimelineDTO timeline, ZoneId zoneId) {
         // Calculate active days from timeline
         Set<LocalDate> activeDays = new HashSet<>();
 
         if (timeline.getStays() != null) {
             timeline.getStays().forEach(stay -> {
-                LocalDate stayDate = LocalDate.ofInstant(stay.getTimestamp(), ZoneOffset.UTC);
+                LocalDate stayDate = LocalDate.ofInstant(stay.getTimestamp(), zoneId);
                 activeDays.add(stayDate);
             });
         }
 
         if (timeline.getTrips() != null) {
             timeline.getTrips().forEach(trip -> {
-                LocalDate tripDate = LocalDate.ofInstant(trip.getTimestamp(), ZoneOffset.UTC);
+                LocalDate tripDate = LocalDate.ofInstant(trip.getTimestamp(), zoneId);
                 activeDays.add(tripDate);
             });
         }
@@ -186,7 +188,7 @@ public class DigestServiceImpl implements DigestService {
                 .build();
     }
 
-    private DigestHighlight buildHighlights(UserStatistics stats, MovementTimelineDTO timeline, Instant start, Instant end) {
+    private DigestHighlight buildHighlights(UserStatistics stats, MovementTimelineDTO timeline, Instant start, Instant end, ZoneId zoneId) {
         DigestHighlight.TripHighlight longestTrip = null;
         DigestHighlight.BusiestDay busiestDay = null;
 
@@ -231,7 +233,7 @@ public class DigestServiceImpl implements DigestService {
         if (timeline.getTrips() != null && !timeline.getTrips().isEmpty()) {
             Map<LocalDate, Long> tripsByDay = timeline.getTrips().stream()
                     .collect(Collectors.groupingBy(
-                            trip -> LocalDate.ofInstant(trip.getTimestamp(), ZoneOffset.UTC),
+                            trip -> LocalDate.ofInstant(trip.getTimestamp(), zoneId),
                             Collectors.counting()
                     ));
 
@@ -242,12 +244,12 @@ public class DigestServiceImpl implements DigestService {
             if (busiestEntry != null) {
                 LocalDate busiestDate = busiestEntry.getKey();
                 double dayDistance = timeline.getTrips().stream()
-                        .filter(trip -> LocalDate.ofInstant(trip.getTimestamp(), ZoneOffset.UTC).equals(busiestDate))
+                        .filter(trip -> LocalDate.ofInstant(trip.getTimestamp(), zoneId).equals(busiestDate))
                         .mapToDouble(TimelineTripDTO::getDistanceMeters)
                         .sum();
 
                 busiestDay = DigestHighlight.BusiestDay.builder()
-                        .date(busiestDate.atStartOfDay(ZoneOffset.UTC).toInstant())
+                        .date(busiestDate.atStartOfDay(zoneId).toInstant())
                         .trips(busiestEntry.getValue().intValue())
                         .distance(dayDistance)
                         .build();
@@ -263,7 +265,7 @@ public class DigestServiceImpl implements DigestService {
                 .build();
     }
 
-    private List<Milestone> buildMilestones(UserStatistics stats, MovementTimelineDTO timeline, String periodType) {
+    private List<Milestone> buildMilestones(UserStatistics stats, MovementTimelineDTO timeline, String periodType, ZoneId zoneId) {
         List<Milestone> milestones = new ArrayList<>();
 
         boolean isMonthly = "monthly".equals(periodType);
@@ -275,11 +277,11 @@ public class DigestServiceImpl implements DigestService {
         Set<LocalDate> activeDays = new HashSet<>();
         if (timeline.getStays() != null) {
             timeline.getStays().forEach(stay ->
-                activeDays.add(LocalDate.ofInstant(stay.getTimestamp(), ZoneOffset.UTC)));
+                activeDays.add(LocalDate.ofInstant(stay.getTimestamp(), zoneId)));
         }
         if (timeline.getTrips() != null) {
             timeline.getTrips().forEach(trip ->
-                activeDays.add(LocalDate.ofInstant(trip.getTimestamp(), ZoneOffset.UTC)));
+                activeDays.add(LocalDate.ofInstant(trip.getTimestamp(), zoneId)));
         }
         int activeDaysCount = activeDays.size();
 
@@ -752,9 +754,10 @@ public class DigestServiceImpl implements DigestService {
         return null;
     }
 
-    private BarChartData buildMonthlyChartForYear(UUID userId, int year) {
+    private ActivityChartData buildMonthlyChartForYear(UUID userId, int year, ZoneId zoneId) {
         String[] monthLabels = new String[12];
-        double[] monthlyDistances = new double[12];
+        double[] carDistances = new double[12];
+        double[] walkDistances = new double[12];
 
         // Month names for labels
         String[] monthNames = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -766,46 +769,37 @@ public class DigestServiceImpl implements DigestService {
             LocalDate firstDay = yearMonth.atDay(1);
             LocalDate lastDay = yearMonth.atEndOfMonth();
 
-            Instant start = firstDay.atStartOfDay(ZoneOffset.UTC).toInstant();
-            Instant end = lastDay.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant().minusNanos(1);
+            Instant start = firstDay.atStartOfDay(zoneId).toInstant();
+            Instant end = lastDay.plusDays(1).atStartOfDay(zoneId).toInstant().minusNanos(1);
 
             // Get statistics for this month
             UserStatistics monthStats = statisticsService.getStatistics(userId, start, end, ChartGroupMode.WEEKS);
 
-            // Store label and distance (convert meters to km)
+            // Store label
             monthLabels[month - 1] = monthNames[month - 1];
-            monthlyDistances[month - 1] = monthStats.getTotalDistanceMeters() / 1000.0;
+
+            // Extract car and walk distances from the month's charts
+            if (monthStats.getDistanceCarChart() != null && monthStats.getDistanceCarChart().getData() != null) {
+                // Sum up all car distances for this month (convert meters to km)
+                carDistances[month - 1] = java.util.Arrays.stream(monthStats.getDistanceCarChart().getData()).sum();
+            }
+
+            if (monthStats.getDistanceWalkChart() != null && monthStats.getDistanceWalkChart().getData() != null) {
+                // Sum up all walk distances for this month (convert meters to km)
+                walkDistances[month - 1] = java.util.Arrays.stream(monthStats.getDistanceWalkChart().getData()).sum();
+            }
         }
 
-        return new BarChartData(monthLabels, monthlyDistances);
+        return ActivityChartData.builder()
+                .carChart(new BarChartData(monthLabels, carDistances))
+                .walkChart(new BarChartData(monthLabels, walkDistances))
+                .build();
     }
 
-    private BarChartData combineChartData(BarChartData carChart, BarChartData walkChart) {
-        // If both charts are null or empty, return empty chart
-        if ((carChart == null || carChart.getData() == null || carChart.getData().length == 0) &&
-            (walkChart == null || walkChart.getData() == null || walkChart.getData().length == 0)) {
-            return new BarChartData(new String[0], new double[0]);
-        }
-
-        // Use car chart labels as base (they should be the same)
-        String[] labels = carChart != null && carChart.getLabels() != null ?
-                carChart.getLabels() :
-                (walkChart != null ? walkChart.getLabels() : new String[0]);
-
-        double[] carData = carChart != null && carChart.getData() != null ?
-                carChart.getData() : new double[labels.length];
-
-        double[] walkData = walkChart != null && walkChart.getData() != null ?
-                walkChart.getData() : new double[labels.length];
-
-        // Combine data by adding car and walk distances
-        double[] combinedData = new double[labels.length];
-        for (int i = 0; i < labels.length; i++) {
-            double car = i < carData.length ? carData[i] : 0;
-            double walk = i < walkData.length ? walkData[i] : 0;
-            combinedData[i] = car + walk;
-        }
-
-        return new BarChartData(labels, combinedData);
+    private ActivityChartData buildActivityChartData(BarChartData carChart, BarChartData walkChart) {
+        return ActivityChartData.builder()
+                .carChart(carChart)
+                .walkChart(walkChart)
+                .build();
     }
 }

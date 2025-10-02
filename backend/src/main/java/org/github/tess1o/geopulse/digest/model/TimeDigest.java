@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.github.tess1o.geopulse.statistics.model.BarChartData;
 import org.github.tess1o.geopulse.statistics.model.TopPlace;
 
 import java.util.List;
@@ -19,6 +18,6 @@ public class TimeDigest {
     private PeriodComparison comparison;
     private DigestHighlight highlights;
     private List<TopPlace> topPlaces;
-    private BarChartData activityChart; // daily for monthly, monthly for yearly
+    private ActivityChartData activityChart; // car and walk distance charts
     private List<Milestone> milestones;
 }

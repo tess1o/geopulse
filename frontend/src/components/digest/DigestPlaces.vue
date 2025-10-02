@@ -118,7 +118,7 @@ const displayedPlaces = computed(() => {
   white-space: break-spaces;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  max-width: 250px;
 }
 
 .place-stats {

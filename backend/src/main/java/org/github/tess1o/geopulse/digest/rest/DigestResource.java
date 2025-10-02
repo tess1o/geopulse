@@ -29,7 +29,9 @@ public class DigestResource {
     @GET
     @Path("/monthly")
     public Response getMonthlyDigest(@QueryParam("year") int year, @QueryParam("month") int month) {
-        UUID userId = currentUserService.getCurrentUserId();
+        var user = currentUserService.getCurrentUser();
+        UUID userId = user.getId();
+        String timezone = user.getTimezone();
 
         // Validate parameters
         if (year < 2000 || year > 2100) {
@@ -47,7 +49,7 @@ public class DigestResource {
         log.info("Received request for monthly digest: user={}, year={}, month={}", userId, year, month);
 
         try {
-            TimeDigest digest = digestService.getMonthlyDigest(userId, year, month);
+            TimeDigest digest = digestService.getMonthlyDigest(userId, year, month, timezone);
             return Response.ok(ApiResponse.success(digest)).build();
 
         } catch (Exception e) {
@@ -61,7 +63,9 @@ public class DigestResource {
     @GET
     @Path("/yearly")
     public Response getYearlyDigest(@QueryParam("year") int year) {
-        UUID userId = currentUserService.getCurrentUserId();
+        var user = currentUserService.getCurrentUser();
+        UUID userId = user.getId();
+        String timezone = user.getTimezone();
 
         // Validate parameters
         if (year < 2000 || year > 2100) {
@@ -73,7 +77,7 @@ public class DigestResource {
         log.info("Received request for yearly digest: user={}, year={}", userId, year);
 
         try {
-            TimeDigest digest = digestService.getYearlyDigest(userId, year);
+            TimeDigest digest = digestService.getYearlyDigest(userId, year, timezone);
             return Response.ok(ApiResponse.success(digest)).build();
 
         } catch (Exception e) {

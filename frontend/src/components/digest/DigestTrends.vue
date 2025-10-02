@@ -7,10 +7,9 @@
 
     <div class="chart-container" v-if="hasChartData">
       <BarChart
-        :labels="chartData.labels"
-        :data="chartData.data"
-        :title="viewMode === 'monthly' ? 'Weekly Distance' : 'Monthly Distance'"
-        color="primary"
+        :title="viewMode === 'monthly' ? 'Weekly Distance, km' : 'Monthly Distance, km'"
+        :labels="chartLabels"
+        :datasets="chartDatasets"
       />
     </div>
 
@@ -38,11 +37,44 @@ const props = defineProps({
 })
 
 const hasChartData = computed(() => {
-  return props.chartData &&
-         props.chartData.data &&
-         Array.isArray(props.chartData.data) &&
-         props.chartData.data.length > 0 &&
-         props.chartData.data.some(val => val > 0)
+  return props.chartData?.carChart?.data?.length > 0 || props.chartData?.walkChart?.data?.length > 0
+})
+
+const chartLabels = computed(() => {
+  // Use car chart labels if available, otherwise walk chart labels
+  if (props.chartData?.carChart?.labels?.length > 0) {
+    return props.chartData.carChart.labels
+  }
+
+  if (props.chartData?.walkChart?.labels?.length > 0) {
+    return props.chartData.walkChart.labels
+  }
+
+  return []
+})
+
+const chartDatasets = computed(() => {
+  const datasets = []
+
+  // Add car distance data if available
+  if (props.chartData?.carChart?.data?.length > 0) {
+    datasets.push({
+      label: 'Car Distance',
+      data: props.chartData.carChart.data,
+      color: 'primary'
+    })
+  }
+
+  // Add walk distance data if available
+  if (props.chartData?.walkChart?.data?.length > 0) {
+    datasets.push({
+      label: 'Walk Distance',
+      data: props.chartData.walkChart.data,
+      color: 'success'
+    })
+  }
+
+  return datasets
 })
 </script>
 
