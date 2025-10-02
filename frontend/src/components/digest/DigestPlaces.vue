@@ -19,9 +19,9 @@
       </div>
     </div>
 
-    <div class="no-places" v-else>
+    <div class="no-places-placeholder" v-else>
       <i class="pi pi-compass"></i>
-      <p>No places visited during this period</p>
+      <p>No places visited during this period.</p>
     </div>
   </div>
 </template>
@@ -121,21 +121,20 @@ const displayedPlaces = computed(() => {
   font-weight: 500;
 }
 
-.no-places {
-  text-align: center;
+.no-places-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   padding: var(--gp-spacing-xl);
   color: var(--gp-text-muted);
+  font-style: italic;
 }
 
-.no-places i {
-  font-size: 3rem;
+.no-places-placeholder i {
+  font-size: 2rem;
   opacity: 0.5;
   margin-bottom: var(--gp-spacing-md);
-}
-
-.no-places p {
-  margin: 0;
-  font-style: italic;
 }
 
 /* Dark Mode */

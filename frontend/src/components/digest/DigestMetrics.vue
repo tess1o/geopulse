@@ -5,7 +5,7 @@
       {{ title }}
     </h3>
 
-    <div class="metrics-grid">
+    <div v-if="hasMetrics" class="metrics-grid">
       <!-- Total Distance -->
       <div class="metric-card">
         <div class="metric-icon">🚗</div>
@@ -37,6 +37,10 @@
         <div class="metric-label">Trips Completed</div>
       </div>
     </div>
+    <div v-else class="no-metrics-placeholder">
+      <i class="pi pi-chart-bar"></i>
+      <p>No metrics available for this period.</p>
+    </div>
   </div>
 </template>
 
@@ -57,7 +61,11 @@ const props = defineProps({
     type: Object,
     default: null
   }
-})
+});
+
+const hasMetrics = computed(() => {
+  return props.metrics && props.metrics.tripCount > 0;
+});
 
 const comparisonClass = computed(() => {
   if (!props.comparison) return ''
@@ -66,7 +74,7 @@ const comparisonClass = computed(() => {
     'decrease': props.comparison.direction === 'decrease',
     'same': props.comparison.direction === 'same'
   }
-})
+});
 
 const comparisonText = computed(() => {
   if (!props.comparison) return ''
@@ -163,6 +171,22 @@ const comparisonText = computed(() => {
 
 .metric-change.same {
   color: var(--gp-text-muted);
+}
+
+.no-metrics-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--gp-spacing-xl);
+  color: var(--gp-text-muted);
+  font-style: italic;
+}
+
+.no-metrics-placeholder i {
+  font-size: 2rem;
+  opacity: 0.5;
+  margin-bottom: var(--gp-spacing-md);
 }
 
 /* Dark Mode */

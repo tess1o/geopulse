@@ -5,7 +5,7 @@
       Highlights
     </h3>
 
-    <div class="highlights-grid">
+    <div v-if="hasHighlights" class="highlights-grid">
       <!-- Longest Trip -->
       <div class="highlight-card" v-if="highlights.longestTrip">
         <div class="highlight-icon">🚗</div>
@@ -40,26 +40,35 @@
         </div>
       </div>
     </div>
+    <div v-else class="no-highlights-placeholder">
+      <i class="pi pi-star"></i>
+      <p>No highlights for this period.</p>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { formatDistance } from '@/utils/calculationsHelpers'
-import { useTimezone } from '@/composables/useTimezone'
+import { computed } from 'vue';
+import { formatDistance } from '@/utils/calculationsHelpers';
+import { useTimezone } from '@/composables/useTimezone';
 
-const timezone = useTimezone()
+const timezone = useTimezone();
 
-defineProps({
+const props = defineProps({
   highlights: {
     type: Object,
     required: true
   }
-})
+});
+
+const hasHighlights = computed(() => {
+  return props.highlights && (props.highlights.longestTrip || props.highlights.mostVisited || props.highlights.busiestDay);
+});
 
 const formatDate = (date) => {
-  if (!date) return ''
-  return timezone.fromUtc(date).format('MMM DD, YYYY')
-}
+  if (!date) return '';
+  return timezone.fromUtc(date).format('MMM DD, YYYY');
+};
 </script>
 
 <style scoped>
@@ -138,6 +147,22 @@ const formatDate = (date) => {
   font-size: 0.75rem;
   color: var(--gp-text-secondary);
   font-weight: 500;
+}
+
+.no-highlights-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--gp-spacing-xl);
+  color: var(--gp-text-muted);
+  font-style: italic;
+}
+
+.no-highlights-placeholder i {
+  font-size: 2rem;
+  opacity: 0.5;
+  margin-bottom: var(--gp-spacing-md);
 }
 
 .highlight-cities {

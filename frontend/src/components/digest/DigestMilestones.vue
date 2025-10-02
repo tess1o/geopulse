@@ -25,8 +25,8 @@
       </div>
     </div>
 
-    <div class="no-milestones" v-else>
-      <i class="pi pi-star"></i>
+    <div class="no-milestones-placeholder" v-else>
+      <i class="pi pi-trophy"></i>
       <p>Keep exploring to unlock milestones!</p>
     </div>
   </div>
@@ -196,21 +196,20 @@ const getTierLabel = (tier) => {
   line-height: 1.4;
 }
 
-.no-milestones {
-  text-align: center;
+.no-milestones-placeholder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   padding: var(--gp-spacing-xl);
   color: var(--gp-text-muted);
+  font-style: italic;
 }
 
-.no-milestones i {
-  font-size: 3rem;
+.no-milestones-placeholder i {
+  font-size: 2rem;
   opacity: 0.5;
   margin-bottom: var(--gp-spacing-md);
-}
-
-.no-milestones p {
-  margin: 0;
-  font-style: italic;
 }
 
 /* Dark Mode */
