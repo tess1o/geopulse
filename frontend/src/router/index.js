@@ -16,6 +16,7 @@ import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
 import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
+import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
@@ -143,6 +144,12 @@ const routes = [
         path: '/app/journey-insights',
         name: 'Journey Insights',
         component: JourneyInsights,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/time-digest',
+        name: 'Time Digest',
+        component: TimeDigestPage,
         beforeEnter: requireAuth
     },
     {

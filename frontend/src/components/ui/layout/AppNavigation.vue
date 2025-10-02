@@ -157,6 +157,12 @@ const mainItems = computed(() => [
     key: 'journey-insights'
   },
   {
+    label: 'Time Digest',
+    icon: 'pi pi-calendar-clock',
+    to: '/app/time-digest',
+    key: 'time-digest'
+  },
+  {
     label: 'AI Chat',
     icon: 'pi pi-sparkles',
     to: '/app/ai/chat',
