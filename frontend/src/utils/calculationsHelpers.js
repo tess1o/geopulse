@@ -8,6 +8,16 @@ export function formatDistance(meters) {
     }
 }
 
+export function formatDistanceRounded(meters) {
+    if (meters < 1000) {
+        const d = Math.round(meters); // no decimals for meters either
+        return `${d} m`;
+    } else {
+        const d = Math.round(meters / 1000); // whole km, no "."
+        return `${d} km`;
+    }
+}
+
 export function formatDuration(seconds) {
     if (seconds < 60) {
         return "less than a minute";

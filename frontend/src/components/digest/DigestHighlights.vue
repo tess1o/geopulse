@@ -57,7 +57,7 @@ const timezone = useTimezone();
 const props = defineProps({
   highlights: {
     type: Object,
-    required: true
+    default: () => ({})
   }
 });
 
@@ -78,6 +78,7 @@ const formatDate = (date) => {
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
+  min-height: 00px;
 }
 
 .highlights-title {
@@ -96,7 +97,7 @@ const formatDate = (date) => {
 
 .highlights-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gp-spacing-md);
 }
 
@@ -141,6 +142,7 @@ const formatDate = (date) => {
   color: var(--gp-text-primary);
   margin-bottom: var(--gp-spacing-xs);
   line-height: 1.3;
+  word-break: break-all;
 }
 
 .highlight-date {

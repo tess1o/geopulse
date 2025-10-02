@@ -74,7 +74,7 @@ const hasChartData = computed(() => {
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-lg);
-  min-height: 300px;
+  min-height: 100px;
 }
 
 .no-data {

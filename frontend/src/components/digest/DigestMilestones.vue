@@ -38,7 +38,7 @@ defineProps({
     type: Array,
     default: () => []
   }
-})
+});
 
 const getTierLabel = (tier) => {
   const labels = {
@@ -58,6 +58,7 @@ const getTierLabel = (tier) => {
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
+  min-height: 00px;
 }
 
 .milestones-title {

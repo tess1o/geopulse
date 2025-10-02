@@ -38,7 +38,7 @@ const props = defineProps({
     type: Number,
     default: 5
   }
-})
+});
 
 const displayedPlaces = computed(() => {
   return props.places.slice(0, props.limit)
@@ -52,6 +52,7 @@ const displayedPlaces = computed(() => {
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
+  min-height: 00px;
 }
 
 .places-title {
@@ -106,6 +107,7 @@ const displayedPlaces = computed(() => {
 
 .place-info {
   flex: 1;
+  word-break: break-all;
 }
 
 .place-name {
@@ -113,6 +115,10 @@ const displayedPlaces = computed(() => {
   font-weight: 600;
   color: var(--gp-text-primary);
   margin-bottom: var(--gp-spacing-xs);
+  white-space: break-spaces;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
 .place-stats {

@@ -45,7 +45,6 @@
 
         <!-- Highlights -->
         <DigestHighlights
-          v-if="currentDigest.highlights"
           :highlights="currentDigest.highlights"
         />
 
@@ -53,21 +52,18 @@
         <div class="digest-two-column">
           <!-- Places -->
           <DigestPlaces
-            v-if="currentDigest.topPlaces"
             :places="currentDigest.topPlaces"
             :limit="10"
           />
 
           <!-- Milestones -->
           <DigestMilestones
-            v-if="currentDigest.milestones"
             :milestones="currentDigest.milestones"
           />
         </div>
 
         <!-- Trends -->
         <DigestTrends
-          v-if="currentDigest.activityChart"
           :chartData="currentDigest.activityChart"
           :viewMode="viewMode"
         />

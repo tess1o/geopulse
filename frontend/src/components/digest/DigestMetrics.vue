@@ -9,7 +9,7 @@
       <!-- Total Distance -->
       <div class="metric-card">
         <div class="metric-icon">🚗</div>
-        <div class="metric-value">{{ formatDistance(metrics.totalDistance) }}</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.totalDistance) }}</div>
         <div class="metric-label">Total Distance</div>
         <div class="metric-change" v-if="comparison" :class="comparisonClass">
           {{ comparisonText }}
@@ -46,7 +46,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { formatDistance } from '@/utils/calculationsHelpers'
+import {formatDistanceRounded} from '@/utils/calculationsHelpers'
 
 const props = defineProps({
   title: {
@@ -55,7 +55,7 @@ const props = defineProps({
   },
   metrics: {
     type: Object,
-    required: true
+    default: () => ({})
   },
   comparison: {
     type: Object,
@@ -97,6 +97,7 @@ const comparisonText = computed(() => {
   border-radius: var(--gp-radius-large);
   padding: var(--gp-spacing-xl);
   margin-bottom: var(--gp-spacing-xl);
+  min-height: 300px;
 }
 
 .metrics-title {
@@ -115,7 +116,7 @@ const comparisonText = computed(() => {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--gp-spacing-lg);
 }
 
@@ -126,6 +127,7 @@ const comparisonText = computed(() => {
   padding: var(--gp-spacing-lg);
   text-align: center;
   transition: all 0.3s ease;
+  min-width: 220px;
 }
 
 .metric-card:hover {
