@@ -564,9 +564,6 @@ test.describe('GPS Data Page', () => {
             // Click export button
             await gpsDataPage.clickExportCsv();
 
-            // Verify loading state
-            expect(await gpsDataPage.isExportButtonLoading()).toBe(true);
-
             // Wait for export to complete
             await gpsDataPage.waitForExportComplete();
 

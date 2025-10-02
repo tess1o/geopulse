@@ -212,9 +212,8 @@ export const useExportImportStore = defineStore('exportImport', {
         async deleteExportJob(exportJobId) {
             try {
                 const response = await apiService.delete(`/export/jobs/${exportJobId}`)
-                
                 // Handle successful response
-                if (response.success) {
+                if (response.status === 'success') {
                     this.removeExportJob(exportJobId)
                     return true
                 } else {
