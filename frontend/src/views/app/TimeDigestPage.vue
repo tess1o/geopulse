@@ -91,10 +91,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useToast } from 'primevue/usetoast'
-import ProgressSpinner from 'primevue/progressspinner'
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { storeToRefs } from 'pinia';
+import { useToast } from 'primevue/usetoast';
+import ProgressSpinner from 'primevue/progressspinner';
 
 // Layout Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -116,9 +117,11 @@ import { useTimezone } from '@/composables/useTimezone'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 
 const timezone = useTimezone()
-const digestStore = useDigestStore()
-const toast = useToast()
-const { handleError } = useErrorHandler()
+const digestStore = useDigestStore();
+const toast = useToast();
+const { handleError } = useErrorHandler();
+const route = useRoute();
+const router = useRouter();
 
 const { currentDigest, loading: isLoading, error: errorMessage } = storeToRefs(digestStore)
 
@@ -135,11 +138,12 @@ const monthNames = [
 const hasError = computed(() => digestStore.hasError)
 
 const handlePeriodChange = async (period) => {
-  viewMode.value = period.viewMode
-  selectedYear.value = period.year
-  selectedMonth.value = period.month
-  await loadDigest()
-}
+  viewMode.value = period.viewMode;
+  selectedYear.value = period.year;
+  selectedMonth.value = period.month;
+  await loadDigest();
+  updateURL();
+};
 
 const loadDigest = async () => {
   try {
@@ -154,15 +158,37 @@ const loadDigest = async () => {
   }
 }
 
-// Watch for view mode changes
 watch(viewMode, async (newMode) => {
-  await loadDigest()
-})
+  await loadDigest();
+});
+
+const updateURL = () => {
+  const query = { viewMode: viewMode.value, year: selectedYear.value };
+  if (viewMode.value === 'monthly') {
+    query.month = selectedMonth.value;
+  }
+  router.push({ query });
+};
 
 // Lifecycle
 onMounted(async () => {
-  await loadDigest()
-})
+  const { viewMode: mode, year, month } = route.query;
+  if (mode) {
+    viewMode.value = mode;
+  }
+  if (year) {
+    selectedYear.value = parseInt(year, 10);
+    if (month) {
+      selectedMonth.value = parseInt(month, 10);
+    }
+  } else {
+    const now = timezone.now();
+    selectedYear.value = now.year();
+    selectedMonth.value = now.month() + 1;
+  }
+  await loadDigest();
+  updateURL();
+});
 </script>
 
 <style scoped>
