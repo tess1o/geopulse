@@ -1,0 +1,39 @@
+[
+  {
+    "startTime": "2025-08-04T12:00:00Z",
+    "endTime": "2025-08-04T12:30:00Z",
+    "activity": {
+      "start": "geo:50.4501,30.5234",
+      "end": "geo:50.4540,30.5270",
+      "distanceMeters": "4500",
+      "topCandidate": {
+        "type": "WALKING",
+        "probability": "0.95"
+      }
+    }
+  },
+  {
+    "startTime": "2025-08-04T13:00:00Z",
+    "endTime": "2025-08-04T14:00:00Z",
+    "visit": {
+      "topCandidate": {
+        "placeLocation": "geo:50.4560,30.5290",
+        "semanticType": "TYPE_HOME",
+        "probability": "0.98"
+      }
+    }
+  },
+  {
+    "startTime": "2025-08-04T14:15:00Z",
+    "endTime": "2025-08-04T14:45:00Z",
+    "activity": {
+      "start": "geo:50.4560,30.5290",
+      "end": "geo:50.4590,30.5320",
+      "distanceMeters": "3800",
+      "topCandidate": {
+        "type": "IN_VEHICLE",
+        "probability": "0.92"
+      }
+    }
+  }
+]

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GeoPulse E2E Test" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Test Track</name>
+    <desc>Sample GPX file for E2E testing</desc>
+    <time>2025-08-04T12:00:00Z</time>
+  </metadata>
+
+  <!-- Waypoints -->
+  <wpt lat="50.4480" lon="30.5210">
+    <ele>95</ele>
+    <time>2025-08-04T11:50:00Z</time>
+    <name>Start Point</name>
+    <desc>Starting waypoint</desc>
+  </wpt>
+  <wpt lat="50.4610" lon="30.5340">
+    <ele>128</ele>
+    <time>2025-08-04T12:50:00Z</time>
+    <name>End Point</name>
+    <desc>Ending waypoint</desc>
+  </wpt>
+
+  <!-- Track with segments -->
+  <trk>
+    <name>Test Track</name>
+    <desc>A test track for import</desc>
+    <trkseg>
+      <trkpt lat="50.4501" lon="30.5234">
+        <ele>100</ele>
+        <time>2025-08-04T12:00:00Z</time>
+        <speed>0.0</speed>
+      </trkpt>
+      <trkpt lat="50.4520" lon="30.5250">
+        <ele>105</ele>
+        <time>2025-08-04T12:10:00Z</time>
+        <speed>5.0</speed>
+      </trkpt>
+      <trkpt lat="50.4540" lon="30.5270">
+        <ele>110</ele>
+        <time>2025-08-04T12:20:00Z</time>
+        <speed>4.8</speed>
+      </trkpt>
+      <trkpt lat="50.4560" lon="30.5290">
+        <ele>115</ele>
+        <time>2025-08-04T12:30:00Z</time>
+        <speed>5.2</speed>
+      </trkpt>
+      <trkpt lat="50.4590" lon="30.5320">
+        <ele>122</ele>
+        <time>2025-08-04T12:40:00Z</time>
+        <speed>0.0</speed>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

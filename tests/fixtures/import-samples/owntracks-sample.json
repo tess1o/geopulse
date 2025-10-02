@@ -1,0 +1,112 @@
+[
+  {
+    "lat": 50.4501,
+    "lon": 30.5234,
+    "tst": 1722772800,
+    "acc": 5.0,
+    "batt": 95.0,
+    "vel": 0.0,
+    "alt": 100.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4510,
+    "lon": 30.5240,
+    "tst": 1722773100,
+    "acc": 6.0,
+    "batt": 94.0,
+    "vel": 5.2,
+    "alt": 102.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4520,
+    "lon": 30.5250,
+    "tst": 1722773400,
+    "acc": 5.5,
+    "batt": 93.0,
+    "vel": 4.8,
+    "alt": 105.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4530,
+    "lon": 30.5260,
+    "tst": 1722773700,
+    "acc": 7.0,
+    "batt": 92.0,
+    "vel": 6.1,
+    "alt": 108.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4540,
+    "lon": 30.5270,
+    "tst": 1722774000,
+    "acc": 5.8,
+    "batt": 91.0,
+    "vel": 5.5,
+    "alt": 110.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4550,
+    "lon": 30.5280,
+    "tst": 1722774300,
+    "acc": 6.2,
+    "batt": 90.0,
+    "vel": 4.9,
+    "alt": 112.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4560,
+    "lon": 30.5290,
+    "tst": 1722774600,
+    "acc": 5.9,
+    "batt": 89.0,
+    "vel": 5.3,
+    "alt": 115.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4570,
+    "lon": 30.5300,
+    "tst": 1722774900,
+    "acc": 6.5,
+    "batt": 88.0,
+    "vel": 6.0,
+    "alt": 118.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4580,
+    "lon": 30.5310,
+    "tst": 1722775200,
+    "acc": 5.7,
+    "batt": 87.0,
+    "vel": 5.1,
+    "alt": 120.0,
+    "tid": "test-device",
+    "type": "location"
+  },
+  {
+    "lat": 50.4590,
+    "lon": 30.5320,
+    "tst": 1722775500,
+    "acc": 6.1,
+    "batt": 86.0,
+    "vel": 4.7,
+    "alt": 122.0,
+    "tid": "test-device",
+    "type": "location"
+  }
+]
