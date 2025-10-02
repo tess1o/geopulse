@@ -14,7 +14,6 @@ import java.time.Instant;
 public class DigestHighlight {
     private TripHighlight longestTrip;
     private PlaceHighlight mostVisited;
-    private NewDiscoveries newDiscoveries;
     private BusiestDay busiestDay;
     private String[] peakHours;
 
@@ -35,15 +34,6 @@ public class DigestHighlight {
     public static class PlaceHighlight {
         private String name;
         private int visits;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    public static class NewDiscoveries {
-        private int count;
-        private String[] cities;
     }
 
     @Data

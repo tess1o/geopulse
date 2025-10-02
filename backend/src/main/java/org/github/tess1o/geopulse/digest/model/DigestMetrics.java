@@ -15,4 +15,10 @@ public class DigestMetrics {
     private int citiesVisited;
     private int tripCount;
     private int stayCount;
+
+    // Enhanced metrics
+    private double carDistance; // in meters
+    private double walkDistance; // in meters
+    private long timeMoving; // in seconds
+    private double dailyAverageDistance; // in meters
 }

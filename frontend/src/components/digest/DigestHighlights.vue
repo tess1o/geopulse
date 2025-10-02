@@ -62,7 +62,11 @@ const props = defineProps({
 });
 
 const hasHighlights = computed(() => {
-  return props.highlights && (props.highlights.longestTrip || props.highlights.mostVisited || props.highlights.busiestDay);
+  return props.highlights && (
+    props.highlights.longestTrip ||
+    props.highlights.mostVisited ||
+    props.highlights.busiestDay
+  );
 });
 
 const formatDate = (date) => {

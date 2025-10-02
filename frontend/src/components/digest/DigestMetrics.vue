@@ -6,6 +6,8 @@
     </h3>
 
     <div v-if="hasMetrics" class="metrics-grid">
+      <!-- ROW 1: Distance Overview -->
+
       <!-- Total Distance -->
       <div class="metric-card">
         <div class="metric-icon">🚗</div>
@@ -16,6 +18,28 @@
         </div>
       </div>
 
+      <!-- Car Distance -->
+      <div class="metric-card" v-if="metrics.carDistance">
+        <div class="metric-icon">🚗</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.carDistance) }}</div>
+        <div class="metric-label">Distance by Car</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.carDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
+      <!-- Walk Distance -->
+      <div class="metric-card" v-if="metrics.walkDistance">
+        <div class="metric-icon">🚶</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.walkDistance) }}</div>
+        <div class="metric-label">Distance Walking</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.walkDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
+      <!-- ROW 2: Time & Activity -->
+
       <!-- Active Days -->
       <div class="metric-card">
         <div class="metric-icon">📅</div>
@@ -23,18 +47,45 @@
         <div class="metric-label">Active Days</div>
       </div>
 
-      <!-- Cities Visited -->
-      <div class="metric-card">
-        <div class="metric-icon">🏙️</div>
-        <div class="metric-value">{{ metrics.citiesVisited }}</div>
-        <div class="metric-label">Cities Visited</div>
+      <!-- Time Moving -->
+      <div class="metric-card" v-if="metrics.timeMoving">
+        <div class="metric-icon">⏱️</div>
+        <div class="metric-value">{{ formatDuration(metrics.timeMoving) }}</div>
+        <div class="metric-label">Time Moving</div>
       </div>
+
+      <!-- Peak Hours -->
+      <div class="metric-card" v-if="hasPeakHours">
+        <div class="metric-icon">🕐</div>
+        <div class="metric-value peak-hours-value">
+          <div v-for="(hour, index) in highlights.peakHours" :key="index" class="peak-hour-range">
+            {{ hour }}
+          </div>
+        </div>
+        <div class="metric-label">Most Active Times</div>
+      </div>
+
+      <!-- ROW 3: Activity Details -->
 
       <!-- Trip Count -->
       <div class="metric-card">
         <div class="metric-icon">🛣️</div>
         <div class="metric-value">{{ metrics.tripCount }}</div>
         <div class="metric-label">Trips Completed</div>
+      </div>
+
+      <!-- Stay Count -->
+      <div class="metric-card">
+        <div class="metric-icon">⏸️</div>
+        <div class="metric-value">{{ metrics.stayCount || 0 }}</div>
+        <div class="metric-label">Stays Recorded</div>
+      </div>
+
+      <!-- Cities Visited -->
+      <div class="metric-card">
+        <div class="metric-icon">🏙️</div>
+        <div class="metric-value">{{ metrics.citiesVisited }}</div>
+        <div class="metric-label">Cities Visited</div>
       </div>
     </div>
     <div v-else class="no-metrics-placeholder">
@@ -46,7 +97,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import {formatDistanceRounded} from '@/utils/calculationsHelpers'
+import { formatDistanceRounded, formatDuration } from '@/utils/calculationsHelpers'
 
 const props = defineProps({
   title: {
@@ -60,6 +111,10 @@ const props = defineProps({
   comparison: {
     type: Object,
     default: null
+  },
+  highlights: {
+    type: Object,
+    default: () => ({})
   }
 });
 
@@ -81,12 +136,21 @@ const comparisonText = computed(() => {
 
   const percent = Math.abs(props.comparison.percentChange)
   if (props.comparison.direction === 'increase') {
-    return `↑ ${percent}% more than last period`
+    return `↑ ${percent}% more than previous period`
   } else if (props.comparison.direction === 'decrease') {
-    return `↓ ${percent}% less than last period`
+    return `↓ ${percent}% less than previous period`
   } else {
-    return '→ Same as last period'
+    return '→ Same as previous period'
   }
+})
+
+const getPercentage = (value, total) => {
+  if (!total || total === 0) return 0
+  return Math.round((value / total) * 100)
+}
+
+const hasPeakHours = computed(() => {
+  return props.highlights?.peakHours && props.highlights.peakHours.length > 0
 })
 </script>
 
@@ -116,7 +180,7 @@ const comparisonText = computed(() => {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gp-spacing-lg);
 }
 
@@ -127,7 +191,7 @@ const comparisonText = computed(() => {
   padding: var(--gp-spacing-lg);
   text-align: center;
   transition: all 0.3s ease;
-  min-width: 220px;
+  min-width: 230px;
 }
 
 .metric-card:hover {
@@ -173,6 +237,23 @@ const comparisonText = computed(() => {
 
 .metric-change.same {
   color: var(--gp-text-muted);
+}
+
+.metric-percentage {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--gp-text-muted);
+  margin-top: var(--gp-spacing-xs);
+}
+
+.peak-hours-value {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.peak-hour-range {
+  line-height: 1.2;
 }
 
 .no-metrics-placeholder {

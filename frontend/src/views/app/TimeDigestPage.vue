@@ -1,7 +1,7 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Time Digest"
+      title="Rewind"
       subtitle="Explore your location story through time"
       :loading="isLoading"
     >
@@ -41,6 +41,7 @@
           :title="`${currentDigest.period?.displayName} at a Glance`"
           :metrics="currentDigest.metrics"
           :comparison="currentDigest.comparison"
+          :highlights="currentDigest.highlights"
         />
 
         <!-- Highlights -->

@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.digest.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.digest.model.*;
 import org.github.tess1o.geopulse.statistics.StatisticsService;
@@ -28,6 +30,9 @@ public class DigestServiceImpl implements DigestService {
 
     @Inject
     StreamingTimelineAggregator streamingTimelineAggregator;
+
+    @Inject
+    EntityManager entityManager;
 
     private static final DateTimeFormatter MONTH_YEAR_FORMATTER = DateTimeFormatter.ofPattern("MMMM yyyy");
     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMMM");
@@ -58,12 +63,12 @@ public class DigestServiceImpl implements DigestService {
         // Build digest
         return TimeDigest.builder()
                 .period(buildPeriodInfo(year, month))
-                .metrics(buildMetrics(currentStats, timeline, zoneId))
+                .metrics(buildMetrics(userId, currentStats, timeline, start, end, zoneId))
                 .comparison(buildComparison(currentStats, previousStats))
                 .highlights(buildHighlights(currentStats, timeline, start, end, zoneId))
                 .topPlaces(currentStats.getPlaces() != null ? currentStats.getPlaces() : List.of())
                 .activityChart(buildActivityChartData(currentStats.getDistanceCarChart(), currentStats.getDistanceWalkChart()))
-                .milestones(buildMilestones(currentStats, timeline, "monthly", zoneId))
+                .milestones(buildMilestones(userId, currentStats, timeline, "monthly", start, end, zoneId))
                 .build();
     }
 
@@ -94,12 +99,12 @@ public class DigestServiceImpl implements DigestService {
         // Build digest
         return TimeDigest.builder()
                 .period(buildPeriodInfo(year, null))
-                .metrics(buildMetrics(currentStats, timeline, zoneId))
+                .metrics(buildMetrics(userId, currentStats, timeline, start, end, zoneId))
                 .comparison(buildComparison(currentStats, previousStats))
                 .highlights(buildHighlights(currentStats, timeline, start, end, zoneId))
                 .topPlaces(currentStats.getPlaces() != null ? currentStats.getPlaces() : List.of())
                 .activityChart(monthlyChart)
-                .milestones(buildMilestones(currentStats, timeline, "yearly", zoneId))
+                .milestones(buildMilestones(userId, currentStats, timeline, "yearly", start, end, zoneId))
                 .build();
     }
 
@@ -123,40 +128,59 @@ public class DigestServiceImpl implements DigestService {
         }
     }
 
-    private DigestMetrics buildMetrics(UserStatistics stats, MovementTimelineDTO timeline, ZoneId zoneId) {
+    private DigestMetrics buildMetrics(UUID userId, UserStatistics stats, MovementTimelineDTO timeline, Instant start, Instant end, ZoneId zoneId) {
         // Calculate active days from timeline
+        // Only count days that fall within the period boundaries
+        LocalDate periodStart = LocalDate.ofInstant(start, zoneId);
+        LocalDate periodEnd = LocalDate.ofInstant(end, zoneId);
         Set<LocalDate> activeDays = new HashSet<>();
 
         if (timeline.getStays() != null) {
             timeline.getStays().forEach(stay -> {
                 LocalDate stayDate = LocalDate.ofInstant(stay.getTimestamp(), zoneId);
-                activeDays.add(stayDate);
+                // Only add if the date falls within the period
+                if (!stayDate.isBefore(periodStart) && !stayDate.isAfter(periodEnd)) {
+                    activeDays.add(stayDate);
+                }
             });
         }
 
         if (timeline.getTrips() != null) {
             timeline.getTrips().forEach(trip -> {
                 LocalDate tripDate = LocalDate.ofInstant(trip.getTimestamp(), zoneId);
-                activeDays.add(tripDate);
+                // Only add if the date falls within the period
+                if (!tripDate.isBefore(periodStart) && !tripDate.isAfter(periodEnd)) {
+                    activeDays.add(tripDate);
+                }
             });
         }
 
-        // Extract unique cities from places
-        Set<String> cities = new HashSet<>();
-        if (stats.getPlaces() != null) {
-            stats.getPlaces().forEach(place -> {
-                if (place.getName() != null && !place.getName().isEmpty()) {
-                    cities.add(place.getName());
-                }
-            });
+        // Calculate unique cities from database (proper city field, not location names)
+        int citiesCount = getUniqueCitiesCount(userId, start, end);
+
+        // Calculate car and walk distances from charts
+        double carDistance = 0;
+        double walkDistance = 0;
+
+        if (stats.getDistanceCarChart() != null && stats.getDistanceCarChart().getData() != null) {
+            carDistance = java.util.Arrays.stream(stats.getDistanceCarChart().getData()).sum();
+        }
+
+        if (stats.getDistanceWalkChart() != null && stats.getDistanceWalkChart().getData() != null) {
+            walkDistance = java.util.Arrays.stream(stats.getDistanceWalkChart().getData()).sum();
         }
 
         return DigestMetrics.builder()
                 .totalDistance(stats.getTotalDistanceMeters())
                 .activeDays(activeDays.size())
-                .citiesVisited(cities.size())
+                .citiesVisited(citiesCount)
                 .tripCount(timeline.getTripsCount())
                 .stayCount(timeline.getStaysCount())
+                // Enhanced metrics
+                .carDistance(carDistance * 1000) // charts are in km, convert to meters
+                .walkDistance(walkDistance * 1000) // charts are in km, convert to meters
+                .timeMoving(stats.getTimeMoving())
+                .dailyAverageDistance(stats.getDailyAverageDistanceMeters())
                 .build();
     }
 
@@ -192,9 +216,17 @@ public class DigestServiceImpl implements DigestService {
         DigestHighlight.TripHighlight longestTrip = null;
         DigestHighlight.BusiestDay busiestDay = null;
 
-        // Find longest trip
+        // Define period boundaries for filtering
+        LocalDate periodStart = LocalDate.ofInstant(start, zoneId);
+        LocalDate periodEnd = LocalDate.ofInstant(end, zoneId);
+
+        // Find longest trip (within period)
         if (timeline.getTrips() != null && !timeline.getTrips().isEmpty()) {
             var maxTrip = timeline.getTrips().stream()
+                    .filter(trip -> {
+                        LocalDate tripDate = LocalDate.ofInstant(trip.getTimestamp(), zoneId);
+                        return !tripDate.isBefore(periodStart) && !tripDate.isAfter(periodEnd);
+                    })
                     .max(Comparator.comparingDouble(TimelineTripDTO::getDistanceMeters))
                     .orElse(null);
 
@@ -219,21 +251,13 @@ public class DigestServiceImpl implements DigestService {
                     .build();
         }
 
-        // Calculate new discoveries (simplified - just use unique places)
-        DigestHighlight.NewDiscoveries newDiscoveries = DigestHighlight.NewDiscoveries.builder()
-                .count(stats.getPlaces() != null ? stats.getPlaces().size() : 0)
-                .cities(stats.getPlaces() != null ?
-                        stats.getPlaces().stream()
-                                .map(TopPlace::getName)
-                                .limit(5)
-                                .toArray(String[]::new) : new String[0])
-                .build();
-
-        // Find busiest day (day with most trips)
+        // Find busiest day (day with most trips) - only within period
         if (timeline.getTrips() != null && !timeline.getTrips().isEmpty()) {
             Map<LocalDate, Long> tripsByDay = timeline.getTrips().stream()
+                    .map(trip -> LocalDate.ofInstant(trip.getTimestamp(), zoneId))
+                    .filter(tripDate -> !tripDate.isBefore(periodStart) && !tripDate.isAfter(periodEnd))
                     .collect(Collectors.groupingBy(
-                            trip -> LocalDate.ofInstant(trip.getTimestamp(), zoneId),
+                            tripDate -> tripDate,
                             Collectors.counting()
                     ));
 
@@ -256,32 +280,128 @@ public class DigestServiceImpl implements DigestService {
             }
         }
 
+        // Calculate peak hours from trips
+        String[] peakHours = calculatePeakHours(timeline, zoneId);
+
         return DigestHighlight.builder()
                 .longestTrip(longestTrip)
                 .mostVisited(mostVisited)
-                .newDiscoveries(newDiscoveries)
                 .busiestDay(busiestDay)
-                .peakHours(new String[]{"8-9 AM", "6-7 PM"}) // Simplified for now
+                .peakHours(peakHours)
                 .build();
     }
 
-    private List<Milestone> buildMilestones(UserStatistics stats, MovementTimelineDTO timeline, String periodType, ZoneId zoneId) {
+    private String[] calculatePeakHours(MovementTimelineDTO timeline, ZoneId zoneId) {
+        if (timeline.getTrips() == null || timeline.getTrips().isEmpty()) {
+            return new String[0];
+        }
+
+        // Count trips by hour of day
+        Map<Integer, Long> tripsByHour = timeline.getTrips().stream()
+                .collect(Collectors.groupingBy(
+                        trip -> LocalDateTime.ofInstant(trip.getTimestamp(), zoneId).getHour(),
+                        Collectors.counting()
+                ));
+
+        if (tripsByHour.isEmpty()) {
+            return new String[0];
+        }
+
+        // Get top 4-5 most active hours (to have enough to group)
+        List<Integer> topHours = tripsByHour.entrySet().stream()
+                .sorted(Map.Entry.<Integer, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .sorted() // Sort by hour (not trip count) to find consecutive hours
+                .toList();
+
+        // Group consecutive hours into ranges
+        List<HourRange> ranges = new ArrayList<>();
+        int rangeStart = topHours.get(0);
+        int rangeEnd = topHours.get(0);
+        long rangeTripCount = tripsByHour.get(topHours.get(0));
+
+        for (int i = 1; i < topHours.size(); i++) {
+            int currentHour = topHours.get(i);
+            int prevHour = topHours.get(i - 1);
+
+            // Check if consecutive (handles 23->0 wrap)
+            boolean isConsecutive = (currentHour == prevHour + 1) ||
+                                   (prevHour == 23 && currentHour == 0);
+
+            if (isConsecutive) {
+                // Extend current range
+                rangeEnd = currentHour;
+                rangeTripCount += tripsByHour.get(currentHour);
+            } else {
+                // Save current range and start new one
+                ranges.add(new HourRange(rangeStart, rangeEnd + 1, rangeTripCount));
+                rangeStart = currentHour;
+                rangeEnd = currentHour;
+                rangeTripCount = tripsByHour.get(currentHour);
+            }
+        }
+        // Don't forget the last range
+        ranges.add(new HourRange(rangeStart, rangeEnd + 1, rangeTripCount));
+
+        // Return top 2 ranges by trip count
+        return ranges.stream()
+                .sorted(Comparator.comparingLong(HourRange::totalTrips).reversed())
+                .limit(2)
+                .map(range -> formatHourRange(range.start, range.end))
+                .toArray(String[]::new);
+    }
+
+    // Helper record to store hour ranges
+    private record HourRange(int start, int end, long totalTrips) {
+    }
+
+    private String formatHourRange(int startHour, int endHour) {
+        String startPeriod = startHour < 12 ? "AM" : "PM";
+        String endPeriod = endHour < 12 ? "AM" : "PM";
+
+        int displayStartHour = startHour == 0 ? 12 : (startHour > 12 ? startHour - 12 : startHour);
+        int displayEndHour = endHour == 0 ? 12 : (endHour > 12 ? endHour - 12 : endHour);
+
+        if (startPeriod.equals(endPeriod)) {
+            return displayStartHour + "-" + displayEndHour + " " + endPeriod;
+        } else {
+            return displayStartHour + " " + startPeriod + "-" + displayEndHour + " " + endPeriod;
+        }
+    }
+
+    private List<Milestone> buildMilestones(UUID userId, UserStatistics stats, MovementTimelineDTO timeline, String periodType, Instant start, Instant end, ZoneId zoneId) {
         List<Milestone> milestones = new ArrayList<>();
 
         boolean isMonthly = "monthly".equals(periodType);
         double distanceKm = stats.getTotalDistanceMeters() / 1000.0;
-        int placesCount = stats.getPlaces() != null ? stats.getPlaces().size() : 0;
+
+        // Calculate unique places from database - this will count unique location_name entries
+        // which is what we want for "places explored" (could be specific locations within cities)
+        int placesCount = getUniquePlacesCount(userId, start, end);
+
         int tripCount = timeline.getTripsCount();
 
-        // Calculate active days
+        // Calculate active days - only within period boundaries
+        LocalDate periodStart = LocalDate.ofInstant(start, zoneId);
+        LocalDate periodEnd = LocalDate.ofInstant(end, zoneId);
         Set<LocalDate> activeDays = new HashSet<>();
+
         if (timeline.getStays() != null) {
-            timeline.getStays().forEach(stay ->
-                activeDays.add(LocalDate.ofInstant(stay.getTimestamp(), zoneId)));
+            timeline.getStays().forEach(stay -> {
+                LocalDate stayDate = LocalDate.ofInstant(stay.getTimestamp(), zoneId);
+                if (!stayDate.isBefore(periodStart) && !stayDate.isAfter(periodEnd)) {
+                    activeDays.add(stayDate);
+                }
+            });
         }
         if (timeline.getTrips() != null) {
-            timeline.getTrips().forEach(trip ->
-                activeDays.add(LocalDate.ofInstant(trip.getTimestamp(), zoneId)));
+            timeline.getTrips().forEach(trip -> {
+                LocalDate tripDate = LocalDate.ofInstant(trip.getTimestamp(), zoneId);
+                if (!tripDate.isBefore(periodStart) && !tripDate.isAfter(periodEnd)) {
+                    activeDays.add(tripDate);
+                }
+            });
         }
         int activeDaysCount = activeDays.size();
 
@@ -801,5 +921,61 @@ public class DigestServiceImpl implements DigestService {
                 .carChart(carChart)
                 .walkChart(walkChart)
                 .build();
+    }
+
+    /**
+     * Get count of unique cities visited during the period.
+     * Cities are extracted from the city field in favorite_locations or reverse_geocoding_location tables.
+     */
+    private int getUniqueCitiesCount(UUID userId, Instant start, Instant end) {
+        String sql = """
+                SELECT COUNT(DISTINCT city_name)
+                FROM (
+                    SELECT COALESCE(f.city, r.city) as city_name
+                    FROM timeline_stays ts
+                    LEFT JOIN favorite_locations f ON ts.favorite_id = f.id
+                    LEFT JOIN reverse_geocoding_location r ON ts.geocoding_id = r.id
+                    WHERE ts.user_id = :userId
+                    AND ts.timestamp >= :start
+                    AND ts.timestamp <= :end
+                    AND (f.city IS NOT NULL OR r.city IS NOT NULL)
+                ) AS cities
+                """;
+
+        Query query = entityManager.createNativeQuery(sql);
+        query.setParameter("userId", userId);
+        query.setParameter("start", start);
+        query.setParameter("end", end);
+
+        Number result = (Number) query.getSingleResult();
+        return result != null ? result.intValue() : 0;
+    }
+
+    /**
+     * Get count of unique places (location names) visited during the period.
+     * This counts distinct location_name values which represent specific named locations.
+     */
+    private int getUniquePlacesCount(UUID userId, Instant start, Instant end) {
+        String sql = """
+                SELECT COUNT(DISTINCT location_name)
+                FROM (
+                    SELECT COALESCE(f.name, r.display_name) as location_name
+                    FROM timeline_stays ts
+                    LEFT JOIN favorite_locations f ON ts.favorite_id = f.id
+                    LEFT JOIN reverse_geocoding_location r ON ts.geocoding_id = r.id
+                    WHERE ts.user_id = :userId
+                    AND ts.timestamp >= :start
+                    AND ts.timestamp <= :end
+                    AND (f.name IS NOT NULL OR r.display_name IS NOT NULL)
+                ) AS places
+                """;
+
+        Query query = entityManager.createNativeQuery(sql);
+        query.setParameter("userId", userId);
+        query.setParameter("start", start);
+        query.setParameter("end", end);
+
+        Number result = (Number) query.getSingleResult();
+        return result != null ? result.intValue() : 0;
     }
 }

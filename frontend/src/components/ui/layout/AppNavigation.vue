@@ -157,10 +157,10 @@ const mainItems = computed(() => [
     key: 'journey-insights'
   },
   {
-    label: 'Time Digest',
+    label: 'Rewind',
     icon: 'pi pi-calendar-clock',
-    to: '/app/time-digest',
-    key: 'time-digest'
+    to: '/app/rewind',
+    key: 'rewind'
   },
   {
     label: 'AI Chat',

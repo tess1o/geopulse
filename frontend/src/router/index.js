@@ -147,8 +147,8 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
-        path: '/app/time-digest',
-        name: 'Time Digest',
+        path: '/app/rewind',
+        name: 'Rewind',
         component: TimeDigestPage,
         beforeEnter: requireAuth
     },
