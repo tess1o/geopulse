@@ -22,41 +22,9 @@
             @tab-change="handleTabChange"
             class="profile-tabs"
           >
-            <!-- Profile Information Tab -->
-            <div v-if="activeTab === 'profile'">
-              <ProfileTab
-                :userName="userName"
-                :userEmail="userEmail"
-                :userAvatar="userAvatar"
-                :userTimezone="userTimezone"
-                @save="handleProfileSave"
-              />
-            </div>
-
-            <!-- Security Tab -->
-            <div v-if="activeTab === 'security'">
-              <SecurityTab
-                :hasPassword="hasPassword"
-                @save="handlePasswordSave"
-              />
-            </div>
-
-            <!-- AI Assistant Settings Tab -->
-            <div v-if="activeTab === 'ai'">
-              <AIAssistantTab
-                :initialSettings="aiSettings"
-                @save="handleAISave"
-              />
-            </div>
-
-            <!-- Immich Integration Tab -->
-            <div v-if="activeTab === 'immich'">
-              <ImmichTab
-                :config="immichConfig"
-                :loading="immichLoading"
-                @save="handleImmichSave"
-              />
-            </div>
+            <keep-alive>
+              <component :is="currentTabComponent" :key="activeTab" />
+            </keep-alive>
           </TabContainer>
         </div>
 
@@ -67,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useRoute } from 'vue-router'
@@ -136,6 +104,56 @@ const tabItems = ref([
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
+})
+
+const currentTabComponent = computed(() => {
+  const components = {
+    profile: {
+      component: ProfileTab,
+      props: {
+        userName: userName.value,
+        userEmail: userEmail.value,
+        userAvatar: userAvatar.value,
+        userTimezone: userTimezone.value
+      },
+      handlers: {
+        onSave: handleProfileSave
+      }
+    },
+    security: {
+      component: SecurityTab,
+      props: {
+        hasPassword: hasPassword.value
+      },
+      handlers: {
+        onSave: handlePasswordSave
+      }
+    },
+    ai: {
+      component: AIAssistantTab,
+      props: {
+        initialSettings: aiSettings.value
+      },
+      handlers: {
+        onSave: handleAISave
+      }
+    },
+    immich: {
+      component: ImmichTab,
+      props: {
+        config: immichConfig.value,
+        loading: immichLoading.value
+      },
+      handlers: {
+        onSave: handleImmichSave
+      }
+    }
+  }
+
+  const tabConfig = components[activeTab.value]
+  if (!tabConfig) return null
+
+  return h(tabConfig.component, { ...tabConfig.props, ...tabConfig.handlers })
 })
 
 // Methods
