@@ -372,12 +372,15 @@ const editLink = (link) => {
 
 const submitLinkForm = async () => {
   try {
+    console.log('submitLinkForm', linkForm);
     const formData = {
       name: linkForm.name || 'Untitled Link',
       expires_at: linkForm.expires_at ? linkForm.expires_at.toISOString() : null,
       show_history: linkForm.show_history,
       password: linkForm.has_password ? linkForm.password : null
     }
+
+    console.log('formData', formData);
 
     if (editingLink.value) {
       await shareLinksStore.updateShareLink(editingLink.value.id, formData)

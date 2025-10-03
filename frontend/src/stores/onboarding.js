@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import dayjs from 'dayjs';
+import {useTimezone} from "@/composables/useTimezone";
 
 export const useOnboardingStore = defineStore('onboarding', () => {
   // State
@@ -44,7 +45,6 @@ export const useOnboardingStore = defineStore('onboarding', () => {
   // Actions
   const initializeOnboarding = async (user) => {
     // Check if this is a first-time user (could be based on registration date, flags, etc.)
-    const { useTimezone } = await import('@/composables/useTimezone')
     const timezone = useTimezone()
     const now = timezone.now()
     const userCreated = timezone.fromUtc(user.createdAt || user.created_at)

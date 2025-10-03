@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
 import { STREAK_STATUS, ACTIVITY_LEVEL } from '../constants/journeyInsights'
 import dayjs from 'dayjs';
+import {useTimezone} from "@/composables/useTimezone";
 
 export const useJourneyInsightsStore = defineStore('journeyInsights', {
     state: () => ({
@@ -31,7 +32,6 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
         isStale: (state) => {
             if (!state.lastFetched) return true
             const oneHour = 60 * 60 * 1000 // 1 hour in milliseconds
-            const { useTimezone } = require('@/composables/useTimezone')
             const timezone = useTimezone()
             return timezone.now().diff(timezone.fromUtc(state.lastFetched)) > oneHour
         },
@@ -75,7 +75,6 @@ export const useJourneyInsightsStore = defineStore('journeyInsights', {
     actions: {
         async setInsights(insights) {
             this.insights = insights
-            const { useTimezone } = await import('@/composables/useTimezone')
             const timezone = useTimezone()
             this.lastFetched = timezone.now().toISOString();
         },
