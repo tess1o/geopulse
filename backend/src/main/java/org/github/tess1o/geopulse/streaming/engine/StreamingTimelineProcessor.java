@@ -328,6 +328,16 @@ public class StreamingTimelineProcessor {
         return threshold != null ? threshold : 2;
     }
 
+    private Duration getArrivalDetectionDuration(TimelineConfig config) {
+        Integer seconds = config.getTripArrivalDetectionMinDurationSeconds();
+        return seconds != null ? Duration.ofSeconds(seconds) : Duration.ofSeconds(90);
+    }
+
+    private Duration getSustainedStopDuration(TimelineConfig config) {
+        Integer seconds = config.getTripSustainedStopMinDurationSeconds();
+        return seconds != null ? Duration.ofSeconds(seconds) : Duration.ofSeconds(60);
+    }
+
     /**
      * Check for arrival/stopping during a trip using flexible criteria.
      * Handles both sustained stops (traffic avoidance) and immediate arrivals (destination reached).
@@ -352,8 +362,8 @@ public class StreamingTimelineProcessor {
 
         if (spatiallyClusteredAndSlow) {
             Duration clusterDuration = Duration.between(recentPoints.get(0).getTimestamp(), lastPoint.getTimestamp());
-            // Much more flexible for arrivals - 30 seconds is enough if spatially clustered
-            boolean isArrival = clusterDuration.compareTo(Duration.ofSeconds(90)) >= 0;
+            Duration arrivalDetectionDuration = getArrivalDetectionDuration(config);
+            boolean isArrival = clusterDuration.compareTo(arrivalDetectionDuration) >= 0;
 
             if (isArrival) {
                 return true; // Clear arrival detected
@@ -368,7 +378,8 @@ public class StreamingTimelineProcessor {
 
             if (allRecentSlow) {
                 Duration slowDuration = Duration.between(recentPoints.get(0).getTimestamp(), lastPoint.getTimestamp());
-                boolean sustainedStop = slowDuration.compareTo(Duration.ofMinutes(1)) >= 0; // Reduced from 2 to 1 minute
+                Duration sustainedStopDuration = getSustainedStopDuration(config);
+                boolean sustainedStop = slowDuration.compareTo(sustainedStopDuration) >= 0;
 
                 return sustainedStop;
             }

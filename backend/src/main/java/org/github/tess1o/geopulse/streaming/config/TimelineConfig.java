@@ -173,8 +173,25 @@ public class TimelineConfig {
     
     /**
      * Distance threshold in km for applying relaxed walking speed classification.
-     * Trips shorter than this distance get slightly more lenient walking speed 
+     * Trips shorter than this distance get slightly more lenient walking speed
      * classification to account for GPS inaccuracies.
      */
     private Double shortDistanceKm;
+
+    // Trip Stop Detection Configuration
+    /**
+     * Minimum duration in seconds for arrival detection during trips.
+     * When GPS points are spatially clustered (within stay radius) and moving slowly
+     * for at least this duration, it indicates arrival at a destination.
+     * Lower values make arrival detection more sensitive, higher values more conservative.
+     */
+    private Integer tripArrivalDetectionMinDurationSeconds;
+
+    /**
+     * Minimum duration in seconds for sustained stop detection during trips.
+     * When GPS points consistently show slow movement for at least this duration,
+     * it indicates a sustained stop (not just a traffic light).
+     * This helps filter out brief stops while detecting real arrivals.
+     */
+    private Integer tripSustainedStopMinDurationSeconds;
 }

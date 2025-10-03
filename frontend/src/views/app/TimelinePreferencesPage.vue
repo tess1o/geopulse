@@ -368,6 +368,48 @@
                       />
                     </template>
                   </SettingCard>
+
+                  <!-- Trip Arrival Detection Duration -->
+                  <SettingCard
+                    title="Arrival Detection Duration"
+                    description="Minimum time GPS points must be clustered and slow to detect arrival at destination"
+                    :details="{
+                      'Lower values': 'More sensitive arrival detection, may catch brief stops',
+                      'Higher values': 'More conservative, only detect sustained arrivals'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.tripArrivalDetectionMinDurationSeconds }} seconds</div>
+                      <SliderControl
+                        v-if="prefs.tripArrivalDetectionMinDurationSeconds !== undefined"
+                        v-model="prefs.tripArrivalDetectionMinDurationSeconds"
+                        :min="10" :max="300" :step="10"
+                        :labels="['10s (Sensitive)', '90s (Normal)', '300s (Conservative)']"
+                        suffix=" s" :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Trip Sustained Stop Duration -->
+                  <SettingCard
+                    title="Sustained Stop Duration"
+                    description="Minimum time for consistent slow movement to detect a real stop (filters traffic lights)"
+                    :details="{
+                      'Lower values': 'Detect shorter stops, may include traffic delays',
+                      'Higher values': 'Only detect longer stops, better traffic filtering'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.tripSustainedStopMinDurationSeconds }} seconds</div>
+                      <SliderControl
+                        v-if="prefs.tripSustainedStopMinDurationSeconds !== undefined"
+                        v-model="prefs.tripSustainedStopMinDurationSeconds"
+                        :min="10" :max="600" :step="10"
+                        :labels="['10s (Sensitive)', '60s (Normal)', '600s (Conservative)']"
+                        suffix=" s" :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
                 </div>
               </div>
           </div>
@@ -836,7 +878,8 @@ const hasStructuralParameters = (changes) => {
     'isMergeEnabled', 'mergeMaxDistanceMeters', 'mergeMaxTimeGapMinutes',
     'pathSimplificationEnabled', 'pathSimplificationTolerance',
     'pathMaxPoints', 'pathAdaptiveSimplification',
-    'dataGapThresholdSeconds', 'dataGapMinDurationSeconds'
+    'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
+    'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds'
   ]
   return structuralFields.some(field => field in changes)
 }

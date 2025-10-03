@@ -39,4 +39,8 @@ public class TimelinePreferences {
     private Double carMinAvgSpeed;
     private Double carMinMaxSpeed;
     private Double shortDistanceKm;
+
+    // Trip Stop Detection Settings
+    private Integer tripArrivalDetectionMinDurationSeconds;
+    private Integer tripSustainedStopMinDurationSeconds;
 }

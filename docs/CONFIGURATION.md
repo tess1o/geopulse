@@ -33,14 +33,16 @@ individually.*
 
 Controls how movement is classified into different transportation modes based on speed analysis. *Users can customize these settings individually.*
 
-| Property                                          | Default  | Description                                                                                                |
-|---------------------------------------------------|----------|------------------------------------------------------------------------------------------------------------|
-| `geopulse.timeline.trip.detection.algorithm`     | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                               |
-| `geopulse.timeline.travel_classification.walking.max_avg_speed` | `6.0`    | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking |
-| `geopulse.timeline.travel_classification.walking.max_max_speed` | `8.0`    | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip  |
-| `geopulse.timeline.travel_classification.car.min_avg_speed`     | `8.0`    | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving |
-| `geopulse.timeline.travel_classification.car.min_max_speed`     | `15.0`   | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving |
-| `geopulse.timeline.travel_classification.short_distance_km`     | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips |
+| Property                                                  | Default  | Description                                                                                                                      |
+|-----------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------|
+| `geopulse.timeline.trip.detection.algorithm`              | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                     |
+| `geopulse.timeline.trip.arrival.min_duration_seconds`     | `90`     | Minimum duration (seconds) for arrival detection. GPS points must be clustered and slow for this duration to detect arrival     |
+| `geopulse.timeline.trip.sustained_stop.min_duration_seconds` | `60`  | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                            |
+| `geopulse.timeline.travel_classification.walking.max_avg_speed` | `6.0`    | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking                     |
+| `geopulse.timeline.travel_classification.walking.max_max_speed` | `8.0`    | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip                      |
+| `geopulse.timeline.travel_classification.car.min_avg_speed`     | `8.0`    | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving               |
+| `geopulse.timeline.travel_classification.car.min_max_speed`     | `15.0`   | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving     |
+| `geopulse.timeline.travel_classification.short_distance_km`     | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips           |
 
 ### Staypoint Merging
 
@@ -424,6 +426,8 @@ GEOPULSE_TIMELINE_STAYPOINT_MIN_ACCURACY_RATIO=0.5
 
 # Trip Detection
 GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM=single
+GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_DURATION_SECONDS=90
+GEOPULSE_TIMELINE_TRIP_SUSTAINED_STOP_MIN_DURATION_SECONDS=60
 
 # Travel Classification
 GEOPULSE_TIMELINE_WALKING_MAX_AVG_SPEED=6.0

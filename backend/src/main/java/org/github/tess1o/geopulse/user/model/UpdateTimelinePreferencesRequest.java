@@ -86,4 +86,13 @@ public class UpdateTimelinePreferencesRequest {
     @DecimalMin(value = "0.1", message = "Short distance threshold must be at least 0.1 km")
     @DecimalMax(value = "3.0", message = "Short distance threshold must be at most 3.0 km")
     private Double shortDistanceKm;
+
+    // Trip Stop Detection Settings
+    @Min(value = 10, message = "Trip arrival detection min duration must be at least 10 seconds")
+    @Max(value = 300, message = "Trip arrival detection min duration must be at most 300 seconds (5 minutes)")
+    private Integer tripArrivalDetectionMinDurationSeconds;
+
+    @Min(value = 10, message = "Trip sustained stop min duration must be at least 10 seconds")
+    @Max(value = 600, message = "Trip sustained stop min duration must be at most 600 seconds (10 minutes)")
+    private Integer tripSustainedStopMinDurationSeconds;
 }
