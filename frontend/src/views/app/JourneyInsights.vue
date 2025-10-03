@@ -1,7 +1,7 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Journey Insights" 
+      title="Journey Insights"
       subtitle="Discover patterns and achievements from your location data"
       :loading="isLoading"
     >
@@ -29,14 +29,14 @@
               <span class="geographic-label">Countries Explored</span>
             </div>
             <div class="geographic-list" v-if="geographic.countries?.length > 0">
-              <div 
-                v-for="country in displayedCountries" 
+              <div
+                v-for="country in displayedCountries"
                 :key="country.name"
                 class="geographic-item"
               >
-                <img 
-                  v-if="country.flagUrl" 
-                  :src="country.flagUrl" 
+                <img
+                  v-if="country.flagUrl"
+                  :src="country.flagUrl"
                   :alt="`${country.name} flag`"
                   class="country-flag-img"
                   @error="handleFlagError(country)"
@@ -55,8 +55,8 @@
               <span class="geographic-label">Cities Visited</span>
             </div>
             <div class="geographic-list" v-if="geographic.cities?.length > 0">
-              <div 
-                v-for="city in displayedCities" 
+              <div
+                v-for="city in displayedCities"
                 :key="city.name"
                 class="geographic-item city-item"
               >
@@ -85,7 +85,7 @@
             <div class="stat-label">Total Distance Traveled</div>
             <div class="stat-detail">{{ getTotalDistancePhrase(distanceTraveled?.total || 0) }}</div>
           </div>
-          
+
           <!-- Distance by Car -->
           <div class="insight-stat-large travel-card">
             <div class="travel-icon">🚗</div>
@@ -95,7 +95,7 @@
               {{ getCarPercentage(distanceTraveled) }} - {{ getCarPhrase(distanceTraveled?.byCar || 0) }}
             </div>
           </div>
-          
+
           <!-- Distance Walking -->
           <div class="insight-stat-large travel-card">
             <div class="travel-icon">🚶</div>
@@ -125,7 +125,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="insight-stat-pattern enhanced">
             <div class="pattern-icon">📊</div>
             <div class="pattern-content">
@@ -136,7 +136,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="insight-stat-pattern enhanced">
             <div class="pattern-icon">📍</div>
             <div class="pattern-content">
@@ -147,7 +147,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="insight-stat-pattern enhanced">
             <div class="pattern-icon">🕐</div>
             <div class="pattern-content">
@@ -165,12 +165,12 @@
       <div class="insights-section">
         <h2 class="insights-section-title">
           <i class="pi pi-trophy"></i>
-          Your Journey Milestones
+          Your Journey Milestones ({{ inProgressAchievementsCount }} / {{achievementBadges.length}})
         </h2>
         <div class="milestones-grid">
           <!-- Achievement Badges -->
-          <div 
-            v-for="badge in achievementBadges" 
+          <div
+            v-for="badge in achievementBadges"
             :key="badge.id"
             class="milestone-card achievement-badge"
             :class="{ 'earned': badge.earned }"
@@ -180,8 +180,8 @@
             <div class="badge-description">{{ badge.description }}</div>
             <div class="badge-progress" v-if="!badge.earned">
               <div class="progress-bar">
-                <div 
-                  class="progress-fill" 
+                <div
+                  class="progress-fill"
                   :style="{ width: `${badge.progress}%` }"
                 ></div>
               </div>
@@ -189,7 +189,9 @@
             </div>
             <div class="badge-earned" v-else>
               <span class="earned-text">Earned!</span>
-              <span class="earned-date">{{ badge.earnedDate }}</span>
+              <span class="earned-date" v-if="badge.earnedDate">
+                {{ timezone.formatDate(badge.earnedDate)}}
+              </span>
             </div>
           </div>
         </div>
@@ -225,9 +227,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
 // Store
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
-import { getUserTimezone } from '@/utils/timezoneUtils'
 
-const toast = useToast()
 const journeyInsightsStore = useJourneyInsightsStore()
 const { handleErrorWithRetry } = useErrorHandler()
 
@@ -242,14 +242,11 @@ const hasAnyData = computed(() => {
   return journeyInsightsStore.hasData
 })
 
-const streakStatusDisplay = computed(() => {
-  return journeyInsightsStore.getStreakStatusDisplay
-})
-
 // Safe access to store data with defaults
 const geographic = computed(() => journeyInsightsStore.geographic)
 const timePatterns = computed(() => journeyInsightsStore.timePatterns)
 const achievements = computed(() => journeyInsightsStore.achievements)
+const inProgressAchievementsCount = computed(() => achievementBadges.value.filter(b => b.earned).length)
 const distanceTraveled = computed(() => journeyInsightsStore.distance)
 
 // Get current month name for display
@@ -261,7 +258,7 @@ const currentMonthName = computed(() => {
 const localMostActiveTime = computed(() => {
   const utcTime = timePatterns.value?.mostActiveTime
   if (!utcTime) return 'N/A'
-  
+
   // Parse the UTC time string (e.g., "3:30 PM")
   try {
     // Convert 12-hour format to 24-hour format for parsing
@@ -271,12 +268,12 @@ const localMostActiveTime = computed(() => {
       if (period.toUpperCase() === 'AM' && hour === 12) hour = 0
       return `${hour.toString().padStart(2, '0')}:${minutes}`
     })
-    
+
     // Create a UTC datetime with today's date and the provided time
     const today = timezone.now().startOf('day')
     const [hours, minutes] = time24.split(':').map(Number)
     const utcDateTime = today.utc().hour(hours).minute(minutes)
-    
+
     // Convert to user timezone and format as 12-hour time
     return timezone.fromUtc(utcDateTime.toISOString()).format('h:mm A')
   } catch (error) {
@@ -336,20 +333,20 @@ const loadCountries = async () => {
     // Check if we have valid cached data
     const cachedData = localStorage.getItem(COUNTRIES_CACHE_KEY)
     const cacheExpiry = localStorage.getItem(CACHE_EXPIRY_KEY)
-    
+
     if (cachedData && cacheExpiry && Date.now() < parseInt(cacheExpiry)) {
       countriesCache = JSON.parse(cachedData)
       return
     }
-    
+
     // Fetch fresh data
     const res = await fetch("https://restcountries.com/v3.1/all?fields=name,flags")
     countriesCache = await res.json()
-    
+
     // Cache the data
     localStorage.setItem(COUNTRIES_CACHE_KEY, JSON.stringify(countriesCache))
     localStorage.setItem(CACHE_EXPIRY_KEY, (Date.now() + CACHE_DURATION).toString())
-    
+
   } catch (error) {
     console.error('Failed to load countries data:', error)
     // Try to use stale cache if available
@@ -365,7 +362,7 @@ const getFlagByLocalName = (localName) => {
     console.warn('Countries cache not loaded yet')
     return null
   }
-  
+
   const country = countriesCache.find(c => {
     if (!c.name?.nativeName) return false;
     return Object.values(c.name.nativeName).some(n =>
@@ -382,9 +379,9 @@ const fetchCountryFlags = async () => {
   if (!countriesCache.length) {
     await loadCountries()
   }
-  
+
   const countries = geographic.value?.countries || []
-  
+
   // Get flags for countries that don't have them cached
   countries
     .filter(country => !countryFlags.value.has(country.name))
@@ -528,7 +525,7 @@ watch(() => geographic.value?.countries, (newCountries) => {
 onMounted(async () => {
   // Load countries cache in background
   loadCountries().catch(console.error)
-  
+
   // Fetch journey insights
   await fetchJourneyInsights()
 })
@@ -1246,16 +1243,16 @@ onMounted(async () => {
   .insights-grid {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   .insight-stat-wide {
     grid-column: span 2;
   }
-  
+
   .geographic-grid {
     grid-template-columns: 1fr 1fr;
     gap: var(--gp-spacing-lg);
   }
-  
+
   .travel-records-grid {
     grid-template-columns: 1fr 1fr;
     gap: var(--gp-spacing-lg);

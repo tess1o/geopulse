@@ -19,7 +19,7 @@ public class AchievementService {
     private final BadgeRecalculationService badgeRecalculationService;
 
     public AchievementService(UserBadgeRepository userBadgeRepository,
-                            BadgeRecalculationService badgeRecalculationService) {
+                              BadgeRecalculationService badgeRecalculationService) {
         this.userBadgeRepository = userBadgeRepository;
         this.badgeRecalculationService = badgeRecalculationService;
     }
@@ -45,12 +45,12 @@ public class AchievementService {
 
         // Get all badges from database and convert to Badge model
         List<UserBadgeEntity> userBadges = userBadgeRepository.findByUserId(userId);
-        
+
         return userBadges.stream()
                 .map(UserBadgeEntity::toBadge)
                 .sorted(
                         Comparator.comparing(Badge::isEarned)
-                                .thenComparing(Badge::getId)
+                                .thenComparing(Comparator.comparing(Badge::getEarnedDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 )
                 .toList();
     }

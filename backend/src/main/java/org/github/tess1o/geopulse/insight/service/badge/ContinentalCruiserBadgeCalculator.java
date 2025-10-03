@@ -6,25 +6,25 @@ import org.github.tess1o.geopulse.insight.model.Badge;
 import java.util.UUID;
 
 @ApplicationScoped
-public class RoadWarriorBadgeCalculator implements BadgeCalculator {
+public class ContinentalCruiserBadgeCalculator implements BadgeCalculator {
 
-    private static final int TOTAL_DISTANCE_THRESHOLD_KM = 1000; // 1,000 km
-    private static final String TITLE = "Road Warrior";
+    private static final int TOTAL_DISTANCE_THRESHOLD_KM = 10000; // 10,000 km
+    private static final String TITLE = "Continental Cruiser";
 
     private final TotalDistanceBadgeCalculator totalDistanceBadgeCalculator;
 
-    public RoadWarriorBadgeCalculator(TotalDistanceBadgeCalculator totalDistanceBadgeCalculator) {
+    public ContinentalCruiserBadgeCalculator(TotalDistanceBadgeCalculator totalDistanceBadgeCalculator) {
         this.totalDistanceBadgeCalculator = totalDistanceBadgeCalculator;
     }
 
     @Override
     public String getBadgeId() {
-        return "road_warrior";
+        return "continental_cruiser";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
         return totalDistanceBadgeCalculator.calculateTotalDistanceBadge(
-                userId, "road_warrior", TITLE, "🚗", TOTAL_DISTANCE_THRESHOLD_KM, "Travel 1,000+ km total");
+                userId, "continental_cruiser", TITLE, "🌏", TOTAL_DISTANCE_THRESHOLD_KM, "Travel 10,000+ km total");
     }
 }
