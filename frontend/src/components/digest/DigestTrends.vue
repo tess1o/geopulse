@@ -13,10 +13,9 @@
       />
     </div>
 
-    <div class="no-data" v-else>
+    <div class="no-trends-placeholder" v-else>
       <i class="pi pi-chart-line"></i>
-      <p>No activity data available for this period</p>
-      <p class="no-data-hint">Track your location to see activity trends</p>
+      <p>No activity trends for this period.</p>
     </div>
   </div>
 </template>
@@ -37,7 +36,10 @@ const props = defineProps({
 })
 
 const hasChartData = computed(() => {
-  return props.chartData?.carChart?.data?.length > 0 || props.chartData?.walkChart?.data?.length > 0
+  // Check if there's any non-zero data in either chart
+  const hasCarData = props.chartData?.carChart?.data?.some(value => value > 0) || false
+  const hasWalkData = props.chartData?.walkChart?.data?.some(value => value > 0) || false
+  return hasCarData || hasWalkData
 })
 
 const chartLabels = computed(() => {
@@ -106,33 +108,35 @@ const chartDatasets = computed(() => {
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-medium);
   padding: var(--gp-spacing-lg);
-  min-height: 100px;
+  height: 420px;
 }
 
-.no-data {
+.no-trends-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gp-spacing-xxl) var(--gp-spacing-xl);
   text-align: center;
-  padding: var(--gp-spacing-xl);
   color: var(--gp-text-muted);
   background: var(--gp-surface-light);
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-medium);
+  min-height: 200px;
 }
 
-.no-data i {
+.no-trends-placeholder i {
   font-size: 3rem;
-  opacity: 0.5;
+  opacity: 0.4;
   margin-bottom: var(--gp-spacing-md);
+  color: var(--gp-text-muted);
 }
 
-.no-data p {
+.no-trends-placeholder p {
   margin: 0;
+  font-size: 0.9375rem;
   font-style: italic;
-}
-
-.no-data-hint {
-  font-size: 0.75rem;
-  margin-top: var(--gp-spacing-sm);
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 /* Dark Mode */
@@ -142,7 +146,7 @@ const chartDatasets = computed(() => {
 }
 
 .p-dark .chart-container,
-.p-dark .no-data {
+.p-dark .no-trends-placeholder {
   background: var(--gp-surface-darker);
   border-color: var(--gp-border-dark);
 }
@@ -155,6 +159,12 @@ const chartDatasets = computed(() => {
 @media (max-width: 768px) {
   .chart-container {
     padding: var(--gp-spacing-md);
+    height: 370px;
+  }
+
+  .no-trends-placeholder {
+    min-height: 150px;
+    padding: var(--gp-spacing-xl) var(--gp-spacing-md);
   }
 }
 </style>

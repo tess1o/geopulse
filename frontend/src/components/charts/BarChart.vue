@@ -296,7 +296,7 @@ watch(() => props.color, () => {
 .bar-chart {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 400px;
 }
 
 .chart-container {
@@ -307,13 +307,13 @@ watch(() => props.color, () => {
 /* Responsive adjustments */
 @media (max-width: 640px) {
   .bar-chart {
-    min-height: 250px;
+    min-height: 350px;
   }
 }
 
 @media (max-width: 480px) {
   .bar-chart {
-    min-height: 200px;
+    min-height: 300px;
   }
 }
 </style>
