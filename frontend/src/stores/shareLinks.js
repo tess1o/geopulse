@@ -181,7 +181,8 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedAccessToken = response.access_token
                 return response
             } catch (error) {
-                this.setError(error.message || 'Access denied')
+                console.error('Failed to verify shared link:', error)
+                this.setError(error.userMessage || error.message || 'Access denied')
                 throw error
             } finally {
                 this.sharedLocationLoading = false

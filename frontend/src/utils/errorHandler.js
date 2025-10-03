@@ -62,13 +62,13 @@ export function formatError(error) {
 
       case 403:
         formattedError.title = 'Access Denied'
-        formattedError.message = 'You don\'t have permission to perform this action.'
+        formattedError.message = data?.message || 'You don\'t have permission to perform this action.'
         formattedError.canRetry = false
         break
 
       case 404:
         formattedError.title = 'Not Found'
-        formattedError.message = 'The requested resource could not be found.'
+        formattedError.message = data?.message || 'The requested resource could not be found.'
         formattedError.canRetry = false
         break
 

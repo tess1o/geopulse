@@ -299,7 +299,7 @@ const initializeSharedView = async () => {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
 
-    error.value = err.message || 'Failed to load shared location'
+    error.value = err.userMessage || err.message || 'Failed to load shared location'
     loading.value = false
   }
 }
@@ -336,7 +336,7 @@ const verifyPassword = async () => {
       localStorage.removeItem(`shareLink_${linkId}`)
     }
 
-    error.value = err.message || 'Invalid password'
+    error.value = err.userMessage || err.message || 'Invalid password'
     loading.value = false
   }
 }
@@ -393,7 +393,7 @@ const loadLocationData = async () => {
       }
     }
 
-    error.value = err.message || 'Failed to load location data'
+    error.value = err.userMessage || err.message || 'Failed to load location data'
     loading.value = false
   }
 }
