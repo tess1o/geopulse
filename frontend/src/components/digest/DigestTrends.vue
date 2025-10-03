@@ -5,7 +5,7 @@
       Activity Trends
     </h3>
 
-    <div class="chart-container" v-if="hasChartData">
+    <div v-if="hasChartData" class="chart-container">
       <BarChart
         :title="viewMode === 'monthly' ? 'Weekly Distance, km' : 'Monthly Distance, km'"
         :labels="chartLabels"
@@ -36,42 +36,67 @@ const props = defineProps({
 })
 
 const hasChartData = computed(() => {
-  // Check if there's any non-zero data in either chart
-  const hasCarData = props.chartData?.carChart?.data?.some(value => value > 0) || false
-  const hasWalkData = props.chartData?.walkChart?.data?.some(value => value > 0) || false
+  // First check if chartData exists and has the required structure
+  if (!props.chartData) return false
+
+  const carChart = props.chartData.carChart
+  const walkChart = props.chartData.walkChart
+
+  // Check if at least one chart exists with valid data
+  const hasCarData = carChart?.data?.length > 0 && carChart.data.some(value => value > 0)
+  const hasWalkData = walkChart?.data?.length > 0 && walkChart.data.some(value => value > 0)
+
   return hasCarData || hasWalkData
 })
 
 const chartLabels = computed(() => {
-  // Use car chart labels if available, otherwise walk chart labels
-  if (props.chartData?.carChart?.labels?.length > 0) {
-    return props.chartData.carChart.labels
-  }
+  // Merge labels from both car and walk charts to get all unique labels
+  const carLabels = props.chartData?.carChart?.labels || []
+  const walkLabels = props.chartData?.walkChart?.labels || []
 
-  if (props.chartData?.walkChart?.labels?.length > 0) {
-    return props.chartData.walkChart.labels
-  }
+  // Combine and deduplicate labels while maintaining order
+  const allLabels = [...new Set([...carLabels, ...walkLabels])].sort()
 
-  return []
+  return allLabels
 })
 
 const chartDatasets = computed(() => {
   const datasets = []
+  const allLabels = chartLabels.value
+
+  // Helper function to align data with merged labels - use 0 instead of null
+  const alignDataWithLabels = (sourceLabels, sourceData) => {
+    const labelDataMap = new Map()
+    sourceLabels.forEach((label, index) => {
+      labelDataMap.set(label, sourceData[index] || 0)
+    })
+
+    // Map data to all labels, use 0 for missing values
+    return allLabels.map(label => labelDataMap.get(label) || 0)
+  }
 
   // Add car distance data if available
-  if (props.chartData?.carChart?.data?.length > 0) {
+  if (props.chartData?.carChart?.labels?.length > 0 && props.chartData?.carChart?.data?.length > 0) {
+    const alignedData = alignDataWithLabels(
+      props.chartData.carChart.labels,
+      props.chartData.carChart.data
+    )
     datasets.push({
       label: 'Car Distance',
-      data: props.chartData.carChart.data,
+      data: alignedData,
       color: 'primary'
     })
   }
 
   // Add walk distance data if available
-  if (props.chartData?.walkChart?.data?.length > 0) {
+  if (props.chartData?.walkChart?.labels?.length > 0 && props.chartData?.walkChart?.data?.length > 0) {
+    const alignedData = alignDataWithLabels(
+      props.chartData.walkChart.labels,
+      props.chartData.walkChart.data
+    )
     datasets.push({
       label: 'Walk Distance',
-      data: props.chartData.walkChart.data,
+      data: alignedData,
       color: 'success'
     })
   }

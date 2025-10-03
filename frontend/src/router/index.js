@@ -5,7 +5,6 @@ import Home from "@/views/Home.vue";
 import FriendsPage from "@/views/app/FriendsPage.vue";
 import MainAppPage from "@/views/app/MainAppPage.vue";
 import TimelinePage from "@/views/app/TimelinePage.vue";
-import PlacesPage from "@/views/app/PlacesPage.vue";
 import DashboardPage from "@/views/app/DashboardPage.vue";
 import JourneyInsights from "@/views/app/JourneyInsights.vue";
 import LocationSourcesPage from "@/views/app/LocationSourcesPage.vue";
