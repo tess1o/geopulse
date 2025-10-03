@@ -79,4 +79,11 @@ public class TimelineConfigurationProperties {
 
     @ConfigProperty(name = "geopulse.timeline.travel.classification.short_distance_km", defaultValue = "1.0")
     String shortDistanceKm;
+
+    // Trip Stop Detection
+    @ConfigProperty(name = "geopulse.timeline.trip.arrival.min_duration_seconds", defaultValue = "90")
+    String tripArrivalDetectionMinDurationSeconds;
+
+    @ConfigProperty(name = "geopulse.timeline.trip.sustained_stop.min_duration_seconds", defaultValue = "60")
+    String tripSustainedStopMinDurationSeconds;
 }

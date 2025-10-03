@@ -83,7 +83,11 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carMinMaxSpeed", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "shortDistanceKm", 
+    @org.mapstruct.Mapping(target = "shortDistanceKm",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "tripArrivalDetectionMinDurationSeconds",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "tripSustainedStopMinDurationSeconds",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void mergeImportIntoExisting(TimelinePreferences fromImport, @MappingTarget TimelinePreferences existing);
 
@@ -121,6 +125,8 @@ public interface TimelinePreferencesMapper {
                     .carMinAvgSpeed(fromImport.getCarMinAvgSpeed())
                     .carMinMaxSpeed(fromImport.getCarMinMaxSpeed())
                     .shortDistanceKm(fromImport.getShortDistanceKm())
+                    .tripArrivalDetectionMinDurationSeconds(fromImport.getTripArrivalDetectionMinDurationSeconds())
+                    .tripSustainedStopMinDurationSeconds(fromImport.getTripSustainedStopMinDurationSeconds())
                     .build();
         }
         
@@ -147,6 +153,8 @@ public interface TimelinePreferencesMapper {
                 .carMinAvgSpeed(existing.getCarMinAvgSpeed())
                 .carMinMaxSpeed(existing.getCarMinMaxSpeed())
                 .shortDistanceKm(existing.getShortDistanceKm())
+                .tripArrivalDetectionMinDurationSeconds(existing.getTripArrivalDetectionMinDurationSeconds())
+                .tripSustainedStopMinDurationSeconds(existing.getTripSustainedStopMinDurationSeconds())
                 .build();
         
         // Use MapStruct to merge non-null import values into the result

@@ -171,6 +171,21 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::getShortDistanceKm,
                         TimelineConfig::setShortDistanceKm,
                         Double::valueOf
+                ))
+                // Trip Stop Detection
+                .register(new ConfigField<>(
+                        "geopulse.timeline.trip.arrival.min_duration_seconds",
+                        properties.getTripArrivalDetectionMinDurationSeconds(),
+                        TimelineConfig::getTripArrivalDetectionMinDurationSeconds,
+                        TimelineConfig::setTripArrivalDetectionMinDurationSeconds,
+                        Integer::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.trip.sustained_stop.min_duration_seconds",
+                        properties.getTripSustainedStopMinDurationSeconds(),
+                        TimelineConfig::getTripSustainedStopMinDurationSeconds,
+                        TimelineConfig::setTripSustainedStopMinDurationSeconds,
+                        Integer::valueOf
                 ));
     }
 }
