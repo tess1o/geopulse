@@ -5,7 +5,6 @@ import Home from "@/views/Home.vue";
 import FriendsPage from "@/views/app/FriendsPage.vue";
 import MainAppPage from "@/views/app/MainAppPage.vue";
 import TimelinePage from "@/views/app/TimelinePage.vue";
-import PlacesPage from "@/views/app/PlacesPage.vue";
 import DashboardPage from "@/views/app/DashboardPage.vue";
 import JourneyInsights from "@/views/app/JourneyInsights.vue";
 import LocationSourcesPage from "@/views/app/LocationSourcesPage.vue";
@@ -16,6 +15,7 @@ import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
 import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
+import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
@@ -143,6 +143,12 @@ const routes = [
         path: '/app/journey-insights',
         name: 'Journey Insights',
         component: JourneyInsights,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/rewind',
+        name: 'Rewind',
+        component: TimeDigestPage,
         beforeEnter: requireAuth
     },
     {

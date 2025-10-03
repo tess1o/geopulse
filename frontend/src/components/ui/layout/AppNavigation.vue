@@ -157,6 +157,12 @@ const mainItems = computed(() => [
     key: 'journey-insights'
   },
   {
+    label: 'Rewind',
+    icon: 'pi pi-calendar-clock',
+    to: '/app/rewind',
+    key: 'rewind'
+  },
+  {
     label: 'AI Chat',
     icon: 'pi pi-sparkles',
     to: '/app/ai/chat',
