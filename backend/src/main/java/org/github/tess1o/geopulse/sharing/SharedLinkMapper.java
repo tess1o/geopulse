@@ -25,6 +25,7 @@ public class SharedLinkMapper {
     public CreateShareLinkResponse toResponse(SharedLinkEntity sharedLinkEntity) {
         CreateShareLinkResponse response = new CreateShareLinkResponse();
         response.setId(sharedLinkEntity.getId());
+        response.setName(sharedLinkEntity.getName());
         response.setExpiresAt(sharedLinkEntity.getExpiresAt());
         response.setHasPassword(sharedLinkEntity.getPassword() != null);
         response.setShowHistory(sharedLinkEntity.isShowHistory());

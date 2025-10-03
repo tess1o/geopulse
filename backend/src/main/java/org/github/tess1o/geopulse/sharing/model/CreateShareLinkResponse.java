@@ -17,6 +17,9 @@ public class CreateShareLinkResponse {
     @JsonProperty("id")
     private UUID id;
 
+    @JsonProperty("name")
+    private String name;
+
     @JsonProperty("expires_at")
     private Instant expiresAt;
 

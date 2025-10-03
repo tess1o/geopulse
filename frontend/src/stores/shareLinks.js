@@ -1,6 +1,7 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import dayjs from 'dayjs';
+import {useTimezone} from "@/composables/useTimezone";
 
 export const useShareLinksStore = defineStore('shareLinks', {
     state: () => ({
@@ -21,7 +22,6 @@ export const useShareLinksStore = defineStore('shareLinks', {
         getActiveLinks: (state) => {
             return state.links.filter(link => {
                 // Handle null/undefined expires_at
-                const { useTimezone } = require('@/composables/useTimezone')
                 const timezone = useTimezone()
                 const isExpired = link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
                 return link.is_active && !isExpired
@@ -30,7 +30,6 @@ export const useShareLinksStore = defineStore('shareLinks', {
         getExpiredLinks: (state) => {
             return state.links.filter(link => {
                 // Handle null/undefined expires_at
-                const { useTimezone } = require('@/composables/useTimezone')
                 const timezone = useTimezone()
                 const isExpired = link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
                 return !link.is_active || isExpired
@@ -68,7 +67,6 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.links = response.data.links
                 this.maxLinks = response.data.max_links
                 // Calculate active count client-side to ensure consistency
-                const { useTimezone } = await import('@/composables/useTimezone')
                 const timezone = useTimezone()
                 const isExpired = (link) => link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
                 this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length
@@ -88,7 +86,6 @@ export const useShareLinksStore = defineStore('shareLinks', {
             try {
                 // Set default expiration to 7 days from now if not provided
                 if (!linkData.expires_at) {
-                    const { useTimezone } = await import('@/composables/useTimezone')
                     const timezone = useTimezone()
                     linkData.expires_at = timezone.add(timezone.now(), 7, 'day').toISOString();
                 }
@@ -184,7 +181,8 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 this.sharedAccessToken = response.access_token
                 return response
             } catch (error) {
-                this.setError(error.message || 'Access denied')
+                console.error('Failed to verify shared link:', error)
+                this.setError(error.userMessage || error.message || 'Access denied')
                 throw error
             } finally {
                 this.sharedLocationLoading = false
@@ -228,7 +226,6 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 return false
             }
             
-            const { useTimezone } = await import('@/composables/useTimezone')
             const timezone = useTimezone()
             const expirationDate = timezone.fromUtc(link.expires_at)
             const now = timezone.now()
