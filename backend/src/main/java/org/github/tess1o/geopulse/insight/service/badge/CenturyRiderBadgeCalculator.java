@@ -6,25 +6,25 @@ import org.github.tess1o.geopulse.insight.model.Badge;
 import java.util.UUID;
 
 @ApplicationScoped
-public class LongDistanceBadgeCalculator implements BadgeCalculator {
+public class CenturyRiderBadgeCalculator implements BadgeCalculator {
 
-    private static final int TARGET_DISTANCE_METERS = 500000; // 500 km in meters
-    private static final String TITLE = "Long Distance";
+    private static final int TARGET_DISTANCE = 100000; // 100 km in meters
+    private static final String TITLE = "Century Rider";
 
     private final SingleTripDistanceBadgeCalculator singleTripDistanceBadgeCalculator;
 
-    public LongDistanceBadgeCalculator(SingleTripDistanceBadgeCalculator singleTripDistanceBadgeCalculator) {
+    public CenturyRiderBadgeCalculator(SingleTripDistanceBadgeCalculator singleTripDistanceBadgeCalculator) {
         this.singleTripDistanceBadgeCalculator = singleTripDistanceBadgeCalculator;
     }
 
     @Override
     public String getBadgeId() {
-        return "long_distance";
+        return "century_rider";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
         return singleTripDistanceBadgeCalculator.calculateSingleTripDistanceBadge(
-                userId, "long_distance", TITLE, "🛣️", TARGET_DISTANCE_METERS, "Travelled 500km in a single trip");
+                userId, "century_rider", TITLE, "💯", TARGET_DISTANCE, "Complete a trip of 100+ km");
     }
 }
