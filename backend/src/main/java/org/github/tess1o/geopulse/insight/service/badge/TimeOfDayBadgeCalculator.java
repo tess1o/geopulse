@@ -5,7 +5,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -52,9 +51,9 @@ public class TimeOfDayBadgeCalculator {
         Query timeQuery = entityManager.createNativeQuery(query);
         timeQuery.setParameter("userId", userId);
 
-        Timestamp result = (Timestamp) timeQuery.getResultList().stream().findFirst().orElse(null);
+        LocalDateTime result = (LocalDateTime) timeQuery.getResultList().stream().findFirst().orElse(null);
         boolean earned = result != null;
-        LocalDateTime earnedDate = earned ? result.toLocalDateTime() : null;
+        LocalDateTime earnedDate = earned ? result : null;
 
         return Badge.builder()
                 .id(badgeId)

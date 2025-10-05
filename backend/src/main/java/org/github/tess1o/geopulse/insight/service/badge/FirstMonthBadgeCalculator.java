@@ -53,14 +53,13 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
         Query firstDateQuery = entityManager.createNativeQuery(firstDateSql);
         firstDateQuery.setParameter("userId", userId);
 
-        java.sql.Date firstDate = (java.sql.Date) firstDateQuery.getSingleResult();
+        LocalDate firstDate = (LocalDate) firstDateQuery.getSingleResult();
         if (firstDate == null) {
             return new int[]{0, 0};
         }
 
-        LocalDate startDate = firstDate.toLocalDate();
         LocalDate today = LocalDate.now();
-        int totalDays = (int) ChronoUnit.DAYS.between(startDate, today) + 1;
+        int totalDays = (int) ChronoUnit.DAYS.between(firstDate, today) + 1;
 
         String trackedDaysSql = """
                 SELECT COUNT(DISTINCT DATE(timestamp))
@@ -87,12 +86,12 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
-        java.sql.Timestamp result = (java.sql.Timestamp) query.getSingleResult();
+        LocalDateTime result = (LocalDateTime) query.getSingleResult();
         if (result == null) {
             return "No tracking data";
         }
 
-        LocalDate startDate = LocalDateTime.ofInstant(result.toInstant(), ZoneOffset.UTC).toLocalDate();
+        LocalDate startDate = result.toLocalDate();
         return startDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
     }
 }

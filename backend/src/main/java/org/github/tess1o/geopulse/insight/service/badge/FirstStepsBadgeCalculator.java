@@ -5,7 +5,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
@@ -38,9 +37,9 @@ public class FirstStepsBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(FIRST_TRIP_QUERY);
         query.setParameter("userId", userId);
 
-        Timestamp result = (Timestamp) query.getResultList().stream().findFirst().orElse(null);
+        LocalDateTime result = (LocalDateTime) query.getResultList().stream().findFirst().orElse(null);
         boolean earned = result != null;
-        LocalDateTime earnedDate = earned ? result.toLocalDateTime() : null;
+        LocalDateTime earnedDate = earned ? result : null;
 
         return Badge.builder()
                 .id("first_steps")

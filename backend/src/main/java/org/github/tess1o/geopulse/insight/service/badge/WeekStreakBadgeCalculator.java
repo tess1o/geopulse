@@ -5,7 +5,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 
-import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -38,7 +37,7 @@ public class WeekStreakBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(TRACKING_DATES_QUERY);
         query.setParameter("userId", userId);
 
-        List<Date> trackingDates = (List<Date>) query.getResultList();
+        List<LocalDate> trackingDates = (List<LocalDate>) query.getResultList();
 
         if (trackingDates == null || trackingDates.isEmpty()) {
             return Badge.builder()
@@ -54,11 +53,11 @@ public class WeekStreakBadgeCalculator implements BadgeCalculator {
         int maxStreak = 1;
         int currentStreak = 1;
         LocalDate streakStartDate = null;
-        LocalDate maxStreakStartDate = trackingDates.get(0).toLocalDate();
+        LocalDate maxStreakStartDate = trackingDates.getFirst();
 
         for (int i = 1; i < trackingDates.size(); i++) {
-            LocalDate currentDate = trackingDates.get(i).toLocalDate();
-            LocalDate previousDate = trackingDates.get(i - 1).toLocalDate();
+            LocalDate currentDate = trackingDates.get(i);
+            LocalDate previousDate = trackingDates.get(i - 1);
 
             if (currentDate.equals(previousDate.plusDays(1))) {
                 currentStreak++;
