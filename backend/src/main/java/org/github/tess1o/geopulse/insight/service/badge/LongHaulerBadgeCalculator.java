@@ -5,7 +5,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -56,7 +55,7 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
 
         int maxDurationSeconds = ((Number) result.get(0)[0]).intValue();
         int maxDurationMinutes = maxDurationSeconds / 60;
-        LocalDateTime maxDate = ((Timestamp) result.get(0)[1]).toLocalDateTime();
+        LocalDateTime maxDate = (LocalDateTime) result.get(0)[1];
 
         return Badge.builder()
                 .id("long_hauler")

@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM maven:3.9-eclipse-temurin-23 AS build
+FROM maven:3.9.11-eclipse-temurin-25 AS build
 WORKDIR /app
 
 # Copy parent pom.xml first
@@ -15,7 +15,7 @@ WORKDIR /app/backend
 RUN mvn package -DskipTests -Dquarkus.profile=prod
 
 # Stage 2: Create a minimal runtime image
-FROM eclipse-temurin:23-jdk-alpine
+FROM eclipse-temurin:25-jdk-alpine
 WORKDIR /app
 
 # Create directories for dumps and logs, and setup user

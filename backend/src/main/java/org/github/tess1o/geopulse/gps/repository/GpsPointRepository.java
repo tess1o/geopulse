@@ -5,13 +5,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Point;
 
-import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -228,13 +227,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * Expected array: [timestamp, latitude, longitude, speed, accuracy]
      */
     private GPSPoint mapToGPSPoint(Object[] row) {
-        Instant timestampInstant;
-        if (row[0] instanceof java.sql.Timestamp) {
-            Timestamp timestamp = (java.sql.Timestamp) row[0];
-            timestampInstant = timestamp.toLocalDateTime().toInstant(ZoneOffset.UTC);
-        } else {
-            timestampInstant = (Instant) row[0];
-        }
+        Instant timestampInstant = TimestampUtils.getInstantSafe(row[0]);
         Double latitude = ((Number) row[1]).doubleValue();
         Double longitude = ((Number) row[2]).doubleValue();
         Double speed = ((Number) row[3]).doubleValue();

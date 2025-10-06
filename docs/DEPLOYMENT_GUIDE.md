@@ -29,7 +29,8 @@ MQTT broker can be deployed if you want to use OwnTracks integration with MQTT p
 want to use OwnTracks with HTTP - you don't need the MQTT broker. This guide provides steps on how to install the system
 with or without MQTT broker.
 
-There is one time service "geopulse-keygen" that creates JWT keys in the "keys" folder.
+There is one-time service "geopulse-keygen" that creates JWT keys and AI encryption key in the "keys" folder. It starts
+and stops automatically, no manual steps are required.
 
 ---
 
@@ -37,22 +38,18 @@ There is one time service "geopulse-keygen" that creates JWT keys in the "keys" 
 
 ### 1. Download Configuration Files
 
-#### Step 1: Download `.env` configuration and key generation script
+#### Step 1: Download `.env` configuration
 
 **Using wget:**
 
 ```bash
 wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
-wget -O generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
-chmod +x generate-keys.sh
 ```
 
 **Using curl:**
 
 ```bash
 curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
-curl -L -o generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
-chmod +x generate-keys.sh
 ```
 
 #### Step 2: Choose your deployment type
@@ -200,7 +197,8 @@ server {
 
 ## Kubernetes Deployment with Helm
 
-GeoPulse can be deployed to Kubernetes clusters using the provided Helm chart. This is ideal for production environments, homelab Kubernetes setups, or multi-instance deployments.
+GeoPulse can be deployed to Kubernetes clusters using the provided Helm chart. This is ideal for production
+environments, homelab Kubernetes setups, or multi-instance deployments.
 
 ### Prerequisites
 
@@ -289,6 +287,7 @@ kubectl port-forward svc/geopulse-mosquitto 1883:1883 -n default
 ```
 
 Then access at:
+
 - Frontend: http://localhost:5555
 - API: http://localhost:8080/api
 
@@ -367,6 +366,7 @@ kubectl delete pvc -l app.kubernetes.io/instance=geopulse -n default
 ### Advanced Configuration
 
 For detailed configuration options, see:
+
 - `helm/geopulse/values.yaml` - All available configuration parameters
 - `helm/geopulse/README.md` - Helm chart documentation
 - Resource limits, persistence, ingress, OIDC, and more
@@ -374,12 +374,14 @@ For detailed configuration options, see:
 ### Kubernetes-Specific Troubleshooting
 
 **Pods not starting:**
+
 ```bash
 kubectl describe pod <pod-name> -n default
 kubectl logs <pod-name> -n default
 ```
 
 **Database connection issues:**
+
 ```bash
 # Check postgres service
 kubectl get svc geopulse-postgres -n default
@@ -389,6 +391,7 @@ kubectl exec -it <backend-pod> -n default -- nslookup geopulse-postgres
 ```
 
 **Storage issues:**
+
 ```bash
 # Check PVCs
 kubectl get pvc -n default
@@ -454,6 +457,7 @@ curl http://localhost:8080/api/health
 GeoPulse automatically optimizes JVM memory usage based on container limits. Here are recommended configurations:
 
 #### Minimal Deployment (1-2 users)
+
 ```yaml
 # docker-compose.yml
 services:
@@ -468,6 +472,7 @@ services:
 ```
 
 #### Standard Deployment (3-10 users)
+
 ```yaml
 # docker-compose.yml  
 services:
@@ -482,6 +487,7 @@ services:
 ```
 
 #### High-Performance Deployment (10+ users, large datasets)
+
 ```yaml
 # docker-compose.yml with custom resource limits
 services:
@@ -502,6 +508,7 @@ services:
 ### Custom JVM Tuning
 
 #### Override Default Settings
+
 ```yaml
 # docker-compose.yml
 services:
@@ -512,6 +519,7 @@ services:
 ```
 
 #### Development Monitoring Setup
+
 ```yaml
 # docker-compose-dev.yml (already configured)
 services:
@@ -526,11 +534,13 @@ services:
 
 ### Database Performance Tuning
 
-GeoPulse includes optimized PostgreSQL/PostGIS configurations tailored for GPS tracking workloads. Different deployment sizes use appropriate memory allocations and query optimization settings.
+GeoPulse includes optimized PostgreSQL/PostGIS configurations tailored for GPS tracking workloads. Different deployment
+sizes use appropriate memory allocations and query optimization settings.
 
 #### Deployment-Specific Database Settings
 
 **Standard Deployment (docker-compose.yml and docker-compose-complete.yml)** - Minimal resource usage:
+
 - `shared_buffers=256MB` - Conservative memory allocation for typical deployments
 - `work_mem=8MB` - Low memory per connection, suitable for 1-10 concurrent users
 - `effective_cache_size=1GB` - Assumes minimal system memory available
@@ -538,6 +548,7 @@ GeoPulse includes optimized PostgreSQL/PostGIS configurations tailored for GPS t
 - Both files use identical PostgreSQL settings; complete version adds MQTT support only
 
 **Development (docker-compose-dev.yml)** - Enhanced debugging with minimal resources:
+
 - `shared_buffers=128MB` - Very low memory usage for local development
 - `work_mem=6MB` - Minimal memory per connection
 - `log_min_duration_statement=1000ms` - Detailed query monitoring for optimization
@@ -604,29 +615,32 @@ The database configurations include optimizations specific to GPS tracking appli
 #### Monitoring Database Performance
 
 **Query Performance**:
+
 ```sql
 -- Monitor slow queries
-SELECT query, mean_exec_time, calls, total_exec_time 
-FROM pg_stat_statements 
-WHERE mean_exec_time > 1000 
+SELECT query, mean_exec_time, calls, total_exec_time
+FROM pg_stat_statements
+WHERE mean_exec_time > 1000
 ORDER BY mean_exec_time DESC;
 ```
 
 **Memory Usage**:
+
 ```sql
 -- Check buffer hit ratio (should be >99%)
-SELECT 
-  round(100.0 * blks_hit / (blks_hit + blks_read), 2) AS hit_ratio
-FROM pg_stat_database 
+SELECT round(100.0 * blks_hit / (blks_hit + blks_read), 2) AS hit_ratio
+FROM pg_stat_database
 WHERE datname = current_database();
 ```
 
 **Storage and Vacuum**:
+
 ```sql
 -- Monitor autovacuum performance
 SELECT schemaname, tablename, last_vacuum, last_autovacuum
-FROM pg_stat_user_tables 
-WHERE tablename LIKE '%gps%' OR tablename LIKE '%timeline%';
+FROM pg_stat_user_tables
+WHERE tablename LIKE '%gps%'
+   OR tablename LIKE '%timeline%';
 ```
 
 </details>
