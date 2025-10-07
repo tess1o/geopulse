@@ -22,6 +22,69 @@ build-all-local: build-backend-local build-frontend-local
 .PHONY: push-all
 push-all: push-backend push-frontend
 
+.PHONY: build-backend-native
+build-backend-native:
+	@echo "Building native backend Docker image for multiple architectures..."
+	@docker buildx create --name geopulse-builder --use --bootstrap || true
+	docker buildx build --platform $(PLATFORMS) \
+		-t $(BACKEND_IMAGE):$(VERSION)-native \
+		-t $(BACKEND_IMAGE):native-latest \
+		--build-arg VERSION=$(VERSION) \
+		-f backend/Dockerfile.native \
+		--push \
+		.
+	@echo "✅ Native multi-arch backend image built and pushed successfully."
+
+# ==========================
+# Build for ARM64 only
+# ==========================
+.PHONY: build-backend-native-arm64
+build-backend-native-arm64:
+	@echo "Building native backend Docker image for ARM64..."
+	@docker buildx create --name geopulse-builder --use --bootstrap || true
+	docker buildx build --platform linux/arm64 \
+		-t $(BACKEND_IMAGE):$(VERSION)-native-arm64 \
+		-t $(BACKEND_IMAGE):native-arm64-latest \
+		--build-arg VERSION=$(VERSION) \
+		-f backend/Dockerfile.native \
+		--push \
+		.
+	@echo "✅ ARM64 native backend image built and pushed successfully."
+
+# ==========================
+# Build for AMD64 only
+# ==========================
+.PHONY: build-backend-native-amd64
+build-backend-native-amd64:
+	@echo "Building native backend Docker image for AMD64..."
+	@docker buildx create --name geopulse-builder --use --bootstrap || true
+	docker buildx build --platform linux/amd64 \
+		-t $(BACKEND_IMAGE):$(VERSION)-native-amd64 \
+		-t $(BACKEND_IMAGE):native-amd64-latest \
+		--build-arg VERSION=$(VERSION) \
+		-f backend/Dockerfile.native \
+		--push \
+		.
+	@echo "✅ AMD64 native backend image built and pushed successfully."
+
+# ------------------------------
+# Build both sequentially + multi-arch manifest
+# ------------------------------
+.PHONY: build-backend-native
+build-backend-native: build-backend-native-arm64 build-backend-native-amd64
+	@echo "Creating multi-arch manifest..."
+	docker manifest create $(BACKEND_IMAGE):$(VERSION)-native \
+		$(BACKEND_IMAGE):$(VERSION)-native-amd64 \
+		$(BACKEND_IMAGE):$(VERSION)-native-arm64
+
+	docker manifest create $(BACKEND_IMAGE):native-latest \
+		$(BACKEND_IMAGE):native-amd64-latest \
+		$(BACKEND_IMAGE):native-arm64-latest
+
+	docker manifest push $(BACKEND_IMAGE):$(VERSION)-native
+	docker manifest push $(BACKEND_IMAGE):native-latest
+	@echo "✅ Multi-arch native images built and pushed successfully."
+
 # Build multi-architecture backend image
 .PHONY: build-backend
 build-backend:

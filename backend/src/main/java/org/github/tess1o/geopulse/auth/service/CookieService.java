@@ -31,7 +31,7 @@ public class CookieService {
      * Helper method to create cookie with common settings
      */
     private NewCookie createCookie(String name, String value, int maxAge, boolean httpOnly) {
-        if (cookieDomain.isPresent() && !cookieDomain.get().trim().isEmpty()) {
+        if (cookieDomain.isPresent() && !cookieDomain.get().trim().isEmpty() && !cookieDomain.equals("\"\"")) {
             // Create cookie with domain for cross-subdomain sharing
             return new NewCookie.Builder(name)
                     .value(value)
