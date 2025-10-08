@@ -29,7 +29,7 @@ RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=pro
 # ==========================
 # Stage 2: Runtime image
 # ==========================
-FROM quay.io/quarkus/quarkus-micro-image:2.0
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6
 WORKDIR /work
 
 # Copy the native runner

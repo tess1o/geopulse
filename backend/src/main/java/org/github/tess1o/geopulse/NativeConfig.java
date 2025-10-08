@@ -1,6 +1,9 @@
 package org.github.tess1o.geopulse;
 
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import dev.langchain4j.internal.RetryUtils;
+import dev.langchain4j.service.AiServices;
+import io.quarkus.runtime.annotations.RegisterForProxy;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.eclipse.paho.client.mqttv3.logging.JSR47Logger;
 import org.geolatte.geom.codec.PostgisWkbDecoder;
@@ -8,6 +11,9 @@ import org.geolatte.geom.codec.PostgisWkbEncoder;
 import org.geolatte.geom.codec.PostgisWkbV2Encoder;
 import org.github.tess1o.geopulse.ai.model.*;
 import org.github.tess1o.geopulse.ai.rest.AIResource;
+import org.github.tess1o.geopulse.ai.service.AIChatService;
+import org.github.tess1o.geopulse.ai.service.AITimelineTools;
+import org.github.tess1o.geopulse.ai.service.SimpleAITools;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
@@ -83,7 +89,11 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.user.model.*;
 import org.locationtech.jts.geom.*;
 
-
+@RegisterForProxy(
+        targets = {
+                AIChatService.Assistant.class,
+        }
+)
 @RegisterForReflection(
         targets = {
                 JSR47Logger.class,
@@ -146,7 +156,6 @@ import org.locationtech.jts.geom.*;
                 org.eclipse.paho.client.mqttv3.internal.DisconnectedMessageBuffer.class,
                 org.eclipse.paho.client.mqttv3.internal.ResourceBundleCatalog.class,
                 org.eclipse.paho.client.mqttv3.internal.SystemHighResolutionTimer.class,
-
 
 
                 dev.langchain4j.internal.RetryUtils.class,
@@ -221,6 +230,8 @@ import org.locationtech.jts.geom.*;
                 AIResource.OpenAIConnectionTestRequest.class,
                 AIResource.ChatRequest.class,
                 AIResource.ChatResponse.class,
+                AiServices.class,
+                AIChatService.class,
                 TimeDigest.class,
                 CreateExportRequest.class,
                 RawGpsDataDto.class,
@@ -363,7 +374,12 @@ import org.locationtech.jts.geom.*;
                 GeocodingConfig.class,
                 MapboxRestClient.class,
                 GoogleMapsRestClient.class,
-                NominatimRestClient.class
+                NominatimRestClient.class,
+
+                PropertyNamingStrategies.class,
+                PropertyNamingStrategies.SnakeCaseStrategy.class,
+                AITimelineTools.class,
+                SimpleAITools.class
 
         }
 )
