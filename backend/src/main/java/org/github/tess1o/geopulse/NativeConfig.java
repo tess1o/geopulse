@@ -19,7 +19,7 @@ import org.github.tess1o.geopulse.ai.service.SimpleAITools;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
-import org.github.tess1o.geopulse.auth.oidc.dto.UserOidcConnectionResponse;
+import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.digest.model.*;
@@ -177,6 +177,15 @@ import org.locationtech.jts.geom.*;
                 UserOidcConnectionEntity.class,
                 UserOidcConnectionResponse.class,
                 OidcSessionStateEntity.class,
+                InitiateOidcLinkingRequest.class,
+                LinkAccountWithPasswordRequest.class,
+                OidcAccountLinkingErrorResponse.class,
+                OidcCallbackRequest.class,
+                OidcLoginInitResponse.class,
+                OidcProviderResponse.class,
+                OidcUserInfo.class,
+                OidcTokenResponse.class,
+                UserOidcConnectionResponse.class,
                 GpsSourceConfigEntity.class,
 
                 // JSON types
