@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse;
 
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.deser.DefaultDeserializationContext;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.service.AiServices;
 import io.quarkus.runtime.annotations.RegisterForProxy;
@@ -379,7 +381,21 @@ import org.locationtech.jts.geom.*;
                 PropertyNamingStrategies.class,
                 PropertyNamingStrategies.SnakeCaseStrategy.class,
                 AITimelineTools.class,
-                SimpleAITools.class
+                SimpleAITools.class,
+
+                dev.langchain4j.agent.tool.ToolExecutionRequest.class,
+                dev.langchain4j.agent.tool.ToolMemoryId.class,
+                dev.langchain4j.exception.ToolArgumentsException.class,
+                dev.langchain4j.exception.ToolExecutionException.class,
+                dev.langchain4j.internal.Exceptions.class,
+                dev.langchain4j.internal.Json.class,
+                dev.langchain4j.internal.Utils.class,
+                dev.langchain4j.internal.ValidationUtils.class,
+                dev.langchain4j.invocation.InvocationContext.class,
+                dev.langchain4j.invocation.InvocationParameters.class,
+                dev.langchain4j.service.tool.DefaultToolExecutor.class,
+                Json.class,
+                DefaultDeserializationContext.class
 
         }
 )
