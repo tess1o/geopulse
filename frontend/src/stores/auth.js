@@ -1,6 +1,7 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 import { setUserTimezone } from '../utils/timezoneUtils'
+import {useTimezone} from "@/composables/useTimezone";
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', {
         setUser(user) {
             this.user = user;
             this.isAuthenticated = !!user;
+            const timezone = useTimezone();
             if (user) {
                 const userInfo = {
                     id: user.id || user.userId || null,
@@ -39,6 +41,7 @@ export const useAuthStore = defineStore('auth', {
                     hasPassword: user.hasPassword
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                timezone.setTimezone(user.timezone || 'UTC');
             } else {
                 localStorage.removeItem('userInfo');
             }
