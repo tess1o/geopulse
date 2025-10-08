@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse;
 
+import dev.langchain4j.internal.RetryUtils;
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.eclipse.paho.client.mqttv3.logging.JSR47Logger;
 import org.geolatte.geom.codec.PostgisWkbDecoder;
 import org.geolatte.geom.codec.PostgisWkbEncoder;
 import org.geolatte.geom.codec.PostgisWkbV2Encoder;
@@ -9,6 +11,7 @@ import org.github.tess1o.geopulse.ai.rest.AIResource;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
+import org.github.tess1o.geopulse.auth.oidc.dto.UserOidcConnectionResponse;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.digest.model.*;
@@ -83,6 +86,71 @@ import org.locationtech.jts.geom.*;
 
 @RegisterForReflection(
         targets = {
+                JSR47Logger.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketSecureNetworkModuleFactory.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketFrame.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModule.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketHandshake.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketReceiver.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModuleFactory.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.HandshakeFailedException.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketSecureNetworkModule.class,
+                org.eclipse.paho.client.mqttv3.internal.websocket.Base64.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttUnsubscribe.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPubRel.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttDisconnect.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttReceivedMessage.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttInputStream.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPingReq.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPubRec.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttAck.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPingResp.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttWireMessage.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttConnect.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MultiByteArrayInputStream.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttConnack.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttOutputStream.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPubAck.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.CountingInputStream.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttSuback.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPublish.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPubComp.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttPersistableWireMessage.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttUnsubAck.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MqttSubscribe.class,
+                org.eclipse.paho.client.mqttv3.internal.wire.MultiByteInteger.class,
+                org.eclipse.paho.client.mqttv3.internal.security.SimpleBase64Encoder.class,
+                org.eclipse.paho.client.mqttv3.internal.security.SSLSocketFactoryFactory.class,
+                org.eclipse.paho.client.mqttv3.internal.SSLNetworkModule.class,
+                org.eclipse.paho.client.mqttv3.internal.IDisconnectedBufferCallback.class,
+                org.eclipse.paho.client.mqttv3.internal.ConnectActionListener.class,
+                org.eclipse.paho.client.mqttv3.internal.DestinationProvider.class,
+                org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory.class,
+                org.eclipse.paho.client.mqttv3.internal.IDiscardedBufferMessageCallback.class,
+                org.eclipse.paho.client.mqttv3.internal.ClientState.class,
+                org.eclipse.paho.client.mqttv3.internal.CommsTokenStore.class,
+                org.eclipse.paho.client.mqttv3.internal.NetworkModuleService.class,
+                org.eclipse.paho.client.mqttv3.internal.MqttPersistentData.class,
+                org.eclipse.paho.client.mqttv3.internal.ExceptionHelper.class,
+                org.eclipse.paho.client.mqttv3.internal.TCPNetworkModule.class,
+                org.eclipse.paho.client.mqttv3.internal.CommsSender.class,
+                org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory.class,
+                org.eclipse.paho.client.mqttv3.internal.Token.class,
+                org.eclipse.paho.client.mqttv3.internal.NetworkModule.class,
+                org.eclipse.paho.client.mqttv3.internal.HighResolutionTimer.class,
+                org.eclipse.paho.client.mqttv3.internal.MessageCatalog.class,
+                org.eclipse.paho.client.mqttv3.internal.ClientComms.class,
+                org.eclipse.paho.client.mqttv3.internal.FileLock.class,
+                org.eclipse.paho.client.mqttv3.internal.CommsReceiver.class,
+                org.eclipse.paho.client.mqttv3.internal.CommsCallback.class,
+                org.eclipse.paho.client.mqttv3.internal.DisconnectedMessageBuffer.class,
+                org.eclipse.paho.client.mqttv3.internal.ResourceBundleCatalog.class,
+                org.eclipse.paho.client.mqttv3.internal.SystemHighResolutionTimer.class,
+
+
+
+                dev.langchain4j.internal.RetryUtils.class,
+                RetryUtils.RetryPolicy.class,
                 // Your entities
                 UserEntity.class,
                 GpsPointEntity.class,
@@ -96,6 +164,7 @@ import org.locationtech.jts.geom.*;
                 SharedLinkEntity.class,
                 UserBadgeEntity.class,
                 UserOidcConnectionEntity.class,
+                UserOidcConnectionResponse.class,
                 OidcSessionStateEntity.class,
                 GpsSourceConfigEntity.class,
 
@@ -239,12 +308,14 @@ import org.locationtech.jts.geom.*;
                 HomeAssistantLocation.class,
                 ImportJobResponse.class,
                 ImportOptions.class,
+                ImmichSearchRequest.class,
                 ImmichSearchResponse.class,
                 ImmichSearchResponse.ImmichSearchAssets.class,
                 ImmichAsset.class,
                 ImmichPhotoDto.class,
                 ImmichPhotoSearchRequest.class,
                 ImmichPhotoSearchResponse.class,
+                ImmichConfigResponse.class,
                 UpdateImmichConfigRequest.class,
                 CreateGpsSourceConfigDto.class,
                 GpsSourceConfigDTO.class,

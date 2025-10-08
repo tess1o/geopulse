@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class GpsPointDuplicateDetectionService {
     private final GpsPointRepository gpsPointRepository;
     
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
+    @StaticInitSafe
     int locationTimeThresholdMinutes;
 
     @Inject

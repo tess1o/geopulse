@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -27,9 +28,11 @@ public class OidcCleanupService {
     OidcLinkingTokenService linkingTokenService;
 
     @ConfigProperty(name = "geopulse.oidc.cleanup.session-states.enabled", defaultValue = "true")
+    @StaticInitSafe
     boolean sessionStatesCleanupEnabled;
 
     @ConfigProperty(name = "geopulse.oidc.cleanup.linking-tokens.enabled", defaultValue = "true")
+    @StaticInitSafe
     boolean linkingTokensCleanupEnabled;
 
 

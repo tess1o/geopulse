@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.NewCookie;
@@ -12,15 +13,18 @@ public class CookieService {
 
     @Inject
     @ConfigProperty(name = "geopulse.auth.secure-cookies", defaultValue = "false")
+    @StaticInitSafe
     boolean secureCookies;
 
     @Inject
     @ConfigProperty(name = "geopulse.auth.cookie-domain")
+    @StaticInitSafe
     Optional<String> cookieDomain;
 
 
     @Inject
     @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
+    @StaticInitSafe
     String csrfCookieName;
 
     private static final String ACCESS_TOKEN_COOKIE = "access_token";

@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.streaming.jobs;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -26,6 +27,7 @@ public class RealTimeTimelineJob {
     StreamingTimelineGenerationService timelineGenerationService;
 
     @ConfigProperty(name = "geopulse.timeline.processing.thread-pool-size", defaultValue = "2")
+    @StaticInitSafe
     int threadPoolSize;
 
     private ExecutorService executorService;

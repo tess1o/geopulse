@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.jwt.auth.principal.JWTParser;
 import io.smallrye.jwt.auth.principal.ParseException;
 import io.smallrye.jwt.build.Jwt;
@@ -31,16 +32,19 @@ public class AuthenticationService {
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
+    @StaticInitSafe
     String issuer;
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.lifespan", defaultValue = "1800")
     @Getter
+    @StaticInitSafe
     Long accessTokenLifespan;
 
     @Inject
     @ConfigProperty(name = "jwt.refresh-token.lifespan", defaultValue = "604800") // 7 days
     @Getter
+    @StaticInitSafe
     Long refreshTokenLifespan;
 
     private final UserService userService;

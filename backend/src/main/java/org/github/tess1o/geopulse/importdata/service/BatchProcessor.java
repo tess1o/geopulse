@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -26,9 +27,11 @@ public class BatchProcessor {
     EntityManager entityManager;
     
     @ConfigProperty(name = "geopulse.import.bulk-insert-batch-size", defaultValue = "500")
+    @StaticInitSafe
     int bulkInsertBatchSize;
     
-    @ConfigProperty(name = "geopulse.import.merge-batch-size", defaultValue = "250") 
+    @ConfigProperty(name = "geopulse.import.merge-batch-size", defaultValue = "250")
+    @StaticInitSafe
     int mergeBatchSize;
     
     /**

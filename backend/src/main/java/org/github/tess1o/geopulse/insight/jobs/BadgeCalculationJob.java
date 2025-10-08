@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.insight.jobs;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -24,6 +25,7 @@ public class BadgeCalculationJob {
     private final EntityManager entityManager;
 
     @ConfigProperty(name = "geopulse.badges.calculation.enabled", defaultValue = "true")
+    @StaticInitSafe
     boolean badgeCalculationEnabled;
 
     public BadgeCalculationJob(UserBadgeService userBadgeService,

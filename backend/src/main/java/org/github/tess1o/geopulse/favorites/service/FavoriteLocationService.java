@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.favorites.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.transaction.Transactional;
@@ -25,25 +26,27 @@ import java.util.UUID;
 @Slf4j
 public class FavoriteLocationService {
 
+    @ConfigProperty(name = "geopulse.favorites.max-distance-from-point", defaultValue = "75")
+    @StaticInitSafe
+    int maxDistanceFromPoint;
+
+    @ConfigProperty(name = "geopulse.favorites.max-distance-from-area", defaultValue = "15")
+    @StaticInitSafe
+    int maxDistanceFromArea;
+
     private final FavoritesRepository repository;
     private final FavoriteLocationMapper mapper;
     private final GeocodingService geocodingService;
     private final Event<FavoriteAddedEvent> favoriteAddedEvent;
     private final Event<FavoriteDeletedEvent> favoriteDeletedEvent;
     private final Event<FavoriteRenamedEvent> favoriteRenamedEvent;
-    private final int maxDistanceFromPoint;
-    private final int maxDistanceFromArea;
 
     public FavoriteLocationService(FavoritesRepository repository,
                                    FavoriteLocationMapper mapper,
                                    GeocodingService geocodingService,
                                    Event<FavoriteAddedEvent> favoriteAddedEvent,
                                    Event<FavoriteDeletedEvent> favoriteDeletedEvent,
-                                   Event<FavoriteRenamedEvent> favoriteRenamedEvent,
-                                   @ConfigProperty(name = "geopulse.favorites.max-distance-from-point", defaultValue = "75")
-                                   int maxDistanceFromPoint,
-                                   @ConfigProperty(name = "geopulse.favorites.max-distance-from-area", defaultValue = "15")
-                                   int maxDistanceFromArea) {
+                                   Event<FavoriteRenamedEvent> favoriteRenamedEvent) {
         this.repository = repository;
         this.mapper = mapper;
         this.geocodingService = geocodingService;

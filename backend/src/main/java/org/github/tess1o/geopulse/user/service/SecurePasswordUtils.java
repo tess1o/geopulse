@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.user.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ public class SecurePasswordUtils {
 
     @Inject
     @ConfigProperty(name = "password.bcrypt.rounds", defaultValue = "12")
+    @StaticInitSafe
     int bcryptRounds;
 
     /**

@@ -8,6 +8,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -66,9 +67,11 @@ public class OidcAuthenticationService {
     OidcLinkingTokenService linkingTokenService;
     
     @ConfigProperty(name = "geopulse.oidc.callback-base-url")
+    @StaticInitSafe
     String callbackBaseUrl;
     
     @ConfigProperty(name = "geopulse.oidc.state-token.expiry-minutes", defaultValue = "10")
+    @StaticInitSafe
     int stateTokenExpiryMinutes;
 
     private final Client httpClient = ClientBuilder.newClient();
