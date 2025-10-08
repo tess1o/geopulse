@@ -7,7 +7,6 @@ import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.service.AiServices;
 import io.quarkus.runtime.annotations.RegisterForProxy;
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import org.eclipse.paho.client.mqttv3.logging.JSR47Logger;
 import org.geolatte.geom.codec.PostgisWkbDecoder;
 import org.geolatte.geom.codec.PostgisWkbEncoder;
 import org.geolatte.geom.codec.PostgisWkbV2Encoder;
@@ -98,7 +97,7 @@ import org.locationtech.jts.geom.*;
 )
 @RegisterForReflection(
         targets = {
-                JSR47Logger.class,
+                org.eclipse.paho.client.mqttv3.logging.JSR47Logger.class,
                 org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketSecureNetworkModuleFactory.class,
                 org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketFrame.class,
                 org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModule.class,
@@ -339,6 +338,7 @@ import org.locationtech.jts.geom.*;
                 ImmichPhotoSearchResponse.class,
                 ImmichConfigResponse.class,
                 UpdateImmichConfigRequest.class,
+                ImmichExifInfo.class,
                 CreateGpsSourceConfigDto.class,
                 GpsSourceConfigDTO.class,
                 UpdateGpsSourceConfigDto.class,
