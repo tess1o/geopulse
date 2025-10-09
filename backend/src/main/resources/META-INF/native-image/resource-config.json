@@ -1,0 +1,10 @@
+{
+  "resources": [
+    {
+      "pattern": "spatial_ref_sys.txt"
+    },
+    {
+      "pattern": "META-INF/services/org.eclipse.paho.client.mqttv3.internal.NetworkModuleFactory"
+    }
+  ]
+}

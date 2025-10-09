@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
-        <version>1.0.0-rc.19</version>
+        <version>1.0.0-rc.20</version>
     </parent>
     <artifactId>backend</artifactId>
 
@@ -45,10 +45,26 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>io.quarkus</groupId>
+                <artifactId>quarkus-hibernate-validator</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.joda</groupId>
+                        <artifactId>joda-time</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-container-image-jib</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -131,6 +147,12 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-orm-panache</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.quarkus</groupId>
+                    <artifactId>quarkus-hibernate-validator</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.hibernate.orm</groupId>
@@ -190,19 +212,19 @@
             <artifactId>quarkus-junit5</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
-        
+
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
@@ -275,12 +297,6 @@
             <artifactId>langchain4j-open-ai</artifactId>
             <version>${langchain4j.version}</version>
         </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-ollama</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-
     </dependencies>
 
     <build>
@@ -373,6 +389,38 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>native</id>
+            <activation>
+                <property>
+                    <name>native</name>
+                </property>
+            </activation>
+            <properties>
+                <quarkus.native.auto-service-loader-registration>true</quarkus.native.auto-service-loader-registration>
+                <quarkus.native.additional-build-args>
+                    --initialize-at-run-time=dev.langchain4j.internal.RetryUtils,
+                    --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,
+                    --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory,
+                    --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory,
+                    --initialize-at-run-time=oorg.eclipse.paho.client.mqttv3.internal.websocket.WebSocketNetworkModuleFactory,
+                    --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.websocket.WebSocketSecureNetworkModuleFactory,
+                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.future.FutureValidatorForReadablePartial,
+                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.futureorpresent.FutureOrPresentValidatorForReadablePartial,
+                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.past.PastValidatorForReadablePartial,
+                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.future.FutureValidatorForReadableInstant,
+                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.past.PastValidatorForReadableInstant,
+                    --initialize-at-run-time=org.hibernate.validator.internal.constraintvalidators.bv.time.pastorpresent.PastOrPresentValidatorForReadablePartial,
+                    -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.logcat,
+                    -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.messages,
+                    -H:+UnlockExperimentalVMOptions,
+                    -H:+UseServiceLoaderFeature
+                </quarkus.native.additional-build-args>
+            </properties>
+        </profile>
+    </profiles>
 
     <reporting>
         <plugins>

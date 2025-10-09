@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
 
 import io.quarkus.runtime.Startup;
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.GET;
@@ -33,6 +34,7 @@ public class OidcProviderService {
     private final Map<String, Instant> metadataCache = new ConcurrentHashMap<>();
     
     @ConfigProperty(name = "geopulse.oidc.metadata-cache.ttl-hours", defaultValue = "24")
+    @StaticInitSafe
     int metadataCacheTtlHours;
     
     @PostConstruct

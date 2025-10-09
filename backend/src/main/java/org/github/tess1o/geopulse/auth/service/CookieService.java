@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.NewCookie;
@@ -12,15 +13,18 @@ public class CookieService {
 
     @Inject
     @ConfigProperty(name = "geopulse.auth.secure-cookies", defaultValue = "false")
+    @StaticInitSafe
     boolean secureCookies;
 
     @Inject
     @ConfigProperty(name = "geopulse.auth.cookie-domain")
+    @StaticInitSafe
     Optional<String> cookieDomain;
 
 
     @Inject
     @ConfigProperty(name = "quarkus.rest-csrf.cookie-name", defaultValue = "csrf-token")
+    @StaticInitSafe
     String csrfCookieName;
 
     private static final String ACCESS_TOKEN_COOKIE = "access_token";
@@ -31,7 +35,7 @@ public class CookieService {
      * Helper method to create cookie with common settings
      */
     private NewCookie createCookie(String name, String value, int maxAge, boolean httpOnly) {
-        if (cookieDomain.isPresent() && !cookieDomain.get().trim().isEmpty()) {
+        if (cookieDomain.isPresent() && !cookieDomain.get().trim().isEmpty() && !cookieDomain.equals("\"\"")) {
             // Create cookie with domain for cross-subdomain sharing
             return new NewCookie.Builder(name)
                     .value(value)

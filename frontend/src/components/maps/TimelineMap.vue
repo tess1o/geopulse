@@ -18,14 +18,12 @@
         <MapControls
           v-if="map && isReady"
           :map="map"
-          :show-friends="showFriends"
           :show-favorites="showFavorites"
           :show-timeline="showTimeline"
           :show-path="showPath"
           :show-immich="showImmich"
           :immich-configured="immichConfigured"
           :immich-loading="immichLoading"
-          @toggle-friends="toggleFriends"
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
@@ -180,7 +178,6 @@ import {useHighlightStore} from '@/stores/highlight'
 import {useFavoritesStore} from '@/stores/favorites'
 import {useLocationStore} from '@/stores/location'
 import {useTimelineStore} from '@/stores/timeline'
-import {useFriendsStore} from '@/stores/friends'
 import {useImmichStore} from '@/stores/immich'
 
 
@@ -197,10 +194,6 @@ const props = defineProps({
   favoritePlaces: {
     type: Object,
     default: () => null
-  },
-  friends: {
-    type: Array,
-    default: () => []
   },
   currentLocation: {
     type: Object,
@@ -224,12 +217,10 @@ const emit = defineEmits([
 
 // Composables
 const {
-  showFriends,
   showFavorites,
   showTimeline,
   showPath,
   showImmich,
-  toggleFriends,
   toggleFavorites,
   toggleTimeline,
   togglePath,
@@ -241,7 +232,6 @@ const favoritesStore = useFavoritesStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const immichStore = useImmichStore()
-//const friendsStore = useFriendsStore()
 
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
@@ -271,7 +261,6 @@ const highlightStore = useHighlightStore()
 const mapContainerRef = ref(null)
 const pathLayerRef = ref(null)
 const timelineLayerRef = ref(null)
-//const friendsLayerRef = ref(null)
 const favoritesLayerRef = ref(null)
 const immichLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
@@ -757,9 +746,6 @@ const processedTimelineData = computed(() => {
   return props.timelineData || timelineStore.timelineData || []
 })
 
-// const processedFriendsData = computed(() => {
-//   return props.friends || friendsStore.friends || []
-// })
 
 const processedFavoritesData = computed(() => {
   const storeFavorites = favoritesStore.favoritePlaces
@@ -787,7 +773,6 @@ const processedFavoritesData = computed(() => {
 const hasAnyData = computed(() => {
   return processedPathData.value.length > 0 ||
          processedTimelineData.value.length > 0 ||
-         //processedFriendsData.value.length > 0 ||
          processedFavoritesData.value.length > 0
 })
 
@@ -815,15 +800,6 @@ const dataBounds = computed(() => {
       }
     })
   }
-  
-  // Add friends data bounds
-  // if (processedFriendsData.value.length > 0) {
-  //   processedFriendsData.value.forEach(friend => {
-  //     if (friend.latitude && friend.longitude) {
-  //       bounds.push([friend.latitude, friend.longitude])
-  //     }
-  //   })
-  // }
   
   // Add favorites data bounds
   if (processedFavoritesData.value.length > 0) {

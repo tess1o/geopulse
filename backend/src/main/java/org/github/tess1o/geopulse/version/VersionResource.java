@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.version;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -12,6 +13,7 @@ import java.util.Map;
 @Path("/api/version")
 public class VersionResource {
     @ConfigProperty(name = "quarkus.application.version")
+    @StaticInitSafe
     String version;
 
     @GET

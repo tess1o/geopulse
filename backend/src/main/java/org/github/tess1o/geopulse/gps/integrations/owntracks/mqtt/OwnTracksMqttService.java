@@ -8,7 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
-import org.eclipse.paho.client.mqttv3.persist.MqttDefaultFilePersistence;
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
@@ -75,14 +75,10 @@ public class OwnTracksMqttService {
 
     private void initializeMqttClient() throws MqttException {
         log.info("Initializing MQTT client for broker: {}", mqttConfig.getBrokerUrl());
-
-        // Use file persistence with explicit writable directory for container environments
-        String persistenceDir = System.getProperty("java.io.tmpdir") + "/mqtt-persistence";
-        MqttDefaultFilePersistence persistence = new MqttDefaultFilePersistence(persistenceDir);
-        mqttClient = new MqttClient(mqttConfig.getBrokerUrl(), CLIENT_ID, persistence);
+        mqttClient = new MqttClient(mqttConfig.getBrokerUrl(), CLIENT_ID, new MemoryPersistence());
 
         MqttConnectOptions options = new MqttConnectOptions();
-        options.setCleanSession(true);
+        options.setCleanSession(false);
         options.setConnectionTimeout(30);
         options.setKeepAliveInterval(60);
         options.setAutomaticReconnect(true);
@@ -93,7 +89,7 @@ public class OwnTracksMqttService {
         options.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1); // Force MQTT 3.1.1
         options.setServerURIs(new String[]{mqttConfig.getBrokerUrl()}); // Explicit server URI list
         options.setHttpsHostnameVerificationEnabled(false); // For internal networks
-        options.setMaxInflight(100); // Max unacknowledged messages
+        options.setMaxInflight(1000); // Max unacknowledged messages
 
         if (mqttConfig.hasCredentials()) {
             options.setUserName(mqttConfig.getUsername());

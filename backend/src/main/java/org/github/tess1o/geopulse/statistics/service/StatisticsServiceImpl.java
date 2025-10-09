@@ -1,15 +1,10 @@
-package org.github.tess1o.geopulse.statistics;
+package org.github.tess1o.geopulse.statistics.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
 import org.github.tess1o.geopulse.statistics.model.UserStatistics;
-import org.github.tess1o.geopulse.statistics.service.ActivityAnalysisService;
-import org.github.tess1o.geopulse.statistics.service.ChartDataService;
-import org.github.tess1o.geopulse.statistics.service.PlacesAnalysisService;
-import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
-import org.github.tess1o.geopulse.statistics.service.TimelineAggregationService;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;

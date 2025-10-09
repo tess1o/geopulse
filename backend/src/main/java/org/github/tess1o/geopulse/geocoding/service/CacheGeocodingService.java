@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -30,6 +31,7 @@ public class CacheGeocodingService {
     private final ReverseGeocodingLocationRepository repository;
 
     @ConfigProperty(name = "geocoding.cache.spatial-tolerance-meters", defaultValue = "25")
+    @StaticInitSafe
     double spatialToleranceMeters;
 
     @Inject

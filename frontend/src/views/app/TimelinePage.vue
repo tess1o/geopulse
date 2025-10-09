@@ -13,7 +13,6 @@
           :pathData="pathData"
           :timelineData="timelineData"
           :favoritePlaces="favoritePlaces"
-          :friends="friends"
           :currentLocation="currentLocation"
           :showCurrentLocation="isToday"
           @timeline-marker-click="handleTimelineMarkerClick"
@@ -52,8 +51,6 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
-import {useFriendsStore} from "@/stores/friends";
-import dayjs from 'dayjs';
 
 const toast = useToast()
 
@@ -62,13 +59,11 @@ const favoritesStore = useFavoritesStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const highlightStore = useHighlightStore()
-const friendsStore = useFriendsStore()
 
 const { dateRange } = storeToRefs(dateRangeStore)
 const { favoritePlaces } = storeToRefs(favoritesStore)
 const { locationPath: pathData } = storeToRefs(locationStore)
 const { timelineData } = storeToRefs(timelineStore)
-const { friends } = storeToRefs(friendsStore)
 
 // Template refs
 const mapViewRef = ref(null)
@@ -347,7 +342,6 @@ const getCurrentLocation = () => {
 onMounted(async () => {
   await Promise.all([
     favoritesStore.fetchFavoritePlaces(),
-    friendsStore.fetchFriends()
   ])
 })
 

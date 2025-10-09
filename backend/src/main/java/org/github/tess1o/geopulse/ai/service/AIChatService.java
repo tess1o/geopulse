@@ -67,7 +67,7 @@ public class AIChatService {
     @Inject
     RoutesAnalysisService routesAnalysisService;
 
-    interface Assistant {
+    public interface Assistant {
         @SystemMessage(SYSTEM_MESSAGE)
         String chat(String userMessage);
     }
@@ -127,6 +127,8 @@ public class AIChatService {
                 .baseUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
                 .modelName(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : "gpt-3.5-turbo")
                 .timeout(Duration.ofSeconds(60))
+                .logResponses(true)
+                .logRequests(true)
                 .build();
     }
 }

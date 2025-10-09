@@ -1,15 +1,6 @@
 <template>
   <div class="map-controls">
     <div class="control-group">
-<!--      <button-->
-<!--        @click="handleToggleFriends"-->
-<!--        :class="{ active: showFriends }"-->
-<!--        :title="showFriends ? 'Hide Friends' : 'Show Friends'"-->
-<!--        class="control-button"-->
-<!--        :disabled="!map"-->
-<!--      >-->
-<!--        <i class="pi pi-users"></i>-->
-<!--      </button>-->
 
       <button
         @click="handleToggleFavorites"
@@ -79,10 +70,6 @@ const props = defineProps({
     type: Object,
     default: null
   },
-  showFriends: {
-    type: Boolean,
-    default: false
-  },
   showFavorites: {
     type: Boolean,
     default: false
@@ -114,18 +101,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'toggle-friends',
-  'toggle-favorites', 
+  'toggle-favorites',
   'toggle-timeline',
   'toggle-path',
   'toggle-immich',
   'zoom-to-data'
 ])
-
-// Event handlers
-// const handleToggleFriends = () => {
-//   emit('toggle-friends', !props.showFriends)
-// }
 
 const handleToggleFavorites = () => {
   emit('toggle-favorites', !props.showFavorites)

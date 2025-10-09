@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.auth.oidc.rest;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
@@ -50,6 +51,7 @@ public class OidcAuthenticationResource {
 
     @Inject
     @ConfigProperty(name = "jwt.refresh-token.lifespan")
+    @StaticInitSafe
     Long refreshTokenLifespan;
     
     @Inject

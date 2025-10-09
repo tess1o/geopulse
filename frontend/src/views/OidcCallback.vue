@@ -2,35 +2,36 @@
   <div class="oidc-callback-page">
     <div class="callback-content">
       <div v-if="isProcessing" class="processing-state">
-        <ProgressSpinner />
+        <ProgressSpinner/>
         <h2 class="processing-title">Completing authentication...</h2>
         <p class="processing-description">Please wait while we securely log you in.</p>
       </div>
-      
+
       <div v-else-if="error && !linkingData" class="error-state">
         <i class="pi pi-exclamation-triangle error-icon"></i>
         <h2 class="error-title">Authentication Failed</h2>
         <p class="error-description">{{ error }}</p>
-        <Button label="Return to Login" @click="returnToLogin" class="return-button" />
+        <Button label="Return to Login" @click="returnToLogin" class="return-button"/>
       </div>
     </div>
 
     <!-- Account Linking Modal -->
     <AccountLinkingModal
-      v-model:visible="showLinkingModal"
-      :linkingData="linkingData"
-      @success="handleLinkingSuccess"
-      @cancel="handleLinkingCancel"
+        v-if="linkingData"
+        v-model:visible="showLinkingModal"
+        :linkingData="linkingData"
+        @success="handleLinkingSuccess"
+        @cancel="handleLinkingCancel"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useToast } from 'primevue/usetoast'
-import { useTimezone } from '@/composables/useTimezone'
+import {ref, onMounted} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {useAuthStore} from '@/stores/auth'
+import {useToast} from 'primevue/usetoast'
+import {useTimezone} from '@/composables/useTimezone'
 
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -50,21 +51,21 @@ const showLinkingModal = ref(false)
 
 onMounted(async () => {
   try {
-    const { code, state, error: oauthError, error_description } = route.query
-    
+    const {code, state, error: oauthError, error_description} = route.query
+
     if (oauthError) {
       throw new Error(error_description || oauthError)
     }
-    
+
     if (!code || !state) {
       throw new Error('Invalid callback request. Missing required parameters.')
     }
-    
+
     const authResponse = await authStore.handleOidcCallback(code, state)
-    
+
     // Check if this is a new user based on createdAt timestamp
     const isNewUser = isUserNew(authResponse.createdAt)
-    
+
     toast.add({
       severity: 'success',
       summary: isNewUser ? 'Welcome to GeoPulse!' : 'Welcome back!',
@@ -72,27 +73,27 @@ onMounted(async () => {
       life: 3000
     })
 
-   // Redirect new users to location sources for onboarding, existing users to timeline
-   const redirectPath = authResponse.redirectUri || (isNewUser ? '/app/location-sources' : '/app/timeline')
-   await router.push(redirectPath)
-    
+    // Redirect new users to location sources for onboarding, existing users to timeline
+    const redirectPath = authResponse.redirectUri || (isNewUser ? '/app/location-sources' : '/app/timeline')
+    await router.push(redirectPath)
+
   } catch (err) {
     console.error('OIDC callback error:', err)
-    
+
     // Check if this is an account linking requirement
-    if (err.response?.status === 409 && 
+    if (err.response?.status === 409 &&
         err.response?.data?.data?.error === 'ACCOUNT_LINKING_REQUIRED') {
-      
+
       linkingData.value = err.response.data.data
       showLinkingModal.value = true
-      
+
     } else {
       error.value = err.response?.data?.message || err.message || 'An unknown authentication error occurred.'
       toast.add({
-          severity: 'error',
-          summary: 'Authentication Failed',
-          detail: error.value,
-          life: 5000
+        severity: 'error',
+        summary: 'Authentication Failed',
+        detail: error.value,
+        life: 5000
       });
     }
   } finally {
@@ -106,28 +107,28 @@ const returnToLogin = () => {
 
 const isUserNew = (createdAt) => {
   if (!createdAt) return false
-  
+
   const userCreatedAt = timezone.fromUtc(createdAt)
   const now = timezone.now()
   const diffInMinutes = now.diff(userCreatedAt, 'minute')
-  
+
   // Consider user "new" if created within the last 5 minutes
   return diffInMinutes <= 5
 }
 
 const handleLinkingSuccess = async (authResponse) => {
   showLinkingModal.value = false
-  
+
   // Check if this is a new user based on createdAt timestamp  
   const isNewUser = isUserNew(authResponse.createdAt)
-  
+
   toast.add({
     severity: 'success',
     summary: 'Account Linked Successfully!',
     detail: 'Your accounts have been linked and you are now logged in.',
     life: 3000
   })
-  
+
   // Redirect new users to location sources for onboarding, existing users to timeline
   const redirectPath = authResponse.redirectUri || (isNewUser ? '/app/location-sources' : '/app/timeline')
   await router.push(redirectPath)

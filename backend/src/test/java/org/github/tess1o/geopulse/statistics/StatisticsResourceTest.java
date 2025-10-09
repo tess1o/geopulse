@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.statistics;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.statistics.model.*;
+import org.github.tess1o.geopulse.statistics.resource.StatisticsResource;
+import org.github.tess1o.geopulse.statistics.service.StatisticsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

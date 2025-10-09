@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.sharing.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.jwt.build.Jwt;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -10,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
-import org.github.tess1o.geopulse.sharing.SharedLinkMapper;
+import org.github.tess1o.geopulse.sharing.mapper.SharedLinkMapper;
 import org.github.tess1o.geopulse.sharing.exceptions.TooManyLinksException;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.repository.SharedLinkRepository;
@@ -31,6 +32,7 @@ public class SharedLinkService {
 
     @Inject
     @ConfigProperty(name = "geopulse.sharing.max-links-per-user", defaultValue = "10")
+    @StaticInitSafe
     int maxLinksPerUser;
 
     @Inject
@@ -47,10 +49,12 @@ public class SharedLinkService {
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
+    @StaticInitSafe
     String issuer;
 
     @Inject
     @ConfigProperty(name = "geopulse.sharing.temp-token.lifespan", defaultValue = "1800")
+    @StaticInitSafe
     Long tempTokenLifespan;
 
 

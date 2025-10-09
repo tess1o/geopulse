@@ -1,0 +1,74 @@
+[
+  {
+    "condition": {
+      "typeReachable": "org.hibernate.spatial.integration.SpatialInitializer"
+    },
+    "name": "org.geolatte.geom.codec.PostgisWkbDecoder",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "condition": {
+      "typeReachable": "org.hibernate.spatial.integration.SpatialInitializer"
+    },
+    "name": "org.geolatte.geom.codec.PostgisWktEncoder",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "condition": {
+      "typeReachable": "org.hibernate.spatial.integration.SpatialInitializer"
+    },
+    "name": "org.geolatte.geom.crs.CrsRegistry",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "condition": {
+      "typeReachable": "org.hibernate.spatial.integration.SpatialInitializer"
+    },
+    "name": "org.geolatte.geom.crs.CoordinateReferenceSystems",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "condition": {
+      "typeReachable": "org.hibernate.spatial.integration.SpatialInitializer"
+    },
+    "name": "org.locationtech.jts.geom.Point"
+  },
+  {
+    "name": "org.hibernate.spatial.HSMessageLogger_$logger",
+    "condition": {
+      "typeReachable": "org.hibernate.spatial.integration.SpatialInitializer"
+    },
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "org.jboss.logging.Logger"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "dev.langchain4j.internal.JacksonJsonCodec",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "dev.langchain4j.internal.JacksonJsonCodec$*",
+    "allDeclaredConstructors": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  }
+]

@@ -1,0 +1,51 @@
+# ==========================
+# Stage 1: Native build
+# ==========================
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:25.0-java25 AS build
+ARG VERSION
+
+# Set working directory
+WORKDIR /app
+
+# Copy Maven wrapper and POMs
+COPY --chown=quarkus:quarkus mvnw /app/mvnw
+COPY --chown=quarkus:quarkus .mvn /app/.mvn
+COPY --chown=quarkus:quarkus pom.xml /app/
+COPY --chown=quarkus:quarkus backend/pom.xml backend/
+
+# Use non-root user for build
+USER quarkus
+WORKDIR /app
+
+# Pre-download dependencies (optional, speeds up builds)
+RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.9.0:go-offline -f backend/pom.xml
+
+# Copy backend sources
+COPY --chown=quarkus:quarkus backend/src backend/src
+
+# Build the native executable
+RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
+
+# ==========================
+# Stage 2: Runtime image
+# ==========================
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.6
+WORKDIR /work
+
+# Copy the native runner
+COPY --from=build /app/backend/target/*-runner /work/application
+
+# Optional: copy keys or other resources
+# COPY --from=build /app/backend/src/main/resources/keys /work/keys
+
+# Set permissions for non-root runtime user
+RUN chmod 775 /work /work/application \
+    && chown -R 1001:0 /work \
+    && chmod -R g+rwX /work
+
+# Expose port and switch to non-root
+EXPOSE 8080
+USER 1001
+
+# Start native binary
+CMD ["./application", "-Dquarkus.http.host=0.0.0.0"]

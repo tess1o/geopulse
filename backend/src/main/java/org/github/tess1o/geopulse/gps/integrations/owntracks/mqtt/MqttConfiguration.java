@@ -1,10 +1,15 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.paho.client.mqttv3.internal.NetworkModuleService;
+
+import java.net.URI;
 
 /**
  * Configuration class for conditional MQTT support.
@@ -15,28 +20,38 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 @Getter
 public class MqttConfiguration {
 
-    private final boolean mqttEnabled;
-    private final String brokerHost;
-    private final int brokerPort;
-    private final String username;
-    private final String password;
+    @Inject
+    @ConfigProperty(name = "geopulse.mqtt.enabled")
+    @StaticInitSafe
+    boolean mqttEnabledConfig;
 
     @Inject
-    public MqttConfiguration(
-            @ConfigProperty(name = "geopulse.mqtt.enabled") boolean mqttEnabled,
-            @ConfigProperty(name = "geopulse.mqtt.broker.host") String brokerHost,
-            @ConfigProperty(name = "geopulse.mqtt.broker.port") int brokerPort,
-            @ConfigProperty(name = "geopulse.mqtt.username") String username,
-            @ConfigProperty(name = "geopulse.mqtt.password") String password) {
-        
-        this.brokerHost = brokerHost;
-        this.brokerPort = brokerPort;
-        this.username = username;
-        this.password = password;
-        
+    @ConfigProperty(name = "geopulse.mqtt.broker.host")
+    @StaticInitSafe
+    String brokerHost;
+
+    @Inject
+    @ConfigProperty(name = "geopulse.mqtt.broker.port")
+    @StaticInitSafe
+    int brokerPort;
+
+    @Inject
+    @ConfigProperty(name = "geopulse.mqtt.username")
+    @StaticInitSafe
+    String username;
+
+    @Inject
+    @ConfigProperty(name = "geopulse.mqtt.password")
+    @StaticInitSafe
+    String password;
+
+    private boolean mqttEnabled;
+
+    @PostConstruct
+    void init() {
         // Validate configuration when MQTT is enabled
-        if (mqttEnabled) {
-            if (brokerHost.trim().isEmpty()) {
+        if (mqttEnabledConfig) {
+            if (brokerHost == null || brokerHost.trim().isEmpty()) {
                 log.error("MQTT is enabled but broker host is not configured");
                 this.mqttEnabled = false;
             } else {

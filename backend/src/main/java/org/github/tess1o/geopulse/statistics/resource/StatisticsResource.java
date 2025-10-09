@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.statistics;
+package org.github.tess1o.geopulse.statistics.resource;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
+import org.github.tess1o.geopulse.statistics.service.StatisticsService;
 
 import java.time.Duration;
 import java.time.Instant;

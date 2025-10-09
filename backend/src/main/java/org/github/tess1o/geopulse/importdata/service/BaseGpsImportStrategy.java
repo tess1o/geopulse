@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -33,9 +34,11 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
     protected ImportDataClearingService dataClearingService;
     
     @ConfigProperty(name = "geopulse.import.bulk-insert-batch-size", defaultValue = "500")
+    @StaticInitSafe
     int bulkInsertBatchSize;
     
     @ConfigProperty(name = "geopulse.import.merge-batch-size", defaultValue = "250")
+    @StaticInitSafe
     int mergeBatchSize;
     
     @Override

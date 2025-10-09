@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -178,6 +179,7 @@ public class ImportService {
     }
 
     @ConfigProperty(name = "geopulse.import.scheduler.enabled", defaultValue = "true")
+    @StaticInitSafe
     boolean schedulerEnabled;
 
     @Scheduled(every = "2s")
