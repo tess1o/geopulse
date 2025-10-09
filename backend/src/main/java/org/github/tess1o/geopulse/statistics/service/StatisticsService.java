@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.statistics;
+package org.github.tess1o.geopulse.statistics.service;
 
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
 import org.github.tess1o.geopulse.statistics.model.UserStatistics;

@@ -7,7 +7,7 @@ import org.github.tess1o.geopulse.digest.model.*;
 import org.github.tess1o.geopulse.digest.service.calculation.*;
 import org.github.tess1o.geopulse.digest.service.milestone.MilestoneEvaluator;
 import org.github.tess1o.geopulse.digest.service.util.PeriodInfoBuilder;
-import org.github.tess1o.geopulse.statistics.StatisticsService;
+import org.github.tess1o.geopulse.statistics.service.StatisticsService;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
 import org.github.tess1o.geopulse.statistics.model.UserStatistics;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;

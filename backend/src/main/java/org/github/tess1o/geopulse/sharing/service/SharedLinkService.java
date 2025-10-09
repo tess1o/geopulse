@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
-import org.github.tess1o.geopulse.sharing.SharedLinkMapper;
+import org.github.tess1o.geopulse.sharing.mapper.SharedLinkMapper;
 import org.github.tess1o.geopulse.sharing.exceptions.TooManyLinksException;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.repository.SharedLinkRepository;

@@ -3,7 +3,7 @@ package org.github.tess1o.geopulse.digest.service.calculation;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.digest.model.ActivityChartData;
-import org.github.tess1o.geopulse.statistics.StatisticsService;
+import org.github.tess1o.geopulse.statistics.service.StatisticsService;
 import org.github.tess1o.geopulse.statistics.model.BarChartData;
 import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
 import org.github.tess1o.geopulse.statistics.model.UserStatistics;

@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.sharing;
+package org.github.tess1o.geopulse.sharing.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
