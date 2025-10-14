@@ -96,8 +96,9 @@ const initializeMap = async () => {
           }).setView(props.center, props.zoom)
 
           // Add tile layer
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          L.tileLayer('/osm/tiles/{s}/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
+            subdomains: ['a', 'b', 'c'],
             maxZoom: 19
           }).addTo(map.value)
         } catch (mapError) {

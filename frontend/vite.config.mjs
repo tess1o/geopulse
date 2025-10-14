@@ -27,6 +27,26 @@ export default defineConfig({
         host: true,
         port: 5555, // or any port you like
         proxy: {
+            '/osm/tiles': {
+                configure: (proxy, options) => {
+                    proxy.on('proxyReq', (proxyReq, req, res) => {
+                        // Determine which subdomain
+                        const match = req.url.match(/^\/osm\/tiles\/([abc])\//);
+                        if (match) {
+                            const subdomain = match[1];
+                            const newPath = req.url.replace(/^\/osm\/tiles\/[abc]/, '');
+
+                            // Completely override the target
+                            proxyReq.path = newPath;
+                            proxyReq.host = `${subdomain}.tile.openstreetmap.org`;
+                            proxyReq.removeHeader('cookie');
+                            proxyReq.setHeader('host', `${subdomain}.tile.openstreetmap.org`);
+                        }
+                    });
+                },
+                target: 'https://a.tile.openstreetmap.org',
+                changeOrigin: true
+            },
             '/api': {
                 target: 'http://localhost:8080',
                 changeOrigin: true,

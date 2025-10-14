@@ -190,23 +190,23 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 
 ### Backend Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
+| Parameter | Description | Default                   |
+|-----------|-------------|---------------------------|
 | `backend.image.repository` | Backend image repository | `tess1o/geopulse-backend` |
-| `backend.image.tag` | Backend image tag | `1.0.0-rc.20` |
-| `backend.replicaCount` | Number of backend replicas | `1` |
-| `backend.service.type` | Backend service type | `ClusterIP` |
-| `backend.service.port` | Backend service port | `8080` |
-| `backend.resources.limits.memory` | Backend memory limit | `1Gi` |
-| `backend.resources.limits.cpu` | Backend CPU limit | `1000m` |
-| `backend.javaOpts` | Custom JVM options | `""` |
+| `backend.image.tag` | Backend image tag | `1.0.0-rc.21-native`      |
+| `backend.replicaCount` | Number of backend replicas | `1`                       |
+| `backend.service.type` | Backend service type | `ClusterIP`               |
+| `backend.service.port` | Backend service port | `8080`                    |
+| `backend.resources.limits.memory` | Backend memory limit | `1Gi`                     |
+| `backend.resources.limits.cpu` | Backend CPU limit | `1000m`                   |
+| `backend.javaOpts` | Custom JVM options | `""`                      |
 
 ### Frontend Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `frontend.image.repository` | Frontend image repository | `tess1o/geopulse-ui` |
-| `frontend.image.tag` | Frontend image tag | `1.0.0-rc.20` |
+| `frontend.image.tag` | Frontend image tag | `1.0.0-rc.21` |
 | `frontend.replicaCount` | Number of frontend replicas | `1` |
 | `frontend.service.type` | Frontend service type | `ClusterIP` |
 | `frontend.service.port` | Frontend service port | `80` |

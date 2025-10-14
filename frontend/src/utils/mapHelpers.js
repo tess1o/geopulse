@@ -9,13 +9,13 @@ import L from 'leaflet'
  * Fix Leaflet default marker images import issues in Vite/Webpack
  */
 export function fixLeafletMarkerImages() {
-  delete L.Icon.Default.prototype._getIconUrl
+    delete L.Icon.Default.prototype._getIconUrl
 
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
-    iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
-    shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href
-  })
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: new URL('leaflet/dist/images/marker-icon-2x.png', import.meta.url).href,
+        iconUrl: new URL('leaflet/dist/images/marker-icon.png', import.meta.url).href,
+        shadowUrl: new URL('leaflet/dist/images/marker-shadow.png', import.meta.url).href
+    })
 }
 
 /**
@@ -23,23 +23,23 @@ export function fixLeafletMarkerImages() {
  * Adds retry logic for tooltip positioning when map container is not ready
  */
 export function fixLeafLetTooltip() {
-  L.Tooltip.prototype._updatePosition = function (retryCount = 10) {
-    if (!this._map || !this._map._container) {
-      if (retryCount > 0) {
-        setTimeout(() => {
-          this._updatePosition(retryCount - 1)
-        }, 200)
-      }
-      return
-    }
+    L.Tooltip.prototype._updatePosition = function (retryCount = 10) {
+        if (!this._map || !this._map._container) {
+            if (retryCount > 0) {
+                setTimeout(() => {
+                    this._updatePosition(retryCount - 1)
+                }, 200)
+            }
+            return
+        }
 
-    try {
-      const pos = this._map.latLngToLayerPoint(this._latlng)
-      this._setPosition(pos)
-    } catch (e) {
-      console.warn('Tooltip position update failed:', e)
+        try {
+            const pos = this._map.latLngToLayerPoint(this._latlng)
+            this._setPosition(pos)
+        } catch (e) {
+            console.warn('Tooltip position update failed:', e)
+        }
     }
-  }
 }
 
 /**
@@ -47,192 +47,192 @@ export function fixLeafLetTooltip() {
  * Prevents _latLngToNewLayerPoint errors when map container is not ready
  */
 export function fixLeafletMarkerAnimation() {
-  // Enhanced zoom animation fix with scaling prevention
-  const originalAnimateZoom = L.Marker.prototype._animateZoom
-  L.Marker.prototype._animateZoom = function (opt) {
-    // More comprehensive null checks
-    if (!this._map || 
-        !this._map._container || 
-        !this._map._latLngToNewLayerPoint ||
-        !this._latlng ||
-        !opt ||
-        typeof opt.zoom === 'undefined' ||
-        !opt.center) {
-      return this
-    }
-
-    try {
-      const pos = this._map._latLngToNewLayerPoint(this._latlng, opt.zoom, opt.center)
-
-      // Additional pos validation
-      if (this._icon && pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-        // Disable CSS transitions during zoom
-        L.DomUtil.addClass(this._icon, 'leaflet-zoom-anim')
-
-        // Use setPosition instead of setTransform to avoid scaling issues
-        L.DomUtil.setPosition(this._icon, pos)
-
-        // Re-enable transitions after zoom animation
-        setTimeout(() => {
-          if (this._icon) {
-            L.DomUtil.removeClass(this._icon, 'leaflet-zoom-anim')
-          }
-        }, 250) // Match Leaflet's default zoom animation duration
-      }
-
-      if (this._shadow && pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
-        L.DomUtil.setPosition(this._shadow, pos)
-      }
-
-      return this
-    } catch (e) {
-      // Silently fail and fall back to original behavior
-      try {
-        if (originalAnimateZoom) {
-          return originalAnimateZoom.call(this, opt)
+    // Enhanced zoom animation fix with scaling prevention
+    const originalAnimateZoom = L.Marker.prototype._animateZoom
+    L.Marker.prototype._animateZoom = function (opt) {
+        // More comprehensive null checks
+        if (!this._map ||
+            !this._map._container ||
+            !this._map._latLngToNewLayerPoint ||
+            !this._latlng ||
+            !opt ||
+            typeof opt.zoom === 'undefined' ||
+            !opt.center) {
+            return this
         }
-      } catch (fallbackError) {
-        // If even the original fails, just return this
-      }
-      return this
-    }
-  }
 
-  // Fix zoom end to ensure clean state
-  const originalOnZoomEnd = L.Marker.prototype._onZoomEnd
-  L.Marker.prototype._onZoomEnd = function () {
-    // Clean up any zoom animation classes
-    if (this._icon) {
-      L.DomUtil.removeClass(this._icon, 'leaflet-zoom-anim')
-    }
+        try {
+            const pos = this._map._latLngToNewLayerPoint(this._latlng, opt.zoom, opt.center)
 
-    try {
-      if (originalOnZoomEnd) {
-        return originalOnZoomEnd.call(this)
-      }
-    } catch (e) {
-      // Silently handle zoom end errors
-    }
-  }
+            // Additional pos validation
+            if (this._icon && pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+                // Disable CSS transitions during zoom
+                L.DomUtil.addClass(this._icon, 'leaflet-zoom-anim')
 
-  // Enhanced fix for DivIcon markers with better positioning
-  L.DivIcon.prototype._setIconStyles = function (img, name) {
-    const options = this.options
-    let sizeOption = options[name + 'Size']
+                // Use setPosition instead of setTransform to avoid scaling issues
+                L.DomUtil.setPosition(this._icon, pos)
 
-    if (typeof sizeOption === 'number') {
-      sizeOption = [sizeOption, sizeOption]
-    }
+                // Re-enable transitions after zoom animation
+                setTimeout(() => {
+                    if (this._icon) {
+                        L.DomUtil.removeClass(this._icon, 'leaflet-zoom-anim')
+                    }
+                }, 250) // Match Leaflet's default zoom animation duration
+            }
 
-    const size = L.point(sizeOption)
-    const anchor = L.point(
-        (name === 'shadow' && options.shadowAnchor) ||
-        options.iconAnchor ||
-        (size && size.divideBy(2, true))
-    )
+            if (this._shadow && pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+                L.DomUtil.setPosition(this._shadow, pos)
+            }
 
-    // Enhanced positioning with better anchor handling
-    if (name === 'icon' && anchor) {
-      img.style.marginLeft = (-anchor.x) + 'px'
-      img.style.marginTop = (-anchor.y) + 'px'
-
-      // Ensure consistent sizing regardless of zoom
-      img.style.position = 'absolute'
-      img.style.transform = 'none' // Prevent transform conflicts
+            return this
+        } catch (e) {
+            // Silently fail and fall back to original behavior
+            try {
+                if (originalAnimateZoom) {
+                    return originalAnimateZoom.call(this, opt)
+                }
+            } catch (fallbackError) {
+                // If even the original fails, just return this
+            }
+            return this
+        }
     }
 
-    if (size) {
-      img.style.width = size.x + 'px'
-      img.style.height = size.y + 'px'
-    }
-  }
+    // Fix zoom end to ensure clean state
+    const originalOnZoomEnd = L.Marker.prototype._onZoomEnd
+    L.Marker.prototype._onZoomEnd = function () {
+        // Clean up any zoom animation classes
+        if (this._icon) {
+            L.DomUtil.removeClass(this._icon, 'leaflet-zoom-anim')
+        }
 
-  // Fix for marker positioning during zoom
-  const originalSetLatLng = L.Marker.prototype.setLatLng
-  L.Marker.prototype.setLatLng = function (latlng) {
-    if (!this._map || !this._map._container || !latlng) {
-      this._pendingLatLng = latlng
-      return this
-    }
-
-    try {
-      return originalSetLatLng.call(this, latlng)
-    } catch (e) {
-      // Silently handle setLatLng errors
-      return this
-    }
-  }
-
-  // Fix for DivIcon positioning
-  const originalUpdate = L.Marker.prototype.update
-  L.Marker.prototype.update = function () {
-    if (!this._map || !this._map._container) {
-      return this
+        try {
+            if (originalOnZoomEnd) {
+                return originalOnZoomEnd.call(this)
+            }
+        } catch (e) {
+            // Silently handle zoom end errors
+        }
     }
 
-    if (this._pendingLatLng) {
-      this._latlng = this._pendingLatLng
-      delete this._pendingLatLng
+    // Enhanced fix for DivIcon markers with better positioning
+    L.DivIcon.prototype._setIconStyles = function (img, name) {
+        const options = this.options
+        let sizeOption = options[name + 'Size']
+
+        if (typeof sizeOption === 'number') {
+            sizeOption = [sizeOption, sizeOption]
+        }
+
+        const size = L.point(sizeOption)
+        const anchor = L.point(
+            (name === 'shadow' && options.shadowAnchor) ||
+            options.iconAnchor ||
+            (size && size.divideBy(2, true))
+        )
+
+        // Enhanced positioning with better anchor handling
+        if (name === 'icon' && anchor) {
+            img.style.marginLeft = (-anchor.x) + 'px'
+            img.style.marginTop = (-anchor.y) + 'px'
+
+            // Ensure consistent sizing regardless of zoom
+            img.style.position = 'absolute'
+            img.style.transform = 'none' // Prevent transform conflicts
+        }
+
+        if (size) {
+            img.style.width = size.x + 'px'
+            img.style.height = size.y + 'px'
+        }
     }
 
-    try {
-      return originalUpdate.call(this)
-    } catch (e) {
-      // Silently handle update errors
-      return this
-    }
-  }
+    // Fix for marker positioning during zoom
+    const originalSetLatLng = L.Marker.prototype.setLatLng
+    L.Marker.prototype.setLatLng = function (latlng) {
+        if (!this._map || !this._map._container || !latlng) {
+            this._pendingLatLng = latlng
+            return this
+        }
 
-  // Fix for layer groups
-  const originalLayerGroupAnimateZoom = L.LayerGroup.prototype._animateZoom
-  L.LayerGroup.prototype._animateZoom = function (opt) {
-    if (!this._map || !this._map._container || !opt) {
-      return this
+        try {
+            return originalSetLatLng.call(this, latlng)
+        } catch (e) {
+            // Silently handle setLatLng errors
+            return this
+        }
     }
 
-    try {
-      return originalLayerGroupAnimateZoom.call(this, opt)
-    } catch (e) {
-      // Silently handle layer group zoom errors
-      return this
+    // Fix for DivIcon positioning
+    const originalUpdate = L.Marker.prototype.update
+    L.Marker.prototype.update = function () {
+        if (!this._map || !this._map._container) {
+            return this
+        }
+
+        if (this._pendingLatLng) {
+            this._latlng = this._pendingLatLng
+            delete this._pendingLatLng
+        }
+
+        try {
+            return originalUpdate.call(this)
+        } catch (e) {
+            // Silently handle update errors
+            return this
+        }
     }
-  }
+
+    // Fix for layer groups
+    const originalLayerGroupAnimateZoom = L.LayerGroup.prototype._animateZoom
+    L.LayerGroup.prototype._animateZoom = function (opt) {
+        if (!this._map || !this._map._container || !opt) {
+            return this
+        }
+
+        try {
+            return originalLayerGroupAnimateZoom.call(this, opt)
+        } catch (e) {
+            // Silently handle layer group zoom errors
+            return this
+        }
+    }
 }
 
 // Color scheme for different marker types
 export const MARKER_COLORS = {
-  STAY: '#607D8B',           // Blue Grey - for stay points
-  PATH: '#4A90E2',           // Light Blue - for path lines
-  TRANSIT: '#003366',        // Dark Blue - for transit points
-  HIGHLIGHT_START: '#2ECC71', // Green - for trip start points
-  HIGHLIGHT_END: '#D84315',   // Red Orange - for trip end points
-  FRIEND: '#FF9800',         // Orange - for friend locations
-  CURRENT: '#00BCD4',        // Cyan - for current/last location
-  FAVORITE: '#E91E63'        // Pink - for favorite locations
+    STAY: '#607D8B',           // Blue Grey - for stay points
+    PATH: '#4A90E2',           // Light Blue - for path lines
+    TRANSIT: '#003366',        // Dark Blue - for transit points
+    HIGHLIGHT_START: '#2ECC71', // Green - for trip start points
+    HIGHLIGHT_END: '#D84315',   // Red Orange - for trip end points
+    FRIEND: '#FF9800',         // Orange - for friend locations
+    CURRENT: '#00BCD4',        // Cyan - for current/last location
+    FAVORITE: '#E91E63'        // Pink - for favorite locations
 }
 
 // Size configurations for different marker types
 export const MARKER_SIZES = {
-  SMALL: {
-    SIZE: 16,
-    ANCHOR: 8,
-    BORDER: 2
-  },
-  STANDARD: {
-    SIZE: 24,
-    ANCHOR: 12,
-    BORDER: 2
-  },
-  LARGE: {
-    SIZE: 32,
-    ANCHOR: 16,
-    BORDER: 3
-  },
-  HIGHLIGHT: {
-    SIZE: 40,
-    ANCHOR: 20,
-    BORDER: 3
-  }
+    SMALL: {
+        SIZE: 16,
+        ANCHOR: 8,
+        BORDER: 2
+    },
+    STANDARD: {
+        SIZE: 24,
+        ANCHOR: 12,
+        BORDER: 2
+    },
+    LARGE: {
+        SIZE: 32,
+        ANCHOR: 16,
+        BORDER: 3
+    },
+    HIGHLIGHT: {
+        SIZE: 40,
+        ANCHOR: 20,
+        BORDER: 3
+    }
 }
 
 /**
@@ -247,86 +247,86 @@ export const MARKER_SIZES = {
  * @returns {L.DivIcon} - Configured div icon
  */
 export function createCustomDivIcon({
-                               color,
-                               icon = '',
-                               size = MARKER_SIZES.STANDARD,
-                               className = 'custom-marker',
-                               customStyle = {},
-                               shape = 'circle'
-                             }) {
-  const totalSize = size.SIZE + (size.BORDER * 2)
+                                        color,
+                                        icon = '',
+                                        size = MARKER_SIZES.STANDARD,
+                                        className = 'custom-marker',
+                                        customStyle = {},
+                                        shape = 'circle'
+                                    }) {
+    const totalSize = size.SIZE + (size.BORDER * 2)
 
-  let baseStyle = {
-    backgroundColor: color,
-    width: `${size.SIZE}px`,
-    height: `${size.SIZE}px`,
-    border: `${size.BORDER}px solid white`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    ...customStyle
-  }
-
-  // Apply shape-specific styles
-  switch (shape) {
-    case 'pin':
-      baseStyle = {
-        ...baseStyle,
-        borderRadius: '50% 50% 50% 0',
-        transform: 'rotate(-45deg)',
-        transformOrigin: 'center center'
-      }
-      break
-    case 'square':
-      baseStyle = {
-        ...baseStyle,
-        borderRadius: '15%'
-      }
-      break
-    case 'circle':
-    default:
-      baseStyle = {
-        ...baseStyle,
-        borderRadius: '50%'
-      }
-      break
-  }
-
-  const styleString = Object.entries(baseStyle)
-      .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
-      .join('; ')
-
-  // Create icon content
-  let iconContent = ''
-  if (icon) {
-    const iconSize = Math.floor(size.SIZE * 0.7) // Increased from 0.5 to 0.7
-    if (icon.startsWith('fa-') || icon.includes('fas ') || icon.includes('far ')) {
-      // FontAwesome icon
-      iconContent = `<i class="${icon}" style="color: white; font-size: ${iconSize}px; font-weight: bold; ${shape === 'pin' ? 'transform: rotate(45deg);' : ''}"></i>`
-    } else {
-      // Emoji or text - make emojis even bigger
-      const emojiSize = Math.floor(size.SIZE * 0.8)
-      iconContent = `<span style="font-size: ${emojiSize}px; line-height: 1; ${shape === 'pin' ? 'transform: rotate(45deg);' : ''}">${icon}</span>`
+    let baseStyle = {
+        backgroundColor: color,
+        width: `${size.SIZE}px`,
+        height: `${size.SIZE}px`,
+        border: `${size.BORDER}px solid white`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        ...customStyle
     }
-  }
 
-  // Add shadow for pin shape
-  const shadowStyle = shape === 'pin' ?
-      'box-shadow: 2px 2px 4px rgba(0,0,0,0.3); filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));' :
-      'box-shadow: 0 2px 4px rgba(0,0,0,0.3);'
+    // Apply shape-specific styles
+    switch (shape) {
+        case 'pin':
+            baseStyle = {
+                ...baseStyle,
+                borderRadius: '50% 50% 50% 0',
+                transform: 'rotate(-45deg)',
+                transformOrigin: 'center center'
+            }
+            break
+        case 'square':
+            baseStyle = {
+                ...baseStyle,
+                borderRadius: '15%'
+            }
+            break
+        case 'circle':
+        default:
+            baseStyle = {
+                ...baseStyle,
+                borderRadius: '50%'
+            }
+            break
+    }
 
-  return L.divIcon({
-    className: `${className} marker-${shape}`,
-    html: `<div style="${styleString}; ${shadowStyle}">${iconContent}</div>`,
-    iconSize: [totalSize, totalSize],
-    iconAnchor: getIconAnchor(shape, totalSize, size),
-    popupAnchor: getPopupAnchor(shape, totalSize),
-    // Add these properties for better positioning stability
-    tooltipAnchor: getPopupAnchor(shape, totalSize),
-    shadowSize: [0, 0], // Disable shadow to prevent positioning issues
-    shadowAnchor: [0, 0]
-  })
+    const styleString = Object.entries(baseStyle)
+        .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+        .join('; ')
+
+    // Create icon content
+    let iconContent = ''
+    if (icon) {
+        const iconSize = Math.floor(size.SIZE * 0.7) // Increased from 0.5 to 0.7
+        if (icon.startsWith('fa-') || icon.includes('fas ') || icon.includes('far ')) {
+            // FontAwesome icon
+            iconContent = `<i class="${icon}" style="color: white; font-size: ${iconSize}px; font-weight: bold; ${shape === 'pin' ? 'transform: rotate(45deg);' : ''}"></i>`
+        } else {
+            // Emoji or text - make emojis even bigger
+            const emojiSize = Math.floor(size.SIZE * 0.8)
+            iconContent = `<span style="font-size: ${emojiSize}px; line-height: 1; ${shape === 'pin' ? 'transform: rotate(45deg);' : ''}">${icon}</span>`
+        }
+    }
+
+    // Add shadow for pin shape
+    const shadowStyle = shape === 'pin' ?
+        'box-shadow: 2px 2px 4px rgba(0,0,0,0.3); filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));' :
+        'box-shadow: 0 2px 4px rgba(0,0,0,0.3);'
+
+    return L.divIcon({
+        className: `${className} marker-${shape}`,
+        html: `<div style="${styleString}; ${shadowStyle}">${iconContent}</div>`,
+        iconSize: [totalSize, totalSize],
+        iconAnchor: getIconAnchor(shape, totalSize, size),
+        popupAnchor: getPopupAnchor(shape, totalSize),
+        // Add these properties for better positioning stability
+        tooltipAnchor: getPopupAnchor(shape, totalSize),
+        shadowSize: [0, 0], // Disable shadow to prevent positioning issues
+        shadowAnchor: [0, 0]
+    })
 }
 
 /**
@@ -337,20 +337,20 @@ export function createCustomDivIcon({
  * @returns {Array} - [x, y] anchor coordinates
  */
 function getIconAnchor(shape, totalSize, size) {
-  const centerX = totalSize / 2
-  const centerY = totalSize / 2
+    const centerX = totalSize / 2
+    const centerY = totalSize / 2
 
-  switch (shape) {
-    case 'pin':
-      // Pin shape should anchor at the bottom center point
-      // Account for the rotation by adjusting the anchor
-      return [centerX, totalSize * 0.85] // Slightly above bottom for better positioning
-    case 'circle':
-    case 'square':
-    default:
-      // Circle and square anchor at exact center
-      return [centerX, centerY]
-  }
+    switch (shape) {
+        case 'pin':
+            // Pin shape should anchor at the bottom center point
+            // Account for the rotation by adjusting the anchor
+            return [centerX, totalSize * 0.85] // Slightly above bottom for better positioning
+        case 'circle':
+        case 'square':
+        default:
+            // Circle and square anchor at exact center
+            return [centerX, centerY]
+    }
 }
 
 /**
@@ -360,16 +360,16 @@ function getIconAnchor(shape, totalSize, size) {
  * @returns {Array} - [x, y] popup anchor coordinates
  */
 function getPopupAnchor(shape, totalSize) {
-  switch (shape) {
-    case 'pin':
-      // Popup appears above the pin tip
-      return [0, -totalSize * 0.8]
-    case 'circle':
-    case 'square':
-    default:
-      // Popup appears above the center
-      return [0, -totalSize * 0.6]
-  }
+    switch (shape) {
+        case 'pin':
+            // Popup appears above the pin tip
+            return [0, -totalSize * 0.8]
+        case 'circle':
+        case 'square':
+        default:
+            // Popup appears above the center
+            return [0, -totalSize * 0.6]
+    }
 }
 
 
@@ -380,19 +380,19 @@ function getPopupAnchor(shape, totalSize) {
  * @returns {L.Marker} - Configured marker
  */
 export function createPathLastMarker(latitude, longitude) {
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      color: MARKER_COLORS.CURRENT,
-      icon: '📍', // Pin emoji for current location
-      size: MARKER_SIZES.HIGHLIGHT,
-      className: 'custom-marker last-marker',
-      shape: 'pin',
-      customStyle: {
-        animation: 'pulse 2s infinite',
-        background: `linear-gradient(135deg, ${MARKER_COLORS.CURRENT}, #0097A7)`
-      }
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            color: MARKER_COLORS.CURRENT,
+            icon: '📍', // Pin emoji for current location
+            size: MARKER_SIZES.HIGHLIGHT,
+            className: 'custom-marker last-marker',
+            shape: 'pin',
+            customStyle: {
+                animation: 'pulse 2s infinite',
+                background: `linear-gradient(135deg, ${MARKER_COLORS.CURRENT}, #0097A7)`
+            }
+        })
     })
-  })
 }
 
 /**
@@ -403,18 +403,18 @@ export function createPathLastMarker(latitude, longitude) {
  * @returns {L.Marker} - Configured marker
  */
 export function createHighlightedPathStartMarker(latitude, longitude, instant = false) {
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      //color: MARKER_COLORS.HIGHLIGHT_START,
-      icon: 'fas fa-play', // Play icon for start
-      size: MARKER_SIZES.HIGHLIGHT,
-      className: `custom-marker highlight-start-marker${instant ? ' instant' : ''}`,
-      shape: 'circle',
-      customStyle: {
-        background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_START}, #27AE60)`
-      }
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            //color: MARKER_COLORS.HIGHLIGHT_START,
+            icon: 'fas fa-play', // Play icon for start
+            size: MARKER_SIZES.HIGHLIGHT,
+            className: `custom-marker highlight-start-marker${instant ? ' instant' : ''}`,
+            shape: 'circle',
+            customStyle: {
+                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_START}, #27AE60)`
+            }
+        })
     })
-  })
 }
 
 /**
@@ -425,18 +425,18 @@ export function createHighlightedPathStartMarker(latitude, longitude, instant = 
  * @returns {L.Marker} - Configured marker
  */
 export function createHighlightedPathEndMarker(latitude, longitude, instant = false) {
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      color: MARKER_COLORS.HIGHLIGHT_END,
-      icon: 'fas fa-stop', // Stop icon for end
-      size: MARKER_SIZES.HIGHLIGHT,
-      className: `custom-marker highlight-end-marker${instant ? ' instant' : ''}`,
-      shape: 'square',
-      customStyle: {
-        background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_END}, #C0392B)`
-      }
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            color: MARKER_COLORS.HIGHLIGHT_END,
+            icon: 'fas fa-stop', // Stop icon for end
+            size: MARKER_SIZES.HIGHLIGHT,
+            className: `custom-marker highlight-end-marker${instant ? ' instant' : ''}`,
+            shape: 'square',
+            customStyle: {
+                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_END}, #C0392B)`
+            }
+        })
     })
-  })
 }
 
 /**
@@ -446,30 +446,30 @@ export function createHighlightedPathEndMarker(latitude, longitude, instant = fa
  * @returns {L.Marker} - Configured marker
  */
 export function createFriendMarker(latitude, longitude) {
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      color: MARKER_COLORS.FRIEND,
-      icon: 'fas fa-user', // User icon for friends
-      size: MARKER_SIZES.HIGHLIGHT, // Increased from LARGE to HIGHLIGHT
-      className: 'custom-marker friend-marker',
-      shape: 'circle',
-      customStyle: {
-        background: `linear-gradient(135deg, ${MARKER_COLORS.FRIEND}, #F39C12)`,
-        border: '3px solid white'
-      }
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            color: MARKER_COLORS.FRIEND,
+            icon: 'fas fa-user', // User icon for friends
+            size: MARKER_SIZES.HIGHLIGHT, // Increased from LARGE to HIGHLIGHT
+            className: 'custom-marker friend-marker',
+            shape: 'circle',
+            customStyle: {
+                background: `linear-gradient(135deg, ${MARKER_COLORS.FRIEND}, #F39C12)`,
+                border: '3px solid white'
+            }
+        })
     })
-  })
 }
 
 export function createAvatarMarker(latitude, longitude, avatarPath) {
-  const markerSize = 40; // Fixed size in pixels
+    const markerSize = 40; // Fixed size in pixels
 
-  return L.marker([latitude, longitude], {
-    icon: createAvatarDivIcon({
-      avatarPath,
-      size: markerSize
-    })
-  });
+    return L.marker([latitude, longitude], {
+        icon: createAvatarDivIcon({
+            avatarPath,
+            size: markerSize
+        })
+    });
 }
 
 /**
@@ -479,9 +479,9 @@ export function createAvatarMarker(latitude, longitude, avatarPath) {
  * @param {number} options.size - Size of the marker
  * @returns {L.DivIcon} A Leaflet DivIcon configured with the avatar
  */
-export function createAvatarDivIcon({ avatarPath, size }) {
-  // Create the HTML for the avatar icon with all styles inlined
-  const html = `
+export function createAvatarDivIcon({avatarPath, size}) {
+    // Create the HTML for the avatar icon with all styles inlined
+    const html = `
     <div style="
       width: ${size}px; 
       height: ${size}px;
@@ -506,14 +506,15 @@ export function createAvatarDivIcon({ avatarPath, size }) {
     </div>
   `;
 
-  // Create a div icon with explicit settings
-  return L.divIcon({
-    html,
-    className: 'avatar-marker', // Minimal class name
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2] // Center of the icon (change if needed)
-  });
+    // Create a div icon with explicit settings
+    return L.divIcon({
+        html,
+        className: 'avatar-marker', // Minimal class name
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2] // Center of the icon (change if needed)
+    });
 }
+
 /**
  * Create marker for favorite locations
  * @param {number} latitude - Latitude coordinate
@@ -521,20 +522,20 @@ export function createAvatarDivIcon({ avatarPath, size }) {
  * @returns {L.Marker} - Configured marker
  */
 export function createFavoriteLocationMarker(latitude, longitude) {
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      color: MARKER_COLORS.FAVORITE,
-      icon: 'fas fa-star', // Star icon for favorites
-      size: MARKER_SIZES.HIGHLIGHT, // Increased from LARGE to HIGHLIGHT
-      className: 'custom-marker favorite-location-marker',
-      shape: 'pin',
-      customStyle: {
-        background: `linear-gradient(135deg, ${MARKER_COLORS.FAVORITE}, #AD1457)`,
-        border: '3px solid white',
-        boxShadow: '0 0 15px rgba(233, 30, 99, 0.6)'
-      }
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            color: MARKER_COLORS.FAVORITE,
+            icon: 'fas fa-star', // Star icon for favorites
+            size: MARKER_SIZES.HIGHLIGHT, // Increased from LARGE to HIGHLIGHT
+            className: 'custom-marker favorite-location-marker',
+            shape: 'pin',
+            customStyle: {
+                background: `linear-gradient(135deg, ${MARKER_COLORS.FAVORITE}, #AD1457)`,
+                border: '3px solid white',
+                boxShadow: '0 0 15px rgba(233, 30, 99, 0.6)'
+            }
+        })
     })
-  })
 }
 
 /**
@@ -542,13 +543,13 @@ export function createFavoriteLocationMarker(latitude, longitude) {
  * @returns {L.DivIcon} - Configured timeline icon
  */
 export function createTimelineIcon() {
-  return createCustomDivIcon({
-    color: MARKER_COLORS.STAY,
-    icon: '📍', // Pin emoji for timeline points
-    size: MARKER_SIZES.STANDARD,
-    className: 'custom-marker timeline-marker',
-    shape: 'circle'
-  })
+    return createCustomDivIcon({
+        color: MARKER_COLORS.STAY,
+        icon: '📍', // Pin emoji for timeline points
+        size: MARKER_SIZES.STANDARD,
+        className: 'custom-marker timeline-marker',
+        shape: 'circle'
+    })
 }
 
 /**
@@ -556,17 +557,17 @@ export function createTimelineIcon() {
  * @returns {L.DivIcon} - Configured highlighted timeline icon
  */
 export function createHighlightedTimelineIcon() {
-  return createCustomDivIcon({
-    color: MARKER_COLORS.STAY, // Use the same color as regular timeline markers
-    icon: '📍', // Pin emoji for highlighted timeline points
-    size: MARKER_SIZES.HIGHLIGHT,
-    className: 'custom-marker timeline-marker highlighted',
-    shape: 'circle',
-    customStyle: {
-      border: '3px solid #22c55e', // Green border to indicate highlighting
-      boxShadow: '0 0 8px rgba(46, 204, 113, 0.4)'
-    }
-  })
+    return createCustomDivIcon({
+        color: MARKER_COLORS.STAY, // Use the same color as regular timeline markers
+        icon: '📍', // Pin emoji for highlighted timeline points
+        size: MARKER_SIZES.HIGHLIGHT,
+        className: 'custom-marker timeline-marker highlighted',
+        shape: 'circle',
+        customStyle: {
+            border: '3px solid #22c55e', // Green border to indicate highlighting
+            boxShadow: '0 0 8px rgba(46, 204, 113, 0.4)'
+        }
+    })
 }
 
 /**
@@ -574,17 +575,17 @@ export function createHighlightedTimelineIcon() {
  * @returns {L.DivIcon} - Configured friend icon
  */
 export function createFriendIcon() {
-  return createCustomDivIcon({
-    color: MARKER_COLORS.FRIEND,
-    icon: 'fas fa-user', // User icon for friends
-    size: MARKER_SIZES.LARGE,
-    className: 'custom-marker friend-marker',
-    shape: 'circle',
-    customStyle: {
-      background: `linear-gradient(135deg, ${MARKER_COLORS.FRIEND}, #F39C12)`,
-      border: '3px solid white'
-    }
-  })
+    return createCustomDivIcon({
+        color: MARKER_COLORS.FRIEND,
+        icon: 'fas fa-user', // User icon for friends
+        size: MARKER_SIZES.LARGE,
+        className: 'custom-marker friend-marker',
+        shape: 'circle',
+        customStyle: {
+            background: `linear-gradient(135deg, ${MARKER_COLORS.FRIEND}, #F39C12)`,
+            border: '3px solid white'
+        }
+    })
 }
 
 /**
@@ -592,18 +593,18 @@ export function createFriendIcon() {
  * @returns {L.DivIcon} - Configured favorite icon
  */
 export function createFavoriteIcon() {
-  return createCustomDivIcon({
-    color: MARKER_COLORS.FAVORITE,
-    icon: 'fas fa-star', // Star icon for favorites
-    size: MARKER_SIZES.LARGE,
-    className: 'custom-marker favorite-marker',
-    shape: 'pin',
-    customStyle: {
-      background: `linear-gradient(135deg, ${MARKER_COLORS.FAVORITE}, #AD1457)`,
-      border: '3px solid white',
-      boxShadow: '0 0 15px rgba(233, 30, 99, 0.6)'
-    }
-  })
+    return createCustomDivIcon({
+        color: MARKER_COLORS.FAVORITE,
+        icon: 'fas fa-star', // Star icon for favorites
+        size: MARKER_SIZES.LARGE,
+        className: 'custom-marker favorite-marker',
+        shape: 'pin',
+        customStyle: {
+            background: `linear-gradient(135deg, ${MARKER_COLORS.FAVORITE}, #AD1457)`,
+            border: '3px solid white',
+            boxShadow: '0 0 15px rgba(233, 30, 99, 0.6)'
+        }
+    })
 }
 
 /**
@@ -611,21 +612,21 @@ export function createFavoriteIcon() {
  * @returns {L.DivIcon} - Configured immich photo icon
  */
 export function createImmichPhotoIcon() {
-  // Use smaller size on mobile devices
-  const size = window.innerWidth < 768 ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
-  
-  return createCustomDivIcon({
-    color: '#6366f1', // Indigo color for Immich photos
-    icon: '📷', // Camera emoji for photos
-    size,
-    className: 'custom-marker immich-photo-marker',
-    shape: 'square',
-    customStyle: {
-      background: `linear-gradient(135deg, #6366f1, #4f46e5)`,
-      border: '2px solid white',
-      boxShadow: '0 2px 6px rgba(99, 102, 241, 0.4)'
-    }
-  })
+    // Use smaller size on mobile devices
+    const size = window.innerWidth < 768 ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
+
+    return createCustomDivIcon({
+        color: '#6366f1', // Indigo color for Immich photos
+        icon: '📷', // Camera emoji for photos
+        size,
+        className: 'custom-marker immich-photo-marker',
+        shape: 'square',
+        customStyle: {
+            background: `linear-gradient(135deg, #6366f1, #4f46e5)`,
+            border: '2px solid white',
+            boxShadow: '0 2px 6px rgba(99, 102, 241, 0.4)'
+        }
+    })
 }
 
 /**
@@ -634,36 +635,36 @@ export function createImmichPhotoIcon() {
  * @returns {L.DivIcon} - Configured immich photo cluster icon
  */
 export function createImmichPhotoClusterIcon(count) {
-  // Responsive sizing - smaller on mobile
-  const isMobile = window.innerWidth < 768
-  let size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
-  let backgroundColor = '#6366f1'
-  
-  if (count > 20) {
-    size = isMobile ? MARKER_SIZES.LARGE : MARKER_SIZES.HIGHLIGHT
-    backgroundColor = '#dc2626' // Red for large clusters
-  } else if (count > 10) {
-    size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
-    backgroundColor = '#ea580c' // Orange for medium-large clusters
-  } else if (count > 5) {
-    backgroundColor = '#7c3aed' // Purple for medium clusters
-  }
+    // Responsive sizing - smaller on mobile
+    const isMobile = window.innerWidth < 768
+    let size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
+    let backgroundColor = '#6366f1'
 
-  return createCustomDivIcon({
-    color: backgroundColor,
-    icon: count.toString(),
-    size,
-    className: 'custom-marker immich-photo-cluster-marker',
-    shape: 'circle',
-    customStyle: {
-      background: `linear-gradient(135deg, ${backgroundColor}, ${backgroundColor}dd)`,
-      border: '3px solid white',
-      boxShadow: '0 3px 8px rgba(99, 102, 241, 0.5)',
-      fontSize: `${Math.floor(size.SIZE * (isMobile ? 0.5 : 0.45))}px`,
-      fontWeight: 'bold',
-      color: 'white'
+    if (count > 20) {
+        size = isMobile ? MARKER_SIZES.LARGE : MARKER_SIZES.HIGHLIGHT
+        backgroundColor = '#dc2626' // Red for large clusters
+    } else if (count > 10) {
+        size = isMobile ? MARKER_SIZES.STANDARD : MARKER_SIZES.LARGE
+        backgroundColor = '#ea580c' // Orange for medium-large clusters
+    } else if (count > 5) {
+        backgroundColor = '#7c3aed' // Purple for medium clusters
     }
-  })
+
+    return createCustomDivIcon({
+        color: backgroundColor,
+        icon: count.toString(),
+        size,
+        className: 'custom-marker immich-photo-cluster-marker',
+        shape: 'circle',
+        customStyle: {
+            background: `linear-gradient(135deg, ${backgroundColor}, ${backgroundColor}dd)`,
+            border: '3px solid white',
+            boxShadow: '0 3px 8px rgba(99, 102, 241, 0.5)',
+            fontSize: `${Math.floor(size.SIZE * (isMobile ? 0.5 : 0.45))}px`,
+            fontWeight: 'bold',
+            color: 'white'
+        }
+    })
 }
 
 /**
@@ -673,14 +674,14 @@ export function createImmichPhotoClusterIcon(count) {
  * @returns {L.Polyline} - Configured polyline
  */
 export function createStyledPolyline(coordinates, options = {}) {
-  const defaultOptions = {
-    weight: 3,
-    opacity: 0.8,
-    lineCap: 'round',
-    lineJoin: 'round'
-  }
+    const defaultOptions = {
+        weight: 3,
+        opacity: 0.8,
+        lineCap: 'round',
+        lineJoin: 'round'
+    }
 
-  return L.polyline(coordinates, { ...defaultOptions, ...options })
+    return L.polyline(coordinates, {...defaultOptions, ...options})
 }
 
 /**
@@ -690,12 +691,12 @@ export function createStyledPolyline(coordinates, options = {}) {
  * @returns {L.Polyline} - Configured polyline
  */
 export function createHighlightedTripPath(coordinates, options = {}) {
-  return createStyledPolyline(coordinates, {
-    color: MARKER_COLORS.TRANSIT,
-    weight: 5,
-    opacity: 0.9,
-    ...options
-  })
+    return createStyledPolyline(coordinates, {
+        color: MARKER_COLORS.TRANSIT,
+        weight: 5,
+        opacity: 0.9,
+        ...options
+    })
 }
 
 /**
@@ -705,11 +706,11 @@ export function createHighlightedTripPath(coordinates, options = {}) {
  * @returns {L.Polyline} - Configured polyline
  */
 export function createRegularPath(coordinates, options = {}) {
-  return createStyledPolyline(coordinates, {
-    color: MARKER_COLORS.PATH,
-    weight: 3,
-    ...options
-  })
+    return createStyledPolyline(coordinates, {
+        color: MARKER_COLORS.PATH,
+        weight: 3,
+        ...options
+    })
 }
 
 /**
@@ -720,24 +721,24 @@ export function createRegularPath(coordinates, options = {}) {
  * @returns {L.Marker} - Configured marker
  */
 export function createModernPinMarker(latitude, longitude, config = {}) {
-  const {
-    color = MARKER_COLORS.STAY,
-    icon = 'fas fa-map-marker-alt',
-    size = MARKER_SIZES.LARGE,
-    className = 'custom-marker modern-pin',
-    ...rest
-  } = config
+    const {
+        color = MARKER_COLORS.STAY,
+        icon = 'fas fa-map-marker-alt',
+        size = MARKER_SIZES.LARGE,
+        className = 'custom-marker modern-pin',
+        ...rest
+    } = config
 
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      color,
-      icon,
-      size,
-      className,
-      shape: 'pin',
-      ...rest
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            color,
+            icon,
+            size,
+            className,
+            shape: 'pin',
+            ...rest
+        })
     })
-  })
 }
 
 /**
@@ -749,26 +750,26 @@ export function createModernPinMarker(latitude, longitude, config = {}) {
  * @returns {L.Marker} - Configured marker
  */
 export function createBadgeMarker(latitude, longitude, badge, config = {}) {
-  const {
-    color = MARKER_COLORS.FRIEND,
-    size = MARKER_SIZES.STANDARD,
-    className = 'custom-marker badge-marker'
-  } = config
+    const {
+        color = MARKER_COLORS.FRIEND,
+        size = MARKER_SIZES.STANDARD,
+        className = 'custom-marker badge-marker'
+    } = config
 
-  return L.marker([latitude, longitude], {
-    icon: createCustomDivIcon({
-      color,
-      icon: badge.toString(),
-      size,
-      className,
-      shape: 'circle',
-      customStyle: {
-        fontSize: `${Math.floor(size.SIZE * 0.4)}px`,
-        fontWeight: 'bold',
-        color: 'white'
-      }
+    return L.marker([latitude, longitude], {
+        icon: createCustomDivIcon({
+            color,
+            icon: badge.toString(),
+            size,
+            className,
+            shape: 'circle',
+            customStyle: {
+                fontSize: `${Math.floor(size.SIZE * 0.4)}px`,
+                fontWeight: 'bold',
+                color: 'white'
+            }
+        })
     })
-  })
 }
 
 /**
@@ -779,22 +780,22 @@ export function createBadgeMarker(latitude, longitude, badge, config = {}) {
  * @returns {L.Marker} - Configured marker
  */
 export function createClusterMarker(latitude, longitude, count) {
-  let color = MARKER_COLORS.STAY
-  let size = MARKER_SIZES.STANDARD
+    let color = MARKER_COLORS.STAY
+    let size = MARKER_SIZES.STANDARD
 
-  if (count > 10) {
-    color = '#f44336' // Red for large clusters
-    size = MARKER_SIZES.HIGHLIGHT
-  } else if (count > 5) {
-    color = MARKER_COLORS.FRIEND // Orange for medium clusters
-    size = MARKER_SIZES.LARGE
-  }
+    if (count > 10) {
+        color = '#f44336' // Red for large clusters
+        size = MARKER_SIZES.HIGHLIGHT
+    } else if (count > 5) {
+        color = MARKER_COLORS.FRIEND // Orange for medium clusters
+        size = MARKER_SIZES.LARGE
+    }
 
-  return createBadgeMarker(latitude, longitude, count, {
-    color,
-    size,
-    className: 'custom-marker cluster-marker'
-  })
+    return createBadgeMarker(latitude, longitude, count, {
+        color,
+        size,
+        className: 'custom-marker cluster-marker'
+    })
 }
 
 /**
@@ -804,35 +805,11 @@ export function createClusterMarker(latitude, longitude, count) {
  * @returns {string} - Formatted HTML string
  */
 export function formatTooltipContent(data, fields) {
-  return fields
-      .filter(field => data[field.key] !== undefined && data[field.key] !== null)
-      .map(field => {
-        const value = field.formatter ? field.formatter(data[field.key]) : data[field.key]
-        return field.label ? `<strong>${field.label}:</strong> ${value}` : `<strong>${value}</strong>`
-      })
-      .join('<br>')
-}
-
-/**
- * Default map configuration
- */
-export const DEFAULT_MAP_CONFIG = {
-  zoomAnimation: true,
-  drawControl: false,
-  attributionControl: true,
-  zoomControl: true,
-  maxZoom: 18,
-  minZoom: 8
-}
-
-/**
- * Default tile layer configuration
- */
-export const DEFAULT_TILE_CONFIG = {
-  url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  options: {
-    maxZoom: 18,
-    minZoom: 8,
-    attribution: '&copy; OpenStreetMap contributors'
-  }
+    return fields
+        .filter(field => data[field.key] !== undefined && data[field.key] !== null)
+        .map(field => {
+            const value = field.formatter ? field.formatter(data[field.key]) : data[field.key]
+            return field.label ? `<strong>${field.label}:</strong> ${value}` : `<strong>${value}</strong>`
+        })
+        .join('<br>')
 }

@@ -23,8 +23,13 @@ RUN rm -rf ./*
 # Copy the built assets from the build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config
+# Copy custom nginx configs
+COPY frontend/00-cache.conf /etc/nginx/conf.d/00-cache.conf
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Create cache directory and set permissions
+RUN mkdir -p /var/cache/nginx/osm && \
+    chown -R nginx:nginx /var/cache/nginx/osm
 
 # Copy entrypoint script
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
