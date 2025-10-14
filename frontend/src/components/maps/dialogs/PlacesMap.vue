@@ -11,7 +11,7 @@
         :map-id="`places-map-${mapId}`"
         :center="coordinates"
         :zoom="16"
-        :show-controls="true"
+        :show-controls="false"
         height="400px"
         width="100%"
         @map-ready="handleMapReady"

@@ -2,25 +2,15 @@
 
 # Variables
 VERSION := $(shell grep -m1 "<version>" pom.xml | sed -E 's/.*<version>(.*)<\/version>.*/\1/')
+VERSION_NATIVE := $(VERSION)-native
+VERSION_JVM := $(VERSION)-jvm
 BACKEND_IMAGE := tess1o/geopulse-backend
 FRONTEND_IMAGE := tess1o/geopulse-ui
 PLATFORMS := linux/amd64,linux/arm64
 
-# Default target
-.PHONY: all
-all: build-all push-all
-
 # Build both backend and frontend images for multiple architectures
-.PHONY: build-all
-build-all: build-backend build-frontend
-
-# Build both backend and frontend images for local architecture only
-.PHONY: build-all-local
-build-all-local: build-backend-local build-frontend-local
-
-# Push both backend and frontend images
-.PHONY: push-all
-push-all: push-backend push-frontend
+.PHONY: all
+all: build-backend-jvm build-backend-native build-frontend
 
 # ==========================
 # Create or reuse builder
@@ -31,82 +21,61 @@ ensure-builder:
 	(docker buildx create --name geopulse-builder --use --bootstrap && echo "✅ Buildx builder created")
 	@docker buildx use geopulse-builder
 
-# ==========================
-# Build for ARM64 only
-# ==========================
 .PHONY: build-backend-native-arm64
 build-backend-native-arm64: ensure-builder
 	@echo "🏗️  Building native backend Docker image for ARM64..."
 	docker buildx build --platform linux/arm64 \
-	   -t $(BACKEND_IMAGE):$(VERSION)-native-arm64 \
-	   -t $(BACKEND_IMAGE):native-arm64-latest \
-	   --build-arg VERSION=$(VERSION) \
-	   -f backend/Dockerfile.native \
-	   --push \
-	   .
+		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64 \
+		-t $(BACKEND_IMAGE):native-latest-arm64 \
+		--build-arg VERSION=$(VERSION_NATIVE) \
+		-f backend/Dockerfile.native \
+		--push \
+		.
 	@echo "✅ ARM64 native backend image pushed successfully."
 
-# ==========================
-# Build for AMD64 only
-# ==========================
 .PHONY: build-backend-native-amd64
 build-backend-native-amd64: ensure-builder
 	@echo "🏗️  Building native backend Docker image for AMD64..."
 	docker buildx build --platform linux/amd64 \
-	   -t $(BACKEND_IMAGE):$(VERSION)-native-amd64 \
-	   -t $(BACKEND_IMAGE):native-amd64-latest \
-	   --build-arg VERSION=$(VERSION) \
-	   -f backend/Dockerfile.native \
-	   --push \
-	   .
+		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
+		-t $(BACKEND_IMAGE):native-latest-amd64 \
+		--build-arg VERSION=$(VERSION_NATIVE) \
+		-f backend/Dockerfile.native \
+		--push \
+		.
 	@echo "✅ AMD64 native backend image pushed successfully."
 
-# ==========================
-# Build both sequentially + multi-arch manifest
-# ==========================
 .PHONY: build-backend-native
 build-backend-native: build-backend-native-arm64 build-backend-native-amd64
 	@echo "🧩 Creating multi-arch manifest..."
-	docker buildx imagetools create -t $(BACKEND_IMAGE):$(VERSION)-native \
-	   $(BACKEND_IMAGE):$(VERSION)-native-amd64 \
-	   $(BACKEND_IMAGE):$(VERSION)-native-arm64
-
-	docker buildx imagetools create -t $(BACKEND_IMAGE):native-latest \
-	   $(BACKEND_IMAGE):native-amd64-latest \
-	   $(BACKEND_IMAGE):native-arm64-latest
+	docker buildx imagetools create \
+		-t $(BACKEND_IMAGE):$(VERSION_NATIVE) \
+		$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
+		$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64
+	docker buildx imagetools create \
+		-t $(BACKEND_IMAGE):native-latest \
+		-t $(BACKEND_IMAGE):latest \
+		$(BACKEND_IMAGE):native-latest-amd64 \
+		$(BACKEND_IMAGE):native-latest-arm64
 	@echo "✅ Multi-arch native images built and pushed successfully."
 
 # Build multi-architecture backend image
-.PHONY: build-backend
-build-backend:
+.PHONY: build-backend-jvm
+build-backend-jvm: ensure-builder
 	@echo "Building backend Docker image for multiple architectures..."
-	docker buildx create --name geopulse-builder --use --bootstrap || true
 	docker buildx build --platform $(PLATFORMS) \
-		-t $(BACKEND_IMAGE):$(VERSION) \
-		-t $(BACKEND_IMAGE):latest \
-		--build-arg VERSION=$(VERSION) \
+		-t $(BACKEND_IMAGE):$(VERSION_JVM) \
+		-t $(BACKEND_IMAGE):jvm-latest \
+		--build-arg VERSION=$(VERSION_JVM) \
 		-f backend/Dockerfile \
 		--push \
-		.
-	@echo "Backend image built successfully"
-
-# Build backend image for local architecture only
-.PHONY: build-backend-local
-build-backend-local:
-	@echo "Building backend Docker image for local architecture..."
-	docker build \
-		-t $(BACKEND_IMAGE):$(VERSION) \
-		-t $(BACKEND_IMAGE):latest \
-		--build-arg VERSION=$(VERSION) \
-		-f backend/Dockerfile \
 		.
 	@echo "Backend image built successfully"
 
 # Build multi-architecture frontend image
 .PHONY: build-frontend
-build-frontend:
+build-frontend: ensure-builder
 	@echo "Building frontend Docker image for multiple architectures..."
-	docker buildx create --name geopulse-builder --use --bootstrap || true
 	docker buildx build --platform $(PLATFORMS) \
 		-t $(FRONTEND_IMAGE):$(VERSION) \
 		-t $(FRONTEND_IMAGE):latest \
@@ -115,57 +84,12 @@ build-frontend:
 		--push \
 		.
 	@echo "Frontend image built successfully"
-
-.PHONY: build-frontend-local
-build-frontend-local:
-	@echo "Building frontend Docker image for local architecture..."
-	docker build \
-		-t $(FRONTEND_IMAGE):$(VERSION) \
-		-t $(FRONTEND_IMAGE):latest \
-		--build-arg VERSION=$(VERSION) \
-		-f frontend/Dockerfile \
-		.
-	@echo "Frontend image built successfully"
-
-# Push backend image to Docker Hub
-.PHONY: push-backend
-push-backend:
-	@echo "Pushing backend Docker image to Docker Hub..."
-	docker buildx build --platform $(PLATFORMS) \
-		-t $(BACKEND_IMAGE):$(VERSION) \
-		-t $(BACKEND_IMAGE):latest \
-		--build-arg VERSION=$(VERSION) \
-		-f backend/Dockerfile \
-		--push \
-		.
-	@echo "Backend image pushed successfully"
-
-.PHONY: push-frontend
-push-frontend:
-	@echo "Pushing frontend Docker image to Docker Hub..."
-	docker buildx build --platform $(PLATFORMS) \
-		-t $(FRONTEND_IMAGE):$(VERSION) \
-		-t $(FRONTEND_IMAGE):latest \
-		--build-arg VERSION=$(VERSION) \
-		-f frontend/Dockerfile \
-		--push \
-		.
-	@echo "Frontend image pushed successfully"
-
-# Show version
-.PHONY: version
-version:
-	@echo "Current version: $(VERSION)"
 
 # Backend unit tests
-.PHONY: test-unit
-test-unit:
+.PHONY: backend-test-unit
+backend-test-unit:
 	@echo "Running backend unit tests"
 	./mvnw -pl backend clean test
-
-# Legacy alias for backwards compatibility
-.PHONY: run-tests
-run-tests: test-unit
 
 #==============================================================================
 # E2E TESTING TARGETS
