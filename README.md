@@ -1,7 +1,8 @@
 # GeoPulse
 
-<div align="center">
+<p align="center">
   <img src="frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="200"/>
+</p>
 
 **A self-hosted location tracking and analysis platform**
 
@@ -9,7 +10,6 @@
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docs/DEPLOYMENT_GUIDE.md)
 [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-✓-green.svg)](#)
 [![Privacy First](https://img.shields.io/badge/Privacy-First-green.svg)](#)
-</div>
 
 ---
 
