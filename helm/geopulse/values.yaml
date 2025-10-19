@@ -51,10 +51,6 @@ backend:
     timeoutSeconds: 3
     failureThreshold: 3
 
-  # JVM options (optional - leave empty to use defaults)
-  javaOpts: ""
-  # Example: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC"
-
   # Security context
   securityContext:
     runAsNonRoot: true

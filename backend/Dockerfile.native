@@ -35,9 +35,6 @@ WORKDIR /work
 # Copy the native runner
 COPY --from=build /app/backend/target/*-runner /work/application
 
-# Optional: copy keys or other resources
-# COPY --from=build /app/backend/src/main/resources/keys /work/keys
-
 # Set permissions for non-root runtime user
 RUN chmod 775 /work /work/application \
     && chown -R 1001:0 /work \

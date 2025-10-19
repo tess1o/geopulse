@@ -34,11 +34,15 @@ and stops automatically, no manual steps are required.
 
 ---
 
-## Setup
+## Docker Compose Deployment
+
+This section guides you through deploying GeoPulse using Docker Compose.
 
 ### 1. Download Configuration Files
 
-#### Step 1: Download `.env` configuration
+First, download the necessary configuration files.
+
+#### Step 1.1: Download `.env` configuration
 
 **Using wget:**
 
@@ -52,7 +56,7 @@ wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 ```
 
-#### Step 2: Choose your deployment type
+#### Step 1.2: Choose your deployment type
 
 **Option A: Basic deployment (without MQTT broker)**
 
@@ -90,447 +94,66 @@ curl -L -o mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoP
 chmod +x mosquitto_entrypoint.sh
 ```
 
-#### Step 3: Configure environment variables
-
-**Step 3.1:** If you chose Option B (MQTT broker), enable MQTT integration in `.env`:
-
-```env
-GEOPULSE_MQTT_ENABLED=true
-```
-
-**Step 3.2:** Change database and MQTT passwords (optional, but recommended):
-
-```env
-GEOPULSE_POSTGRES_PASSWORD=your-secure-database-password
-GEOPULSE_MQTT_PASSWORD=your-secure-mqtt-password
-```
-
-### 2. Start GeoPulse
-
-```bash
-docker compose up -d
-```
-
-**Access:**
-
-- Frontend: http://localhost:5555
-- API: http://localhost:8080/api
-
----
-
-## Homelab Deployment
-
-GeoPulse is designed to work seamlessly across multiple access methods in homelab environments:
-
-### Multiple Access Methods Support
-
-Update your `.env` file to support multiple UI URLs:
-
-```env
-# Support multiple access methods (comma-separated)
-GEOPULSE_UI_URL=http://localhost:5555,http://192.168.1.100:5555,http://your-tailscale-ip:5555
-```
-
-This allows you to access GeoPulse via:
-
-- **Localhost**: `http://localhost:5555`
-- **Local Network**: `http://192.168.1.100:5555`
-- **Tailscale**: `http://your-tailscale-ip:5555`
-- **Any combination** of the above
-
----
-
-## Production Deployment
-
-For server deployment (like VPS) with your domain:
-
-1. **Complete setup steps above**
-
-2. **Edit `.env` file:**
-
-Update the following values:
-
-```env
-GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
-GEOPULSE_AUTH_SECURE_COOKIES=true
-```
-
-By setting `GEOPULSE_AUTH_SECURE_COOKIES=true` the `access_token` and `refresh_token` cookies will use flag `Secure`.
-
-3. **Configure reverse proxy** (Nginx/Caddy/Traefik) for HTTPS
-
-You must terminate HTTPS at a reverse proxy and forward traffic to the GeoPulse containers. Here is a basic Nginx
-configuration. You will also need to set up SSL certificates (e.g., using Let's Encrypt).
-
-**Example of nginx configuration**
-
-```nginx
-# /etc/nginx/sites-available/geopulse.conf
-
-server {
-    listen 80;
-    server_name geopulse.yourdomain.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name geopulse.yourdomain.com;
-
-    # SSL certs
-    ssl_certificate /path/to/your/fullchain.pem;
-    ssl_certificate_key /path/to/your/privkey.pem;
-
-    # Frontend
-    location / {
-        proxy_pass http://localhost:5555;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
----
-
-## Kubernetes Deployment with Helm
-
-GeoPulse can be deployed to Kubernetes clusters using the provided Helm chart. This is ideal for production
-environments, homelab Kubernetes setups, or multi-instance deployments.
-
-### Prerequisites
-
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured for your cluster
-- [Helm 3.x](https://helm.sh/docs/intro/install/) installed
-- Kubernetes cluster (local: k3s, k8s, Minikube, or cloud: EKS, GKE, AKS)
-
-### Quick Start
-
-**1. Clone the repository (or download helm chart):**
-
-```bash
-git clone https://github.com/tess1o/GeoPulse.git
-cd GeoPulse
-```
-
-**2. Review and customize values:**
-
-Edit `helm/geopulse/values.yaml` to configure your deployment. Key settings:
-
-```yaml
-# Enable/disable components
-mosquitto:
-  enabled: true  # Set to false if not using OwnTracks MQTT
-
-# Service types
-backend:
-  service:
-    type: ClusterIP  # or NodePort/LoadBalancer
-
-# Mosquitto NodePort configuration (for external IoT devices)
-mosquitto:
-  service:
-    type: NodePort
-    port: 1883
-    nodePort: 31883  # Fixed port for external access
-
-# Frontend URL configuration
-config:
-  uiUrl: "http://localhost:5555"  # Update for your environment
-  cookieDomain: ""                # Set for production (e.g., ".yourdomain.com")
-  authSecureCookies: false        # Set to true for HTTPS
-```
-
-**3. Install GeoPulse:**
-
-```bash
-# Install with default values
-helm install geopulse ./helm/geopulse --namespace default
-
-# Or install with mosquitto enabled
-helm install geopulse ./helm/geopulse \
-  --namespace default \
-  --set mosquitto.enabled=true
-```
-
-**4. Verify installation:**
-
-```bash
-# Check all pods are running
-kubectl get pods -n default
-
-# Check services
-kubectl get svc -n default
-
-# View helm release
-helm list -n default
-```
-
-### Accessing GeoPulse
-
-**Option 1: Port Forwarding (for testing/development)**
-
-```bash
-# Frontend UI
-kubectl port-forward svc/geopulse-frontend 5555:80 -n default
-
-# Backend API
-kubectl port-forward svc/geopulse-backend 8080:8080 -n default
-
-# PostgreSQL (for direct database access)
-kubectl port-forward svc/geopulse-postgres 5432:5432 -n default
-
-# Mosquitto MQTT (if using ClusterIP)
-kubectl port-forward svc/geopulse-mosquitto 1883:1883 -n default
-```
-
-Then access at:
-
-- Frontend: http://localhost:5555
-- API: http://localhost:8080/api
-
-**Option 2: NodePort (for direct node access)**
-
-```bash
-# Get node IP
-kubectl get nodes -o wide
-
-# Access services
-# Frontend: http://<node-ip>:<nodeport>
-# Check assigned NodePorts:
-kubectl get svc -n default
-```
-
-**Option 3: Ingress (for production)**
-
-Configure ingress in `values.yaml`:
-
-```yaml
-ingress:
-  enabled: true
-  className: "nginx"
-  hostname: geopulse.yourdomain.com
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  tls:
-    enabled: true
-    secretName: geopulse-tls
-```
-
-### Mosquitto MQTT Access
-
-If mosquitto is enabled with `NodePort` service type:
-
-```bash
-# Find node IP and port
-kubectl get nodes -o wide
-kubectl get svc geopulse-mosquitto -n default
-
-# Connect IoT devices to: <node-ip>:31883
-# Get MQTT credentials:
-kubectl get secret geopulse-secrets -n default -o jsonpath='{.data.GEOPULSE_MQTT_PASSWORD}' | base64 -d
-echo
-```
-
-Default username: `geopulse_mqtt_admin` (or as configured in values.yaml)
-
-### Updating Configuration
-
-**Update helm release with new values:**
-
-```bash
-helm upgrade geopulse ./helm/geopulse \
-  --namespace default \
-  --values ./helm/geopulse/values.yaml
-```
-
-**Note:** Secrets are preserved across upgrades (using `"helm.sh/resource-policy": keep`). To regenerate secrets:
-
-```bash
-kubectl delete secret geopulse-secrets -n default
-helm upgrade geopulse ./helm/geopulse --namespace default
-```
-
-### Uninstalling
-
-```bash
-# Uninstall helm release
-helm uninstall geopulse -n default
-
-# Delete persistent data (optional - THIS DELETES ALL DATA!)
-kubectl delete pvc -l app.kubernetes.io/instance=geopulse -n default
-```
-
-### Advanced Configuration
-
-For detailed configuration options, see:
-
-- `helm/geopulse/values.yaml` - All available configuration parameters
-- `helm/geopulse/README.md` - Helm chart documentation
-- Resource limits, persistence, ingress, OIDC, and more
-
-### Kubernetes-Specific Troubleshooting
-
-**Pods not starting:**
-
-```bash
-kubectl describe pod <pod-name> -n default
-kubectl logs <pod-name> -n default
-```
-
-**Database connection issues:**
-
-```bash
-# Check postgres service
-kubectl get svc geopulse-postgres -n default
-
-# Test DNS resolution from backend pod
-kubectl exec -it <backend-pod> -n default -- nslookup geopulse-postgres
-```
-
-**Storage issues:**
-
-```bash
-# Check PVCs
-kubectl get pvc -n default
-
-# Check storage class
-kubectl get storageclass
-```
-
----
-
-## Troubleshooting
-
-**Port conflicts:**
-
-```bash
-docker ps --format "table {{.Names}}\t{{.Ports}}"
-```
-
-**Service issues:**
-
-```bash
-docker compose logs -f
-curl http://localhost:8080/api/health
-```
-
-**Authentication issues:**
-
-- Check domains match between frontend/backend
-- For local deployment: `GEOPULSE_COOKIE_DOMAIN=""` and `GEOPULSE_AUTH_SECURE_COOKIES=false`
-- For production: set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com` and `GEOPULSE_AUTH_SECURE_COOKIES=true`
-- Verify JWT keys exist in `keys/` directory
-
-**Network/Proxy issues:**
-
-- API requests failing: Check that frontend nginx proxy is configured correctly
-- Multiple access methods not working: Ensure `GEOPULSE_UI_URL` includes all required URLs (comma-separated)
-- CORS errors: Verify backend `GEOPULSE_UI_URL` matches your access URLs
-- Development proxy issues: Ensure Vite dev server is running with proxy configuration
-
-**Configuration issues:**
-
-- Check `.env` file is properly formatted and readable by containers
-- Verify `GEOPULSE_BACKEND_URL` uses correct container name (`http://geopulse-backend:8080` for Docker)
-- For homelab: Use your actual IP addresses in `GEOPULSE_UI_URL`
-
-**Key generation issues:**
-
-- JWT keys and AI encryption keys are automatically generated in the `keys/` directory on first startup
-- If you see key-related errors, check that the `geopulse-keygen` service completed successfully:
-  `docker compose logs geopulse-keygen`
-- Keys are persistent - they won't be regenerated if they already exist
-- To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`
-
----
-
-## Performance Optimization
+### 2. Configure Environment (`.env`)
+
+The `.env` file is the central place for configuring your GeoPulse instance.
+
+#### Core Configuration
+
+It is highly recommended to set strong, unique passwords for your services.
+
+- `GEOPULSE_POSTGRES_PASSWORD`: The password for the PostgreSQL database.
+  ```env
+  GEOPULSE_POSTGRES_PASSWORD=your-secure-database-password
+  ```
+- `GEOPULSE_MQTT_PASSWORD`: The password for the MQTT broker. Only needed if you are using the MQTT deployment.
+  ```env
+  GEOPULSE_MQTT_PASSWORD=your-secure-mqtt-password
+  ```
+
+#### MQTT Configuration
+
+- `GEOPULSE_MQTT_ENABLED`: Set to `true` to enable the OwnTracks MQTT integration. This requires using the full deployment `docker-compose.yml`.
+  ```env
+  GEOPULSE_MQTT_ENABLED=true
+  ```
+
+#### Web Access & Security Configuration
+
+These variables control how users access the GeoPulse frontend and how authentication cookies are handled.
+
+- `GEOPULSE_UI_URL`: A comma-separated list of URLs that can be used to access the frontend. This is crucial for CORS (Cross-Origin Resource Sharing) to work correctly.
+- `GEOPULSE_COOKIE_DOMAIN`: The domain for which the authentication cookies are set.
+- `GEOPULSE_AUTH_SECURE_COOKIES`: Set to `true` to ensure cookies are only sent over HTTPS.
+
+**Scenario-based examples:**
+
+- **Localhost-only access:**
+  ```env
+  GEOPULSE_UI_URL=http://localhost:5555
+  GEOPULSE_COOKIE_DOMAIN=
+  GEOPULSE_AUTH_SECURE_COOKIES=false
+  ```
+
+- **Homelab access (via IP address and/or local domain):**
+  ```env
+  # Allows access via localhost, a local network IP, and a local domain
+  GEOPULSE_UI_URL=http://localhost:5555,http://192.168.1.100:5555,http://geopulse.local
+  GEOPULSE_COOKIE_DOMAIN=
+  GEOPULSE_AUTH_SECURE_COOKIES=false
+  ```
+
+- **Production access (with a domain and HTTPS):**
+  ```env
+  GEOPULSE_UI_URL=https://geopulse.yourdomain.com
+  GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
+  GEOPULSE_AUTH_SECURE_COOKIES=true
+  ```
+
+#### Advanced Performance Tuning
 
 <details>
 <summary><strong>🚀 Advanced Performance Tuning (Click to expand)</strong></summary>
-
-### Memory Configuration by Use Case
-
-GeoPulse automatically optimizes JVM memory usage based on container limits. Here are recommended configurations:
-
-#### Minimal Deployment (1-2 users)
-
-```yaml
-# docker-compose.yml
-services:
-  geopulse-backend:
-    deploy:
-      resources:
-        limits:
-          memory: 512Mi
-        requests:
-          memory: 256Mi
-    # Uses ~384MB heap automatically (75% of 512MB)
-```
-
-#### Standard Deployment (3-10 users)
-
-```yaml
-# docker-compose.yml  
-services:
-  geopulse-backend:
-    deploy:
-      resources:
-        limits:
-          memory: 1Gi
-        requests:
-          memory: 512Mi
-    # Uses ~768MB heap automatically (75% of 1GB)
-```
-
-#### High-Performance Deployment (10+ users, large datasets)
-
-```yaml
-# docker-compose.yml with custom resource limits
-services:
-  geopulse-backend:
-    deploy:
-      resources:
-        limits:
-          memory: 2Gi
-        requests:
-          memory: 1Gi
-    environment:
-      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -XX:MaxGCPauseMillis=100 -XX:G1HeapRegionSize=16m -XX:+FlightRecorder -XX:StartFlightRecording=duration=0,filename=/app/logs/performance.jfr
-    volumes:
-      - ./logs:/app/logs
-      - ./dumps:/app/dumps
-```
-
-### Custom JVM Tuning
-
-#### Override Default Settings
-
-```yaml
-# docker-compose.yml
-services:
-  geopulse-backend:
-    environment:
-      # Example: Use 80% of container memory instead of default 75%
-      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=80 -XX:+UseG1GC
-```
-
-#### Development Monitoring Setup
-
-```yaml
-# docker-compose-dev.yml (already configured)
-services:
-  geopulse-backend-dev:
-    ports:
-      - "9999:9999"  # JMX monitoring port
-    environment:
-      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false
-    volumes:
-      - ./logs:/app/logs  # Performance recordings
-```
 
 ### Database Performance Tuning
 
@@ -644,3 +267,109 @@ WHERE tablename LIKE '%gps%'
 ```
 
 </details>
+
+### 3. Start GeoPulse
+
+Once you have configured your `.env` file, you can start the application.
+
+```bash
+docker compose up -d
+```
+
+**Access:**
+
+- Frontend: http://localhost:5555 (or your configured URL)
+- API: http://localhost:8080/api
+
+---
+
+## Production Deployment Example: Reverse Proxy
+
+For a production deployment using a domain name, you must terminate HTTPS at a reverse proxy and forward traffic to the GeoPulse containers.
+
+1. **Configure your `.env` file for production** (as shown in the "Web Access & Security Configuration" section).
+
+2. **Set up your reverse proxy.** Here is a basic Nginx configuration example. You will also need to set up SSL certificates (e.g., using Let's Encrypt).
+
+**Example Nginx Configuration**
+
+```nginx
+# /etc/nginx/sites-available/geopulse.conf
+
+server {
+    listen 80;
+    server_name geopulse.yourdomain.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name geopulse.yourdomain.com;
+
+    # SSL certs
+    ssl_certificate /path/to/your/fullchain.pem;
+    ssl_certificate_key /path/to/your/privkey.pem;
+
+    # Frontend
+    location / {
+        proxy_pass http://localhost:5555;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+---
+
+## Kubernetes Deployment with Helm
+
+For production environments or for those who prefer orchestrating with Kubernetes, a Helm chart is available for deploying GeoPulse. The Helm chart provides a highly configurable way to manage the application, including scaling, persistence, ingress, and more.
+
+**→ For detailed instructions, please see the [Kubernetes Deployment Guide](./KUBERNETES_DEPLOYMENT.md).**
+
+---
+
+## Troubleshooting
+
+**Port conflicts:**
+
+```bash
+docker ps --format "table {{.Names}}\t{{.Ports}}"
+```
+
+**Service issues:**
+
+```bash
+docker compose logs -f
+curl http://localhost:8080/api/health
+```
+
+**Authentication issues:**
+
+- Check domains match between frontend/backend
+- For local deployment: `GEOPULSE_COOKIE_DOMAIN=""` and `GEOPULSE_AUTH_SECURE_COOKIES=false`
+- For production: set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com` and `GEOPULSE_AUTH_SECURE_COOKIES=true`
+- Verify JWT keys exist in `keys/` directory
+
+**Network/Proxy issues:**
+
+- API requests failing: Check that frontend nginx proxy is configured correctly
+- Multiple access methods not working: Ensure `GEOPULSE_UI_URL` includes all required URLs (comma-separated)
+- CORS errors: Verify backend `GEOPULSE_UI_URL` matches your access URLs
+- Development proxy issues: Ensure Vite dev server is running with proxy configuration
+
+**Configuration issues:**
+
+- Check `.env` file is properly formatted and readable by containers
+- Verify `GEOPULSE_BACKEND_URL` uses correct container name (`http://geopulse-backend:8080` for Docker)
+- For homelab: Use your actual IP addresses in `GEOPULSE_UI_URL`
+
+**Key generation issues:**
+
+- JWT keys and AI encryption keys are automatically generated in the `keys/` directory on first startup
+- If you see key-related errors, check that the `geopulse-keygen` service completed successfully:
+  `docker compose logs geopulse-keygen`
+- Keys are persistent - they won't be regenerated if they already exist
+- To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`

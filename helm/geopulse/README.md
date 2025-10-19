@@ -4,7 +4,7 @@ This Helm chart deploys GeoPulse, a self-hosted location tracking and analysis p
 
 ## Features
 
-- **Full Stack Deployment**: Backend (Java/Quarkus), Frontend (Vue.js), PostgreSQL with PostGIS
+- **Full Stack Deployment**: Backend (Java/Quarkus in Native mode), Frontend (Vue.js), PostgreSQL with PostGIS
 - **Optional MQTT Support**: Conditional Mosquitto MQTT broker deployment
 - **Production Ready**: Health checks, resource limits, persistent storage
 - **Flexible Configuration**: Extensive values.yaml for customization
@@ -20,30 +20,24 @@ This Helm chart deploys GeoPulse, a self-hosted location tracking and analysis p
 - (Optional) Ingress controller for external access
 - (Optional) cert-manager for TLS certificates
 
-## Installation
+## Manual Installation (Advanced)
 
-### Quick Start (Default Configuration)
+This section describes how to install the chart directly with Helm, bypassing the interactive scripts. This is intended for advanced users or automated workflows. For a simpler, interactive setup, please see the **[Kubernetes Deployment Guide](../../docs/KUBERNETES_DEPLOYMENT.md)**.
+
+### 1. Clone the Repository
 
 ```bash
-# Add the chart repository (if published)
-helm repo add geopulse https://your-repo-url
-helm repo update
-
-# Install GeoPulse
-helm install geopulse geopulse/geopulse
+git clone https://github.com/tess1o/GeoPulse.git
+cd GeoPulse
 ```
 
-### Install from Local Chart
+### 2. Install the Chart
+
+You can install the chart using the `helm install` command. You must provide your own values, either with `--set` flags or a custom values file (`-f my-values.yaml`).
 
 ```bash
-# From the repository root
-helm install geopulse ./helm/geopulse
-```
-
-### Install with Custom Values
-
-```bash
-helm install geopulse ./helm/geopulse -f my-values.yaml
+# Example installing with a custom values file from the examples
+helm install geopulse ./helm/geopulse -f helm/examples/medium-deployment.yaml
 ```
 
 ## Configuration
@@ -199,7 +193,6 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | `backend.service.port` | Backend service port | `8080`                    |
 | `backend.resources.limits.memory` | Backend memory limit | `1Gi`                     |
 | `backend.resources.limits.cpu` | Backend CPU limit | `1000m`                   |
-| `backend.javaOpts` | Custom JVM options | `""`                      |
 
 ### Frontend Parameters
 

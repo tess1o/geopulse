@@ -18,26 +18,15 @@ services:
       - .env
     environment:
       - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
-      # Development JVM settings with monitoring and debugging enabled
-      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -XX:+FlightRecorder -XX:StartFlightRecording=duration=0,filename=/app/logs/dev-performance.jfr
     volumes:
       - ./keys:/app/keys
       - ./dumps:/app/dumps
       - ./logs:/app/logs
-    ports:
-      # Expose JMX port for development monitoring
-      - "9999:9999"
     depends_on:
       geopulse-keygen-dev:
         condition: service_completed_successfully
       geopulse-postgres-dev:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 1Gi
-        requests:
-          memory: 512Mi
 
   geopulse-ui-dev:
     build:

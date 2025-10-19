@@ -1,0 +1,44 @@
+# Medium Deployment Example
+#
+# This configuration is suitable for a small team or a homelab environment.
+# - Persistence is enabled for the database and keys.
+# - Resource allocations are moderate.
+# - MQTT is disabled.
+
+# Backend configuration
+backend:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+# Frontend configuration
+frontend:
+  replicaCount: 1
+
+# PostgreSQL database configuration
+postgres:
+  persistence:
+    enabled: true
+    size: 25Gi
+    storageClass: "" # Uses the cluster's default StorageClass. Specify one if needed.
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+# Key generation job persistence
+keygen:
+  persistence:
+    enabled: true
+    size: 10Mi
+    storageClass: "" # Uses the cluster's default StorageClass.
+
+# MQTT is disabled by default (mosquitto.enabled: false)

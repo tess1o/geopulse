@@ -13,9 +13,6 @@ backend:
       memory: 1Gi
       cpu: 1000m
 
-  # Optional: Custom JVM settings for production
-  # javaOpts: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC"
-
 # Frontend configuration
 frontend:
   replicaCount: 2

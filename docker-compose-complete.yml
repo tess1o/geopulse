@@ -11,39 +11,26 @@ services:
   geopulse-backend:
     image: tess1o/geopulse-backend:1.0.0-rc.21-native
     container_name: geopulse-backend
+    mem_limit: 512m
+    mem_reservation: 128m
     restart: unless-stopped
     env_file:
       - .env
     environment:
       - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
-      # Optional: Custom JVM settings (uncomment to override defaults)
-      # - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC
     volumes:
       - ./keys:/app/keys
-      # Optional: Mount directories for heap dumps and performance logs
-      # - ./dumps:/app/dumps
-      # - ./logs:/app/logs
     depends_on:
       geopulse-keygen:
         condition: service_completed_successfully
       geopulse-postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget --spider -q -S http://localhost:8080/api/health 2>&1 | grep -E 'HTTP/[0-9\\.]+ 200' || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
       interval: 3s
       timeout: 2s
       retries: 20
       start_period: 5s
-    # Optional: Memory limits (uncomment and adjust based on your needs)
-    # Minimal deployment (1-2 users): 512Mi
-    # Standard deployment (3-10 users): 1Gi  
-    # Production deployment (10+ users): 2Gi or more
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 1Gi
-    #     requests:
-    #       memory: 512Mi
 
   geopulse-ui:
     image: tess1o/geopulse-ui:1.0.0-rc.21

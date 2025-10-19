@@ -54,13 +54,14 @@ Once deployed:
 
 ### Kubernetes Deployment
 
-For Kubernetes clusters, GeoPulse provides official Helm charts:
+For Kubernetes clusters, GeoPulse provides an easy-to-use set of scripts to manage the installation via Helm.
 
-```bash
-helm install geopulse ./helm/geopulse --namespace default --set mosquitto.enabled=true
-```
+1. Clone the repository: `git clone https://github.com/tess1o/GeoPulse.git`
+2. Run the installer: `cd GeoPulse && ./helm/install.sh`
 
-**👉 [Kubernetes/Helm Deployment Instructions](docs/DEPLOYMENT_GUIDE.md#kubernetes-deployment-with-helm)**
+The interactive script will guide you through the process.
+
+**👉 [View the Full Kubernetes/Helm Guide](docs/KUBERNETES_DEPLOYMENT.md)**
 
 ---
 

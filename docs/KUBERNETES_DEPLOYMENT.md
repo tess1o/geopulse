@@ -1,412 +1,82 @@
 # Kubernetes Deployment Guide
 
-This guide explains how to deploy GeoPulse to a Kubernetes cluster using Helm.
+This guide explains how to deploy GeoPulse to a Kubernetes cluster using the provided helper scripts and Helm.
+
+For advanced configuration and a full list of tunable parameters, please refer to the **[official chart README](../helm/geopulse/README.md)**.
 
 ## Prerequisites
 
+- You have cloned this repository locally.
 - Kubernetes cluster (1.19+)
-- Helm 3.2.0+
-- `kubectl` configured to access your cluster
-- Persistent volume provisioner (for data storage)
-- (Optional) Ingress controller (nginx, traefik, etc.)
-- (Optional) cert-manager (for automatic TLS certificates)
+- `kubectl` configured to access your cluster.
+- `helm` version 3.2.0+ installed.
 
-## Quick Start
+## 1. Clone the Repository
 
-### 1. Install with Default Settings
-
-The simplest way to get started:
+First, ensure you have a local copy of the GeoPulse repository.
 
 ```bash
-helm install geopulse ./helm/geopulse
+git clone https://github.com/tess1o/GeoPulse.git
+cd GeoPulse
 ```
 
-This will deploy:
-- Backend API server
-- Frontend web UI
-- PostgreSQL with PostGIS
-- Persistent storage for database and JWT keys
+## 2. Make Scripts Executable
 
-### 2. Access GeoPulse
-
-After installation, follow the instructions from:
+The repository includes helper scripts to manage the deployment. You need to make them executable first.
 
 ```bash
-helm status geopulse
+chmod +x ./helm/*.sh
 ```
 
-For quick testing, use port forwarding:
+## 3. Install GeoPulse
+
+The recommended way to install is with the interactive script, which will guide you through the available options.
 
 ```bash
-kubectl port-forward svc/geopulse-frontend 5555:80
+./helm/install.sh
 ```
 
-Then visit: http://localhost:5555
+The script will present several installation types, from a minimal test setup to a full production deployment, and will run the necessary `helm` commands for you.
 
-## Deployment Scenarios
+## 4. Manage Your Deployment
 
-### Minimal Setup (Development/Testing)
+You can easily start, stop, and uninstall your GeoPulse deployment using the provided scripts. This is useful for saving resources in a development environment.
 
-For development or testing without persistence:
+### Stop GeoPulse
+
+This command scales all components to zero, effectively pausing the application while preserving all data and configuration.
 
 ```bash
-helm install geopulse ./helm/geopulse \
-  --set postgres.persistence.enabled=false \
-  --set keygen.persistence.enabled=false
+./helm/stop-geopulse.sh
 ```
 
-### Production Deployment with Ingress
+### Start GeoPulse
+
+This resumes the application by scaling the components back up.
 
 ```bash
-helm install geopulse ./helm/geopulse \
-  --set ingress.enabled=true \
-  --set ingress.hostname=geopulse.yourdomain.com \
-  --set ingress.tls.enabled=true \
-  --set config.uiUrl=https://geopulse.yourdomain.com \
-  --set config.authSecureCookies=true \
-  --set config.cookieDomain=.yourdomain.com \
-  --set backend.replicaCount=2 \
-  --set frontend.replicaCount=2 \
-  --set postgres.persistence.size=50Gi
+./helm/start-geopulse.sh
 ```
 
-### With MQTT Support
+### Uninstall GeoPulse
 
-Enable the optional MQTT broker for OwnTracks integration:
+This will completely remove the GeoPulse deployment from your cluster.
+
+**Warning:** By default, this will also delete the Persistent Volume Claims (PVCs), which means **all your data will be permanently deleted.**
 
 ```bash
-helm install geopulse ./helm/geopulse \
-  --set mosquitto.enabled=true \
-  --set mosquitto.service.type=LoadBalancer
+./helm/uninstall-geopulse.sh
 ```
 
-### Using Custom Values File
+## Advanced Customization
 
-Create a `my-values.yaml`:
+If the interactive installer does not cover your needs, you can bypass it and use `helm` directly with a custom values file.
 
-```yaml
-# Production configuration
-ingress:
-  enabled: true
-  hostname: geopulse.example.com
-  tls:
-    enabled: true
+1.  **Review Example Configurations:** The `helm/examples/` directory contains templates for different scenarios, including the new `medium-deployment.yaml`.
+2.  **Create `my-values.yaml`:** Copy and modify an example to create your own configuration.
+3.  **Install Manually:**
+    ```bash
+    helm install geopulse ./helm/geopulse -f my-values.yaml
+    ```
 
-config:
-  uiUrl: "https://geopulse.example.com"
-  authSecureCookies: true
-  cookieDomain: ".example.com"
-
-backend:
-  replicaCount: 2
-  resources:
-    limits:
-      memory: 2Gi
-      cpu: 2000m
-
-frontend:
-  replicaCount: 2
-
-postgres:
-  persistence:
-    size: 50Gi
-    storageClass: "fast-ssd"
-
-mosquitto:
-  enabled: true
-```
-
-Install with:
-
-```bash
-helm install geopulse ./helm/geopulse -f my-values.yaml
-```
-
-## External PostgreSQL
-
-If you already have a PostgreSQL database with PostGIS:
-
-```bash
-helm install geopulse ./helm/geopulse \
-  --set postgres.enabled=false \
-  --set externalPostgres.host=postgres.example.com \
-  --set externalPostgres.port=5432 \
-  --set externalPostgres.database=geopulse \
-  --set externalPostgres.username=geopulse-user \
-  --set externalPostgres.password=your-password
-```
-
-## Storage Configuration
-
-### Configure Storage Classes
-
-```bash
-helm install geopulse ./helm/geopulse \
-  --set postgres.persistence.storageClass=fast-ssd \
-  --set keygen.persistence.storageClass=standard \
-  --set mosquitto.persistence.storageClass=standard
-```
-
-### Increase Storage Sizes
-
-```bash
-helm install geopulse ./helm/geopulse \
-  --set postgres.persistence.size=100Gi \
-  --set mosquitto.persistence.data.size=5Gi \
-  --set mosquitto.persistence.logs.size=2Gi
-```
-
-## OIDC Authentication
-
-Configure SSO providers:
-
-```yaml
-# oidc-values.yaml
-config:
-  oidc:
-    enabled: true
-    google:
-      enabled: true
-      clientId: "your-client-id"
-      clientSecret: "your-client-secret"
-```
-
-```bash
-helm install geopulse ./helm/geopulse -f oidc-values.yaml
-```
-
-## Resource Management
-
-### Set Resource Limits
-
-```bash
-helm install geopulse ./helm/geopulse \
-  --set backend.resources.limits.memory=2Gi \
-  --set backend.resources.limits.cpu=2000m \
-  --set postgres.resources.limits.memory=4Gi \
-  --set postgres.resources.limits.cpu=2000m
-```
-
-### Horizontal Pod Autoscaling
-
-```yaml
-# hpa-values.yaml
-autoscaling:
-  enabled: true
-  backend:
-    minReplicas: 2
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 70
-  frontend:
-    minReplicas: 2
-    maxReplicas: 5
-    targetCPUUtilizationPercentage: 80
-```
-
-## Upgrading
-
-Upgrade your deployment:
-
-```bash
-helm upgrade geopulse ./helm/geopulse
-```
-
-With new values:
-
-```bash
-helm upgrade geopulse ./helm/geopulse -f my-values.yaml
-```
-
-## Uninstalling
-
-Remove GeoPulse:
-
-```bash
-helm uninstall geopulse
-```
-
-Clean up persistent volumes:
-
-```bash
-kubectl delete pvc -l app.kubernetes.io/instance=geopulse
-```
-
-## Monitoring and Troubleshooting
-
-### Check Status
-
-```bash
-# Overall status
-helm status geopulse
-
-# Pod status
-kubectl get pods -l app.kubernetes.io/instance=geopulse
-
-# Detailed pod info
-kubectl describe pod -l app.kubernetes.io/instance=geopulse
-```
-
-### View Logs
-
-```bash
-# Backend logs
-kubectl logs -l app.kubernetes.io/component=backend -f
-
-# Frontend logs
-kubectl logs -l app.kubernetes.io/component=frontend -f
-
-# Database logs
-kubectl logs -l app.kubernetes.io/component=database -f
-
-# MQTT logs (if enabled)
-kubectl logs -l app.kubernetes.io/component=mqtt -f
-```
-
-### Access Database
-
-```bash
-# Get database password
-DB_PASSWORD=$(kubectl get secret geopulse-secrets -o jsonpath='{.data.GEOPULSE_POSTGRES_PASSWORD}' | base64 -d)
-
-# Port forward to database
-kubectl port-forward svc/geopulse-postgres 5432:5432
-
-# Connect with psql
-psql -h localhost -U geopulse-user -d geopulse
-```
-
-### Run Tests
-
-Verify the deployment:
-
-```bash
-helm test geopulse
-```
-
-## Common Issues
-
-### Pods Not Starting
-
-1. Check PVC status:
-   ```bash
-   kubectl get pvc
-   ```
-
-2. Check pod events:
-   ```bash
-   kubectl get events --sort-by='.lastTimestamp'
-   ```
-
-3. Describe pod for details:
-   ```bash
-   kubectl describe pod <pod-name>
-   ```
-
-### Database Connection Failed
-
-1. Verify PostgreSQL is running:
-   ```bash
-   kubectl get pods -l app.kubernetes.io/component=database
-   ```
-
-2. Check PostgreSQL logs:
-   ```bash
-   kubectl logs -l app.kubernetes.io/component=database
-   ```
-
-3. Test database connection:
-   ```bash
-   kubectl run -it --rm debug --image=postgres:17 --restart=Never -- \
-     psql -h geopulse-postgres -U geopulse-user -d geopulse
-   ```
-
-### JWT Key Issues
-
-Check keygen job logs:
-```bash
-kubectl get jobs
-kubectl logs job/geopulse-keygen
-```
-
-### Ingress Not Working
-
-1. Verify ingress controller is installed:
-   ```bash
-   kubectl get pods -n ingress-nginx
-   ```
-
-2. Check ingress status:
-   ```bash
-   kubectl get ingress
-   kubectl describe ingress geopulse
-   ```
-
-3. Verify DNS points to ingress controller's external IP:
-   ```bash
-   kubectl get svc -n ingress-nginx
-   ```
-
-## Advanced Configuration
-
-### Custom JVM Options
-
-```bash
-helm install geopulse ./helm/geopulse \
-  --set backend.javaOpts="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75 -XX:+UseG1GC"
-```
-
-### PostgreSQL Tuning
-
-Adjust PostgreSQL performance parameters:
-
-```yaml
-postgres:
-  config:
-    sharedBuffers: "512MB"
-    workMem: "16MB"
-    maintenanceWorkMem: "128MB"
-    effectiveCacheSize: "2GB"
-    maxWalSize: "1GB"
-```
-
-### Network Policies
-
-Enable network policies for security:
-
-```bash
-helm install geopulse ./helm/geopulse \
-  --set networkPolicy.enabled=true
-```
-
-## Best Practices
-
-1. **Use Persistent Storage**: Always enable persistence in production
-2. **Set Resource Limits**: Define appropriate CPU and memory limits
-3. **Enable TLS**: Use HTTPS with valid certificates
-4. **Backup Database**: Regular backups of PostgreSQL data
-5. **Monitor Resources**: Use monitoring tools (Prometheus, Grafana)
-6. **Use Secrets**: Don't commit passwords to values.yaml
-7. **Regular Updates**: Keep images and chart up to date
-8. **Health Checks**: Ensure probes are properly configured
-
-## Production Checklist
-
-- [ ] Persistence enabled for all stateful components
-- [ ] Ingress configured with valid hostname
-- [ ] TLS certificates configured (cert-manager)
-- [ ] Resource limits set appropriately
-- [ ] Backup strategy in place
-- [ ] Monitoring configured
-- [ ] Security contexts applied
-- [ ] Network policies enabled (if required)
-- [ ] OIDC/SSO configured (if needed)
-- [ ] Database tuning applied
-- [ ] High availability (multiple replicas)
-- [ ] Pod disruption budgets configured
-
-## Support
-
-For more information:
-- [Helm Chart README](../helm/geopulse/README.md)
-- [Main Documentation](./DEPLOYMENT_GUIDE.md)
-- [GitHub Issues](https://github.com/tess1o/geopulse/issues)
+For a complete list of all available parameters, consult the **[Helm Chart README](../helm/geopulse/README.md)**.

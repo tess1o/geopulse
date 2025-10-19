@@ -4,7 +4,59 @@ This directory contains example configuration files for common deployment scenar
 
 ## Available Examples
 
-### 1. **mqtt-enabled.yaml** - With MQTT Broker
+### 1. **minimal-testing.yaml** - Quick Testing
+
+Minimal configuration for development/testing without persistence.
+
+```bash
+helm install geopulse ./helm/geopulse -f helm/examples/minimal-testing.yaml
+```
+
+**Features:**
+- No persistent storage (fast startup)
+- Minimal resource usage
+- Perfect for local testing
+
+⚠️ **Warning:** All data is lost when pods restart!
+
+---
+
+### 2. **medium-deployment.yaml** - Balanced Setup
+
+A balanced configuration for a homelab or small team.
+
+```bash
+helm install geopulse ./helm/geopulse -f helm/examples/medium-deployment.yaml
+```
+
+**Features:**
+- Persistence enabled for database and keys
+- Moderate resource allocations
+- MQTT disabled by default
+
+---
+
+### 3. **large-deployment.yaml** - Production Scale
+
+Configuration for large deployments with high availability.
+
+```bash
+helm install geopulse ./helm/geopulse -f helm/examples/large-deployment.yaml
+```
+
+**Features:**
+- 3 backend replicas
+- 2 frontend replicas
+- 100Gi PostgreSQL storage
+- Production-grade database tuning
+- High resource allocations
+- Optional MQTT enabled
+
+**Suitable for:** 50+ users, high data volumes
+
+---
+
+### 4. **mqtt-enabled.yaml** - With MQTT Broker
 
 Enable MQTT broker for OwnTracks, Overland, and other MQTT-based GPS apps.
 
@@ -26,43 +78,6 @@ kubectl get secret geopulse-secrets -o jsonpath='{.data.GEOPULSE_MQTT_PASSWORD}'
 # Get MQTT external IP/port
 kubectl get svc geopulse-mosquitto
 ```
-
----
-
-### 2. **minimal-testing.yaml** - Quick Testing
-
-Minimal configuration for development/testing without persistence.
-
-```bash
-helm install geopulse ./helm/geopulse -f helm/examples/minimal-testing.yaml
-```
-
-**Features:**
-- No persistent storage (fast startup)
-- Minimal resource usage
-- Perfect for local testing
-
-⚠️ **Warning:** All data is lost when pods restart!
-
----
-
-### 3. **large-deployment.yaml** - Production Scale
-
-Configuration for large deployments with high availability.
-
-```bash
-helm install geopulse ./helm/geopulse -f helm/examples/large-deployment.yaml
-```
-
-**Features:**
-- 3 backend replicas
-- 2 frontend replicas
-- 100Gi PostgreSQL storage
-- Production-grade database tuning
-- High resource allocations
-- Optional MQTT enabled
-
-**Suitable for:** 50+ users, high data volumes
 
 ---
 
@@ -118,6 +133,6 @@ kubectl get secret geopulse-secrets -o jsonpath='{.data.GEOPULSE_MQTT_PASSWORD}'
 
 ## Need More Help?
 
-- [Quick Start Guide](../QUICK_START.md)
-- [Complete Documentation](../geopulse/README.md)
+- [Kubernetes Deployment Guide](../../docs/KUBERNETES_DEPLOYMENT.md)
+- [Advanced Chart README](../geopulse/README.md)
 - [All Configuration Options](../geopulse/values.yaml)
