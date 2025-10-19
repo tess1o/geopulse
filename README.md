@@ -1,7 +1,7 @@
 # GeoPulse
 
 <div align="center">
-  <img src="/frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="200"/>
+  <img src="frontend/public/geopulse-logo.svg" alt="GeoPulse Logo" width="200"/>
 
 **A self-hosted location tracking and analysis platform**
 
