@@ -91,7 +91,7 @@ The interactive script will guide you through the process.
 
 - Ask questions about your location data and get intelligent insights
 - Natural language queries about travel patterns, visits, and habits
-- Powered by OpenAI with secure API key encryption (each user needs to provide their own API Key)
+- Use any OpenAI compatible service (each user needs to provide their own API Key)
 
 **Social Features**
 
@@ -115,7 +115,7 @@ The interactive script will guide you through the process.
 
 - Adjustable timeline sensitivity settings individually for each user
 - Data export in multiple formats
-- Dark/light themes with system preference detection
+- Dark/light themes in UI
 - Mobile-responsive design
 
 ## 📚 Complete Documentation
@@ -128,9 +128,9 @@ The interactive script will guide you through the process.
 
 ## Architecture
 
-- **Backend**: Java with Quarkus framework
+- **Backend**: Java with Quarkus framework in Native mode
 - **Database**: PostGIS (PostgreSQL with geographic extensions)
-- **Frontend**: Vue.js 3 with PrimeVue components
+- **Frontend**: Vue.js 3 with PrimeVue components and chart.js
 - **Maps**: Leaflet with OpenStreetMap
 - **Deployment**: Docker Compose, Kubernetes (Helm Charts)
 - **MQTT broker**: Mosquitto (optional, used for OwnTracks MQTT integration)
@@ -183,21 +183,29 @@ GeoPulse keeps your data under your control:
   <img src="docs/images/dashboard.png" alt="GeoPulse Dashboard" width="800"/>
 </div>
 
-### GPS Data
 
-<details>
-<summary>GPS Data Management page</summary>
-<div align="center">
-  <img src="docs/images/gps_data.png" alt="GPS Data Management" width="800"/>
-</div>
-</details>
 
 ### Additional Views
 
 <details>
-<summary>Journey Insights & Analytics</summary>
+<summary>Timeline (light theme)</summary>
+
+![Timeline (light theme)](docs/images/timeline_light_theme.png)
+
+</details>
+
+<details>
+<summary>Journey Insights</summary>
 
 ![Journey Insights](docs/images/journey_insights.png)
+
+</details>
+
+
+<details>
+<summary>Rewind</summary>
+
+![Rewind](docs/images/rewind.png)
 
 </details>
 
@@ -210,11 +218,30 @@ GeoPulse keeps your data under your control:
 </details>
 
 <details>
-<summary>Data Management</summary>
+<summary>Share Location</summary>
 
 ![Share Links](docs/images/share_links.png)
+</details>
+
+<details>
+<summary>Data Management</summary>
+
 ![Export Page](docs/images/export_page.png)
 ![Import Page](docs/images/import_page.png)
+![GPS Data](docs/images/gps_data.png)
+</details>
+
+<details>
+<summary>AI Assistant</summary>
+
+![AI Chat](docs/images/ai_chat.png)
+
+</details>
+
+<details>
+<summary>User Profile</summary>
+
+![User Profile](docs/images/user_profile.png)
 
 </details>
 

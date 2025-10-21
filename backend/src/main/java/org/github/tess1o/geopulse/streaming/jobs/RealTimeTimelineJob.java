@@ -46,7 +46,7 @@ public class RealTimeTimelineJob {
         }
     }
 
-    @Scheduled(every = "2m", delay = 2)
+    @Scheduled(every = "${geopulse.timeline.job.interval:5m}", delayed = "${geopulse.timeline.job.delay:5m}")
     public void processRealTimeUpdates() {
         List<UserEntity> users = UserEntity.list("timelineStatus", TimelineStatus.IDLE);
         log.debug("Starting real-time timeline processing for {} users", users.size());

@@ -9,7 +9,7 @@ services:
     command: sh /generate-keys.sh
 
   geopulse-backend:
-    image: tess1o/geopulse-backend:1.0.0-rc.21-native
+    image: tess1o/geopulse-backend:${GEOPULSE_VERSION}
     container_name: geopulse-backend
     mem_limit: 512m
     mem_reservation: 128m
@@ -33,7 +33,7 @@ services:
       start_period: 5s
 
   geopulse-ui:
-    image: tess1o/geopulse-ui:1.0.0-rc.21
+    image: tess1o/geopulse-ui:${GEOPULSE_VERSION}
     container_name: geopulse-ui
     restart: unless-stopped
     env_file:

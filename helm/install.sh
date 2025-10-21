@@ -123,9 +123,32 @@ if helm install "$RELEASE_NAME" "$CHART_PATH" \
     --namespace "$NAMESPACE" \
     $VALUES_ARGS; then
 
+    echo -e "${YELLOW}Checking frontend pod status every 5 seconds...${NC}"
+    SECONDS=0
+    timeout=300
+
+    while true; do
+        phases=$(kubectl get pods -n "$NAMESPACE" \
+            -l app.kubernetes.io/instance="$RELEASE_NAME",app.kubernetes.io/component=frontend \
+            -o jsonpath='{.items[*].status.containerStatuses[*].ready}')
+        echo "[$(date +%H:%M:%S)] Pod container ready statuses: $phases"
+
+        if [[ "$phases" == *"false"* ]]; then
+            sleep 5
+        else
+            echo -e "${GREEN}Frontend pods are ready!${NC}"
+            break
+        fi
+
+        if [ $SECONDS -ge $timeout ]; then
+            echo -e "${RED}Timeout waiting for frontend pods to become ready${NC}"
+            exit 1
+        fi
+    done
+
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║  Installation completed successfully! ║${NC}"
+    echo -e "${GREEN}║  Installation completed successfully!  ║${NC}"
     echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
     echo ""
 

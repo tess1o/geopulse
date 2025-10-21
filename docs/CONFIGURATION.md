@@ -20,29 +20,30 @@ new users.*
 Controls how GeoPulse identifies when you're stationary at a location. *Users can customize these settings
 individually.*
 
-| Property                                            | Default    | Description                                                                       |
-|-----------------------------------------------------|------------|-----------------------------------------------------------------------------------|
-| `geopulse.timeline.staypoint.radius_meters`         | `50`       | Radius (in meters) used for stay point detection and clustering                   |
-| `geopulse.timeline.staypoint.min_duration_minutes`  | `7`        | Minimum duration (in minutes) for a stay point to be confirmed                    |
-| `geopulse.timeline.staypoint.use_velocity_accuracy` | `true`     | Whether to consider velocity accuracy in filtering                                |
-| `geopulse.timeline.staypoint.velocity.threshold`    | `2.5`      | Velocity threshold (m/s) below which movement is considered a staypoint           |
-| `geopulse.timeline.staypoint.accuracy.threshold`    | `60.0`     | Maximum GPS accuracy (meters) for staypoint detection                             |
-| `geopulse.timeline.staypoint.min_accuracy_ratio`    | `0.5`      | Minimum accuracy ratio required for staypoint consideration                       |
+| Property                                            | Default | Description                                                             |
+|-----------------------------------------------------|---------|-------------------------------------------------------------------------|
+| `geopulse.timeline.staypoint.radius_meters`         | `50`    | Radius (in meters) used for stay point detection and clustering         |
+| `geopulse.timeline.staypoint.min_duration_minutes`  | `7`     | Minimum duration (in minutes) for a stay point to be confirmed          |
+| `geopulse.timeline.staypoint.use_velocity_accuracy` | `true`  | Whether to consider velocity accuracy in filtering                      |
+| `geopulse.timeline.staypoint.velocity.threshold`    | `2.5`   | Velocity threshold (m/s) below which movement is considered a staypoint |
+| `geopulse.timeline.staypoint.accuracy.threshold`    | `60.0`  | Maximum GPS accuracy (meters) for staypoint detection                   |
+| `geopulse.timeline.staypoint.min_accuracy_ratio`    | `0.5`   | Minimum accuracy ratio required for staypoint consideration             |
 
 ### Trip Classification
 
-Controls how movement is classified into different transportation modes based on speed analysis. *Users can customize these settings individually.*
+Controls how movement is classified into different transportation modes based on speed analysis. *Users can customize
+these settings individually.*
 
-| Property                                                  | Default  | Description                                                                                                                      |
-|-----------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------------|
-| `geopulse.timeline.trip.detection.algorithm`              | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                     |
-| `geopulse.timeline.trip.arrival.min_duration_seconds`     | `90`     | Minimum duration (seconds) for arrival detection. GPS points must be clustered and slow for this duration to detect arrival     |
-| `geopulse.timeline.trip.sustained_stop.min_duration_seconds` | `60`  | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                            |
-| `geopulse.timeline.travel_classification.walking.max_avg_speed` | `6.0`    | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking                     |
-| `geopulse.timeline.travel_classification.walking.max_max_speed` | `8.0`    | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip                      |
-| `geopulse.timeline.travel_classification.car.min_avg_speed`     | `8.0`    | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving               |
-| `geopulse.timeline.travel_classification.car.min_max_speed`     | `15.0`   | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving     |
-| `geopulse.timeline.travel_classification.short_distance_km`     | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips           |
+| Property                                                        | Default  | Description                                                                                                                 |
+|-----------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|
+| `geopulse.timeline.trip.detection.algorithm`                    | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                 |
+| `geopulse.timeline.trip.arrival.min_duration_seconds`           | `90`     | Minimum duration (seconds) for arrival detection. GPS points must be clustered and slow for this duration to detect arrival |
+| `geopulse.timeline.trip.sustained_stop.min_duration_seconds`    | `60`     | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                        |
+| `geopulse.timeline.travel_classification.walking.max_avg_speed` | `6.0`    | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking                   |
+| `geopulse.timeline.travel_classification.walking.max_max_speed` | `8.0`    | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip                    |
+| `geopulse.timeline.travel_classification.car.min_avg_speed`     | `8.0`    | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving             |
+| `geopulse.timeline.travel_classification.car.min_max_speed`     | `15.0`   | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving   |
+| `geopulse.timeline.travel_classification.short_distance_km`     | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips         |
 
 ### Staypoint Merging
 
@@ -83,7 +84,8 @@ settings individually.*
 
 ### OIDC Authentication
 
-GeoPulse supports OpenID Connect (OIDC) authentication for single sign-on with popular providers like Google, Microsoft, Keycloak, Auth0, and many others. All OIDC providers are configured using environment variables with a unified pattern.
+GeoPulse supports OpenID Connect (OIDC) authentication for single sign-on with popular providers like Google, Microsoft,
+Keycloak, Auth0, and many others. All OIDC providers are configured using environment variables with a unified pattern.
 
 #### ⚠️ Prerequisites
 
@@ -106,19 +108,19 @@ GEOPULSE_OIDC_PROVIDER_{NAME}_{PROPERTY}=value
 
 #### Required Properties
 
-| Property | Description | Example |
-|----------|-------------|---------|
-| `ENABLED` | Enable/disable the provider | `true` or `false` |
-| `NAME` | Display name shown in UI | `Google`, `Company SSO`, etc. |
-| `CLIENT_ID` | OAuth 2.0 client ID | Provider-specific client ID |
-| `CLIENT_SECRET` | OAuth 2.0 client secret | Provider-specific secret |
-| `DISCOVERY_URL` | OIDC discovery endpoint | `https://provider.com/.well-known/openid-configuration` |
+| Property        | Description                 | Example                                                 |
+|-----------------|-----------------------------|---------------------------------------------------------|
+| `ENABLED`       | Enable/disable the provider | `true` or `false`                                       |
+| `NAME`          | Display name shown in UI    | `Google`, `Company SSO`, etc.                           |
+| `CLIENT_ID`     | OAuth 2.0 client ID         | Provider-specific client ID                             |
+| `CLIENT_SECRET` | OAuth 2.0 client secret     | Provider-specific secret                                |
+| `DISCOVERY_URL` | OIDC discovery endpoint     | `https://provider.com/.well-known/openid-configuration` |
 
 #### Optional Properties
 
-| Property | Description | Example |
-|----------|-------------|---------|
-| `ICON` | CSS icon class for UI | `pi pi-google`, `pi pi-microsoft` |
+| Property | Description           | Example                           |
+|----------|-----------------------|-----------------------------------|
+| `ICON`   | CSS icon class for UI | `pi pi-google`, `pi pi-microsoft` |
 
 #### Supported Providers
 
@@ -203,25 +205,26 @@ GEOPULSE_OIDC_PROVIDER_GITHUB_ICON=pi pi-github
 
 #### Icon Support
 
-The system provides smart icon detection for common providers. If no icon is specified, it will automatically detect icons based on the provider name:
+The system provides smart icon detection for common providers. If no icon is specified, it will automatically detect
+icons based on the provider name:
 
-| Provider Pattern | Auto-detected Icon |
-|------------------|-------------------|
-| `google` | `pi pi-google` |
-| `microsoft`, `azure` | `pi pi-microsoft` |
-| `keycloak` | `pi pi-key` |
-| `auth0`, `okta` | `pi pi-shield` |
-| `gitlab` | `pi pi-code` |
-| `github` | `pi pi-github` |
-| `pocketid`, `pocket` | `pi pi-id-card` |
-| `authentik` | `pi pi-lock` |
-| `discord` | `pi pi-discord` |
-| `facebook`, `meta` | `pi pi-facebook` |
-| `twitter`, `x.com` | `pi pi-twitter` |
-| `linkedin` | `pi pi-linkedin` |
-| `apple` | `pi pi-apple` |
-| `amazon`, `aws` | `pi pi-amazon` |
-| Custom/Unknown | `pi pi-sign-in` |
+| Provider Pattern     | Auto-detected Icon |
+|----------------------|--------------------|
+| `google`             | `pi pi-google`     |
+| `microsoft`, `azure` | `pi pi-microsoft`  |
+| `keycloak`           | `pi pi-key`        |
+| `auth0`, `okta`      | `pi pi-shield`     |
+| `gitlab`             | `pi pi-code`       |
+| `github`             | `pi pi-github`     |
+| `pocketid`, `pocket` | `pi pi-id-card`    |
+| `authentik`          | `pi pi-lock`       |
+| `discord`            | `pi pi-discord`    |
+| `facebook`, `meta`   | `pi pi-facebook`   |
+| `twitter`, `x.com`   | `pi pi-twitter`    |
+| `linkedin`           | `pi pi-linkedin`   |
+| `apple`              | `pi pi-apple`      |
+| `amazon`, `aws`      | `pi pi-amazon`     |
+| Custom/Unknown       | `pi pi-sign-in`    |
 
 #### Global OIDC Configuration
 
@@ -272,14 +275,14 @@ services:
     environment:
       # ⚠️ REQUIRED: Enable OIDC globally first
       GEOPULSE_OIDC_ENABLED: "true"
-      
+
       # Google OAuth
       GEOPULSE_OIDC_PROVIDER_GOOGLE_ENABLED: "true"
       GEOPULSE_OIDC_PROVIDER_GOOGLE_NAME: "Google"
       GEOPULSE_OIDC_PROVIDER_GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
       GEOPULSE_OIDC_PROVIDER_GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
       GEOPULSE_OIDC_PROVIDER_GOOGLE_DISCOVERY_URL: "https://accounts.google.com/.well-known/openid-configuration"
-      
+
       # Company Keycloak
       GEOPULSE_OIDC_PROVIDER_COMPANY_ENABLED: "true"
       GEOPULSE_OIDC_PROVIDER_COMPANY_NAME: "Company SSO"
@@ -301,6 +304,7 @@ services:
 #### Troubleshooting
 
 **OIDC providers not showing on login page:**
+
 - Verify `GEOPULSE_OIDC_ENABLED=true` is set
 - Check that individual provider `_ENABLED=true` settings are configured
 - Ensure all required properties (client-id, client-secret, discovery-url) are provided
@@ -381,7 +385,8 @@ GeoPulse includes an AI chat assistant that can analyze your location data and p
 
 #### AI Encryption Key
 
-The AI encryption key is automatically generated during the initial setup process and stored securely in the keys directory. For advanced users who need to customize the key location:
+The AI encryption key is automatically generated during the initial setup process and stored securely in the keys
+directory. For advanced users who need to customize the key location:
 
 ```bash
 # Optional: Custom AI encryption key location (advanced users only)
@@ -391,19 +396,22 @@ GEOPULSE_AI_ENCRYPTION_KEY_LOCATION=file:/app/keys/ai-encryption-key.txt
 #### AI Configuration
 
 AI features are configured through the web interface and support any OpenAI-compatible API:
+
 - API key and model selection
 - Custom API URL (for OpenAI-compatible services) or leave empty for OpenAI
 - AI assistant preferences and settings
 - All AI settings are encrypted using the automatically generated encryption key
 
 **Supported AI Providers:**
+
 - **OpenAI** (default) - Leave API URL empty to use OpenAI's official API
 - **OpenAI-compatible services** - Specify custom API URL for services like:
-  - Local AI deployments (Ollama, LocalAI, etc.)
-  - Alternative providers with OpenAI-compatible APIs
-  - Self-hosted LLM services
+    - Local AI deployments (Ollama, LocalAI, etc.)
+    - Alternative providers with OpenAI-compatible APIs
+    - Self-hosted LLM services
 
 **Setup Process:**
+
 1. Configure API key in Profile → AI Assistant
 2. (Optional) Set custom API URL for OpenAI-compatible services
 3. Select preferred AI model (GPT-3.5-turbo, GPT-4, or custom models)
@@ -464,23 +472,23 @@ Controls location matching for favorite places. **Applies to all users.**
 | `geopulse.favorites.max-distance-from-point` | `50`    | Maximum distance (meters) to match a GPS point to a favorite place |
 | `geopulse.favorites.max-distance-from-area`  | `15`    | Maximum distance (meters) to match a GPS point to a favorite area  |
 
-### Daily Timeline Processing
+### Realtime Timeline Job
 
-Controls batch processing of timeline generation. **Applies to all users.**
+Controls processing of timeline generation. **Applies to all users.**
 
-| Property                                            | Default | Description                                        |
-|-----------------------------------------------------|---------|----------------------------------------------------|
-| `geopulse.timeline.daily-processing.enabled`        | `true`  | Whether daily batch timeline processing is enabled |
-| `geopulse.timeline.daily-processing.batch-size`     | `20`    | Number of users processed in each batch            |
-| `geopulse.timeline.daily-processing.batch-delay-ms` | `1000`  | Delay (milliseconds) between processing each batch |
+| Property                               | Default | Description                                                                           |
+|----------------------------------------|---------|---------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_PROCESSING_THREADS` | `2`     | Number of threads used in timeline job processing. Increase it if you have many users |
+| `GEOPULSE_TIMELINE_JOB_INTERVAL`       | `5m`    | Execute timeline job each X minutes                                                   |
+| `GEOPULSE_TIMELINE_JOB_DELAY`          | `1m`    | Initial delay (after server start) for timeline job processing                        |
 
 ### GPS Data Processing
 
 Controls GPS point duplicate detection and processing. **Applies to all users.**
 
-| Property                                                           | Default | Description                                                       |
-|--------------------------------------------------------------------|---------|-------------------------------------------------------------------|
-| `geopulse.gps.duplicate-detection.location-time-threshold-minutes` | `2`     | Time threshold (minutes) for considering GPS points as duplicates |
+| Property                                                           | Default | Description                                                                                   |
+|--------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------|
+| `geopulse.gps.duplicate-detection.location-time-threshold-minutes` | `2`     | Time threshold (minutes) for considering GPS points as duplicates (with the same coordinates) |
 
 ### Environment Variables Reference
 
@@ -493,6 +501,11 @@ GEOPULSE_FAVORITES_MAX_DISTANCE_FROM_AREA=15
 
 # GPS Data Processing
 GEOPULSE_GPS_DUPLICATE_DETECTION_LOCATION_TIME_THRESHOLD_MINUTES=2
+
+# Realtime Timeline Job
+GEOPULSE_TIMELINE_PROCESSING_THREADS=2
+GEOPULSE_TIMELINE_JOB_INTERVAL=5m
+GEOPULSE_TIMELINE_JOB_DELAY=1m
 ```
 
 ## How Configuration Works
