@@ -42,18 +42,22 @@ This section guides you through deploying GeoPulse using Docker Compose.
 
 First, download the necessary configuration files.
 
-#### Step 1.1: Download `.env` configuration
+#### Step 1.1: Download `.env` configuration and `generate-keys.sh` script
 
 **Using wget:**
 
 ```bash
 wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
+wget https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
+chmod +x generate-keys.sh
 ```
 
 **Using curl:**
 
 ```bash
 curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
+curl -L -o generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
+chmod +x generate-keys.sh
 ```
 
 #### Step 1.2: Choose your deployment type

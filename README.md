@@ -39,12 +39,6 @@ Deploy GeoPulse in under 5 minutes:
 
 Both scenarios optionally support MQTT for real-time OwnTracks integration.
 
-**Simple deployment process:**
-
-1. Download single `.env` configuration (works without changes for local Deployment)
-2. Download `docker-compose` file
-3. Run `docker compose up -d`
-
 **👉 [Docker Deployment Instructions](docs/DEPLOYMENT_GUIDE.md)**
 
 Once deployed:
