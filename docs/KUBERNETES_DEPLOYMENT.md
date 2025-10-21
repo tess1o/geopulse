@@ -80,3 +80,129 @@ If the interactive installer does not cover your needs, you can bypass it and us
     ```
 
 For a complete list of all available parameters, consult the **[Helm Chart README](../helm/geopulse/README.md)**.
+
+
+## GeoPulse Installation Troubleshooting
+
+This guide covers common issues during GeoPulse Helm installation on k3s and how to fix them.
+
+---
+
+## 1. Error: ✗ Cannot connect to Kubernetes cluster
+
+**Symptom:**
+```
+✗ Cannot connect to Kubernetes cluster
+```
+
+**Cause:** kubectl cannot access your k3s cluster from the current user environment.
+
+**Fix:**
+
+Ensure k3s is running:
+```bash
+sudo systemctl status k3s
+```
+
+Make kubeconfig available to your user:
+```bash
+mkdir -p ~/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
+sudo chown $USER:$USER ~/.kube/config
+```
+
+Export KUBECONFIG (if not already set):
+```bash
+export KUBECONFIG=~/.kube/config
+```
+
+Test connectivity:
+```bash
+kubectl get nodes
+kubectl cluster-info
+```
+
+Re-run the installer:
+```bash
+./helm/install.sh
+```
+
+**Note:** If you previously ran the script with sudo, try running it without sudo after setting KUBECONFIG.
+
+---
+
+## 2. Error: INSTALLATION FAILED: Kubernetes cluster unreachable
+
+**Symptom:**
+```
+Error: INSTALLATION FAILED: Kubernetes cluster unreachable: the server could not find the requested resource
+```
+
+**Cause:** Helm cannot find the cluster because `$KUBECONFIG` is missing or not passed to sudo.
+
+**Fix:**
+
+**Option 1 — Run without sudo (recommended):**
+```bash
+./helm/install.sh
+```
+
+**Option 2 — Run with sudo and explicit KUBECONFIG:**
+```bash
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml ./helm/install.sh
+```
+
+**Option 3 — Patch the install script to automatically export kubeconfig:**
+```bash
+if [ -z "$KUBECONFIG" ]; then
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+fi
+```
+
+---
+
+## 3. Accessing GeoPulse UI
+
+The GeoPulse frontend service (`geopulse-frontend`) listens on port 80 in the cluster.
+
+### Option 1 — Port-forward (temporary)
+
+```bash
+kubectl port-forward -n default svc/geopulse-frontend 5555:80 --address 0.0.0.0
+```
+
+Access from any machine on the network:
+```
+http://<server-ip>:5555
+```
+
+Replace `<server-ip>` with your k3s host LAN IP:
+```bash
+hostname -I | awk '{print $1}'
+```
+
+### Option 2 — Change service type to NodePort (persistent)
+
+```bash
+kubectl edit svc geopulse-frontend -n default
+```
+
+Change:
+```yaml
+type: ClusterIP
+```
+
+to:
+```yaml
+type: NodePort
+```
+
+Save and get the assigned NodePort:
+```bash
+kubectl get svc -n default
+```
+
+Access the UI from a network machine:
+```
+http://<server-ip>:<node-port>
+```
