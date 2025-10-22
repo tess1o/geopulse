@@ -5,9 +5,14 @@
       <div class="register-content">
         <!-- Logo Section -->
         <div class="logo-section">
-          <img src="/geopulse-logo.svg" alt="GeoPulse" class="app-logo" />
+          <img src="/geopulse-logo.svg" alt="GeoPulse" class="app-logo"/>
         </div>
-        
+
+        <div v-if="!signUpEnabled" class="signup-disabled-message">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>Sign up using email/password is currently disabled.</span>
+        </div>
+
         <!-- Register Form -->
         <Card class="register-card">
           <template #content>
@@ -24,14 +29,14 @@
                 <div class="form-field">
                   <label for="email" class="field-label">Email Address</label>
                   <InputText
-                    id="email"
-                    v-model="formData.email"
-                    type="email"
-                    placeholder="Enter your email"
-                    :invalid="!!formErrors.email"
-                    class="form-input"
-                    autocomplete="email"
-                    @input="clearFieldError('email')"
+                      id="email"
+                      v-model="formData.email"
+                      type="email"
+                      placeholder="Enter your email"
+                      :invalid="!!formErrors.email"
+                      class="form-input"
+                      autocomplete="email"
+                      @input="clearFieldError('email')"
                   />
                   <small v-if="formErrors.email" class="error-message">
                     {{ formErrors.email }}
@@ -42,14 +47,14 @@
                 <div class="form-field">
                   <label for="fullName" class="field-label">Full Name</label>
                   <InputText
-                    id="fullName"
-                    v-model="formData.fullName"
-                    type="text"
-                    placeholder="Enter your full name"
-                    :invalid="!!formErrors.fullName"
-                    class="form-input"
-                    autocomplete="name"
-                    @input="clearFieldError('fullName')"
+                      id="fullName"
+                      v-model="formData.fullName"
+                      type="text"
+                      placeholder="Enter your full name"
+                      :invalid="!!formErrors.fullName"
+                      class="form-input"
+                      autocomplete="name"
+                      @input="clearFieldError('fullName')"
                   />
                   <small v-if="formErrors.fullName" class="error-message">
                     {{ formErrors.fullName }}
@@ -60,15 +65,15 @@
                 <div class="form-field">
                   <label for="password" class="field-label">Password</label>
                   <Password
-                    id="password"
-                    v-model="formData.password"
-                    placeholder="Create a password"
-                    :feedback="false"
-                    toggleMask
-                    :invalid="!!formErrors.password"
-                    class="form-input password-input"
-                    autocomplete="new-password"
-                    @input="clearFieldError('password')"
+                      id="password"
+                      v-model="formData.password"
+                      placeholder="Create a password"
+                      :feedback="false"
+                      toggleMask
+                      :invalid="!!formErrors.password"
+                      class="form-input password-input"
+                      autocomplete="new-password"
+                      @input="clearFieldError('password')"
                   />
                   <small v-if="formErrors.password" class="error-message">
                     {{ formErrors.password }}
@@ -79,15 +84,15 @@
                 <div class="form-field">
                   <label for="confirmPassword" class="field-label">Confirm Password</label>
                   <Password
-                    id="confirmPassword"
-                    v-model="formData.confirmPassword"
-                    placeholder="Confirm your password"
-                    :feedback="false"
-                    toggleMask
-                    :invalid="!!formErrors.confirmPassword"
-                    class="form-input password-input"
-                    autocomplete="new-password"
-                    @input="clearFieldError('confirmPassword')"
+                      id="confirmPassword"
+                      v-model="formData.confirmPassword"
+                      placeholder="Confirm your password"
+                      :feedback="false"
+                      toggleMask
+                      :invalid="!!formErrors.confirmPassword"
+                      class="form-input password-input"
+                      autocomplete="new-password"
+                      @input="clearFieldError('confirmPassword')"
                   />
                   <small v-if="formErrors.confirmPassword" class="error-message">
                     {{ formErrors.confirmPassword }}
@@ -96,12 +101,12 @@
 
                 <!-- Submit Button -->
                 <Button
-                  type="submit"
-                  label="Create Account"
-                  icon="pi pi-user-plus"
-                  :loading="isLoading"
-                  :disabled="isLoading || !isFormValid"
-                  class="submit-button"
+                    type="submit"
+                    label="Create Account"
+                    icon="pi pi-user-plus"
+                    :loading="isLoading"
+                    :disabled="isLoading || !isFormValid || !signUpEnabled"
+                    class="submit-button"
                 />
 
                 <!-- Error Display -->
@@ -113,9 +118,9 @@
 
               <!-- OIDC Providers Section -->
               <OidcProvidersSection
-                :providers="oidcProviders"
-                :disabled="isLoading"
-                @provider-selected="handleOidcLogin"
+                  :providers="oidcProviders"
+                  :disabled="isLoading"
+                  @provider-selected="handleOidcLogin"
               />
 
               <!-- Login Link -->
@@ -132,16 +137,16 @@
       </div>
     </div>
 
-    <Toast />
+    <Toast/>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
-import { useAuthStore } from '@/stores/auth'
-import { getBrowserTimezone } from '@/utils/timezoneUtils'
+import {ref, computed, onMounted} from 'vue'
+import {useRouter} from 'vue-router'
+import {useToast} from 'primevue/usetoast'
+import {useAuthStore} from '@/stores/auth'
+import {getBrowserTimezone} from '@/utils/timezoneUtils'
 import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
 // Composables
@@ -153,6 +158,7 @@ const authStore = useAuthStore()
 const isLoading = ref(false)
 const registerError = ref('')
 const oidcProviders = ref([])
+const signUpEnabled = ref(true);
 
 // Form data
 const formData = ref({
@@ -166,45 +172,45 @@ const formErrors = ref({})
 
 // Computed
 const isFormValid = computed(() => {
-  return formData.value.email && 
-         formData.value.fullName &&
-         formData.value.password && 
-         formData.value.confirmPassword &&
-         Object.keys(formErrors.value).length === 0
+  return formData.value.email &&
+      formData.value.fullName &&
+      formData.value.password &&
+      formData.value.confirmPassword &&
+      Object.keys(formErrors.value).length === 0
 })
 
 // Methods
 const validateForm = () => {
   formErrors.value = {}
-  
+
   // Email validation
   if (!formData.value.email?.trim()) {
     formErrors.value.email = 'Email is required'
   } else if (!isValidEmail(formData.value.email)) {
     formErrors.value.email = 'Please enter a valid email address'
   }
-  
+
   // Full name validation
   if (!formData.value.fullName?.trim()) {
     formErrors.value.fullName = 'Full name is required'
   } else if (formData.value.fullName.trim().length < 2) {
     formErrors.value.fullName = 'Full name must be at least 2 characters'
   }
-  
+
   // Password validation
   if (!formData.value.password) {
     formErrors.value.password = 'Password is required'
   } else if (formData.value.password.length < 6) {
     formErrors.value.password = 'Password must be at least 6 characters'
   }
-  
+
   // Confirm password validation
   if (!formData.value.confirmPassword) {
     formErrors.value.confirmPassword = 'Please confirm your password'
   } else if (formData.value.password !== formData.value.confirmPassword) {
     formErrors.value.confirmPassword = 'Passwords do not match'
   }
-  
+
   return Object.keys(formErrors.value).length === 0
 }
 
@@ -224,31 +230,31 @@ const clearFieldError = (field) => {
 
 const handleSubmit = async () => {
   if (!validateForm()) return
-  
+
   isLoading.value = true
   registerError.value = ''
-  
+
   try {
     // Auto-detect user's timezone (normalized for Java compatibility)
     const detectedTimezone = getBrowserTimezone()
-    
+
     await authStore.register(
-      formData.value.email.trim(),
-      formData.value.password,
-      formData.value.fullName.trim(),
-      detectedTimezone
+        formData.value.email.trim(),
+        formData.value.password,
+        formData.value.fullName.trim(),
+        detectedTimezone
     )
-    
+
     toast.add({
       severity: 'success',
       summary: 'Welcome to GeoPulse!',
       detail: 'Your account has been created successfully',
       life: 3000
     })
-    
+
     // Navigate to location sources for onboarding
     await router.push('/app/location-sources')
-    
+
   } catch (error) {
     console.error('Registration error:', error)
     registerError.value = getErrorMessage(error)
@@ -261,7 +267,7 @@ const getErrorMessage = (error) => {
   if (error.response?.data?.message) {
     return error.response.data.message
   }
-  
+
   switch (error.response?.status) {
     case 409:
       return 'An account with this email already exists'
@@ -293,22 +299,45 @@ const handleOidcLogin = async (providerName) => {
 };
 
 
+const getOidcProviders = async () => {
+  try {
+    const providers = await authStore.getOidcProviders();
+    oidcProviders.value = providers;
+  } catch (error) {
+    console.error('Failed to load OIDC providers:', error);
+    return [];
+  }
+}
+
+const isSignUpEnabled = async () => {
+  try {
+    const enabled = await authStore.isSignUpEnabled();
+    signUpEnabled.value = enabled;
+  } catch (error) {
+    console.error('Failed to check sign-up status:', error);
+    return false;
+  }
+}
+
+
 // Lifecycle
 onMounted(async () => {
   // Clear any existing auth data
   if (authStore.isAuthenticated) {
     router.push('/app/location-sources')
   }
-  
-  // Load available OIDC providers
+
   try {
-    oidcProviders.value = await authStore.getOidcProviders()
+    await Promise.all([
+      getOidcProviders(),
+      isSignUpEnabled()
+    ])
   } catch (error) {
-    console.error('Failed to load OIDC providers:', error)
+    console.error('Failed to load OIDC providers or sign up status', error)
     toast.add({
       severity: 'error',
       summary: 'Could not load registration options',
-      detail: 'Failed to retrieve external registration providers. You can still register with email and password.',
+      detail: 'Failed to retrieve external registration providers or sign up configuration',
       life: 5000
     })
   }
@@ -556,7 +585,7 @@ onMounted(async () => {
   .register-layout {
     padding: 1rem;
   }
-  
+
   .register-card {
     max-width: 100%;
   }
@@ -566,6 +595,27 @@ onMounted(async () => {
   .register-form-content {
     padding: 0.5rem;
   }
+}
+
+.signup-disabled-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid var(--gp-warning);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-warning);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.p-dark .signup-disabled-message {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: var(--gp-warning-dark);
+  color: var(--gp-warning-dark);
 }
 
 

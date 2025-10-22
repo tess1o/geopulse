@@ -82,6 +82,10 @@ settings individually.*
 
 *These settings apply to all users and cannot be customized individually.*
 
+### Disabling Sign Up via email/password
+If you do not want to allow users to sign up via email/password, you can disable it by setting the following environment variable:
+`GEOPULSE_AUTH_SIGN_UP_ENABLED=false`. By default, sign up is enabled.
+
 ### OIDC Authentication
 
 GeoPulse supports OpenID Connect (OIDC) authentication for single sign-on with popular providers like Google, Microsoft,
