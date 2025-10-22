@@ -326,6 +326,7 @@ configure multiple providers with automatic fallback support. **This configurati
 | Provider        | Free Tier | API Key Required | Rate Limits                 |
 |-----------------|-----------|------------------|-----------------------------|
 | **Nominatim**   | Yes       | No               | 1 request/second            |
+ | **Photon**      | Yes       | No               | Unknown                     |
 | **Google Maps** | Limited   | Yes              | 40,000 requests/month free  |
 | **Mapbox**      | Limited   | Yes              | 100,000 requests/month free |
 
