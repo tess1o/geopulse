@@ -83,7 +83,9 @@ settings individually.*
 *These settings apply to all users and cannot be customized individually.*
 
 ### Disabling Sign Up via email/password
-If you do not want to allow users to sign up via email/password, you can disable it by setting the following environment variable:
+
+If you do not want to allow users to sign up via email/password, you can disable it by setting the following environment
+variable:
 `GEOPULSE_AUTH_SIGN_UP_ENABLED=false`. By default, sign up is enabled.
 
 ### OIDC Authentication
@@ -329,15 +331,16 @@ configure multiple providers with automatic fallback support. **This configurati
 
 ### Geocoding Configuration
 
-| Property                                | Default     | Description                                                     |
-|-----------------------------------------|-------------|-----------------------------------------------------------------|
-| `geocoding.provider.primary`            | `nominatim` | Primary geocoding service (`nominatim`, `googlemaps`, `mapbox`) |
-| `geocoding.provider.fallback`           | _(empty)_   | Fallback service if primary fails                               |
-| `geocoding.provider.nominatim.enabled`  | `true`      | Enable Nominatim geocoding service                              |
-| `geocoding.provider.googlemaps.enabled` | `false`     | Enable Google Maps geocoding service                            |
-| `geocoding.provider.mapbox.enabled`     | `false`     | Enable Mapbox geocoding service                                 |
-| `geocoding.googlemaps.api-key`          | _(empty)_   | Google Maps API key (required for Google Maps)                  |
-| `geocoding.mapbox.access-token`         | _(empty)_   | Mapbox access token (required for Mapbox)                       |
+| Property                                 | Default                               | Description                                                     |
+|------------------------------------------|---------------------------------------|-----------------------------------------------------------------|
+| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           | Primary geocoding service (`nominatim`, `googlemaps`, `mapbox`) |
+| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | _(empty)_                             | Fallback service if primary fails                               |
+| `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                | Enable Nominatim geocoding service                              |
+| `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` | Nominatim url                                                   |
+| `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               | Enable Google Maps geocoding service                            |
+| `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                  |
+| `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                 |
+| `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | _(empty)_                             | Mapbox access token (required for Mapbox)                       |
 
 ### Service Setup
 
