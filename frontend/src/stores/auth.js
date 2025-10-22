@@ -1,6 +1,6 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
-import { setUserTimezone } from '../utils/timezoneUtils'
+import {setUserTimezone} from '../utils/timezoneUtils'
 import {useTimezone} from "@/composables/useTimezone";
 
 export const useAuthStore = defineStore('auth', {
@@ -94,7 +94,7 @@ export const useAuthStore = defineStore('auth', {
                     timezone,
                     userId
                 });
-                
+
                 // Update user info in localStorage
                 const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
                 userInfo.fullName = fullName;
@@ -115,7 +115,7 @@ export const useAuthStore = defineStore('auth', {
         updateUserTimezone(timezone) {
             if (this.user) {
                 this.user.timezone = timezone
-                
+
                 // Update localStorage with normalized timezone
                 setUserTimezone(timezone)
             }
@@ -137,13 +137,13 @@ export const useAuthStore = defineStore('auth', {
         async checkAuth() {
             try {
                 const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-                
+
                 // Check if we have user profile data
                 if (!userInfo.id) {
                     this.clearUser()
                     return null
                 }
-                
+
                 // Check cookie expiration and refresh if needed
                 if (apiService.isTokenExpired()) {
                     const refreshed = await apiService.refreshToken()
@@ -152,7 +152,7 @@ export const useAuthStore = defineStore('auth', {
                         return null
                     }
                 }
-                
+
                 // Use user data from localStorage (profile info only)
                 const user = {
                     id: userInfo.id,
@@ -164,7 +164,7 @@ export const useAuthStore = defineStore('auth', {
                     createdAt: userInfo.createdAt,
                     hasPassword: userInfo.hasPassword,
                 }
-                
+
                 this.setUser(user)
                 return user
             } catch (error) {
@@ -199,7 +199,7 @@ export const useAuthStore = defineStore('auth', {
 
         async handleOidcCallback(code, state) {
             try {
-                const response = await apiService.post('/auth/oidc/callback', { code, state });
+                const response = await apiService.post('/auth/oidc/callback', {code, state});
                 this.setUser(response.data);
                 return response.data;
             } catch (error) {
@@ -243,12 +243,22 @@ export const useAuthStore = defineStore('auth', {
             try {
                 const response = await apiService.get('/users/me');
                 const userData = response.data;
-                
+
                 // Update user state and localStorage with fresh data
                 this.setUser(userData);
                 return userData;
             } catch (error) {
                 console.error('Failed to fetch current user profile:', error);
+                throw error;
+            }
+        },
+
+        async isSignUpEnabled() {
+            try {
+                const response = await apiService.get('/users/sign-up/status');
+                return response.data;
+            } catch (error) {
+                console.error('Failed to fetch sign up status:', error);
                 throw error;
             }
         }

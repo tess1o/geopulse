@@ -5,6 +5,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
@@ -40,6 +41,9 @@ public class UserService {
             "Europe/Kiev", "Europe/Kyiv"  // JavaScript may send old name, normalize to new name
     );
 
+    @ConfigProperty(name = "geoupuse.auth.sign-up-enabled", defaultValue = "true")
+    private boolean isSignUpEnabled;
+
     @Inject
     public UserService(UserRepository userRepository,
                        SecurePasswordUtils securePasswordUtils,
@@ -67,6 +71,9 @@ public class UserService {
      */
     @Transactional
     public UserEntity registerUser(String email, String password, String fullName, String timezone) {
+        if (!isSignUpEnabled) {
+            throw new IllegalArgumentException("Registration is disabled");
+        }
         // Check if the user already exists
         if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("User with email " + email + " already exists");
@@ -260,6 +267,10 @@ public class UserService {
                     false // wasResetToDefaults = false
             ));
         }
+    }
+
+    public boolean isSignUpEnabled() {
+        return isSignUpEnabled;
     }
     
     /**
