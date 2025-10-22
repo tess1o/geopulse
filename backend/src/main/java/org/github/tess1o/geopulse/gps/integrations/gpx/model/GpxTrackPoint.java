@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.gpx.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import lombok.Data;
 
@@ -9,6 +10,7 @@ import java.time.Instant;
  * Represents a track point (trkpt) in GPX format
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GpxTrackPoint {
     
     @JacksonXmlProperty(isAttribute = true)

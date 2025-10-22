@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.integrations.gpx.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import lombok.Data;
@@ -10,6 +11,7 @@ import java.util.List;
  * Represents a track segment (trkseg) in GPX format
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class GpxTrackSegment {
     
     @JacksonXmlElementWrapper(useWrapping = false)
