@@ -78,10 +78,6 @@ public class GeocodingProviderValidation {
         } else {
             log.info("Fallback provider: none configured");
         }
-        log.info("Available providers: {}", enabledProviders);
-        log.info("Retry configuration: @Retry(maxRetries=3, delay=500ms, jitter=100ms)");
-        log.info("Rate limiting: @Bulkhead - Nominatim: 1 concurrent, Google Maps: 5 concurrent, Mapbox: 3 concurrent");
-        log.info("Circuit breaker: @CircuitBreaker - Nominatim: 50%/4req/30s, Google Maps: 60%/10req/60s, Mapbox: 55%/6req/45s");
 
         // Provider-specific warnings
         if (config.provider().nominatim().enabled()) {
@@ -102,6 +98,10 @@ public class GeocodingProviderValidation {
             } else {
                 log.info("Mapbox: enabled with access token");
             }
+        }
+
+        if (config.provider().photon().enabled()) {
+            log.info("Photon: enabled");
         }
 
         log.info("Geocoding provider validation completed successfully");

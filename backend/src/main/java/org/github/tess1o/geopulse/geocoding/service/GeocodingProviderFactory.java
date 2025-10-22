@@ -20,15 +20,19 @@ public class GeocodingProviderFactory {
     private final NominatimGeocodingService nominatimService;
     private final GoogleMapsGeocodingService googleMapsService;
     private final MapboxGeocodingService mapboxService;
+    private final PhotonGeocodingService photonService;
     private final GeocodingConfig geocodingConfig;
 
     @Inject
     public GeocodingProviderFactory(NominatimGeocodingService nominatimService,
                                     GoogleMapsGeocodingService googleMapsService,
-                                    MapboxGeocodingService mapboxService, GeocodingConfig geocodingConfig) {
+                                    MapboxGeocodingService mapboxService,
+                                    PhotonGeocodingService photonService,
+                                    GeocodingConfig geocodingConfig) {
         this.nominatimService = nominatimService;
         this.googleMapsService = googleMapsService;
         this.mapboxService = mapboxService;
+        this.photonService = photonService;
         this.geocodingConfig = geocodingConfig;
     }
 
@@ -82,6 +86,12 @@ public class GeocodingProviderFactory {
                 }
                 yield mapboxService.reverseGeocode(requestCoordinates);
             }
+            case "photon" -> {
+                if (!photonService.isEnabled()) {
+                    yield Uni.createFrom().failure(new GeocodingException("Photon provider is disabled or not configured"));
+                }
+                yield photonService.reverseGeocode(requestCoordinates);
+            }
             default -> {
                 log.error("Unknown provider: {}", providerName);
                 yield Uni.createFrom().failure(new GeocodingException("Unknown provider: " + providerName));
@@ -97,6 +107,7 @@ public class GeocodingProviderFactory {
         if (nominatimService.isEnabled()) enabled.add("Nominatim");
         if (googleMapsService.isEnabled()) enabled.add("GoogleMaps");
         if (mapboxService.isEnabled()) enabled.add("Mapbox");
+        if (photonService.isEnabled()) enabled.add("Photon");
         return enabled;
     }
 }

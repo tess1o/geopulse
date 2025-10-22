@@ -331,16 +331,18 @@ configure multiple providers with automatic fallback support. **This configurati
 
 ### Geocoding Configuration
 
-| Property                                 | Default                               | Description                                                     |
-|------------------------------------------|---------------------------------------|-----------------------------------------------------------------|
-| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           | Primary geocoding service (`nominatim`, `googlemaps`, `mapbox`) |
-| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | _(empty)_                             | Fallback service if primary fails                               |
-| `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                | Enable Nominatim geocoding service                              |
-| `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` | Nominatim url                                                   |
-| `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               | Enable Google Maps geocoding service                            |
-| `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                  |
-| `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                 |
-| `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | _(empty)_                             | Mapbox access token (required for Mapbox)                       |
+| Property                                 | Default                               | Description                                                               |
+|------------------------------------------|---------------------------------------|---------------------------------------------------------------------------|
+| `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           | Primary geocoding service (`nominatim`, `googlemaps`, `mapbox`, `photon`) |
+| `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | _(empty)_                             | Fallback service if primary fails                                         |
+| `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                | Enable Nominatim geocoding service                                        |
+| `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` | Nominatim url                                                             |
+| `GEOPULSE_GEOCODING_PHOTON_ENABLED`      | `false`                               | Enable Photon geocoding service                                           |
+| `GEOPULSE_GEOCODING_PHOTON_URL`          | `https://photon.komoot.io`            | Photon url                                                                |                                                                 |
+| `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               | Enable Google Maps geocoding service                                      |
+| `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                            |
+| `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                           |
+| `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | _(empty)_                             | Mapbox access token (required for Mapbox)                                 |
 
 ### Service Setup
 
@@ -350,6 +352,13 @@ configure multiple providers with automatic fallback support. **This configurati
 - Uses OpenStreetMap data
 - Rate limited to 1 request per second
 - Best for privacy-conscious users
+- Possible to use self-hosted version
+
+**Photon**
+
+- No API key required
+- Rate limited to 2 request per second
+- Possible to use self-hosted version
 
 **Google Maps**
 

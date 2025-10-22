@@ -1,100 +1,208 @@
 package org.github.tess1o.geopulse.geocoding.config;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithDefault;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import lombok.Getter;
 
+import jakarta.annotation.PostConstruct;
 import java.util.Optional;
 
 /**
- * Configuration mapping for geocoding providers.
- * Uses Quarkus @ConfigMapping for type-safe configuration.
+ * Configuration for geocoding providers.
+ * Uses @ConfigProperty for runtime-configurable properties in native mode.
  */
-@SuppressWarnings("PMD.ImplicitFunctionalInterface")
-@ConfigMapping(prefix = "geocoding")
+@ApplicationScoped
 @StaticInitSafe
-public interface GeocodingConfig {
+@Getter
+@Slf4j
+public class GeocodingConfig {
+
+    // Provider Configuration
+    @Inject
+    @ConfigProperty(name = "geocoding.provider.primary")
+    @StaticInitSafe
+    String primary;
+
+    @Inject
+    @ConfigProperty(name = "geocoding.provider.fallback")
+    @StaticInitSafe
+    Optional<String> fallback;
+
+    // Nominatim Configuration
+    @Inject
+    @ConfigProperty(name = "geocoding.provider.nominatim.enabled")
+    @StaticInitSafe
+    boolean nominatimEnabled;
+
+    // Photon Configuration
+    @Inject
+    @ConfigProperty(name = "geocoding.provider.photon.enabled")
+    @StaticInitSafe
+    boolean photonEnabled;
+
+    // Google Maps Configuration
+    @Inject
+    @ConfigProperty(name = "geocoding.provider.googlemaps.enabled")
+    @StaticInitSafe
+    boolean googleMapsEnabled;
+
+    @Inject
+    @ConfigProperty(name = "geocoding.googlemaps.api-key")
+    @StaticInitSafe
+    String googleMapsApiKey;
+
+    // Mapbox Configuration
+    @Inject
+    @ConfigProperty(name = "geocoding.provider.mapbox.enabled")
+    @StaticInitSafe
+    boolean mapboxEnabled;
+
+    @Inject
+    @ConfigProperty(name = "geocoding.mapbox.access-token")
+    @StaticInitSafe
+    String mapboxAccessToken;
+
+    @PostConstruct
+    void init() {
+        log.info("Geocoding configuration initialized - primary: {}, fallback: {}",
+                primary, fallback.orElse("none"));
+        log.info("Providers enabled - Nominatim: {}, Photon: {}, Google Maps: {}, Mapbox: {}",
+                nominatimEnabled, photonEnabled, googleMapsEnabled, mapboxEnabled);
+    }
+
+    // Helper methods to match your original nested interface structure
+    public Provider provider() {
+        return new Provider(this);
+    }
+
+    public GoogleMaps googlemaps() {
+        return new GoogleMaps(this);
+    }
+
+    public Mapbox mapbox() {
+        return new Mapbox(this);
+    }
 
     /**
-     * Provider configuration.
+     * Provider configuration wrapper to maintain API compatibility
      */
-    Provider provider();
+    @Getter
+    public static class Provider {
+        private final GeocodingConfig config;
 
-    /**
-     * Google Maps configuration.
-     */
-    GoogleMaps googlemaps();
-
-    /**
-     * Mapbox configuration.
-     */
-    Mapbox mapbox();
-
-    /**
-     * Provider selection and enablement.
-     */
-    interface Provider {
-        /**
-         * Primary provider name.
-         */
-        @WithDefault("nominatim")
-        String primary();
-
-        /**
-         * Fallback provider name (optional).
-         */
-        Optional<String> fallback();
-
-        /**
-         * Nominatim provider settings.
-         */
-        Nominatim nominatim();
-
-        /**
-         * Google Maps provider settings.
-         */
-        GoogleMaps googlemaps();
-
-        /**
-         * Mapbox provider settings.
-         */
-        Mapbox mapbox();
-
-        interface Nominatim {
-            @WithDefault("true")
-            boolean enabled();
+        Provider(GeocodingConfig config) {
+            this.config = config;
         }
 
-        interface GoogleMaps {
-            @WithDefault("false")
-            boolean enabled();
+        public String primary() {
+            return config.getPrimary();
         }
 
-        interface Mapbox {
-            @WithDefault("false")
-            boolean enabled();
+        public Optional<String> fallback() {
+            return config.getFallback();
+        }
+
+        public Nominatim nominatim() {
+            return new Nominatim(config);
+        }
+
+        public GoogleMaps googlemaps() {
+            return new GoogleMaps(config);
+        }
+
+        public Mapbox mapbox() {
+            return new Mapbox(config);
+        }
+
+        public Photon photon() {
+            return new Photon(config);
+        }
+
+        @Getter
+        public static class Nominatim {
+            private final GeocodingConfig config;
+
+            Nominatim(GeocodingConfig config) {
+                this.config = config;
+            }
+
+            public boolean enabled() {
+                return config.isNominatimEnabled();
+            }
+        }
+
+        @Getter
+        public static class GoogleMaps {
+            private final GeocodingConfig config;
+
+            GoogleMaps(GeocodingConfig config) {
+                this.config = config;
+            }
+
+            public boolean enabled() {
+                return config.isGoogleMapsEnabled();
+            }
+        }
+
+        @Getter
+        public static class Mapbox {
+            private final GeocodingConfig config;
+
+            Mapbox(GeocodingConfig config) {
+                this.config = config;
+            }
+
+            public boolean enabled() {
+                return config.isMapboxEnabled();
+            }
+        }
+
+        @Getter
+        public static class Photon {
+            private final GeocodingConfig config;
+
+            Photon(GeocodingConfig config) {
+                this.config = config;
+            }
+
+            public boolean enabled() {
+                return config.isPhotonEnabled();
+            }
         }
     }
 
     /**
-     * Google Maps API configuration.
+     * Google Maps configuration wrapper
      */
-    interface GoogleMaps {
-        /**
-         * Google Maps API key.
-         */
-        @WithDefault("")
-        String apiKey();
+    @Getter
+    public static class GoogleMaps {
+        private final GeocodingConfig config;
+
+        GoogleMaps(GeocodingConfig config) {
+            this.config = config;
+        }
+
+        public String apiKey() {
+            return config.getGoogleMapsApiKey();
+        }
     }
 
     /**
-     * Mapbox API configuration.
+     * Mapbox configuration wrapper
      */
-    interface Mapbox {
-        /**
-         * Mapbox access token.
-         */
-        @WithDefault("")
-        String accessToken();
+    @Getter
+    public static class Mapbox {
+        private final GeocodingConfig config;
+
+        Mapbox(GeocodingConfig config) {
+            this.config = config;
+        }
+
+        public String accessToken() {
+            return config.getMapboxAccessToken();
+        }
     }
 }

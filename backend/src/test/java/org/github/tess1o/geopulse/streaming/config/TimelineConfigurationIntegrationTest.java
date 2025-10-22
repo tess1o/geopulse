@@ -180,8 +180,6 @@ class TimelineConfigurationIntegrationTest {
         @Override
         public java.util.Map<String, String> getConfigOverrides() {
             return java.util.Map.ofEntries(
-                    java.util.Map.entry(
-                            "geopulse.timeline.staypoint.detection.algorithm", "test_algorithm"),
                     java.util.Map.entry("geopulse.timeline.staypoint.use_velocity_accuracy", "true"),
                     java.util.Map.entry("geopulse.timeline.staypoint.velocity.threshold", "20.0"),
                     java.util.Map.entry("geopulse.timeline.staypoint.accuracy.threshold", "40.0"),
