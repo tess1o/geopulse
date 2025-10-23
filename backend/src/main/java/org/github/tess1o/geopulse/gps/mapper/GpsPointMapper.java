@@ -21,8 +21,9 @@ import java.util.stream.Collectors;
 public class GpsPointMapper {
 
     public GpsPointEntity toEntity(OwnTracksLocationMessage message, UserEntity userId, String deviceId, GpsSourceType sourceType) {
+        String device = deviceId != null ? deviceId : "Unknown Device";
         GpsPointEntity entity = new GpsPointEntity();
-        entity.setDeviceId(deviceId);
+        entity.setDeviceId(device);
         entity.setUser(userId);
         entity.setCoordinates(GeoUtils.createPoint(message.getLon(), message.getLat()));
         entity.setTimestamp(Instant.ofEpochSecond(message.getTst()));

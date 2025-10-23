@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssis
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantLocation;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocations;
+import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandResultResponse;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.Properties;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.ConfigurationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -24,7 +25,6 @@ import org.github.tess1o.geopulse.gps.model.*;
 @RegisterForReflection(targets = {
         GpsPointEntity.class,
         GoogleTimelineRecordType.class,
-
         GpsPointPathPointDTO.class,
         GpsPointSummaryDTO.class,
         GpsPointPathDTO.class,
@@ -46,6 +46,7 @@ import org.github.tess1o.geopulse.gps.model.*;
         org.github.tess1o.geopulse.gps.integrations.overland.model.Geometry.class,
         Properties.class,
         OverlandLocations.class,
+        OverlandResultResponse.class,
         DawarichGeometry.class,
         DawarichLocation.class,
         DawarichPayload.class,

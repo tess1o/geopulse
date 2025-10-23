@@ -7,10 +7,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocations;
+import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandResultResponse;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -46,20 +46,12 @@ public class OverlandResource {
         }
 
         saveToDb(overlandLocations, userIdOpt.get());
-        return Response.ok(new ResultResponse("ok")).build();
+        return Response.ok(new OverlandResultResponse("ok")).build();
     }
 
     private void saveToDb(OverlandLocations overlandLocations, UUID userId) {
         for (OverlandLocationMessage locationMessage : overlandLocations.getLocations()) {
             gpsPointService.saveOverlandGpsPoint(locationMessage, userId, GpsSourceType.OVERLAND);
         }
-    }
-
-
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Data
-    private static class ResultResponse {
-        public String result;
     }
 }

@@ -36,7 +36,7 @@ public class OwnTracksResource {
     public Response handleOwnTracks(Map<String, Object> payload,
                                     @HeaderParam("Authorization") String ownTrackAuth,
                                     @RestHeader("X-Limit-D") String deviceId) {
-        log.info("Received payload: {}, device: {}, ownTrackAuth = {}", payload, deviceId, ownTrackAuth);
+        log.info("Received payload: {}, device: {}", payload, deviceId);
 
         if (!"location".equals(payload.get("_type"))) {
             return Response.ok().build();
