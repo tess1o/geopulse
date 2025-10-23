@@ -98,7 +98,7 @@
 
     <!-- GPS Points Table -->
     <BaseCard class="table-section">
-      <DataTable 
+      <DataTable
         :value="gpsPoints"
         :loading="tableLoading"
         paginator
@@ -106,6 +106,9 @@
         :total-records="totalRecords"
         lazy
         @page="onPageChange"
+        @sort="onSort"
+        v-model:sort-field="sortField"
+        v-model:sort-order="sortOrder"
         data-key="id"
         responsive-layout="scroll"
         class="gps-data-table"
@@ -158,21 +161,21 @@
           </template>
         </Column>
 
-        <Column field="velocity" header="Speed" class="numeric-col">
+        <Column field="velocity" sortable header="Speed" class="numeric-col">
           <template #body="slotProps">
             <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ (slotProps.data.velocity).toFixed(1) }} km/h</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="accuracy" header="Accuracy" class="numeric-col" v-if="!isMobile">
+        <Column field="accuracy" sortable header="Accuracy" class="numeric-col" v-if="!isMobile">
           <template #body="slotProps">
             <span v-if="slotProps.data.accuracy">{{ slotProps.data.accuracy.toFixed(1) }}m</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
-        <Column field="altitude" header="Altitude" sortable class="numeric-col" v-if="!isMobile && !isTablet">
+        <Column field="altitude" header="Altitude" class="numeric-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.altitude">{{ Math.round(slotProps.data.altitude) }}m</span>
             <span v-else class="null-value">-</span>
@@ -326,6 +329,8 @@ const isTablet = ref(false)
 const dateRange = ref(null)
 const pageSize = ref(50)
 const currentPage = ref(0)
+const sortField = ref('timestamp')
+const sortOrder = ref(-1) // -1 for descending, 1 for ascending
 
 // Loading states
 const isLoading = ref(false)
@@ -429,6 +434,13 @@ const onPageChange = async (event) => {
   await loadGPSPoints()
 }
 
+const onSort = async (event) => {
+  sortField.value = event.sortField
+  sortOrder.value = event.sortOrder
+  currentPage.value = 0 // Reset to first page on sort
+  await loadGPSPoints()
+}
+
 const loadSummaryStats = async () => {
   try {
     isLoading.value = true
@@ -453,13 +465,19 @@ const loadGPSPoints = async () => {
       page: currentPage.value + 1,
       limit: pageSize.value
     }
-    
+
     if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
       // Send precise UTC timestamps for start/end of day in user timezone
       params.startTime = formatDateForAPI(dateRange.value[0], false)
       params.endTime = formatDateForAPI(dateRange.value[1], true)
     }
-    
+
+    // Add sorting parameters
+    if (sortField.value) {
+      params.sortBy = sortField.value
+      params.sortOrder = sortOrder.value === 1 ? 'asc' : 'desc'
+    }
+
     await technicalDataStore.fetchGPSPoints(params)
   } catch (error) {
     console.error('Error loading GPS points:', error)

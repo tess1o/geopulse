@@ -136,7 +136,9 @@ public class ExportDataGenerator {
                     job.getDateRange().getStartDate(),
                     job.getDateRange().getEndDate(),
                     page,
-                    pageSize
+                    pageSize,
+                    "timestamp",
+                    "asc"
             );
 
             if (pageData.isEmpty()) {
@@ -176,7 +178,9 @@ public class ExportDataGenerator {
                     job.getDateRange().getStartDate(),
                     job.getDateRange().getEndDate(),
                     page,
-                    pageSize
+                    pageSize,
+                    "timestamp",
+                    "asc"
             );
 
             if (pageData.isEmpty()) {

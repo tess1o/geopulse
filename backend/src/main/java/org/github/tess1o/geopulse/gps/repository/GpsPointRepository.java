@@ -49,19 +49,47 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
-     * Find GPS points for a user within a date range with pagination.
+     * Find GPS points for a user within a date range with pagination and sorting.
      *
      * @param userId    The ID of the user
      * @param startTime The start of the time period
      * @param endTime   The end of the time period
      * @param page      Page number (0-based)
      * @param pageSize  Number of items per page
+     * @param sortBy    Field to sort by (timestamp, altitude, battery)
+     * @param sortOrder Sort order (asc or desc)
      * @return A list of GPS point entities for the page
      */
-    public List<GpsPointEntity> findByUserAndDateRange(UUID userId, Instant startTime, Instant endTime, int page, int pageSize) {
-        return find("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY timestamp DESC", userId, startTime, endTime)
+    public List<GpsPointEntity> findByUserAndDateRange(UUID userId, Instant startTime, Instant endTime,
+                                                        int page, int pageSize, String sortBy, String sortOrder) {
+        // Validate sort field to prevent SQL injection
+        String validatedSortBy = validateSortField(sortBy);
+        String validatedSortOrder = sortOrder.equalsIgnoreCase("asc") ? "ASC" : "DESC";
+
+        String query = String.format("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY %s %s",
+                                     validatedSortBy, validatedSortOrder);
+
+        return find(query, userId, startTime, endTime)
                 .page(page, pageSize)
                 .list();
+    }
+
+    /**
+     * Validate and map sort field to database column name.
+     * Prevents SQL injection by only allowing whitelisted fields.
+     *
+     * @param sortBy The requested sort field
+     * @return The validated database column name
+     */
+    private String validateSortField(String sortBy) {
+        return switch (sortBy.toLowerCase()) {
+            case "timestamp" -> "timestamp";
+            case "altitude" -> "altitude";
+            case "battery" -> "battery";
+            case "velocity" -> "velocity";
+            case "accuracy" -> "accuracy";
+            default -> "timestamp"; // Default to timestamp if invalid field
+        };
     }
 
     /**

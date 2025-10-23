@@ -124,13 +124,15 @@ public class GpsPointResource {
     }
 
     /**
-     * Get paginated GPS points with optional date filtering.
+     * Get paginated GPS points with optional date filtering and sorting.
      * This endpoint requires authentication.
      *
      * @param page      Page number (default: 1)
      * @param limit     Number of items per page (default: 50)
      * @param startDate Start date filter (format: YYYY-MM-DD)
      * @param endDate   End date filter (format: YYYY-MM-DD)
+     * @param sortBy    Field to sort by (default: timestamp)
+     * @param sortOrder Sort order: asc or desc (default: desc)
      * @return Paginated GPS points
      */
     @GET
@@ -142,10 +144,12 @@ public class GpsPointResource {
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate,
             @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("endTime") String endTime,
+            @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
+            @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}, startTime: {}, endTime: {}",
-                userId, page, limit, startDate, endDate, startTime, endTime);
+        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}, startTime: {}, endTime: {}, sortBy: {}, sortOrder: {}",
+                userId, page, limit, startDate, endDate, startTime, endTime, sortBy, sortOrder);
 
         try {
             // Validate pagination parameters
@@ -160,11 +164,18 @@ public class GpsPointResource {
                         .build();
             }
 
+            // Validate sort order
+            if (!sortOrder.equalsIgnoreCase("asc") && !sortOrder.equalsIgnoreCase("desc")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Sort order must be 'asc' or 'desc'"))
+                        .build();
+            }
+
             // Parse date/time parameters - prioritize precise timestamps over dates
             Instant start = parseDateTime(startTime, startDate, true);
             Instant end = parseDateTime(endTime, endDate, false);
 
-            GpsPointPageDTO result = gpsPointService.getGpsPointsPage(userId, start, end, page, limit);
+            GpsPointPageDTO result = gpsPointService.getGpsPointsPage(userId, start, end, page, limit, sortBy, sortOrder);
             return Response.ok(ApiResponse.success(result)).build();
         } catch (DateTimeParseException e) {
             return Response.status(Response.Status.BAD_REQUEST)
