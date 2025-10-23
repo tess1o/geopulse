@@ -128,6 +128,16 @@ GEOPULSE_OIDC_PROVIDER_{NAME}_{PROPERTY}=value
 |----------|-----------------------|-----------------------------------|
 | `ICON`   | CSS icon class for UI | `pi pi-google`, `pi pi-microsoft` |
 
+### OIDC Callback URL
+
+For all OIDC providers, you must configure a callback URL. This is the URL that the provider will redirect to after
+authentication. All providers should use the callback URL: `http://your-ip-address:port/auth/oidc/callback` or
+`https://geopulse.mydomain.com/auth/oidc/callback`.
+
+Additionally you might need to update `GEOPULSE_OIDC_CALLBACK_BASE_URL` environment variable to match your frontend
+URL. By default it's set to `GEOPULSE_UI_URL` but in case if you have multiple domains you might need to change it to a
+single one.
+
 #### Supported Providers
 
 The system supports any OIDC-compliant provider. Here are configuration examples for popular providers:
@@ -326,7 +336,7 @@ configure multiple providers with automatic fallback support. **This configurati
 | Provider        | Free Tier | API Key Required | Rate Limits                 |
 |-----------------|-----------|------------------|-----------------------------|
 | **Nominatim**   | Yes       | No               | 1 request/second            |
- | **Photon**      | Yes       | No               | Unknown                     |
+| **Photon**      | Yes       | No               | Unknown                     |
 | **Google Maps** | Limited   | Yes              | 40,000 requests/month free  |
 | **Mapbox**      | Limited   | Yes              | 100,000 requests/month free |
 
@@ -526,6 +536,7 @@ GEOPULSE_TIMELINE_JOB_DELAY=1m
 ```
 
 ## GeoPulse Frontend Configuration
+
 To increase max upload file size from default 200MB change the following environment variable: `CLIENT_MAX_BODY_SIZE`.
 
 ## How Configuration Works
