@@ -68,6 +68,11 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             if (!isUnique) {
                 throw new IllegalArgumentException("Overland token is already used");
             }
+        } else if (newConfig.getType() == GpsSourceType.HOME_ASSISTANT) {
+            boolean isUnique = isHomeAssistantSourceUnique(newConfig);
+            if (!isUnique) {
+                throw new IllegalArgumentException("Home assistant username is already used");
+            }
         }
     }
 
@@ -81,6 +86,14 @@ public class GpsSourceService implements GpsSourceConfigProvider {
 
     private boolean isOverlandSourceUnique(CreateGpsSourceConfigDto newConfig) {
         List<GpsSourceConfigEntity> configs = gpsSourceRepository.findByUserIdAndSourceType(newConfig.getUserId(), GpsSourceType.OVERLAND);
+        if (configs == null || configs.isEmpty()) {
+            return true;
+        }
+        return configs.stream().noneMatch(config -> config.getToken().equals(newConfig.getToken()));
+    }
+
+    private boolean isHomeAssistantSourceUnique(CreateGpsSourceConfigDto newConfig) {
+        List<GpsSourceConfigEntity> configs = gpsSourceRepository.findByUserIdAndSourceType(newConfig.getUserId(), GpsSourceType.HOME_ASSISTANT);
         if (configs == null || configs.isEmpty()) {
             return true;
         }
@@ -104,7 +117,9 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             dbConfig.setUsername(config.getUsername());
             dbConfig.setPasswordHash(passwordUtils.hashPassword(config.getPassword()));
         }
-        if (dbConfig.getSourceType() == GpsSourceType.OVERLAND || dbConfig.getSourceType() == GpsSourceType.DAWARICH) {
+        if (dbConfig.getSourceType() == GpsSourceType.OVERLAND ||
+                dbConfig.getSourceType() == GpsSourceType.DAWARICH ||
+                dbConfig.getSourceType() == GpsSourceType.HOME_ASSISTANT) {
             dbConfig.setToken(config.getToken());
         }
         if (dbConfig.getConnectionType() != null) {
