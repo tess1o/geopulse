@@ -119,7 +119,7 @@ class OwnTracksExportImportUnitTest {
                 testUser.getId(), 
                 Instant.now().minus(2, ChronoUnit.HOURS),
                 Instant.now().plus(1, ChronoUnit.HOURS),
-                0, 10
+                0, 10, "timestamp", "asc"
             );
             
             assertEquals(3, importedPoints.size());
@@ -229,7 +229,7 @@ class OwnTracksExportImportUnitTest {
             testUser.getId(), 
             now.minus(4, ChronoUnit.HOURS),
             now.plus(2, ChronoUnit.HOURS),
-            0, 10
+            0, 10, "timestamp", "asc"
         );
         
         assertEquals(2, importedPoints.size(), "Only 2 messages should be imported within the date range");
@@ -265,7 +265,7 @@ class OwnTracksExportImportUnitTest {
             testUser.getId(), 
             Instant.now().minus(1, ChronoUnit.HOURS),
             Instant.now().plus(1, ChronoUnit.HOURS),
-            0, 10
+            0, 10, "timestamp", "asc"
         );
         
         assertEquals(1, importedPoints.size());
@@ -322,7 +322,7 @@ class OwnTracksExportImportUnitTest {
             testUser.getId(), 
             Instant.now().minus(1, ChronoUnit.HOURS),
             Instant.now().plus(1, ChronoUnit.HOURS),
-            0, 100
+            0, 100, "timestamp", "asc"
         );
         int countBefore = beforeImport.size();
         
@@ -343,7 +343,7 @@ class OwnTracksExportImportUnitTest {
             testUser.getId(), 
             Instant.now().minus(1, ChronoUnit.HOURS),
             Instant.now().plus(1, ChronoUnit.HOURS),
-            0, 100
+            0, 100, "timestamp", "asc"
         );
         int countAfter = afterImport.size();
         
@@ -415,7 +415,7 @@ class OwnTracksExportImportUnitTest {
                 testUser.getId(), 
                 baseTime.minus(1, ChronoUnit.HOURS),
                 Instant.now().plus(1, ChronoUnit.HOURS),
-                0, 200
+                0, 200, "timestamp", "asc"
             );
             
             assertEquals(totalMessages, importedPoints.size(), "All messages should be imported through batch processing");
@@ -460,7 +460,7 @@ class OwnTracksExportImportUnitTest {
             testUser.getId(), 
             baseTime.minus(1, ChronoUnit.HOURS),
             Instant.now().plus(1, ChronoUnit.HOURS),
-            0, 100
+            0, 100, "timestamp", "asc"
         );
         
         assertEquals(totalMessages, importedPoints.size(), "All messages should be imported");

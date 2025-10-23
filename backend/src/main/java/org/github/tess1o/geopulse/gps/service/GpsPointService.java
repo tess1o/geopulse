@@ -196,19 +196,23 @@ public class GpsPointService {
 
 
     /**
-     * Get paginated GPS points for a user within a time period.
+     * Get paginated GPS points for a user within a time period with sorting.
      *
      * @param userId    The ID of the user
      * @param startTime The start of the time period
      * @param endTime   The end of the time period
      * @param page      Page number (1-based)
      * @param limit     Number of items per page
+     * @param sortBy    Field to sort by
+     * @param sortOrder Sort order (asc or desc)
      * @return Paginated GPS points
      */
-    public GpsPointPageDTO getGpsPointsPage(UUID userId, Instant startTime, Instant endTime, int page, int limit) {
+    public GpsPointPageDTO getGpsPointsPage(UUID userId, Instant startTime, Instant endTime,
+                                            int page, int limit, String sortBy, String sortOrder) {
         int pageIndex = page - 1; // Convert to 0-based for repository
 
-        List<GpsPointEntity> points = gpsPointRepository.findByUserAndDateRange(userId, startTime, endTime, pageIndex, limit);
+        List<GpsPointEntity> points = gpsPointRepository.findByUserAndDateRange(userId, startTime, endTime,
+                pageIndex, limit, sortBy, sortOrder);
         long total = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
                 userId, startTime, endTime);
 

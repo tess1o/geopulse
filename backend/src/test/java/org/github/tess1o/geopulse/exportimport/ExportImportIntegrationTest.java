@@ -367,10 +367,10 @@ class ExportImportIntegrationTest {
 
         // Verify GPS point (GPS points don't preserve IDs since export format doesn't include them)
         var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(
-            testUser.getId(), 
-            originalGpsPoint.getTimestamp().minusSeconds(1), 
+            testUser.getId(),
+            originalGpsPoint.getTimestamp().minusSeconds(1),
             originalGpsPoint.getTimestamp().plusSeconds(1),
-            0, 10
+            0, 10, "timestamp", "asc"
         );
         assertFalse(importedGpsPointsList.isEmpty(), "At least one GPS point should be imported");
         var importedGpsPoint = importedGpsPointsList.get(0);
