@@ -15,31 +15,52 @@ import java.util.List;
 @Slf4j
 public final class GoogleTimelineParser {
 
+    /**
+     * Interval in minutes between interpolated GPS points for visit records
+     */
+    public static final int VISIT_INTERPOLATION_INTERVAL_MINUTES = 5;
+
     private GoogleTimelineParser(){
     }
-    
+
     /**
-     * Parse geo string from "geo:lat,lng" format to coordinates
+     * Parse geo string from both old and new formats to coordinates
+     * Old format: "geo:lat,lng"
+     * New format: "lat°, lng°"
      * @param geoStr the geo string
      * @return [latitude, longitude] or null if invalid
      */
     public static double[] parseGeoString(String geoStr) {
-        if (geoStr == null || !geoStr.startsWith("geo:")) {
+        if (geoStr == null || geoStr.trim().isEmpty()) {
             return null;
         }
-        
+
         try {
-            String coords = geoStr.replace("geo:", "");
+            String coords;
+
+            // Handle old format: "geo:lat,lng"
+            if (geoStr.startsWith("geo:")) {
+                coords = geoStr.replace("geo:", "");
+            }
+            // Handle new format: "lat°, lng°"
+            else if (geoStr.contains("°")) {
+                coords = geoStr.replace("°", "").trim();
+            }
+            else {
+                // Try parsing as-is
+                coords = geoStr.trim();
+            }
+
             String[] parts = coords.split(",");
             if (parts.length == 2) {
-                double lat = Double.parseDouble(parts[0]);
-                double lng = Double.parseDouble(parts[1]);
+                double lat = Double.parseDouble(parts[0].trim());
+                double lng = Double.parseDouble(parts[1].trim());
                 return new double[]{lat, lng};
             }
         } catch (NumberFormatException e) {
             log.debug("Failed to parse geo string: {}", geoStr);
         }
-        
+
         return null;
     }
     
@@ -145,23 +166,23 @@ public final class GoogleTimelineParser {
         }
     }
     
-    private static void processVisitRecord(GoogleTimelineRecord record, int recordIndex, 
+    private static void processVisitRecord(GoogleTimelineRecord record, int recordIndex,
                                          List<GoogleTimelineGpsPoint> gpsPoints) {
         GoogleTimelineVisit visit = record.getVisit();
         if (visit == null || visit.getTopCandidate() == null) {
             return;
         }
-        
+
         GoogleTimelineVisitCandidate topCandidate = visit.getTopCandidate();
         double[] coords = parseGeoString(topCandidate.getPlaceLocation());
-        
-        if (coords == null) {
+
+        if (coords == null || !record.hasValidTimes()) {
             return;
         }
-        
-        String placeName = topCandidate.getSemanticType() != null ? 
+
+        String placeName = topCandidate.getSemanticType() != null ?
                 topCandidate.getSemanticType() : "unknown";
-        
+
         double confidence = 0.0;
         try {
             if (visit.getProbability() != null) {
@@ -170,27 +191,105 @@ public final class GoogleTimelineParser {
         } catch (NumberFormatException e) {
             log.debug("Failed to parse visit confidence: {}", visit.getProbability());
         }
-        
-        // Use middle time for visit
-        Instant midTime = null;
-        if (record.getStartTime() != null && record.getEndTime() != null) {
-            long startEpoch = record.getStartTime().getEpochSecond();
-            long endEpoch = record.getEndTime().getEpochSecond();
-            midTime = Instant.ofEpochSecond((startEpoch + endEpoch) / 2);
+
+        // Interpolate GPS points at regular intervals during the visit
+        // This helps staypoint detection algorithms identify stays
+        interpolateVisitPoints(
+                record.getStartTime(),
+                record.getEndTime(),
+                coords[0],
+                coords[1],
+                placeName,
+                confidence,
+                recordIndex,
+                gpsPoints
+        );
+    }
+
+    /**
+     * Generate interpolated GPS points for a visit at regular intervals.
+     * This creates multiple points at the same location during a visit period,
+     * which helps staypoint detection algorithms identify stays.
+     *
+     * @param startTime visit start time
+     * @param endTime visit end time
+     * @param latitude visit latitude
+     * @param longitude visit longitude
+     * @param placeName place name/semantic type
+     * @param confidence visit confidence
+     * @param recordIndex record index
+     * @param gpsPoints list to add generated points to
+     */
+    private static void interpolateVisitPoints(Instant startTime, Instant endTime,
+                                              double latitude, double longitude,
+                                              String placeName, double confidence,
+                                              int recordIndex,
+                                              List<GoogleTimelineGpsPoint> gpsPoints) {
+        long durationMinutes = ChronoUnit.MINUTES.between(startTime, endTime);
+
+        // For very short visits (less than interval), generate at least start and end points
+        if (durationMinutes < VISIT_INTERPOLATION_INTERVAL_MINUTES) {
+            // Add start point
+            gpsPoints.add(GoogleTimelineGpsPoint.builder()
+                    .timestamp(startTime)
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .recordType("visit")
+                    .activityType(placeName)
+                    .confidence(confidence)
+                    .velocityMs(0.0)
+                    .recordIndex(recordIndex)
+                    .build());
+
+            // Add end point if it's different from start
+            if (durationMinutes > 0) {
+                gpsPoints.add(GoogleTimelineGpsPoint.builder()
+                        .timestamp(endTime)
+                        .latitude(latitude)
+                        .longitude(longitude)
+                        .recordType("visit")
+                        .activityType(placeName)
+                        .confidence(confidence)
+                        .velocityMs(0.0)
+                        .recordIndex(recordIndex)
+                        .build());
+            }
+            return;
         }
-        
-        GoogleTimelineGpsPoint visitPoint = GoogleTimelineGpsPoint.builder()
-                .timestamp(midTime)
-                .latitude(coords[0])
-                .longitude(coords[1])
-                .recordType("visit")
-                .activityType(placeName)
-                .confidence(confidence)
-                .velocityMs(0.0) // Stationary
-                .recordIndex(recordIndex)
-                .build();
-        
-        gpsPoints.add(visitPoint);
+
+        // Generate points at regular intervals
+        Instant currentTime = startTime;
+        while (!currentTime.isAfter(endTime)) {
+            gpsPoints.add(GoogleTimelineGpsPoint.builder()
+                    .timestamp(currentTime)
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .recordType("visit")
+                    .activityType(placeName)
+                    .confidence(confidence)
+                    .velocityMs(0.0)
+                    .recordIndex(recordIndex)
+                    .build());
+
+            currentTime = currentTime.plus(VISIT_INTERPOLATION_INTERVAL_MINUTES, ChronoUnit.MINUTES);
+        }
+
+        // Add final point at exact end time if we didn't already add it
+        if (!gpsPoints.isEmpty()) {
+            GoogleTimelineGpsPoint lastPoint = gpsPoints.get(gpsPoints.size() - 1);
+            if (!lastPoint.getTimestamp().equals(endTime)) {
+                gpsPoints.add(GoogleTimelineGpsPoint.builder()
+                        .timestamp(endTime)
+                        .latitude(latitude)
+                        .longitude(longitude)
+                        .recordType("visit")
+                        .activityType(placeName)
+                        .confidence(confidence)
+                        .velocityMs(0.0)
+                        .recordIndex(recordIndex)
+                        .build());
+            }
+        }
     }
     
     private static void processTimelinePathRecord(GoogleTimelineRecord record, int recordIndex, 

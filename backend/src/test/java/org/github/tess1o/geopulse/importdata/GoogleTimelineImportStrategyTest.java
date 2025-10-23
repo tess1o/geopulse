@@ -225,15 +225,19 @@ class GoogleTimelineImportStrategyTest {
                 Instant.now().plus(1, ChronoUnit.DAYS)
         );
 
-        // Should have 1 point: midpoint of visit
-        assertEquals(1, importedPoints.size(), "Visit should generate one midpoint");
+        // Should have multiple interpolated points for the visit (90 minutes = 18 points at 5-minute intervals + end point)
+        assertTrue(importedPoints.size() >= 2, "Visit should generate multiple interpolated points");
 
-        GpsPointEntity visitPoint = importedPoints.get(0);
-        assertEquals(49.547321, visitPoint.getLatitude(), 0.000001, "Visit latitude should match");
-        assertEquals(25.596540, visitPoint.getLongitude(), 0.000001, "Visit longitude should match"); 
-        assertEquals(0.0, visitPoint.getVelocity(), 0.001, "Visit velocity should be 0 (stationary)");
+        // Verify all points have the same coordinates (stationary visit)
+        double expectedLat = 49.547321;
+        double expectedLng = 25.596540;
+        for (GpsPointEntity point : importedPoints) {
+            assertEquals(expectedLat, point.getLatitude(), 0.000001, "Visit latitude should match");
+            assertEquals(expectedLng, point.getLongitude(), 0.000001, "Visit longitude should match");
+            assertEquals(0.0, point.getVelocity(), 0.001, "Visit velocity should be 0 (stationary)");
+        }
 
-        log.info("Visit processing verified: midpoint calculated correctly");
+        log.info("Visit processing verified: {} interpolated points generated with 0 velocity", importedPoints.size());
     }
 
     @Test
@@ -468,6 +472,108 @@ class GoogleTimelineImportStrategyTest {
         return record;
     }
 
+    @Test
+    @Transactional
+    void testSemanticSegmentsFormat() throws Exception {
+        log.info("=== Testing New Semantic Segments Format ===");
+
+        // Load the example semantic segments file
+        String semanticSegmentsJson = """
+        {
+          "semanticSegments": [
+            {
+              "startTime": "2019-04-03T08:00:00.000+02:00",
+              "endTime": "2019-04-03T10:00:00.000+02:00",
+              "timelinePath": [
+                {
+                  "point": "50.0506312°, 14.3439906°",
+                  "time": "2019-04-03T08:14:00.000+02:00"
+                },
+                {
+                  "point": "50.0506312°, 14.3439906°",
+                  "time": "2019-04-03T08:46:00.000+02:00"
+                }
+              ]
+            },
+            {
+              "startTime": "2019-04-03T08:13:57.000+02:00",
+              "endTime": "2019-04-03T20:10:18.000+02:00",
+              "startTimeTimezoneUtcOffsetMinutes": 120,
+              "endTimeTimezoneUtcOffsetMinutes": 120,
+              "visit": {
+                "hierarchyLevel": 0,
+                "probability": 0.8500000238418579,
+                "topCandidate": {
+                  "placeId": "some random id",
+                  "semanticType": "UNKNOWN",
+                  "probability": 0.44970497488975525,
+                  "placeLocation": {
+                    "latLng": "50.0506312°, 14.3439906°"
+                  }
+                }
+              }
+            }
+          ],
+          "rawSignals": [
+            {
+              "position": {
+                "LatLng": "48.833657°, 2.256223°",
+                "accuracyMeters": 13,
+                "altitudeMeters": 90.70000457763672,
+                "source": "WIFI",
+                "timestamp": "2024-06-06T11:44:37.000+01:00",
+                "speedMetersPerSecond": 0.07095485180616379
+              }
+            }
+          ]
+        }
+        """;
+
+        byte[] jsonData = semanticSegmentsJson.getBytes();
+
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setImportFormat("google-timeline");
+
+        ImportJob importJob = importService.createImportJob(
+                testUser.getId(), importOptions, "test-semantic-segments.json", jsonData);
+
+        // Validate
+        List<String> detectedDataTypes = googleTimelineImportStrategy.validateAndDetectDataTypes(importJob);
+        assertEquals(1, detectedDataTypes.size());
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS));
+
+        // Process
+        googleTimelineImportStrategy.processImportData(importJob);
+
+        List<GpsPointEntity> importedPoints = gpsPointRepository.list("user = ?1", testUser);
+
+        // Should have:
+        // - 2 timeline path points
+        // - Multiple visit interpolated points (12 hours = 144 points at 5-minute intervals)
+        // - 1 raw signal position
+        assertTrue(importedPoints.size() > 100,
+                "Should have many points from interpolated visit (12-hour visit should generate ~144 points)");
+
+        // Verify coordinates are properly parsed with degree symbol format
+        boolean hasTimelinePathPoints = importedPoints.stream()
+                .anyMatch(p -> Math.abs(p.getLatitude() - 50.0506312) < 0.0001 &&
+                              Math.abs(p.getLongitude() - 14.3439906) < 0.0001);
+        assertTrue(hasTimelinePathPoints, "Should have parsed timeline path points with degree symbol format");
+
+        boolean hasRawSignalPoints = importedPoints.stream()
+                .anyMatch(p -> Math.abs(p.getLatitude() - 48.833657) < 0.0001 &&
+                              Math.abs(p.getLongitude() - 2.256223) < 0.0001);
+        assertTrue(hasRawSignalPoints, "Should have parsed raw signal position points");
+
+        // Verify visit points have 0 velocity
+        long stationaryPoints = importedPoints.stream()
+                .filter(p -> p.getVelocity() != null && p.getVelocity() == 0.0)
+                .count();
+        assertTrue(stationaryPoints > 100, "Should have many stationary points from interpolated visit");
+
+        log.info("Semantic segments format verified: {} total points imported", importedPoints.size());
+    }
+
     private void verifyImportedData(List<GpsPointEntity> importedPoints) {
         log.info("Verifying imported data: {} points", importedPoints.size());
 
@@ -475,17 +581,17 @@ class GoogleTimelineImportStrategyTest {
             // Verify basic data integrity
             assertNotNull(point.getTimestamp(), "Timestamp should not be null");
             assertNotNull(point.getCoordinates(), "Coordinates should not be null");
-            assertTrue(point.getLatitude() > 49.0 && point.getLatitude() < 50.0, 
+            assertTrue(point.getLatitude() > 49.0 && point.getLatitude() < 50.0,
                     "Latitude should be in expected range (Ukraine)");
-            assertTrue(point.getLongitude() > 25.0 && point.getLongitude() < 26.0, 
+            assertTrue(point.getLongitude() > 25.0 && point.getLongitude() < 26.0,
                     "Longitude should be in expected range (Ukraine)");
-            
+
             // Verify source type
             assertEquals(GpsSourceType.GOOGLE_TIMELINE, point.getSourceType(),
                     "Source type should be GOOGLE_TIMELINE");
             assertEquals("google-timeline-import", point.getDeviceId(),
                     "Device ID should be google-timeline-import");
-            
+
             // Verify optional fields
             if (point.getVelocity() != null) {
                 assertTrue(point.getVelocity() >= 0, "Velocity should be non-negative");

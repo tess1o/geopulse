@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -8,7 +9,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineGpsPoint;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineRecord;
+import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.semanticsegments.GoogleTimelineSemanticSegmentsRoot;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.util.GoogleTimelineParser;
+import org.github.tess1o.geopulse.gps.integrations.googletimeline.util.GoogleTimelineSemanticSegmentsParser;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -22,7 +25,7 @@ import java.util.List;
 
 /**
  * Import strategy for Google Timeline JSON format.
- * Implements the same parsing logic as google_timeline_parser.py
+ * Supports both legacy format (array of records) and new format (semantic segments).
  */
 @ApplicationScoped
 @Slf4j
@@ -41,7 +44,52 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
     protected FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException {
         String jsonContent = new String(job.getZipData()); // zipData contains JSON for Google Timeline
 
-        // Parse as JSON array of Google Timeline records
+        // Detect format by checking if JSON is an array or object
+        JsonNode rootNode = objectMapper.readTree(jsonContent);
+
+        if (rootNode.isArray()) {
+            // Legacy format: array of records
+            return validateLegacyFormat(jsonContent);
+        } else if (rootNode.isObject() && rootNode.has("semanticSegments")) {
+            // New format: semantic segments
+            return validateSemanticSegmentsFormat(jsonContent);
+        } else {
+            throw new IllegalArgumentException("Unknown Google Timeline format. Expected either an array of records or an object with 'semanticSegments' field.");
+        }
+    }
+
+    @Override
+    protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
+        String jsonContent = new String(job.getZipData());
+
+        // Detect format
+        JsonNode rootNode = objectMapper.readTree(jsonContent);
+        List<GoogleTimelineGpsPoint> gpsPoints;
+
+        if (rootNode.isArray()) {
+            // Legacy format
+            log.info("Processing Google Timeline data in legacy format (array of records)");
+            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
+                    new TypeReference<List<GoogleTimelineRecord>>() {
+                    });
+            gpsPoints = GoogleTimelineParser.extractGpsPoints(records, true);
+        } else if (rootNode.isObject() && rootNode.has("semanticSegments")) {
+            // New format
+            log.info("Processing Google Timeline data in new format (semantic segments)");
+            GoogleTimelineSemanticSegmentsRoot root = objectMapper.readValue(jsonContent,
+                    GoogleTimelineSemanticSegmentsRoot.class);
+            gpsPoints = GoogleTimelineSemanticSegmentsParser.extractGpsPoints(root, true);
+        } else {
+            throw new IllegalArgumentException("Unknown Google Timeline format");
+        }
+
+        log.info("Extracted {} GPS points from Google Timeline data", gpsPoints.size());
+
+        // Convert to GpsPointEntity objects
+        return convertToGpsEntities(gpsPoints, user, job);
+    }
+
+    private FormatValidationResult validateLegacyFormat(String jsonContent) throws IOException {
         List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
                 new TypeReference<List<GoogleTimelineRecord>>() {
                 });
@@ -75,24 +123,64 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
             }
         }
 
-        log.info("Google Timeline validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records",
+        log.info("Google Timeline (legacy) validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records",
                 records.size(), activityCount, visitCount, timelinePathCount, unknownCount, validRecords);
 
         return new FormatValidationResult(records.size(), validRecords);
     }
 
-    @Override
-    protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
-        String jsonContent = new String(job.getZipData());
-        List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
-                new TypeReference<List<GoogleTimelineRecord>>() {
-                });
+    private FormatValidationResult validateSemanticSegmentsFormat(String jsonContent) throws IOException {
+        GoogleTimelineSemanticSegmentsRoot root = objectMapper.readValue(jsonContent,
+                GoogleTimelineSemanticSegmentsRoot.class);
 
-        // Extract GPS points using the same logic as Python script
-        List<GoogleTimelineGpsPoint> gpsPoints = GoogleTimelineParser.extractGpsPoints(records, true);
+        int totalSegments = 0;
+        int validSegments = 0;
+        int visitCount = 0;
+        int activityCount = 0;
+        int timelinePathCount = 0;
+        int rawSignalCount = 0;
 
-        // Convert to GpsPointEntity objects
-        return convertToGpsEntities(gpsPoints, user, job);
+        if (root.getSemanticSegments() != null) {
+            totalSegments = root.getSemanticSegments().size();
+
+            for (var segment : root.getSemanticSegments()) {
+                boolean isValid = false;
+
+                if (segment.getVisit() != null && segment.getVisit().getTopCandidate() != null &&
+                        segment.hasValidTimes()) {
+                    visitCount++;
+                    isValid = true;
+                }
+
+                if (segment.getActivity() != null && segment.hasValidTimes()) {
+                    activityCount++;
+                    isValid = true;
+                }
+
+                if (segment.getTimelinePath() != null && !segment.getTimelinePath().isEmpty() &&
+                        segment.hasValidTimes()) {
+                    timelinePathCount++;
+                    isValid = true;
+                }
+
+                if (isValid) {
+                    validSegments++;
+                }
+            }
+        }
+
+        if (root.getRawSignals() != null) {
+            for (var signal : root.getRawSignals()) {
+                if (signal.getPosition() != null && signal.getPosition().getTimestamp() != null) {
+                    rawSignalCount++;
+                }
+            }
+        }
+
+        log.info("Google Timeline (semantic segments) validation successful: {} total segments ({} visit, {} activity, {} timeline_path), {} raw signals, {} valid segments",
+                totalSegments, visitCount, activityCount, timelinePathCount, rawSignalCount, validSegments);
+
+        return new FormatValidationResult(totalSegments + rawSignalCount, validSegments + rawSignalCount);
     }
 
     private List<GpsPointEntity> convertToGpsEntities(List<GoogleTimelineGpsPoint> gpsPoints, UserEntity user, ImportJob job) {

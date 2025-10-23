@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.Dawarich
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.DawarichStatsResponse;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.stats.DawarichYearlyStats;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.*;
+import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.semanticsegments.*;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.*;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantBattery;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
@@ -61,6 +62,18 @@ import org.github.tess1o.geopulse.gps.model.*;
         GoogleTimelineRecord.class,
         GoogleTimelineVisit.class,
         GoogleTimelineVisitCandidate.class,
+        GoogleTimelineSemanticSegmentsRoot.class,
+        GoogleTimelineSemanticSegment.class,
+        GoogleTimelineSemanticVisit.class,
+        GoogleTimelineSemanticVisitCandidate.class,
+        GoogleTimelineSemanticPlaceLocation.class,
+        GoogleTimelineSemanticActivity.class,
+        GoogleTimelineSemanticActivityCandidate.class,
+        GoogleTimelineSemanticTimelinePath.class,
+        GoogleTimelineRawSignal.class,
+        GoogleTimelinePosition.class,
+        GoogleTimelineUserLocationProfile.class,
+        GoogleTimelineFrequentPlace.class,
         HomeAssistantBattery.class,
         HomeAssistantGpsData.class,
         HomeAssistantLocation.class,
