@@ -1093,7 +1093,7 @@ const getHomeAssistantConfigYaml = () => {
           "speed": {{ state_attr('device_tracker.iphone_16', 'speed') | default(0) }}
         },
         "battery": {
-          "level": {{ state_attr('device_tracker.iphone_16', 'battery_level') | default(0) }}
+          "level": {{ state_attr('device_tracker.iphone_16', 'battery_level') | default(states('sensor.iphone_16_battery_level'), true) | default(0) }}
         }
       }`
 }
