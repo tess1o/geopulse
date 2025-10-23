@@ -1,22 +1,23 @@
 package org.github.tess1o.geopulse.ai.rest;
 
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.ai.service.AIChatService;
 import org.github.tess1o.geopulse.ai.service.UserAISettingsService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
-import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 
 @Path("/api/ai")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@Slf4j
 public class AIResource {
 
     @Inject
@@ -45,22 +46,21 @@ public class AIResource {
     }
 
     @POST
-    @Path("/test-openai")
-    public Response testOpenAIConnection(OpenAIConnectionTestRequest request) {
+    @Path("/test-connection")
+    public Response testConnection(TestConnectionRequest request) {
         try {
-            OpenAiChatModel model = OpenAiChatModel.builder()
-                    .apiKey(request.apiKey())
-                    .modelName(request.model())
-                    .timeout(Duration.ofSeconds(10))
+            UUID userId = currentUserService.getCurrentUserId();
+            UserAISettings settings = UserAISettings.builder()
+                    .openaiApiUrl(request.openaiApiUrl())
+                    .openaiApiKey(request.openaiApiKey())
+                    .isApiKeyNeeded(request.isApiKeyNeeded())
                     .build();
-            model.chat("Hello");
-            return Response.ok().build();
+            List<String> models = aiSettingsService.testConnectionAndFetchModels(userId, settings);
+            return Response.ok(models).build();
         } catch (Exception e) {
+            log.error("Failed to test connection", e);
             return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         }
-    }
-
-    public record OpenAIConnectionTestRequest(String apiKey, String model) {
     }
 
     @POST
@@ -73,6 +73,8 @@ public class AIResource {
             return ApiResponse.error(e.getMessage());
         }
     }
+
+    public record TestConnectionRequest(String openaiApiUrl, String openaiApiKey, boolean isApiKeyNeeded) { }
 
     public record ChatRequest(String message) {
     }

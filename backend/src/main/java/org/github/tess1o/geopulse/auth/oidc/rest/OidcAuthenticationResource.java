@@ -14,7 +14,6 @@ import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
-import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.service.OidcAuthenticationService;
 import org.github.tess1o.geopulse.auth.oidc.service.OidcProviderService;
 import org.github.tess1o.geopulse.auth.oidc.service.UserOidcConnectionService;

@@ -47,29 +47,29 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 @Slf4j
 public class OidcAuthenticationService {
-    
+
     @Inject
     OidcProviderService providerService;
-    
+
     @Inject
     UserService userService;
-    
+
     @Inject
     AuthenticationService authenticationService;
-    
+
     @Inject
     UserOidcConnectionRepository connectionRepository;
-    
+
     @Inject
     OidcSessionStateRepository sessionStateRepository;
-    
+
     @Inject
     OidcLinkingTokenService linkingTokenService;
-    
+
     @ConfigProperty(name = "geopulse.oidc.callback-base-url")
     @StaticInitSafe
     String callbackBaseUrl;
-    
+
     @ConfigProperty(name = "geopulse.oidc.state-token.expiry-minutes", defaultValue = "10")
     @StaticInitSafe
     int stateTokenExpiryMinutes;
@@ -81,15 +81,15 @@ public class OidcAuthenticationService {
     public OidcLoginInitResponse initiateLogin(String providerName, UUID linkingUserId, String redirectUri, String linkingToken) {
         OidcProviderConfiguration provider = providerService.findByName(providerName)
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
-        
+
         if (!provider.isEnabled()) {
             throw new IllegalArgumentException("Provider not enabled: " + providerName);
         }
-        
+
         // Generate state and nonce for security
         String state = generateSecureRandomString(32);
         String nonce = generateSecureRandomString(32);
-        
+
         // Store session state
         OidcSessionStateEntity sessionState = OidcSessionStateEntity.builder()
                 .stateToken(state)
@@ -100,51 +100,51 @@ public class OidcAuthenticationService {
                 .linkingToken(linkingToken)
                 .expiresAt(Instant.now().plus(stateTokenExpiryMinutes, ChronoUnit.MINUTES))
                 .build();
-        
+
         sessionStateRepository.persist(sessionState);
-        
+
         // Build authorization URL
         String authUrl = buildAuthorizationUrl(provider, state, nonce);
-        
+
         return OidcLoginInitResponse.builder()
                 .authorizationUrl(authUrl)
                 .state(state)
                 .redirectUri(redirectUri)
                 .build();
     }
-    
+
     @Transactional // Ensure entire callback operation is atomic
     public AuthResponse handleCallback(OidcCallbackRequest request) {
         try {
             // Validate state token
             OidcSessionStateEntity sessionState = sessionStateRepository.findByStateToken(request.getState())
                     .orElseThrow(() -> new IllegalArgumentException("Invalid state token"));
-            
+
             if (sessionState.getExpiresAt().isBefore(Instant.now())) {
                 // Clean up expired session state
                 sessionStateRepository.delete(sessionState);
                 throw new IllegalArgumentException("State token expired");
             }
-            
+
             // Get provider configuration
             OidcProviderConfiguration provider = providerService.findByName(sessionState.getProviderName())
                     .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + sessionState.getProviderName()));
-            
+
             // Exchange code for tokens
             OidcTokenResponse tokenResponse = exchangeCodeForTokens(provider, request.getCode());
-            
+
             // Validate ID token and extract user info
             OidcUserInfo userInfo = validateAndExtractUserInfo(tokenResponse, provider, sessionState);
-            
+
             // Find or create user (this method handles all user/connection logic)
             UserEntity user = findOrCreateUser(userInfo, sessionState);
-            
+
             // Clean up session state after successful authentication
             sessionStateRepository.delete(sessionState);
-            
+
             // Generate JWT tokens
             return authenticationService.createAuthResponse(user);
-            
+
         } catch (OidcAccountLinkingRequiredException e) {
             // Clean up session state but let the linking exception bubble up
             try {
@@ -171,46 +171,46 @@ public class OidcAuthenticationService {
             throw new RuntimeException("OIDC authentication failed.", e);
         }
     }
-    
+
     private UserEntity findOrCreateUser(OidcUserInfo userInfo, OidcSessionStateEntity sessionState) {
         // Check if this is an account linking flow
         if (sessionState.getLinkingUserId() != null) {
             return linkExistingAccount(userInfo, sessionState);
         }
-        
+
         // Check if user already exists with this OIDC connection
-        Optional<UserOidcConnectionEntity> existingConnection = 
+        Optional<UserOidcConnectionEntity> existingConnection =
                 connectionRepository.findByProviderNameAndExternalUserId(
                         sessionState.getProviderName(), userInfo.getSubject());
-        
+
         if (existingConnection.isPresent()) {
             // Update last login
             UserOidcConnectionEntity connection = existingConnection.get();
             connection.setLastLoginAt(Instant.now());
             return connection.getUser();
         }
-        
+
         // Check if user exists with same email
         Optional<UserEntity> existingUser = userService.findByEmail(userInfo.getEmail());
-        
+
         if (existingUser.isPresent()) {
             // Email exists but no OIDC connection - require account linking verification
             UserEntity user = existingUser.get();
-            
+
             // Get existing OIDC connections for this user
             List<String> linkedProviders = connectionRepository.findByUserId(user.getId())
                     .stream()
                     .map(UserOidcConnectionEntity::getProviderName)
                     .collect(Collectors.toList());
-            
+
             // Generate secure linking token with original user info
             String linkingToken = linkingTokenService.generateLinkingToken(
-                    userInfo.getEmail(), 
+                    userInfo.getEmail(),
                     sessionState.getProviderName(),
                     sessionState.getStateToken(),
                     userInfo
             );
-            
+
             // Throw specialized exception with account linking information
             throw new OidcAccountLinkingRequiredException(
                     userInfo.getEmail(),
@@ -220,11 +220,11 @@ public class OidcAuthenticationService {
                     linkedProviders
             );
         }
-        
+
         // Create new user with OIDC connection
         return createNewUserWithOidcConnection(userInfo, sessionState.getProviderName());
     }
-    
+
     private UserEntity createNewUserWithOidcConnection(OidcUserInfo userInfo, String providerName) {
         // Create new user (NULL password for OIDC-only users)
         UserEntity user = UserEntity.builder()
@@ -235,9 +235,9 @@ public class OidcAuthenticationService {
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users
                 .build();
-        
+
         userService.persist(user);
-        
+
         // Create OIDC connection (no redundant email storage)
         UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
                 .userId(user.getId())
@@ -247,27 +247,27 @@ public class OidcAuthenticationService {
                 .avatarUrl(userInfo.getPicture())
                 .lastLoginAt(Instant.now())
                 .build();
-        
+
         connectionRepository.persist(connection);
-        
+
         return user;
     }
-    
+
     private UserEntity linkExistingAccount(OidcUserInfo userInfo, OidcSessionStateEntity sessionState) {
         UserEntity user = userService.findById(sessionState.getLinkingUserId())
                 .orElseThrow(() -> new IllegalArgumentException("User not found for linking"));
-        
+
         // Check if this is a verification-for-linking flow (has linking token)
         if (sessionState.getLinkingToken() != null) {
             return handleLinkingVerification(user, sessionState);
         }
-        
+
         // Regular linking flow - link the current provider
         // Check if this OIDC account is already linked to any user
-        Optional<UserOidcConnectionEntity> existingConnection = 
+        Optional<UserOidcConnectionEntity> existingConnection =
                 connectionRepository.findByProviderNameAndExternalUserId(
                         sessionState.getProviderName(), userInfo.getSubject());
-        
+
         if (existingConnection.isPresent()) {
             if (!existingConnection.get().getUserId().equals(user.getId())) {
                 throw new IllegalArgumentException("This OIDC account is already linked to another user");
@@ -276,7 +276,7 @@ public class OidcAuthenticationService {
             existingConnection.get().setLastLoginAt(Instant.now());
             return user;
         }
-        
+
         // Create new OIDC connection for existing user
         UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
                 .userId(user.getId())
@@ -286,9 +286,9 @@ public class OidcAuthenticationService {
                 .avatarUrl(userInfo.getPicture())
                 .lastLoginAt(Instant.now())
                 .build();
-        
+
         connectionRepository.persist(connection);
-        
+
         return user;
     }
 
@@ -298,7 +298,7 @@ public class OidcAuthenticationService {
         if (tokenData == null) {
             throw new IllegalArgumentException("Invalid linking token during verification");
         }
-        
+
         // Create OIDC connection for the ORIGINAL provider (not the verification provider)
         UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
                 .userId(user.getId())
@@ -308,22 +308,22 @@ public class OidcAuthenticationService {
                 .avatarUrl(tokenData.originalUserInfo().getPicture())
                 .lastLoginAt(Instant.now())
                 .build();
-        
+
         connectionRepository.persist(connection);
-        
-        log.info("Successfully linked {} provider to user {} after OIDC verification", 
+
+        log.info("Successfully linked {} provider to user {} after OIDC verification",
                 tokenData.newProvider(), user.getEmail());
-        
+
         return user;
     }
-    
+
     private String generateSecureRandomString(int length) {
         SecureRandom random = new SecureRandom();
         byte[] bytes = new byte[length];
         random.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
-    
+
     private String buildAuthorizationUrl(OidcProviderConfiguration provider, String state, String nonce) {
         // Build OAuth2/OIDC authorization URL
         StringBuilder url = new StringBuilder(provider.getAuthorizationEndpoint());
@@ -333,10 +333,10 @@ public class OidcAuthenticationService {
         url.append("&scope=").append(provider.getScopes().replace(" ", "%20"));
         url.append("&state=").append(state);
         url.append("&nonce=").append(nonce);
-        
+
         return url.toString();
     }
-    
+
     private String getCallbackUrl() {
         return callbackBaseUrl + "/oidc/callback";
     }
@@ -370,7 +370,7 @@ public class OidcAuthenticationService {
         try {
             log.debug("Validating ID token from provider: {}", provider.getName());
             SignedJWT signedJWT = SignedJWT.parse(tokenResponse.getIdToken());
-            
+
             // 1. Fetch JWKS and find the correct key
             JWKSet jwkSet = getJwkSet(provider);
             String keyID = signedJWT.getHeader().getKeyID();
@@ -389,7 +389,7 @@ public class OidcAuthenticationService {
 
             // 3. Validate the claims
             JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
-            
+
             // Issuer
             if (!claims.getIssuer().equals(provider.getIssuer())) {
                 throw new SecurityException("ID token issuer mismatch.");

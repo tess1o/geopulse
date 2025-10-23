@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.ai.model.*;
 import org.github.tess1o.geopulse.ai.rest.AIResource;
 import org.github.tess1o.geopulse.ai.service.AIChatService;
 import org.github.tess1o.geopulse.ai.service.AITimelineTools;
+import org.github.tess1o.geopulse.ai.service.GeoPulseOpenAIClient;
 import org.github.tess1o.geopulse.ai.service.SimpleAITools;
 
 @RegisterForProxy(
@@ -25,10 +26,11 @@ import org.github.tess1o.geopulse.ai.service.SimpleAITools;
                 AITimelineStayDTO.class,
                 AITimelineTripDTO.class,
                 AITripStatsDTO.class,
-                AIResource.OpenAIConnectionTestRequest.class,
                 AIResource.ChatRequest.class,
                 AIResource.ChatResponse.class,
                 AIChatService.class,
+                AIResource.TestConnectionRequest.class,
+                GeoPulseOpenAIClient.class,
         }
 )
 public class AINativeConfig {

@@ -5,10 +5,17 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import jakarta.ws.rs.WebApplicationException;
+import lombok.SneakyThrows;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
+import java.net.URI;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class UserAISettingsService {
@@ -32,45 +39,18 @@ public class UserAISettingsService {
                 throw new IllegalArgumentException("User not found: " + userId);
             }
 
-            UserAISettings settingsToSave;
-            
-            // If API key is not provided in the request, preserve the existing one
-            if (settings.getOpenaiApiKey() == null || settings.getOpenaiApiKey().isBlank()) {
-                // Get existing settings to preserve the API key
-                UserAISettings existingSettings = null;
-                if (user.getAiSettingsEncrypted() != null && !user.getAiSettingsEncrypted().isBlank()) {
-                    try {
-                        String decryptedJson = encryptionService.decrypt(
-                                user.getAiSettingsEncrypted(),
-                                user.getAiSettingsKeyId()
-                        );
-                        existingSettings = objectMapper.readValue(decryptedJson, UserAISettings.class);
-                    } catch (Exception e) {
-                        // If we can't decrypt existing settings, continue without preserving API key
-                        existingSettings = null;
-                    }
-                }
-                
-                // Create settings with preserved API key
-                settingsToSave = UserAISettings.builder()
-                        .enabled(settings.isEnabled())
-                        .openaiApiUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
-                        .openaiModel(settings.getOpenaiModel())
-                        .openaiApiKey(existingSettings != null ? existingSettings.getOpenaiApiKey() : "")
-                        .build();
+            String currentApiKey = getAISettingsWithApiKey(userId).getOpenaiApiKey();
+            UserAISettings settingsToSave = settings.copy();
+
+            if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank()) {
+                settingsToSave.setOpenaiApiKey(encryptionService.encrypt(settings.getOpenaiApiKey()));
             } else {
-                // New API key provided - encrypt it
-                settingsToSave = settings.copy();
-                settingsToSave.setOpenaiApiKey(
-                        encryptionService.encrypt(settingsToSave.getOpenaiApiKey())
-                );
+                settingsToSave.setOpenaiApiKey(currentApiKey);
             }
 
-            // Convert to JSON and encrypt entire blob
             String json = objectMapper.writeValueAsString(settingsToSave);
             String encryptedJson = encryptionService.encrypt(json);
 
-            // Store in database
             user.setAiSettingsEncrypted(encryptedJson);
             user.setAiSettingsKeyId(encryptionService.getCurrentKeyId());
             em.merge(user);
@@ -78,6 +58,41 @@ public class UserAISettingsService {
             throw new RuntimeException("Failed to save AI settings", e);
         }
     }
+
+    @SneakyThrows
+    public List<String> testConnectionAndFetchModels(UUID userId, UserAISettings settings) {
+        UserAISettings dbSettings = getAISettingsWithApiKey(userId);
+        String apiKey = Optional.ofNullable(settings.getOpenaiApiKey())
+                .filter(s -> !s.isBlank())
+                .orElse(dbSettings.getOpenaiApiKey());
+
+        if (settings.isApiKeyNeeded() && (apiKey == null || apiKey.isBlank())) {
+            throw new WebApplicationException("API key is required but not provided.", jakarta.ws.rs.core.Response.Status.BAD_REQUEST);
+        }
+
+        RestClientBuilder clientBuilder = RestClientBuilder.newBuilder()
+                .baseUri(new URI(settings.getOpenaiApiUrl()));
+
+
+        if (settings.isApiKeyNeeded()) {
+            clientBuilder.header("Authorization", "Bearer " + apiKey);
+        }
+
+        GeoPulseOpenAIClient client = clientBuilder.build(GeoPulseOpenAIClient.class);
+
+        try {
+            GeoPulseOpenAIClient.ModelsResponse models = client.getModels();
+            if (models == null || models.data() == null) {
+                throw new WebApplicationException("Failed to fetch models: empty response from provider.", jakarta.ws.rs.core.Response.Status.BAD_GATEWAY);
+            }
+            return models.data()
+                    .stream().map(GeoPulseOpenAIClient.Model::id)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
     @Transactional
     public UserAISettings getAISettings(UUID userId) {
@@ -88,44 +103,34 @@ public class UserAISettingsService {
             }
 
             if (user.getAiSettingsEncrypted() == null || user.getAiSettingsEncrypted().isBlank()) {
-                // Return default OpenAI settings (disabled by default)
                 return UserAISettings.builder()
                         .enabled(false)
-                        .openaiApiKey(null) // Never send actual key to frontend
-                        .openaiApiUrl(OPENAI_DEFAULT_URL) // Default OpenAI API URL
+                        .openaiApiKey(null)
+                        .openaiApiUrl(OPENAI_DEFAULT_URL)
                         .openaiModel(DEFAULT_OPENAI_MODEL)
                         .openaiApiKeyConfigured(false)
+                        .isApiKeyNeeded(true)
                         .build();
             }
 
-            // Decrypt JSON blob
-            String decryptedJson = encryptionService.decrypt(
-                    user.getAiSettingsEncrypted(),
-                    user.getAiSettingsKeyId()
-            );
-
+            String decryptedJson = encryptionService.decrypt(user.getAiSettingsEncrypted(), user.getAiSettingsKeyId());
             UserAISettings settings = objectMapper.readValue(decryptedJson, UserAISettings.class);
 
-            // Check if API key is configured but don't send actual key to frontend
             boolean hasApiKey = settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank();
-            
-            // Return settings without the actual API key for security
+
             return UserAISettings.builder()
                     .enabled(settings.isEnabled())
-                    .openaiApiKey(null) // Never send actual key to frontend
+                    .openaiApiKey(null)
                     .openaiApiUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
                     .openaiModel(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : DEFAULT_OPENAI_MODEL)
                     .openaiApiKeyConfigured(hasApiKey)
+                    .isApiKeyNeeded(settings.isApiKeyNeeded())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve AI settings", e);
         }
     }
 
-    /**
-     * Get AI settings with actual decrypted API key for internal service use only.
-     * This method should never be called from REST endpoints.
-     */
     @Transactional
     public UserAISettings getAISettingsWithApiKey(UUID userId) {
         try {
@@ -135,35 +140,26 @@ public class UserAISettingsService {
             }
 
             if (user.getAiSettingsEncrypted() == null || user.getAiSettingsEncrypted().isBlank()) {
-                // Return default settings
                 return UserAISettings.builder()
                         .enabled(false)
                         .openaiApiKey("")
                         .openaiApiUrl(OPENAI_DEFAULT_URL)
                         .openaiModel(DEFAULT_OPENAI_MODEL)
                         .openaiApiKeyConfigured(false)
+                        .isApiKeyNeeded(true)
                         .build();
             }
 
-            // Decrypt JSON blob
-            String decryptedJson = encryptionService.decrypt(
-                    user.getAiSettingsEncrypted(),
-                    user.getAiSettingsKeyId()
-            );
-
+            String decryptedJson = encryptionService.decrypt(user.getAiSettingsEncrypted(), user.getAiSettingsKeyId());
             UserAISettings settings = objectMapper.readValue(decryptedJson, UserAISettings.class);
 
-            // Decrypt API key for internal use
             if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank()) {
-                settings.setOpenaiApiKey(
-                        encryptionService.decrypt(settings.getOpenaiApiKey(), user.getAiSettingsKeyId())
-                );
+                settings.setOpenaiApiKey(encryptionService.decrypt(settings.getOpenaiApiKey(), user.getAiSettingsKeyId()));
                 settings.setOpenaiApiKeyConfigured(true);
             } else {
                 settings.setOpenaiApiKeyConfigured(false);
             }
 
-            // Ensure we have a default URL if none is set
             if (settings.getOpenaiApiUrl() == null || settings.getOpenaiApiUrl().isBlank()) {
                 settings.setOpenaiApiUrl(OPENAI_DEFAULT_URL);
             }
@@ -173,5 +169,4 @@ public class UserAISettingsService {
             throw new RuntimeException("Failed to retrieve AI settings with API key", e);
         }
     }
-
 }

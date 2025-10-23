@@ -31,6 +31,17 @@
           <!-- OpenAI Settings -->
           <div class="provider-settings">
             <div class="form-group">
+              <label for="api-key-required" class="form-label">API Key Required</label>
+              <ToggleSwitch
+                id="api-key-required"
+                v-model="form.apiKeyRequired"
+                class="w-full"
+              />
+              <small class="text-secondary">
+                Disable if your self-hosted LLM does not require an API key
+              </small>
+            </div>
+            <div class="form-group">
               <label for="openai-api-key" class="form-label">OpenAI API Key</label>
               <Password
                 id="openai-api-key"
@@ -45,12 +56,13 @@
                   'data-lpignore': 'true',
                   'data-form-type': 'other'
                 }"
+                :disabled="!form.apiKeyRequired"
               />
-              <small v-if="apiKeyConfigured && !form.openaiApiKey" class="text-secondary">
+              <small v-if="apiKeyConfigured && !form.openaiApiKey && form.apiKeyRequired" class="text-secondary">
                 <i class="pi pi-check-circle" style="color: var(--gp-success);"></i>
                 API key is configured. Leave empty to keep current key.
               </small>
-              <small v-else-if="!apiKeyConfigured" class="text-secondary">
+              <small v-else-if="!apiKeyConfigured && form.apiKeyRequired" class="text-secondary">
                 Enter your OpenAI API key to enable the assistant
               </small>
             </div>
@@ -68,23 +80,44 @@
             </div>
             <div class="form-group">
               <label for="openai-model" class="form-label">Model</label>
-              <Dropdown
-                id="openai-model"
-                v-model="form.openaiModel"
-                :options="openaiModels"
-                placeholder="Select or enter model name"
-                class="w-full"
-                editable
-              />
+              <div class="flex gap-2">
+                <Dropdown
+                  id="openai-model"
+                  v-model="form.openaiModel"
+                  :options="openaiModels"
+                  placeholder="Select or enter model name"
+                  class="w-full"
+                  editable
+                />
+                <Button
+                  type="button"
+                  icon="pi pi-sync"
+                  @click="fetchModels"
+                  :loading="modelsLoading"
+                  v-tooltip.bottom="'Fetch models from server'"
+                />
+              </div>
               <small class="text-secondary">
                 Choose from common models or enter a custom model name
               </small>
             </div>
           </div>
+          <div v-if="testConnectionStatus" class="connection-status">
+            <Message v-if="testConnectionStatus === 'success'" severity="success">Connection successful!</Message>
+            <Message v-if="testConnectionStatus === 'error'" severity="error">Connection failed. Check URL and API key.</Message>
+          </div>
         </div>
 
         <!-- Form Actions -->
         <div class="form-actions">
+          <Button
+            type="button"
+            label="Test Connection"
+            icon="pi pi-plug"
+            :loading="testConnectionLoading"
+            @click="testConnection"
+            class="p-button-secondary"
+          />
           <Button
             type="submit"
             label="Save AI Settings"
@@ -99,7 +132,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue';
+import Message from 'primevue/message';
 
 // Props
 const props = defineProps({
@@ -110,7 +144,8 @@ const props = defineProps({
       openaiApiKey: '',
       openaiApiUrl: 'https://api.openai.com/v1',
       openaiModel: 'gpt-3.5-turbo',
-      openaiApiKeyConfigured: false
+      openaiApiKeyConfigured: false,
+      apiKeyRequired: true
     })
   }
 })
@@ -120,20 +155,52 @@ const emit = defineEmits(['save'])
 
 // State
 const loading = ref(false)
+const modelsLoading = ref(false);
+const testConnectionLoading = ref(false);
+const testConnectionStatus = ref(null); // null, 'success', or 'error'
 const apiKeyConfigured = ref(false)
 const form = ref({
   enabled: false,
   openaiApiKey: '',
   openaiApiUrl: 'https://api.openai.com/v1',
-  openaiModel: 'gpt-3.5-turbo'
+  openaiModel: 'gpt-3.5-turbo',
+  apiKeyRequired: true
 })
 
-const openaiModels = [
+import apiService from '@/utils/apiService';
+
+const openaiModels = ref([
   'gpt-4o',
   'gpt-4o-mini',
   'gpt-3.5-turbo',
   'gpt-4-turbo'
-]
+]);
+
+const fetchModels = async () => {
+  modelsLoading.value = true;
+  testConnectionStatus.value = null;
+  try {
+    const payload = {
+      openaiApiUrl: form.value.openaiApiUrl,
+      openaiApiKey: form.value.openaiApiKey,
+      isApiKeyNeeded: form.value.apiKeyRequired
+    };
+    const models = await apiService.post('/ai/test-connection', payload);
+    openaiModels.value = models;
+    testConnectionStatus.value = 'success';
+  } catch (error) {
+    console.error('Failed to fetch models:', error);
+    testConnectionStatus.value = 'error';
+  } finally {
+    modelsLoading.value = false;
+  }
+};
+
+const testConnection = async () => {
+  testConnectionLoading.value = true;
+  await fetchModels();
+  testConnectionLoading.value = false;
+};
 
 // Methods
 const handleSubmit = async () => {
@@ -143,11 +210,12 @@ const handleSubmit = async () => {
     const payload = {
       enabled: form.value.enabled,
       openaiApiUrl: form.value.openaiApiUrl,
-      openaiModel: form.value.openaiModel
+      openaiModel: form.value.openaiModel,
+      apiKeyRequired: form.value.apiKeyRequired
     }
 
-    // Only include API key if user entered a new one
-    if (form.value.openaiApiKey && form.value.openaiApiKey.trim()) {
+    // Only include API key if user entered a new one and it's required
+    if (form.value.apiKeyRequired && form.value.openaiApiKey && form.value.openaiApiKey.trim()) {
       payload.openaiApiKey = form.value.openaiApiKey.trim()
     }
 
@@ -165,7 +233,8 @@ const loadSettings = () => {
     enabled: props.initialSettings.enabled === true,
     openaiApiKey: '', // Always empty since backend doesn't send actual key
     openaiApiUrl: props.initialSettings.openaiApiUrl || 'https://api.openai.com/v1',
-    openaiModel: props.initialSettings.openaiModel || 'gpt-3.5-turbo'
+    openaiModel: props.initialSettings.openaiModel || 'gpt-3.5-turbo',
+    apiKeyRequired: props.initialSettings.apiKeyRequired !== false
   }
   apiKeyConfigured.value = props.initialSettings.openaiApiKeyConfigured === true
 }
