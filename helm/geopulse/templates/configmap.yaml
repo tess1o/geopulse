@@ -36,20 +36,20 @@ data:
   GEOPULSE_OIDC_ENABLED: {{ .Values.config.oidc.enabled | quote }}
 
   {{- if .Values.config.oidc.google.enabled }}
-  GEOPULSE_OIDC_GOOGLE_ENABLED: "true"
-  GEOPULSE_OIDC_GOOGLE_CLIENT_ID: {{ .Values.config.oidc.google.clientId | quote }}
+  GEOPULSE_OIDC_PROVIDER_GOOGLE_ENABLED: "true"
+  GEOPULSE_OIDC_PROVIDER_GOOGLE_CLIENT_ID: {{ .Values.config.oidc.google.clientId | quote }}
   {{- end }}
 
   {{- if .Values.config.oidc.microsoft.enabled }}
-  GEOPULSE_OIDC_MICROSOFT_ENABLED: "true"
-  GEOPULSE_OIDC_MICROSOFT_CLIENT_ID: {{ .Values.config.oidc.microsoft.clientId | quote }}
+  GEOPULSE_OIDC_PROVIDER_MICROSOFT_ENABLED: "true"
+  GEOPULSE_OIDC_PROVIDER_MICROSOFT_CLIENT_ID: {{ .Values.config.oidc.microsoft.clientId | quote }}
   {{- end }}
 
   {{- if .Values.config.oidc.generic.enabled }}
-  GEOPULSE_OIDC_GENERIC_ENABLED: "true"
-  GEOPULSE_OIDC_GENERIC_NAME: {{ .Values.config.oidc.generic.name | quote }}
-  GEOPULSE_OIDC_GENERIC_CLIENT_ID: {{ .Values.config.oidc.generic.clientId | quote }}
-  GEOPULSE_OIDC_GENERIC_DISCOVERY_URL: {{ .Values.config.oidc.generic.discoveryUrl | quote }}
+  GEOPULSE_OIDC_PROVIDER_GENERIC_ENABLED: "true"
+  GEOPULSE_OIDC_PROVIDER_GENERIC_NAME: {{ .Values.config.oidc.generic.name | quote }}
+  GEOPULSE_OIDC_PROVIDER_GENERIC_CLIENT_ID: {{ .Values.config.oidc.generic.clientId | quote }}
+  GEOPULSE_OIDC_PROVIDER_GENERIC_DISCOVERY_URL: {{ .Values.config.oidc.generic.discoveryUrl | quote }}
   {{- end }}
 
   {{- if .Values.postgres.enabled }}
