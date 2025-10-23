@@ -525,6 +525,9 @@ GEOPULSE_TIMELINE_JOB_INTERVAL=5m
 GEOPULSE_TIMELINE_JOB_DELAY=1m
 ```
 
+## GeoPulse Frontend Configuration
+To increase max upload file size from default 200MB change the following environment variable: `CLIENT_MAX_BODY_SIZE`.
+
 ## How Configuration Works
 
 ### 🔧 User-Customizable Timeline Settings

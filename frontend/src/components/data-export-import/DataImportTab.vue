@@ -380,7 +380,7 @@ const importFormatOptions = ref([
     acceptedFormats: '.zip',
     uploadFunction: 'uploadImportFile',
     supportsDataTypeSelection: true,
-    maxFileSizeMB: 100
+    maxFileSizeMB: 2000
   },
   {
     label: 'OwnTracks',
@@ -390,7 +390,7 @@ const importFormatOptions = ref([
     acceptedFormats: '.json',
     uploadFunction: 'uploadOwnTracksImportFile',
     supportsDataTypeSelection: false,
-    maxFileSizeMB: 100
+    maxFileSizeMB: 2000
   },
   {
     label: 'Google Timeline',
@@ -400,7 +400,7 @@ const importFormatOptions = ref([
     acceptedFormats: '.json',
     uploadFunction: 'uploadGoogleTimelineImportFile',
     supportsDataTypeSelection: false,
-    maxFileSizeMB: 100
+    maxFileSizeMB: 2000
   },
   {
     label: 'GPX',
@@ -410,7 +410,7 @@ const importFormatOptions = ref([
     acceptedFormats: '.gpx',
     uploadFunction: 'uploadGpxImportFile',
     supportsDataTypeSelection: false,
-    maxFileSizeMB: 100
+    maxFileSizeMB: 2000
   }
 ])
 
