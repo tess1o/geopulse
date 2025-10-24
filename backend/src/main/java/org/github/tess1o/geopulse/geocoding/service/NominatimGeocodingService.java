@@ -65,6 +65,10 @@ public class NominatimGeocodingService {
                     log.debug("Nominatim response received: {}", response.getDisplayName());
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
+                .onItem().ifNull().failWith(() -> {
+                    log.error("Nominatim adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    return new GeocodingException("Nominatim adapter returned null result");
+                })
                 .onFailure().transform(failure -> {
                     log.error("Nominatim API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
                     return new GeocodingException("Nominatim geocoding failed", failure);

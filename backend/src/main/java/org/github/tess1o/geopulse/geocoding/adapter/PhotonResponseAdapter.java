@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.adapter;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.photon.PhotonResponse;
@@ -28,8 +29,9 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
         log.debug("Adapting Photon response: {}", response);
 
         if (response == null || response.getFeatures() == null || response.getFeatures().isEmpty()) {
-            log.warn("Empty or null Photon response");
-            return null;
+            log.warn("Empty or null Photon response for coordinates: lon={}, lat={}",
+                    requestCoordinates.getX(), requestCoordinates.getY());
+            throw new GeocodingException("Photon returned empty or null response");
         }
 
         PhotonResponse.Feature feature = response.getFeatures().get(0);

@@ -55,6 +55,12 @@ public class GeocodingServiceImpl implements GeocodingService {
             FormattableGeocodingResult geocodingResult = providerFactory.reverseGeocode(point)
                     .await().indefinitely();
 
+            // Defensive null check - should never happen with proper adapter/service implementation
+            if (geocodingResult == null) {
+                log.error("Geocoding provider returned null result for coordinates: lon={}, lat={}", longitude, latitude);
+                throw new IllegalStateException("Geocoding provider returned null result");
+            }
+
             log.info("Successfully fetched address from {}: lon={}, lat={}, displayName={}",
                     geocodingResult.getProviderName(), longitude, latitude, geocodingResult.getFormattedDisplayName());
 

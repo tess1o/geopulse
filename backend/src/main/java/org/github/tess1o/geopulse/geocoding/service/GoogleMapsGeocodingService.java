@@ -69,9 +69,13 @@ public class GoogleMapsGeocodingService {
         return googleMapsClient.reverseGeocode(latlng, apiKey, "street_address|establishment")
                 .map(response -> {
                     String summary = response.getResults().isEmpty() ? "No results" :
-                            response.getResults().get(0).getFormattedAddress();
+                            response.getResults().getFirst().getFormattedAddress();
                     log.debug("Google Maps response received: status={}, firstResult={}", response.getStatus(), summary);
                     return adapter.adapt(response, requestCoordinates, getProviderName());
+                })
+                .onItem().ifNull().failWith(() -> {
+                    log.error("Google Maps adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    return new GeocodingException("Google Maps adapter returned null result");
                 })
                 .onFailure().transform(failure -> {
                     log.error("Google Maps API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);

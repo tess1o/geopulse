@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.adapter;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.googlemaps.*;
@@ -25,8 +26,9 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
     public FormattableGeocodingResult adapt(GoogleMapsResponse googleResponse, Point requestCoordinates, String providerName) {
 
         if (googleResponse == null || googleResponse.getResults() == null || googleResponse.getResults().isEmpty()) {
-            log.warn("Empty or null Google Maps response");
-            return createFallbackResult(requestCoordinates, providerName);
+            log.warn("Empty or null Google Maps response for coordinates: lon={}, lat={}",
+                    requestCoordinates.getX(), requestCoordinates.getY());
+            throw new GeocodingException("Google Maps returned empty or null response");
         }
 
         // Use the first result (most relevant)
@@ -200,16 +202,4 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
         }
     }
 
-    /**
-     * Create a fallback result when Google Maps response is invalid.
-     */
-    private FormattableGeocodingResult createFallbackResult(Point requestCoordinates, String providerName) {
-        return SimpleFormattableResult.builder()
-                .requestCoordinates(requestCoordinates)
-                .resultCoordinates(requestCoordinates)
-                .formattedDisplayName(String.format("Unknown location at %.6f, %.6f",
-                        requestCoordinates.getY(), requestCoordinates.getX()))
-                .providerName(providerName)
-                .build();
-    }
 }
