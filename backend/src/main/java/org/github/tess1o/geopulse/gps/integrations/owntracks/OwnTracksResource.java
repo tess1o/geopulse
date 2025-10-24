@@ -50,7 +50,7 @@ public class OwnTracksResource {
         UUID userId = userIdOpt.get();
         OwnTracksLocationMessage ownTracksLocationMessage = MAPPER.convertValue(payload, OwnTracksLocationMessage.class);
         gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS);
-        return Response.ok().build();
+        return Response.ok("[]").build();
     }
 
 }
