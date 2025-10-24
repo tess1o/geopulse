@@ -12,10 +12,10 @@ import lombok.Data;
 public class GoogleTimelineSemanticActivity {
 
     @JsonProperty("start")
-    private String start; // Format: "50.0506312°, 14.3439906°"
+    private GoogleTimelineSemanticLatitudeLongitude start;
 
     @JsonProperty("end")
-    private String end; // Format: "50.0506312°, 14.3439906°"
+    private GoogleTimelineSemanticLatitudeLongitude end;
 
     @JsonProperty("distanceMeters")
     private Double distanceMeters;

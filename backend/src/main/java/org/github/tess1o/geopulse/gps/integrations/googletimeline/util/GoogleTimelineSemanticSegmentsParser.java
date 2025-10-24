@@ -110,8 +110,8 @@ public final class GoogleTimelineSemanticSegmentsParser {
             return;
         }
 
-        double[] startCoords = GoogleTimelineParser.parseGeoString(activity.getStart());
-        double[] endCoords = GoogleTimelineParser.parseGeoString(activity.getEnd());
+        double[] startCoords = GoogleTimelineParser.parseGeoString(activity.getStart().getLatLng());
+        double[] endCoords = GoogleTimelineParser.parseGeoString(activity.getEnd().getLatLng());
 
         double distance = activity.getDistanceMeters() != null ? activity.getDistanceMeters() : 0.0;
 
