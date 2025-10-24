@@ -411,6 +411,16 @@ const importFormatOptions = ref([
     uploadFunction: 'uploadGpxImportFile',
     supportsDataTypeSelection: false,
     maxFileSizeMB: 2000
+  },
+  {
+    label: 'GeoJSON',
+    value: 'geojson',
+    description: 'Import from GeoJSON files (Point or LineString features)',
+    fileExtensions: ['.json', '.geojson'],
+    acceptedFormats: '.json,.geojson',
+    uploadFunction: 'uploadGeoJsonImportFile',
+    supportsDataTypeSelection: false,
+    maxFileSizeMB: 2000
   }
 ])
 
@@ -541,7 +551,8 @@ const getFormatInfoMessage = () => {
   const messages = {
     'owntracks': 'OwnTracks import will add GPS location data to your GeoPulse timeline.',
     'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.',
-    'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline.'
+    'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline.',
+    'geojson': 'GeoJSON import will add GPS location data from GeoJSON Point and LineString features to your GeoPulse timeline.'
   }
   return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
 }

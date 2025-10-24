@@ -257,6 +257,34 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
+        // API Actions - Export (GeoJSON)
+        async createGeoJsonExportJob(dateRange) {
+            this.isExporting = true
+            try {
+                const response = await apiService.post('/export/geojson/create', {
+                    dateRange
+                })
+
+                // Handle successful response
+                if (response.success) {
+                    this.setCurrentExportJob(response)
+                    this.addExportJob(response)
+                    return response
+                } else {
+                    throw new Error(response.error?.message || 'GeoJSON export creation failed')
+                }
+            } catch (error) {
+                // Handle API error responses
+                if (error.response?.data?.error) {
+                    const apiError = error.response.data.error
+                    throw new Error(apiError.message || 'GeoJSON export creation failed')
+                }
+                throw error
+            } finally {
+                this.isExporting = false
+            }
+        },
+
         // API Actions - Import
         async uploadImportFile(file, options = {}) {
             this.isImporting = true
@@ -340,6 +368,31 @@ export const useExportImportStore = defineStore('exportImport', {
                 formData.append('options', JSON.stringify(options))
 
                 const response = await apiService.post('/import/google-timeline/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                })
+
+                this.setCurrentImportJob(response)
+                this.addImportJob(response)
+
+                return response
+            } catch (error) {
+                throw error
+            } finally {
+                this.isImporting = false
+            }
+        },
+
+        // API Actions - Import (GeoJSON)
+        async uploadGeoJsonImportFile(file, options = {}) {
+            this.isImporting = true
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('options', JSON.stringify(options))
+
+                const response = await apiService.post('/import/geojson/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }

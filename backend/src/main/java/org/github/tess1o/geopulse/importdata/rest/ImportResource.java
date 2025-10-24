@@ -38,6 +38,8 @@ public class ImportResource {
     @Inject
     ObjectMapper objectMapper;
 
+    private static final int MAX_FILE_SIZE_BYTES = 1500 * 1024 * 1024;
+
     @POST
     @Path("/owntracks/upload")
     @Consumes(MediaType.MULTIPART_FORM_DATA)
@@ -55,8 +57,7 @@ public class ImportResource {
                         .build();
             }
 
-            // Check file size (max 100MB)
-            if (file.size() > 100 * 1024 * 1024) {
+            if (file.size() > MAX_FILE_SIZE_BYTES) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
@@ -139,8 +140,7 @@ public class ImportResource {
                         .build();
             }
 
-            // Check file size (max 100MB)
-            if (file.size() > 100 * 1024 * 1024) {
+            if (file.size() > MAX_FILE_SIZE_BYTES) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
@@ -225,7 +225,7 @@ public class ImportResource {
             }
 
             // Check file size (max 100MB)
-            if (file.size() > 100 * 1024 * 1024) {
+            if (file.size() > MAX_FILE_SIZE_BYTES) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
@@ -309,7 +309,7 @@ public class ImportResource {
             }
 
             // Check file size (max 100MB)
-            if (file.size() > 100 * 1024 * 1024) {
+            if (file.size() > MAX_FILE_SIZE_BYTES) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
                         .build();
@@ -371,6 +371,91 @@ public class ImportResource {
             log.error("Failed to create GPX import job", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create GPX import job"))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/geojson/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    public Response uploadGeoJsonImportFile(
+            @RestForm("file") FileUpload file,
+            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            log.info("Received GeoJSON import request for user: {}", userId);
+
+            // Validate file
+            if (file == null || file.size() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE", "No file provided"))
+                        .build();
+            }
+
+            // Check file size (max 100MB)
+            if (file.size() > MAX_FILE_SIZE_BYTES) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
+                        .build();
+            }
+
+            // Validate file extension (should be .json or .geojson)
+            String fileName = file.fileName() != null ? file.fileName() : "geojson-import.geojson";
+            String lowerFileName = fileName.toLowerCase(Locale.ENGLISH);
+            if (!lowerFileName.endsWith(".json") && !lowerFileName.endsWith(".geojson")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE_TYPE", "Only JSON and GeoJSON files are supported for GeoJSON import"))
+                        .build();
+            }
+
+            // Read file content
+            byte[] fileContent;
+            try {
+                fileContent = Files.readAllBytes(file.uploadedFile());
+            } catch (IOException e) {
+                log.error("Failed to read uploaded file", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                        .build();
+            }
+
+            // Parse options
+            ImportOptions importOptions;
+            try {
+                importOptions = objectMapper.readValue(options, ImportOptions.class);
+                // Force format to be geojson
+                importOptions.setImportFormat("geojson");
+            } catch (Exception e) {
+                log.error("Failed to parse import options", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_OPTIONS", "Invalid import options format"))
+                        .build();
+            }
+
+            // Create GeoJSON import job
+            ImportJob job = importService.createGeoJsonImportJob(userId, importOptions, fileName, fileContent);
+
+            // Create response
+            ImportJobResponse response = new ImportJobResponse();
+            response.setSuccess(true);
+            response.setImportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase(Locale.ENGLISH));
+            response.setUploadedFileName(job.getUploadedFileName());
+            response.setFileSizeBytes(job.getFileSizeBytes());
+            response.setDetectedDataTypes(job.getDetectedDataTypes());
+            response.setEstimatedProcessingTime(job.getEstimatedProcessingTime());
+            response.setMessage("GeoJSON import job created successfully");
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create GeoJSON import job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create GeoJSON import job"))
                     .build();
         }
     }

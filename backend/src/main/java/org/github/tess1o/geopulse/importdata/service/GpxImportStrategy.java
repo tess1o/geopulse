@@ -3,7 +3,6 @@ package org.github.tess1o.geopulse.importdata.service;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.GpxFile;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.GpxTrackPoint;

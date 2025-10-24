@@ -159,6 +159,88 @@ public class ExportDataGenerator {
         return json.getBytes();
     }
 
+    public byte[] generateGeoJsonExport(ExportJob job) throws IOException {
+        log.debug("Generating GeoJSON export for user {}", job.getUserId());
+
+        // Use pagination to handle large datasets
+        int pageSize = 1000;
+        int page = 0;
+        var allFeatures = new java.util.ArrayList<org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature>();
+
+        while (true) {
+            var pageData = gpsPointRepository.findByUserAndDateRange(
+                    job.getUserId(),
+                    job.getDateRange().getStartDate(),
+                    job.getDateRange().getEndDate(),
+                    page,
+                    pageSize,
+                    "timestamp",
+                    "asc"
+            );
+
+            if (pageData.isEmpty()) {
+                break;
+            }
+
+            // Convert GPS points to GeoJSON features
+            for (var gpsPoint : pageData) {
+                allFeatures.add(convertGpsPointToGeoJsonFeature(gpsPoint));
+            }
+
+            page++;
+        }
+
+        // Create GeoJSON FeatureCollection
+        var featureCollection = org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeatureCollection.builder()
+                .type("FeatureCollection")
+                .features(allFeatures)
+                .build();
+
+        // Serialize to JSON
+        String json = objectMapper.writeValueAsString(featureCollection);
+
+        log.debug("Generated GeoJSON export with {} GPS points", allFeatures.size());
+        return json.getBytes();
+    }
+
+    private org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature convertGpsPointToGeoJsonFeature(
+            org.github.tess1o.geopulse.gps.model.GpsPointEntity gpsPoint) {
+        // Extract coordinates from PostGIS Point geometry
+        double longitude = gpsPoint.getCoordinates().getX();
+        double latitude = gpsPoint.getCoordinates().getY();
+
+        // Create Point geometry with optional altitude
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint geometry;
+        if (gpsPoint.getAltitude() != null) {
+            geometry = new org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint(
+                    longitude, latitude, gpsPoint.getAltitude()
+            );
+        } else {
+            geometry = new org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint(
+                    longitude, latitude
+            );
+        }
+
+        // Create properties with GPS metadata
+        var properties = org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonProperties.builder()
+                .timestamp(gpsPoint.getTimestamp().toString())
+                .altitude(gpsPoint.getAltitude())
+                .velocity(gpsPoint.getVelocity())
+                .accuracy(gpsPoint.getAccuracy())
+                .battery(gpsPoint.getBattery() != null ? gpsPoint.getBattery().intValue() : null)
+                .deviceId(gpsPoint.getDeviceId())
+                .sourceType(gpsPoint.getSourceType() != null ? gpsPoint.getSourceType().name() : null)
+                .build();
+
+        // Create and return Feature
+        return org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature.builder()
+                .type("Feature")
+                .geometry(geometry)
+                .properties(properties)
+                .id(gpsPoint.getId() != null ? gpsPoint.getId().toString() : null)
+                .build();
+    }
+
     private void addMetadataFile(ZipOutputStream zos, ExportJob job) throws IOException {
         ExportMetadataDto metadata = exportDataMapper.toMetadataDto(job);
         addJsonFileToZip(zos, ExportImportConstants.FileNames.METADATA, metadata);
