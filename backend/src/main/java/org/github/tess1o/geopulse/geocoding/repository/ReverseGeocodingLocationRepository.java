@@ -195,9 +195,172 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             }
         }
         
-        log.debug("Batch geocoding found {} cached results for {} coordinates", 
+        log.debug("Batch geocoding found {} cached results for {} coordinates",
                  resultMap.size(), coordinates.size());
 
         return resultMap;
+    }
+
+    /**
+     * Find geocoding locations with filtering and pagination.
+     *
+     * @param providerName Filter by provider name (optional)
+     * @param searchText Search in displayName, city, or country (optional)
+     * @param page Page number (1-based)
+     * @param limit Page size
+     * @param sortField Field to sort by
+     * @param sortOrder Sort order (asc or desc)
+     * @return List of matching geocoding locations
+     */
+    public List<ReverseGeocodingLocationEntity> findWithFilters(
+            String providerName, String searchText, int page, int limit,
+            String sortField, String sortOrder) {
+
+        StringBuilder queryBuilder = new StringBuilder("FROM ReverseGeocodingLocationEntity r WHERE 1=1");
+
+        if (providerName != null && !providerName.isBlank()) {
+            queryBuilder.append(" AND r.providerName = :providerName");
+        }
+
+        if (searchText != null && !searchText.isBlank()) {
+            queryBuilder.append(" AND (LOWER(r.displayName) LIKE :searchText OR LOWER(r.city) LIKE :searchText OR LOWER(r.country) LIKE :searchText)");
+        }
+
+        // Add sorting
+        String validSortField = validateSortField(sortField);
+        String validSortOrder = sortOrder != null && sortOrder.equalsIgnoreCase("asc") ? "ASC" : "DESC";
+        queryBuilder.append(" ORDER BY r.").append(validSortField).append(" ").append(validSortOrder);
+
+        var query = getEntityManager().createQuery(queryBuilder.toString(), ReverseGeocodingLocationEntity.class);
+
+        if (providerName != null && !providerName.isBlank()) {
+            query.setParameter("providerName", providerName);
+        }
+
+        if (searchText != null && !searchText.isBlank()) {
+            query.setParameter("searchText", "%" + searchText.toLowerCase() + "%");
+        }
+
+        query.setFirstResult((page - 1) * limit);
+        query.setMaxResults(limit);
+
+        return query.getResultList();
+    }
+
+    /**
+     * Count geocoding locations with filters.
+     *
+     * @param providerName Filter by provider name (optional)
+     * @param searchText Search in displayName, city, or country (optional)
+     * @return Count of matching records
+     */
+    public long countWithFilters(String providerName, String searchText) {
+        StringBuilder queryBuilder = new StringBuilder("SELECT COUNT(r) FROM ReverseGeocodingLocationEntity r WHERE 1=1");
+
+        if (providerName != null && !providerName.isBlank()) {
+            queryBuilder.append(" AND r.providerName = :providerName");
+        }
+
+        if (searchText != null && !searchText.isBlank()) {
+            queryBuilder.append(" AND (LOWER(r.displayName) LIKE :searchText OR LOWER(r.city) LIKE :searchText OR LOWER(r.country) LIKE :searchText)");
+        }
+
+        var query = getEntityManager().createQuery(queryBuilder.toString(), Long.class);
+
+        if (providerName != null && !providerName.isBlank()) {
+            query.setParameter("providerName", providerName);
+        }
+
+        if (searchText != null && !searchText.isBlank()) {
+            query.setParameter("searchText", "%" + searchText.toLowerCase() + "%");
+        }
+
+        return query.getSingleResult();
+    }
+
+    /**
+     * Count results by provider.
+     *
+     * @return Map of provider name to count
+     */
+    public Map<String, Long> countByProvider() {
+        String queryStr = "SELECT r.providerName, COUNT(r) FROM ReverseGeocodingLocationEntity r GROUP BY r.providerName";
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(queryStr).getResultList();
+
+        Map<String, Long> countMap = new HashMap<>();
+        for (Object[] row : results) {
+            countMap.put((String) row[0], (Long) row[1]);
+        }
+
+        return countMap;
+    }
+
+    /**
+     * Count geocoding results created in the last N days.
+     *
+     * @param days Number of days to look back
+     * @return Count of results
+     */
+    public long countRecentResults(int days) {
+        Instant since = Instant.now().minusSeconds(days * 24L * 60L * 60L);
+        return count("createdAt > ?1", since);
+    }
+
+    /**
+     * Find all IDs matching filters (for bulk operations).
+     *
+     * @param providerName Filter by provider name (optional)
+     * @return List of IDs
+     */
+    public List<Long> findIdsWithFilters(String providerName) {
+        StringBuilder queryBuilder = new StringBuilder("SELECT r.id FROM ReverseGeocodingLocationEntity r WHERE 1=1");
+
+        if (providerName != null && !providerName.isBlank()) {
+            queryBuilder.append(" AND r.providerName = :providerName");
+        }
+
+        var query = getEntityManager().createQuery(queryBuilder.toString(), Long.class);
+
+        if (providerName != null && !providerName.isBlank()) {
+            query.setParameter("providerName", providerName);
+        }
+
+        return query.getResultList();
+    }
+
+    /**
+     * Get distinct provider names from the database.
+     * Returns all providers that have data, regardless of current configuration.
+     *
+     * @return List of distinct provider names
+     */
+    public List<String> findDistinctProviderNames() {
+        String queryStr = "SELECT DISTINCT r.providerName FROM ReverseGeocodingLocationEntity r ORDER BY r.providerName";
+
+        @SuppressWarnings("unchecked")
+        List<String> results = getEntityManager().createQuery(queryStr, String.class).getResultList();
+
+        return results;
+    }
+
+    /**
+     * Validate and return safe sort field name.
+     */
+    private String validateSortField(String sortField) {
+        if (sortField == null || sortField.isBlank()) {
+            return "lastAccessedAt";
+        }
+
+        return switch (sortField.toLowerCase()) {
+            case "displayname" -> "displayName";
+            case "city" -> "city";
+            case "country" -> "country";
+            case "providername" -> "providerName";
+            case "createdat" -> "createdAt";
+            case "lastaccessedat" -> "lastAccessedAt";
+            default -> "lastAccessedAt";
+        };
     }
 }

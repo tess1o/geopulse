@@ -210,6 +210,12 @@ const accountItems = computed(() => [
     key: 'gps-data'
   },
   {
+    label: 'Geocoding Management',
+    icon: 'pi pi-map-marker',
+    to: '/app/geocoding-management',
+    key: 'geocoding-management'
+  },
+  {
     label: 'Preferences',
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',

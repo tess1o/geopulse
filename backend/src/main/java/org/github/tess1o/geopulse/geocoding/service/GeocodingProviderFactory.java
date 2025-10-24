@@ -1,12 +1,15 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
+import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.locationtech.jts.geom.Point;
 
 /**
@@ -109,5 +112,20 @@ public class GeocodingProviderFactory {
         if (mapboxService.isEnabled()) enabled.add("Mapbox");
         if (photonService.isEnabled()) enabled.add("Photon");
         return enabled;
+    }
+
+    /**
+     * Reconcile coordinates with a specific provider (for manual reconciliation).
+     * Does not use fallback - only uses the specified provider.
+     *
+     * @param providerName       The specific provider to use
+     * @param requestCoordinates The coordinates to reconcile
+     * @return Structured geocoding result
+     */
+    public Uni<FormattableGeocodingResult> reconcileWithProvider(String providerName, Point requestCoordinates) {
+        log.debug("Reconciling coordinates with provider {}: lon={}, lat={}",
+                providerName, requestCoordinates.getX(), requestCoordinates.getY());
+
+        return callProvider(providerName, requestCoordinates);
     }
 }
