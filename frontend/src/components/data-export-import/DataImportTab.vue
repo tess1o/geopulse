@@ -38,7 +38,6 @@
                   ref="fileUpload"
                   mode="basic"
                   :accept="getCurrentFormatConfig().acceptedFormats"
-                  :maxFileSize="getCurrentFormatConfig().maxFileSizeMB * 1024 * 1024"
                   @select="onFileSelect"
                   @clear="onFileClear"
                   chooseLabel="Choose Export File"
@@ -379,8 +378,7 @@ const importFormatOptions = ref([
     fileExtensions: ['.zip'],
     acceptedFormats: '.zip',
     uploadFunction: 'uploadImportFile',
-    supportsDataTypeSelection: true,
-    maxFileSizeMB: 2000
+    supportsDataTypeSelection: true
   },
   {
     label: 'OwnTracks',
@@ -389,8 +387,7 @@ const importFormatOptions = ref([
     fileExtensions: ['.json'],
     acceptedFormats: '.json',
     uploadFunction: 'uploadOwnTracksImportFile',
-    supportsDataTypeSelection: false,
-    maxFileSizeMB: 2000
+    supportsDataTypeSelection: false
   },
   {
     label: 'Google Timeline',
@@ -399,8 +396,7 @@ const importFormatOptions = ref([
     fileExtensions: ['.json'],
     acceptedFormats: '.json',
     uploadFunction: 'uploadGoogleTimelineImportFile',
-    supportsDataTypeSelection: false,
-    maxFileSizeMB: 2000
+    supportsDataTypeSelection: false
   },
   {
     label: 'GPX',
@@ -409,8 +405,7 @@ const importFormatOptions = ref([
     fileExtensions: ['.gpx'],
     acceptedFormats: '.gpx',
     uploadFunction: 'uploadGpxImportFile',
-    supportsDataTypeSelection: false,
-    maxFileSizeMB: 2000
+    supportsDataTypeSelection: false
   },
   {
     label: 'GeoJSON',
@@ -419,8 +414,7 @@ const importFormatOptions = ref([
     fileExtensions: ['.json', '.geojson'],
     acceptedFormats: '.json,.geojson',
     uploadFunction: 'uploadGeoJsonImportFile',
-    supportsDataTypeSelection: false,
-    maxFileSizeMB: 2000
+    supportsDataTypeSelection: false
   }
 ])
 
@@ -544,7 +538,7 @@ const getCurrentFormatConfig = () => {
 const getUploadNote = () => {
   const config = getCurrentFormatConfig()
   const extensions = config.fileExtensions.join(', ')
-  return `Only ${config.label} files (${extensions}) are supported. Maximum file size: ${config.maxFileSizeMB}MB`
+  return `Only ${config.label} files (${extensions}) are supported`
 }
 
 const getFormatInfoMessage = () => {
