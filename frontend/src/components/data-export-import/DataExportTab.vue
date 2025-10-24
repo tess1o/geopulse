@@ -335,7 +335,8 @@ const availableDataTypes = ref([
 // Export format options
 const exportFormatOptions = ref([
   {label: 'GeoPulse', value: 'geopulse', description: 'Native GeoPulse format with all data types'},
-  {label: 'OwnTracks', value: 'owntracks', description: 'Compatible with OwnTracks format (GPS data only)'}
+  {label: 'OwnTracks', value: 'owntracks', description: 'Compatible with OwnTracks format (GPS data only)'},
+  {label: 'GeoJSON', value: 'geojson', description: 'Standard GeoJSON format compatible with GIS tools (GPS data only)'}
 ])
 
 // Computed
@@ -377,6 +378,9 @@ const startExport = async () => {
     // For OwnTracks, use only GPS data and different endpoint
     if (exportFormat.value === 'owntracks') {
       await exportImportStore.createOwnTracksExportJob(dateRange)
+    } else if (exportFormat.value === 'geojson') {
+      // For GeoJSON, use only GPS data and different endpoint
+      await exportImportStore.createGeoJsonExportJob(dateRange)
     } else {
       // For GeoPulse, use selected data types
       await exportImportStore.createExportJob(

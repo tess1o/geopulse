@@ -85,6 +85,56 @@ public class ExportResource {
     }
 
     @POST
+    @Path("/geojson/create")
+    public Response createGeoJsonExport(CreateExportRequest request) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+
+            // Validate request
+            if (request.getDateRange() == null ||
+                    request.getDateRange().getStartDate() == null ||
+                    request.getDateRange().getEndDate() == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Date range is required"))
+                        .build();
+            }
+
+            if (request.getDateRange().getStartDate().isAfter(Instant.now())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date cannot be in the future"))
+                        .build();
+            }
+
+            if (request.getDateRange().getStartDate().isAfter(request.getDateRange().getEndDate())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date must be before end date"))
+                        .build();
+            }
+
+            ExportJob job = exportJobManager.createGeoJsonExportJob(userId, request.getDateRange());
+
+            ExportJobResponse response = new ExportJobResponse();
+            response.setSuccess(true);
+            response.setExportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase());
+            response.setMessage("GeoJSON export job created successfully");
+            response.setEstimatedCompletionTime(Instant.now().plus(5, ChronoUnit.MINUTES));
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create GeoJSON export job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create GeoJSON export job"))
+                    .build();
+        }
+    }
+
+    @POST
     @Path("/create")
     public Response createExport(CreateExportRequest request) {
         try {
@@ -219,6 +269,17 @@ public class ExportResource {
                 return Response.ok(job.getJsonData())
                         .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
                         .header("Content-Type", "application/json")
+                        .header("Content-Length", job.getJsonData().length)
+                        .build();
+            } else if ("geojson".equals(job.getFormat()) && job.getJsonData() != null) {
+                // Return JSON for GeoJSON format
+                String filename = String.format("geopulse-export-%s-%d.geojson",
+                        userId.toString().substring(0, 8),
+                        job.getCreatedAt().getEpochSecond());
+
+                return Response.ok(job.getJsonData())
+                        .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                        .header("Content-Type", "application/geo+json")
                         .header("Content-Length", job.getJsonData().length)
                         .build();
             } else if (job.getZipData() != null) {

@@ -51,7 +51,7 @@ public class ExportJobManager {
     }
 
     public ExportJob createOwnTracksExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
-        
+
         // Check if user has too many active jobs
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
@@ -66,10 +66,33 @@ public class ExportJobManager {
         List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
         ExportJob job = new ExportJob(userId, dataTypes, dateRange, "owntracks");
         activeJobs.put(job.getJobId(), job);
-        
-        log.info("Created OwnTracks export job {} for user {} with date range: {} to {}", 
+
+        log.info("Created OwnTracks export job {} for user {} with date range: {} to {}",
                 job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
-                
+
+        return job;
+    }
+
+    public ExportJob createGeoJsonExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
+
+        // Check if user has too many active jobs
+        long userActiveJobs = activeJobs.values().stream()
+                .filter(job -> job.getUserId().equals(userId))
+                .filter(job -> job.getStatus() != ExportStatus.FAILED)
+                .count();
+
+        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
+        }
+
+        // Create export job for GeoJSON format with GPS data
+        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
+        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "geojson");
+        activeJobs.put(job.getJobId(), job);
+
+        log.info("Created GeoJSON export job {} for user {} with date range: {} to {}",
+                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
+
         return job;
     }
 
@@ -133,6 +156,12 @@ public class ExportJobManager {
                     job.setJsonData(jsonData);
                     job.setFileSizeBytes(jsonData.length);
                     log.info("Completed OwnTracks export job {} - {} bytes", job.getJobId(), jsonData.length);
+                } else if ("geojson".equals(job.getFormat())) {
+                    // Generate JSON data for GeoJSON format
+                    byte[] jsonData = exportDataGenerator.generateGeoJsonExport(job);
+                    job.setJsonData(jsonData);
+                    job.setFileSizeBytes(jsonData.length);
+                    log.info("Completed GeoJSON export job {} - {} bytes", job.getJobId(), jsonData.length);
                 } else {
                     // Generate ZIP data for GeoPulse format
                     byte[] zipData = exportDataGenerator.generateExportZip(job);

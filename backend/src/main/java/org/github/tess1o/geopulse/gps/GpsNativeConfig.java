@@ -77,6 +77,12 @@ import org.github.tess1o.geopulse.gps.model.*;
         HomeAssistantBattery.class,
         HomeAssistantGpsData.class,
         HomeAssistantLocation.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeatureCollection.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonGeometry.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonLineString.class,
+        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonProperties.class,
 })
 public class GpsNativeConfig {
 }
