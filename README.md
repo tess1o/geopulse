@@ -65,7 +65,7 @@ The interactive script will guide you through the process.
 
 - Works with OwnTracks (HTTP or MQTT), Overland, Dawarich and HomeAssistant tracking apps
 - Real-time data sync with GPS tracking apps.
-- Manual import from Google Timeline, GPX files
+- Manual import from Google Timeline, GPX, GeoJSON or OwnTracks JSON files
 
 **Timeline and Maps**
 
