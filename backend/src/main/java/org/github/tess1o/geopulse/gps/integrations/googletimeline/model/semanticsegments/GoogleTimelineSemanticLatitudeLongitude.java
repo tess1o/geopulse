@@ -5,11 +5,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 /**
- * Place location with latLng from new Google Timeline format
+ * Location with latLng from new Google Timeline format
  */
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class GoogleTimelineSemanticPlaceLocation {
+public class GoogleTimelineSemanticLatitudeLongitude {
 
     @JsonProperty("latLng")
     private String latLng; // Format: "50.0506312°, 14.3439906°"

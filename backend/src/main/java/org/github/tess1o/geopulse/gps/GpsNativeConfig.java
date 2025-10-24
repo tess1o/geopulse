@@ -66,7 +66,7 @@ import org.github.tess1o.geopulse.gps.model.*;
         GoogleTimelineSemanticSegment.class,
         GoogleTimelineSemanticVisit.class,
         GoogleTimelineSemanticVisitCandidate.class,
-        GoogleTimelineSemanticPlaceLocation.class,
+        GoogleTimelineSemanticLatitudeLongitude.class,
         GoogleTimelineSemanticActivity.class,
         GoogleTimelineSemanticActivityCandidate.class,
         GoogleTimelineSemanticTimelinePath.class,

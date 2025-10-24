@@ -21,5 +21,5 @@ public class GoogleTimelineSemanticVisitCandidate {
     private Double probability;
 
     @JsonProperty("placeLocation")
-    private GoogleTimelineSemanticPlaceLocation placeLocation;
+    private GoogleTimelineSemanticLatitudeLongitude placeLocation;
 }
