@@ -111,11 +111,11 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
             return null;
         }
         try {
-            // Photon bounding box format: [minlat, maxlat, minlon, maxlon]
-            double minLat = boundingbox.get(0);
+            // Photon bounding box format: [minLon, maxLat, maxLon, minLat]
+            double minLon = boundingbox.get(0);
             double maxLat = boundingbox.get(1);
-            double minLon = boundingbox.get(2);
-            double maxLon = boundingbox.get(3);
+            double maxLon = boundingbox.get(2);
+            double minLat = boundingbox.get(3);
 
             return GeoUtils.buildBoundingBoxPolygon(minLat, maxLat, minLon, maxLon);
         } catch (Exception e) {

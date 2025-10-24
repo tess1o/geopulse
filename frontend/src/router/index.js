@@ -14,6 +14,7 @@ import ShareLinksPage from "@/views/app/ShareLinksPage.vue";
 import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
 import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
+import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
 import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
@@ -155,6 +156,12 @@ const routes = [
         path: '/app/gps-data',
         name: 'GPS Data',
         component: TechnicalDataPage,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/geocoding-management',
+        name: 'Geocoding Management',
+        component: GeocodingManagementPage,
         beforeEnter: requireAuth
     },
     {

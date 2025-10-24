@@ -375,13 +375,6 @@ const contentClasses = computed(() => ({
   }
 }
 
-/* Focus Management */
-.gp-page-container:focus-within .gp-page-header {
-  outline: 2px solid var(--gp-primary);
-  outline-offset: 2px;
-  border-radius: var(--gp-radius-medium);
-}
-
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .gp-page-container,
