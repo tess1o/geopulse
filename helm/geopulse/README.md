@@ -187,7 +187,7 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | Parameter | Description | Default                   |
 |-----------|-------------|---------------------------|
 | `backend.image.repository` | Backend image repository | `tess1o/geopulse-backend` |
-| `backend.image.tag` | Backend image tag | `1.0.4-native`            |
+| `backend.image.tag` | Backend image tag | `1.0.5-native`            |
 | `backend.replicaCount` | Number of backend replicas | `1`                       |
 | `backend.service.type` | Backend service type | `ClusterIP`               |
 | `backend.service.port` | Backend service port | `8080`                    |
@@ -199,7 +199,7 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | Parameter | Description | Default              |
 |-----------|-------------|----------------------|
 | `frontend.image.repository` | Frontend image repository | `tess1o/geopulse-ui` |
-| `frontend.image.tag` | Frontend image tag | `1.0.4`              |
+| `frontend.image.tag` | Frontend image tag | `1.0.5`              |
 | `frontend.replicaCount` | Number of frontend replicas | `1`                  |
 | `frontend.service.type` | Frontend service type | `ClusterIP`          |
 | `frontend.service.port` | Frontend service port | `80`                 |
@@ -243,8 +243,8 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `config.uiUrl` | Frontend URL (for CORS) | `http://localhost:5555` |
-| `config.cookieDomain` | Cookie domain | `""` |
-| `config.authSecureCookies` | Use secure cookies | `false` |
+| `config.cookieDomain` | Cookie domain for authentication. **Keep empty for standard nginx-based deployments.** Only set for non-standard deployments without nginx using separate subdomains. See [DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md#understanding-geopulse_cookie_domain) | `""` |
+| `config.authSecureCookies` | Use secure cookies (HTTPS only) | `false` |
 | `config.oidc.enabled` | Enable OIDC | `false` |
 
 For a complete list of parameters, see [values.yaml](values.yaml).

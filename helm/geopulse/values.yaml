@@ -13,7 +13,7 @@ global:
 backend:
   image:
     repository: tess1o/geopulse-backend
-    tag: 1.0.4-native
+    tag: 1.0.5-native
     pullPolicy: IfNotPresent
 
   replicaCount: 1
@@ -70,7 +70,7 @@ backend:
 frontend:
   image:
     repository: tess1o/geopulse-ui
-    tag: 1.0.4
+    tag: 1.0.5
     pullPolicy: IfNotPresent
 
   replicaCount: 1
@@ -315,7 +315,13 @@ config:
   uiUrl: "http://localhost:5555"
 
   # Cookie domain for authentication
-  # Leave empty for localhost, set to parent domain in production (e.g., ".yourdomain.com")
+  # IMPORTANT: Keep empty for standard nginx-based deployments (recommended for 99% of cases)
+  # GeoPulse uses nginx as a proxy, creating same-origin context where cookies work automatically
+  # Only set this (e.g., ".yourdomain.com") if deploying WITHOUT nginx AND using separate subdomains
+  # Examples that should use empty value:
+  #   - Localhost: http://localhost:5555
+  #   - Production: https://geopulse.yourdomain.com
+  # For more details, see: docs/DEPLOYMENT_GUIDE.md "Understanding GEOPULSE_COOKIE_DOMAIN"
   cookieDomain: ""
 
   # Set to true in production to ensure auth cookies are only sent over HTTPS

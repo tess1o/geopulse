@@ -127,15 +127,37 @@ It is highly recommended to set strong, unique passwords for your services.
 These variables control how users access the GeoPulse frontend and how authentication cookies are handled.
 
 - `GEOPULSE_UI_URL`: A comma-separated list of URLs that can be used to access the frontend. This is crucial for CORS (Cross-Origin Resource Sharing) to work correctly.
-- `GEOPULSE_COOKIE_DOMAIN`: The domain for which the authentication cookies are set.
+- `GEOPULSE_COOKIE_DOMAIN`: The domain for authentication cookies. **Keep empty for standard deployments** (see details below).
 - `GEOPULSE_AUTH_SECURE_COOKIES`: Set to `true` to ensure cookies are only sent over HTTPS.
+
+##### Understanding GEOPULSE_COOKIE_DOMAIN
+
+**In GeoPulse's architecture**, nginx acts as a reverse proxy that serves both the frontend and proxies API requests to the backend. From the browser's perspective, all requests (frontend assets and API calls) come from the same origin (e.g., `geopulse.yourdomain.com`). This is called **same-origin**, and authentication cookies work automatically without setting a cookie domain.
+
+**When to keep GEOPULSE_COOKIE_DOMAIN empty (recommended):**
+- ✅ All standard Docker deployments using docker-compose
+- ✅ Localhost access: `http://localhost:5555`
+- ✅ Homelab IP access: `http://192.168.1.100:5555`
+- ✅ Single domain production: `https://geopulse.yourdomain.com`
+- ✅ Any deployment where nginx proxies both frontend and backend (standard GeoPulse setup)
+
+**Why keep it empty?**
+- Browser automatically handles cookies for same-origin requests
+- More secure (cookies won't leak to other subdomains)
+- Simpler configuration with fewer potential issues
+
+**When to set GEOPULSE_COOKIE_DOMAIN (rare scenarios):**
+- ❌ Only if deploying WITHOUT nginx proxy AND using separate subdomains
+- ❌ Example: Frontend at `app.yourdomain.com`, Backend at `api.yourdomain.com`
+- ❌ In this case, set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com`
+- ⚠️ **Warning**: This is NOT a standard GeoPulse deployment and requires additional configuration changes
 
 **Scenario-based examples:**
 
 - **Localhost-only access:**
   ```env
   GEOPULSE_UI_URL=http://localhost:5555
-  GEOPULSE_COOKIE_DOMAIN=
+  GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
   GEOPULSE_AUTH_SECURE_COOKIES=false
   ```
 
@@ -143,14 +165,14 @@ These variables control how users access the GeoPulse frontend and how authentic
   ```env
   # Allows access via localhost, a local network IP, and a local domain
   GEOPULSE_UI_URL=http://localhost:5555,http://192.168.1.100:5555,http://geopulse.local
-  GEOPULSE_COOKIE_DOMAIN=
+  GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
   GEOPULSE_AUTH_SECURE_COOKIES=false
   ```
 
 - **Production access (with a domain and HTTPS):**
   ```env
   GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-  GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
+  GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
   GEOPULSE_AUTH_SECURE_COOKIES=true
   ```
 
@@ -353,9 +375,11 @@ curl http://localhost:8080/api/health
 **Authentication issues:**
 
 - Check domains match between frontend/backend
-- For local deployment: `GEOPULSE_COOKIE_DOMAIN=""` and `GEOPULSE_AUTH_SECURE_COOKIES=false`
-- For production: set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com` and `GEOPULSE_AUTH_SECURE_COOKIES=true`
+- For standard deployments (with nginx proxy): `GEOPULSE_COOKIE_DOMAIN=""` (keep empty)
+- For HTTP deployments: `GEOPULSE_AUTH_SECURE_COOKIES=false`
+- For HTTPS deployments: `GEOPULSE_AUTH_SECURE_COOKIES=true`
 - Verify JWT keys exist in `keys/` directory
+- See the "Understanding GEOPULSE_COOKIE_DOMAIN" section above for detailed cookie configuration
 
 **Network/Proxy issues:**
 
