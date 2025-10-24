@@ -153,6 +153,51 @@ public class UserService {
     }
 
     /**
+     * Validates custom map tile URL to ensure it's a safe and valid tile URL.
+     * Must contain {z}, {x}, {y} placeholders and use HTTP/HTTPS protocols.
+     *
+     * @param tileUrl the tile URL to validate
+     * @throws IllegalArgumentException if the tile URL is invalid
+     */
+    private void validateCustomMapTileUrl(String tileUrl) {
+        if (tileUrl == null || tileUrl.trim().isEmpty()) {
+            return; // Allow null/empty to use default tiles
+        }
+
+        String normalizedUrl = tileUrl.trim().toLowerCase();
+
+        // Security: Only allow http:// and https:// protocols
+        if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+            log.warn("Invalid tile URL protocol: {}", tileUrl);
+            throw new IllegalArgumentException("Custom map tile URL must use HTTP or HTTPS protocol");
+        }
+
+        // Security: Prevent dangerous protocols
+        if (normalizedUrl.contains("javascript:") || normalizedUrl.contains("data:") ||
+            normalizedUrl.contains("file:") || normalizedUrl.contains("ftp:")) {
+            log.warn("Dangerous protocol detected in tile URL: {}", tileUrl);
+            throw new IllegalArgumentException("Invalid tile URL protocol");
+        }
+
+        // Validate required placeholders for tile coordinates
+        if (!tileUrl.contains("{z}") || !tileUrl.contains("{x}") || !tileUrl.contains("{y}")) {
+            log.warn("Tile URL missing required placeholders: {}", tileUrl);
+            throw new IllegalArgumentException("Custom map tile URL must contain {z}, {x}, and {y} placeholders");
+        }
+
+        // Security: Basic path traversal check
+        if (tileUrl.contains("..")) {
+            log.warn("Path traversal attempt in tile URL: {}", tileUrl);
+            throw new IllegalArgumentException("Invalid tile URL format");
+        }
+
+        // Optional: Validate URL length (already enforced by @Size, but double-check)
+        if (tileUrl.length() > 1000) {
+            throw new IllegalArgumentException("Custom map tile URL is too long (max 1000 characters)");
+        }
+    }
+
+    /**
      * Validates avatar path to ensure it matches the expected format.
      * Only allows paths like /avatars/avatar1.png through /avatars/avatar20.png
      *
@@ -199,6 +244,13 @@ public class UserService {
             String validatedTimezone = validateTimezone(request.getTimezone());
             user.setTimezone(validatedTimezone);
             log.debug("Updated timezone for user {} to {}", user.getId(), validatedTimezone);
+        }
+
+        // Validate and update custom map tile URL
+        if (request.getCustomMapTileUrl() != null) {
+            validateCustomMapTileUrl(request.getCustomMapTileUrl());
+            user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
+            log.debug("Updated custom map tile URL for user {}", user.getId());
         }
     }
 

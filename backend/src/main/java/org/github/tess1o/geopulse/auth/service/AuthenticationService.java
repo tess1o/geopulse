@@ -120,6 +120,7 @@ public class AuthenticationService {
                 .createdAt(user.getCreatedAt())
                 .expiresIn(accessTokenLifespan)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
+                .customMapTileUrl(user.getCustomMapTileUrl())
                 .build();
     }
 

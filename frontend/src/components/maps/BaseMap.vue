@@ -6,7 +6,8 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import {fixLeafletMarkerImages, fixLeafLetTooltip, fixLeafletMarkerAnimation} from "@/utils/mapHelpers";
+import {fixLeafletMarkerImages, fixLeafLetTooltip, fixLeafletMarkerAnimation} from "@/utils/mapHelpers"
+import { useMapTiles } from '@/composables/useMapTiles'
 
 const props = defineProps({
   mapId: {
@@ -32,6 +33,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['map-ready', 'map-click', 'map-contextmenu'])
+
+// Get tile configuration
+const { getTileUrl, getTileAttribution, getSubdomains } = useMapTiles()
 
 // Reactive state
 const map = ref(null)
@@ -95,12 +99,65 @@ const initializeMap = async () => {
             touchExtend: false
           }).setView(props.center, props.zoom)
 
-          // Add tile layer
-          L.tileLayer('/osm/tiles/{s}/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            subdomains: ['a', 'b', 'c'],
-            maxZoom: 19
-          }).addTo(map.value)
+          // Add tile layer with dynamic URL from user preferences
+          const tileUrl = getTileUrl()
+          const subdomains = getSubdomains()
+
+          const tileLayerOptions = {
+            attribution: getTileAttribution(),
+            maxZoom: 19,
+            minZoom: 0,
+            tileSize: 256,
+            keepBuffer: 2, // Keep 2 tile layers buffered for smoother panning
+            updateWhenIdle: false, // Update tiles while panning for better UX
+            updateWhenZooming: false, // Don't update during zoom animation
+            updateInterval: 200, // Throttle tile updates to 200ms
+            errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // 1x1 transparent pixel
+            // Retry failed tile loads
+            maxNativeZoom: 19,
+            // Important: Set crossOrigin to anonymous for better compatibility
+            crossOrigin: true
+          }
+
+          // Add subdomains if the URL uses them
+          if (subdomains.length > 0) {
+            tileLayerOptions.subdomains = subdomains
+          }
+
+          try {
+            const tileLayer = L.tileLayer(tileUrl, tileLayerOptions)
+
+            // Add error handling for individual tile load failures
+            tileLayer.on('tileerror', function(error) {
+              console.warn('Tile load error:', error.coords, error.tile.src)
+
+              // Retry loading the tile after a short delay
+              const tile = error.tile
+              const originalSrc = tile.src
+
+              setTimeout(() => {
+                if (tile.src === originalSrc) {
+                  // Force reload by appending a cache-busting parameter
+                  const separator = originalSrc.includes('?') ? '&' : '?'
+                  tile.src = originalSrc + separator + '_retry=' + Date.now()
+                }
+              }, 1000)
+            })
+
+            tileLayer.addTo(map.value)
+          } catch (tileError) {
+            console.error('Error loading custom tiles, falling back to OSM:', tileError)
+            // Fallback to default OSM tiles if custom tiles fail
+            L.tileLayer('/osm/tiles/{s}/{z}/{x}/{y}.png', {
+              attribution: '© OpenStreetMap contributors',
+              subdomains: ['a', 'b', 'c'],
+              maxZoom: 19,
+              keepBuffer: 2,
+              updateWhenIdle: false,
+              updateWhenZooming: false,
+              crossOrigin: true
+            }).addTo(map.value)
+          }
         } catch (mapError) {
           console.error('Error creating Leaflet map:', mapError)
           throw mapError
@@ -261,7 +318,7 @@ const setupVisibilityObserver = () => {
 // Lifecycle
 onMounted(() => {
   initializeMap()
-  
+
   // Set up visibility observer early in case container starts hidden
   setTimeout(() => {
     setupVisibilityObserver()

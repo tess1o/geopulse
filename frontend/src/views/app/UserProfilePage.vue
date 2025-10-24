@@ -63,7 +63,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -114,7 +114,8 @@ const currentTabComponent = computed(() => {
         userName: userName.value,
         userEmail: userEmail.value,
         userAvatar: userAvatar.value,
-        userTimezone: userTimezone.value
+        userTimezone: userTimezone.value,
+        userCustomMapTileUrl: customMapTileUrl.value || ''
       },
       handlers: {
         onSave: handleProfileSave
@@ -187,6 +188,7 @@ const handleProfileSave = async (data) => {
       data.fullName,
       data.avatar,
       data.timezone,
+      data.customMapTileUrl,
       userId.value
     )
 

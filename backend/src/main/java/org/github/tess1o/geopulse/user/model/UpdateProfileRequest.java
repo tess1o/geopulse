@@ -20,5 +20,8 @@ public class UpdateProfileRequest {
     @Size(max = 255, message = "Timezone cannot exceed 255 characters")
     private String timezone;
 
+    @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
+    private String customMapTileUrl;
+
     private UUID userId;
 }

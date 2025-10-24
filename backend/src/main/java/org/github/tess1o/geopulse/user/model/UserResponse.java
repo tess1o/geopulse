@@ -22,5 +22,6 @@ public class UserResponse {
     private String timezone;
     private String avatar;
     private boolean hasPassword;
+    private String customMapTileUrl;
     // Don't include passwordHash in responses
 }

@@ -23,4 +23,5 @@ public class AuthResponse {
     private long expiresIn;
     private Instant createdAt;
     private boolean hasPassword;
+    private String customMapTileUrl;
 }
