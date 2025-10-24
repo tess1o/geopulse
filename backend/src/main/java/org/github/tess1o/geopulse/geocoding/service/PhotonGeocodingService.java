@@ -65,6 +65,10 @@ public class PhotonGeocodingService {
                     log.debug("Photon response received: {}", response);
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
+                .onItem().ifNull().failWith(() -> {
+                    log.error("Photon adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    return new GeocodingException("Photon adapter returned null result");
+                })
                 .onFailure().transform(failure -> {
                     log.error("Photon API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
                     return new GeocodingException("Photon geocoding failed", failure);

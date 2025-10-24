@@ -56,7 +56,7 @@ public class GeocodingProviderFactory {
         String fallbackProvider = geocodingConfig.provider().fallback().orElse("");
 
         if (!fallbackProvider.isEmpty() && !fallbackProvider.equalsIgnoreCase(geocodingConfig.provider().primary())) {
-            return primaryResult.onFailure().call(failure -> {
+            return primaryResult.onFailure().recoverWithUni(failure -> {
                 log.warn("Primary provider '{}' failed, trying fallback provider '{}'", geocodingConfig.provider().primary(), fallbackProvider, failure);
                 return callProvider(fallbackProvider, requestCoordinates);
             });

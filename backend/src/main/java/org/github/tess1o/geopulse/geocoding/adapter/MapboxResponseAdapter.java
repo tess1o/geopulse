@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.adapter;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.mapbox.*;
@@ -23,12 +24,13 @@ public class MapboxResponseAdapter implements GeocodingResponseAdapter<MapboxRes
     
     @Override
     public FormattableGeocodingResult adapt(MapboxResponse mapboxResponse, Point requestCoordinates, String providerName) {
-        log.debug("Adapting Mapbox response for coordinates: lon={}, lat={}", 
+        log.debug("Adapting Mapbox response for coordinates: lon={}, lat={}",
                  requestCoordinates.getX(), requestCoordinates.getY());
-        
+
         if (mapboxResponse == null || mapboxResponse.getFeatures() == null || mapboxResponse.getFeatures().isEmpty()) {
-            log.warn("Empty or null Mapbox response");
-            return createFallbackResult(requestCoordinates, providerName);
+            log.warn("Empty or null Mapbox response for coordinates: lon={}, lat={}",
+                    requestCoordinates.getX(), requestCoordinates.getY());
+            throw new GeocodingException("Mapbox returned empty or null response");
         }
         
         // Use the first feature (most relevant)
@@ -170,16 +172,4 @@ public class MapboxResponseAdapter implements GeocodingResponseAdapter<MapboxRes
         }
     }
     
-    /**
-     * Create a fallback result when Mapbox response is invalid.
-     */
-    private FormattableGeocodingResult createFallbackResult(Point requestCoordinates, String providerName) {
-        return SimpleFormattableResult.builder()
-            .requestCoordinates(requestCoordinates)
-            .resultCoordinates(requestCoordinates)
-            .formattedDisplayName(String.format("Unknown location at %.6f, %.6f", 
-                        requestCoordinates.getY(), requestCoordinates.getX()))
-            .providerName(providerName)
-            .build();
-    }
 }

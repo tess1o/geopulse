@@ -72,6 +72,10 @@ public class MapboxGeocodingService {
                     log.debug("Mapbox response received: type={}, firstFeature={}", response.getType(), summary);
                     return adapter.adapt(response, requestCoordinates, getProviderName());
                 })
+                .onItem().ifNull().failWith(() -> {
+                    log.error("Mapbox adapter returned null for coordinates: lon={}, lat={}", longitude, latitude);
+                    return new GeocodingException("Mapbox adapter returned null result");
+                })
                 .onFailure().transform(failure -> {
                     log.error("Mapbox API call failed for coordinates: lon={}, lat={}", longitude, latitude, failure);
                     return new GeocodingException("Mapbox geocoding failed", failure);
