@@ -131,8 +131,8 @@ GEOPULSE_OIDC_PROVIDER_{NAME}_{PROPERTY}=value
 ### OIDC Callback URL
 
 For all OIDC providers, you must configure a callback URL. This is the URL that the provider will redirect to after
-authentication. All providers should use the callback URL: `http://your-ip-address:port/auth/oidc/callback` or
-`https://geopulse.mydomain.com/auth/oidc/callback`.
+authentication. All providers should use the callback URL: `http://your-ip-address:port/oidc/callback` or
+`https://geopulse.mydomain.com/oidc/callback`.
 
 Additionally you might need to update `GEOPULSE_OIDC_CALLBACK_BASE_URL` environment variable to match your frontend
 URL. By default it's set to `GEOPULSE_UI_URL` but in case if you have multiple domains you might need to change it to a
