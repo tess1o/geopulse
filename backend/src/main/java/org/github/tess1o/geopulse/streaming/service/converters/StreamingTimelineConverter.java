@@ -204,6 +204,7 @@ public class StreamingTimelineConverter {
         if (entity == null) return null;
 
         return TimelineStayLocationDTO.builder()
+                .id(entity.getId())
                 .timestamp(entity.getTimestamp())
                 .longitude(entity.getLocation().getX())
                 .latitude(entity.getLocation().getY())
@@ -224,6 +225,7 @@ public class StreamingTimelineConverter {
         if (entity == null) return null;
 
         TimelineTripDTO.TimelineTripDTOBuilder builder = TimelineTripDTO.builder()
+                .id(entity.getId())
                 .timestamp(entity.getTimestamp())
                 .longitude(entity.getStartPoint().getX())
                 .latitude(entity.getStartPoint().getY())

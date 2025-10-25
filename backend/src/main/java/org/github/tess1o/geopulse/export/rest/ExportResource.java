@@ -135,6 +135,124 @@ public class ExportResource {
     }
 
     @POST
+    @Path("/gpx/create")
+    public Response createGpxExport(CreateExportRequest request) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+
+            // Validate request
+            if (request.getDateRange() == null ||
+                    request.getDateRange().getStartDate() == null ||
+                    request.getDateRange().getEndDate() == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Date range is required"))
+                        .build();
+            }
+
+            if (request.getDateRange().getStartDate().isAfter(Instant.now())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date cannot be in the future"))
+                        .build();
+            }
+
+            if (request.getDateRange().getStartDate().isAfter(request.getDateRange().getEndDate())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date must be before end date"))
+                        .build();
+            }
+
+            // Get zipPerTrip option from request options
+            boolean zipPerTrip = false;
+            String zipGroupBy = "individual"; // default
+            if (request.getOptions() != null) {
+                if (request.getOptions().containsKey("zipPerTrip")) {
+                    zipPerTrip = Boolean.parseBoolean(request.getOptions().get("zipPerTrip").toString());
+                }
+                if (request.getOptions().containsKey("zipGroupBy")) {
+                    zipGroupBy = request.getOptions().get("zipGroupBy").toString();
+                }
+            }
+
+            ExportJob job = exportJobManager.createGpxExportJob(userId, request.getDateRange(), zipPerTrip, zipGroupBy);
+
+            ExportJobResponse response = new ExportJobResponse();
+            response.setSuccess(true);
+            response.setExportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase());
+            response.setMessage("GPX export job created successfully");
+            response.setEstimatedCompletionTime(Instant.now().plus(5, ChronoUnit.MINUTES));
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create GPX export job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create GPX export job"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/gpx/trip/{tripId}")
+    @Produces("application/gpx+xml")
+    public Response exportSingleTrip(@PathParam("tripId") Long tripId) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            byte[] gpxData = exportJobManager.exportSingleTrip(userId, tripId);
+
+            String filename = String.format("trip-%d-%d.gpx", tripId, Instant.now().getEpochSecond());
+
+            return Response.ok(gpxData)
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .header("Content-Type", "application/gpx+xml")
+                    .header("Content-Length", gpxData.length)
+                    .build();
+
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(createErrorResponse("NOT_FOUND", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to export trip as GPX", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to export trip"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/gpx/stay/{stayId}")
+    @Produces("application/gpx+xml")
+    public Response exportSingleStay(@PathParam("stayId") Long stayId) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            byte[] gpxData = exportJobManager.exportSingleStay(userId, stayId);
+
+            String filename = String.format("stay-%d-%d.gpx", stayId, Instant.now().getEpochSecond());
+
+            return Response.ok(gpxData)
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .header("Content-Type", "application/gpx+xml")
+                    .header("Content-Length", gpxData.length)
+                    .build();
+
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(createErrorResponse("NOT_FOUND", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to export stay as GPX", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to export stay"))
+                    .build();
+        }
+    }
+
+    @POST
     @Path("/create")
     public Response createExport(CreateExportRequest request) {
         try {
@@ -233,7 +351,7 @@ public class ExportResource {
 
     @GET
     @Path("/download/{exportJobId}")
-    @Produces({"application/zip", "application/json"})
+    @Produces({"application/zip", "application/json", "application/gpx+xml"})
     public Response downloadExport(@PathParam("exportJobId") UUID exportJobId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -245,7 +363,7 @@ public class ExportResource {
                         .build();
             }
 
-            if (!job.getStatus().name().equals("COMPLETED") || 
+            if (!job.getStatus().name().equals("COMPLETED") ||
                 (job.getZipData() == null && job.getJsonData() == null)) {
                 return Response.status(Response.Status.NOT_FOUND)
                         .entity("Export not ready for download")
@@ -282,6 +400,35 @@ public class ExportResource {
                         .header("Content-Type", "application/geo+json")
                         .header("Content-Length", job.getJsonData().length)
                         .build();
+            } else if ("gpx".equals(job.getFormat())) {
+                // Return GPX format (could be single file or zip)
+                if (job.getZipData() != null) {
+                    // Return ZIP with multiple GPX files
+                    String filename = String.format("geopulse-gpx-export-%s-%d.zip",
+                            userId.toString().substring(0, 8),
+                            job.getCreatedAt().getEpochSecond());
+
+                    return Response.ok(job.getZipData())
+                            .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                            .header("Content-Type", "application/zip")
+                            .header("Content-Length", job.getZipData().length)
+                            .build();
+                } else if (job.getJsonData() != null) {
+                    // Return single GPX file (stored in jsonData for consistency)
+                    String filename = String.format("geopulse-export-%s-%d.gpx",
+                            userId.toString().substring(0, 8),
+                            job.getCreatedAt().getEpochSecond());
+
+                    return Response.ok(job.getJsonData())
+                            .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                            .header("Content-Type", "application/gpx+xml")
+                            .header("Content-Length", job.getJsonData().length)
+                            .build();
+                } else {
+                    return Response.status(Response.Status.NOT_FOUND)
+                            .entity("GPX export data not available")
+                            .build();
+                }
             } else if (job.getZipData() != null) {
                 // Return ZIP for GeoPulse format
                 String filename = String.format("geopulse-export-%s-%d.zip",

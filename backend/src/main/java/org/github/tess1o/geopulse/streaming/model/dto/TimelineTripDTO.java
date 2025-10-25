@@ -15,17 +15,18 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class TimelineTripDTO implements GpsPoint {
+    private Long id;  // Database ID for the trip
     private Instant timestamp;
     private double latitude;  // Start latitude
     private double longitude; // Start longitude
-    private double endLatitude;  // End latitude  
+    private double endLatitude;  // End latitude
     private double endLongitude; // End longitude
-    
+
     /**
      * Duration of trip in seconds
      */
     private long tripDuration;
-    
+
     /**
      * Distance traveled in meters
      */

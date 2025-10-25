@@ -13,15 +13,16 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 public class TimelineStayLocationDTO implements GpsPoint {
+    private Long id;  // Database ID for the stay
     private Instant timestamp;
-    
+
     // Location source references - exactly one will be populated
     private Long favoriteId;        // Reference to FavoritesEntity.id if location came from favorite
     private Long geocodingId;       // Reference to ReverseGeocodingLocationEntity.id if location came from geocoding
-    
+
     // Cached location name for display (resolved at creation time)
     private String locationName;
-    
+
     /**
      * Duration of stay in seconds
      */

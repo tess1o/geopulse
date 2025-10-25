@@ -1,7 +1,8 @@
 <template>
-  <Card 
+  <Card
     class="timeline-card timeline-card--stay"
     @click="handleClick"
+    @contextmenu="showContextMenu"
   >
     <template #title>
       <p class="timeline-timestamp">
@@ -37,10 +38,12 @@
       </div>
     </template>
   </Card>
+
+  <ContextMenu ref="contextMenu" :model="contextMenuItems" />
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 
@@ -51,12 +54,28 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'export-gpx'])
+
+const contextMenu = ref(null)
+const contextMenuItems = ref([
+  {
+    label: 'Export as GPX',
+    icon: 'pi pi-download',
+    command: () => {
+      emit('export-gpx', props.stayItem)
+    }
+  }
+])
 
 const timezone = useTimezone()
 
 const handleClick = () => {
   emit('click', props.stayItem)
+}
+
+const showContextMenu = (event) => {
+  event.preventDefault()
+  contextMenu.value.show(event)
 }
 
 const isOvernight = computed(() => {

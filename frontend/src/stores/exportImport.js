@@ -285,6 +285,60 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
+        // API Actions - Export (GPX)
+        async createGpxExportJob(dateRange, zipPerTrip = false, zipGroupBy = 'individual') {
+            this.isExporting = true
+            try {
+                const response = await apiService.post('/export/gpx/create', {
+                    dateRange,
+                    options: {
+                        zipPerTrip,
+                        zipGroupBy
+                    }
+                })
+
+                // Handle successful response
+                if (response.success) {
+                    this.setCurrentExportJob(response)
+                    this.addExportJob(response)
+                    return response
+                } else {
+                    throw new Error(response.error?.message || 'GPX export creation failed')
+                }
+            } catch (error) {
+                // Handle API error responses
+                if (error.response?.data?.error) {
+                    const apiError = error.response.data.error
+                    throw new Error(apiError.message || 'GPX export creation failed')
+                }
+                throw error
+            } finally {
+                this.isExporting = false
+            }
+        },
+
+        // API Actions - Export single trip as GPX
+        async exportTripAsGpx(tripId) {
+            try {
+                // This will trigger a file download directly from the backend
+                const response = await apiService.download(`/export/gpx/trip/${tripId}`)
+                return response
+            } catch (error) {
+                throw error
+            }
+        },
+
+        // API Actions - Export single stay as GPX
+        async exportStayAsGpx(stayId) {
+            try {
+                // This will trigger a file download directly from the backend
+                const response = await apiService.download(`/export/gpx/stay/${stayId}`)
+                return response
+            } catch (error) {
+                throw error
+            }
+        },
+
         // API Actions - Import
         async uploadImportFile(file, options = {}) {
             this.isImporting = true

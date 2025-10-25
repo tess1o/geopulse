@@ -10,58 +10,42 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.export.mapper.ExportDataMapper;
 import org.github.tess1o.geopulse.export.model.ExportJob;
-import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
-import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
-import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
-import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
-import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
-import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
-import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
-import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+/**
+ * Main orchestrator for export operations.
+ * Delegates to specialized services for format-specific exports and data collection.
+ */
 @ApplicationScoped
 @Slf4j
 public class ExportDataGenerator {
 
     @Inject
-    GpsPointRepository gpsPointRepository;
+    ExportDataCollectorService dataCollectorService;
 
     @Inject
-    TimelineStayRepository timelineStayRepository;
+    ExportDependencyResolver dependencyResolver;
 
     @Inject
-    TimelineTripRepository timelineTripRepository;
+    ZipFileService zipFileService;
 
     @Inject
-    TimelineDataGapRepository timelineDataGapRepository;
+    GpxExportService gpxExportService;
 
     @Inject
-    FavoritesRepository favoritesRepository;
+    GeoJsonExportService geoJsonExportService;
 
     @Inject
-    UserRepository userRepository;
-
-    @Inject
-    GpsSourceRepository gpsSourceRepository;
-
-    @Inject
-    ReverseGeocodingLocationRepository reverseGeocodingLocationRepository;
+    OwnTracksExportService ownTracksExportService;
 
     @Inject
     ExportDataMapper exportDataMapper;
-
-    @Inject
-    GpsPointMapper gpsPointMapper;
 
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
@@ -69,6 +53,13 @@ public class ExportDataGenerator {
             .enable(SerializationFeature.INDENT_OUTPUT)
             .build();
 
+    /**
+     * Generates a ZIP archive containing exported data in native format.
+     *
+     * @param job the export job specification
+     * @return the ZIP archive as bytes
+     * @throws IOException if an I/O error occurs
+     */
     public byte[] generateExportZip(ExportJob job) throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
@@ -79,7 +70,7 @@ public class ExportDataGenerator {
             // Collect dependencies if timeline is being exported
             Set<String> actualDataTypes = new HashSet<>(job.getDataTypes());
             if (job.getDataTypes().contains(ExportImportConstants.DataTypes.TIMELINE)) {
-                collectTimelineDependencies(job, actualDataTypes);
+                dependencyResolver.collectTimelineDependencies(job, actualDataTypes);
             }
 
             // Export dependencies first (order matters for import)
@@ -122,159 +113,80 @@ public class ExportDataGenerator {
         }
     }
 
+    /**
+     * Generates an OwnTracks format export.
+     *
+     * @param job the export job
+     * @return the OwnTracks JSON as bytes
+     * @throws IOException if an I/O error occurs
+     */
     public byte[] generateOwnTracksExport(ExportJob job) throws IOException {
-        log.debug("Generating OwnTracks export for user {}", job.getUserId());
-
-        // Use pagination to handle large datasets
-        int pageSize = 1000;
-        int page = 0;
-        var allPoints = new java.util.ArrayList<org.github.tess1o.geopulse.gps.model.GpsPointEntity>();
-
-        while (true) {
-            var pageData = gpsPointRepository.findByUserAndDateRange(
-                    job.getUserId(),
-                    job.getDateRange().getStartDate(),
-                    job.getDateRange().getEndDate(),
-                    page,
-                    pageSize,
-                    "timestamp",
-                    "asc"
-            );
-
-            if (pageData.isEmpty()) {
-                break;
-            }
-
-            allPoints.addAll(pageData);
-            page++;
-        }
-
-        // Convert GPS points to OwnTracks format
-        var ownTracksMessages = gpsPointMapper.toOwnTracksLocationMessages(allPoints);
-
-        // Create JSON array for OwnTracks format
-        String json = objectMapper.writeValueAsString(ownTracksMessages);
-
-        log.debug("Generated OwnTracks export with {} GPS points", allPoints.size());
-        return json.getBytes();
+        return ownTracksExportService.generateOwnTracksExport(job);
     }
 
+    /**
+     * Generates a GeoJSON format export.
+     *
+     * @param job the export job
+     * @return the GeoJSON as bytes
+     * @throws IOException if an I/O error occurs
+     */
     public byte[] generateGeoJsonExport(ExportJob job) throws IOException {
-        log.debug("Generating GeoJSON export for user {}", job.getUserId());
-
-        // Use pagination to handle large datasets
-        int pageSize = 1000;
-        int page = 0;
-        var allFeatures = new java.util.ArrayList<org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature>();
-
-        while (true) {
-            var pageData = gpsPointRepository.findByUserAndDateRange(
-                    job.getUserId(),
-                    job.getDateRange().getStartDate(),
-                    job.getDateRange().getEndDate(),
-                    page,
-                    pageSize,
-                    "timestamp",
-                    "asc"
-            );
-
-            if (pageData.isEmpty()) {
-                break;
-            }
-
-            // Convert GPS points to GeoJSON features
-            for (var gpsPoint : pageData) {
-                allFeatures.add(convertGpsPointToGeoJsonFeature(gpsPoint));
-            }
-
-            page++;
-        }
-
-        // Create GeoJSON FeatureCollection
-        var featureCollection = org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeatureCollection.builder()
-                .type("FeatureCollection")
-                .features(allFeatures)
-                .build();
-
-        // Serialize to JSON
-        String json = objectMapper.writeValueAsString(featureCollection);
-
-        log.debug("Generated GeoJSON export with {} GPS points", allFeatures.size());
-        return json.getBytes();
+        return geoJsonExportService.generateGeoJsonExport(job);
     }
 
-    private org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature convertGpsPointToGeoJsonFeature(
-            org.github.tess1o.geopulse.gps.model.GpsPointEntity gpsPoint) {
-        // Extract coordinates from PostGIS Point geometry
-        double longitude = gpsPoint.getCoordinates().getX();
-        double latitude = gpsPoint.getCoordinates().getY();
-
-        // Create Point geometry with optional altitude
-        org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint geometry;
-        if (gpsPoint.getAltitude() != null) {
-            geometry = new org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint(
-                    longitude, latitude, gpsPoint.getAltitude()
-            );
-        } else {
-            geometry = new org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint(
-                    longitude, latitude
-            );
-        }
-
-        // Create properties with GPS metadata
-        var properties = org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonProperties.builder()
-                .timestamp(gpsPoint.getTimestamp().toString())
-                .altitude(gpsPoint.getAltitude())
-                .velocity(gpsPoint.getVelocity())
-                .accuracy(gpsPoint.getAccuracy())
-                .battery(gpsPoint.getBattery() != null ? gpsPoint.getBattery().intValue() : null)
-                .deviceId(gpsPoint.getDeviceId())
-                .sourceType(gpsPoint.getSourceType() != null ? gpsPoint.getSourceType().name() : null)
-                .build();
-
-        // Create and return Feature
-        return org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature.builder()
-                .type("Feature")
-                .geometry(geometry)
-                .properties(properties)
-                .id(gpsPoint.getId() != null ? gpsPoint.getId().toString() : null)
-                .build();
+    /**
+     * Generates a GPX format export.
+     *
+     * @param job        the export job
+     * @param zipPerTrip if true, creates separate GPX files per trip/stay in a ZIP
+     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
+     * @return the GPX file or ZIP archive as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
+        return gpxExportService.generateGpxExport(job, zipPerTrip, zipGroupBy);
     }
+
+    /**
+     * Generates a GPX file for a single trip.
+     *
+     * @param userId the user ID
+     * @param tripId the trip ID
+     * @return the GPX file as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] generateSingleTripGpx(java.util.UUID userId, Long tripId) throws IOException {
+        return gpxExportService.generateSingleTripGpx(userId, tripId);
+    }
+
+    /**
+     * Generates a GPX file for a single stay.
+     *
+     * @param userId the user ID
+     * @param stayId the stay ID
+     * @return the GPX file as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] generateSingleStayGpx(java.util.UUID userId, Long stayId) throws IOException {
+        return gpxExportService.generateSingleStayGpx(userId, stayId);
+    }
+
+    // ========================================
+    // Private helper methods for ZIP export
+    // ========================================
 
     private void addMetadataFile(ZipOutputStream zos, ExportJob job) throws IOException {
         ExportMetadataDto metadata = exportDataMapper.toMetadataDto(job);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.METADATA, metadata);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.METADATA, metadata);
     }
 
     private void addRawGpsData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting raw GPS data for user {}", job.getUserId());
 
-        // Use pagination to handle large datasets
-        int pageSize = 1000;
-        int page = 0;
-        var allPoints = new java.util.ArrayList<org.github.tess1o.geopulse.gps.model.GpsPointEntity>();
-
-        while (true) {
-            var pageData = gpsPointRepository.findByUserAndDateRange(
-                    job.getUserId(),
-                    job.getDateRange().getStartDate(),
-                    job.getDateRange().getEndDate(),
-                    page,
-                    pageSize,
-                    "timestamp",
-                    "asc"
-            );
-
-            if (pageData.isEmpty()) {
-                break;
-            }
-
-            allPoints.addAll(pageData);
-            page++;
-        }
-
+        var allPoints = dataCollectorService.collectGpsPoints(job);
         RawGpsDataDto gpsData = exportDataMapper.toRawGpsDataDto(allPoints, job);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.RAW_GPS_DATA, gpsData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.RAW_GPS_DATA, gpsData);
 
         log.debug("Exported {} GPS points", allPoints.size());
     }
@@ -282,29 +194,12 @@ public class ExportDataGenerator {
     private void addTimelineData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting timeline data for user {}", job.getUserId());
 
-        // Export stays
-        var stays = timelineStayRepository.findByUserAndDateRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate()
-        );
-
-        // Export trips
-        var trips = timelineTripRepository.findByUserAndDateRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate()
-        );
-
-        // Export data gaps
-        var dataGaps = timelineDataGapRepository.findByUserIdAndTimeRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate()
-        );
+        var stays = dataCollectorService.collectTimelineStays(job);
+        var trips = dataCollectorService.collectTimelineTrips(job);
+        var dataGaps = dataCollectorService.collectDataGaps(job);
 
         TimelineDataDto timelineData = exportDataMapper.toTimelineDataDto(stays, trips, dataGaps, job);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.TIMELINE_DATA, timelineData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.TIMELINE_DATA, timelineData);
 
         log.debug("Exported {} stays, {} trips and {} data gaps", stays.size(), trips.size(), dataGaps.size());
     }
@@ -312,11 +207,7 @@ public class ExportDataGenerator {
     private void addDataGapsData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting data gaps for user {}", job.getUserId());
 
-        var dataGaps = timelineDataGapRepository.findByUserIdAndTimeRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate()
-        );
+        var dataGaps = dataCollectorService.collectDataGaps(job);
 
         DataGapsDataDto dataGapsData = DataGapsDataDto.builder()
                 .dataType("dataGaps")
@@ -328,7 +219,7 @@ public class ExportDataGenerator {
                         .collect(java.util.stream.Collectors.toList()))
                 .build();
 
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.DATA_GAPS, dataGapsData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.DATA_GAPS, dataGapsData);
 
         log.debug("Exported {} data gaps", dataGaps.size());
     }
@@ -336,24 +227,20 @@ public class ExportDataGenerator {
     private void addFavoritesData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting favorites data for user {}", job.getUserId());
 
-        var favorites = favoritesRepository.findByUserId(job.getUserId());
+        var favorites = dataCollectorService.collectFavorites(job.getUserId());
         FavoritesDataDto favoritesData = exportDataMapper.toFavoritesDataDto(favorites);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.FAVORITES, favoritesData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.FAVORITES, favoritesData);
 
-        log.debug("Exported {} favorite points and {} favorite areas", 
+        log.debug("Exported {} favorite points and {} favorite areas",
                 favoritesData.getPoints().size(), favoritesData.getAreas().size());
     }
 
     private void addUserInfoData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting user info for user {}", job.getUserId());
 
-        var user = userRepository.findById(job.getUserId());
-        if (user == null) {
-            throw new IllegalStateException("User not found: " + job.getUserId());
-        }
-
+        var user = dataCollectorService.collectUserInfo(job.getUserId());
         UserInfoDataDto userInfoData = exportDataMapper.toUserInfoDataDto(user);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.USER_INFO, userInfoData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.USER_INFO, userInfoData);
 
         log.debug("Exported user info for user {}", user.getEmail());
     }
@@ -361,82 +248,28 @@ public class ExportDataGenerator {
     private void addLocationSourcesData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting location sources for user {}", job.getUserId());
 
-        var sources = gpsSourceRepository.findByUserId(job.getUserId());
+        var sources = dataCollectorService.collectLocationSources(job.getUserId());
         LocationSourcesDataDto sourcesData = exportDataMapper.toLocationSourcesDataDto(sources);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.LOCATION_SOURCES, sourcesData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.LOCATION_SOURCES, sourcesData);
 
         log.debug("Exported {} location sources", sources.size());
-    }
-
-    private void collectTimelineDependencies(ExportJob job, Set<String> actualDataTypes) {
-        log.debug("Collecting timeline dependencies for user {}", job.getUserId());
-
-        // Get all stays to collect dependency IDs
-        var stays = timelineStayRepository.findByUserAndDateRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate()
-        );
-
-        // Collect unique favorite IDs
-        Set<Long> favoriteIds = stays.stream()
-                .filter(stay -> stay.getFavoriteLocation() != null)
-                .map(stay -> stay.getFavoriteLocation().getId())
-                .collect(Collectors.toSet());
-
-        // Collect unique reverse geocoding IDs
-        Set<Long> geocodingIds = stays.stream()
-                .filter(stay -> stay.getGeocodingLocation() != null)
-                .map(stay -> stay.getGeocodingLocation().getId())
-                .collect(Collectors.toSet());
-
-        if (!favoriteIds.isEmpty()) {
-            actualDataTypes.add(ExportImportConstants.DataTypes.FAVORITES);
-            log.debug("Auto-including {} favorite locations for timeline export", favoriteIds.size());
-        }
-
-        if (!geocodingIds.isEmpty()) {
-            actualDataTypes.add(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION);
-            log.debug("Auto-including {} reverse geocoding locations for timeline export", geocodingIds.size());
-        }
     }
 
     private void addReverseGeocodingData(ZipOutputStream zos, ExportJob job) throws IOException {
         log.debug("Exporting reverse geocoding data for user {}", job.getUserId());
 
-        // Get all stays to collect reverse geocoding IDs
-        var stays = timelineStayRepository.findByUserAndDateRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate()
-        );
-
-        // Collect unique reverse geocoding IDs
-        Set<Long> geocodingIds = stays.stream()
-                .filter(stay -> stay.getGeocodingLocation() != null)
-                .map(stay -> stay.getGeocodingLocation().getId())
-                .collect(Collectors.toSet());
+        var stays = dataCollectorService.collectTimelineStays(job);
+        Set<Long> geocodingIds = dependencyResolver.extractGeocodingIds(stays);
 
         if (geocodingIds.isEmpty()) {
             log.debug("No reverse geocoding locations to export");
             return;
         }
 
-        // Fetch the reverse geocoding locations
-        var geocodingLocations = reverseGeocodingLocationRepository.findByIds(geocodingIds.stream().toList());
+        var geocodingLocations = dataCollectorService.collectReverseGeocodingLocations(geocodingIds);
         ReverseGeocodingDataDto geocodingData = exportDataMapper.toReverseGeocodingDataDto(geocodingLocations);
-        addJsonFileToZip(zos, ExportImportConstants.FileNames.REVERSE_GEOCODING, geocodingData);
+        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.REVERSE_GEOCODING, geocodingData);
 
         log.debug("Exported {} reverse geocoding locations", geocodingLocations.size());
-    }
-
-    private void addJsonFileToZip(ZipOutputStream zos, String fileName, Object data) throws IOException {
-        ZipEntry entry = new ZipEntry(fileName);
-        zos.putNextEntry(entry);
-
-        String json = objectMapper.writeValueAsString(data);
-        zos.write(json.getBytes());
-
-        zos.closeEntry();
     }
 }
