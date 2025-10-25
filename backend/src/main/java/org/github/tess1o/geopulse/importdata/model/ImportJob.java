@@ -23,6 +23,15 @@ public class ImportJob {
     private Instant createdAt;
     private Instant completedAt;
     private Instant estimatedProcessingTime;
+
+    // Timestamps from data (captured during validation for use in clear mode)
+    private Instant dataFirstTimestamp;
+    private Instant dataLastTimestamp;
+
+    // Temporary file path for large files (memory optimization)
+    // If set, use this instead of zipData
+    private String tempFilePath;
+
     @ToString.Exclude
     private byte[] zipData;
 
@@ -43,5 +52,28 @@ public class ImportJob {
     public void updateProgress(int progress, String message) {
         this.progress = progress;
         this.progressMessage = message;
+    }
+
+    /**
+     * Get the import data as an InputStream, abstracting whether it's from memory or file.
+     * This allows transparent handling of both small (in-memory) and large (file-based) imports.
+     */
+    public java.io.InputStream getDataStream() throws java.io.IOException {
+        if (tempFilePath != null) {
+            // Large file mode: stream from disk
+            return java.nio.file.Files.newInputStream(java.nio.file.Paths.get(tempFilePath));
+        } else if (zipData != null) {
+            // Small file mode: stream from memory
+            return new java.io.ByteArrayInputStream(zipData);
+        } else {
+            throw new IllegalStateException("ImportJob has neither tempFilePath nor zipData");
+        }
+    }
+
+    /**
+     * Check if this job uses a temporary file (vs in-memory data)
+     */
+    public boolean hasTempFile() {
+        return tempFilePath != null;
     }
 }

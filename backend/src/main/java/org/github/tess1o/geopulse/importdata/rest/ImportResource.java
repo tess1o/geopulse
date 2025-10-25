@@ -38,6 +38,9 @@ public class ImportResource {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    org.github.tess1o.geopulse.importdata.service.ImportTempFileService tempFileService;
+
     private static final int MAX_FILE_SIZE_BYTES = 1500 * 1024 * 1024;
 
     @POST
@@ -385,57 +388,112 @@ public class ImportResource {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received GeoJSON import request for user: {}", userId);
 
+            // Debug logging
+            log.debug("File parameter: {}", file != null ? "present" : "null");
+            log.debug("Options parameter: {}", options);
+            if (file != null) {
+                log.debug("File name: {}, size: {} bytes", file.fileName(), file.size());
+            }
+
             // Validate file
             if (file == null || file.size() == 0) {
+                log.warn("File validation failed: file is null or empty");
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE", "No file provided"))
                         .build();
             }
 
-            // Check file size (max 100MB)
+            // Check file size (max 1500MB)
             if (file.size() > MAX_FILE_SIZE_BYTES) {
+                log.warn("File size validation failed: {} bytes exceeds limit of {} bytes",
+                        file.size(), MAX_FILE_SIZE_BYTES);
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
+                        .entity(createErrorResponse("FILE_TOO_LARGE",
+                                String.format("File size (%d MB) exceeds %d MB limit",
+                                        file.size() / (1024 * 1024),
+                                        MAX_FILE_SIZE_BYTES / (1024 * 1024))))
                         .build();
             }
 
             // Validate file extension (should be .json or .geojson)
             String fileName = file.fileName() != null ? file.fileName() : "geojson-import.geojson";
             String lowerFileName = fileName.toLowerCase(Locale.ENGLISH);
+            log.debug("File extension check: {}", fileName);
             if (!lowerFileName.endsWith(".json") && !lowerFileName.endsWith(".geojson")) {
+                log.warn("File extension validation failed: {}", fileName);
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE_TYPE", "Only JSON and GeoJSON files are supported for GeoJSON import"))
                         .build();
             }
 
-            // Read file content
-            byte[] fileContent;
-            try {
-                fileContent = Files.readAllBytes(file.uploadedFile());
-            } catch (IOException e) {
-                log.error("Failed to read uploaded file", e);
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
-                        .build();
-            }
-
-            // Parse options
+            // Parse options first
             ImportOptions importOptions;
             try {
+                log.debug("Parsing options JSON: {}", options);
                 importOptions = objectMapper.readValue(options, ImportOptions.class);
                 // Force format to be geojson
                 importOptions.setImportFormat("geojson");
+                log.debug("Parsed import options successfully: clearData={}",
+                        importOptions.isClearDataBeforeImport());
             } catch (Exception e) {
-                log.error("Failed to parse import options", e);
+                log.error("Failed to parse import options: {}", options, e);
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("INVALID_OPTIONS", "Invalid import options format"))
+                        .entity(createErrorResponse("INVALID_OPTIONS",
+                                "Invalid import options format: " + e.getMessage()))
                         .build();
             }
 
-            // Create GeoJSON import job
-            ImportJob job = importService.createGeoJsonImportJob(userId, importOptions, fileName, fileContent);
+            // Handle file based on size - large files use temp storage, small files use memory
+            ImportJob job;
+
+            // CRITICAL: Capture file size BEFORE moving the file!
+            // After the file is moved, the original upload path no longer exists
+            long fileSize = file.size();
+
+            if (tempFileService.shouldUseTempFile(fileSize)) {
+                // Large file: move to temp storage (no memory overhead)
+                log.info("Large file detected ({} MB), using temp file storage",
+                        fileSize / (1024 * 1024));
+                try {
+                    String tempFilePath = tempFileService.moveUploadedFileToTemp(
+                            file.uploadedFile(), java.util.UUID.randomUUID(), fileName);
+
+                    // Create job with temp file path (no data in memory!)
+                    job = new ImportJob(userId, importOptions, fileName, new byte[0]);
+                    job.setTempFilePath(tempFilePath);
+                    job.setFileSizeBytes(fileSize);
+
+                    importService.registerJob(job);
+
+                    log.info("Created GeoJSON import job with temp file: file={}, size={} MB, path={}",
+                            fileName, fileSize / (1024 * 1024), tempFilePath);
+                } catch (IOException e) {
+                    log.error("Failed to move uploaded file to temp storage", e);
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(createErrorResponse("FILE_MOVE_ERROR",
+                                    "Failed to process uploaded file"))
+                            .build();
+                }
+            } else {
+                // Small file: keep in memory (fast path)
+                log.info("Small file detected ({} MB), keeping in memory",
+                        file.size() / (1024 * 1024));
+                try {
+                    byte[] fileContent = Files.readAllBytes(file.uploadedFile());
+                    job = importService.createGeoJsonImportJob(userId, importOptions, fileName, fileContent);
+
+                    log.info("Created GeoJSON import job in memory: file={}, size={} bytes",
+                            fileName, fileContent.length);
+                } catch (IOException e) {
+                    log.error("Failed to read uploaded file", e);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                            .build();
+                }
+            }
 
             // Create response
+            log.info("GeoJSON import job created successfully: jobId={}", job.getJobId());
             ImportJobResponse response = new ImportJobResponse();
             response.setSuccess(true);
             response.setImportJobId(job.getJobId());
