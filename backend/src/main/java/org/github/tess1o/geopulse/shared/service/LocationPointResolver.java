@@ -211,7 +211,20 @@ public class LocationPointResolver {
                     Thread.sleep(1000);
                 }
 
-                FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
+                FormattableGeocodingResult geocodingResult;
+                try {
+                    geocodingResult = geocodingService.getLocationName(point);
+                } catch (Exception geocodingError) {
+                    // Geocoding failed - use fallback to prevent transaction rollback
+                    log.warn("Geocoding failed for {}, using fallback: {}", coordKey, geocodingError.getMessage());
+                    geocodingResult = org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult.builder()
+                            .requestCoordinates(point)
+                            .resultCoordinates(point)
+                            .formattedDisplayName(String.format("Location unavailable (%.6f, %.6f)", point.getY(), point.getX()))
+                            .providerName("fallback-error")
+                            .build();
+                }
+
                 Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(point).orElse(null);
 
                 results.put(coordKey, LocationResolutionResult.fromGeocoding(
@@ -222,7 +235,7 @@ public class LocationPointResolver {
                 break;
             } catch (Exception e) {
                 // Log error but continue processing other coordinates
-                log.warn("Failed to geocode coordinates {}: {}", coordKey, e.getMessage());
+                log.warn("Failed to process coordinates {}: {}", coordKey, e.getMessage());
                 results.put(coordKey, LocationResolutionResult.fromGeocoding("Unknown Location", null));
             }
         }
