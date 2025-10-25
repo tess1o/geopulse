@@ -53,15 +53,20 @@ public class GeocodingProviderFactory {
         Uni<FormattableGeocodingResult> primaryResult = callProvider(geocodingConfig.provider().primary(), requestCoordinates);
 
         // If fallback is configured, try it on primary failure
-        String fallbackProvider = geocodingConfig.provider().fallback().orElse("");
+        // Treat empty/blank strings as "no fallback configured"
+        java.util.Optional<String> fallbackProvider = geocodingConfig.provider().fallback()
+                .filter(s -> !s.isBlank())
+                .filter(s -> !s.equalsIgnoreCase(geocodingConfig.provider().primary()));
 
-        if (!fallbackProvider.isEmpty() && !fallbackProvider.equalsIgnoreCase(geocodingConfig.provider().primary())) {
+        if (fallbackProvider.isPresent()) {
             return primaryResult.onFailure().recoverWithUni(failure -> {
-                log.warn("Primary provider '{}' failed, trying fallback provider '{}'", geocodingConfig.provider().primary(), fallbackProvider, failure);
-                return callProvider(fallbackProvider, requestCoordinates);
+                log.warn("Primary provider '{}' failed, trying fallback provider '{}'",
+                        geocodingConfig.provider().primary(), fallbackProvider.get(), failure);
+                return callProvider(fallbackProvider.get(), requestCoordinates);
             });
         } else {
             // No fallback configured, just return primary result (success or failure)
+            log.debug("No valid fallback provider configured, returning primary result");
             return primaryResult;
         }
     }

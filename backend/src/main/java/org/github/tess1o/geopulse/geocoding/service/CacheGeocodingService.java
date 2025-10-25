@@ -4,6 +4,7 @@ import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import jakarta.transaction.Transactional.TxType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingCacheException;
@@ -45,6 +46,7 @@ public class CacheGeocodingService {
      * @param requestCoordinates The coordinates to look up
      * @return Full geocoding result if found
      */
+    @Transactional(TxType.REQUIRES_NEW)
     public Optional<FormattableGeocodingResult> getCachedGeocodingResult(Point requestCoordinates) {
         if (requestCoordinates == null) {
             return Optional.empty();
@@ -90,6 +92,7 @@ public class CacheGeocodingService {
      * @param requestCoordinates The coordinates to look up
      * @return Entity ID if found in cache
      */
+    @Transactional(TxType.REQUIRES_NEW)
     public Optional<Long> getCachedGeocodingResultId(Point requestCoordinates) {
         if (requestCoordinates == null) {
             return Optional.empty();
@@ -117,10 +120,12 @@ public class CacheGeocodingService {
 
     /**
      * Cache a structured geocoding result.
+     * Uses REQUIRES_NEW to ensure cache writes commit independently and survive outer transaction rollbacks.
+     * This prevents the "going in circles" problem where successful geocoding results are lost on rollback.
      *
      * @param geocodingResult The structured geocoding result to cache
      */
-    @Transactional
+    @Transactional(TxType.REQUIRES_NEW)
     public void cacheGeocodingResult(FormattableGeocodingResult geocodingResult) {
         if (geocodingResult == null || geocodingResult.getRequestCoordinates() == null) {
             throw new IllegalArgumentException("Geocoding result and request coordinates cannot be null");
@@ -168,6 +173,7 @@ public class CacheGeocodingService {
      * @param coordinates List of coordinates to look up
      * @return Map of coordinate string (lon,lat) to entity ID
      */
+    @Transactional(TxType.REQUIRES_NEW)
     public Map<String, Long> getCachedGeocodingResultIdsBatch(List<Point> coordinates) {
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
@@ -196,6 +202,7 @@ public class CacheGeocodingService {
      * @param coordinates List of coordinates to look up
      * @return Map of coordinate string (lon,lat) to FormattableGeocodingResult
      */
+    @Transactional(TxType.REQUIRES_NEW)
     public Map<String, FormattableGeocodingResult> getCachedGeocodingResultsBatch(List<Point> coordinates) {
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
