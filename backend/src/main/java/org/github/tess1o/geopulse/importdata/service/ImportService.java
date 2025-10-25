@@ -178,6 +178,30 @@ public class ImportService {
         return job;
     }
 
+    /**
+     * Register an already-created import job (for temp file scenarios)
+     */
+    public void registerJob(ImportJob job) {
+        // Check if user has too many active jobs
+        long userActiveJobs = activeJobs.values().stream()
+                .filter(j -> j.getUserId().equals(job.getUserId()))
+                .filter(j -> j.getStatus() != ImportStatus.FAILED && j.getStatus() != ImportStatus.COMPLETED)
+                .count();
+
+        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
+        }
+
+        // Pre-populate detected data types for GeoJSON (only GPS data)
+        if ("geojson".equals(job.getOptions().getImportFormat())) {
+            job.setDetectedDataTypes(List.of("rawgps"));
+        }
+
+        activeJobs.put(job.getJobId(), job);
+
+        log.info("Registered import job {} for user {}", job.getJobId(), job.getUserId());
+    }
+
     public ImportJob getImportJob(UUID jobId, UUID userId) {
         ImportJob job = activeJobs.get(jobId);
         if (job == null || !job.getUserId().equals(userId)) {

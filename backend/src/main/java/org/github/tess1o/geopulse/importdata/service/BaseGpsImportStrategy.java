@@ -55,7 +55,11 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             
             log.info("{} validation successful: {} total records, {} valid GPS points",
                     getFormat(), validationResult.getTotalRecordCount(), validationResult.getValidRecordCount());
-            
+
+            // Store timestamps in job for use in clear mode
+            job.setDataFirstTimestamp(validationResult.getFirstTimestamp());
+            job.setDataLastTimestamp(validationResult.getLastTimestamp());
+
             return List.of(ExportImportConstants.DataTypes.RAW_GPS);
             
         } catch (Exception e) {
@@ -222,18 +226,35 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
     protected static class FormatValidationResult {
         private final int totalRecordCount;
         private final int validRecordCount;
-        
+        private final Instant firstTimestamp;
+        private final Instant lastTimestamp;
+
         public FormatValidationResult(int totalRecordCount, int validRecordCount) {
+            this(totalRecordCount, validRecordCount, null, null);
+        }
+
+        public FormatValidationResult(int totalRecordCount, int validRecordCount,
+                                     Instant firstTimestamp, Instant lastTimestamp) {
             this.totalRecordCount = totalRecordCount;
             this.validRecordCount = validRecordCount;
+            this.firstTimestamp = firstTimestamp;
+            this.lastTimestamp = lastTimestamp;
         }
-        
+
         public int getTotalRecordCount() {
             return totalRecordCount;
         }
-        
+
         public int getValidRecordCount() {
             return validRecordCount;
+        }
+
+        public Instant getFirstTimestamp() {
+            return firstTimestamp;
+        }
+
+        public Instant getLastTimestamp() {
+            return lastTimestamp;
         }
     }
 }
