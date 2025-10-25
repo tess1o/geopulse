@@ -96,7 +96,8 @@ public class ExportJobManager {
         return job;
     }
 
-    public ExportJob createGpxExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange, boolean zipPerTrip) {
+    public ExportJob createGpxExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
+                                        boolean zipPerTrip, String zipGroupBy) {
 
         // Check if user has too many active jobs
         long userActiveJobs = activeJobs.values().stream()
@@ -112,12 +113,13 @@ public class ExportJobManager {
         List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
         java.util.Map<String, Object> options = new java.util.HashMap<>();
         options.put("zipPerTrip", zipPerTrip);
+        options.put("zipGroupBy", zipGroupBy != null ? zipGroupBy : "individual");
 
         ExportJob job = new ExportJob(userId, dataTypes, dateRange, "gpx", options);
         activeJobs.put(job.getJobId(), job);
 
-        log.info("Created GPX export job {} for user {} with date range: {} to {}, zipPerTrip={}",
-                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate(), zipPerTrip);
+        log.info("Created GPX export job {} for user {} with date range: {} to {}, zipPerTrip={}, zipGroupBy={}",
+                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate(), zipPerTrip, zipGroupBy);
 
         return job;
     }
@@ -199,11 +201,18 @@ public class ExportJobManager {
                 } else if ("gpx".equals(job.getFormat())) {
                     // Generate GPX data (either single file or zip)
                     boolean zipPerTrip = false;
-                    if (job.getOptions() != null && job.getOptions().containsKey("zipPerTrip")) {
-                        zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
+                    String zipGroupBy = "individual"; // default
+
+                    if (job.getOptions() != null) {
+                        if (job.getOptions().containsKey("zipPerTrip")) {
+                            zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
+                        }
+                        if (job.getOptions().containsKey("zipGroupBy")) {
+                            zipGroupBy = job.getOptions().get("zipGroupBy").toString();
+                        }
                     }
 
-                    byte[] gpxData = exportDataGenerator.generateGpxExport(job, zipPerTrip);
+                    byte[] gpxData = exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
 
                     if (zipPerTrip) {
                         job.setZipData(gpxData);
@@ -212,8 +221,8 @@ public class ExportJobManager {
                     }
 
                     job.setFileSizeBytes(gpxData.length);
-                    log.info("Completed GPX export job {} - {} bytes, zipPerTrip={}",
-                            job.getJobId(), gpxData.length, zipPerTrip);
+                    log.info("Completed GPX export job {} - {} bytes, zipPerTrip={}, zipGroupBy={}",
+                            job.getJobId(), gpxData.length, zipPerTrip, zipGroupBy);
                 } else {
                     // Generate ZIP data for GeoPulse format
                     byte[] zipData = exportDataGenerator.generateExportZip(job);

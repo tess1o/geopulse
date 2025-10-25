@@ -42,14 +42,16 @@ public class GpxExportService {
      *
      * @param job         the export job
      * @param zipPerTrip  if true, creates a ZIP with separate GPX files per trip/stay
+     * @param zipGroupBy  grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
      * @return the GPX file content or ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
-    public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip) throws IOException {
-        log.debug("Generating GPX export for user {}, zipPerTrip={}", job.getUserId(), zipPerTrip);
+    public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
+        log.debug("Generating GPX export for user {}, zipPerTrip={}, zipGroupBy={}",
+                job.getUserId(), zipPerTrip, zipGroupBy);
 
         if (zipPerTrip) {
-            return generateGpxExportAsZip(job);
+            return generateGpxExportAsZip(job, zipGroupBy);
         } else {
             return generateSingleGpxFile(job);
         }
@@ -72,11 +74,28 @@ public class GpxExportService {
     /**
      * Generates a ZIP archive with separate GPX files for each trip and stay.
      *
+     * @param job        the export job
+     * @param zipGroupBy grouping mode: "individual" (per trip/stay) or "daily" (per day)
+     * @return the ZIP archive as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    private byte[] generateGpxExportAsZip(ExportJob job, String zipGroupBy) throws IOException {
+        if ("daily".equalsIgnoreCase(zipGroupBy)) {
+            return generateGpxExportAsZipGroupedByDay(job);
+        } else {
+            // Default to individual grouping (one file per trip/stay)
+            return generateGpxExportAsZipIndividual(job);
+        }
+    }
+
+    /**
+     * Generates a ZIP archive with separate GPX files for each trip and stay (individual mode).
+     *
      * @param job the export job
      * @return the ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
-    private byte[] generateGpxExportAsZip(ExportJob job) throws IOException {
+    private byte[] generateGpxExportAsZipIndividual(ExportJob job) throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
@@ -125,6 +144,115 @@ public class GpxExportService {
                     trips.size(), stays.size(), baos.toByteArray().length);
             return baos.toByteArray();
         }
+    }
+
+    /**
+     * Generates a ZIP archive with GPX files grouped by day.
+     * Each day gets one GPX file containing all trips (as tracks) and stays (as waypoints) for that day.
+     *
+     * @param job the export job
+     * @return the ZIP archive as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    private byte[] generateGpxExportAsZipGroupedByDay(ExportJob job) throws IOException {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ZipOutputStream zos = new ZipOutputStream(baos)) {
+
+            // Get timeline trips and stays
+            var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
+            var stays = dataCollectorService.collectTimelineStaysWithExpansion(job);
+
+            // Group trips and stays by day
+            var tripsByDay = new HashMap<java.time.LocalDate, List<TimelineTripEntity>>();
+            var staysByDay = new HashMap<java.time.LocalDate, List<TimelineStayEntity>>();
+
+            for (TimelineTripEntity trip : trips) {
+                java.time.LocalDate day = java.time.LocalDateTime.ofInstant(
+                        trip.getTimestamp(), java.time.ZoneOffset.UTC).toLocalDate();
+                tripsByDay.computeIfAbsent(day, k -> new ArrayList<>()).add(trip);
+            }
+
+            for (TimelineStayEntity stay : stays) {
+                java.time.LocalDate day = java.time.LocalDateTime.ofInstant(
+                        stay.getTimestamp(), java.time.ZoneOffset.UTC).toLocalDate();
+                staysByDay.computeIfAbsent(day, k -> new ArrayList<>()).add(stay);
+            }
+
+            // Get all unique days and sort them
+            var allDays = new java.util.TreeSet<java.time.LocalDate>();
+            allDays.addAll(tripsByDay.keySet());
+            allDays.addAll(staysByDay.keySet());
+
+            log.debug("Grouping {} trips and {} stays into {} daily GPX files",
+                    trips.size(), stays.size(), allDays.size());
+
+            // Create one GPX file per day
+            for (java.time.LocalDate day : allDays) {
+                GpxFile gpxFile = buildGpxFileForDay(day,
+                        tripsByDay.getOrDefault(day, List.of()),
+                        staysByDay.getOrDefault(day, List.of()));
+
+                String filename = String.format("day_%s.gpx", day.toString());
+
+                ZipEntry entry = new ZipEntry(filename);
+                zos.putNextEntry(entry);
+                String xml = xmlMapper.writeValueAsString(gpxFile);
+                zos.write(xml.getBytes());
+                zos.closeEntry();
+
+                log.debug("Added {} with {} trips and {} stays", filename,
+                        tripsByDay.getOrDefault(day, List.of()).size(),
+                        staysByDay.getOrDefault(day, List.of()).size());
+            }
+
+            zos.finish();
+            log.debug("Generated GPX zip with {} daily files, {} bytes total",
+                    allDays.size(), baos.toByteArray().length);
+            return baos.toByteArray();
+        }
+    }
+
+    /**
+     * Builds a GPX file for a single day containing all trips and stays for that day.
+     *
+     * @param day    the date
+     * @param trips  the trips for that day
+     * @param stays  the stays for that day
+     * @return the GPX file model
+     */
+    private GpxFile buildGpxFileForDay(java.time.LocalDate day, List<TimelineTripEntity> trips,
+                                       List<TimelineStayEntity> stays) {
+        GpxFile gpxFile = new GpxFile();
+        gpxFile.setVersion("1.1");
+        gpxFile.setCreator("GeoPulse");
+
+        // Set metadata
+        GpxMetadata metadata = new GpxMetadata();
+        metadata.setName(String.format("GeoPulse Export - %s", day.toString()));
+        metadata.setDescription(String.format("GPS tracks and waypoints for %s", day.toString()));
+        metadata.setTime(java.time.Instant.now());
+        gpxFile.setMetadata(metadata);
+
+        // Build tracks from trips
+        var tracks = new ArrayList<GpxTrack>();
+        for (TimelineTripEntity trip : trips) {
+            GpxTrack track = buildGpxTrackFromTrip(trip);
+            if (track != null) {
+                tracks.add(track);
+            }
+        }
+
+        // Build waypoints from stays
+        var waypoints = new ArrayList<GpxWaypoint>();
+        for (TimelineStayEntity stay : stays) {
+            GpxWaypoint waypoint = createWaypointFromStay(stay);
+            waypoints.add(waypoint);
+        }
+
+        gpxFile.setTracks(tracks);
+        gpxFile.setWaypoints(waypoints);
+
+        return gpxFile;
     }
 
     /**

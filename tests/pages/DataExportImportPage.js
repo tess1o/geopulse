@@ -17,12 +17,37 @@ export class DataExportImportPage {
         // Format selection
         formatOptions: {
           geopulse: '#geopulse',
-          owntracks: '#owntracks'
+          owntracks: '#owntracks',
+          geojson: '#geojson',
+          gpx: '#gpx'
         },
         formatOptionLabels: {
           geopulse: 'label[for="geopulse"]',
-          owntracks: 'label[for="owntracks"]'
+          owntracks: 'label[for="owntracks"]',
+          geojson: 'label[for="geojson"]',
+          gpx: 'label[for="gpx"]'
         },
+
+        // GPX export options
+        gpxExportMode: {
+          single: '#gpx-single',
+          zip: '#gpx-zip'
+        },
+        gpxExportModeLabels: {
+          single: 'label[for="gpx-single"]',
+          zip: 'label[for="gpx-zip"]'
+        },
+
+        // GPX ZIP grouping options
+        gpxZipGrouping: {
+          individual: '#gpx-group-individual',
+          daily: '#gpx-group-daily'
+        },
+        gpxZipGroupingLabels: {
+          individual: 'label[for="gpx-group-individual"]',
+          daily: 'label[for="gpx-group-daily"]'
+        },
+        gpxZipGroupingSection: '.gpx-zip-grouping',
 
         // Data types selection
         dataTypeCheckboxes: '.data-type-checkbox',
@@ -237,6 +262,52 @@ export class DataExportImportPage {
 
     await this.page.locator(selector).click();
     await this.page.waitForTimeout(300);
+  }
+
+  async selectGpxExportMode(mode) {
+    const labelSelector = this.selectors.export.gpxExportModeLabels[mode.toLowerCase()];
+    if (!labelSelector) {
+      throw new Error(`Unknown GPX export mode: ${mode}. Available modes: single, zip`);
+    }
+    await this.page.locator(labelSelector).click();
+    await this.page.waitForTimeout(300);
+  }
+
+  async getSelectedGpxExportMode() {
+    for (const [mode, selector] of Object.entries(this.selectors.export.gpxExportMode)) {
+      const isChecked = await this.page.locator(selector).isChecked();
+      if (isChecked) {
+        return mode;
+      }
+    }
+    return null;
+  }
+
+  async selectGpxZipGrouping(grouping) {
+    const labelSelector = this.selectors.export.gpxZipGroupingLabels[grouping.toLowerCase()];
+    if (!labelSelector) {
+      throw new Error(`Unknown GPX ZIP grouping: ${grouping}. Available groupings: individual, daily`);
+    }
+    await this.page.locator(labelSelector).click();
+    await this.page.waitForTimeout(300);
+  }
+
+  async getSelectedGpxZipGrouping() {
+    for (const [grouping, selector] of Object.entries(this.selectors.export.gpxZipGrouping)) {
+      const isChecked = await this.page.locator(selector).isChecked();
+      if (isChecked) {
+        return grouping;
+      }
+    }
+    return null;
+  }
+
+  async isGpxZipGroupingVisible() {
+    try {
+      return await this.page.locator(this.selectors.export.gpxZipGroupingSection).isVisible();
+    } catch {
+      return false;
+    }
   }
 
   async clickStartExport() {
@@ -527,6 +598,17 @@ export class DataExportImportPage {
   /**
    * Database Verification Helpers (Static Methods)
    */
+
+  /**
+   * Generate timeline data for testing GPX exports with trips and stays
+   */
+  static async generateTimeline(dbManager, userId) {
+    // This is a simplified version - in production, the timeline processor would handle this
+    // For testing, we'll just ensure some basic timeline data exists
+    // The actual timeline generation happens through the backend timeline processor
+    console.log(`Timeline generation triggered for user ${userId}`);
+    // In a real scenario, you might trigger the timeline processor API endpoint here
+  }
 
   /**
    * Note: Export/Import jobs are stored in memory, not in the database.

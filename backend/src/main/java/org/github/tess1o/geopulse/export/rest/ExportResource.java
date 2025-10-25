@@ -163,11 +163,17 @@ public class ExportResource {
 
             // Get zipPerTrip option from request options
             boolean zipPerTrip = false;
-            if (request.getOptions() != null && request.getOptions().containsKey("zipPerTrip")) {
-                zipPerTrip = Boolean.parseBoolean(request.getOptions().get("zipPerTrip").toString());
+            String zipGroupBy = "individual"; // default
+            if (request.getOptions() != null) {
+                if (request.getOptions().containsKey("zipPerTrip")) {
+                    zipPerTrip = Boolean.parseBoolean(request.getOptions().get("zipPerTrip").toString());
+                }
+                if (request.getOptions().containsKey("zipGroupBy")) {
+                    zipGroupBy = request.getOptions().get("zipGroupBy").toString();
+                }
             }
 
-            ExportJob job = exportJobManager.createGpxExportJob(userId, request.getDateRange(), zipPerTrip);
+            ExportJob job = exportJobManager.createGpxExportJob(userId, request.getDateRange(), zipPerTrip, zipGroupBy);
 
             ExportJobResponse response = new ExportJobResponse();
             response.setSuccess(true);

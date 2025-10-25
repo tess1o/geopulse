@@ -107,11 +107,59 @@
                 />
                 <div class="gpx-option-info">
                   <label for="gpx-zip" class="gpx-option-label">
-                    ZIP Archive (One GPX per Trip)
+                    ZIP Archive
                   </label>
                   <p class="gpx-option-description">
-                    Separate GPX files for each timeline trip, packaged in a ZIP archive
+                    Multiple GPX files packaged in a ZIP archive
                   </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ZIP Grouping Options (shown when ZIP mode is selected) -->
+            <div v-if="gpxExportMode === 'zip'" class="gpx-zip-grouping">
+              <h4 class="grouping-title">ZIP Grouping Mode</h4>
+              <div class="grouping-options">
+                <div
+                    class="grouping-option"
+                    :class="{ 'selected': gpxZipGroupBy === 'individual' }"
+                    @click="gpxZipGroupBy = 'individual'"
+                >
+                  <RadioButton
+                      v-model="gpxZipGroupBy"
+                      inputId="gpx-group-individual"
+                      value="individual"
+                      class="grouping-radio"
+                  />
+                  <div class="grouping-option-info">
+                    <label for="gpx-group-individual" class="grouping-option-label">
+                      Individual (One file per trip/stay)
+                    </label>
+                    <p class="grouping-option-description">
+                      Each trip and stay gets its own GPX file
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                    class="grouping-option"
+                    :class="{ 'selected': gpxZipGroupBy === 'daily' }"
+                    @click="gpxZipGroupBy = 'daily'"
+                >
+                  <RadioButton
+                      v-model="gpxZipGroupBy"
+                      inputId="gpx-group-daily"
+                      value="daily"
+                      class="grouping-radio"
+                  />
+                  <div class="grouping-option-info">
+                    <label for="gpx-group-daily" class="grouping-option-label">
+                      Daily (One file per day)
+                    </label>
+                    <p class="grouping-option-description">
+                      All trips and stays for each day grouped into one GPX file
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -346,6 +394,7 @@ const exportStartDate = ref(null)
 const exportEndDate = ref(null)
 const exportFormat = ref('geopulse')
 const gpxExportMode = ref('single') // 'single' or 'zip'
+const gpxZipGroupBy = ref('individual') // 'individual' or 'daily'
 
 // Data types configuration
 const availableDataTypes = ref([
@@ -434,7 +483,8 @@ const startExport = async () => {
     } else if (exportFormat.value === 'gpx') {
       // For GPX, use GPX export endpoint with options
       const zipPerTrip = gpxExportMode.value === 'zip'
-      await exportImportStore.createGpxExportJob(dateRange, zipPerTrip)
+      const zipGroupBy = gpxZipGroupBy.value
+      await exportImportStore.createGpxExportJob(dateRange, zipPerTrip, zipGroupBy)
     } else {
       // For GeoPulse, use selected data types
       await exportImportStore.createExportJob(
@@ -621,7 +671,17 @@ onMounted(() => {
 
 .gpx-option.selected {
   border-color: var(--gp-primary);
-  background: var(--gp-primary-light);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode support for GPX options */
+:root[class*="dark"] .gpx-option {
+  background: var(--surface-ground);
+}
+
+:root[class*="dark"] .gpx-option.selected {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary-400);
 }
 
 .gpx-radio {
@@ -646,6 +706,85 @@ onMounted(() => {
   font-size: 0.875rem;
   margin: 0;
   line-height: 1.4;
+}
+
+/* ZIP Grouping Options */
+.gpx-zip-grouping {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  background: var(--gp-surface-light);
+}
+
+.grouping-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.grouping-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.grouping-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 2px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--gp-surface-light);
+}
+
+.grouping-option:hover {
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-hover);
+}
+
+.grouping-option.selected {
+  border-color: var(--gp-primary);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode support */
+:root[class*="dark"] .grouping-option {
+  background: var(--surface-ground);
+}
+
+:root[class*="dark"] .grouping-option.selected {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: var(--primary-400);
+}
+
+.grouping-radio {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.grouping-option-info {
+  flex: 1;
+}
+
+.grouping-option-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--gp-text-primary);
+  margin-bottom: 0.15rem;
+  cursor: pointer;
+}
+
+.grouping-option-description {
+  color: var(--gp-text-secondary);
+  font-size: 0.8rem;
+  margin: 0;
+  line-height: 1.3;
 }
 
 /* Export History */

@@ -140,11 +140,12 @@ public class ExportDataGenerator {
      *
      * @param job        the export job
      * @param zipPerTrip if true, creates separate GPX files per trip/stay in a ZIP
+     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
      * @return the GPX file or ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
-    public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip) throws IOException {
-        return gpxExportService.generateGpxExport(job, zipPerTrip);
+    public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
+        return gpxExportService.generateGpxExport(job, zipPerTrip, zipGroupBy);
     }
 
     /**

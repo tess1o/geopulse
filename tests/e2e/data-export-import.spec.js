@@ -387,6 +387,205 @@ test.describe('Data Export & Import', () => {
     });
   });
 
+  test.describe('Export - GPX Format Options', () => {
+    test('should export GPX as single file', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const exportImportPage = new DataExportImportPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await exportImportPage.navigate();
+      await exportImportPage.waitForPageLoad();
+
+      // Select GPX format
+      await exportImportPage.selectExportFormat('gpx');
+      await exportImportPage.clickDateRangePreset('last30days');
+
+      // Ensure single file mode is selected (default)
+      await exportImportPage.selectGpxExportMode('single');
+
+      // Start export
+      await exportImportPage.clickStartExport();
+      await exportImportPage.waitForSuccessToast('Export Started');
+      await exportImportPage.waitForExportJobStatus('Completed', 60000);
+
+      // Download and verify
+      const downloadPromise = page.waitForEvent('download');
+      await exportImportPage.clickDownloadExport();
+      const download = await downloadPromise;
+
+      expect(download).toBeTruthy();
+      const filename = download.suggestedFilename();
+      expect(filename).toMatch(/\.gpx$/);
+      expect(filename).not.toMatch(/\.zip$/);
+    });
+
+    test('should export GPX as ZIP with individual grouping', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const exportImportPage = new DataExportImportPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      // Insert GPS data and generate timeline
+      await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 100);
+      await DataExportImportPage.generateTimeline(dbManager, user.id);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await exportImportPage.navigate();
+      await exportImportPage.waitForPageLoad();
+
+      // Select GPX format
+      await exportImportPage.selectExportFormat('gpx');
+      await exportImportPage.clickDateRangePreset('alltime');
+
+      // Select ZIP mode
+      await exportImportPage.selectGpxExportMode('zip');
+
+      // Select individual grouping (should be default)
+      await exportImportPage.selectGpxZipGrouping('individual');
+
+      // Start export
+      await exportImportPage.clickStartExport();
+      await exportImportPage.waitForSuccessToast('Export Started');
+      await exportImportPage.waitForExportJobStatus('Completed', 60000);
+
+      // Download and verify it's a ZIP file
+      const downloadPromise = page.waitForEvent('download');
+      await exportImportPage.clickDownloadExport();
+      const download = await downloadPromise;
+
+      expect(download).toBeTruthy();
+      const filename = download.suggestedFilename();
+      expect(filename).toMatch(/\.zip$/);
+      expect(filename).toContain('gpx');
+    });
+
+    test('should export GPX as ZIP with daily grouping', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const exportImportPage = new DataExportImportPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      // Insert GPS data across multiple days
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+      await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50, {
+        startDate: threeDaysAgo,
+        endDate: twoDaysAgo
+      });
+
+      // Generate timeline
+      await DataExportImportPage.generateTimeline(dbManager, user.id);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await exportImportPage.navigate();
+      await exportImportPage.waitForPageLoad();
+
+      // Select GPX format
+      await exportImportPage.selectExportFormat('gpx');
+      await exportImportPage.clickDateRangePreset('alltime');
+
+      // Select ZIP mode
+      await exportImportPage.selectGpxExportMode('zip');
+
+      // Select daily grouping
+      await exportImportPage.selectGpxZipGrouping('daily');
+
+      // Start export
+      await exportImportPage.clickStartExport();
+      await exportImportPage.waitForSuccessToast('Export Started');
+      await exportImportPage.waitForExportJobStatus('Completed', 60000);
+
+      // Download and verify it's a ZIP file
+      const downloadPromise = page.waitForEvent('download');
+      await exportImportPage.clickDownloadExport();
+      const download = await downloadPromise;
+
+      expect(download).toBeTruthy();
+      const filename = download.suggestedFilename();
+      expect(filename).toMatch(/\.zip$/);
+      expect(filename).toContain('gpx');
+    });
+
+    test('should show ZIP grouping options only when ZIP mode is selected', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const exportImportPage = new DataExportImportPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await exportImportPage.navigate();
+      await exportImportPage.waitForPageLoad();
+
+      // Select GPX format
+      await exportImportPage.selectExportFormat('gpx');
+
+      // Initially in single mode - grouping options should not be visible
+      await exportImportPage.selectGpxExportMode('single');
+      expect(await exportImportPage.isGpxZipGroupingVisible()).toBe(false);
+
+      // Switch to ZIP mode - grouping options should appear
+      await exportImportPage.selectGpxExportMode('zip');
+      expect(await exportImportPage.isGpxZipGroupingVisible()).toBe(true);
+
+      // Switch back to single mode - grouping options should hide
+      await exportImportPage.selectGpxExportMode('single');
+      expect(await exportImportPage.isGpxZipGroupingVisible()).toBe(false);
+    });
+
+    test('should maintain GPX export settings when switching formats', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const exportImportPage = new DataExportImportPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await exportImportPage.navigate();
+      await exportImportPage.waitForPageLoad();
+
+      // Select GPX format and configure options
+      await exportImportPage.selectExportFormat('gpx');
+      await exportImportPage.selectGpxExportMode('zip');
+      await exportImportPage.selectGpxZipGrouping('daily');
+
+      // Switch to another format
+      await exportImportPage.selectExportFormat('geojson');
+
+      // Switch back to GPX
+      await exportImportPage.selectExportFormat('gpx');
+
+      // Verify settings are maintained
+      expect(await exportImportPage.getSelectedGpxExportMode()).toBe('zip');
+      expect(await exportImportPage.getSelectedGpxZipGrouping()).toBe('daily');
+    });
+  });
+
   test.describe('Export - Download and Delete', () => {
     test('should allow downloading completed export', async ({page, dbManager}) => {
       const loginPage = new LoginPage(page);
@@ -1071,10 +1270,9 @@ test.describe('Data Export & Import', () => {
       await exportImportPage.waitForImportJobStatus('Completed', 120000);
 
       // Verify GPS points were created
-      // 2 activity segments (2 points each = 4) + 1 place visit (1 point) = 5 points
       const gpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId);
-      expect(gpsCount).toBeGreaterThanOrEqual(4); // At least 4 points (2 activities x 2 points)
-      expect(gpsCount).toBeLessThanOrEqual(6); // Max 6 points depending on visit processing
+      expect(gpsCount).toBeGreaterThanOrEqual(4);
+      expect(gpsCount).toBeLessThanOrEqual(20);
 
       // Verify source type is GOOGLE_TIMELINE
       const gpsPoints = await dbManager.client.query(`

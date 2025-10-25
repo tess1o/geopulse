@@ -206,7 +206,7 @@ class GpxExportServiceTest {
         ExportJob job = createExportJob();
 
         // Act
-        byte[] gpxBytes = gpxExportService.generateGpxExport(job, false);
+        byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
 
         // Assert
         assertNotNull(gpxBytes);
@@ -350,8 +350,8 @@ class GpxExportServiceTest {
         // Arrange
         ExportJob job = createExportJob();
 
-        // Act
-        byte[] zipBytes = gpxExportService.generateGpxExport(job, true);
+        // Act - explicitly test individual grouping mode
+        byte[] zipBytes = gpxExportService.generateGpxExport(job, true, "individual");
 
         // Assert
         assertNotNull(zipBytes);
@@ -397,6 +397,135 @@ class GpxExportServiceTest {
 
     @Test
     @Transactional
+    void testGenerateGpxExportAsZipGroupedByDay() throws Exception {
+        // Arrange - Create test data across multiple days
+        Instant day1Start = Instant.now().minus(3, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+        Instant day2Start = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+
+        // Create trips and stays for day 1
+        TimelineTripEntity trip1Day1 = createTestTripForTime(day1Start.plus(8, ChronoUnit.HOURS), "Day1-Trip1");
+        TimelineTripEntity trip2Day1 = createTestTripForTime(day1Start.plus(14, ChronoUnit.HOURS), "Day1-Trip2");
+        TimelineStayEntity stay1Day1 = createTestStayForTime(day1Start.plus(12, ChronoUnit.HOURS), "Day1-Stay1");
+
+        // Create trips and stays for day 2
+        TimelineTripEntity tripDay2 = createTestTripForTime(day2Start.plus(10, ChronoUnit.HOURS), "Day2-Trip1");
+        TimelineStayEntity stay1Day2 = createTestStayForTime(day2Start.plus(15, ChronoUnit.HOURS), "Day2-Stay1");
+        TimelineStayEntity stay2Day2 = createTestStayForTime(day2Start.plus(18, ChronoUnit.HOURS), "Day2-Stay2");
+
+        ExportDateRange dateRange = new ExportDateRange();
+        dateRange.setStartDate(day1Start);
+        dateRange.setEndDate(day2Start.plus(1, ChronoUnit.DAYS));
+
+        ExportJob job = new ExportJob();
+        job.setUserId(testUser.getId());
+        job.setDateRange(dateRange);
+
+        try {
+            // Act - test daily grouping mode
+            byte[] zipBytes = gpxExportService.generateGpxExport(job, true, "daily");
+
+            // Assert
+            assertNotNull(zipBytes);
+            assertTrue(zipBytes.length > 0);
+
+            // Validate ZIP structure
+            try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+                int dailyFileCount = 0;
+                java.util.Map<String, Integer> tripCountByDay = new java.util.HashMap<>();
+                java.util.Map<String, Integer> stayCountByDay = new java.util.HashMap<>();
+
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    String entryName = entry.getName();
+                    log.info("Daily ZIP entry: {}", entryName);
+
+                    assertTrue(entryName.startsWith("day_"), "File should start with 'day_'");
+                    assertTrue(entryName.endsWith(".gpx"), "File should end with '.gpx'");
+
+                    dailyFileCount++;
+
+                    // Read and validate GPX file
+                    byte[] entryBytes = zis.readAllBytes();
+                    String gpxXml = new String(entryBytes);
+                    validateXmlWellFormed(gpxXml);
+
+                    Document doc = parseXmlDocument(gpxXml);
+
+                    // Count tracks (trips) and waypoints (stays)
+                    int trackCount = doc.getElementsByTagName("trk").getLength();
+                    int waypointCount = doc.getElementsByTagName("wpt").getLength();
+
+                    tripCountByDay.put(entryName, trackCount);
+                    stayCountByDay.put(entryName, waypointCount);
+
+                    log.info("{} contains {} trips and {} stays", entryName, trackCount, waypointCount);
+
+                    zis.closeEntry();
+                }
+
+                // Verify we have 2 daily files (one for each day)
+                assertEquals(2, dailyFileCount, "Should have 2 daily GPX files");
+
+                // Verify each day has the correct content
+                // Day 1 should have 2 trips and 1 stay
+                // Day 2 should have 1 trip and 2 stays
+                int totalTrips = tripCountByDay.values().stream().mapToInt(Integer::intValue).sum();
+                int totalStays = stayCountByDay.values().stream().mapToInt(Integer::intValue).sum();
+
+                assertEquals(3, totalTrips, "Total trips across all daily files should be 3");
+                assertEquals(3, totalStays, "Total stays across all daily files should be 3");
+            }
+        } finally {
+            // Clean up test data
+            timelineTripRepository.delete(trip1Day1);
+            timelineTripRepository.delete(trip2Day1);
+            timelineTripRepository.delete(tripDay2);
+            timelineStayRepository.delete(stay1Day1);
+            timelineStayRepository.delete(stay1Day2);
+            timelineStayRepository.delete(stay2Day2);
+        }
+    }
+
+    private TimelineTripEntity createTestTripForTime(Instant timestamp, String description) {
+        Coordinate[] coords = new Coordinate[]{
+                new Coordinate(-122.4194, 37.7749),
+                new Coordinate(-122.4195, 37.7750),
+                new Coordinate(-122.4196, 37.7751)
+        };
+        LineString path = geometryFactory.createLineString(coords);
+
+        TimelineTripEntity trip = TimelineTripEntity.builder()
+                .user(testUser)
+                .timestamp(timestamp)
+                .tripDuration(600L) // 10 minutes
+                .distanceMeters(1000L)
+                .movementType("Walking")
+                .avgGpsSpeed(5.0)
+                .path(path)
+                .startPoint(GeoUtils.createPoint(-122.4194, 37.7749))
+                .endPoint(GeoUtils.createPoint(-122.4196, 37.7751))
+                .build();
+
+        timelineTripRepository.persist(trip);
+        return trip;
+    }
+
+    private TimelineStayEntity createTestStayForTime(Instant timestamp, String locationName) {
+        TimelineStayEntity stay = TimelineStayEntity.builder()
+                .user(testUser)
+                .timestamp(timestamp)
+                .stayDuration(1800L) // 30 minutes
+                .location(GeoUtils.createPoint(-122.4194, 37.7749))
+                .locationName(locationName)
+                .locationSource(LocationSource.HISTORICAL)
+                .build();
+
+        timelineStayRepository.persist(stay);
+        return stay;
+    }
+
+    @Test
+    @Transactional
     void testGenerateGpxExportWithEmptyData() throws Exception {
         // Arrange - Create a user with no GPS data
         UserEntity emptyUser = new UserEntity();
@@ -414,7 +543,7 @@ class GpxExportServiceTest {
 
         try {
             // Act
-            byte[] gpxBytes = gpxExportService.generateGpxExport(job, false);
+            byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
 
             // Assert
             assertNotNull(gpxBytes);
@@ -437,7 +566,7 @@ class GpxExportServiceTest {
         ExportJob job = createExportJob();
 
         // Act
-        byte[] gpxBytes = gpxExportService.generateGpxExport(job, false);
+        byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
         String gpxXml = new String(gpxBytes);
 
         // Assert - Verify timestamps exist in track points
@@ -461,7 +590,7 @@ class GpxExportServiceTest {
         ExportJob job = createExportJob();
 
         // Act
-        byte[] gpxBytes = gpxExportService.generateGpxExport(job, false);
+        byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
         String gpxXml = new String(gpxBytes);
 
         // Assert - Verify speed elements exist in track points

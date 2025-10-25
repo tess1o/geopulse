@@ -286,13 +286,14 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // API Actions - Export (GPX)
-        async createGpxExportJob(dateRange, zipPerTrip = false) {
+        async createGpxExportJob(dateRange, zipPerTrip = false, zipGroupBy = 'individual') {
             this.isExporting = true
             try {
                 const response = await apiService.post('/export/gpx/create', {
                     dateRange,
                     options: {
-                        zipPerTrip
+                        zipPerTrip,
+                        zipGroupBy
                     }
                 })
 
