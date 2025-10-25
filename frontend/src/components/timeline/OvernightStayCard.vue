@@ -1,7 +1,8 @@
 <template>
-  <Card 
+  <Card
     class="timeline-card timeline-card--overnight-stay"
     @click="handleClick"
+    @contextmenu="showContextMenu"
   >
     <template #title>
       <p class="timeline-timestamp">
@@ -27,9 +28,12 @@
       </div>
     </template>
   </Card>
+
+  <ContextMenu ref="contextMenu" :model="contextMenuItems" />
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
 
@@ -48,7 +52,18 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['click'])
+const emit = defineEmits(['click', 'export-gpx'])
+
+const contextMenu = ref(null)
+const contextMenuItems = ref([
+  {
+    label: 'Export as GPX',
+    icon: 'pi pi-download',
+    command: () => {
+      emit('export-gpx', props.stayItem)
+    }
+  }
+])
 
 // Methods
 const getTimestampText = () => {
@@ -61,6 +76,11 @@ const getOnThisDayText = () => {
 
 const handleClick = () => {
   emit('click', props.stayItem)
+}
+
+const showContextMenu = (event) => {
+  event.preventDefault()
+  contextMenu.value.show(event)
 }
 </script>
 

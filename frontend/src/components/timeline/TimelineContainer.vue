@@ -40,12 +40,14 @@
               :stay-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
+              @export-gpx="handleExportStayAsGpx"
             />
-            
+
             <StayCard
               v-else-if="slotProps.item.type === 'stay'"
               :stay-item="slotProps.item"
               @click="handleTimelineItemClick"
+              @export-gpx="handleExportStayAsGpx"
             />
 
             <!-- Trip Cards -->
@@ -54,12 +56,14 @@
               :trip-item="slotProps.item"
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
+              @export-gpx="handleExportTripAsGpx"
             />
-            
+
             <TripCard
               v-else-if="slotProps.item.type === 'trip'"
               :trip-item="slotProps.item"
               @click="handleTimelineItemClick"
+              @export-gpx="handleExportTripAsGpx"
             />
 
             <!-- Data Gap Cards -->
@@ -84,6 +88,8 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useToast } from 'primevue/usetoast'
+import { useExportImportStore } from '@/stores/exportImport'
 import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
 import DataGapCard from './DataGapCard.vue'
@@ -91,6 +97,9 @@ import OvernightStayCard from './OvernightStayCard.vue'
 import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
 import { useTimezone } from '@/composables/useTimezone'
+
+const toast = useToast()
+const exportImportStore = useExportImportStore()
 
 // Props
 const props = defineProps({
@@ -210,6 +219,46 @@ const groupedTimelineData = computed(() => {
 // Methods
 const handleTimelineItemClick = (item) => {
   emit('timeline-item-click', item)
+}
+
+const handleExportTripAsGpx = async (tripItem) => {
+  try {
+    await exportImportStore.exportTripAsGpx(tripItem.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Export Started',
+      detail: 'Trip is being exported as GPX',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Failed to export trip as GPX:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Export Failed',
+      detail: error.message || 'Failed to export trip',
+      life: 5000
+    })
+  }
+}
+
+const handleExportStayAsGpx = async (stayItem) => {
+  try {
+    await exportImportStore.exportStayAsGpx(stayItem.id)
+    toast.add({
+      severity: 'success',
+      summary: 'Export Started',
+      detail: 'Stay is being exported as GPX',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Failed to export stay as GPX:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Export Failed',
+      detail: error.message || 'Failed to export stay',
+      life: 5000
+    })
+  }
 }
 </script>
 

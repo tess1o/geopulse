@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -17,6 +18,7 @@ public class ExportJob {
     private List<String> dataTypes;
     private ExportDateRange dateRange;
     private String format;
+    private Map<String, Object> options;
     private Instant createdAt;
     private Instant completedAt;
     private byte[] zipData;
@@ -37,5 +39,10 @@ public class ExportJob {
         this.dataTypes = dataTypes;
         this.dateRange = dateRange;
         this.format = format;
+    }
+
+    public ExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format, Map<String, Object> options) {
+        this(userId, dataTypes, dateRange, format);
+        this.options = options;
     }
 }

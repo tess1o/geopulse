@@ -96,6 +96,40 @@ public class ExportJobManager {
         return job;
     }
 
+    public ExportJob createGpxExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange, boolean zipPerTrip) {
+
+        // Check if user has too many active jobs
+        long userActiveJobs = activeJobs.values().stream()
+                .filter(job -> job.getUserId().equals(userId))
+                .filter(job -> job.getStatus() != ExportStatus.FAILED)
+                .count();
+
+        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
+        }
+
+        // Create export job for GPX format
+        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
+        java.util.Map<String, Object> options = new java.util.HashMap<>();
+        options.put("zipPerTrip", zipPerTrip);
+
+        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "gpx", options);
+        activeJobs.put(job.getJobId(), job);
+
+        log.info("Created GPX export job {} for user {} with date range: {} to {}, zipPerTrip={}",
+                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate(), zipPerTrip);
+
+        return job;
+    }
+
+    public byte[] exportSingleTrip(UUID userId, Long tripId) throws Exception {
+        return exportDataGenerator.generateSingleTripGpx(userId, tripId);
+    }
+
+    public byte[] exportSingleStay(UUID userId, Long stayId) throws Exception {
+        return exportDataGenerator.generateSingleStayGpx(userId, stayId);
+    }
+
     public ExportJob getExportJob(UUID jobId, UUID userId) {
         ExportJob job = activeJobs.get(jobId);
         if (job == null || !job.getUserId().equals(userId)) {
@@ -149,7 +183,7 @@ public class ExportJobManager {
         for (ExportJob job : pendingJobs) {
             try {
                 log.debug("Processing export job {}", job.getJobId());
-                
+
                 if ("owntracks".equals(job.getFormat())) {
                     // Generate JSON data for OwnTracks format
                     byte[] jsonData = exportDataGenerator.generateOwnTracksExport(job);
@@ -162,6 +196,24 @@ public class ExportJobManager {
                     job.setJsonData(jsonData);
                     job.setFileSizeBytes(jsonData.length);
                     log.info("Completed GeoJSON export job {} - {} bytes", job.getJobId(), jsonData.length);
+                } else if ("gpx".equals(job.getFormat())) {
+                    // Generate GPX data (either single file or zip)
+                    boolean zipPerTrip = false;
+                    if (job.getOptions() != null && job.getOptions().containsKey("zipPerTrip")) {
+                        zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
+                    }
+
+                    byte[] gpxData = exportDataGenerator.generateGpxExport(job, zipPerTrip);
+
+                    if (zipPerTrip) {
+                        job.setZipData(gpxData);
+                    } else {
+                        job.setJsonData(gpxData); // Store GPX XML in jsonData field
+                    }
+
+                    job.setFileSizeBytes(gpxData.length);
+                    log.info("Completed GPX export job {} - {} bytes, zipPerTrip={}",
+                            job.getJobId(), gpxData.length, zipPerTrip);
                 } else {
                     // Generate ZIP data for GeoPulse format
                     byte[] zipData = exportDataGenerator.generateExportZip(job);
@@ -169,14 +221,14 @@ public class ExportJobManager {
                     job.setFileSizeBytes(zipData.length);
                     log.info("Completed GeoPulse export job {} - {} bytes", job.getJobId(), zipData.length);
                 }
-                
+
                 job.setStatus(ExportStatus.COMPLETED);
                 job.setCompletedAt(Instant.now());
                 job.setProgress(100);
-                
+
             } catch (Exception e) {
                 log.error("Failed to process export job {}: {}", job.getJobId(), e.getMessage(), e);
-                
+
                 job.setStatus(ExportStatus.FAILED);
                 job.setError(e.getMessage());
                 job.setProgress(0);
