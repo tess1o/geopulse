@@ -16,7 +16,6 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.GoogleTimelineImportStrategy;
-import org.github.tess1o.geopulse.importdata.service.ImportDataService;
 import org.github.tess1o.geopulse.importdata.service.ImportService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;

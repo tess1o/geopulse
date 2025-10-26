@@ -192,14 +192,16 @@ public class ImportService {
             throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
         }
 
-        // Pre-populate detected data types for GeoJSON (only GPS data)
-        if ("geojson".equals(job.getOptions().getImportFormat())) {
+        // Pre-populate detected data types for streaming formats (only GPS data)
+        String format = job.getOptions().getImportFormat();
+        if ("geojson".equals(format) || "google-timeline".equals(format)) {
             job.setDetectedDataTypes(List.of("rawgps"));
         }
 
         activeJobs.put(job.getJobId(), job);
 
-        log.info("Registered import job {} for user {}", job.getJobId(), job.getUserId());
+        log.info("Registered import job {} for user {} with format {}",
+                job.getJobId(), job.getUserId(), format);
     }
 
     public ImportJob getImportJob(UUID jobId, UUID userId) {
