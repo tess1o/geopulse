@@ -210,7 +210,7 @@ public class StreamingGoogleTimelineParser {
                 }
                 case "distanceMeters" -> {
                     parser.nextToken();
-                    distanceMeters = parser.getDoubleValue();
+                    distanceMeters = parser.getValueAsString() == null ? null : Double.valueOf(parser.getValueAsString());
                 }
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
@@ -221,7 +221,7 @@ public class StreamingGoogleTimelineParser {
                             activityType = parser.getValueAsString();
                         } else if ("probability".equals(tcField)) {
                             parser.nextToken();
-                            confidence = parser.getDoubleValue();
+                            confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
                         } else {
                             parser.skipChildren();
                         }
@@ -292,7 +292,7 @@ public class StreamingGoogleTimelineParser {
             switch (fieldName) {
                 case "probability" -> {
                     parser.nextToken();
-                    confidence = parser.getDoubleValue();
+                    confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
                 }
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
@@ -345,7 +345,7 @@ public class StreamingGoogleTimelineParser {
                     point = parser.getValueAsString();
                 } else if ("durationMinutesOffsetFromStartTime".equals(fieldName)) {
                     parser.nextToken();
-                    offsetMinutes = parser.getIntValue();
+                    offsetMinutes = parser.getValueAsString() == null? 0 : Integer.parseInt(parser.getValueAsString());
                 } else {
                     parser.skipChildren();
                 }
@@ -455,7 +455,7 @@ public class StreamingGoogleTimelineParser {
             switch (fieldName) {
                 case "probability" -> {
                     parser.nextToken();
-                    confidence = parser.getDoubleValue();
+                    confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
                 }
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
@@ -536,7 +536,7 @@ public class StreamingGoogleTimelineParser {
                 }
                 case "distanceMeters" -> {
                     parser.nextToken();
-                    distanceMeters = parser.getDoubleValue();
+                    distanceMeters = parser.getValueAsString() == null ? null : Double.valueOf(parser.getDoubleValue());
                 }
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
@@ -547,7 +547,7 @@ public class StreamingGoogleTimelineParser {
                             activityType = parser.getValueAsString();
                         } else if ("probability".equals(tcField)) {
                             parser.nextToken();
-                            confidence = parser.getDoubleValue();
+                            confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
                         } else {
                             parser.skipChildren();
                         }
