@@ -29,6 +29,7 @@ public class UserMapper {
                 .role(entity.getRole())
                 .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
+                .customMapTileUrl(entity.getCustomMapTileUrl())
                 .build();
     }
 }

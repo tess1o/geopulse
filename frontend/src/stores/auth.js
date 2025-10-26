@@ -21,6 +21,7 @@ export const useAuthStore = defineStore('auth', {
         userAvatar: (state) => state.user?.avatar || '',
         userTimezone: (state) => state.user?.timezone || 'UTC',
         hasPassword: (state) => state.user?.hasPassword || false,
+        customMapTileUrl: (state) => state.user?.customMapTileUrl || '',
     },
 
     actions: {
@@ -38,7 +39,8 @@ export const useAuthStore = defineStore('auth', {
                     avatar: user.avatar,
                     timezone: user.timezone || 'UTC',
                     createdAt: user.createdAt,
-                    hasPassword: user.hasPassword
+                    hasPassword: user.hasPassword,
+                    customMapTileUrl: user.customMapTileUrl || ''
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 timezone.setTimezone(user.timezone || 'UTC');
@@ -86,12 +88,13 @@ export const useAuthStore = defineStore('auth', {
         },
 
         //TODO: remove userId, find it on backend.
-        async updateProfile(fullName, avatar, timezone, userId) {
+        async updateProfile(fullName, avatar, timezone, customMapTileUrl, userId) {
             try {
                 await apiService.post(`/users/update`, {
                     fullName,
                     avatar,
                     timezone,
+                    customMapTileUrl,
                     userId
                 });
 
@@ -100,11 +103,12 @@ export const useAuthStore = defineStore('auth', {
                 userInfo.fullName = fullName;
                 userInfo.avatar = avatar;
                 userInfo.timezone = timezone;
+                userInfo.customMapTileUrl = customMapTileUrl || '';
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
                 // Update the user in store
                 if (this.user) {
-                    this.user = {...this.user, fullName, avatar, timezone}
+                    this.user = {...this.user, fullName, avatar, timezone, customMapTileUrl}
                 }
             } catch (error) {
                 throw error
@@ -163,6 +167,7 @@ export const useAuthStore = defineStore('auth', {
                     timezone: userInfo.timezone || 'UTC',
                     createdAt: userInfo.createdAt,
                     hasPassword: userInfo.hasPassword,
+                    customMapTileUrl: userInfo.customMapTileUrl || ''
                 }
 
                 this.setUser(user)

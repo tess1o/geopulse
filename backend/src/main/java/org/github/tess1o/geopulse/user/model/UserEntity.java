@@ -84,6 +84,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "ai_settings_key_id")
     private String aiSettingsKeyId;
 
+    @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
+    @Column(name = "custom_map_tile_url", length = 1000)
+    private String customMapTileUrl;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;
