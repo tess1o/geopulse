@@ -1,17 +1,14 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.gps.integrations.googletimeline.StreamingGoogleTimelineParser;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineGpsPoint;
-import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineRecord;
-import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.semanticsegments.GoogleTimelineSemanticSegmentsRoot;
-import org.github.tess1o.geopulse.gps.integrations.googletimeline.util.GoogleTimelineParser;
-import org.github.tess1o.geopulse.gps.integrations.googletimeline.util.GoogleTimelineSemanticSegmentsParser;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -19,13 +16,18 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Import strategy for Google Timeline JSON format.
  * Supports both legacy format (array of records) and new format (semantic segments).
+ *
+ * Uses streaming parser for memory-efficient import - processes large files (100MB+) without loading into RAM.
  */
 @ApplicationScoped
 @Slf4j
@@ -35,6 +37,13 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
             .addModule(new JavaTimeModule())
             .build();
 
+    /**
+     * Batch size for streaming processing - aligns with DB batch sizes for optimal performance.
+     */
+    @ConfigProperty(name = "geopulse.import.googletimeline.streaming-batch-size", defaultValue = "500")
+    @StaticInitSafe
+    int streamingBatchSize;
+
     @Override
     public String getFormat() {
         return "google-timeline";
@@ -42,230 +51,291 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
 
     @Override
     protected FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException {
-        String jsonContent = new String(job.getZipData()); // zipData contains JSON for Google Timeline
+        // Use streaming parser for validation - no memory overhead
+        log.info("Validating Google Timeline file using streaming parser (memory-efficient from {})",
+                job.hasTempFile() ? "temp file" : "memory");
 
-        // Detect format by checking if JSON is an array or object
-        JsonNode rootNode = objectMapper.readTree(jsonContent);
+        // Track timestamps during validation for use in clear mode
+        AtomicReference<Instant> firstTimestamp = new AtomicReference<>(null);
+        AtomicReference<Instant> lastTimestamp = new AtomicReference<>(null);
 
-        if (rootNode.isArray()) {
-            // Legacy format: array of records
-            return validateLegacyFormat(jsonContent);
-        } else if (rootNode.isObject() && rootNode.has("semanticSegments")) {
-            // New format: semantic segments
-            return validateSemanticSegmentsFormat(jsonContent);
-        } else {
-            throw new IllegalArgumentException("Unknown Google Timeline format. Expected either an array of records or an object with 'semanticSegments' field.");
+        // Use getDataStream() to abstract whether data is in memory or on disk
+        try (InputStream dataStream = job.getDataStream()) {
+            StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream, objectMapper);
+
+            // Parse through entire file to validate structure, count points, and track timestamps
+            StreamingGoogleTimelineParser.ParsingStats stats = parser.parseGpsPoints((gpsPoint, currentStats) -> {
+                // Just track timestamps during validation - don't process GPS points yet
+                if (gpsPoint.getTimestamp() != null) {
+                    if (firstTimestamp.get() == null || gpsPoint.getTimestamp().isBefore(firstTimestamp.get())) {
+                        firstTimestamp.set(gpsPoint.getTimestamp());
+                    }
+                    if (lastTimestamp.get() == null || gpsPoint.getTimestamp().isAfter(lastTimestamp.get())) {
+                        lastTimestamp.set(gpsPoint.getTimestamp());
+                    }
+                }
+            });
+
+            if (stats.totalGpsPoints == 0) {
+                throw new IllegalArgumentException("Google Timeline file contains no valid GPS points");
+            }
+
+            log.info("Google Timeline streaming validation successful: format={}, records={}, segments={}, rawSignals={}, totalGpsPoints={}, date range: {} to {}",
+                    stats.formatType, stats.totalRecords, stats.totalSemanticSegments,
+                    stats.totalRawSignals, stats.totalGpsPoints,
+                    firstTimestamp.get(), lastTimestamp.get());
+
+            // Return total GPS points as both totalPoints and validPoints since streaming parser only emits valid points
+            return new FormatValidationResult(stats.totalGpsPoints, stats.totalGpsPoints,
+                    firstTimestamp.get(), lastTimestamp.get());
         }
     }
 
     @Override
     protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
-        String jsonContent = new String(job.getZipData());
-
-        // Detect format
-        JsonNode rootNode = objectMapper.readTree(jsonContent);
-        List<GoogleTimelineGpsPoint> gpsPoints;
-
-        if (rootNode.isArray()) {
-            // Legacy format
-            log.info("Processing Google Timeline data in legacy format (array of records)");
-            List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
-                    new TypeReference<List<GoogleTimelineRecord>>() {
-                    });
-            gpsPoints = GoogleTimelineParser.extractGpsPoints(records, true);
-        } else if (rootNode.isObject() && rootNode.has("semanticSegments")) {
-            // New format
-            log.info("Processing Google Timeline data in new format (semantic segments)");
-            GoogleTimelineSemanticSegmentsRoot root = objectMapper.readValue(jsonContent,
-                    GoogleTimelineSemanticSegmentsRoot.class);
-            gpsPoints = GoogleTimelineSemanticSegmentsParser.extractGpsPoints(root, true);
-        } else {
-            throw new IllegalArgumentException("Unknown Google Timeline format");
-        }
-
-        log.info("Extracted {} GPS points from Google Timeline data", gpsPoints.size());
-
-        // Convert to GpsPointEntity objects
-        return convertToGpsEntities(gpsPoints, user, job);
+        // This method should NEVER be called for Google Timeline because we override processImportData()
+        // If this executes, something is wrong - we want to know about it!
+        throw new UnsupportedOperationException(
+            "parseAndConvertToGpsEntities should not be called for Google Timeline! " +
+            "Google Timeline uses streaming import via processImportData() override. " +
+            "This method loads all entities in memory and should never execute.");
     }
 
-    private FormatValidationResult validateLegacyFormat(String jsonContent) throws IOException {
-        List<GoogleTimelineRecord> records = objectMapper.readValue(jsonContent,
-                new TypeReference<List<GoogleTimelineRecord>>() {
-                });
+    /**
+     * Override processImportData to use true streaming without accumulating all entities in memory.
+     * This is the key optimization for handling large files (100MB+).
+     */
+    @Override
+    public void processImportData(ImportJob job) throws IOException {
+        log.info("Processing Google Timeline import using TRUE STREAMING mode (minimal memory footprint)");
 
-        if (records.isEmpty()) {
-            throw new IllegalArgumentException("Google Timeline file contains no records");
-        }
-
-        // Analyze record types and validate data quality
-        int activityCount = 0;
-        int visitCount = 0;
-        int timelinePathCount = 0;
-        int unknownCount = 0;
-        int validRecords = 0;
-
-        for (GoogleTimelineRecord record : records) {
-            switch (record.getRecordType()) {
-                case ACTIVITY -> {
-                    activityCount++;
-                    if (isValidActivityRecord(record)) validRecords++;
-                }
-                case VISIT -> {
-                    visitCount++;
-                    if (isValidVisitRecord(record)) validRecords++;
-                }
-                case TIMELINE_PATH -> {
-                    timelinePathCount++;
-                    if (isValidTimelinePathRecord(record)) validRecords++;
-                }
-                case UNKNOWN -> unknownCount++;
+        try {
+            UserEntity user = userRepository.findById(job.getUserId());
+            if (user == null) {
+                throw new IllegalStateException("User not found: " + job.getUserId());
             }
-        }
 
-        log.info("Google Timeline (legacy) validation successful: {} total records ({} activity, {} visit, {} timeline_path, {} unknown), {} valid records",
-                records.size(), activityCount, visitCount, timelinePathCount, unknownCount, validRecords);
+            boolean clearMode = job.getOptions().isClearDataBeforeImport();
 
-        return new FormatValidationResult(records.size(), validRecords);
-    }
+            // For clear mode, use timestamps captured during validation to delete old data
+            Instant firstTimestamp = job.getDataFirstTimestamp();
 
-    private FormatValidationResult validateSemanticSegmentsFormat(String jsonContent) throws IOException {
-        GoogleTimelineSemanticSegmentsRoot root = objectMapper.readValue(jsonContent,
-                GoogleTimelineSemanticSegmentsRoot.class);
+            if (clearMode && firstTimestamp != null && job.getDataLastTimestamp() != null) {
+                job.updateProgress(20, "Clearing existing data in date range...");
+                log.info("Clearing old data using timestamps from validation: {} to {}",
+                        firstTimestamp, job.getDataLastTimestamp());
 
-        int totalSegments = 0;
-        int validSegments = 0;
-        int visitCount = 0;
-        int activityCount = 0;
-        int timelinePathCount = 0;
-        int rawSignalCount = 0;
-
-        if (root.getSemanticSegments() != null) {
-            totalSegments = root.getSemanticSegments().size();
-
-            for (var segment : root.getSemanticSegments()) {
-                boolean isValid = false;
-
-                if (segment.getVisit() != null && segment.getVisit().getTopCandidate() != null &&
-                        segment.hasValidTimes()) {
-                    visitCount++;
-                    isValid = true;
+                ImportDataClearingService.DateRange deletionRange =
+                    dataClearingService.calculateDeletionRange(job,
+                        new ImportDataClearingService.DateRange(firstTimestamp, job.getDataLastTimestamp()));
+                if (deletionRange != null) {
+                    int deletedCount = dataClearingService.clearGpsDataInRange(user.getId(), deletionRange);
+                    log.info("Cleared {} existing GPS points before streaming import", deletedCount);
                 }
+            }
 
-                if (segment.getActivity() != null && segment.hasValidTimes()) {
-                    activityCount++;
-                    isValid = true;
-                }
+            // Start streaming import with direct DB writes
+            job.updateProgress(25, "Streaming import with direct database writes...");
+            StreamingImportResult result = streamingImportWithDirectWrites(job, user, clearMode);
 
-                if (segment.getTimelinePath() != null && !segment.getTimelinePath().isEmpty() &&
-                        segment.hasValidTimes()) {
-                    timelinePathCount++;
-                    isValid = true;
-                }
+            // Use timestamp from validation, or fall back to streaming result
+            if (firstTimestamp == null) {
+                firstTimestamp = result.firstTimestamp;
+            }
 
-                if (isValid) {
-                    validSegments++;
+            job.updateProgress(95, "Generating timeline...");
+            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
+
+            job.updateProgress(100, "Import completed successfully");
+
+            log.info("Google Timeline streaming import completed: {} imported, {} skipped from {} total GPS points",
+                    result.imported, result.skipped, result.totalGpsPoints);
+
+        } catch (Exception e) {
+            log.error("Failed to process Google Timeline streaming import: {}", e.getMessage(), e);
+            throw new IOException("Failed to process Google Timeline import: " + e.getMessage(), e);
+        } finally {
+            // Clean up temp file if it exists (whether success or failure)
+            if (job.hasTempFile()) {
+                try {
+                    java.nio.file.Path tempPath = java.nio.file.Paths.get(job.getTempFilePath());
+                    if (java.nio.file.Files.exists(tempPath)) {
+                        long fileSize = java.nio.file.Files.size(tempPath);
+                        java.nio.file.Files.delete(tempPath);
+                        log.info("Deleted temp file after import: {} ({} MB)",
+                                job.getTempFilePath(), fileSize / (1024 * 1024));
+                    }
+                } catch (IOException e) {
+                    log.warn("Failed to delete temp file {}: {}",
+                            job.getTempFilePath(), e.getMessage());
                 }
             }
         }
-
-        if (root.getRawSignals() != null) {
-            for (var signal : root.getRawSignals()) {
-                if (signal.getPosition() != null && signal.getPosition().getTimestamp() != null) {
-                    rawSignalCount++;
-                }
-            }
-        }
-
-        log.info("Google Timeline (semantic segments) validation successful: {} total segments ({} visit, {} activity, {} timeline_path), {} raw signals, {} valid segments",
-                totalSegments, visitCount, activityCount, timelinePathCount, rawSignalCount, validSegments);
-
-        return new FormatValidationResult(totalSegments + rawSignalCount, validSegments + rawSignalCount);
     }
 
-    private List<GpsPointEntity> convertToGpsEntities(List<GoogleTimelineGpsPoint> gpsPoints, UserEntity user, ImportJob job) {
-        List<GpsPointEntity> gpsEntities = new ArrayList<>();
-        int processedPoints = 0;
+    /**
+     * Perform streaming import with direct database writes - NO entity accumulation.
+     * This is the true memory-efficient implementation.
+     */
+    private StreamingImportResult streamingImportWithDirectWrites(ImportJob job, UserEntity user, boolean clearMode)
+            throws IOException {
 
-        for (GoogleTimelineGpsPoint point : gpsPoints) {
-            // Skip points without valid coordinates or timestamp
-            if (point.getTimestamp() == null ||
-                    !isValidCoordinate(point.getLatitude()) ||
-                    !isValidCoordinate(point.getLongitude())) {
-                continue;
-            }
+        List<GpsPointEntity> currentBatch = new ArrayList<>(streamingBatchSize);
+        AtomicInteger totalImported = new AtomicInteger(0);
+        AtomicInteger totalSkipped = new AtomicInteger(0);
+        AtomicInteger totalGpsPoints = new AtomicInteger(0);
+        AtomicReference<Instant> firstTimestamp = new AtomicReference<>(null);
 
-            // Apply date range filter using base class method
-            if (shouldSkipDueDateFilter(point.getTimestamp(), job)) {
-                continue;
-            }
+        log.info("Starting streaming import with batch size: {}, clear mode: {}, from {}",
+                streamingBatchSize, clearMode, job.hasTempFile() ? "temp file" : "memory");
 
-            try {
-                GpsPointEntity gpsEntity = new GpsPointEntity();
-                gpsEntity.setUser(user);
-                gpsEntity.setDeviceId("google-timeline-import");
-                gpsEntity.setCoordinates(GeoUtils.createPoint(point.getLongitude(), point.getLatitude()));
-                gpsEntity.setTimestamp(point.getTimestamp());
-                gpsEntity.setSourceType(GpsSourceType.GOOGLE_TIMELINE);
-                gpsEntity.setCreatedAt(Instant.now());
+        // Use getDataStream() to abstract whether data is in memory or on disk
+        try (InputStream dataStream = job.getDataStream()) {
+            StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream, objectMapper);
 
-                // Set velocity if available (convert from m/s to km/h)
-                if (point.getVelocityMs() != null) {
-                    gpsEntity.setVelocity(point.getVelocityMs() * 3.6); // Convert m/s to km/h
+            parser.parseGpsPoints((gpsPoint, stats) -> {
+                totalGpsPoints.set(stats.totalGpsPoints);
+
+                // Convert Google Timeline GPS point to GpsPointEntity
+                GpsPointEntity gpsEntity = convertGpsPointToEntity(gpsPoint, user, job);
+                if (gpsEntity != null) {
+                    addToBatchAndFlushIfNeeded(currentBatch, gpsEntity, firstTimestamp,
+                        totalImported, totalSkipped, clearMode);
                 }
 
-                // For Google Timeline, we don't have accuracy/battery/altitude in most cases
-                // so we leave these as null
+                // Update progress periodically
+                if (totalGpsPoints.get() > 0 && totalGpsPoints.get() % 5000 == 0) {
+                    job.updateProgress(30 + Math.min(65, totalGpsPoints.get() / 100),
+                            "Streaming import: " + totalGpsPoints.get() + " GPS points processed");
+                }
+            });
 
-                gpsEntities.add(gpsEntity);
-
-            } catch (Exception e) {
-                log.warn("Failed to create GPS entity from point: {}", e.getMessage());
+            // Flush any remaining batch
+            if (!currentBatch.isEmpty()) {
+                flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped);
             }
 
-            // Update progress using base class method
-            processedPoints++;
-            updateProgress(processedPoints, gpsPoints.size(), job, 10, 80);
-        }
+            log.info("Streaming import completed: {} GPS points processed, {} points imported, {} skipped",
+                    totalGpsPoints.get(), totalImported.get(), totalSkipped.get());
 
-        return gpsEntities;
+            return new StreamingImportResult(
+                totalImported.get(),
+                totalSkipped.get(),
+                totalGpsPoints.get(),
+                firstTimestamp.get()
+            );
+        }
     }
 
-    private boolean isValidActivityRecord(GoogleTimelineRecord record) {
-        if (record.getActivity() == null || !record.hasValidTimes()) {
-            return false;
+    /**
+     * Convert Google Timeline GPS point to GpsPointEntity
+     */
+    private GpsPointEntity convertGpsPointToEntity(GoogleTimelineGpsPoint point, UserEntity user, ImportJob job) {
+        // Skip points without valid coordinates or timestamp
+        if (point.getTimestamp() == null ||
+                !isValidCoordinate(point.getLatitude()) ||
+                !isValidCoordinate(point.getLongitude())) {
+            return null;
         }
 
-        double[] startCoords = GoogleTimelineParser.parseGeoString(record.getActivity().getStart());
-        double[] endCoords = GoogleTimelineParser.parseGeoString(record.getActivity().getEnd());
-
-        return startCoords != null || endCoords != null;
-    }
-
-    private boolean isValidVisitRecord(GoogleTimelineRecord record) {
-        if (record.getVisit() == null || record.getVisit().getTopCandidate() == null || !record.hasValidTimes()) {
-            return false;
+        // Apply date range filter using base class method
+        if (shouldSkipDueDateFilter(point.getTimestamp(), job)) {
+            return null;
         }
 
-        double[] coords = GoogleTimelineParser.parseGeoString(record.getVisit().getTopCandidate().getPlaceLocation());
-        return coords != null;
-    }
+        try {
+            GpsPointEntity gpsEntity = new GpsPointEntity();
+            gpsEntity.setUser(user);
+            gpsEntity.setDeviceId("google-timeline-import");
+            gpsEntity.setCoordinates(GeoUtils.createPoint(point.getLongitude(), point.getLatitude()));
+            gpsEntity.setTimestamp(point.getTimestamp());
+            gpsEntity.setSourceType(GpsSourceType.GOOGLE_TIMELINE);
+            gpsEntity.setCreatedAt(Instant.now());
 
-    private boolean isValidTimelinePathRecord(GoogleTimelineRecord record) {
-        if (record.getTimelinePath() == null || record.getTimelinePath().length == 0 || !record.hasValidTimes()) {
-            return false;
-        }
-
-        // Check if at least one point in the path has valid coordinates
-        for (var pathPoint : record.getTimelinePath()) {
-            double[] coords = GoogleTimelineParser.parseGeoString(pathPoint.getPoint());
-            if (coords != null) {
-                return true;
+            // Set velocity if available (convert from m/s to km/h)
+            if (point.getVelocityMs() != null) {
+                gpsEntity.setVelocity(point.getVelocityMs() * 3.6); // Convert m/s to km/h
             }
+
+            return gpsEntity;
+
+        } catch (Exception e) {
+            log.warn("Failed to create GPS entity from Google Timeline point: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Add GPS point to current batch and flush to database when batch is full.
+     * This keeps memory usage constant by writing batches immediately.
+     */
+    private void addToBatchAndFlushIfNeeded(
+            List<GpsPointEntity> currentBatch,
+            GpsPointEntity gpsPoint,
+            AtomicReference<Instant> firstTimestamp,
+            AtomicInteger totalImported,
+            AtomicInteger totalSkipped,
+            boolean clearMode) {
+
+        // Track first timestamp for timeline generation
+        if (firstTimestamp.get() == null && gpsPoint.getTimestamp() != null) {
+            firstTimestamp.set(gpsPoint.getTimestamp());
         }
 
-        return false;
+        currentBatch.add(gpsPoint);
+
+        // Flush when batch is full
+        if (currentBatch.size() >= streamingBatchSize) {
+            flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped);
+            currentBatch.clear(); // CRITICAL: Clear to release memory
+        }
     }
+
+    /**
+     * Flush a batch directly to the database and clear it from memory.
+     * This is where memory is freed continuously during import.
+     */
+    private void flushBatchToDatabase(
+            List<GpsPointEntity> batch,
+            boolean clearMode,
+            AtomicInteger totalImported,
+            AtomicInteger totalSkipped) {
+
+        if (batch.isEmpty()) {
+            return;
+        }
+
+        try {
+            int imported = batchProcessor.processBatch(batch, clearMode);
+            totalImported.addAndGet(imported);
+            totalSkipped.addAndGet(batch.size() - imported);
+
+            log.debug("Flushed batch of {} points to database ({} imported, {} skipped)",
+                    batch.size(), imported, batch.size() - imported);
+
+        } catch (Exception e) {
+            log.error("Failed to flush batch to database: {}", e.getMessage(), e);
+            // Continue processing even if one batch fails
+        }
+    }
+
+    /**
+     * Result of streaming import operation
+     */
+    private static class StreamingImportResult {
+        final int imported;
+        final int skipped;
+        final int totalGpsPoints;
+        final Instant firstTimestamp;
+
+        StreamingImportResult(int imported, int skipped, int totalGpsPoints, Instant firstTimestamp) {
+            this.imported = imported;
+            this.skipped = skipped;
+            this.totalGpsPoints = totalGpsPoints;
+            this.firstTimestamp = firstTimestamp;
+        }
+    }
+
 
     private boolean isValidCoordinate(double coord) {
         return !Double.isNaN(coord) && !Double.isInfinite(coord);

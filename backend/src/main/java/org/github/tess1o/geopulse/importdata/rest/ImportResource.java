@@ -227,29 +227,11 @@ public class ImportResource {
                         .build();
             }
 
-            // Check file size (max 100MB)
-            if (file.size() > MAX_FILE_SIZE_BYTES) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
-                        .build();
-            }
-
             // Validate file extension (should be .json)
             String fileName = file.fileName() != null ? file.fileName() : "google-timeline-import.json";
             if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".json")) {
                 return Response.status(Response.Status.BAD_REQUEST)
                         .entity(createErrorResponse("INVALID_FILE_TYPE", "Only JSON files are supported for Google Timeline import"))
-                        .build();
-            }
-
-            // Read file content
-            byte[] fileContent;
-            try {
-                fileContent = Files.readAllBytes(file.uploadedFile());
-            } catch (IOException e) {
-                log.error("Failed to read uploaded file", e);
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
                         .build();
             }
 
@@ -262,12 +244,56 @@ public class ImportResource {
             } catch (Exception e) {
                 log.error("Failed to parse import options", e);
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("INVALID_OPTIONS", "Invalid import options format"))
+                        .entity(createErrorResponse("INVALID_OPTIONS",
+                                "Invalid import options format: " + e.getMessage()))
                         .build();
             }
 
-            // Create Google Timeline import job
-            ImportJob job = importService.createGoogleTimelineImportJob(userId, importOptions, fileName, fileContent);
+            // Handle file based on size - large files use temp storage, small files use memory
+            ImportJob job;
+
+            // CRITICAL: Capture file size BEFORE moving the file!
+            // After the file is moved, the original upload path no longer exists
+            long fileSize = file.size();
+
+            if (tempFileService.shouldUseTempFile(fileSize)) {
+                // Large file: move to temp storage (no memory overhead)
+                log.info("Large file detected ({} MB), using temp file storage",
+                        fileSize / (1024 * 1024));
+                try {
+                    String tempFilePath = tempFileService.moveUploadedFileToTemp(
+                            file.uploadedFile(), java.util.UUID.randomUUID(), fileName);
+
+                    // Create job with temp file path (no data in memory!)
+                    job = new ImportJob(userId, importOptions, fileName, new byte[0]);
+                    job.setTempFilePath(tempFilePath);
+                    job.setFileSizeBytes(fileSize);
+
+                    importService.registerJob(job);
+
+                    log.info("Created Google Timeline import job with temp file: file={}, size={} MB, path={}",
+                            fileName, fileSize / (1024 * 1024), tempFilePath);
+                } catch (IOException e) {
+                    log.error("Failed to move uploaded file to temp storage", e);
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(createErrorResponse("FILE_MOVE_ERROR",
+                                    "Failed to process uploaded file"))
+                            .build();
+                }
+            } else {
+                // Small file: keep in memory (fast path)
+                log.info("Small file detected ({} MB), keeping in memory",
+                        fileSize / (1024 * 1024));
+                try {
+                    byte[] fileContent = Files.readAllBytes(file.uploadedFile());
+                    job = importService.createGoogleTimelineImportJob(userId, importOptions, fileName, fileContent);
+                } catch (IOException e) {
+                    log.error("Failed to read uploaded file", e);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                            .build();
+                }
+            }
 
             // Create response
             ImportJobResponse response = new ImportJobResponse();

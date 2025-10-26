@@ -66,7 +66,7 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             if (e instanceof IllegalArgumentException) {
                 throw e;
             }
-            throw new IllegalArgumentException("Invalid " + getFormat() + " format: " + e.getMessage());
+            throw new IllegalArgumentException("Invalid " + getFormat() + " format: " + e.getMessage(), e);
         }
     }
     
