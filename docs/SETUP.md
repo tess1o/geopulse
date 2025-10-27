@@ -112,7 +112,7 @@ OwnTracks supports both **HTTP** and **MQTT** modes. Choose the one that fits yo
 1. Download Overland from App Store
 2. Open Overland settings
 3. Configure endpoint:
-   - **Server URL:** `https://your-api-domain.com/api/gps-data/overland`
+   - **Server URL:** `https://your-api-domain.com/api/overland`
    - **Token:** token that will be used in Geopulse for auth
    - **Device ID:** any value
 
