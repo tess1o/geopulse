@@ -61,7 +61,6 @@ public class GeographicInsightService {
                 AND (f.city IS NOT NULL OR r.city IS NOT NULL)
                 GROUP BY city_name
                 ORDER BY visit_count DESC
-                LIMIT 10
                 """;
 
         Query query = entityManager.createNativeQuery(sql);
