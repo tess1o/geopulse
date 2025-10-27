@@ -53,17 +53,22 @@
           <!-- Import Options -->
           <div v-if="selectedFile" class="form-section">
             <h3 class="form-section-title">Import Options</h3>
+            <div class="warning-message">
+              <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
+              <strong>Note: When importing data for the first time, choose “Replace existing data in time range” to make
+                the process faster.</strong>
+            </div>
 
             <div class="import-options">
               <div v-if="getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
                 <div class="option-group-header">
                   <label class="option-label">Data types to import:</label>
                   <Button
-                    :label="importOptions.dataTypes.length === availableDataTypes.length ? 'Deselect All' : 'Select All'"
-                    outlined
-                    size="small"
-                    @click="toggleAllImportDataTypes"
-                    class="select-all-button"
+                      :label="importOptions.dataTypes.length === availableDataTypes.length ? 'Deselect All' : 'Select All'"
+                      outlined
+                      size="small"
+                      @click="toggleAllImportDataTypes"
+                      class="select-all-button"
                   />
                 </div>
                 <div class="timeline-info">
@@ -94,8 +99,8 @@
 
               <div v-if="!getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
                 <div class="format-info">
-                  <i class="pi pi-info-circle"></i>
-                  <span>{{ getFormatInfoMessage() }}</span>
+                  <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
+                  <span> {{ getFormatInfoMessage() }}</span>
                 </div>
               </div>
 
@@ -125,40 +130,42 @@
                 </div>
                 <div class="option-description">
                   <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--gp-primary-500);"></i>
-                  When enabled, existing data in the time range being imported will be deleted before importing new data.
+                  When enabled, existing data in the time range being imported will be deleted before importing new
+                  data.
                   This is faster than merging and ensures clean data replacement.
                 </div>
                 <div v-if="clearDataBeforeImport" class="warning-message">
                   <i class="pi pi-exclamation-triangle" style="margin-right: 0.5rem;"></i>
-                  <strong>Warning:</strong> This will permanently delete existing data in the import time range. Make sure you have backups if needed.
+                  <strong>Warning:</strong> This will permanently delete existing data in the import time range. Make
+                  sure you have backups if needed.
                 </div>
               </div>
 
               <div v-if="enableDateFilter" class="date-filter-controls">
-                  <div class="date-control">
-                    <label for="importStartDate" class="date-label">Start Date</label>
-                    <Calendar
-                        id="importStartDate"
-                        v-model="importStartDate"
-                        dateFormat="yy-mm-dd"
-                        placeholder="Select start date"
-                        showIcon
-                        class="date-picker"
-                    />
-                  </div>
-                  <div class="date-control">
-                    <label for="importEndDate" class="date-label">End Date</label>
-                    <Calendar
-                        id="importEndDate"
-                        v-model="importEndDate"
-                        dateFormat="yy-mm-dd"
-                        placeholder="Select end date"
-                        showIcon
-                        class="date-picker"
-                    />
-                  </div>
+                <div class="date-control">
+                  <label for="importStartDate" class="date-label">Start Date</label>
+                  <Calendar
+                      id="importStartDate"
+                      v-model="importStartDate"
+                      dateFormat="yy-mm-dd"
+                      placeholder="Select start date"
+                      showIcon
+                      class="date-picker"
+                  />
+                </div>
+                <div class="date-control">
+                  <label for="importEndDate" class="date-label">End Date</label>
+                  <Calendar
+                      id="importEndDate"
+                      v-model="importEndDate"
+                      dateFormat="yy-mm-dd"
+                      placeholder="Select end date"
+                      showIcon
+                      class="date-picker"
+                  />
                 </div>
               </div>
+            </div>
           </div>
 
           <!-- Import Actions -->
@@ -187,7 +194,7 @@
         <div class="upload-status">
           <div class="upload-header">
             <h3 class="upload-title">Uploading File</h3>
-            <Tag value="Uploading" severity="info" icon="pi pi-spin pi-spinner" />
+            <Tag value="Uploading" severity="info" icon="pi pi-spin pi-spinner"/>
           </div>
 
           <div class="upload-details">
@@ -657,7 +664,7 @@ onMounted(async () => {
 
     // Find the most recent active import job and set it as current
     const activeJob = importJobs.value.find(job =>
-      ['processing', 'validating'].includes(job.status)
+        ['processing', 'validating'].includes(job.status)
     )
 
     if (activeJob) {
@@ -824,8 +831,6 @@ onMounted(async () => {
 }
 
 .warning-message {
-  margin-top: 0.5rem;
-  padding: 0.75rem;
   background-color: #fff3cd;
   border: 1px solid #ffeaa7;
   border-radius: 6px;
