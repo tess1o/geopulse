@@ -108,6 +108,7 @@ The interactive script will guide you through the process.
 **Customization**
 
 - Adjustable timeline sensitivity settings individually for each user
+- **Custom map tiles support** - Use satellite imagery or different map styles from providers like MapTiler, Mapbox, and more
 - Data export in multiple formats
 - Dark/light themes in UI
 - Mobile-responsive design

@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.shared.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
@@ -21,6 +22,9 @@ public class LocationPointResolver {
     private final GeocodingService geocodingService;
     private final FavoriteLocationService favoriteLocationService;
     private final CacheGeocodingService cacheGeocodingService;
+
+    @ConfigProperty(name = "geocoding.provider.delay.ms", defaultValue = "1000")
+    private long geocodingProviderDelayMs;
 
     @Inject
     public LocationPointResolver(GeocodingService geocodingService,
@@ -201,6 +205,8 @@ public class LocationPointResolver {
     private void processExternalGeocodingWithRateLimit(List<Point> coordinates,
                                                        Map<String, LocationResolutionResult> results) {
 
+        long delayMs = geocodingProviderDelayMs < 0 ? 0 : geocodingProviderDelayMs;
+
         for (int i = 0; i < coordinates.size(); i++) {
             Point point = coordinates.get(i);
             String coordKey = point.getX() + "," + point.getY();
@@ -208,7 +214,7 @@ public class LocationPointResolver {
             try {
                 // Rate limiting: wait 1 second between requests (except for the first one)
                 if (i > 0) {
-                    Thread.sleep(1000);
+                    Thread.sleep(delayMs);
                 }
 
                 FormattableGeocodingResult geocodingResult;

@@ -86,9 +86,11 @@ settings individually.*
 
 #### Authentication Cookies
 
-GeoPulse uses HTTP-only cookies for secure authentication. Understanding how cookie domains work with GeoPulse's architecture is important for proper deployment.
+GeoPulse uses HTTP-only cookies for secure authentication. Understanding how cookie domains work with GeoPulse's
+architecture is important for proper deployment.
 
 **GeoPulse Architecture Overview:**
+
 - nginx serves the frontend and proxies `/api/*` requests to the backend
 - Browser sees all requests as same-origin (e.g., `https://geopulse.yourdomain.com`)
 - Frontend assets: `https://geopulse.yourdomain.com/`
@@ -97,31 +99,35 @@ GeoPulse uses HTTP-only cookies for secure authentication. Understanding how coo
 
 **Cookie Domain Configuration:**
 
-| Environment Variable        | Default | Description                                                |
-|-----------------------------|---------|------------------------------------------------------------|
-| `GEOPULSE_COOKIE_DOMAIN`    | _(empty)_ | Cookie domain for authentication. **Keep empty for nginx** |
-| `GEOPULSE_AUTH_SECURE_COOKIES` | `false` | Enable secure cookies (requires HTTPS)                  |
+| Environment Variable           | Default   | Description                                                |
+|--------------------------------|-----------|------------------------------------------------------------|
+| `GEOPULSE_COOKIE_DOMAIN`       | _(empty)_ | Cookie domain for authentication. **Keep empty for nginx** |
+| `GEOPULSE_AUTH_SECURE_COOKIES` | `false`   | Enable secure cookies (requires HTTPS)                     |
 
 **When to use GEOPULSE_COOKIE_DOMAIN:**
 
 **Standard Deployments (99% of cases) - Keep Empty:**
+
 ```bash
 # ✅ Recommended for all standard deployments
 GEOPULSE_COOKIE_DOMAIN=
 ```
 
 This works for:
+
 - Localhost: `http://localhost:5555`
 - Homelab: `http://192.168.1.100:5555`
 - Production: `https://geopulse.yourdomain.com`
 - Any deployment using nginx proxy (standard GeoPulse setup)
 
 **Why keep it empty?**
+
 - Nginx creates same-origin context - browser automatically handles cookies
 - More secure - cookies won't leak to other subdomains
 - Simpler configuration with fewer issues
 
 **Alternative Deployments (rare) - Set Cookie Domain:**
+
 ```bash
 # ❌ Only for non-standard deployments WITHOUT nginx proxy
 # Example: Frontend at app.yourdomain.com, Backend at api.yourdomain.com
@@ -129,6 +135,7 @@ GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
 ```
 
 ⚠️ **Warning**: This is NOT a standard GeoPulse deployment. Requires:
+
 - Removing nginx proxy
 - Updating CORS configuration
 - Modifying frontend to call backend directly
@@ -137,6 +144,7 @@ GEOPULSE_COOKIE_DOMAIN=.yourdomain.com
 **Cookie Security:**
 
 For production deployments with HTTPS:
+
 ```bash
 GEOPULSE_AUTH_SECURE_COOKIES=true
 ```
@@ -144,6 +152,7 @@ GEOPULSE_AUTH_SECURE_COOKIES=true
 This ensures authentication cookies are only transmitted over secure HTTPS connections.
 
 For local/development deployments with HTTP:
+
 ```bash
 GEOPULSE_AUTH_SECURE_COOKIES=false
 ```
@@ -397,6 +406,12 @@ services:
 GeoPulse uses geocoding services to convert GPS coordinates into human-readable addresses and location names. You can
 configure multiple providers with automatic fallback support. **This configuration applies to all users.**
 
+#### Overall Geocoding Configuration
+
+| Property                      | Default | Description                                                                                                                                                       |
+|-------------------------------|---------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_GEOCODING_DELAY_MS` | `1000`  | A delay in milliseconds between sending requests to geocoding provider.<br/> Nomatim's default rate limit is 1req/s. For selfhosted solutions change it to lower value |
+
 ### Available Providers
 
 | Provider        | Free Tier | API Key Required | Rate Limits                 |
@@ -471,6 +486,93 @@ GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
 - **Privacy-focused**: Use Nominatim only
 - **High-volume**: Use Google Maps or Mapbox with Nominatim as fallback
 - **Reliability**: Configure both primary and fallback services
+
+### Custom Map Tiles
+
+GeoPulse allows you to customize the map appearance by using tiles from different providers. By default, GeoPulse uses OpenStreetMap tiles, but you can switch to satellite imagery, different map styles, or any custom tile provider that supports the standard XYZ tile format.
+
+#### Why Use Custom Map Tiles?
+
+- **Satellite imagery** - See actual satellite photos of your locations
+- **Different map styles** - Choose from hundreds of map designs (dark mode, terrain, outdoors, etc.)
+- **Personal preference** - Pick a style that works best for you
+
+#### Setting Up Custom Tiles (MapTiler Example)
+
+MapTiler offers a free tier that's perfect for personal use. Here's how to set it up:
+
+**Step 1: Create a Free MapTiler Account**
+
+1. Go to [MapTiler.com](https://www.maptiler.com/) and sign up for a free account
+2. The free tier includes 100,000 tile requests per month - more than enough for regular personal use
+
+**Step 2: Choose Your Map Style**
+
+1. Navigate to [MapTiler Maps](https://cloud.maptiler.com/maps/)
+2. Browse through the available map styles:
+   - **Satellite** - Aerial imagery
+   - **Streets** - Classic street map
+   - **Outdoor** - Topographic style
+   - **Hybrid** - Satellite with street labels
+   - And many more!
+3. Click on the map style you want to use
+
+**Step 3: Get Your Tile URL**
+
+1. On the map style page, scroll down to find the **"Raster tiles"** section
+2. Look for the **XYZ tiles** URL format
+3. Copy the URL - it should look like this:
+   ```
+   https://api.maptiler.com/maps/satellite/{z}/{x}/{y}.jpg?key=YOUR_PERSONAL_KEY_HERE
+   ```
+4. **Important:** Make sure the URL contains `{z}/{x}/{y}` placeholders - these are required!
+
+**Step 4: Configure GeoPulse**
+
+1. In GeoPulse, go to **Profile** → **Custom Map Tile URL**
+2. Paste your MapTiler tile URL (with your API key included)
+3. Click **Save**
+4. Navigate to any map page - your new tiles will load automatically!
+
+**Step 5: Switching Back to Default**
+
+To return to the default OpenStreetMap tiles, simply:
+1. Go to **Profile** → **Custom Map Tile URL**
+2. Clear the field (leave it empty)
+3. Click **Save**
+
+#### Security Note
+
+⚠️ **Never share your tile URL with anyone!** The URL contains your personal API key. If someone else uses your key, it will count against your quota and could exhaust your free tier limits.
+
+#### Supported Tile Providers
+
+GeoPulse works with any tile provider that supports the standard XYZ tile format. Some popular options:
+
+- **[MapTiler](https://www.maptiler.com/)** - Free tier available, satellite imagery, many styles
+- **[Mapbox](https://www.mapbox.com/)** - Free tier available, beautiful styles
+- **[Thunderforest](https://www.thunderforest.com/)** - Specialized maps (cycling, transport, outdoors)
+- **[Stadia Maps](https://stadiamaps.com/)** - Free tier for non-commercial use
+- **ESRI World Imagery** - Free satellite imagery (no API key required)
+  ```
+  https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}
+  ```
+
+#### Troubleshooting
+
+**Tiles not loading after changing URL:**
+- Hard refresh your browser (Ctrl+Shift+R or Cmd+Shift+R) to clear cached tiles
+- Verify the URL contains `{z}`, `{x}`, and `{y}` placeholders
+- Check that your API key is valid and hasn't expired
+
+**Mixed tile styles appearing:**
+- This is a browser cache issue - hard refresh to clear cached tiles
+- The version parameter in the URL should prevent this, but may require a cache clear on first use
+
+**Tiles load slowly:**
+- Free tier providers may have rate limits
+- Consider using a provider with better free tier limits
+- Check your internet connection
 
 ### AI Chat Configuration
 

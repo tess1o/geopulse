@@ -103,6 +103,14 @@ const initializeMap = async () => {
           const tileUrl = getTileUrl()
           const subdomains = getSubdomains()
 
+          // DEBUG: Log tile configuration
+          console.log('[BaseMap] Tile Configuration:', {
+            tileUrl,
+            subdomains,
+            attribution: getTileAttribution(),
+            userInfo: JSON.parse(localStorage.getItem('userInfo') || '{}')
+          })
+
           const tileLayerOptions = {
             attribution: getTileAttribution(),
             maxZoom: 19,
@@ -112,11 +120,10 @@ const initializeMap = async () => {
             updateWhenIdle: false, // Update tiles while panning for better UX
             updateWhenZooming: false, // Don't update during zoom animation
             updateInterval: 200, // Throttle tile updates to 200ms
-            errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', // 1x1 transparent pixel
-            // Retry failed tile loads
-            maxNativeZoom: 19,
-            // Important: Set crossOrigin to anonymous for better compatibility
-            crossOrigin: true
+            // Don't set errorTileUrl - let Leaflet handle missing tiles naturally
+            maxNativeZoom: 19
+            // Note: crossOrigin is NOT set to allow credentials (cookies) to be sent with same-origin tile requests
+            // This is required for /api/tiles endpoint which requires authentication
           }
 
           // Add subdomains if the URL uses them
@@ -124,27 +131,72 @@ const initializeMap = async () => {
             tileLayerOptions.subdomains = subdomains
           }
 
+          console.log('[BaseMap] Tile Layer Options:', tileLayerOptions)
+
           try {
             const tileLayer = L.tileLayer(tileUrl, tileLayerOptions)
 
+            // Add success handler for tile loads
+            tileLayer.on('tileload', function(event) {
+              console.log('[BaseMap] Tile loaded successfully:', {
+                coords: event.coords,
+                url: event.tile.src
+              })
+            })
+
+            // Add loading start handler
+            tileLayer.on('loading', function() {
+              console.log('[BaseMap] Tiles loading started')
+            })
+
+            // Add loading complete handler
+            tileLayer.on('load', function() {
+              console.log('[BaseMap] All tiles loaded successfully')
+            })
+
             // Add error handling for individual tile load failures
             tileLayer.on('tileerror', function(error) {
-              console.warn('Tile load error:', error.coords, error.tile.src)
+              // Don't log errors for data URLs (errorTileUrl fallbacks)
+              if (error.tile.src.startsWith('data:')) {
+                return
+              }
 
-              // Retry loading the tile after a short delay
+              console.error('[BaseMap] Tile load error:', {
+                coords: error.coords,
+                url: error.tile.src,
+                tileElement: error.tile,
+                error: error.error
+              })
+
+              // Log cookie information to help debug auth issues (only log once per session)
+              if (!window._tileErrorCookiesLogged) {
+                console.log('[BaseMap] Document cookies:', document.cookie)
+                window._tileErrorCookiesLogged = true
+              }
+
+              // Retry loading the tile after a short delay (max 2 retries)
               const tile = error.tile
               const originalSrc = tile.src
+              const retryCount = tile.dataset.retryCount ? parseInt(tile.dataset.retryCount) : 0
 
-              setTimeout(() => {
-                if (tile.src === originalSrc) {
-                  // Force reload by appending a cache-busting parameter
-                  const separator = originalSrc.includes('?') ? '&' : '?'
-                  tile.src = originalSrc + separator + '_retry=' + Date.now()
-                }
-              }, 1000)
+              if (retryCount < 2 && !originalSrc.startsWith('data:')) {
+                setTimeout(() => {
+                  if (tile.src === originalSrc) {
+                    tile.dataset.retryCount = (retryCount + 1).toString()
+                    // Force reload by appending a cache-busting parameter
+                    const separator = originalSrc.includes('?') ? '&' : '?'
+                    const retrySrc = originalSrc + separator + '_retry=' + Date.now()
+                    console.log('[BaseMap] Retrying tile load (attempt ' + (retryCount + 1) + '):', retrySrc)
+                    tile.src = retrySrc
+                  }
+                }, 1000 * (retryCount + 1)) // Exponential backoff
+              } else if (retryCount >= 2) {
+                console.warn('[BaseMap] Max retries reached for tile:', originalSrc)
+              }
             })
 
             tileLayer.addTo(map.value)
+            console.log('[BaseMap] Tile layer added to map')
           } catch (tileError) {
             console.error('Error loading custom tiles, falling back to OSM:', tileError)
             // Fallback to default OSM tiles if custom tiles fail

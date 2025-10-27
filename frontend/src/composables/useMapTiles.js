@@ -16,23 +16,34 @@ export function useMapTiles() {
   const getTileUrl = () => {
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      console.log('[useMapTiles] Getting tile URL. User info:', {
+        hasCustomUrl: !!userInfo.customMapTileUrl,
+        customMapTileUrl: userInfo.customMapTileUrl
+      })
 
-      // If user has configured a custom tile URL, use the proxy endpoint
+      // If user has configured a custom tile URL, use it directly with cache-busting version
       if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
-        // Check if the custom URL uses subdomains
-        if (userInfo.customMapTileUrl.includes('{s}')) {
-          // Use backend proxy with subdomain support
-          return '/api/tiles/{z}/{x}/{y}.png?s={s}'
-        } else {
-          // No subdomain in custom URL, don't add the s parameter
-          return '/api/tiles/{z}/{x}/{y}.png'
-        }
+        const customUrl = userInfo.customMapTileUrl.trim()
+
+        // Generate a cache-busting version based on the custom URL
+        // This ensures tiles reload when the custom URL changes
+        const urlHash = btoa(customUrl).substring(0, 8)
+
+        // Append version parameter to the URL
+        // If URL already has query params (e.g., ?key=xxx), use &v=hash
+        // Otherwise use ?v=hash
+        const separator = customUrl.includes('?') ? '&' : '?'
+        const versionedUrl = `${customUrl}${separator}v=${urlHash}`
+
+        console.log('[useMapTiles] Using custom tiles directly:', versionedUrl, 'version:', urlHash)
+        return versionedUrl
       }
     } catch (error) {
-      console.warn('Error reading custom map tile URL from localStorage:', error)
+      console.error('[useMapTiles] Error reading custom map tile URL from localStorage:', error)
     }
 
     // Default to OSM tiles proxied through nginx for caching
+    console.log('[useMapTiles] Using default OSM tiles')
     return '/osm/tiles/{s}/{z}/{x}/{y}.png'
   }
 
