@@ -437,12 +437,12 @@
                         v-if="prefs.dataGapThresholdSeconds !== undefined"
                         v-model="prefs.dataGapThresholdSeconds"
                         :min="300"
-                        :max="21600"
+                        :max="86400"
                         :step="300"
                         :labels="['5 min (Sensitive)', '3 hours (Balanced)', '6 hours (Lenient)']"
                         :suffix="' seconds'"
                         :input-min="60"
-                        :input-max="43200"
+                        :input-max="604800"
                         :decimal-places="0"
                       />
                     </template>
