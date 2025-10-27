@@ -39,14 +39,25 @@ public class UserAISettingsService {
                 throw new IllegalArgumentException("User not found: " + userId);
             }
 
-            String currentApiKey = getAISettingsWithApiKey(userId).getOpenaiApiKey();
+            String currentApiKey = null;
+            try {
+                currentApiKey = getAISettingsWithApiKey(userId).getOpenaiApiKey();
+            } catch (RuntimeException e) {
+                // If decryption fails (e.g., encryption key changed), allow user to set new settings
+                // currentApiKey remains null, so the user must provide a new API key
+            }
+
             UserAISettings settingsToSave = settings.copy();
 
             if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank()) {
                 settingsToSave.setOpenaiApiKey(encryptionService.encrypt(settings.getOpenaiApiKey()));
-            } else {
+            } else if (currentApiKey != null) {
                 settingsToSave.setOpenaiApiKey(currentApiKey);
+            } else {
+                // If no current API key and none provided, set to empty string
+                settingsToSave.setOpenaiApiKey("");
             }
+            settingsToSave.setApiKeyNeeded(settings.isApiKeyNeeded());
 
             String json = objectMapper.writeValueAsString(settingsToSave);
             String encryptedJson = encryptionService.encrypt(json);
@@ -61,7 +72,16 @@ public class UserAISettingsService {
 
     @SneakyThrows
     public List<String> testConnectionAndFetchModels(UUID userId, UserAISettings settings) {
-        UserAISettings dbSettings = getAISettingsWithApiKey(userId);
+        UserAISettings dbSettings;
+        try {
+            dbSettings = getAISettingsWithApiKey(userId);
+        } catch (RuntimeException e) {
+            // If decryption fails (e.g., encryption key changed), use empty settings
+            dbSettings = UserAISettings.builder()
+                    .openaiApiKey("")
+                    .build();
+        }
+
         String apiKey = Optional.ofNullable(settings.getOpenaiApiKey())
                 .filter(s -> !s.isBlank())
                 .orElse(dbSettings.getOpenaiApiKey());
