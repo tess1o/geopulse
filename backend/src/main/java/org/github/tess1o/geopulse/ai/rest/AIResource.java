@@ -53,7 +53,7 @@ public class AIResource {
             UserAISettings settings = UserAISettings.builder()
                     .openaiApiUrl(request.openaiApiUrl())
                     .openaiApiKey(request.openaiApiKey())
-                    .isApiKeyNeeded(request.isApiKeyNeeded())
+                    .apiKeyRequired(request.isApiKeyNeeded())
                     .build();
             List<String> models = aiSettingsService.testConnectionAndFetchModels(userId, settings);
             return Response.ok(models).build();

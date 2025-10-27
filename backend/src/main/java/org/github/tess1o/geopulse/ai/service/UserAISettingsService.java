@@ -57,7 +57,7 @@ public class UserAISettingsService {
                 // If no current API key and none provided, set to empty string
                 settingsToSave.setOpenaiApiKey("");
             }
-            settingsToSave.setApiKeyNeeded(settings.isApiKeyNeeded());
+            settingsToSave.setApiKeyRequired(settings.isApiKeyRequired());
 
             String json = objectMapper.writeValueAsString(settingsToSave);
             String encryptedJson = encryptionService.encrypt(json);
@@ -86,7 +86,7 @@ public class UserAISettingsService {
                 .filter(s -> !s.isBlank())
                 .orElse(dbSettings.getOpenaiApiKey());
 
-        if (settings.isApiKeyNeeded() && (apiKey == null || apiKey.isBlank())) {
+        if (settings.isApiKeyRequired() && (apiKey == null || apiKey.isBlank())) {
             throw new WebApplicationException("API key is required but not provided.", jakarta.ws.rs.core.Response.Status.BAD_REQUEST);
         }
 
@@ -94,7 +94,7 @@ public class UserAISettingsService {
                 .baseUri(new URI(settings.getOpenaiApiUrl()));
 
 
-        if (settings.isApiKeyNeeded()) {
+        if (settings.isApiKeyRequired()) {
             clientBuilder.header("Authorization", "Bearer " + apiKey);
         }
 
@@ -129,7 +129,7 @@ public class UserAISettingsService {
                         .openaiApiUrl(OPENAI_DEFAULT_URL)
                         .openaiModel(DEFAULT_OPENAI_MODEL)
                         .openaiApiKeyConfigured(false)
-                        .isApiKeyNeeded(true)
+                        .apiKeyRequired(true)
                         .build();
             }
 
@@ -144,7 +144,7 @@ public class UserAISettingsService {
                     .openaiApiUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
                     .openaiModel(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : DEFAULT_OPENAI_MODEL)
                     .openaiApiKeyConfigured(hasApiKey)
-                    .isApiKeyNeeded(settings.isApiKeyNeeded())
+                    .apiKeyRequired(settings.isApiKeyRequired())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve AI settings", e);
@@ -166,7 +166,7 @@ public class UserAISettingsService {
                         .openaiApiUrl(OPENAI_DEFAULT_URL)
                         .openaiModel(DEFAULT_OPENAI_MODEL)
                         .openaiApiKeyConfigured(false)
-                        .isApiKeyNeeded(true)
+                        .apiKeyRequired(true)
                         .build();
             }
 

@@ -309,7 +309,8 @@ const loadAISettings = async () => {
         openaiApiKey: '', // Always empty since backend doesn't send actual key
         openaiApiUrl: data.openaiApiUrl || 'https://api.openai.com/v1',
         openaiModel: data.openaiModel || 'gpt-3.5-turbo',
-        openaiApiKeyConfigured: data.openaiApiKeyConfigured === true
+        openaiApiKeyConfigured: data.openaiApiKeyConfigured === true,
+        apiKeyRequired: data.apiKeyRequired,
       }
     }
   } catch (error) {

@@ -20,8 +20,7 @@ public class UserAISettings {
     private String openaiApiUrl; // Custom OpenAI API URL (defaults to https://api.openai.com/v1)
     private String openaiModel;
     private boolean openaiApiKeyConfigured; // Frontend-safe flag to indicate if key is set
-    @lombok.Builder.Default
-    private boolean isApiKeyNeeded = true;
+    private boolean apiKeyRequired;
 
     public UserAISettings copy() {
         return UserAISettings.builder()
@@ -30,7 +29,7 @@ public class UserAISettings {
                 .openaiApiUrl(this.openaiApiUrl)
                 .openaiModel(this.openaiModel)
                 .openaiApiKeyConfigured(this.openaiApiKeyConfigured)
-                .isApiKeyNeeded(this.isApiKeyNeeded)
+                .apiKeyRequired(this.apiKeyRequired)
                 .build();
     }
 }
