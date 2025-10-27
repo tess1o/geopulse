@@ -6,14 +6,16 @@ export const useExportImportStore = defineStore('exportImport', {
         // Export state
         exportJobs: [],
         currentExportJob: null,
-        
+
         // Import state
         importJobs: [],
         currentImportJob: null,
-        
+
         // UI state
         isExporting: false,
-        isImporting: false
+        isImporting: false,
+        uploadProgress: 0,
+        isUploading: false
     }),
 
     getters: {
@@ -342,6 +344,8 @@ export const useExportImportStore = defineStore('exportImport', {
         // API Actions - Import
         async uploadImportFile(file, options = {}) {
             this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
             try {
                 const formData = new FormData()
                 formData.append('file', file)
@@ -350,23 +354,38 @@ export const useExportImportStore = defineStore('exportImport', {
                 const response = await apiService.post('/import/geopulse/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        // Cap at 99% during upload, reach 100% only when response received
+                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
+                        this.uploadProgress = Math.min(progress, 99)
                     }
                 })
 
+                // Upload complete, show 100% briefly
+                this.uploadProgress = 100
+
+                // Keep upload card visible for 500ms to show completion
+                await new Promise(resolve => setTimeout(resolve, 500))
+
                 this.setCurrentImportJob(response)
                 this.addImportJob(response)
-                
+
                 return response
             } catch (error) {
                 throw error
             } finally {
                 this.isImporting = false
+                this.isUploading = false
+                this.uploadProgress = 0
             }
         },
 
         // API Actions - Import (OwnTracks)
         async uploadOwnTracksImportFile(file, options = {}) {
             this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
             try {
                 const formData = new FormData()
                 formData.append('file', file)
@@ -375,22 +394,33 @@ export const useExportImportStore = defineStore('exportImport', {
                 const response = await apiService.post('/import/owntracks/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
+                        this.uploadProgress = Math.min(progress, 99)
                     }
                 })
 
+                this.uploadProgress = 100
+                await new Promise(resolve => setTimeout(resolve, 500))
+
                 this.setCurrentImportJob(response)
                 this.addImportJob(response)
-                
+
                 return response
             } catch (error) {
                 throw error
             } finally {
                 this.isImporting = false
+                this.isUploading = false
+                this.uploadProgress = 0
             }
         },
 
         async uploadGpxImportFile(file, options = {}) {
             this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
             try {
                 const formData = new FormData()
                 formData.append('file', file)
@@ -399,8 +429,15 @@ export const useExportImportStore = defineStore('exportImport', {
                 const response = await apiService.post('/import/gpx/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
+                        this.uploadProgress = Math.min(progress, 99)
                     }
                 })
+
+                this.uploadProgress = 100
+                await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
                 this.addImportJob(response)
@@ -410,12 +447,16 @@ export const useExportImportStore = defineStore('exportImport', {
                 throw error
             } finally {
                 this.isImporting = false
+                this.isUploading = false
+                this.uploadProgress = 0
             }
         },
 
         // API Actions - Import (Google Timeline)
         async uploadGoogleTimelineImportFile(file, options = {}) {
             this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
             try {
                 const formData = new FormData()
                 formData.append('file', file)
@@ -424,8 +465,15 @@ export const useExportImportStore = defineStore('exportImport', {
                 const response = await apiService.post('/import/google-timeline/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
+                        this.uploadProgress = Math.min(progress, 99)
                     }
                 })
+
+                this.uploadProgress = 100
+                await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
                 this.addImportJob(response)
@@ -435,12 +483,16 @@ export const useExportImportStore = defineStore('exportImport', {
                 throw error
             } finally {
                 this.isImporting = false
+                this.isUploading = false
+                this.uploadProgress = 0
             }
         },
 
         // API Actions - Import (GeoJSON)
         async uploadGeoJsonImportFile(file, options = {}) {
             this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
             try {
                 const formData = new FormData()
                 formData.append('file', file)
@@ -449,8 +501,15 @@ export const useExportImportStore = defineStore('exportImport', {
                 const response = await apiService.post('/import/geojson/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
+                        this.uploadProgress = Math.min(progress, 99)
                     }
                 })
+
+                this.uploadProgress = 100
+                await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
                 this.addImportJob(response)
@@ -460,6 +519,8 @@ export const useExportImportStore = defineStore('exportImport', {
                 throw error
             } finally {
                 this.isImporting = false
+                this.isUploading = false
+                this.uploadProgress = 0
             }
         },
 

@@ -198,15 +198,18 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
         AtomicInteger totalMessages = new AtomicInteger(0);
         AtomicReference<Instant> firstTimestamp = new AtomicReference<>(null);
 
-        log.info("Starting streaming import with batch size: {}, clear mode: {}, from {}",
-                streamingBatchSize, clearMode, job.hasTempFile() ? "temp file" : "memory");
+        // Get total expected messages from validation for accurate progress tracking
+        int totalExpectedMessages = job.getTotalRecordsFromValidation();
+
+        log.info("Starting streaming import with batch size: {}, clear mode: {}, total expected messages: {}, from {}",
+                streamingBatchSize, clearMode, totalExpectedMessages, job.hasTempFile() ? "temp file" : "memory");
 
         // Use getDataStream() to abstract whether data is in memory or on disk
         try (InputStream dataStream = job.getDataStream()) {
             StreamingOwnTracksParser parser = new StreamingOwnTracksParser(dataStream, objectMapper);
 
             parser.parseMessages((message, stats) -> {
-                totalMessages.set(stats.totalMessages);
+                totalMessages.incrementAndGet();
 
                 // Skip invalid messages
                 if (!isValidGpsMessage(message)) {
@@ -224,23 +227,16 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
                     String deviceId = message.getTid() != null ? message.getTid() : "owntracks-import";
                     GpsPointEntity gpsPoint = gpsPointMapper.toEntity(message, user, deviceId, GpsSourceType.OWNTRACKS);
                     addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                        totalImported, totalSkipped, clearMode);
+                        totalImported, totalSkipped, clearMode, job, totalExpectedMessages);
                 } catch (Exception e) {
                     log.warn("Failed to create GPS point from message: {}", e.getMessage());
                     totalSkipped.incrementAndGet();
-                }
-
-                // Update progress periodically (every 5000 messages for better UX)
-                if (totalMessages.get() > 0 && totalMessages.get() % 5000 == 0) {
-                    // Progress from 20% to 70% (50% range) based on actual parsing progress
-                    int progress = 20 + (int) ((double) totalMessages.get() / stats.totalMessages * 50);
-                    job.updateProgress(progress, "Parsing and inserting: " + totalMessages.get() + " / " + stats.totalMessages + " messages");
                 }
             });
 
             // Flush any remaining batch
             if (!currentBatch.isEmpty()) {
-                flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped);
+                flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedMessages);
             }
 
             log.info("Streaming import completed: {} messages processed, {} points imported, {} skipped",
@@ -265,7 +261,9 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
             AtomicReference<Instant> firstTimestamp,
             AtomicInteger totalImported,
             AtomicInteger totalSkipped,
-            boolean clearMode) {
+            boolean clearMode,
+            ImportJob job,
+            int totalExpectedMessages) {
 
         // Track first timestamp for timeline generation
         if (firstTimestamp.get() == null && gpsPoint.getTimestamp() != null) {
@@ -276,8 +274,17 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
 
         // Flush when batch is full
         if (currentBatch.size() >= streamingBatchSize) {
-            flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped);
+            flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedMessages);
             currentBatch.clear(); // CRITICAL: Clear to release memory
+
+            // Update progress after DB flush based on actual imported count
+            // Progress from 20% to 70% (50% range) based on database writes
+            if (totalExpectedMessages > 0) {
+                int processed = totalImported.get() + totalSkipped.get();
+                int progress = 20 + (int)((double)processed / totalExpectedMessages * 50);
+                job.updateProgress(Math.min(progress, 70),
+                    "Importing to database: " + processed + " / " + totalExpectedMessages + " GPS points processed");
+            }
         }
     }
 
@@ -289,19 +296,18 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
             List<GpsPointEntity> batch,
             boolean clearMode,
             AtomicInteger totalImported,
-            AtomicInteger totalSkipped) {
+            AtomicInteger totalSkipped,
+            int totalExpected) {
 
         if (batch.isEmpty()) {
             return;
         }
 
         try {
-            int imported = batchProcessor.processBatch(batch, clearMode);
+            int alreadyProcessed = totalImported.get() + totalSkipped.get();
+            int imported = batchProcessor.processBatch(batch, clearMode, alreadyProcessed, totalExpected);
             totalImported.addAndGet(imported);
             totalSkipped.addAndGet(batch.size() - imported);
-
-            log.debug("Flushed batch of {} points to database ({} imported, {} skipped)",
-                    batch.size(), imported, batch.size() - imported);
 
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);

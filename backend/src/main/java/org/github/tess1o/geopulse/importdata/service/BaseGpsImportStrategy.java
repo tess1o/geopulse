@@ -56,9 +56,10 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             log.info("{} validation successful: {} total records, {} valid GPS points",
                     getFormat(), validationResult.getTotalRecordCount(), validationResult.getValidRecordCount());
 
-            // Store timestamps in job for use in clear mode
+            // Store timestamps and total count in job for use in clear mode and progress tracking
             job.setDataFirstTimestamp(validationResult.getFirstTimestamp());
             job.setDataLastTimestamp(validationResult.getLastTimestamp());
+            job.setTotalRecordsFromValidation(validationResult.getValidRecordCount());
 
             return List.of(ExportImportConstants.DataTypes.RAW_GPS);
             

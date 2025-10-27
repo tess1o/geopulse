@@ -18,10 +18,7 @@ import org.jboss.resteasy.reactive.RestForm;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Path("/api/import")
 @Authenticated
@@ -585,6 +582,47 @@ public class ImportResource {
     }
 
     @GET
+    @Path("/jobs")
+    public Response getImportJobs(@QueryParam("limit") @DefaultValue("10") int limit,
+                                   @QueryParam("offset") @DefaultValue("0") int offset) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            List<ImportJob> userJobs = importService.getUserImportJobs(userId, limit, offset);
+
+            // Convert to responses
+            List<ImportJobResponse> jobResponses = userJobs.stream()
+                    .map(job -> {
+                        ImportJobResponse response = new ImportJobResponse();
+                        response.setSuccess(true);
+                        response.setImportJobId(job.getJobId());
+                        response.setStatus(job.getStatus().name().toLowerCase(Locale.ENGLISH));
+                        response.setUploadedFileName(job.getUploadedFileName());
+                        response.setFileSizeBytes(job.getFileSizeBytes());
+                        response.setDetectedDataTypes(job.getDetectedDataTypes());
+                        response.setProgress(job.getProgress());
+                        response.setProgressMessage(job.getProgressMessage());
+                        response.setCreatedAt(job.getCreatedAt());
+                        response.setCompletedAt(job.getCompletedAt());
+                        response.setError(job.getError());
+                        return response;
+                    })
+                    .toList();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("jobs", jobResponses);
+
+            return Response.ok(result).build();
+
+        } catch (Exception e) {
+            log.error("Failed to get import jobs", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to get import jobs"))
+                    .build();
+        }
+    }
+
+    @GET
     @Path("/status/{importJobId}")
     public Response getImportStatus(@PathParam("importJobId") UUID importJobId) {
         try {
@@ -605,6 +643,7 @@ public class ImportResource {
             response.setFileSizeBytes(job.getFileSizeBytes());
             response.setDetectedDataTypes(job.getDetectedDataTypes());
             response.setProgress(job.getProgress());
+            response.setProgressMessage(job.getProgressMessage());
             response.setCreatedAt(job.getCreatedAt());
             response.setCompletedAt(job.getCompletedAt());
             response.setError(job.getError());
