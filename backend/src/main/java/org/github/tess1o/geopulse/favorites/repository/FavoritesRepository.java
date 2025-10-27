@@ -106,19 +106,34 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
      * @param maxDistanceFromArea Maximum distance in meters for AREA favorites
      * @return Map of coordinate string (lon,lat) to FavoritesEntity
      */
-    public Map<String, FavoritesEntity> findByPointsBatch(UUID userId, List<Point> points, 
+    public Map<String, FavoritesEntity> findByPointsBatch(UUID userId, List<Point> points,
                                                           int maxDistanceFromPoint, int maxDistanceFromArea) {
         if (points == null || points.isEmpty()) {
             return Map.of();
         }
 
+        final int BATCH_SIZE = 10000;
+        Map<String, FavoritesEntity> finalResultMap = new HashMap<>();
+        int totalPoints = points.size();
+
+        for (int i = 0; i < totalPoints; i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, totalPoints);
+            List<Point> batchPoints = points.subList(i, end);
+            finalResultMap.putAll(findFavoritesForBatch(userId, batchPoints, maxDistanceFromPoint, maxDistanceFromArea));
+        }
+
+        return finalResultMap;
+    }
+
+    private Map<String, FavoritesEntity> findFavoritesForBatch(UUID userId, List<Point> batchPoints,
+                                                               int maxDistanceFromPoint, int maxDistanceFromArea) {
         // Build VALUES clause for input coordinates
         StringBuilder valuesClause = new StringBuilder();
-        for (int i = 0; i < points.size(); i++) {
-            if (i > 0) valuesClause.append(", ");
-            valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(i)
-                      .append(", :lat").append(i).append("), 4326), :lon").append(i)
-                      .append(", :lat").append(i).append(")");
+        for (int j = 0; j < batchPoints.size(); j++) {
+            if (j > 0) valuesClause.append(", ");
+            valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(j)
+                    .append(", :lat").append(j).append("), 4326), :lon").append(j)
+                    .append(", :lat").append(j).append(")");
         }
 
         // Step 1: Get matching favorite IDs and their corresponding input coordinates
@@ -127,42 +142,42 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                     SELECT input_point, input_lon, input_lat
                     FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
                 )
-                SELECT DISTINCT ON (ic.input_lon, ic.input_lat) 
+                SELECT DISTINCT ON (ic.input_lon, ic.input_lat)
                        f.id, ic.input_lon, ic.input_lat
                 FROM favorite_locations f
                 CROSS JOIN input_coords ic
                 WHERE f.user_id = :userId
                   AND (
-                      (f.type = 'POINT' 
+                      (f.type = 'POINT'
                        AND ST_DWithin(f.geometry::geography, ic.input_point::geography, :maxDistanceFromPoint)
                       )
-                      OR 
-                      (f.type = 'AREA' 
+                      OR
+                      (f.type = 'AREA'
                        AND (ST_Contains(f.geometry, ic.input_point)
                             OR ST_DWithin(ST_Boundary(f.geometry)::geography, ic.input_point::geography, :maxDistanceFromArea)
                            )
                       )
                   )
-                ORDER BY ic.input_lon, ic.input_lat, 
+                ORDER BY ic.input_lon, ic.input_lat,
                          CASE WHEN f.type = 'AREA' AND ST_Contains(f.geometry, ic.input_point) THEN 1 ELSE 2 END,
                          ST_Distance(f.geometry::geography, ic.input_point::geography)
                 """.formatted(valuesClause.toString());
 
         var matchingQueryExec = em.createNativeQuery(matchingQuery)
-                               .setParameter("userId", userId)
-                               .setParameter("maxDistanceFromPoint", maxDistanceFromPoint)
-                               .setParameter("maxDistanceFromArea", maxDistanceFromArea);
+                .setParameter("userId", userId)
+                .setParameter("maxDistanceFromPoint", maxDistanceFromPoint)
+                .setParameter("maxDistanceFromArea", maxDistanceFromArea);
 
         // Set coordinate parameters
-        for (int i = 0; i < points.size(); i++) {
-            Point point = points.get(i);
-            matchingQueryExec.setParameter("lon" + i, point.getX());
-            matchingQueryExec.setParameter("lat" + i, point.getY());
+        for (int j = 0; j < batchPoints.size(); j++) {
+            Point point = batchPoints.get(j);
+            matchingQueryExec.setParameter("lon" + j, point.getX());
+            matchingQueryExec.setParameter("lat" + j, point.getY());
         }
 
         @SuppressWarnings("unchecked")
         List<Object[]> matchingResults = matchingQueryExec.getResultList();
-        
+
         if (matchingResults.isEmpty()) {
             return Map.of();
         }
@@ -170,20 +185,20 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         // Step 2: Get all matching entities in a single query and build coordinate mapping
         List<Long> favoriteIds = new ArrayList<>();
         Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // One favorite can match multiple coordinates
-        
+
         for (Object[] row : matchingResults) {
             Long id = ((Number) row[0]).longValue();
             Double inputLon = (Double) row[1];
             Double inputLat = (Double) row[2];
             String coordKey = inputLon + "," + inputLat;
-            
+
             favoriteIds.add(id);
             idToCoordListMap.computeIfAbsent(id, k -> new ArrayList<>()).add(coordKey);
         }
 
         // Get all entities in a single IN query
         List<FavoritesEntity> entities = find("id in ?1", favoriteIds).list();
-        
+
         // Build result map
         Map<String, FavoritesEntity> resultMap = new HashMap<>();
         for (FavoritesEntity entity : entities) {
@@ -195,7 +210,6 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
                 }
             }
         }
-
         return resultMap;
     }
 
