@@ -54,6 +54,7 @@ public class AIChatService {
             Clear conversational paragraphs, no lists/bold/code blocks, no raw JSON.
             """;
     public static final String OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
+    public static final int DEFAULT_TIMEOUT_SECONDS = 600;
 
     @Inject
     UserAISettingsService aiSettingsService;
@@ -126,7 +127,7 @@ public class AIChatService {
                 .apiKey(settings.getOpenaiApiKey())
                 .baseUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
                 .modelName(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : "gpt-3.5-turbo")
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS))
                 .logResponses(true)
                 .logRequests(true)
                 .build();
