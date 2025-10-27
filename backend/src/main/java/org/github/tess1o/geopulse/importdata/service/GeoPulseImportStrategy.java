@@ -189,14 +189,14 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // 1. Import reverse geocoding locations first (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.REVERSE_GEOCODING)) {
             importReverseGeocodingData(fileContents.get(ExportImportConstants.FileNames.REVERSE_GEOCODING), job);
-            totalProgress += 10;
+            totalProgress += 5;
             job.setProgress(totalProgress);
         }
 
         // 2. Import favorites (no dependencies)
         if (fileContents.containsKey(ExportImportConstants.FileNames.FAVORITES)) {
             importFavoritesData(fileContents.get(ExportImportConstants.FileNames.FAVORITES), job);
-            totalProgress += 15;
+            totalProgress += 10;
             job.setProgress(totalProgress);
         }
 
@@ -206,7 +206,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // Handle data clearing before import if requested
         if (job.getOptions().isClearDataBeforeImport()) {
             clearExistingDataBeforeImport(fileContents, job);
-            totalProgress += 15;
+            totalProgress += 10;
             job.setProgress(totalProgress);
         }
 
@@ -215,22 +215,23 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         if (hasGpsData) {
             firstGpsTimestamp = importRawGpsData(fileContents.get(ExportImportConstants.FileNames.RAW_GPS_DATA), job);
             log.info("Successfully imported raw GPS data for user {} - first timestamp: {}", job.getUserId(), firstGpsTimestamp);
-            totalProgress += 35;
+            totalProgress += 30;
             job.setProgress(totalProgress);
         }
 
         // 4. Always regenerate timeline after GPS import (skipping timeline/gaps data in export)
         if (hasGpsData && firstGpsTimestamp != null) {
+            job.updateProgress(totalProgress, "Generating timeline (may include reverse geocoding)...");
             log.info("Regenerating timeline from imported GPS data starting from timestamp: {}", firstGpsTimestamp);
             timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
-            totalProgress += 25;
+            totalProgress += 35;
             job.setProgress(totalProgress);
         }
 
         // 5. Import user info
         if (fileContents.containsKey(ExportImportConstants.FileNames.USER_INFO)) {
             importUserInfoData(fileContents.get(ExportImportConstants.FileNames.USER_INFO), job);
-            totalProgress += 10;
+            totalProgress += 5;
             job.setProgress(totalProgress);
         }
 
@@ -300,9 +301,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
         // Use BatchProcessor with Clear/Merge mode based on user preference
         boolean clearMode = job.getOptions().isClearDataBeforeImport();
         int batchSize = clearMode ? 500 : 250; // Use appropriate batch size
-        
+
+        // Calculate base progress from what we already did (reverse geocoding 5% + favorites 10% + clearing 10% = 25%, or 15% without clearing)
+        int baseProgress = clearMode ? 25 : 15;
+
         BatchProcessor.BatchResult result = batchProcessor.processInBatches(
-            gpsEntities, batchSize, clearMode, job, 35, 85);
+            gpsEntities, batchSize, clearMode, job, baseProgress, baseProgress + 30);
         
         log.info("Successfully imported {} GPS points using BatchProcessor (skipped {} duplicates)", 
                 result.imported, result.skipped);

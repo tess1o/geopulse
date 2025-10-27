@@ -112,19 +112,19 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             // Process GPS points in batches using appropriate mode
             boolean clearMode = job.getOptions().isClearDataBeforeImport();
             String importMode = clearMode ? "bulk inserting" : "merging with existing data";
-            job.updateProgress(35, "Importing GPS points (" + importMode + ")...");
-            
+            job.updateProgress(30, "Importing GPS points (" + importMode + ")...");
+
             int optimalBatchSize = getBatchSize(gpsEntities, clearMode);
-            log.info("Using batch size {} for {} GPS points (dataset size: {}, clear mode: {})", 
+            log.info("Using batch size {} for {} GPS points (dataset size: {}, clear mode: {})",
                     optimalBatchSize, gpsEntities.size(), gpsEntities.size(), clearMode);
-            
-            BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsEntities, optimalBatchSize, clearMode, job, 35, 95);
-            
-            job.updateProgress(95, "Generating timeline...");
-            
+
+            BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsEntities, optimalBatchSize, clearMode, job, 30, 60);
+
+            job.updateProgress(60, "Generating timeline (may include reverse geocoding)...");
+
             // Trigger timeline generation since we only imported GPS data
             timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
-            
+
             job.updateProgress(100, "Import completed successfully");
             
             log.info("{} import completed for user {}: {} imported, {} skipped from {} total GPS points",

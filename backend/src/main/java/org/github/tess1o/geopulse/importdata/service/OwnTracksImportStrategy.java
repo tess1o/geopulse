@@ -147,7 +147,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
             }
 
             // Start streaming import with direct DB writes
-            job.updateProgress(25, "Streaming import with direct database writes...");
+            job.updateProgress(20, "Parsing and inserting GPS data...");
             StreamingImportResult result = streamingImportWithDirectWrites(job, user, clearMode);
 
             // Use timestamp from validation, or fall back to streaming result
@@ -155,7 +155,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
                 firstTimestamp = result.firstTimestamp;
             }
 
-            job.updateProgress(95, "Generating timeline...");
+            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
             timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
 
             job.updateProgress(100, "Import completed successfully");
@@ -230,10 +230,11 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
                     totalSkipped.incrementAndGet();
                 }
 
-                // Update progress periodically
-                if (totalMessages.get() > 0 && totalMessages.get() % 10000 == 0) {
-                    int progress = 30 + (int) ((double) totalMessages.get() / stats.totalMessages * 65);
-                    job.updateProgress(progress, "Streaming import: " + totalMessages.get() + " messages processed");
+                // Update progress periodically (every 5000 messages for better UX)
+                if (totalMessages.get() > 0 && totalMessages.get() % 5000 == 0) {
+                    // Progress from 20% to 70% (50% range) based on actual parsing progress
+                    int progress = 20 + (int) ((double) totalMessages.get() / stats.totalMessages * 50);
+                    job.updateProgress(progress, "Parsing and inserting: " + totalMessages.get() + " / " + stats.totalMessages + " messages");
                 }
             });
 

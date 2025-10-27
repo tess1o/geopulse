@@ -179,7 +179,7 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
             }
 
             // Start streaming import with direct DB writes
-            job.updateProgress(25, "Streaming import with direct database writes...");
+            job.updateProgress(20, "Parsing and inserting GPS data...");
             StreamingImportResult result = streamingImportWithDirectWrites(job, user, clearMode);
 
             // Use timestamp from validation, or fall back to streaming result
@@ -187,7 +187,7 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
                 firstTimestamp = result.firstTimestamp;
             }
 
-            job.updateProgress(95, "Generating timeline...");
+            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
             timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
 
             job.updateProgress(100, "Import completed successfully");
@@ -263,10 +263,11 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
                 }
             }
 
-            // Update progress periodically
-            if (totalFeatures.get() > 0 && totalFeatures.get() % 10000 == 0) {
-                int progress = 30 + (int) ((double) totalFeatures.get() / stats.totalFeatures * 65);
-                job.updateProgress(progress, "Streaming import: " + totalFeatures.get() + " features processed");
+            // Update progress periodically (every 5000 features for better UX)
+            if (totalFeatures.get() > 0 && totalFeatures.get() % 5000 == 0) {
+                // Progress from 20% to 70% (50% range) based on actual parsing progress
+                int progress = 20 + (int) ((double) totalFeatures.get() / stats.totalFeatures * 50);
+                job.updateProgress(progress, "Parsing and inserting: " + totalFeatures.get() + " / " + stats.totalFeatures + " features");
             }
         });
 
