@@ -28,6 +28,9 @@ public class ImportJob {
     private Instant dataFirstTimestamp;
     private Instant dataLastTimestamp;
 
+    // Total record count from validation (for accurate progress tracking during import)
+    private int totalRecordsFromValidation;
+
     // Temporary file path for large files (memory optimization)
     // If set, use this instead of zipData
     private String tempFilePath;

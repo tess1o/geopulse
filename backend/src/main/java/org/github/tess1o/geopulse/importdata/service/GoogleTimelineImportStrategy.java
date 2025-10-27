@@ -135,7 +135,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
             }
 
             // Start streaming import with direct DB writes
-            job.updateProgress(25, "Streaming import with direct database writes...");
+            job.updateProgress(20, "Parsing and inserting GPS data...");
             StreamingImportResult result = streamingImportWithDirectWrites(job, user, clearMode);
 
             // Use timestamp from validation, or fall back to streaming result
@@ -143,7 +143,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
                 firstTimestamp = result.firstTimestamp;
             }
 
-            job.updateProgress(95, "Generating timeline...");
+            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
             timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
 
             job.updateProgress(100, "Import completed successfully");
@@ -186,33 +186,30 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
         AtomicInteger totalGpsPoints = new AtomicInteger(0);
         AtomicReference<Instant> firstTimestamp = new AtomicReference<>(null);
 
-        log.info("Starting streaming import with batch size: {}, clear mode: {}, from {}",
-                streamingBatchSize, clearMode, job.hasTempFile() ? "temp file" : "memory");
+        // Get total expected points from validation for accurate progress tracking
+        int totalExpectedPoints = job.getTotalRecordsFromValidation();
+
+        log.info("Starting streaming import with batch size: {}, clear mode: {}, total expected points: {}, from {}",
+                streamingBatchSize, clearMode, totalExpectedPoints, job.hasTempFile() ? "temp file" : "memory");
 
         // Use getDataStream() to abstract whether data is in memory or on disk
         try (InputStream dataStream = job.getDataStream()) {
             StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream, objectMapper);
 
             parser.parseGpsPoints((gpsPoint, stats) -> {
-                totalGpsPoints.set(stats.totalGpsPoints);
+                totalGpsPoints.incrementAndGet();
 
                 // Convert Google Timeline GPS point to GpsPointEntity
                 GpsPointEntity gpsEntity = convertGpsPointToEntity(gpsPoint, user, job);
                 if (gpsEntity != null) {
                     addToBatchAndFlushIfNeeded(currentBatch, gpsEntity, firstTimestamp,
-                        totalImported, totalSkipped, clearMode);
-                }
-
-                // Update progress periodically
-                if (totalGpsPoints.get() > 0 && totalGpsPoints.get() % 5000 == 0) {
-                    job.updateProgress(30 + Math.min(65, totalGpsPoints.get() / 100),
-                            "Streaming import: " + totalGpsPoints.get() + " GPS points processed");
+                        totalImported, totalSkipped, clearMode, job, totalExpectedPoints);
                 }
             });
 
             // Flush any remaining batch
             if (!currentBatch.isEmpty()) {
-                flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped);
+                flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedPoints);
             }
 
             log.info("Streaming import completed: {} GPS points processed, {} points imported, {} skipped",
@@ -275,7 +272,9 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
             AtomicReference<Instant> firstTimestamp,
             AtomicInteger totalImported,
             AtomicInteger totalSkipped,
-            boolean clearMode) {
+            boolean clearMode,
+            ImportJob job,
+            int totalExpectedPoints) {
 
         // Track first timestamp for timeline generation
         if (firstTimestamp.get() == null && gpsPoint.getTimestamp() != null) {
@@ -286,8 +285,17 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
 
         // Flush when batch is full
         if (currentBatch.size() >= streamingBatchSize) {
-            flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped);
+            flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedPoints);
             currentBatch.clear(); // CRITICAL: Clear to release memory
+
+            // Update progress after DB flush based on actual imported count
+            // Progress from 20% to 70% (50% range) based on database writes, not parsing
+            if (totalExpectedPoints > 0) {
+                int imported = totalImported.get() + totalSkipped.get();
+                int progress = 20 + (int)((double)imported / totalExpectedPoints * 50);
+                job.updateProgress(Math.min(progress, 70),
+                    "Importing to database: " + imported + " / " + totalExpectedPoints + " GPS points processed");
+            }
         }
     }
 
@@ -299,19 +307,18 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
             List<GpsPointEntity> batch,
             boolean clearMode,
             AtomicInteger totalImported,
-            AtomicInteger totalSkipped) {
+            AtomicInteger totalSkipped,
+            int totalExpected) {
 
         if (batch.isEmpty()) {
             return;
         }
 
         try {
-            int imported = batchProcessor.processBatch(batch, clearMode);
+            int alreadyProcessed = totalImported.get() + totalSkipped.get();
+            int imported = batchProcessor.processBatch(batch, clearMode, alreadyProcessed, totalExpected);
             totalImported.addAndGet(imported);
             totalSkipped.addAndGet(batch.size() - imported);
-
-            log.debug("Flushed batch of {} points to database ({} imported, {} skipped)",
-                    batch.size(), imported, batch.size() - imported);
 
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);

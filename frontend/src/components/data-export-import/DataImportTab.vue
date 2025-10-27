@@ -181,8 +181,48 @@
       </template>
     </Card>
 
+    <!-- Upload Progress (shown during file upload) -->
+    <Card v-if="isUploading" class="upload-progress-card">
+      <template #content>
+        <div class="upload-status">
+          <div class="upload-header">
+            <h3 class="upload-title">Uploading File</h3>
+            <Tag value="Uploading" severity="info" icon="pi pi-spin pi-spinner" />
+          </div>
+
+          <div class="upload-details">
+            <div class="upload-detail">
+              <span class="detail-label">File:</span>
+              <span class="detail-value">{{ selectedFile?.name || 'Unknown' }}</span>
+            </div>
+
+            <div class="upload-detail" v-if="selectedFile">
+              <span class="detail-label">Size:</span>
+              <span class="detail-value">{{ getFileSizeDisplay(selectedFile.size) }}</span>
+            </div>
+
+            <div class="upload-detail">
+              <span class="detail-label">Upload Progress:</span>
+              <div class="detail-value">
+                <ProgressBar :value="uploadProgress" class="upload-progress-bar"/>
+                <div class="progress-info">
+                  <span class="progress-text">{{ uploadProgress }}%</span>
+                  <span class="progress-phase">{{ getUploadPhaseDescription() }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="upload-info-message">
+            <i class="pi pi-info-circle"></i>
+            <span>Large files may take several minutes to upload depending on your network speed.</span>
+          </div>
+        </div>
+      </template>
+    </Card>
+
     <!-- Current Import Job Status -->
-    <Card v-if="currentImportJob" class="job-status-card">
+    <Card v-if="currentImportJob && !isUploading" class="job-status-card">
       <template #content>
         <div class="job-status">
           <div class="job-header">
@@ -305,7 +345,7 @@
 </template>
 
 <script setup>
-import {ref, computed, watch} from 'vue'
+import {ref, computed, watch, onMounted} from 'vue'
 import {storeToRefs} from 'pinia'
 import {useToast} from 'primevue/usetoast'
 import {useTimezone} from '@/composables/useTimezone'
@@ -320,7 +360,9 @@ const {
   importJobs,
   currentImportJob,
   isImporting,
-  hasActiveImportJob
+  hasActiveImportJob,
+  uploadProgress,
+  isUploading
 } = storeToRefs(exportImportStore)
 
 // State
@@ -551,6 +593,22 @@ const getFormatInfoMessage = () => {
   return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
 }
 
+const getUploadPhaseDescription = () => {
+  const progress = uploadProgress.value || 0
+
+  if (progress < 10) {
+    return 'Starting upload...'
+  } else if (progress < 50) {
+    return 'Uploading file to server...'
+  } else if (progress < 90) {
+    return 'Upload in progress...'
+  } else if (progress < 100) {
+    return 'Finalizing upload...'
+  } else {
+    return 'Processing file...'
+  }
+}
+
 const getProgressPhaseDescription = (job) => {
   if (!job || job.status === 'completed') return ''
 
@@ -591,13 +649,89 @@ watch(() => currentImportJob.value?.status, (newStatus, oldStatus) => {
     })
   }
 })
+
+// On component mount, fetch import jobs and resume polling if there's an active job
+onMounted(async () => {
+  try {
+    await exportImportStore.fetchImportJobs()
+
+    // Find the most recent active import job and set it as current
+    const activeJob = importJobs.value.find(job =>
+      ['processing', 'validating'].includes(job.status)
+    )
+
+    if (activeJob) {
+      console.log('Found active import job on mount:', activeJob.importJobId)
+      exportImportStore.setCurrentImportJob(activeJob)
+      exportImportStore.pollJobStatus(activeJob.importJobId, false)
+    } else if (currentImportJob.value && ['processing', 'validating'].includes(currentImportJob.value.status)) {
+      // Fallback: if currentImportJob is set but not in the jobs list, poll it anyway
+      console.log('Resuming polling for current import job:', currentImportJob.value.importJobId)
+      exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
+    }
+  } catch (error) {
+    console.error('Failed to fetch import jobs on mount:', error)
+  }
+})
 </script>
 
 <style scoped>
 /* Import-specific styles - shared styles are in DataExportImportPage.vue */
 .import-form-card,
-.import-history-card {
+.import-history-card,
+.upload-progress-card {
   margin-bottom: 2rem;
+}
+
+/* Upload Progress */
+.upload-status {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upload-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0;
+}
+
+.upload-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.upload-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upload-progress-bar {
+  margin-top: 0.5rem;
+}
+
+.upload-info-message {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.upload-info-message i {
+  color: var(--gp-primary-500);
 }
 
 /* File Upload */

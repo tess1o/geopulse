@@ -36,7 +36,7 @@ public class BatchProcessor {
     
     /**
      * Process a batch of GPS points with two different paths based on clear mode
-     * 
+     *
      * @param gpsPoints The GPS points to process
      * @param clearModeEnabled If true, use fast bulk insert (no duplicate detection)
      *                        If false, use merge mode with duplicate detection
@@ -44,14 +44,29 @@ public class BatchProcessor {
      */
     @Transactional
     public int processBatch(List<GpsPointEntity> gpsPoints, boolean clearModeEnabled) {
+        return processBatch(gpsPoints, clearModeEnabled, 0, 0);
+    }
+
+    /**
+     * Process a batch of GPS points with context for better logging
+     *
+     * @param gpsPoints The GPS points to process
+     * @param clearModeEnabled If true, use fast bulk insert (no duplicate detection)
+     * @param totalProcessedSoFar Total points already processed before this batch
+     * @param totalExpected Total expected points (0 if unknown)
+     * @return Number of GPS points imported
+     */
+    @Transactional
+    public int processBatch(List<GpsPointEntity> gpsPoints, boolean clearModeEnabled,
+                           int totalProcessedSoFar, int totalExpected) {
         if (gpsPoints.isEmpty()) {
             return 0;
         }
 
         if (clearModeEnabled) {
-            return processBatchClearMode(gpsPoints);
+            return processBatchClearMode(gpsPoints, totalProcessedSoFar, totalExpected);
         } else {
-            return processBatchMergeMode(gpsPoints);
+            return processBatchMergeMode(gpsPoints, totalProcessedSoFar, totalExpected);
         }
     }
     
@@ -59,38 +74,47 @@ public class BatchProcessor {
      * Fast path: Clear mode - bulk insert without duplicate detection
      */
     private int processBatchClearMode(List<GpsPointEntity> gpsPoints) {
-        log.debug("Processing batch of {} GPS points in CLEAR mode (bulk insert)", gpsPoints.size());
-        
+        return processBatchClearMode(gpsPoints, 0, 0);
+    }
+
+    /**
+     * Fast path: Clear mode - bulk insert without duplicate detection (with context)
+     */
+    private int processBatchClearMode(List<GpsPointEntity> gpsPoints, int totalProcessedSoFar, int totalExpected) {
         final int BULK_INSERT_BATCH_SIZE = bulkInsertBatchSize;
         int totalImported = 0;
         long startTime = System.currentTimeMillis();
-        
+
         for (int i = 0; i < gpsPoints.size(); i += BULK_INSERT_BATCH_SIZE) {
             int endIndex = Math.min(i + BULK_INSERT_BATCH_SIZE, gpsPoints.size());
             List<GpsPointEntity> subBatch = gpsPoints.subList(i, endIndex);
-            
+
             long batchStartTime = System.currentTimeMillis();
             try {
                 // Bulk insert sub-batch
                 gpsPointRepository.persist(subBatch);
                 entityManager.flush();
                 entityManager.clear();
-                
+
                 totalImported += subBatch.size();
                 long batchDuration = System.currentTimeMillis() - batchStartTime;
-                log.debug("Bulk inserted sub-batch {}-{}: {} GPS points in {}ms ({} points/sec)", 
-                        i, endIndex - 1, subBatch.size(), batchDuration, 
-                        batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0);
+
+                // Build progress context message
+                int currentTotal = totalProcessedSoFar + totalImported;
+                String progressContext = totalExpected > 0
+                    ? String.format(" [%d / %d points, %.1f%%]", currentTotal, totalExpected, (currentTotal * 100.0 / totalExpected))
+                    : String.format(" [%d points processed]", currentTotal);
+
+                log.info("CLEAR MODE: Bulk inserted {} points in {}ms ({} points/sec){}",
+                        subBatch.size(), batchDuration,
+                        batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
+                        progressContext);
             } catch (Exception e) {
                 log.error("Failed to bulk insert GPS points sub-batch {}-{}: {}", i, endIndex - 1, e.getMessage());
             }
         }
-        
+
         long totalDuration = System.currentTimeMillis() - startTime;
-        double pointsPerSecond = totalDuration > 0 ? (gpsPoints.size() * 1000.0 / totalDuration) : 0;
-        log.info("CLEAR MODE: Successfully bulk inserted {} GPS points in {} sub-batches. Duration: {}ms, Throughput: {} points/sec, Batch size: {}",
-                totalImported, (gpsPoints.size() + BULK_INSERT_BATCH_SIZE - 1) / BULK_INSERT_BATCH_SIZE, 
-                totalDuration, pointsPerSecond, BULK_INSERT_BATCH_SIZE);
         return totalImported;
     }
     
@@ -98,8 +122,13 @@ public class BatchProcessor {
      * Optimized merge mode - batch duplicate detection
      */
     private int processBatchMergeMode(List<GpsPointEntity> gpsPoints) {
-        log.debug("Processing batch of {} GPS points in MERGE mode (with duplicate detection)", gpsPoints.size());
-        
+        return processBatchMergeMode(gpsPoints, 0, 0);
+    }
+
+    /**
+     * Optimized merge mode - batch duplicate detection (with context)
+     */
+    private int processBatchMergeMode(List<GpsPointEntity> gpsPoints, int totalProcessedSoFar, int totalExpected) {
         int imported = 0;
         long startTime = System.currentTimeMillis();
 
@@ -136,8 +165,15 @@ public class BatchProcessor {
 
         long totalDuration = System.currentTimeMillis() - startTime;
         double pointsPerSecond = totalDuration > 0 ? (gpsPoints.size() * 1000.0 / totalDuration) : 0;
-        log.info("MERGE MODE: Processed {} GPS points, imported {} new points. Duration: {}ms, Throughput: {} points/sec, Batch size: {}",
-                gpsPoints.size(), imported, totalDuration, pointsPerSecond, mergeBatchSize);
+
+        // Build progress context message
+        int currentTotal = totalProcessedSoFar + gpsPoints.size();
+        String progressContext = totalExpected > 0
+            ? String.format(" [%d / %d points, %.1f%%]", currentTotal, totalExpected, (currentTotal * 100.0 / totalExpected))
+            : String.format(" [%d points processed]", currentTotal);
+
+        log.info("MERGE MODE: Processed {} points, imported {} new, skipped {} duplicates in {}ms ({} points/sec){}",
+                gpsPoints.size(), imported, gpsPoints.size() - imported, totalDuration, pointsPerSecond, progressContext);
 
         return imported;
     }
