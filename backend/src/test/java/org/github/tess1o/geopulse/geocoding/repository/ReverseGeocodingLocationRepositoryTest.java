@@ -13,6 +13,9 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -208,6 +211,45 @@ class ReverseGeocodingLocationRepositoryTest {
 
         // Then: should not find any result
         assertNull(result);
+    }
+
+    @Test
+    @Transactional
+    void testFindByCoordinatesBatchReal_WithLargeNumberOfCoordinates() {
+        // Given: a large number of coordinates, exceeding the parameter limit
+        int totalCoordinates = 40000;
+        List<Point> coordinates = new ArrayList<>();
+
+        // Add a point that will match an entity
+        Point matchingPoint1 = GeoUtils.createPoint(-73.9857, 40.7484);
+        coordinates.add(matchingPoint1);
+
+        // Add a bunch of other points that won't match anything
+        for (int i = 1; i < totalCoordinates - 1; i++) {
+            coordinates.add(GeoUtils.createPoint(i * 0.001, 45.0)); // Use smaller increment to avoid invalid longitude
+        }
+
+        // Add another point that will match another entity
+        Point matchingPoint2 = GeoUtils.createPoint(-74.0445, 40.6892); // Statue of Liberty
+        coordinates.add(matchingPoint2);
+
+
+        // And: a few cached locations that will match some of the coordinates
+        ReverseGeocodingLocationEntity entity1 = createTestEntity(matchingPoint1, "Times Square, NYC");
+        repository.persist(entity1);
+
+        ReverseGeocodingLocationEntity entity2 = createTestEntity(matchingPoint2, "Statue of Liberty");
+        repository.persist(entity2);
+
+        // When: searching for all coordinates in a single batch call
+        Map<String, ReverseGeocodingLocationEntity> results = repository.findByCoordinatesBatchReal(coordinates, 100.0);
+
+        // Then: should find the matching locations
+        assertEquals(2, results.size());
+        assertTrue(results.containsKey(matchingPoint1.getX() + "," + matchingPoint1.getY()));
+        assertEquals("Times Square, NYC", results.get(matchingPoint1.getX() + "," + matchingPoint1.getY()).getDisplayName());
+        assertTrue(results.containsKey(matchingPoint2.getX() + "," + matchingPoint2.getY()));
+        assertEquals("Statue of Liberty", results.get(matchingPoint2.getX() + "," + matchingPoint2.getY()).getDisplayName());
     }
 
     /**

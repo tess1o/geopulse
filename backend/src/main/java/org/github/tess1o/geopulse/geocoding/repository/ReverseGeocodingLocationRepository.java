@@ -20,11 +20,11 @@ import java.util.HashMap;
 @ApplicationScoped
 @Slf4j
 public class ReverseGeocodingLocationRepository implements PanacheRepository<ReverseGeocodingLocationEntity> {
-    
+
     /**
      * Find cached location using comprehensive spatial query.
      * Checks: 1) Request coordinates proximity, 2) Result coordinates proximity, 3) Bounding box containment
-     * 
+     *
      * @param requestCoordinates The coordinates to search for
      * @param toleranceMeters Tolerance in meters for spatial matching
      * @return Best matching cached location or null
@@ -52,31 +52,31 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             ReverseGeocodingLocationEntity result = results.getFirst();
             // Update last accessed time asynchronously to prevent deadlocks
             updateAccessTimestampAsync(result.getId());
-            
-            log.debug("Found cached location for coordinates: lon={}, lat={}, provider={}", 
-                     requestCoordinates.getX(), requestCoordinates.getY(), result.getProviderName());
+
+            log.debug("Found cached location for coordinates: lon={}, lat={}, provider={}",
+                    requestCoordinates.getX(), requestCoordinates.getY(), result.getProviderName());
             return result;
         }
-        
-        log.debug("No cached location found for coordinates: lon={}, lat={} within {}m", 
-                 requestCoordinates.getX(), requestCoordinates.getY(), toleranceMeters);
+
+        log.debug("No cached location found for coordinates: lon={}, lat={} within {}m",
+                requestCoordinates.getX(), requestCoordinates.getY(), toleranceMeters);
         return null;
     }
-    
+
     /**
      * Find cached location by exact request coordinates.
-     * 
+     *
      * @param requestCoordinates The exact coordinates to search for
      * @return Cached location or null
      */
     public ReverseGeocodingLocationEntity findByExactCoordinates(Point requestCoordinates) {
         return find("requestCoordinates", requestCoordinates).firstResult();
     }
-    
+
     /**
      * Find reverse geocoding locations by their IDs.
      * Used for export functionality to collect referenced geocoding data.
-     * 
+     *
      * @param ids List of reverse geocoding location IDs
      * @return List of found reverse geocoding locations
      */
@@ -86,7 +86,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         }
         return find("id in ?1", ids).list();
     }
-    
+
     /**
      * Update access timestamp asynchronously in a separate transaction to prevent deadlocks.
      * This is a non-critical operation that shouldn't block the main geocoding flow.
@@ -95,10 +95,10 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
     public void updateAccessTimestampAsync(Long entityId) {
         try {
             getEntityManager()
-                .createQuery("UPDATE ReverseGeocodingLocationEntity r SET r.lastAccessedAt = :now WHERE r.id = :id")
-                .setParameter("now", Instant.now())
-                .setParameter("id", entityId)
-                .executeUpdate();
+                    .createQuery("UPDATE ReverseGeocodingLocationEntity r SET r.lastAccessedAt = :now WHERE r.id = :id")
+                    .setParameter("now", Instant.now())
+                    .setParameter("id", entityId)
+                    .executeUpdate();
         } catch (Exception e) {
             // Silently ignore - timestamp updates are non-critical
             log.trace("Failed to update access timestamp for geocoding entity {}: {}", entityId, e.getMessage());
@@ -108,25 +108,41 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
     /**
      * True batch find cached locations for multiple coordinates.
      * Replaces the fake batch processing with a single spatial query.
-     * 
+     *
      * @param coordinates List of coordinates to search for
      * @param toleranceMeters Tolerance in meters for spatial matching
      * @return Map of coordinate string (lon,lat) to cached location entity
      */
     public Map<String, ReverseGeocodingLocationEntity> findByCoordinatesBatchReal(
             List<Point> coordinates, double toleranceMeters) {
-        
+
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
         }
 
+        final int BATCH_SIZE = 10000;
+        Map<String, ReverseGeocodingLocationEntity> finalResultMap = new HashMap<>();
+        int totalPoints = coordinates.size();
+
+        for (int i = 0; i < totalPoints; i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, totalPoints);
+            List<Point> batchPoints = coordinates.subList(i, end);
+            finalResultMap.putAll(findForBatch(batchPoints, toleranceMeters));
+        }
+
+        return finalResultMap;
+    }
+
+    private Map<String, ReverseGeocodingLocationEntity> findForBatch(
+            List<Point> batchPoints, double toleranceMeters) {
+
         // Build VALUES clause for input coordinates
         StringBuilder valuesClause = new StringBuilder();
-        for (int i = 0; i < coordinates.size(); i++) {
+        for (int i = 0; i < batchPoints.size(); i++) {
             if (i > 0) valuesClause.append(", ");
             valuesClause.append("(ST_SetSRID(ST_MakePoint(:lon").append(i)
-                      .append(", :lat").append(i).append("), 4326), :lon").append(i)
-                      .append(", :lat").append(i).append(")");
+                    .append(", :lat").append(i).append("), 4326), :lon").append(i)
+                    .append(", :lat").append(i).append(")");
         }
 
         // Step 1: Get matching geocoding IDs and their corresponding input coordinates
@@ -149,40 +165,40 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 """.formatted(valuesClause.toString());
 
         var matchingQueryExec = getEntityManager().createNativeQuery(matchingQuery)
-                               .setParameter("tolerance", toleranceMeters);
+                .setParameter("tolerance", toleranceMeters);
 
         // Set coordinate parameters
-        for (int i = 0; i < coordinates.size(); i++) {
-            Point point = coordinates.get(i);
+        for (int i = 0; i < batchPoints.size(); i++) {
+            Point point = batchPoints.get(i);
             matchingQueryExec.setParameter("lon" + i, point.getX());
             matchingQueryExec.setParameter("lat" + i, point.getY());
         }
 
         @SuppressWarnings("unchecked")
         List<Object[]> matchingResults = matchingQueryExec.getResultList();
-        
+
         if (matchingResults.isEmpty()) {
             return Map.of();
         }
 
         // Step 2: Get all matching entities in a single query and build coordinate mapping
         Map<Long, List<String>> idToCoordListMap = new HashMap<>(); // One ID can map to multiple coordinates
-        
+
         for (Object[] row : matchingResults) {
             Long id = ((Number) row[0]).longValue();
             Double inputLon = (Double) row[1];
             Double inputLat = (Double) row[2];
             String coordKey = inputLon + "," + inputLat;
-            
+
             idToCoordListMap.computeIfAbsent(id, k -> new ArrayList<>()).add(coordKey);
         }
-        
+
         // Get unique IDs for the query (removes duplicates)
         List<Long> uniqueGeocodingIds = new ArrayList<>(idToCoordListMap.keySet());
 
         // Get all entities in a single IN query
         List<ReverseGeocodingLocationEntity> entities = find("id in ?1", uniqueGeocodingIds).list();
-        
+
         // Build result map
         Map<String, ReverseGeocodingLocationEntity> resultMap = new HashMap<>();
         for (ReverseGeocodingLocationEntity entity : entities) {
@@ -194,9 +210,9 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 }
             }
         }
-        
+
         log.debug("Batch geocoding found {} cached results for {} coordinates",
-                 resultMap.size(), coordinates.size());
+                resultMap.size(), batchPoints.size());
 
         return resultMap;
     }
