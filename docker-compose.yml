@@ -10,6 +10,7 @@ services:
 
   geopulse-backend:
     image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+    #image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
     container_name: geopulse-backend
     mem_limit: 512m
     mem_reservation: 128m
@@ -34,6 +35,7 @@ services:
 
   geopulse-ui:
     image: tess1o/geopulse-ui:${GEOPULSE_VERSION}
+    #image: ghcr.io/tess1o/geopulse-ui:${GEOPULSE_VERSION}
     container_name: geopulse-ui
     restart: unless-stopped
     env_file:

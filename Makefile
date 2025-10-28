@@ -6,6 +6,11 @@ VERSION_NATIVE := $(VERSION)-native
 VERSION_JVM := $(VERSION)-jvm
 BACKEND_IMAGE := tess1o/geopulse-backend
 FRONTEND_IMAGE := tess1o/geopulse-ui
+GHCR_NAMESPACE := ghcr.io/tess1o
+GHCR_BACKEND_IMAGE := $(GHCR_NAMESPACE)/geopulse-backend
+GHCR_FRONTEND_IMAGE := $(GHCR_NAMESPACE)/geopulse-ui
+GHCR_NAMESPACE := ghcr.io/tess1o
+GHCR_BACKEND_IMAGE := $(GHCR_NAMESPACE)/geopulse-backend
 PLATFORMS := linux/amd64,linux/arm64
 
 # Build both backend and frontend images for multiple architectures
@@ -27,6 +32,8 @@ build-backend-native-arm64: ensure-builder
 	docker buildx build --platform linux/arm64 \
 		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64 \
 		-t $(BACKEND_IMAGE):native-latest-arm64 \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64 \
+		-t $(GHCR_BACKEND_IMAGE):native-latest-arm64 \
 		--build-arg VERSION=$(VERSION_NATIVE) \
 		-f backend/Dockerfile.native \
 		--push \
@@ -39,6 +46,8 @@ build-backend-native-amd64: ensure-builder
 	docker buildx build --platform linux/amd64 \
 		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
 		-t $(BACKEND_IMAGE):native-latest-amd64 \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
+		-t $(GHCR_BACKEND_IMAGE):native-latest-amd64 \
 		--build-arg VERSION=$(VERSION_NATIVE) \
 		-f backend/Dockerfile.native \
 		--push \
@@ -47,7 +56,7 @@ build-backend-native-amd64: ensure-builder
 
 .PHONY: build-backend-native
 build-backend-native: build-backend-native-arm64 build-backend-native-amd64
-	@echo "🧩 Creating multi-arch manifest..."
+	@echo "🧩 Creating multi-arch manifest for Docker Hub..."
 	docker buildx imagetools create \
 		-t $(BACKEND_IMAGE):$(VERSION_NATIVE) \
 		$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
@@ -57,20 +66,33 @@ build-backend-native: build-backend-native-arm64 build-backend-native-amd64
 		-t $(BACKEND_IMAGE):latest \
 		$(BACKEND_IMAGE):native-latest-amd64 \
 		$(BACKEND_IMAGE):native-latest-arm64
-	@echo "✅ Multi-arch native images built and pushed successfully."
+
+	@echo "🧩 Creating multi-arch manifest for GHCR..."
+	docker buildx imagetools create \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE) \
+		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
+		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64
+	docker buildx imagetools create \
+		-t $(GHCR_BACKEND_IMAGE):native-latest \
+		-t $(GHCR_BACKEND_IMAGE):latest \
+		$(GHCR_BACKEND_IMAGE):native-latest-amd64 \
+		$(GHCR_BACKEND_IMAGE):native-latest-arm64
+	@echo "✅ Multi-arch native images built and pushed successfully (Docker Hub + GHCR)."
 
 # Build multi-architecture backend image
 .PHONY: build-backend-jvm
 build-backend-jvm: ensure-builder
-	@echo "Building backend Docker image for multiple architectures..."
+	@echo "Building backend JVM Docker image for multiple architectures..."
 	docker buildx build --platform $(PLATFORMS) \
 		-t $(BACKEND_IMAGE):$(VERSION_JVM) \
 		-t $(BACKEND_IMAGE):jvm-latest \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_JVM) \
+		-t $(GHCR_BACKEND_IMAGE):jvm-latest \
 		--build-arg VERSION=$(VERSION_JVM) \
 		-f backend/Dockerfile \
 		--push \
 		.
-	@echo "Backend image built successfully"
+	@echo "✅ Backend JVM image built and pushed to Docker Hub and GHCR successfully."
 
 # Build multi-architecture frontend image
 .PHONY: build-frontend
@@ -79,6 +101,8 @@ build-frontend: ensure-builder
 	docker buildx build --platform $(PLATFORMS) \
 		-t $(FRONTEND_IMAGE):$(VERSION) \
 		-t $(FRONTEND_IMAGE):latest \
+		-t $(GHCR_FRONTEND_IMAGE):$(VERSION) \
+		-t $(GHCR_FRONTEND_IMAGE):latest \
 		--build-arg VERSION=$(VERSION) \
 		-f frontend/Dockerfile \
 		--push \

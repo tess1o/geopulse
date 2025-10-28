@@ -98,6 +98,18 @@ curl -L -o mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoP
 chmod +x mosquitto_entrypoint.sh
 ```
 
+> #### A Note on Docker Image Source
+> By default, GeoPulse uses images from Docker Hub. We also publish images to GitHub Container Registry (GHCR).
+>
+> To switch to GHCR images, edit your `docker-compose.yml` file. For `geopulse-backend` and `geopulse-ui`, comment the default `image` and uncomment the `image` pointing to `ghcr.io`.
+>
+> **Example for `geopulse-backend`:**
+> ```yaml
+>   geopulse-backend:
+>     # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+>     image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+> ```
+
 ### 2. Configure Environment (`.env`)
 
 The `.env` file is the central place for configuring your GeoPulse instance.
