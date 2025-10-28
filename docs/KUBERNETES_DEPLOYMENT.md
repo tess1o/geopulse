@@ -11,7 +11,16 @@ For advanced configuration and a full list of tunable parameters, please refer t
 - `kubectl` configured to access your cluster.
 - `helm` version 3.2.0+ installed.
 
-## 1. Clone the Repository
+## Installation from helm repository
+```bash
+helm repo add geopulse https://tess1o.github.io/geopulse/charts
+helm repo update
+helm install my-geopulse geopulse/geopulse
+```
+
+## Installation from source code
+
+### 1. Clone the Repository
 
 First, ensure you have a local copy of the GeoPulse repository.
 
@@ -20,7 +29,7 @@ git clone https://github.com/tess1o/GeoPulse.git
 cd GeoPulse
 ```
 
-## 2. Make Scripts Executable
+### 2. Make Scripts Executable
 
 The repository includes helper scripts to manage the deployment. You need to make them executable first.
 
@@ -28,7 +37,7 @@ The repository includes helper scripts to manage the deployment. You need to mak
 chmod +x ./helm/*.sh
 ```
 
-## 3. Install GeoPulse
+### 3. Install GeoPulse
 
 The recommended way to install is with the interactive script, which will guide you through the available options.
 
@@ -38,11 +47,11 @@ The recommended way to install is with the interactive script, which will guide 
 
 The script will present several installation types, from a minimal test setup to a full production deployment, and will run the necessary `helm` commands for you.
 
-## 4. Manage Your Deployment
+### 4. Manage Your Deployment
 
 You can easily start, stop, and uninstall your GeoPulse deployment using the provided scripts. This is useful for saving resources in a development environment.
 
-### Stop GeoPulse
+#### Stop GeoPulse
 
 This command scales all components to zero, effectively pausing the application while preserving all data and configuration.
 
@@ -50,7 +59,7 @@ This command scales all components to zero, effectively pausing the application 
 ./helm/stop-geopulse.sh
 ```
 
-### Start GeoPulse
+#### Start GeoPulse
 
 This resumes the application by scaling the components back up.
 
@@ -58,7 +67,7 @@ This resumes the application by scaling the components back up.
 ./helm/start-geopulse.sh
 ```
 
-### Uninstall GeoPulse
+#### Uninstall GeoPulse
 
 This will completely remove the GeoPulse deployment from your cluster.
 
