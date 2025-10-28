@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.WebApplicationException;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -18,6 +19,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
+@Slf4j
 public class UserAISettingsService {
 
     public static final String OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
@@ -39,22 +41,32 @@ public class UserAISettingsService {
                 throw new IllegalArgumentException("User not found: " + userId);
             }
 
-            String currentApiKey = null;
-            try {
-                currentApiKey = getAISettingsWithApiKey(userId).getOpenaiApiKey();
-            } catch (RuntimeException e) {
-                // If decryption fails (e.g., encryption key changed), allow user to set new settings
-                // currentApiKey remains null, so the user must provide a new API key
+            // Manually retrieve current encrypted API key to avoid nested transaction issues
+            String currentEncryptedApiKey = null;
+            if (user.getAiSettingsEncrypted() != null && !user.getAiSettingsEncrypted().isBlank()) {
+                try {
+                    String decryptedJson = encryptionService.decrypt(user.getAiSettingsEncrypted(), user.getAiSettingsKeyId());
+                    UserAISettings currentSettings = objectMapper.readValue(decryptedJson, UserAISettings.class);
+                    if (currentSettings.getOpenaiApiKey() != null && !currentSettings.getOpenaiApiKey().isEmpty()) {
+                        currentEncryptedApiKey = currentSettings.getOpenaiApiKey();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to retrieve current API key for user {}: {}", userId, e.getMessage());
+                    // If decryption fails (e.g., encryption key changed), allow user to set new settings
+                    // currentEncryptedApiKey remains null, so the user must provide a new API key
+                }
             }
 
             UserAISettings settingsToSave = settings.copy();
 
             if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank()) {
+                // User provided a new API key - encrypt it
                 settingsToSave.setOpenaiApiKey(encryptionService.encrypt(settings.getOpenaiApiKey()));
-            } else if (currentApiKey != null) {
-                settingsToSave.setOpenaiApiKey(currentApiKey);
+            } else if (currentEncryptedApiKey != null) {
+                // No new API key provided - keep the existing encrypted key
+                settingsToSave.setOpenaiApiKey(currentEncryptedApiKey);
             } else {
-                // If no current API key and none provided, set to empty string
+                // No current API key and none provided - set to empty string
                 settingsToSave.setOpenaiApiKey("");
             }
             settingsToSave.setApiKeyRequired(settings.isApiKeyRequired());
@@ -64,7 +76,11 @@ public class UserAISettingsService {
 
             user.setAiSettingsEncrypted(encryptedJson);
             user.setAiSettingsKeyId(encryptionService.getCurrentKeyId());
+
             em.merge(user);
+            em.flush(); // Force immediate persistence to detect any issues
+
+            log.info("Successfully saved AI settings for user {}", userId);
         } catch (Exception e) {
             throw new RuntimeException("Failed to save AI settings", e);
         }
@@ -173,10 +189,18 @@ public class UserAISettingsService {
             String decryptedJson = encryptionService.decrypt(user.getAiSettingsEncrypted(), user.getAiSettingsKeyId());
             UserAISettings settings = objectMapper.readValue(decryptedJson, UserAISettings.class);
 
-            if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank()) {
-                settings.setOpenaiApiKey(encryptionService.decrypt(settings.getOpenaiApiKey(), user.getAiSettingsKeyId()));
-                settings.setOpenaiApiKeyConfigured(true);
+            // Only attempt to decrypt API key if it exists and is not empty
+            if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isEmpty()) {
+                try {
+                    settings.setOpenaiApiKey(encryptionService.decrypt(settings.getOpenaiApiKey(), user.getAiSettingsKeyId()));
+                    settings.setOpenaiApiKeyConfigured(true);
+                } catch (RuntimeException e) {
+                    log.warn("Failed to decrypt API key for user {}: {}", userId, e.getMessage());
+                    settings.setOpenaiApiKey("");
+                    settings.setOpenaiApiKeyConfigured(false);
+                }
             } else {
+                settings.setOpenaiApiKey("");
                 settings.setOpenaiApiKeyConfigured(false);
             }
 
