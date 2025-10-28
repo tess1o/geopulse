@@ -28,7 +28,7 @@ public class AIChatService {
 
     public static final String SYSTEM_MESSAGE = """
             You are GeoPulse AI Assistant analyzing user location data.
-
+            
             **CRITICAL RULES:**
             1. ALWAYS respond in the SAME LANGUAGE as the user's question
             2. NEVER show raw seconds/meters - ALWAYS convert:
@@ -37,19 +37,19 @@ public class AIChatService {
             3. Execute tools immediately, don't explain which tool you're using
             4. Use tools to fetch real data, never invent answers
             5. For relative dates ("last month"), call getTodayDate() first
-
+            
             **Tool Priority:**
             • STAY STATS (getStayStats): time spent, visit frequency, city counting → "how much time", "which places"
             • TRIP STATS (getTripStats): transportation modes, distances by mode → "how far walking/driving"
             • ROUTE PATTERNS (getRoutePatterns): common routes, travel patterns → route frequency
             • BASIC TOOLS: specific events, detailed timeline data
-
+            
             **Quick Examples:**
             • "How much time in each city?" → getStayStats + CITY grouping
             • "Did I walk more or drive more?" → getTripStats + MOVEMENT_TYPE grouping
             • "Most common route?" → getRoutePatterns
             • Statistical questions ("which month had most X") → use appropriate time grouping
-
+            
             **Response Style:**
             Clear conversational paragraphs, no lists/bold/code blocks, no raw JSON.
             """;
@@ -64,7 +64,7 @@ public class AIChatService {
 
     @Inject
     StreamingTimelineAggregator streamingTimelineAggregator;
-    
+
     @Inject
     RoutesAnalysisService routesAnalysisService;
 
@@ -80,15 +80,17 @@ public class AIChatService {
 
             // Check if AI is enabled
             if (!settings.isEnabled()) {
+                log.info("AI Assistant is disabled for user {}", userId);
                 return "AI Assistant is currently disabled. Please enable it in your profile settings.";
             }
 
             // Check if configuration is valid
-            if (settings.getOpenaiApiKey() == null || settings.getOpenaiApiKey().isBlank()) {
-                return "AI Assistant is not configured. Please add your OpenAI API key in your profile settings.";
+            if (isApiKeyInvalid(settings)) {
+                log.info("OpenAI API key is required for user {}. ApiKey required = {}, ApiKey is empty = {}", userId,
+                        settings.isApiKeyRequired(), settings.getOpenaiApiKey() == null || settings.getOpenaiApiKey().isEmpty());
+                return "API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.";
             }
 
-            log.info("AI enabled for user {}", userId);
             ChatModel model = createChatModel(settings);
 
             // Create simple tools instance without CDI proxy
@@ -119,7 +121,7 @@ public class AIChatService {
     }
 
     private ChatModel createChatModel(UserAISettings settings) {
-        if (settings.getOpenaiApiKey() == null || settings.getOpenaiApiKey().trim().isEmpty()) {
+        if (isApiKeyInvalid(settings)) {
             throw new IllegalArgumentException("OpenAI API key is required");
         }
 
@@ -131,5 +133,17 @@ public class AIChatService {
                 .logResponses(true)
                 .logRequests(true)
                 .build();
+    }
+
+    /**
+     * Check if API key is required but not provided.
+     * When API is not required even we provide it it will be ignored
+     *
+     * @param settings
+     * @return
+     */
+    private static boolean isApiKeyInvalid(UserAISettings settings) {
+        return settings.isApiKeyRequired() &&
+                (settings.getOpenaiApiKey() == null || settings.getOpenaiApiKey().trim().isEmpty());
     }
 }
