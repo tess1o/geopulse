@@ -370,7 +370,7 @@ public class GpsPointResource {
      * @param bulkDeleteDto The bulk delete request containing GPS point IDs
      * @return Response with the number of deleted points
      */
-    @DELETE
+    @POST
     @Path("/bulk")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)

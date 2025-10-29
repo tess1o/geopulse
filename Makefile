@@ -15,7 +15,7 @@ PLATFORMS := linux/amd64,linux/arm64
 
 # Build both backend and frontend images for multiple architectures
 .PHONY: all
-all: build-backend-jvm build-backend-native build-frontend
+all: build-backend-jvm build-backend-native build-frontend openapi
 
 # ==========================
 # Create or reuse builder
@@ -108,6 +108,17 @@ build-frontend: ensure-builder
 		--push \
 		.
 	@echo "Frontend image built successfully"
+
+.PHONY: openapi
+openapi:
+	@echo "Removing old OpenAPI specification"
+	rm -rf backend/target/openapi docs/openapi
+	@echo "📘 Generating OpenAPI specification..."
+	./mvnw -pl backend -am package -DskipTests=true
+	@echo "📦 Copying OpenAPI files to docs/openapi..."
+	mkdir -p docs/openapi
+	cp -v backend/target/openapi/* docs/openapi/
+	@echo "✅ OpenAPI spec copied to docs/openapi/"
 
 # Backend unit tests
 .PHONY: backend-test-unit

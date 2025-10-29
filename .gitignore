@@ -66,3 +66,4 @@ npm-debug.log*
 /keys/
 /frontend/components.d.ts
 /tests/downloads/
+/backend/src/main/gen/

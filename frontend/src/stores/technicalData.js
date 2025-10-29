@@ -132,7 +132,7 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
         async deleteGpsPoints(pointIds) {
             try {
-                const response = await apiService.delete('/gps/bulk', {
+                const response = await apiService.post('/gps/bulk', {
                     gpsPointIds: pointIds
                 })
                 const responseData = response.data || response

@@ -1,0 +1,2993 @@
+---
+openapi: 3.0.4
+components:
+  schemas:
+    Achievements:
+      type: object
+      properties:
+        badges:
+          type: array
+          items:
+            $ref: "#/components/schemas/Badge"
+    AddAreaToFavoritesDto:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          pattern: \S
+          type: string
+        northEastLat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        northEastLon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+        southWestLat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        southWestLon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+    AddPointToFavoritesDto:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          pattern: \S
+          type: string
+        lat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        lon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+    ApiResponseObject:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        data: {}
+    Badge:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        earned:
+          type: boolean
+        earnedDate:
+          type: string
+        progress:
+          format: int32
+          type: integer
+        current:
+          format: int32
+          type: integer
+        target:
+          format: int32
+          type: integer
+    BulkDeleteGpsPointsDto:
+      required:
+      - gpsPointIds
+      type: object
+      properties:
+        gpsPointIds:
+          minItems: 1
+          type: array
+          items:
+            format: int64
+            type: integer
+    ChatRequest:
+      type: object
+      properties:
+        message:
+          type: string
+    City:
+      type: object
+      properties:
+        name:
+          type: string
+        visits:
+          format: int32
+          type: integer
+    ConnectionType:
+      enum:
+      - HTTP
+      - MQTT
+      type: string
+    CoordinatesDto:
+      required:
+      - lat
+      - lng
+      type: object
+      properties:
+        lat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        lng:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+    Country:
+      type: object
+      properties:
+        name:
+          type: string
+    CreateExportRequest:
+      type: object
+      properties:
+        dataTypes:
+          type: array
+          items:
+            type: string
+        dateRange:
+          $ref: "#/components/schemas/ExportDateRange"
+        format:
+          type: string
+        options:
+          type: object
+          additionalProperties: {}
+    CreateGpsSourceConfigDto:
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/GpsSourceType"
+        username:
+          type: string
+        password:
+          type: string
+        token:
+          type: string
+        userId:
+          $ref: "#/components/schemas/UUID"
+        connectionType:
+          $ref: "#/components/schemas/ConnectionType"
+    CreateShareLinkRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 255
+          pattern: \S
+          type: string
+        expires_at:
+          $ref: "#/components/schemas/Instant"
+        password:
+          maxLength: 100
+          minLength: 6
+          type: string
+        show_history:
+          type: boolean
+    DawarichGeometry:
+      type: object
+      properties:
+        type:
+          type: string
+        coordinates:
+          type: array
+          items:
+            format: double
+            type: number
+        longitude:
+          format: double
+          type: number
+        latitude:
+          format: double
+          type: number
+    DawarichLocation:
+      type: object
+      properties:
+        type:
+          type: string
+        geometry:
+          $ref: "#/components/schemas/DawarichGeometry"
+        properties:
+          $ref: "#/components/schemas/DawarichProperties"
+    DawarichPayload:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DawarichLocation"
+    DawarichProperties:
+      type: object
+      properties:
+        track_id:
+          type: string
+        course_accuracy:
+          format: double
+          type: number
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+        altitude:
+          format: double
+          type: number
+        speed:
+          format: double
+          type: number
+        horizontal_accuracy:
+          format: double
+          type: number
+        vertical_accuracy:
+          format: double
+          type: number
+        device_id:
+          type: string
+        speed_accuracy:
+          format: double
+          type: number
+        course:
+          format: double
+          type: number
+    DistanceTraveled:
+      type: object
+      properties:
+        byCar:
+          format: int32
+          type: integer
+        byWalk:
+          format: int32
+          type: integer
+        total:
+          format: int32
+          type: integer
+    EditFavoriteDto:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 100
+          pattern: \S
+          type: string
+    EditGpsPointDto:
+      required:
+      - coordinates
+      type: object
+      properties:
+        coordinates:
+          $ref: "#/components/schemas/CoordinatesDto"
+        velocity:
+          format: double
+          minimum: 0
+          type: number
+        accuracy:
+          format: double
+          minimum: 0
+          type: number
+    ExportDateRange:
+      type: object
+      properties:
+        startDate:
+          $ref: "#/components/schemas/Instant"
+        endDate:
+          $ref: "#/components/schemas/Instant"
+    GeographicInsights:
+      type: object
+      properties:
+        countries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Country"
+        cities:
+          type: array
+          items:
+            $ref: "#/components/schemas/City"
+    Geometry:
+      type: object
+      properties:
+        type:
+          type: string
+        coordinates:
+          type: array
+          items:
+            format: double
+            type: number
+    GpsSourceType:
+      enum:
+      - OWNTRACKS
+      - OVERLAND
+      - GOOGLE_TIMELINE
+      - GPX
+      - DAWARICH
+      - HOME_ASSISTANT
+      - GEOJSON
+      type: string
+    HomeAssistantBattery:
+      type: object
+      properties:
+        level:
+          format: int32
+          type: integer
+    HomeAssistantGpsData:
+      type: object
+      properties:
+        device_id:
+          type: string
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+        location:
+          $ref: "#/components/schemas/HomeAssistantLocation"
+        battery:
+          $ref: "#/components/schemas/HomeAssistantBattery"
+    HomeAssistantLocation:
+      type: object
+      properties:
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        accuracy:
+          format: double
+          type: number
+        altitude:
+          format: double
+          type: number
+        speed:
+          format: double
+          type: number
+    InitiateOidcLinkingRequest:
+      required:
+      - verificationProvider
+      - newProvider
+      - linkingToken
+      type: object
+      properties:
+        verificationProvider:
+          pattern: \S
+          type: string
+        newProvider:
+          pattern: \S
+          type: string
+        linkingToken:
+          pattern: \S
+          type: string
+    Instant:
+      format: date-time
+      type: string
+      example: 2022-03-10T16:15:50Z
+    JourneyInsights:
+      type: object
+      properties:
+        geographic:
+          $ref: "#/components/schemas/GeographicInsights"
+        timePatterns:
+          $ref: "#/components/schemas/TimePatterns"
+        achievements:
+          $ref: "#/components/schemas/Achievements"
+        distanceTraveled:
+          $ref: "#/components/schemas/DistanceTraveled"
+    LinkAccountWithPasswordRequest:
+      required:
+      - email
+      - password
+      - provider
+      - linkingToken
+      type: object
+      properties:
+        email:
+          pattern: \S
+          type: string
+        password:
+          pattern: \S
+          type: string
+        provider:
+          pattern: \S
+          type: string
+        linkingToken:
+          pattern: \S
+          type: string
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    OidcCallbackRequest:
+      required:
+      - code
+      - state
+      type: object
+      properties:
+        code:
+          pattern: \S
+          type: string
+        state:
+          pattern: \S
+          type: string
+    OverlandLocationMessage:
+      type: object
+      properties:
+        type:
+          type: string
+        geometry:
+          $ref: "#/components/schemas/Geometry"
+        properties:
+          $ref: "#/components/schemas/Properties"
+    OverlandLocations:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: "#/components/schemas/OverlandLocationMessage"
+    Properties:
+      type: object
+      properties:
+        speed:
+          format: double
+          type: number
+        battery_state:
+          type: string
+        battery_level:
+          format: double
+          type: number
+        motion:
+          type: array
+          items: {}
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+        speed_accuracy:
+          format: double
+          type: number
+        horizontal_accuracy:
+          format: double
+          type: number
+        vertical_accuracy:
+          format: double
+          type: number
+        wifi:
+          type: string
+        course:
+          format: int32
+          type: integer
+        altitude:
+          format: int32
+          type: integer
+        course_accuracy:
+          format: double
+          type: number
+        device_id:
+          type: string
+    ReverseGeocodingReconcileRequest:
+      required:
+      - providerName
+      - geocodingIds
+      type: object
+      properties:
+        providerName:
+          pattern: \S
+          type: string
+        geocodingIds:
+          type: array
+          items:
+            format: int64
+            type: integer
+        reconcileAll:
+          type: boolean
+        filterByProvider:
+          type: string
+    ReverseGeocodingUpdateDTO:
+      required:
+      - displayName
+      type: object
+      properties:
+        displayName:
+          maxLength: 1000
+          pattern: \S
+          type: string
+        city:
+          maxLength: 200
+          type: string
+        country:
+          maxLength: 100
+          type: string
+    SendFriendInvitationDTO:
+      required:
+      - receiverEmail
+      type: object
+      properties:
+        receiverEmail:
+          pattern: \S
+          type: string
+    TestConnectionRequest:
+      type: object
+      properties:
+        openaiApiUrl:
+          type: string
+        openaiApiKey:
+          type: string
+        isApiKeyNeeded:
+          type: boolean
+    TimePatterns:
+      type: object
+      properties:
+        mostActiveMonth:
+          type: string
+        monthlyComparison:
+          type: string
+        busiestDayOfWeek:
+          type: string
+        dayInsight:
+          type: string
+        mostActiveTime:
+          type: string
+        timeInsight:
+          type: string
+    TokenRefreshRequest:
+      required:
+      - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          pattern: \S
+          type: string
+    UUID:
+      format: uuid
+      pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
+      type: string
+    UpdateGpsSourceConfigDto:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        username:
+          type: string
+        password:
+          type: string
+        token:
+          type: string
+        userId:
+          type: string
+        connectionType:
+          $ref: "#/components/schemas/ConnectionType"
+    UpdateGpsSourceConfigStatusDto:
+      type: object
+      properties:
+        status:
+          type: boolean
+    UpdateImmichConfigRequest:
+      required:
+      - serverUrl
+      - apiKey
+      - enabled
+      type: object
+      properties:
+        serverUrl:
+          pattern: \S
+          type: string
+        apiKey:
+          pattern: \S
+          type: string
+        enabled:
+          type: boolean
+    UpdateProfileRequest:
+      type: object
+      properties:
+        fullName:
+          maxLength: 100
+          minLength: 1
+          type: string
+        avatar:
+          maxLength: 500
+          type: string
+        timezone:
+          maxLength: 255
+          type: string
+        customMapTileUrl:
+          maxLength: 1000
+          type: string
+        userId:
+          $ref: "#/components/schemas/UUID"
+    UpdateShareLinkDto:
+      type: object
+      properties:
+        name:
+          maxLength: 255
+          type: string
+        expires_at:
+          $ref: "#/components/schemas/Instant"
+        password:
+          maxLength: 100
+          minLength: 6
+          type: string
+        show_history:
+          type: boolean
+        passwordRemoval:
+          type: boolean
+    UpdateTimelinePreferencesRequest:
+      type: object
+      properties:
+        useVelocityAccuracy:
+          type: boolean
+        staypointVelocityThreshold:
+          format: double
+          maximum: 100.0
+          minimum: 0.1
+          type: number
+        staypointMaxAccuracyThreshold:
+          format: double
+          maximum: 1000.0
+          minimum: 1.0
+          type: number
+        staypointMinAccuracyRatio:
+          format: double
+          maximum: 1.0
+          minimum: 0.1
+          type: number
+        tripDetectionAlgorithm:
+          pattern: ^(single|multiple)$
+          type: string
+        staypointRadiusMeters:
+          format: int32
+          maximum: 10000
+          minimum: 1
+          type: integer
+        staypointMinDurationMinutes:
+          format: int32
+          maximum: 1440
+          minimum: 1
+          type: integer
+        isMergeEnabled:
+          type: boolean
+        mergeMaxDistanceMeters:
+          format: int32
+          maximum: 5000
+          minimum: 1
+          type: integer
+        mergeMaxTimeGapMinutes:
+          format: int32
+          maximum: 720
+          minimum: 1
+          type: integer
+        pathSimplificationEnabled:
+          type: boolean
+        pathSimplificationTolerance:
+          format: double
+          maximum: 100.0
+          minimum: 1.0
+          type: number
+        pathMaxPoints:
+          format: int32
+          maximum: 1000
+          minimum: 10
+          type: integer
+        pathAdaptiveSimplification:
+          type: boolean
+        dataGapThresholdSeconds:
+          format: int32
+          minimum: 1
+          type: integer
+        dataGapMinDurationSeconds:
+          format: int32
+          minimum: 1
+          type: integer
+        walkingMaxAvgSpeed:
+          format: double
+          maximum: 10.0
+          minimum: 3.0
+          type: number
+        walkingMaxMaxSpeed:
+          format: double
+          maximum: 15.0
+          minimum: 5.0
+          type: number
+        carMinAvgSpeed:
+          format: double
+          maximum: 25.0
+          minimum: 5.0
+          type: number
+        carMinMaxSpeed:
+          format: double
+          maximum: 50.0
+          minimum: 10.0
+          type: number
+        shortDistanceKm:
+          format: double
+          maximum: 3.0
+          minimum: 0.1
+          type: number
+        tripArrivalDetectionMinDurationSeconds:
+          format: int32
+          maximum: 300
+          minimum: 10
+          type: integer
+        tripSustainedStopMinDurationSeconds:
+          format: int32
+          maximum: 600
+          minimum: 10
+          type: integer
+    UpdateUserPasswordRequest:
+      required:
+      - newPassword
+      type: object
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          pattern: \S
+          type: string
+        userId:
+          $ref: "#/components/schemas/UUID"
+    UserAISettings:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        openaiApiKey:
+          type: string
+        openaiApiUrl:
+          type: string
+        openaiModel:
+          type: string
+        openaiApiKeyConfigured:
+          type: boolean
+        apiKeyRequired:
+          type: boolean
+    UserRegistrationRequest:
+      required:
+      - email
+      - password
+      type: object
+      properties:
+        email:
+          maxLength: 254
+          pattern: \S
+          type: string
+        password:
+          maxLength: 128
+          minLength: 3
+          pattern: \S
+          type: string
+        fullName:
+          maxLength: 100
+          minLength: 1
+          type: string
+        timezone:
+          maxLength: 255
+          type: string
+    VerifyPasswordRequest:
+      type: object
+      properties:
+        password:
+          type: string
+  securitySchemes:
+    jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Authentication
+paths:
+  /api/ai/chat:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseObject"
+        "400":
+          description: Bad Request
+      summary: Chat
+      tags:
+      - AI Resource
+  /api/ai/settings:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserAISettings"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Save AI Settings
+      tags:
+      - AI Resource
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Get AI Settings
+      tags:
+      - AI Resource
+  /api/ai/test-connection:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestConnectionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Test Connection
+      tags:
+      - AI Resource
+  /api/auth/api-login:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Api Login
+      tags:
+      - Authentication Resource
+  /api/auth/login:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Login User
+      tags:
+      - Authentication Resource
+  /api/auth/logout:
+    post:
+      responses:
+        "200":
+          description: OK
+      summary: Logout
+      tags:
+      - Authentication Resource
+  /api/auth/oidc/callback:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OidcCallbackRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle Callback
+      tags:
+      - Oidc Authentication Resource
+  /api/auth/oidc/connections:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get User Connections
+      tags:
+      - Oidc Authentication Resource
+      security:
+      - jwt: []
+  /api/auth/oidc/link-with-oidc:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InitiateOidcLinkingRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Link Account With Oidc
+      tags:
+      - Oidc Authentication Resource
+  /api/auth/oidc/link-with-password:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkAccountWithPasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Link Account With Password
+      tags:
+      - Oidc Authentication Resource
+  /api/auth/oidc/link/{provider}:
+    post:
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: redirectUri
+        in: query
+        schema:
+          default: /app/profile
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Initiate Linking
+      tags:
+      - Oidc Authentication Resource
+      security:
+      - jwt: []
+  /api/auth/oidc/login/{provider}:
+    post:
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: redirectUri
+        in: query
+        schema:
+          default: /app/timeline
+          type: string
+      responses:
+        "200":
+          description: OK
+      summary: Initiate Login
+      tags:
+      - Oidc Authentication Resource
+  /api/auth/oidc/providers:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Get Enabled Providers
+      tags:
+      - Oidc Authentication Resource
+  /api/auth/oidc/unlink/{provider}:
+    delete:
+      parameters:
+      - name: provider
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Unlink Provider
+      tags:
+      - Oidc Authentication Resource
+      security:
+      - jwt: []
+  /api/auth/refresh:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TokenRefreshRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Refresh Token
+      tags:
+      - Authentication Resource
+  /api/auth/refresh-cookie:
+    post:
+      parameters:
+      - name: refresh_token
+        in: cookie
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+      summary: Refresh Token Cookie
+      tags:
+      - Authentication Resource
+  /api/dawarich/api/v1/health:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Handle Dawarich Health
+      tags:
+      - Dawarich Resource
+  /api/dawarich/api/v1/points:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DawarichPayload"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle Dawarich Get
+      tags:
+      - Dawarich Resource
+  /api/dawarich/api/v1/stats:
+    get:
+      parameters:
+      - name: api_key
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+      summary: Handle Dawarich Stats
+      tags:
+      - Dawarich Resource
+  /api/digest/monthly:
+    get:
+      parameters:
+      - name: month
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: year
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Monthly Digest
+      tags:
+      - Digest Resource
+      security:
+      - jwt: []
+  /api/digest/yearly:
+    get:
+      parameters:
+      - name: year
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Yearly Digest
+      tags:
+      - Digest Resource
+      security:
+      - jwt: []
+  /api/export/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Export
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/download/{exportJobId}:
+    get:
+      parameters:
+      - name: exportJobId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Download Export
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/geojson/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Geo Json Export
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/gpx/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Gpx Export
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/gpx/stay/{stayId}:
+    get:
+      parameters:
+      - name: stayId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Export Single Stay
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/gpx/trip/{tripId}:
+    get:
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Export Single Trip
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/jobs:
+    get:
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          default: 10
+          type: integer
+      - name: offset
+        in: query
+        schema:
+          format: int32
+          default: 0
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: List Export Jobs
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/jobs/{exportJobId}:
+    delete:
+      parameters:
+      - name: exportJobId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Export Job
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/owntracks/create:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExportRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Own Tracks Export
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/export/status/{exportJobId}:
+    get:
+      parameters:
+      - name: exportJobId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Export Status
+      tags:
+      - Export Resource
+      security:
+      - jwt: []
+  /api/favorites:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Favorites
+      tags:
+      - Favorites Resource
+      security:
+      - jwt: []
+  /api/favorites/area:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddAreaToFavoritesDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Add Area To Favorites
+      tags:
+      - Favorites Resource
+      security:
+      - jwt: []
+  /api/favorites/point:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddPointToFavoritesDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Add Point To Favorites
+      tags:
+      - Favorites Resource
+      security:
+      - jwt: []
+  /api/favorites/{favoriteId}:
+    put:
+      parameters:
+      - name: favoriteId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditFavoriteDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Favorite
+      tags:
+      - Favorites Resource
+      security:
+      - jwt: []
+    delete:
+      parameters:
+      - name: favoriteId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Favorite
+      tags:
+      - Favorites Resource
+      security:
+      - jwt: []
+  /api/friends:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Friends
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
+  /api/friends/invitations:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFriendInvitationDTO"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Send Invitation
+      tags:
+      - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/invitations/received:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Received Invitations
+      tags:
+      - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/invitations/sent:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Sent Invitations
+      tags:
+      - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/invitations/{invitationId}/accept:
+    put:
+      parameters:
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Accept Invitation
+      tags:
+      - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/invitations/{invitationId}/cancel:
+    put:
+      parameters:
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Cancel Invitation
+      tags:
+      - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/invitations/{invitationId}/reject:
+    put:
+      parameters:
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Reject Invitation
+      tags:
+      - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/{friendId}:
+    delete:
+      parameters:
+      - name: friendId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Remove Friend
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
+  /api/friends/{friendId}/location:
+    get:
+      parameters:
+      - name: friendId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Friend Location
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
+  /api/geocoding:
+    get:
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          default: 50
+          type: integer
+      - name: page
+        in: query
+        schema:
+          format: int32
+          default: 1
+          type: integer
+      - name: providerName
+        in: query
+        schema:
+          type: string
+      - name: searchText
+        in: query
+        schema:
+          type: string
+      - name: sortField
+        in: query
+        schema:
+          default: lastAccessedAt
+          type: string
+      - name: sortOrder
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Geocoding Results
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/geocoding/providers:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Enabled Providers
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/geocoding/providers/available:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Providers With Data
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/geocoding/reconcile:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReverseGeocodingReconcileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Reconcile With Provider
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/geocoding/{id}:
+    put:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReverseGeocodingUpdateDTO"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Geocoding Result
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Geocoding Result
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/gps:
+    get:
+      parameters:
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          default: 50
+          type: integer
+      - name: page
+        in: query
+        schema:
+          format: int32
+          default: 1
+          type: integer
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortOrder
+        in: query
+        schema:
+          default: desc
+          type: string
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Gps Points
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/gps/bulk:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkDeleteGpsPointsDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Delete Gps Points
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/gps/export:
+    get:
+      parameters:
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Export Gps Points
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/gps/path:
+    get:
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Gps Point Path
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/gps/source:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGpsSourceConfigDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Gps Config Source
+      tags:
+      - Gps Source Config Resource
+      security:
+      - jwt: []
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Gps Source Configs
+      tags:
+      - Gps Source Config Resource
+      security:
+      - jwt: []
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGpsSourceConfigDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Add Gps Source Cnfig
+      tags:
+      - Gps Source Config Resource
+      security:
+      - jwt: []
+  /api/gps/source/{id}:
+    delete:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Gps Source Config
+      tags:
+      - Gps Source Config Resource
+      security:
+      - jwt: []
+  /api/gps/source/{id}/status:
+    put:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGpsSourceConfigStatusDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Status
+      tags:
+      - Gps Source Config Resource
+      security:
+      - jwt: []
+  /api/gps/summary:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Gps Point Summary
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/gps/{pointId}:
+    put:
+      parameters:
+      - name: pointId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditGpsPointDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Gps Point
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+    delete:
+      parameters:
+      - name: pointId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Gps Point
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/health:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Check Health
+      tags:
+      - Health Resource
+  /api/homeassistant:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HomeAssistantGpsData"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle HA
+      tags:
+      - Home Assistant Resource
+  /api/import/geojson/upload:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  format: binary
+                  type: string
+                options:
+                  type: string
+            encoding:
+              options:
+                contentType: text/plain
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload Geo Json Import File
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/geopulse/upload:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  format: binary
+                  type: string
+                options:
+                  type: string
+            encoding:
+              options:
+                contentType: text/plain
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload Geo Pulse Import File
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/google-timeline/upload:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  format: binary
+                  type: string
+                options:
+                  type: string
+            encoding:
+              options:
+                contentType: text/plain
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload Google Timeline Import File
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/gpx/upload:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  format: binary
+                  type: string
+                options:
+                  type: string
+            encoding:
+              options:
+                contentType: text/plain
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload Gpx Import File
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/jobs:
+    get:
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          default: 10
+          type: integer
+      - name: offset
+        in: query
+        schema:
+          format: int32
+          default: 0
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Import Jobs
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/jobs/{importJobId}:
+    delete:
+      parameters:
+      - name: importJobId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Import Job
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/owntracks/upload:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  format: binary
+                  type: string
+                options:
+                  type: string
+            encoding:
+              options:
+                contentType: text/plain
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload Own Tracks Import File
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/import/status/{importJobId}:
+    get:
+      parameters:
+      - name: importJobId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Import Status
+      tags:
+      - Import Resource
+      security:
+      - jwt: []
+  /api/journey-insights:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JourneyInsights"
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Journey Insights
+      tags:
+      - Journey Insight Resource
+      security:
+      - jwt: []
+  /api/overland:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OverlandLocations"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle Overland
+      tags:
+      - Overland Resource
+  /api/owntracks:
+    post:
+      parameters:
+      - name: X-Limit-D
+        in: header
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: {}
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle Own Tracks
+      tags:
+      - Own Tracks Resource
+  /api/share-links:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Shared Links
+      tags:
+      - Shared Link Resource
+      security:
+      - jwt: []
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateShareLinkRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Share Link
+      tags:
+      - Shared Link Resource
+      security:
+      - jwt: []
+  /api/share-links/{id}:
+    put:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateShareLinkDto"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Share Link
+      tags:
+      - Shared Link Resource
+      security:
+      - jwt: []
+    delete:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Share Link
+      tags:
+      - Shared Link Resource
+      security:
+      - jwt: []
+  /api/shared/{linkId}/info:
+    get:
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+      summary: Get Shared Location Info
+      tags:
+      - Public Shared Link Resource
+  /api/shared/{linkId}/location:
+    get:
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+      summary: Get Shared Location
+      tags:
+      - Public Shared Link Resource
+  /api/shared/{linkId}/verify:
+    post:
+      parameters:
+      - name: linkId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyPasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Verify Password
+      tags:
+      - Public Shared Link Resource
+  /api/statistics:
+    get:
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Range Statistics
+      tags:
+      - Statistics Resource
+      security:
+      - jwt: []
+  /api/statistics/monthly:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Monthly Statistics
+      tags:
+      - Statistics Resource
+      security:
+      - jwt: []
+  /api/statistics/weekly:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Weekly Statistics
+      tags:
+      - Statistics Resource
+      security:
+      - jwt: []
+  /api/streaming-timeline:
+    get:
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Timeline
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+  /api/streaming-timeline/regenerate-all:
+    post:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Regenerate All Timeline
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+  /api/streaming-timeline/user/preferences:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get User Preferences
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+  /api/users/changePassword:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserPasswordRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Change Password
+      tags:
+      - User Resource
+      security:
+      - jwt: []
+  /api/users/me:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Current User Profile
+      tags:
+      - User Resource
+      security:
+      - jwt: []
+  /api/users/me/immich-config:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateImmichConfigRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Current User Immich Config
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Current User Immich Config
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/me/immich/photos/search:
+    get:
+      parameters:
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Search Current User Photos
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/me/immich/photos/{photoId}/download:
+    get:
+      parameters:
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Download Current User Photo
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/me/immich/photos/{photoId}/thumbnail:
+    get:
+      parameters:
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Current User Photo Thumbnail
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/preferences/timeline:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTimelinePreferencesRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Timeline Preferences
+      tags:
+      - User Resource
+      security:
+      - jwt: []
+    delete:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Reset Preferences To Defaults
+      tags:
+      - User Resource
+      security:
+      - jwt: []
+  /api/users/register:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegistrationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Register User
+      tags:
+      - User Resource
+  /api/users/sign-up/status:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Is Sign Up Enabled
+      tags:
+      - User Resource
+  /api/users/update:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Profile
+      tags:
+      - User Resource
+      security:
+      - jwt: []
+  /api/users/{userId}/immich-config:
+    put:
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateImmichConfigRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Immich Config
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+    get:
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Immich Config
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/{userId}/immich/photos/search:
+    get:
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Search Photos
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/{userId}/immich/photos/{photoId}/download:
+    get:
+      parameters:
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            image/jpeg: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Download Photo
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/{userId}/immich/photos/{photoId}/thumbnail:
+    get:
+      parameters:
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            image/jpeg: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Photo Thumbnail
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/version:
+    get:
+      responses:
+        "200":
+          description: OK
+      summary: Get Version
+      tags:
+      - Version Resource
+info:
+  title: GeoPulse API
+  version: 1.1.2
+  description: GeoPulse backend REST API documentation.
+  contact:
+    name: tess1o
+    email: kerriden1@gmail.com
+servers:
+- url: /
