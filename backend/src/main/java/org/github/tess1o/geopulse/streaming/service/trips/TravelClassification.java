@@ -49,6 +49,10 @@ public class TravelClassification {
      * Provides more accurate results by using real GPS speed data and variance analysis.
      */
     private TripType classifyWithGpsStatistics(TripGpsStatistics statistics, long distanceMeters, TimelineConfig config) {
+        if (statistics == null || !statistics.hasValidData()) {
+            log.warn("Trip statistics is null or has no valid data, falling back to UNKNOWN");
+            return UNKNOWN;
+        }
         // Convert speeds from m/s to km/h
         double avgSpeedKmh = statistics.avgGpsSpeed() * 3.6;
         double maxSpeedKmh = statistics.maxGpsSpeed() * 3.6;

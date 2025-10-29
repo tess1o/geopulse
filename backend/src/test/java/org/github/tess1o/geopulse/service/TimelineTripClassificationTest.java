@@ -88,4 +88,10 @@ public class TimelineTripClassificationTest {
         return totalDistance / 1000.0; // Convert meters to kilometers
     }
 
+    @Test
+    void testEmptyGpsStatistics() {
+        TripGpsStatistics statistics = TripGpsStatistics.empty();
+        TripType tripType = classification.classifyTravelType(statistics, 0, config);
+        assertEquals(TripType.UNKNOWN, tripType);
+    }
 }
