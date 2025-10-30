@@ -40,18 +40,20 @@ public class OverlandResource {
                                    @HeaderParam("Authorization") String overlandAuth) {
         log.info("Received payload for overland:{}", overlandLocations);
 
-        Optional<UUID> userIdOpt = authRegistry.authenticate(GpsSourceType.OVERLAND, overlandAuth);
-        if (userIdOpt.isEmpty()) {
+        var authResult = authRegistry.authenticate(GpsSourceType.OVERLAND, overlandAuth);
+        if (authResult.isEmpty()) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
 
-        saveToDb(overlandLocations, userIdOpt.get());
+        UUID userId = authResult.get().getUserId();
+        var config = authResult.get().getConfig();
+        saveToDb(overlandLocations, userId, config);
         return Response.ok(new OverlandResultResponse("ok")).build();
     }
 
-    private void saveToDb(OverlandLocations overlandLocations, UUID userId) {
+    private void saveToDb(OverlandLocations overlandLocations, UUID userId, org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity config) {
         for (OverlandLocationMessage locationMessage : overlandLocations.getLocations()) {
-            gpsPointService.saveOverlandGpsPoint(locationMessage, userId, GpsSourceType.OVERLAND);
+            gpsPointService.saveOverlandGpsPoint(locationMessage, userId, GpsSourceType.OVERLAND, config);
         }
     }
 }

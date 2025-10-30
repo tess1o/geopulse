@@ -39,7 +39,7 @@ public class DawarichResource {
     @Path("/health")
     public Response handleDawarichHealth(Request request, @HeaderParam("Authorization") String authHeader) {
         log.info("Received health request");
-        Optional<UUID> authenticated = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
+        var authenticated = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
         String dawarichResponse = authenticated.isPresent() ? "Hey, I'm alive and authenticated!" : "Hey, I'm alive!";
         return Response
                 .status(Response.Status.OK)
@@ -52,13 +52,14 @@ public class DawarichResource {
     @POST
     @Path("/points")
     public Response handleDawarichGet(DawarichPayload payload, @HeaderParam("Authorization") String authHeader) {
-        Optional<UUID> userIdOpt = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
-        if (userIdOpt.isEmpty()) {
+        var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, authHeader);
+        if (authResult.isEmpty()) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
         log.info("Received payload: {}", payload);
-        UUID userId = userIdOpt.get();
-        gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH);
+        UUID userId = authResult.get().getUserId();
+        var config = authResult.get().getConfig();
+        gpsPointService.saveDarawichGpsPoints(payload, userId, GpsSourceType.DAWARICH, config);
         return Response.ok().build();
     }
 
@@ -68,8 +69,8 @@ public class DawarichResource {
         log.info("Received stats request with api_key: {}", apiKey);
 
 
-        Optional<UUID> userIdOpt = authRegistry.authenticate(GpsSourceType.DAWARICH, apiKey);
-        if (userIdOpt.isEmpty()) {
+        var authResult = authRegistry.authenticate(GpsSourceType.DAWARICH, apiKey);
+        if (authResult.isEmpty()) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
 

@@ -47,12 +47,13 @@ public class OwnTracksResource {
             return Response.ok().build();
         }
 
-        Optional<UUID> userIdOpt = authRegistry.authenticate(GpsSourceType.OWNTRACKS, ownTrackAuth);
-        if (userIdOpt.isEmpty()) {
+        var authResult = authRegistry.authenticate(GpsSourceType.OWNTRACKS, ownTrackAuth);
+        if (authResult.isEmpty()) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
 
-        UUID userId = userIdOpt.get();
+        UUID userId = authResult.get().getUserId();
+        var config = authResult.get().getConfig();
         OwnTracksLocationMessage ownTracksLocationMessage = MAPPER.convertValue(payload, OwnTracksLocationMessage.class);
 
         if (timestampOverride) {
@@ -60,7 +61,7 @@ public class OwnTracksResource {
                 ownTracksLocationMessage.setTst(Instant.now().getEpochSecond());
             }
         }
-        gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS);
+        gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS, config);
         return Response.ok("[]").build();
     }
 

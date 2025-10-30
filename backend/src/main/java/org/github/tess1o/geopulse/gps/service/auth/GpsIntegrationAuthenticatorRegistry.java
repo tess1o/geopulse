@@ -4,13 +4,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Registry that manages GPS integration authenticators.
@@ -53,17 +53,17 @@ public class GpsIntegrationAuthenticatorRegistry {
      *
      * @param sourceType The GPS source type
      * @param authHeader The authorization header
-     * @return Optional containing the authenticated user ID, or empty if authentication failed
+     * @return Optional containing the authentication result (userId and configId), or empty if authentication failed
      */
-    public Optional<UUID> authenticate(GpsSourceType sourceType, String authHeader) {
-        Map<GpsSourceConfigEntity.ConnectionType, GpsIntegrationAuthenticator> sourceAuthenticators = 
+    public Optional<GpsAuthenticationResult> authenticate(GpsSourceType sourceType, String authHeader) {
+        Map<GpsSourceConfigEntity.ConnectionType, GpsIntegrationAuthenticator> sourceAuthenticators =
                 authenticators.get(sourceType);
-        
+
         if (sourceAuthenticators == null) {
             log.error("No authenticators found for GPS source type: {}", sourceType);
             return Optional.empty();
         }
-        
+
         // For HTTP-based authentication, look for HTTP authenticator
         GpsIntegrationAuthenticator authenticator = sourceAuthenticators.get(GpsSourceConfigEntity.ConnectionType.HTTP);
         if (authenticator == null) {
@@ -79,17 +79,17 @@ public class GpsIntegrationAuthenticatorRegistry {
      *
      * @param username The username extracted from MQTT topic
      * @param sourceType The GPS source type
-     * @return Optional containing the authenticated user ID, or empty if authentication failed
+     * @return Optional containing the authentication result (userId and configId), or empty if authentication failed
      */
-    public Optional<UUID> authenticateByUsername(String username, GpsSourceType sourceType) {
-        Map<GpsSourceConfigEntity.ConnectionType, GpsIntegrationAuthenticator> sourceAuthenticators = 
+    public Optional<GpsAuthenticationResult> authenticateByUsername(String username, GpsSourceType sourceType) {
+        Map<GpsSourceConfigEntity.ConnectionType, GpsIntegrationAuthenticator> sourceAuthenticators =
                 authenticators.get(sourceType);
-        
+
         if (sourceAuthenticators == null) {
             log.error("No authenticators found for GPS source type: {}", sourceType);
             return Optional.empty();
         }
-        
+
         // For MQTT-based authentication, look for MQTT authenticator
         GpsIntegrationAuthenticator authenticator = sourceAuthenticators.get(GpsSourceConfigEntity.ConnectionType.MQTT);
         if (authenticator == null) {

@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -172,17 +173,17 @@ public class OwnTracksMqttService {
             }
 
             // Authenticate user
-            Optional<UUID> userIdOpt = authRegistry.authenticateByUsername(username, GpsSourceType.OWNTRACKS);
+            Optional<GpsAuthenticationResult> userIdOpt = authRegistry.authenticateByUsername(username, GpsSourceType.OWNTRACKS);
             if (userIdOpt.isEmpty()) {
                 log.error("Authentication failed for MQTT user: {}", username);
                 return;
             }
 
-            UUID userId = userIdOpt.get();
+            GpsAuthenticationResult authenticationResult = userIdOpt.get();
             OwnTracksLocationMessage locationMessage = OBJECT_MAPPER.convertValue(messageData, OwnTracksLocationMessage.class);
 
             // Save GPS point
-            gpsPointService.saveOwnTracksGpsPoint(locationMessage, userId, deviceId, GpsSourceType.OWNTRACKS);
+            gpsPointService.saveOwnTracksGpsPoint(locationMessage, authenticationResult.getUserId(), deviceId, GpsSourceType.OWNTRACKS, authenticationResult.getConfig());
 
             log.info("Successfully processed MQTT location message for user: {}, device: {}", username, deviceId);
 

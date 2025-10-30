@@ -45,7 +45,9 @@ public class GpsPointMapper {
         entity.setTimestamp(message.getProperties().getTimestamp());
         entity.setAccuracy(message.getProperties().getVerticalAccuracy());
         entity.setBattery(message.getProperties().getBatteryLevel() * 100);
-        entity.setVelocity(message.getProperties().getSpeed());
+        // Convert speed from m/s to km/h for consistent storage (Overland sends m/s)
+        Double speedMs = message.getProperties().getSpeed();
+        entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
         entity.setAltitude(message.getProperties().getAltitude() * 1.0);
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
@@ -60,7 +62,9 @@ public class GpsPointMapper {
         entity.setCoordinates(GeoUtils.createPoint(message.getGeometry().getLongitude(), message.getGeometry().getLatitude()));
         entity.setTimestamp(message.getProperties().getTimestamp());
         entity.setAccuracy(message.getProperties().getVerticalAccuracy());
-        entity.setVelocity(message.getProperties().getSpeed());
+        // Convert speed from m/s to km/h for consistent storage (Dawarich sends m/s)
+        Double speedMs = message.getProperties().getSpeed();
+        entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
         entity.setAltitude(Math.round(message.getProperties().getAltitude()) * 1.0);
         entity.setBattery(-1.0);
         entity.setSourceType(sourceType);
@@ -80,7 +84,9 @@ public class GpsPointMapper {
 
         entity.setCoordinates(GeoUtils.createPoint(location.getLongitude(), location.getLatitude()));
         entity.setAccuracy(location.getAccuracy());
-        entity.setVelocity(location.getSpeed());
+        // Convert speed from m/s to km/h for consistent storage (HomeAssistant sends m/s)
+        Double speedMs = location.getSpeed();
+        entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
         entity.setAltitude(Math.round(location.getAltitude()) * 1.0);
         entity.setBattery(message.getBattery().getLevel() * 1.0);
         entity.setSourceType(sourceType);

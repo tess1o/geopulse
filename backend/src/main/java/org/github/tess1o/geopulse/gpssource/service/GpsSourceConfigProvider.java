@@ -10,12 +10,12 @@ import java.util.Optional;
  * allowing better separation of concerns between GPS data ingestion and configuration management.
  */
 public interface GpsSourceConfigProvider {
-    
+
     /**
      * Find GPS source configuration by username (for OwnTracks)
      */
     Optional<GpsSourceConfigEntity> findByUsername(String username);
-    
+
     /**
      * Find GPS source configuration by token (for Overland)
      */

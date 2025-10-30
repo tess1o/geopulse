@@ -10,6 +10,8 @@ import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssis
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -21,7 +23,6 @@ import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 
 import java.time.*;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,86 +35,127 @@ public class GpsPointService {
     private final GpsPointDuplicateDetectionService duplicateDetectionService;
     private final EntityManager em;
     private final StreamingTimelineGenerationService streamingTimelineGenerationService;
+    private final GpsDataFilteringService filteringService;
 
     @Inject
     public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository,
                            GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em,
-                           StreamingTimelineGenerationService streamingTimelineGenerationService) {
+                           StreamingTimelineGenerationService streamingTimelineGenerationService,
+                           GpsDataFilteringService filteringService) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
         this.em = em;
         this.streamingTimelineGenerationService = streamingTimelineGenerationService;
+        this.filteringService = filteringService;
     }
 
     @Transactional
-    public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType) {
+    public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        // Map message to entity (mapper handles unit conversions)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
+
+        // Filter based on configured thresholds
+        var filterResult = filteringService.filter(entity, config);
+        if (filterResult.isRejected()) {
+            // Already logged in filtering service
+            return;
+        }
+
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
 
-        // Check for location-based duplicates (same coordinates within time threshold)
+        // Check for location-based duplicates first (before creating entity)
         if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType)) {
             log.info("Skipping location duplicate OwnTracks GPS point for user {} at coordinates ({}, {})",
                     userId, message.getLat(), message.getLon());
             return;
         }
 
-        UserEntity user = em.getReference(UserEntity.class, userId);
-        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
+        // Persist the entity
         gpsPointRepository.persist(entity);
-
         log.info("Saved OwnTracks GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
     @Transactional
-    public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType) {
+    public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        // Map message to entity (mapper handles m/s → km/h conversion)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
+
+        // Filter based on configured thresholds
+        var filterResult = filteringService.filter(entity, config);
+        if (filterResult.isRejected()) {
+            // Already logged in filtering service
+            return;
+        }
         Instant timestamp = message.getProperties().getTimestamp();
 
+        // Check for duplicates first
         if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
             log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, timestamp);
             return;
         }
 
-        UserEntity user = em.getReference(UserEntity.class, userId);
-        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
+        // Persist the entity
         gpsPointRepository.persist(entity);
-
         log.info("Saved Overland GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
     @Transactional
-    public void saveDarawichGpsPoints(DawarichPayload payload, UUID userId, GpsSourceType sourceType) {
+    public void saveDarawichGpsPoints(DawarichPayload payload, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         UserEntity user = em.getReference(UserEntity.class, userId);
         for (DawarichLocation location : payload.getLocations()) {
+            // Check for duplicates first
             if (duplicateDetectionService.isDuplicatePoint(userId, location.getProperties().getTimestamp(), sourceType)) {
-                log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, location.getProperties().getTimestamp());
-                return;
+                log.info("Skipping duplicate Dawarich GPS point for user {} at timestamp {}", userId, location.getProperties().getTimestamp());
+                continue;
             }
 
-            // avoid negative velocity, use 0 to say it's a stationary value
-            if (location.getProperties().getSpeed() < 0) {
+            // Avoid negative velocity - use 0 to say it's a stationary value
+            if (location.getProperties().getSpeed() != null && location.getProperties().getSpeed() < 0) {
                 location.getProperties().setSpeed(0.0);
             }
 
+            // Map message to entity (mapper handles m/s → km/h conversion)
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
-            gpsPointRepository.persist(entity);
 
+            // Filter based on configured thresholds
+            var filterResult = filteringService.filter(entity, config);
+            if (filterResult.isRejected()) {
+                // Already logged in filtering service
+                continue; // Skip this point, continue with next
+            }
+
+            // Persist the entity
+            gpsPointRepository.persist(entity);
             log.info("Saved Dawarich GPS point for user {} at timestamp {}", userId, entity.getTimestamp());
         }
     }
 
     @Transactional
-    public void saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType) {
-        Instant timestamp = data.getTimestamp();
+    public void saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        // Map message to entity (mapper handles m/s → km/h conversion)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
 
-        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-            log.info("Skipping duplicate Home Assitant GPS point for user {} at timestamp {}", userId, timestamp);
+        // Filter based on configured thresholds
+        var filterResult = filteringService.filter(entity, config);
+        if (filterResult.isRejected()) {
+            // Already logged in filtering service
             return;
         }
 
-        UserEntity user = em.getReference(UserEntity.class, userId);
-        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
-        gpsPointRepository.persist(entity);
+        Instant timestamp = data.getTimestamp();
 
+        // Check for duplicates first
+        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+            log.info("Skipping duplicate Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
+            return;
+        }
+
+        // Persist the entity
+        gpsPointRepository.persist(entity);
         log.info("Saved Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
     }
 
