@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { 
   formatDistance, 
   formatDuration, 
@@ -6,6 +6,13 @@ import {
   formatDurationCompact,
   formatDurationSmart
 } from '../calculationsHelpers.js'
+
+// Mock the useMeasureUnit composable
+vi.mock('@/composables/useMeasureUnit', () => ({
+  useMeasureUnit: () => ({
+    getMeasureUnit: () => 'METRIC' // Default mock
+  })
+}));
 
 describe('calculationsHelpers', () => {
   describe('formatDistance', () => {
@@ -255,3 +262,42 @@ describe('calculationsHelpers', () => {
     })
   })
 })
+
+describe('calculationsHelpers with Imperial units', () => {
+  beforeEach(() => {
+    vi.mock('@/composables/useMeasureUnit', () => ({
+      useMeasureUnit: () => ({
+        getMeasureUnit: () => 'IMPERIAL'
+      })
+    }));
+  });
+
+  describe('formatDistance', () => {
+    it('should format feet correctly for distances < 1 mile', () => {
+      expect(formatDistance(100)).toBe('328 ft');
+      expect(formatDistance(0)).toBe('0 ft');
+    });
+
+    it('should format miles correctly for distances >= 1 mile', () => {
+      expect(formatDistance(1609.34)).toBe('1.00 mi');
+      expect(formatDistance(3218.68)).toBe('2.00 mi');
+    });
+  });
+
+  describe('formatDistanceRounded', () => {
+    it('should format feet correctly for distances < 1 mile', () => {
+      expect(formatDistanceRounded(100)).toBe('328 ft');
+    });
+
+    it('should format miles correctly for distances >= 1 mile', () => {
+      expect(formatDistanceRounded(1609.34)).toBe('1 mi');
+    });
+  });
+
+  describe('formatSpeed', () => {
+    it('should format mph correctly', () => {
+      expect(formatSpeed(50)).toBe('31.07 mph');
+      expect(formatSpeed(120.5)).toBe('74.88 mph');
+    });
+  });
+});
