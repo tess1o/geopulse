@@ -15,7 +15,7 @@ PLATFORMS := linux/amd64,linux/arm64
 
 # Build both backend and frontend images for multiple architectures
 .PHONY: all
-all: build-backend-jvm build-backend-native build-frontend openapi
+all: build-backend-jvm build-backend-native build-frontend openapi publish-helm
 
 # ==========================
 # Create or reuse builder
@@ -119,6 +119,11 @@ openapi:
 	mkdir -p docs/openapi
 	cp -v backend/target/openapi/* docs/openapi/
 	@echo "✅ OpenAPI spec copied to docs/openapi/"
+
+.PHONY: publish-helm
+publish-helm:
+	helm package helm/geopulse -d charts
+	helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
 
 # Backend unit tests
 .PHONY: backend-test-unit
