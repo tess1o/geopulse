@@ -365,13 +365,6 @@
                         <div class="step-title">API Key</div>
                         <div class="copy-field">
                           <code>Your configured API Key</code>
-<!--                          <Button -->
-<!--                            v-if="dawarichApiKey"-->
-<!--                            icon="pi pi-copy"-->
-<!--                            size="small"-->
-<!--                            outlined-->
-<!--                            @click="copyToClipboard(dawarichApiKey)"-->
-<!--                          />-->
                         </div>
                       </div>
                     </div>
@@ -399,7 +392,6 @@
                         </div>
                         <div class="step-value">
                           <strong>Replace:</strong><br>
-                          • BACKEND_SERVER_URL with your backend url (e.g., http://192.168.100.1:8080 or https://geopulse.mydomain.com)<br>
                           • iphone_16 with your device_id (can be found in Home Assistant)<br>
                           • YOUR_CONFIGURED_TOKEN with the token you just created in GeoPulse
                         </div>
@@ -646,10 +638,6 @@ const sourceTypes = [
 // Computed
 const hasAnySources = computed(() => gpsSourceConfigs.value.length > 0)
 
-const hasOwnTracksSource = computed(() => 
-  gpsSourceConfigs.value.some(source => source.type === 'OWNTRACKS')
-)
-
 const ownTracksSources = computed(() => 
   gpsSourceConfigs.value.filter(source => source.type === 'OWNTRACKS')
 )
@@ -660,14 +648,6 @@ const hasOwnTracksHttp = computed(() =>
 
 const hasOwnTracksMqtt = computed(() => 
   ownTracksSources.value.some(source => source.connectionType === 'MQTT')
-)
-
-const ownTracksHttpSources = computed(() => 
-  ownTracksSources.value.filter(source => source.connectionType === 'HTTP' || !source.connectionType)
-)
-
-const ownTracksMqttSources = computed(() => 
-  ownTracksSources.value.filter(source => source.connectionType === 'MQTT')
 )
 
 const hasOverlandSource = computed(() => 
@@ -681,33 +661,6 @@ const hasDawarichSource = computed(() =>
 const hasHomeAssistantSource = computed(() => 
   gpsSourceConfigs.value.some(source => source.type === 'HOME_ASSISTANT')
 )
-
-const ownTracksUsername = computed(() => {
-  // Show the first OwnTracks source
-  const ownTracksSource = gpsSourceConfigs.value.find(s => s.type === 'OWNTRACKS')
-  return ownTracksSource?.username
-})
-
-const ownTracksConnectionType = computed(() => {
-  // Show the first OwnTracks source
-  const ownTracksSource = gpsSourceConfigs.value.find(s => s.type === 'OWNTRACKS')
-  return ownTracksSource?.connectionType || 'HTTP'
-})
-
-const overlandToken = computed(() => {
-  const overlandSource = gpsSourceConfigs.value.find(s => s.type === 'OVERLAND')
-  return overlandSource?.token
-})
-
-const dawarichApiKey = computed(() => {
-  const dawarichSource = gpsSourceConfigs.value.find(s => s.type === 'DAWARICH')
-  return dawarichSource?.token
-})
-
-const homeAssistantToken = computed(() => {
-  const homeAssistantSource = gpsSourceConfigs.value.find(s => s.type === 'HOME_ASSISTANT')
-  return homeAssistantSource?.token
-})
 
 // Mobile detection
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
@@ -1076,7 +1029,7 @@ const getDawarichUrl = () => {
 const getHomeAssistantConfigYaml = () => {
   return `rest_command:
   send_gps_data:
-    url: "http://BACKEND_SERVER_URL/api/homeassistant"
+    url: "${window.location.origin}/api/homeassistant"
     method: POST
     headers:
       content-type: "application/json"
@@ -1088,12 +1041,12 @@ const getHomeAssistantConfigYaml = () => {
         "location": {
           "latitude": {{ state_attr('device_tracker.iphone_16', 'latitude') }},
           "longitude": {{ state_attr('device_tracker.iphone_16', 'longitude') }},
-          "accuracy": {{ state_attr('device_tracker.iphone_16', 'gps_accuracy') | default(0) }},
-          "altitude": {{ state_attr('device_tracker.iphone_16', 'altitude') | default(0) }},
-          "speed": {{ state_attr('device_tracker.iphone_16', 'speed') | default(0) }}
+          "accuracy": {{ state_attr('device_tracker.iphone_16', 'gps_accuracy') | default(0, true) }},
+          "altitude": {{ state_attr('device_tracker.iphone_16', 'altitude') | default(0, true) }},
+          "speed": {{ state_attr('device_tracker.iphone_16', 'speed') | default(0, true) }}
         },
         "battery": {
-          "level": {{ state_attr('device_tracker.iphone_16', 'battery_level') | default(states('sensor.iphone_16_battery_level'), true) | default(0) }}
+          "level": {{ state_attr('device_tracker.iphone_16', 'battery_level') | default(states('sensor.iphone_16_battery_level'), true) | default(0, true) }}
         }
       }`
 }
