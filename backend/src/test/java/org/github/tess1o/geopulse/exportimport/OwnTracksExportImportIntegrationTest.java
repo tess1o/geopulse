@@ -384,7 +384,7 @@ class OwnTracksExportImportIntegrationTest {
                     OwnTracksLocationMessage message = new OwnTracksLocationMessage();
                     message.setLat(gpsPoint.getLatitude() + 0.000001); // Very small difference (about 0.1 meters)
                     message.setLon(gpsPoint.getLongitude() + 0.000001);
-                    message.setTst((int) (gpsPoint.getTimestamp().getEpochSecond() + 1)); // 1 second difference
+                    message.setTst((gpsPoint.getTimestamp().getEpochSecond() + 1)); // 1 second difference
                     message.setAcc(2.0); // Better accuracy
                     message.setType("location");
                     return message;
@@ -438,7 +438,7 @@ class OwnTracksExportImportIntegrationTest {
             // Use different coordinates far from setup test data (which is around 37.77-37.80)
             message.setLat(40.0000 + (i * 0.001)); // Far from SF test data
             message.setLon(-120.0000 + (i * 0.001));
-            message.setTst((int) baseTime.plusSeconds(i * 10).getEpochSecond()); // 10 seconds apart
+            message.setTst(baseTime.plusSeconds(i * 10).getEpochSecond()); // 10 seconds apart
             message.setAcc(5.0);
             message.setBatt(85.0);
             message.setTid("large-dataset-device");
@@ -492,7 +492,7 @@ class OwnTracksExportImportIntegrationTest {
 
         long afterDuplicateImportCount = gpsPointRepository.count("user = ?1", testUser);
         assertEquals(importedCount, afterDuplicateImportCount,
-            "Re-importing large dataset should not create duplicates");
+                "Re-importing large dataset should not create duplicates");
 
         log.info("Batch processing duplicate detection verified");
     }

@@ -56,10 +56,10 @@ public class GpsPointServiceTest {
     public void setup() {
         // Clean up GPS points first (due to foreign key constraints)
         gpsPointRepository.deleteAll();
-        
+
         // Clean up users
         userRepository.deleteAll();
-        
+
         // Create fresh test user
         UserEntity user = UserEntity.builder()
                 .email("test@test.com" + System.nanoTime()) // Make email unique
@@ -73,7 +73,7 @@ public class GpsPointServiceTest {
     @Test
     @Transactional
     public void testSaveOwnTracksGpsPoint() {
-        Integer tst = (int)Instant.now().plusSeconds(20000).toEpochMilli() / 1000;
+        long tst = (int) Instant.now().plusSeconds(20000).toEpochMilli() / 1000;
         OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
                 .type("location")
                 .acc(0.2)
@@ -105,7 +105,7 @@ public class GpsPointServiceTest {
         assertEquals(-74.0, savedGpsPoint.getCoordinates().getX(), 0.000001);
         assertEquals(5.0, savedGpsPoint.getVelocity(), 0.000001);
         assertEquals("test-device", savedGpsPoint.getDeviceId());
-        assertEquals(tst, (int)savedGpsPoint.getTimestamp().getEpochSecond());
+        assertEquals(tst, (int) savedGpsPoint.getTimestamp().getEpochSecond());
     }
 
     @Test
@@ -129,33 +129,33 @@ public class GpsPointServiceTest {
     public void testGetGpsPointSummary_TimezoneIssue_GMT_Plus3_Early_Morning() {
         // Test timezone fix: Create points that are clearly from different days in user timezone
         ZoneId gmtPlus3 = ZoneId.of("Europe/Kyiv"); // GMT+3
-        
+
         // Use today's date but convert to specific times
         LocalDate today = LocalDate.now();
         LocalDate yesterday = today.minusDays(1);
-        
+
         // Create test points:
         // 1. Point from "yesterday" in GMT+3 (should NOT count as today)
         ZonedDateTime yesterdayPoint = yesterday.atTime(20, 0).atZone(gmtPlus3);
         createTestGpsPoint(yesterdayPoint.toInstant());
-        
+
         // 2. Point from "today" in GMT+3 (should count as today)
         ZonedDateTime todayPoint = today.atTime(1, 0).atZone(gmtPlus3);
         createTestGpsPoint(todayPoint.toInstant());
-        
+
         // Test the FIXED implementation with correct timezone
         GpsPointSummaryDTO summaryFixed = gpsPointService.getGpsPointSummary(userId, gmtPlus3);
-        
+
         assertEquals(2, summaryFixed.getTotalPoints());
         assertEquals(1, summaryFixed.getPointsToday(),
-            "Expected 1 point for 'today' from user's GMT+3 perspective with the timezone fix. " +
-            "Got " + summaryFixed.getPointsToday() + " points.");
-        
+                "Expected 1 point for 'today' from user's GMT+3 perspective with the timezone fix. " +
+                        "Got " + summaryFixed.getPointsToday() + " points.");
+
         // Also test that UTC-based calculation might give different result
         GpsPointSummaryDTO summaryUtc = gpsPointService.getGpsPointSummary(userId);
         // UTC might count differently due to timezone offset
         assertTrue(summaryUtc.getPointsToday() >= 0 && summaryUtc.getPointsToday() <= 2,
-            "UTC-based count should be between 0-2, got: " + summaryUtc.getPointsToday());
+                "UTC-based count should be between 0-2, got: " + summaryUtc.getPointsToday());
     }
 
     @Test
@@ -163,33 +163,33 @@ public class GpsPointServiceTest {
     public void testGetGpsPointSummary_TimezoneIssue_GMT_Minus8_Late_Evening() {
         // Test timezone fix: Create points that are clearly from different days in user timezone
         ZoneId gmtMinus8 = ZoneId.of("America/Los_Angeles"); // GMT-8 (Pacific Time)
-        
+
         // Use today's date but convert to specific times
         LocalDate today = LocalDate.now();
         LocalDate tomorrow = today.plusDays(1);
-        
+
         // Create test points:
         // 1. Point from "today" in GMT-8 (should count as today)
         ZonedDateTime todayPoint = today.atTime(10, 0).atZone(gmtMinus8);
         createTestGpsPoint(todayPoint.toInstant());
-        
+
         // 2. Point from "tomorrow" in GMT-8 (should NOT count as today)
         ZonedDateTime tomorrowPoint = tomorrow.atTime(1, 0).atZone(gmtMinus8);
         createTestGpsPoint(tomorrowPoint.toInstant());
-        
+
         // Test the FIXED implementation with correct timezone
         GpsPointSummaryDTO summaryFixed = gpsPointService.getGpsPointSummary(userId, gmtMinus8);
-        
+
         assertEquals(2, summaryFixed.getTotalPoints());
         assertEquals(1, summaryFixed.getPointsToday(),
-            "Expected 1 point for 'today' from user's GMT-8 perspective with the timezone fix. " +
-            "Got " + summaryFixed.getPointsToday() + " points.");
-        
+                "Expected 1 point for 'today' from user's GMT-8 perspective with the timezone fix. " +
+                        "Got " + summaryFixed.getPointsToday() + " points.");
+
         // Also test that UTC-based calculation might give different result
         GpsPointSummaryDTO summaryUtc = gpsPointService.getGpsPointSummary(userId);
         // UTC might count differently due to timezone offset
         assertTrue(summaryUtc.getPointsToday() >= 0 && summaryUtc.getPointsToday() <= 2,
-            "UTC-based count should be between 0-2, got: " + summaryUtc.getPointsToday());
+                "UTC-based count should be between 0-2, got: " + summaryUtc.getPointsToday());
     }
 
     @Test
@@ -197,7 +197,7 @@ public class GpsPointServiceTest {
     public void testGetGpsPointSummary_EmptyResult() {
         // Test with no GPS points
         GpsPointSummaryDTO summary = gpsPointService.getGpsPointSummary(userId);
-        
+
         assertEquals(0, summary.getTotalPoints());
         assertEquals(0, summary.getPointsToday());
         assertNull(summary.getFirstPointDate());
@@ -210,7 +210,7 @@ public class GpsPointServiceTest {
                 .acc(5.0)
                 .lat(40.0)
                 .lon(-74.0)
-                .tst((int) timestamp.getEpochSecond())
+                .tst(timestamp.getEpochSecond())
                 .vel(2.0)
                 .build();
 

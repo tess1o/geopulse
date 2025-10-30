@@ -163,6 +163,12 @@ If you do not want to allow users to sign up via email/password, you can disable
 variable:
 `GEOPULSE_AUTH_SIGN_UP_ENABLED=false`. By default, sign up is enabled.
 
+### Sharing
+
+| Environment Variable      | Default   | Description                                                                                                                                                               |
+|---------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_SHARE_BASE_URL` | _(empty)_ | Overrides the base URL for share links. If not set, the current base URL is used. <br/> Useful for custom proxies or when you want to have a separate domain for sharing. |
+
 ### OIDC Authentication
 
 GeoPulse supports OpenID Connect (OIDC) authentication for single sign-on with popular providers like Google, Microsoft,
@@ -692,10 +698,19 @@ Controls GPS point duplicate detection and processing. **Applies to all users.**
 |--------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------|
 | `geopulse.gps.duplicate-detection.location-time-threshold-minutes` | `2`     | Time threshold (minutes) for considering GPS points as duplicates (with the same coordinates) |
 
+### OwnTracks
+
+| Property                                     | Default | Description                                                                                                                                                                                                                                   |
+|----------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_OWNTRACKS_PING_TIMESTAMP_OVERRIDE` | `false` | When OwnTracks sends a message with `_type=location` and `p=t` (ping) and this property is `true` -  the system will override OwnTracks's message timestamp to the current time.Otherwise, it will use the timestamp received from OwnTracks. |
+
 ### Environment Variables Reference
 
 ```bash
 # System-Wide Settings (apply to all users)
+
+# Sharing
+GEOPULSE_SHARE_BASE_URL=
 
 # Favorites Configuration
 GEOPULSE_FAVORITES_MAX_DISTANCE_FROM_POINT=75
@@ -703,6 +718,9 @@ GEOPULSE_FAVORITES_MAX_DISTANCE_FROM_AREA=15
 
 # GPS Data Processing
 GEOPULSE_GPS_DUPLICATE_DETECTION_LOCATION_TIME_THRESHOLD_MINUTES=2
+
+# OwnTracks
+GEOPULSE_OWNTRACKS_PING_TIMESTAMP_OVERRIDE=false
 
 # Realtime Timeline Job
 GEOPULSE_TIMELINE_PROCESSING_THREADS=2

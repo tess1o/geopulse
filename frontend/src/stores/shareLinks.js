@@ -10,6 +10,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
         maxLinks: 10,
         loading: false,
         error: null,
+        baseUrl: '',
         // For shared location viewing
         sharedLocationInfo: null,
         sharedLocationData: null,
@@ -63,19 +64,21 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.setLoading(true)
             this.clearError()
             try {
-                const response = await apiService.get('/share-links')
-                this.links = response.data.links
-                this.maxLinks = response.data.max_links
+                const response = await apiService.get('/share-links');
+                this.links = response.data.links;
+                this.maxLinks = response.data.max_links;
+                this.baseUrl = response.data.base_url || window.location.origin;
+                console.log('Base URL: ', this.baseUrl);
                 // Calculate active count client-side to ensure consistency
-                const timezone = useTimezone()
-                const isExpired = (link) => link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false
-                this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length
+                const timezone = useTimezone();
+                const isExpired = (link) => link.expires_at ? timezone.fromUtc(link.expires_at).isBefore(timezone.now()) : false;
+                this.activeCount = this.links.filter(link => link.is_active && !isExpired(link)).length;
             } catch (error) {
-                console.error('Failed to fetch share links:', error)
-                this.setError(error.message || 'Failed to fetch share links')
-                throw error
+                console.error('Failed to fetch share links:', error);
+                this.setError(error.message || 'Failed to fetch share links');
+                throw error;
             } finally {
-                this.setLoading(false)
+                this.setLoading(false);
             }
         },
 

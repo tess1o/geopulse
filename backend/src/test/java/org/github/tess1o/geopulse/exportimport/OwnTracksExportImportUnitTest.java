@@ -477,7 +477,7 @@ class OwnTracksExportImportUnitTest {
         OwnTracksLocationMessage message = new OwnTracksLocationMessage();
         message.setLat(lat);
         message.setLon(lon);
-        message.setTst((int) timestamp.getEpochSecond());
+        message.setTst(timestamp.getEpochSecond());
         message.setAcc(5.0);
         message.setBatt(85.0);
         message.setVel(0.0);
