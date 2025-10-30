@@ -30,6 +30,7 @@ public class UserMapper {
                 .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
+                .measureInit(entity.getMeasureInit())
                 .build();
     }
 }

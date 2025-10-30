@@ -35,7 +35,7 @@ public class UserService {
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
-    
+
     // Mapping for timezone names that differ between JavaScript and Java
     private static final Map<String, String> TIMEZONE_MAPPING = Map.of(
             "Europe/Kiev", "Europe/Kyiv"  // JavaScript may send old name, normalize to new name
@@ -137,12 +137,12 @@ public class UserService {
         if (timezone == null || timezone.trim().isEmpty()) {
             return "UTC";
         }
-        
+
         String normalizedTimezone = timezone.trim();
-        
+
         // Apply timezone mapping if needed
         normalizedTimezone = TIMEZONE_MAPPING.getOrDefault(normalizedTimezone, normalizedTimezone);
-        
+
         try {
             java.time.ZoneId.of(normalizedTimezone);
             return normalizedTimezone;
@@ -174,7 +174,7 @@ public class UserService {
 
         // Security: Prevent dangerous protocols
         if (normalizedUrl.contains("javascript:") || normalizedUrl.contains("data:") ||
-            normalizedUrl.contains("file:") || normalizedUrl.contains("ftp:")) {
+                normalizedUrl.contains("file:") || normalizedUrl.contains("ftp:")) {
             log.warn("Dangerous protocol detected in tile URL: {}", tileUrl);
             throw new IllegalArgumentException("Invalid tile URL protocol");
         }
@@ -252,6 +252,12 @@ public class UserService {
             user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
             log.debug("Updated custom map tile URL for user {}", user.getId());
         }
+
+        // Validate and update custom map tile URL
+        if (request.getMeasureUnit() != null) {
+            user.setMeasureInit(request.getMeasureUnit());
+            log.debug("Updated custom map tile URL for user {}", user.getId());
+        }
     }
 
     @Transactional
@@ -293,7 +299,7 @@ public class UserService {
         // Determine which type of event to fire based on parameter types
         boolean hasClassificationChanges = hasClassificationParameters(update);
         boolean hasStructuralChanges = hasStructuralParameters(update);
-        
+
         if (hasClassificationChanges && !hasStructuralChanges) {
             // Fire classification-only event for fast trip type recalculation
             log.info("Firing travel classification updated event for user {} (classification-only changes)", userId);
@@ -324,37 +330,37 @@ public class UserService {
     public boolean isSignUpEnabled() {
         return isSignUpEnabled;
     }
-    
+
     /**
      * Check if the update contains travel classification parameters.
      */
     private boolean hasClassificationParameters(UpdateTimelinePreferencesRequest update) {
         return update.getWalkingMaxAvgSpeed() != null ||
-               update.getWalkingMaxMaxSpeed() != null ||
-               update.getCarMinAvgSpeed() != null ||
-               update.getCarMinMaxSpeed() != null ||
-               update.getShortDistanceKm() != null;
+                update.getWalkingMaxMaxSpeed() != null ||
+                update.getCarMinAvgSpeed() != null ||
+                update.getCarMinMaxSpeed() != null ||
+                update.getShortDistanceKm() != null;
     }
-    
+
     /**
      * Check if the update contains structural timeline parameters.
      */
     private boolean hasStructuralParameters(UpdateTimelinePreferencesRequest update) {
         return update.getStaypointVelocityThreshold() != null ||
-               update.getStaypointRadiusMeters() != null ||
-               update.getStaypointMinDurationMinutes() != null ||
-               update.getTripDetectionAlgorithm() != null ||
-               update.getUseVelocityAccuracy() != null ||
-               update.getStaypointMaxAccuracyThreshold() != null ||
-               update.getStaypointMinAccuracyRatio() != null ||
-               update.getIsMergeEnabled() != null ||
-               update.getMergeMaxDistanceMeters() != null ||
-               update.getMergeMaxTimeGapMinutes() != null ||
-               update.getPathSimplificationEnabled() != null ||
-               update.getPathSimplificationTolerance() != null ||
-               update.getPathMaxPoints() != null ||
-               update.getPathAdaptiveSimplification() != null ||
-               update.getDataGapThresholdSeconds() != null ||
-               update.getDataGapMinDurationSeconds() != null;
+                update.getStaypointRadiusMeters() != null ||
+                update.getStaypointMinDurationMinutes() != null ||
+                update.getTripDetectionAlgorithm() != null ||
+                update.getUseVelocityAccuracy() != null ||
+                update.getStaypointMaxAccuracyThreshold() != null ||
+                update.getStaypointMinAccuracyRatio() != null ||
+                update.getIsMergeEnabled() != null ||
+                update.getMergeMaxDistanceMeters() != null ||
+                update.getMergeMaxTimeGapMinutes() != null ||
+                update.getPathSimplificationEnabled() != null ||
+                update.getPathSimplificationTolerance() != null ||
+                update.getPathMaxPoints() != null ||
+                update.getPathAdaptiveSimplification() != null ||
+                update.getDataGapThresholdSeconds() != null ||
+                update.getDataGapMinDurationSeconds() != null;
     }
 }
