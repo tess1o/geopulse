@@ -495,7 +495,8 @@ const apiService = {
                     createdAt: responseData.createdAt,
                     hasPassword: responseData.hasPassword,
                     timezone: responseData.timezone,
-                    customMapTileUrl: responseData.customMapTileUrl || ''
+                    customMapTileUrl: responseData.customMapTileUrl || '',
+                    measureUnit: responseData.measureUnit || 'METRIC'
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;

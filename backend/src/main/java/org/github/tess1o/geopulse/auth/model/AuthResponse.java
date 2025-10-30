@@ -25,5 +25,5 @@ public class AuthResponse {
     private Instant createdAt;
     private boolean hasPassword;
     private String customMapTileUrl;
-    private MeasureUnit measureInit;
+    private MeasureUnit measureUnit;
 }

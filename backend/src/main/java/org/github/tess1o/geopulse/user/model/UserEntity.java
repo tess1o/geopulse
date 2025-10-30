@@ -90,7 +90,7 @@ public class UserEntity extends PanacheEntityBase {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "measure_unit", length = 1000)
-    private MeasureUnit measureInit;
+    private MeasureUnit measureUnit;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude

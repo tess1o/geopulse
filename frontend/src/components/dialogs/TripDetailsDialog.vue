@@ -117,9 +117,8 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
-import PathLayer from '@/components/maps/layers/PathLayer.vue'
 import { useTimezone } from '@/composables/useTimezone'
-import { formatDurationSmart } from '@/utils/calculationsHelpers'
+import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -148,7 +147,6 @@ const internalVisible = computed({
 
 const mapId = ref(Date.now())
 const mapInstance = ref(null)
-const pathLayerRef = ref(null)
 
 const dialogTitle = computed(() => {
   if (!props.trip) return 'Trip Details'
@@ -185,15 +183,6 @@ const getEndDateTime = () => {
 
 const formatDuration = (seconds) => {
   return formatDurationSmart(seconds || 0)
-}
-
-const formatDistance = (meters) => {
-  if (!meters) return '0m'
-  
-  if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(1)} km`
-  }
-  return `${Math.round(meters)} m`
 }
 
 const getTransportSeverity = (transportMode) => {

@@ -23,6 +23,6 @@ public class UserResponse {
     private String avatar;
     private boolean hasPassword;
     private String customMapTileUrl;
-    private MeasureUnit measureInit;
+    private MeasureUnit measureUnit;
     // Don't include passwordHash in responses
 }

@@ -255,7 +255,7 @@ public class UserService {
 
         // Validate and update custom map tile URL
         if (request.getMeasureUnit() != null) {
-            user.setMeasureInit(request.getMeasureUnit());
+            user.setMeasureUnit(request.getMeasureUnit());
             log.debug("Updated custom map tile URL for user {}", user.getId());
         }
     }

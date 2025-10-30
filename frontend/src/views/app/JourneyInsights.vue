@@ -81,7 +81,7 @@
           <!-- Total Distance -->
           <div class="insight-stat-large travel-card">
             <div class="travel-icon">🛣️</div>
-            <div class="stat-number">{{ formatDistance(distanceTraveled?.total || 0) }}</div>
+            <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.total || 0) }}</div>
             <div class="stat-label">Total Distance Traveled</div>
             <div class="stat-detail">{{ getTotalDistancePhrase(distanceTraveled?.total || 0) }}</div>
           </div>
@@ -89,7 +89,7 @@
           <!-- Distance by Car -->
           <div class="insight-stat-large travel-card">
             <div class="travel-icon">🚗</div>
-            <div class="stat-number">{{ formatDistance(distanceTraveled?.byCar || 0) }}</div>
+            <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byCar || 0) }}</div>
             <div class="stat-label">Distance by Car</div>
             <div class="stat-detail">
               {{ getCarPercentage(distanceTraveled) }} - {{ getCarPhrase(distanceTraveled?.byCar || 0) }}
@@ -99,7 +99,7 @@
           <!-- Distance Walking -->
           <div class="insight-stat-large travel-card">
             <div class="travel-icon">🚶</div>
-            <div class="stat-number">{{ formatDistance(distanceTraveled?.byWalk || 0) }}</div>
+            <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byWalk || 0) }}</div>
             <div class="stat-label">Distance Walking</div>
             <div class="stat-detail">
               {{ getWalkPercentage(distanceTraveled) }} - {{ getWalkPhrase(distanceTraveled?.byWalk || 0) }}
@@ -227,6 +227,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
 // Store
 import { useJourneyInsightsStore } from '@/stores/journeyInsights'
+import {formatDistanceRounded} from "../../utils/calculationsHelpers";
 
 const journeyInsightsStore = useJourneyInsightsStore()
 const { handleErrorWithRetry } = useErrorHandler()
@@ -396,12 +397,6 @@ const fetchCountryFlags = async () => {
 const handleFlagError = (country) => {
   // Remove failed flag from cache so it can be retried
   countryFlags.value.delete(country.name)
-}
-
-// Distance formatting and motivational phrases
-const formatDistance = (distance) => {
-  if (!distance || distance === 0) return '0 km'
-  return `${distance.toLocaleString()} km`
 }
 
 const getCarPercentage = (distanceData) => {

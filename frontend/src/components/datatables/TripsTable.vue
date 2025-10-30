@@ -232,7 +232,7 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import TripDetailsDialog from '@/components/dialogs/TripDetailsDialog.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTableFilters } from '@/composables/useTableFilters'
-import { formatDurationSmart } from '@/utils/calculationsHelpers'
+import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 
 const timezone = useTimezone()
 
@@ -309,15 +309,6 @@ const getEndTime = (trip) => {
 
 const formatDuration = (seconds) => {
   return formatDurationSmart(seconds || 0)
-}
-
-const formatDistance = (meters) => {
-  if (!meters) return '0m'
-  
-  if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(1)} km`
-  }
-  return `${Math.round(meters)} m`
 }
 
 const getTransportSeverity = (transportMode) => {
