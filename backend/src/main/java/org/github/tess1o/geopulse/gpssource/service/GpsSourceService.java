@@ -30,6 +30,18 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     private final SecurePasswordUtils passwordUtils;
     private final EntityManager em;
 
+    @Getter
+    @ConfigProperty(name = "geopulse.gps.filter.inaccurate-data.enabled", defaultValue = "false")
+    boolean defaultFilterInaccurateDataEnabled;
+
+    @Getter
+    @ConfigProperty(name = "geopulse.gps.max-allowed-accuracy", defaultValue = "100")
+    int defaultMaxAllowedAccuracy;
+
+    @Getter
+    @ConfigProperty(name = "geopulse.gps.max-allowed-speed", defaultValue = "250")
+    int defaultMaxAllowedSpeed;
+
     @Inject
     public GpsSourceService(GpsSourceRepository gpsSourceRepository,
                             GpsSourceConfigMapper gpsSourceMapper,
@@ -125,6 +137,10 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         if (dbConfig.getConnectionType() != null) {
             dbConfig.setConnectionType(config.getConnectionType());
         }
+        // Update filtering settings
+        dbConfig.setFilterInaccurateData(config.isFilterInaccurateData());
+        dbConfig.setMaxAllowedAccuracy(config.getMaxAllowedAccuracy());
+        dbConfig.setMaxAllowedSpeed(config.getMaxAllowedSpeed());
         return true;
     }
 

@@ -38,6 +38,17 @@ public class GpsSourceConfigResource {
         return Response.ok(configs).build();
     }
 
+    @Path("/defaults")
+    @GET
+    public Response getDefaultFilteringValues() {
+        var defaults = java.util.Map.of(
+            "filterInaccurateData", gpsSourceService.isDefaultFilterInaccurateDataEnabled(),
+            "maxAllowedAccuracy", gpsSourceService.getDefaultMaxAllowedAccuracy(),
+            "maxAllowedSpeed", gpsSourceService.getDefaultMaxAllowedSpeed()
+        );
+        return Response.ok(defaults).build();
+    }
+
     @Path("/")
     @POST
     //TODO: duplication check!!!

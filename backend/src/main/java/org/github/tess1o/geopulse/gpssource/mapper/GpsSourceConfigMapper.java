@@ -25,6 +25,9 @@ public class GpsSourceConfigMapper {
                 .type(config.getSourceType().name())
                 .active(config.isActive())
                 .connectionType(config.getConnectionType())
+                .filterInaccurateData(config.isFilterInaccurateData())
+                .maxAllowedAccuracy(config.getMaxAllowedAccuracy())
+                .maxAllowedSpeed(config.getMaxAllowedSpeed())
                 .build();
     }
 
@@ -39,6 +42,10 @@ public class GpsSourceConfigMapper {
                 .passwordHash(hashedPassword)
                 .sourceType(newConfig.getType())
                 .connectionType(newConfig.getConnectionType())
+                // Handle null Boolean by defaulting to false
+                .filterInaccurateData(newConfig.getFilterInaccurateData() != null ? newConfig.getFilterInaccurateData() : false)
+                .maxAllowedAccuracy(newConfig.getMaxAllowedAccuracy())
+                .maxAllowedSpeed(newConfig.getMaxAllowedSpeed())
                 .build();
     }
 }

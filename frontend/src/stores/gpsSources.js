@@ -3,12 +3,15 @@ import apiService from '../utils/apiService'
 
 export const useGpsSourcesStore = defineStore('gpsSources', {
     state: () => ({
-        gpsSourceConfigs: []
+        gpsSourceConfigs: [],
+        // Will be populated from backend API - no hardcoded defaults
+        defaultFilteringValues: null
     }),
 
     getters: {
         // Direct access getters
         getGpsSourceConfigs: (state) => state.gpsSourceConfigs,
+        getDefaultFilteringValues: (state) => state.defaultFilteringValues,
 
         // Computed getters for additional functionality
         hasGpsConfigs: (state) => state.gpsSourceConfigs.length > 0,
@@ -65,8 +68,19 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
             }
         },
 
+        async fetchDefaultFilteringValues() {
+            try {
+                const response = await apiService.get('/gps/source/defaults')
+                this.defaultFilteringValues = response
+                return response
+            } catch (error) {
+                console.error('Error fetching default filtering values:', error)
+                throw error
+            }
+        },
 
-        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP') {
+
+        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP', filterInaccurateData, maxAllowedAccuracy, maxAllowedSpeed) {
             try {
                 // Note: Removed userId parameter as per your security discussion
                 await apiService.post('/gps/source', {
@@ -74,7 +88,10 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
                     username,
                     password,
                     token,
-                    connectionType
+                    connectionType,
+                    filterInaccurateData,
+                    maxAllowedAccuracy,
+                    maxAllowedSpeed
                     // Backend should get userId from JWT token
                 })
                 // Refresh the configs after adding
