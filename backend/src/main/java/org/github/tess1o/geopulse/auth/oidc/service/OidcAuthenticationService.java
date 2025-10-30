@@ -27,6 +27,7 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
 import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionRepository;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
@@ -234,6 +235,7 @@ public class OidcAuthenticationService {
                 .isActive(true)
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users
+                .measureUnit(MeasureUnit.METRIC)
                 .build();
 
         userService.persist(user);
