@@ -255,8 +255,16 @@ const checkBackendConnectivity = async () => {
   }
 }
 
+const detailsFromSession = ref(null)
+
 // Event listeners for online/offline
 onMounted(async () => {
+  const storedDetails = sessionStorage.getItem('errorDetails')
+  if (storedDetails) {
+    detailsFromSession.value = storedDetails
+    sessionStorage.removeItem('errorDetails')
+  }
+
   window.addEventListener('online', updateConnectionStatus)
   window.addEventListener('offline', updateConnectionStatus)
   
@@ -306,14 +314,15 @@ const errorMessage = computed(() => {
   }
 })
 
-const errorDetails = computed(() => props.details)
+const errorDetails = computed(() => props.details || detailsFromSession.value)
 
 const parsedErrorDetails = computed(() => {
-  if (!props.details) return null
+  const details = props.details || detailsFromSession.value
+  if (!details) return null
   
   try {
     // Try to parse as JSON first
-    return JSON.parse(props.details)
+    return JSON.parse(details)
   } catch (error) {
     // If JSON parsing fails, return null to show raw details
     return null

@@ -31,11 +31,13 @@ export function handleSevereError(error, options = {}) {
       canRetry: error.canRetry
     };
 
+    // Store full details in session storage to avoid long URLs
+    sessionStorage.setItem('errorDetails', JSON.stringify(errorDetails));
+
     const errorParams = {
       type: 'connection',
       title: options.title || 'Connection Problem',
       message: options.message || error.userMessage || 'Unable to connect to GeoPulse servers.',
-      details: JSON.stringify(errorDetails)
     }
 
     // Navigate to error page with parameters
