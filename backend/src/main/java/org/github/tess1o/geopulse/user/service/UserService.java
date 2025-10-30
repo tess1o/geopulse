@@ -91,6 +91,7 @@ public class UserService {
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
+                .measureUnit(MeasureUnit.METRIC)
                 .build();
 
         userRepository.persist(user);
