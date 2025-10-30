@@ -35,6 +35,9 @@ public class SharedLinkService {
     @StaticInitSafe
     int maxLinksPerUser;
 
+    @ConfigProperty(name = "geopulse.share.base-url")
+    Optional<String> shareBaseUrl;
+
     @Inject
     SharedLinkRepository sharedLinkRepository;
 
@@ -65,7 +68,7 @@ public class SharedLinkService {
     public CreateShareLinkResponse createShareLink(CreateShareLinkRequest request, UserEntity user) {
         log.info("Creating share link for user: {}, name: {}, hasPassword: {}, showHistory: {}",
                 user.getId(), request.getName(), request.getPassword() != null, request.isShowHistory());
-        
+
         long activeCount = sharedLinkRepository.countActiveByUserId(user.getId());
         if (activeCount >= maxLinksPerUser) {
             log.warn("User {} exceeded max links limit: {} >= {}", user.getId(), activeCount, maxLinksPerUser);
@@ -73,7 +76,7 @@ public class SharedLinkService {
         }
 
         SharedLinkEntity entity = mapper.toEntity(request, user);
-        
+
         if (entity.getPassword() != null) {
             entity.setPassword(passwordUtils.hashPassword(entity.getPassword()));
         }
@@ -91,7 +94,12 @@ public class SharedLinkService {
 
         long activeCount = sharedLinkRepository.countActiveByUserId(userId);
 
-        return new SharedLinksDto(dtos, (int) activeCount, maxLinksPerUser);
+        return SharedLinksDto.builder()
+                .links(dtos)
+                .activeCount((int) activeCount)
+                .maxLinks(maxLinksPerUser)
+                .baseUrl(shareBaseUrl.orElse(null))
+                .build();
     }
 
     @Transactional
@@ -102,30 +110,30 @@ public class SharedLinkService {
         }
 
         SharedLinkEntity entity = entityOpt.get();
-        
+
         // Create a copy to avoid modifying the original DTO (prevents password logging)
         UpdateShareLinkDto safeDto = new UpdateShareLinkDto(
-            updateDto.getName(),
-            updateDto.getExpiresAt(),
-            updateDto.getPassword(),
-            updateDto.isShowHistory()
+                updateDto.getName(),
+                updateDto.getExpiresAt(),
+                updateDto.getPassword(),
+                updateDto.isShowHistory()
         );
-        
+
         if (safeDto.getPassword() != null && !safeDto.getPassword().trim().isEmpty()) {
             String hashedPassword = passwordUtils.hashPassword(safeDto.getPassword());
             safeDto.setPassword(hashedPassword);
         }
-        
+
         mapper.updateEntityFromDto(entity, safeDto);
         sharedLinkRepository.persist(entity);
-        
+
         return mapper.toDto(entity);
     }
 
     @Transactional
     public void deleteShareLink(UUID linkId, UUID userId) {
         log.info("User {} attempting to delete share link: {}", userId, linkId);
-        
+
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findByIdAndUserId(linkId, userId);
         if (entityOpt.isEmpty()) {
             log.warn("Share link not found or access denied: linkId={}, userId={}", linkId, userId);
@@ -147,7 +155,7 @@ public class SharedLinkService {
 
     public AccessTokenResponse verifyPassword(UUID linkId, String password) {
         log.debug("Password verification attempt for linkId: {}", linkId);
-        
+
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
             log.warn("Link not found or expired for verification: {}", linkId);
@@ -155,7 +163,7 @@ public class SharedLinkService {
         }
 
         SharedLinkEntity entity = entityOpt.get();
-        
+
         if (entity.getPassword() != null) {
             if (password == null || !passwordUtils.isPasswordValid(password, entity.getPassword())) {
                 log.warn("Invalid password attempt for linkId: {}", linkId);
@@ -171,9 +179,9 @@ public class SharedLinkService {
     @Transactional
     public LocationHistoryResponse getSharedLocation(UUID linkId, String tempToken) {
         log.debug("Location access attempt for linkId: {}", linkId);
-        
+
         validateTemporaryToken(tempToken, linkId);
-        
+
         Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
         if (entityOpt.isEmpty()) {
             log.warn("Link not found or expired for location access: {}", linkId);
@@ -181,22 +189,22 @@ public class SharedLinkService {
         }
 
         SharedLinkEntity entity = entityOpt.get();
-        
+
         sharedLinkRepository.incrementViewCount(linkId);
         log.info("Location accessed successfully for linkId: {}, showHistory: {}", linkId, entity.isShowHistory());
 
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
-        
+
         if (entity.isShowHistory()) {
             Instant oneDayAgo = Instant.now().minus(1, ChronoUnit.DAYS);
             List<GpsPointEntity> history = gpsPointRepository.findByUserIdAndTimePeriod(
                     entity.getUser().getId(), oneDayAgo, Instant.now());
-            
+
             return mapper.toLocationHistoryResponse(currentLocation, history);
         } else {
             if (currentLocation != null) {
                 ShareLinkResponse current = mapper.toShareLinkResponse(currentLocation);
-                LocationHistoryResponse.CurrentLocationData currentData = 
+                LocationHistoryResponse.CurrentLocationData currentData =
                         new LocationHistoryResponse.CurrentLocationData(
                                 current.getLatitude(),
                                 current.getLongitude(),
@@ -221,23 +229,23 @@ public class SharedLinkService {
     private void validateTemporaryToken(String token, UUID expectedLinkId) {
         try {
             log.debug("Validating temporary token for linkId: {}", expectedLinkId);
-            
+
             org.eclipse.microprofile.jwt.JsonWebToken jwt = jwtParser.parse(token);
-            
+
             String tokenType = jwt.getClaim("type");
             if (!"temp".equals(tokenType)) {
                 log.warn("Invalid token type '{}' for linkId: {}", tokenType, expectedLinkId);
                 throw new ForbiddenException("Invalid token type");
             }
-            
+
             String tokenLinkId = jwt.getClaim("linkId");
             if (!expectedLinkId.toString().equals(tokenLinkId)) {
                 log.warn("Token linkId mismatch. Expected: {}, Got: {}", expectedLinkId, tokenLinkId);
                 throw new ForbiddenException("Token not valid for this link");
             }
-            
+
             log.debug("Temporary token validation successful for linkId: {}", expectedLinkId);
-            
+
         } catch (Exception e) {
             log.warn("Temporary token validation failed for linkId: {}, error: {}", expectedLinkId, e.getMessage());
             throw new ForbiddenException("Invalid or expired token");

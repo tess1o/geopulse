@@ -438,7 +438,10 @@ const deleteLink = async () => {
 }
 
 const getShareUrl = (linkId) => {
-  return `${window.location.origin}/shared/${linkId}`
+  const baseUrl = shareLinksStore.baseUrl || window.location.origin;
+  // Make sure that the base URL does not have a trailing slash
+  const sanitizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `${sanitizedBaseUrl}/shared/${linkId}`;
 }
 
 const copyToClipboard = async (text) => {
