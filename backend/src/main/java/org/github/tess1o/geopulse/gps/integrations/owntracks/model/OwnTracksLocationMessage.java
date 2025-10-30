@@ -28,7 +28,7 @@ public class OwnTracksLocationMessage {
     private String t;
     private String conn;
     private String m;
-    private Integer tst;
+    private Long tst;
     private Double alt;
     @JsonProperty("_type")
     private String type;
@@ -36,5 +36,5 @@ public class OwnTracksLocationMessage {
     private String bssid;
     private String ssid;
     @JsonProperty("created_at")
-    private Integer createdAt;
+    private Long createdAt;
 }

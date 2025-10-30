@@ -144,14 +144,14 @@ public class GpsPointMapper {
         return OwnTracksLocationMessage.builder()
                 .lat(entity.getLatitude())
                 .lon(entity.getLongitude())
-                .tst((int) entity.getTimestamp().getEpochSecond())
+                .tst(entity.getTimestamp().getEpochSecond())
                 .acc(entity.getAccuracy())
                 .batt(entity.getBattery())
                 .vel(entity.getVelocity())
                 .alt(entity.getAltitude())
                 .type("location")
                 .tid(entity.getDeviceId())
-                .createdAt((int) entity.getCreatedAt().getEpochSecond())
+                .createdAt(entity.getCreatedAt().getEpochSecond())
                 .build();
     }
 
