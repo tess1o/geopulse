@@ -50,19 +50,29 @@ public class GpsPointService {
         this.filteringService = filteringService;
     }
 
-    @Transactional
-    public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
-        // Map message to entity (mapper handles unit conversions)
-        UserEntity user = em.getReference(UserEntity.class, userId);
-        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
-
-        // Filter based on configured thresholds
+    /**
+     * Common logic for filtering and persisting a GPS point entity.
+     * This method should be called after entity mapping.
+     *
+     * @param entity The mapped GPS point entity to filter and persist
+     * @param config The GPS source configuration containing filter settings
+     * @return true if the point was saved, false if rejected by filters
+     */
+    private boolean filterAndPersistGpsPoint(GpsPointEntity entity, GpsSourceConfigEntity config) {
         var filterResult = filteringService.filter(entity, config);
         if (filterResult.isRejected()) {
             // Already logged in filtering service
-            return;
+            return false;
         }
 
+        // Persist the entity
+        gpsPointRepository.persist(entity);
+        log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
+        return true;
+    }
+
+    @Transactional
+    public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
 
         // Check for location-based duplicates first (before creating entity)
@@ -72,23 +82,16 @@ public class GpsPointService {
             return;
         }
 
-        // Persist the entity
-        gpsPointRepository.persist(entity);
-        log.info("Saved OwnTracks GPS point for user {} at timestamp {}", userId, timestamp);
+        // Map message to entity (mapper handles unit conversions)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, deviceId, sourceType);
+
+        // Filter and persist
+        filterAndPersistGpsPoint(entity, config);
     }
 
     @Transactional
     public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
-        // Map message to entity (mapper handles m/s → km/h conversion)
-        UserEntity user = em.getReference(UserEntity.class, userId);
-        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
-
-        // Filter based on configured thresholds
-        var filterResult = filteringService.filter(entity, config);
-        if (filterResult.isRejected()) {
-            // Already logged in filtering service
-            return;
-        }
         Instant timestamp = message.getProperties().getTimestamp();
 
         // Check for duplicates first
@@ -97,9 +100,12 @@ public class GpsPointService {
             return;
         }
 
-        // Persist the entity
-        gpsPointRepository.persist(entity);
-        log.info("Saved Overland GPS point for user {} at timestamp {}", userId, timestamp);
+        // Map message to entity (mapper handles m/s → km/h conversion)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
+
+        // Filter and persist
+        filterAndPersistGpsPoint(entity, config);
     }
 
     @Transactional
@@ -120,32 +126,13 @@ public class GpsPointService {
             // Map message to entity (mapper handles m/s → km/h conversion)
             GpsPointEntity entity = gpsPointMapper.toEntity(location, user, sourceType);
 
-            // Filter based on configured thresholds
-            var filterResult = filteringService.filter(entity, config);
-            if (filterResult.isRejected()) {
-                // Already logged in filtering service
-                continue; // Skip this point, continue with next
-            }
-
-            // Persist the entity
-            gpsPointRepository.persist(entity);
-            log.info("Saved Dawarich GPS point for user {} at timestamp {}", userId, entity.getTimestamp());
+            // Filter and persist
+            filterAndPersistGpsPoint(entity, config);
         }
     }
 
     @Transactional
     public void saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
-        // Map message to entity (mapper handles m/s → km/h conversion)
-        UserEntity user = em.getReference(UserEntity.class, userId);
-        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
-
-        // Filter based on configured thresholds
-        var filterResult = filteringService.filter(entity, config);
-        if (filterResult.isRejected()) {
-            // Already logged in filtering service
-            return;
-        }
-
         Instant timestamp = data.getTimestamp();
 
         // Check for duplicates first
@@ -154,9 +141,12 @@ public class GpsPointService {
             return;
         }
 
-        // Persist the entity
-        gpsPointRepository.persist(entity);
-        log.info("Saved Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
+        // Map message to entity (mapper handles m/s → km/h conversion)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
+
+        // Filter and persist
+        filterAndPersistGpsPoint(entity, config);
     }
 
     /**
