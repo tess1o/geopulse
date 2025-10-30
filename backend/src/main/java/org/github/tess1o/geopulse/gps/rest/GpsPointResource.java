@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.StringWriter;
@@ -205,17 +206,17 @@ public class GpsPointResource {
             @QueryParam("endDate") String endDate,
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime) {
-        UUID userId = currentUserService.getCurrentUserId();
+        UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}, startTime: {}, endTime: {}",
-                userId, startDate, endDate, startTime, endTime);
+                user.getId(), startDate, endDate, startTime, endTime);
 
         try {
             // Parse date/time parameters - prioritize precise timestamps over dates
             Instant start = parseDateTime(startTime, startDate, true);
             Instant end = parseDateTime(endTime, endDate, false);
 
-            List<GpsPointEntity> points = gpsPointService.getGpsPointsForExport(userId, start, end);
-            String csv = generateCsv(points);
+            List<GpsPointEntity> points = gpsPointService.getGpsPointsForExport(user.getId(), start, end);
+            String csv = generateCsv(points, user.getMeasureUnit());
 
             String filename = String.format("gps-points-export-%s.csv",
                     startDate != null && endDate != null ? startDate + "_" + endDate : "all");
@@ -272,21 +273,30 @@ public class GpsPointResource {
     /**
      * Generate CSV from GPS points.
      *
-     * @param points List of GPS points
+     * @param points      List of GPS points
+     * @param measureUnit
      * @return CSV string
      */
-    private String generateCsv(List<GpsPointEntity> points) {
+    private String generateCsv(List<GpsPointEntity> points, MeasureUnit measureUnit) {
         StringWriter writer = new StringWriter();
-        writer.append("id,timestamp,latitude,longitude,accuracy,battery,velocity,altitude,sourceType\n");
+        if (measureUnit == MeasureUnit.METRIC) {
+            writer.append("id,timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType\n");
+        } else {
+            writer.append("id,timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType\n");
+        }
 
         for (GpsPointEntity point : points) {
+            Double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
+            if (measureUnit == MeasureUnit.IMPERIAL) {
+                velocity = velocity * 0.621371; //change to mph
+            }
             writer.append(String.valueOf(point.getId())).append(",");
             writer.append(point.getTimestamp().toString()).append(",");
             writer.append(String.valueOf(point.getLatitude())).append(",");
             writer.append(String.valueOf(point.getLongitude())).append(",");
             writer.append(point.getAccuracy() != null ? String.valueOf(point.getAccuracy()) : "").append(",");
             writer.append(point.getBattery() != null ? String.valueOf(point.getBattery()) : "").append(",");
-            writer.append(point.getVelocity() != null ? String.valueOf(point.getVelocity()) : "").append(",");
+            writer.append(String.valueOf(velocity)).append(",");
             writer.append(point.getAltitude() != null ? String.valueOf(point.getAltitude()) : "").append(",");
             writer.append(point.getSourceType().name()).append("\n");
         }
@@ -314,11 +324,11 @@ public class GpsPointResource {
         try {
             GpsPointDTO updatedPoint = gpsPointService.updateGpsPoint(pointId, editDto, userId);
             return Response.ok(ApiResponse.success(updatedPoint)).build();
-        } catch (jakarta.ws.rs.NotFoundException e) {
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error("GPS point not found"))
                     .build();
-        } catch (jakarta.ws.rs.ForbiddenException e) {
+        } catch (ForbiddenException e) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error("Access denied"))
                     .build();
@@ -347,11 +357,11 @@ public class GpsPointResource {
         try {
             gpsPointService.deleteGpsPoint(pointId, userId);
             return Response.noContent().build();
-        } catch (jakarta.ws.rs.NotFoundException e) {
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(ApiResponse.error("GPS point not found"))
                     .build();
-        } catch (jakarta.ws.rs.ForbiddenException e) {
+        } catch (ForbiddenException e) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error("Access denied"))
                     .build();
@@ -383,7 +393,7 @@ public class GpsPointResource {
         try {
             int deletedCount = gpsPointService.deleteGpsPoints(bulkDeleteDto.getGpsPointIds(), userId);
             return Response.ok(ApiResponse.success(Map.of("deletedCount", deletedCount))).build();
-        } catch (jakarta.ws.rs.ForbiddenException e) {
+        } catch (ForbiddenException e) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error("Access denied"))
                     .build();

@@ -23,5 +23,7 @@ public class UpdateProfileRequest {
     @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
     private String customMapTileUrl;
 
+    private MeasureUnit measureUnit;
+
     private UUID userId;
 }

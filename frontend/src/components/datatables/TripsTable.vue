@@ -221,7 +221,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -232,7 +232,9 @@ import BaseCard from '@/components/ui/base/BaseCard.vue'
 import TripDetailsDialog from '@/components/dialogs/TripDetailsDialog.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTableFilters } from '@/composables/useTableFilters'
-import { formatDurationSmart } from '@/utils/calculationsHelpers'
+import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
 const timezone = useTimezone()
 
@@ -251,6 +253,9 @@ const props = defineProps({
 
 const emit = defineEmits(['export', 'show-on-map', 'row-select'])
 
+const authStore = useAuthStore()
+const { measureUnit } = storeToRefs(authStore)
+
 // Use shared table filters composable with trips-specific options
 const {
   searchTerm,
@@ -259,14 +264,25 @@ const {
   transportModeOptions,
   distanceFilterOptions,
   useTripsFilter
-} = useTableFilters({
-  distanceOptions: [
-    { label: 'Less than 1 km', value: 'short', maxDistance: 1000 },
-    { label: '1-10 km', value: 'medium', minDistance: 1000, maxDistance: 10000 },
-    { label: '10-50 km', value: 'long', minDistance: 10000, maxDistance: 50000 },
-    { label: 'More than 50 km', value: 'very-long', minDistance: 50000 }
-  ]
-})
+} = useTableFilters()
+
+watch(measureUnit, (unit) => {
+  if (unit === 'IMPERIAL') {
+    distanceFilterOptions.value = [
+      { label: 'Less than 1 mile', value: 'short', maxDistance: 1609.34 },
+      { label: '1-10 miles', value: 'medium', minDistance: 1609.34, maxDistance: 16093.4 },
+      { label: '10-50 miles', value: 'long', minDistance: 16093.4, maxDistance: 80467.2 },
+      { label: 'More than 50 miles', value: 'very-long', minDistance: 80467.2 }
+    ]
+  } else {
+    distanceFilterOptions.value = [
+      { label: 'Less than 1 km', value: 'short', maxDistance: 1000 },
+      { label: '1-10 km', value: 'medium', minDistance: 1000, maxDistance: 10000 },
+      { label: '10-50 km', value: 'long', minDistance: 10000, maxDistance: 50000 },
+      { label: 'More than 50 km', value: 'very-long', minDistance: 50000 }
+    ]
+  }
+}, { immediate: true })
 
 // Local state
 const selectedTrip = ref(null)
@@ -309,15 +325,6 @@ const getEndTime = (trip) => {
 
 const formatDuration = (seconds) => {
   return formatDurationSmart(seconds || 0)
-}
-
-const formatDistance = (meters) => {
-  if (!meters) return '0m'
-  
-  if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(1)} km`
-  }
-  return `${Math.round(meters)} m`
 }
 
 const getTransportSeverity = (transportMode) => {

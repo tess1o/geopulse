@@ -1,8 +1,10 @@
 import {useTimezone} from '@/composables/useTimezone'
 import {formatDistance, formatDurationSmart} from "@/utils/calculationsHelpers"
 import { findOriginStay, findDestinationStay } from '@/utils/tripHelpers'
+import { useMeasureUnit } from '@/composables/useMeasureUnit'
 
 const timezone = useTimezone()
+const { getMeasureUnit } = useMeasureUnit()
 
 /**
  * Data Exporter utility for GeoPulse Data Tables
@@ -54,12 +56,15 @@ export class DataExporter {
      * @returns {Promise<void>}
      */
     static async exportTrips(stays, trips, dateRange) {
+        const measureUnit = getMeasureUnit()
+        const isImperial = measureUnit === 'IMPERIAL'
+
         const headers = [
             'Start Date',
             'End Date',
             'Duration',
             'Duration (minutes)',
-            'Distance, meters',
+            isImperial ? 'Distance, miles' : 'Distance, meters',
             'Origin',
             'Origin Latitude',
             'Origin Longitude',
@@ -74,13 +79,20 @@ export class DataExporter {
             const endTime = startTime.clone().add(trip.tripDuration || 0, 'seconds')
             const origin = findOriginStay(stays, trip.timestamp)?.locationName
             const destination = findDestinationStay(stays, endTime.toISOString())?.locationName
+            
+            let distance;
+            if (isImperial) {
+                distance = (trip.distanceMeters * 0.000621371).toFixed(2);
+            } else {
+                distance = Math.round(trip.distanceMeters);
+            }
 
             return [
                 this.formatDateTime(startTime),
                 this.formatDateTime(endTime),
                 formatDurationSmart(trip.tripDuration),
                 Math.round(trip.tripDuration / 60),
-                trip.distanceMeters,
+                distance,
                 this.sanitizeForCSV(origin || 'Unknown Origin'),
                 trip.latitude?.toFixed(6) || '',
                 trip.longitude?.toFixed(6) || '',

@@ -163,21 +163,21 @@
 
         <Column field="velocity" sortable header="Speed" class="numeric-col">
           <template #body="slotProps">
-            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ (slotProps.data.velocity).toFixed(1) }} km/h</span>
+            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ formatSpeed(slotProps.data.velocity.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
         <Column field="accuracy" sortable header="Accuracy" class="numeric-col" v-if="!isMobile">
           <template #body="slotProps">
-            <span v-if="slotProps.data.accuracy">{{ slotProps.data.accuracy.toFixed(1) }}m</span>
+            <span v-if="slotProps.data.accuracy">{{ formatDistance(slotProps.data.accuracy.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
 
         <Column field="altitude" header="Altitude" class="numeric-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
-            <span v-if="slotProps.data.altitude">{{ Math.round(slotProps.data.altitude) }}m</span>
+            <span v-if="slotProps.data.altitude">{{ formatDistance(Math.round(slotProps.data.altitude)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
@@ -318,6 +318,7 @@ import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
+import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
 const technicalDataStore = useTechnicalDataStore()

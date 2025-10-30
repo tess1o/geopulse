@@ -121,6 +121,7 @@ public class AuthenticationService {
                 .expiresIn(accessTokenLifespan)
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isEmpty())
                 .customMapTileUrl(user.getCustomMapTileUrl())
+                .measureUnit(user.getMeasureUnit())
                 .build();
     }
 

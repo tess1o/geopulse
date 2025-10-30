@@ -88,6 +88,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "custom_map_tile_url", length = 1000)
     private String customMapTileUrl;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "measure_unit", length = 1000)
+    private MeasureUnit measureUnit;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

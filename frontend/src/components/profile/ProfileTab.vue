@@ -99,6 +99,25 @@
               <a href="https://docs.maptiler.com/leaflet/" target="_blank" rel="noopener">MapTiler docs</a>
             </small>
           </div>
+
+          <div class="form-field">
+            <label for="measureUnit" class="form-label">
+              Measurement Unit
+              <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
+            </label>
+            <Dropdown
+                id="measureUnit"
+                v-model="form.measureUnit"
+                :options="measureUnitOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select your measurement unit"
+                class="w-full"
+            />
+            <small class="help-text">
+              Affects how distances and speeds are displayed across the app.
+            </small>
+          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -146,6 +165,10 @@ const props = defineProps({
   userCustomMapTileUrl: {
     type: String,
     default: ''
+  },
+  userMeasureUnit: {
+    type: String,
+    default: 'METRIC'
   }
 })
 
@@ -158,7 +181,8 @@ const localAvatar = ref('')
 const form = ref({
   fullName: '',
   timezone: '',
-  customMapTileUrl: ''
+  customMapTileUrl: '',
+  measureUnit: 'METRIC' // Default value
 })
 const errors = ref({})
 
@@ -238,12 +262,18 @@ const timezoneOptions = [
   { label: 'Africa/Nairobi GMT+3', value: 'Africa/Nairobi' }
 ]
 
+const measureUnitOptions = [
+  { label: 'Metric (kilometers, meters)', value: 'METRIC' },
+  { label: 'Imperial (miles, feet)', value: 'IMPERIAL' }
+]
+
 // Computed
 const hasChanges = computed(() => {
   return form.value.fullName !== props.userName ||
          localAvatar.value !== props.userAvatar ||
          form.value.timezone !== props.userTimezone ||
-         form.value.customMapTileUrl !== props.userCustomMapTileUrl
+         form.value.customMapTileUrl !== props.userCustomMapTileUrl ||
+         form.value.measureUnit !== props.userMeasureUnit
 })
 
 // Methods
@@ -282,7 +312,8 @@ const handleSubmit = async () => {
       fullName: form.value.fullName.trim(),
       avatar: localAvatar.value,
       timezone: form.value.timezone,
-      customMapTileUrl: form.value.customMapTileUrl?.trim() || ''
+      customMapTileUrl: form.value.customMapTileUrl?.trim() || '',
+      measureUnit: form.value.measureUnit
     })
   } finally {
     loading.value = false
@@ -293,6 +324,7 @@ const handleReset = () => {
   form.value.fullName = props.userName || ''
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.customMapTileUrl = props.userCustomMapTileUrl || ''
+  form.value.measureUnit = props.userMeasureUnit || 'METRIC'
   localAvatar.value = props.userAvatar || '/avatars/avatar1.png'
   errors.value = {}
 }
@@ -310,7 +342,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit], () => {
   handleReset()
 })
 </script>

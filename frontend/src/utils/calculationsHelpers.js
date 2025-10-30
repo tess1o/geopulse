@@ -1,4 +1,20 @@
+import { useMeasureUnit } from '@/composables/useMeasureUnit';
+
+const { getMeasureUnit } = useMeasureUnit();
+
 export function formatDistance(meters) {
+    const unit = getMeasureUnit();
+
+    if (unit === 'IMPERIAL') {
+        const feet = meters * 3.28084;
+        if (feet < 5280) {
+            return `${Math.round(feet)} ft`;
+        } else {
+            const miles = feet / 5280;
+            return `${miles.toFixed(2)} mi`;
+        }
+    }
+
     if (meters < 1000) {
         const d = Math.round(meters * 100) / 100
         return `${d} m`;
@@ -9,6 +25,18 @@ export function formatDistance(meters) {
 }
 
 export function formatDistanceRounded(meters) {
+    const unit = getMeasureUnit();
+
+    if (unit === 'IMPERIAL') {
+        const feet = meters * 3.28084;
+        if (feet < 5280) {
+            return `${Math.round(feet)} ft`;
+        } else {
+            const miles = feet / 5280;
+            return `${Math.round(miles)} mi`;
+        }
+    }
+
     if (meters < 1000) {
         const d = Math.round(meters); // no decimals for meters either
         return `${d} m`;
@@ -47,10 +75,18 @@ export function formatDuration(seconds) {
 }
 
 export function formatSpeed(speedKmH) {
+    const unit = getMeasureUnit();
     const speed = Number(speedKmH);
+
     if (isNaN(speed)) {
         return 'N/A';
     }
+
+    if (unit === 'IMPERIAL') {
+        const speedMph = speed * 0.621371;
+        return `${speedMph.toFixed(2)} mph`;
+    }
+
     return speed.toFixed(2) + ' km/h';
 }
 
