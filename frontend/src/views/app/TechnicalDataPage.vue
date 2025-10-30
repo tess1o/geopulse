@@ -163,7 +163,7 @@
 
         <Column field="velocity" sortable header="Speed" class="numeric-col">
           <template #body="slotProps">
-            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ (slotProps.data.velocity).toFixed(1) }} km/h</span>
+            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ formatSpeed(slotProps.data.velocity.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
@@ -318,7 +318,7 @@ import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
-import {formatDistance} from "../../utils/calculationsHelpers";
+import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
 const technicalDataStore = useTechnicalDataStore()
