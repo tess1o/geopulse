@@ -374,29 +374,26 @@ public class ImportResource {
                         .build();
             }
 
-            // Check file size (max 100MB)
+            // Check file size (max 1500MB)
             if (file.size() > MAX_FILE_SIZE_BYTES) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("FILE_TOO_LARGE", "File size exceeds 100MB limit"))
+                        .entity(createErrorResponse("FILE_TOO_LARGE",
+                                String.format("File size (%d MB) exceeds %d MB limit",
+                                        file.size() / (1024 * 1024),
+                                        MAX_FILE_SIZE_BYTES / (1024 * 1024))))
                         .build();
             }
 
-            // Validate file extension (should be .gpx)
+            // Validate file extension (should be .gpx or .zip)
             String fileName = file.fileName() != null ? file.fileName() : "gpx-import.gpx";
-            if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".gpx")) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("INVALID_FILE_TYPE", "Only GPX files are supported for GPX import"))
-                        .build();
-            }
+            String lowerFileName = fileName.toLowerCase(Locale.ENGLISH);
+            boolean isZipFile = lowerFileName.endsWith(".zip");
+            boolean isGpxFile = lowerFileName.endsWith(".gpx");
 
-            // Read file content
-            byte[] fileContent;
-            try {
-                fileContent = Files.readAllBytes(file.uploadedFile());
-            } catch (IOException e) {
-                log.error("Failed to read uploaded file", e);
+            if (!isGpxFile && !isZipFile) {
                 return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                        .entity(createErrorResponse("INVALID_FILE_TYPE",
+                                "Only GPX files (.gpx) and ZIP files containing GPX files (.zip) are supported"))
                         .build();
             }
 
@@ -404,8 +401,8 @@ public class ImportResource {
             ImportOptions importOptions;
             try {
                 importOptions = objectMapper.readValue(options, ImportOptions.class);
-                // Force format to be gpx
-                importOptions.setImportFormat("gpx");
+                // Force format based on file type
+                importOptions.setImportFormat(isZipFile ? "gpx-zip" : "gpx");
             } catch (Exception e) {
                 log.error("Failed to parse import options", e);
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -413,8 +410,54 @@ public class ImportResource {
                         .build();
             }
 
-            // Create GPX import job
-            ImportJob job = importService.createGpxImportJob(userId, importOptions, fileName, fileContent);
+            // Handle file based on size and type
+            ImportJob job;
+            long fileSize = file.size();
+
+            // For ZIP files or large single GPX files, use temp file storage
+            if (isZipFile || tempFileService.shouldUseTempFile(fileSize)) {
+                log.info("Large file or ZIP detected ({} MB), using temp file storage",
+                        fileSize / (1024 * 1024));
+                try {
+                    String tempFilePath = tempFileService.moveUploadedFileToTemp(
+                            file.uploadedFile(), java.util.UUID.randomUUID(), fileName);
+
+                    // Create job with temp file path (no data in memory!)
+                    job = new ImportJob(userId, importOptions, fileName, new byte[0]);
+                    job.setTempFilePath(tempFilePath);
+                    job.setFileSizeBytes(fileSize);
+
+                    importService.registerJob(job);
+
+                    log.info("Created GPX import job with temp file: file={}, size={} MB, path={}, format={}",
+                            fileName, fileSize / (1024 * 1024), tempFilePath, importOptions.getImportFormat());
+                } catch (IOException e) {
+                    log.error("Failed to move uploaded file to temp storage", e);
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(createErrorResponse("FILE_MOVE_ERROR",
+                                    "Failed to process uploaded file"))
+                            .build();
+                }
+            } else {
+                // Small single GPX file: keep in memory (fast path)
+                log.info("Small GPX file detected ({} MB), keeping in memory",
+                        fileSize / (1024 * 1024));
+                try {
+                    byte[] fileContent = Files.readAllBytes(file.uploadedFile());
+                    job = importService.createGpxImportJob(userId, importOptions, fileName, fileContent);
+
+                    log.info("Created GPX import job in memory: file={}, size={} bytes",
+                            fileName, fileContent.length);
+                } catch (IOException e) {
+                    log.error("Failed to read uploaded file", e);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                            .build();
+                }
+            }
+
+            // Pre-populate detected data types for GPX (only GPS data)
+            job.setDetectedDataTypes(List.of("rawgps"));
 
             // Create response
             ImportJobResponse response = new ImportJobResponse();
@@ -425,7 +468,9 @@ public class ImportResource {
             response.setFileSizeBytes(job.getFileSizeBytes());
             response.setDetectedDataTypes(job.getDetectedDataTypes());
             response.setEstimatedProcessingTime(job.getEstimatedProcessingTime());
-            response.setMessage("GPX import job created successfully");
+            response.setMessage(isZipFile ?
+                    "GPX ZIP import job created successfully" :
+                    "GPX import job created successfully");
 
             return Response.ok(response).build();
 

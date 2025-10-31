@@ -450,9 +450,9 @@ const importFormatOptions = ref([
   {
     label: 'GPX',
     value: 'gpx',
-    description: 'Import from GPX track/route files',
-    fileExtensions: ['.gpx'],
-    acceptedFormats: '.gpx',
+    description: 'Import from GPX track/route files or ZIP archives containing multiple GPX files',
+    fileExtensions: ['.gpx', '.zip'],
+    acceptedFormats: '.gpx,.zip',
     uploadFunction: 'uploadGpxImportFile',
     supportsDataTypeSelection: false
   },
@@ -594,7 +594,7 @@ const getFormatInfoMessage = () => {
   const messages = {
     'owntracks': 'OwnTracks import will add GPS location data to your GeoPulse timeline.',
     'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.',
-    'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline.',
+    'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline. You can import a single GPX file or a ZIP archive containing multiple GPX files.',
     'geojson': 'GeoJSON import will add GPS location data from GeoJSON Point and LineString features to your GeoPulse timeline.'
   }
   return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
