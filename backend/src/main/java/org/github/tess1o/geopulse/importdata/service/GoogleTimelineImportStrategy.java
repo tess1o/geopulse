@@ -1,8 +1,5 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +30,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
 
-    private final ObjectMapper objectMapper = JsonMapper.builder()
-            .addModule(new JavaTimeModule())
-            .build();
-
     /**
      * Batch size for streaming processing - aligns with DB batch sizes for optimal performance.
      */
@@ -61,7 +54,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
 
         // Use getDataStream() to abstract whether data is in memory or on disk
         try (InputStream dataStream = job.getDataStream()) {
-            StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream, objectMapper);
+            StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream);
 
             // Parse through entire file to validate structure, count points, and track timestamps
             StreamingGoogleTimelineParser.ParsingStats stats = parser.parseGpsPoints((gpsPoint, currentStats) -> {
@@ -194,7 +187,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
 
         // Use getDataStream() to abstract whether data is in memory or on disk
         try (InputStream dataStream = job.getDataStream()) {
-            StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream, objectMapper);
+            StreamingGoogleTimelineParser parser = new StreamingGoogleTimelineParser(dataStream);
 
             parser.parseGpsPoints((gpsPoint, stats) -> {
                 totalGpsPoints.incrementAndGet();
