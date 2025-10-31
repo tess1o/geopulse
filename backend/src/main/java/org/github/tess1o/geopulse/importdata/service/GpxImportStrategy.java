@@ -140,7 +140,8 @@ public class GpxImportStrategy extends BaseGpsImportStrategy {
 
             job.updateProgress(100, "Import completed successfully");
 
-            log.warn("GPX streaming import STATISTICS: {} imported, {} skipped from {} total GPS points (SKIP RATE: {}%)",
+            log.warn("GPX streaming import STATISTICS: {} imported, {} skipped from {} total GPS points (SKIP RATE: {}%). " +
+                    "Note: Skipped points may include duplicates (detected by unique constraint) and filtered points.",
                     result.imported, result.skipped, result.totalGpsPoints,
                     result.totalGpsPoints > 0 ? (result.skipped * 100.0 / result.totalGpsPoints) : 0);
 

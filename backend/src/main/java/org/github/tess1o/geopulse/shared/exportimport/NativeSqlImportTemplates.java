@@ -69,9 +69,9 @@ public final class NativeSqlImportTemplates {
         """;
     
     public static final String GPS_POINTS_UPSERT = """
-        INSERT INTO gps_points 
-        (id, user_id, timestamp, coordinates, accuracy, altitude, velocity, battery, 
-         device_id, source_type, created_at) 
+        INSERT INTO gps_points
+        (id, user_id, timestamp, coordinates, accuracy, altitude, velocity, battery,
+         device_id, source_type, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT (id) DO UPDATE SET
             timestamp = EXCLUDED.timestamp,
@@ -83,6 +83,18 @@ public final class NativeSqlImportTemplates {
             device_id = EXCLUDED.device_id,
             source_type = EXCLUDED.source_type,
             created_at = EXCLUDED.created_at
+        """;
+
+    /**
+     * GPS points insert with deduplication based on natural key (user_id, timestamp, coordinates).
+     * Uses ON CONFLICT DO NOTHING to skip duplicates rather than updating them.
+     * This is used during GPS data imports (GPX, GeoJSON, etc.) where duplicates should be ignored.
+     */
+    public static final String GPS_POINTS_INSERT_IGNORE_DUPLICATES = """
+        INSERT INTO gps_points
+        (user_id, device_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+        VALUES (?::uuid, ?, ST_GeomFromText(?, 4326), ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (user_id, timestamp, coordinates) DO NOTHING
         """;
     
     public static final String GPS_SOURCE_CONFIG_UPSERT = """

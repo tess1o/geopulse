@@ -302,7 +302,8 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
             flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedPoints);
         }
 
-        log.warn("GPX ZIP import STATISTICS: processed {} files, extracted {} GPS points, {} imported, {} skipped (SKIP RATE: {}%)",
+        log.warn("GPX ZIP import STATISTICS: processed {} files, extracted {} GPS points, {} imported, {} skipped (SKIP RATE: {}%). " +
+                "Note: Skipped points may include duplicates (detected by unique constraint) and filtered points.",
                 processedFiles.get(), totalGpsPoints.get(), totalImported.get(), totalSkipped.get(),
                 totalGpsPoints.get() > 0 ? (totalSkipped.get() * 100.0 / totalGpsPoints.get()) : 0);
 

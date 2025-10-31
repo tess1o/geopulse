@@ -78,11 +78,14 @@ public class BatchProcessor {
     }
 
     /**
-     * Fast path: Clear mode - bulk insert without duplicate detection (with context)
+     * Fast path: Clear mode - bulk insert with database-level deduplication using unique constraint.
+     * Uses ON CONFLICT DO NOTHING to automatically skip duplicates at database level.
+     * This is much faster than application-level duplicate checking.
      */
     private int processBatchClearMode(List<GpsPointEntity> gpsPoints, int totalProcessedSoFar, int totalExpected) {
         final int BULK_INSERT_BATCH_SIZE = bulkInsertBatchSize;
         int totalImported = 0;
+        int totalDuplicates = 0;
         long startTime = System.currentTimeMillis();
 
         for (int i = 0; i < gpsPoints.size(); i += BULK_INSERT_BATCH_SIZE) {
@@ -91,31 +94,103 @@ public class BatchProcessor {
 
             long batchStartTime = System.currentTimeMillis();
             try {
-                // Bulk insert sub-batch
-                gpsPointRepository.persist(subBatch);
-                entityManager.flush();
-                entityManager.clear();
+                // Use native SQL with ON CONFLICT for database-level deduplication
+                int inserted = bulkInsertWithDuplicateHandling(subBatch);
+                totalImported += inserted;
+                totalDuplicates += (subBatch.size() - inserted);
 
-                totalImported += subBatch.size();
                 long batchDuration = System.currentTimeMillis() - batchStartTime;
 
                 // Build progress context message
-                int currentTotal = totalProcessedSoFar + totalImported;
+                int currentTotal = totalProcessedSoFar + i + subBatch.size();
                 String progressContext = totalExpected > 0
                     ? String.format(" [%d / %d points, %.1f%%]", currentTotal, totalExpected, (currentTotal * 100.0 / totalExpected))
                     : String.format(" [%d points processed]", currentTotal);
 
-                log.info("CLEAR MODE: Bulk inserted {} points in {}ms ({} points/sec){}",
-                        subBatch.size(), batchDuration,
-                        batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
-                        progressContext);
+                if (inserted < subBatch.size()) {
+                    log.info("CLEAR MODE: Bulk inserted {} points, skipped {} duplicates in {}ms ({} points/sec){}",
+                            inserted, subBatch.size() - inserted, batchDuration,
+                            batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
+                            progressContext);
+                } else {
+                    log.info("CLEAR MODE: Bulk inserted {} points in {}ms ({} points/sec){}",
+                            inserted, batchDuration,
+                            batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
+                            progressContext);
+                }
             } catch (Exception e) {
                 log.error("Failed to bulk insert GPS points sub-batch {}-{}: {}", i, endIndex - 1, e.getMessage());
             }
         }
 
         long totalDuration = System.currentTimeMillis() - startTime;
+        if (totalDuplicates > 0) {
+            log.info("CLEAR MODE summary: {} points inserted, {} duplicates skipped in {}ms",
+                    totalImported, totalDuplicates, totalDuration);
+        }
         return totalImported;
+    }
+
+    /**
+     * Bulk insert GPS points using native SQL with ON CONFLICT DO NOTHING for automatic deduplication.
+     * The unique constraint on (user_id, timestamp, coordinates) automatically prevents duplicates.
+     *
+     * @param gpsPoints List of GPS points to insert
+     * @return Number of points actually inserted (excludes duplicates)
+     */
+    private int bulkInsertWithDuplicateHandling(List<GpsPointEntity> gpsPoints) {
+        if (gpsPoints.isEmpty()) {
+            return 0;
+        }
+
+        // Build multi-row INSERT using the template from NativeSqlImportTemplates
+        // This leverages the unique constraint: idx_gps_points_no_duplicates (user_id, timestamp, coordinates)
+        String singleRowTemplate = org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates.GPS_POINTS_INSERT_IGNORE_DUPLICATES;
+
+        // Extract the VALUES clause to build multi-row insert
+        // Template format: INSERT INTO ... VALUES (?, ?, ...) ON CONFLICT ...
+        int valuesStart = singleRowTemplate.indexOf("VALUES") + 6;
+        int valuesEnd = singleRowTemplate.indexOf("ON CONFLICT");
+        String valueClause = singleRowTemplate.substring(valuesStart, valuesEnd).trim();
+
+        StringBuilder sql = new StringBuilder();
+        sql.append(singleRowTemplate, 0, valuesStart + 1); // INSERT INTO ... VALUES
+
+        // Add value placeholders for each point
+        for (int i = 0; i < gpsPoints.size(); i++) {
+            if (i > 0) sql.append(", ");
+            sql.append(valueClause);
+        }
+
+        // Add ON CONFLICT clause
+        sql.append(" ").append(singleRowTemplate.substring(valuesEnd));
+
+        // Create native query
+        var query = entityManager.createNativeQuery(sql.toString());
+
+        // Bind parameters for each GPS point
+        int paramIndex = 1;
+        for (GpsPointEntity point : gpsPoints) {
+            query.setParameter(paramIndex++, point.getUser().getId().toString());
+            query.setParameter(paramIndex++, point.getDeviceId());
+            query.setParameter(paramIndex++, point.getCoordinates().toText()); // WKT format
+            query.setParameter(paramIndex++, point.getTimestamp());
+            query.setParameter(paramIndex++, point.getAccuracy());
+            query.setParameter(paramIndex++, point.getBattery());
+            query.setParameter(paramIndex++, point.getVelocity());
+            query.setParameter(paramIndex++, point.getAltitude());
+            query.setParameter(paramIndex++, point.getSourceType() != null ? point.getSourceType().name() : null);
+            query.setParameter(paramIndex++, point.getCreatedAt());
+        }
+
+        // Execute and get number of rows inserted (automatically excludes duplicates)
+        int rowsInserted = query.executeUpdate();
+
+        // Clear persistence context to avoid memory buildup
+        entityManager.flush();
+        entityManager.clear();
+
+        return rowsInserted;
     }
     
     /**
