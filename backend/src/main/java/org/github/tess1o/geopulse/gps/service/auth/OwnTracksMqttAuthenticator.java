@@ -6,11 +6,11 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.mqtt.MqttConfiguration;
+import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * MQTT-specific authenticator for OwnTracks GPS integration.
@@ -62,11 +62,11 @@ public class OwnTracksMqttAuthenticator extends AbstractGpsIntegrationAuthentica
      * Only works if MQTT is enabled via GEOPULSE_MQTT_BROKER_URL environment variable.
      *
      * @param username The username extracted from MQTT topic
-     * @return Optional containing the authenticated user ID, or empty if authentication failed
+     * @return Optional containing the authentication result (userId and config), or empty if authentication failed
      */
     @Override
     @Transactional
-    public Optional<UUID> authenticateByUsername(String username) {
+    public Optional<GpsAuthenticationResult> authenticateByUsername(String username) {
         // Check if MQTT is enabled
         if (!isMqttEnabled()) {
             log.debug("MQTT is not enabled - GEOPULSE_MQTT_BROKER_URL not configured");
@@ -76,7 +76,7 @@ public class OwnTracksMqttAuthenticator extends AbstractGpsIntegrationAuthentica
         try {
             Optional<GpsSourceConfigEntity> configOpt = configProvider.findByUsernameAndConnectionType(
                     username, GpsSourceConfigEntity.ConnectionType.MQTT);
-            
+
             if (configOpt.isEmpty()) {
                 log.warn("No MQTT GPS source config found for username: {}", username);
                 return Optional.empty();
@@ -90,7 +90,10 @@ public class OwnTracksMqttAuthenticator extends AbstractGpsIntegrationAuthentica
 
             // No password validation needed for MQTT
             log.debug("MQTT authentication successful for username: {}", username);
-            return Optional.of(config.getUser().getId());
+            return Optional.of(new GpsAuthenticationResult(
+                    config.getUser().getId(),
+                    config
+            ));
 
         } catch (Exception e) {
             logAuthenticationFailed(e);

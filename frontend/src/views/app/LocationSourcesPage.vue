@@ -543,6 +543,8 @@
                 <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
               </div>
             </div>
+            <!-- New GpsFilteringSettings component -->
+            <GpsFilteringSettings v-model:settings="formData" />
           </div>
 
           <template #footer>
@@ -576,13 +578,14 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
+import GpsFilteringSettings from '@/components/GpsFilteringSettings.vue'
 
 // Store
 import { useGpsSourcesStore } from '@/stores/gpsSources'
 
 // Store setup
 const gpsStore = useGpsSourcesStore()
-const { gpsSourceConfigs } = storeToRefs(gpsStore)
+const { gpsSourceConfigs, defaultFilteringValues } = storeToRefs(gpsStore)
 
 // Services
 const toast = useToast()
@@ -596,13 +599,17 @@ const saving = ref(false)
 const activeInstructionTab = ref('owntracks')
 const activeTab = ref('owntracks-http')
 
-// Form data
+// Form data - filtering values will be populated from backend after mount
 const formData = ref({
   type: 'OWNTRACKS',
   username: '',
   password: '',
   token: '',
-  connectionType: 'HTTP'
+  connectionType: 'HTTP',
+  // GPS filtering settings - will be populated dynamically from backend defaults
+  filterInaccurateData: null,
+  maxAllowedAccuracy: null,
+  maxAllowedSpeed: null
 })
 
 const formErrors = ref({})
@@ -756,6 +763,23 @@ watch(tabItems, (newTabs) => {
   }
 }, { immediate: true })
 
+// Helper to get default filtering values safely
+const getDefaultFiltering = () => {
+  if (defaultFilteringValues.value) {
+    return {
+      filterInaccurateData: defaultFilteringValues.value.filterInaccurateData,
+      maxAllowedAccuracy: defaultFilteringValues.value.maxAllowedAccuracy,
+      maxAllowedSpeed: defaultFilteringValues.value.maxAllowedSpeed
+    }
+  }
+  // Fallback to null if backend values not loaded yet
+  return {
+    filterInaccurateData: null,
+    maxAllowedAccuracy: null,
+    maxAllowedSpeed: null
+  }
+}
+
 // Methods
 const getSourceIcon = (type) => {
   if (type === 'OWNTRACKS') return 'pi pi-mobile'
@@ -791,6 +815,11 @@ const handleTabChange = (event) => {
 
 const startQuickSetup = (type) => {
   formData.value.type = type
+  // Pre-populate with default values from backend
+  const defaults = getDefaultFiltering()
+  formData.value.filterInaccurateData = defaults.filterInaccurateData
+  formData.value.maxAllowedAccuracy = defaults.maxAllowedAccuracy
+  formData.value.maxAllowedSpeed = defaults.maxAllowedSpeed
   showAddDialog.value = true
 }
 
@@ -817,7 +846,10 @@ const editSource = (source) => {
     username: source.username || '',
     password: '',
     token: source.token || '',
-    connectionType: source.connectionType || 'HTTP'
+    connectionType: source.connectionType || 'HTTP',
+    filterInaccurateData: source.filterInaccurateData ?? false,
+    maxAllowedAccuracy: source.maxAllowedAccuracy ?? null,
+    maxAllowedSpeed: source.maxAllowedSpeed ?? null
   }
   showAddDialog.value = true
 }
@@ -826,12 +858,17 @@ const closeDialog = () => {
   showAddDialog.value = false
   isEditMode.value = false
   editingSource.value = null
+  // Reset form with default values from backend
+  const defaults = getDefaultFiltering()
   formData.value = {
     type: 'OWNTRACKS',
     username: '',
     password: '',
     token: '',
-    connectionType: 'HTTP'
+    connectionType: 'HTTP',
+    filterInaccurateData: defaults.filterInaccurateData,
+    maxAllowedAccuracy: defaults.maxAllowedAccuracy,
+    maxAllowedSpeed: defaults.maxAllowedSpeed
   }
   formErrors.value = {}
 }
@@ -887,7 +924,10 @@ const saveSource = async () => {
           formData.value.username,
           formData.value.password,
           null, // token not used for OwnTracks
-          formData.value.connectionType
+          formData.value.connectionType,
+          formData.value.filterInaccurateData,
+          formData.value.maxAllowedAccuracy,
+          formData.value.maxAllowedSpeed
         )
       } else {
         // For Overland, Dawarich, and Home Assistant - only send token, no username/password
@@ -896,7 +936,10 @@ const saveSource = async () => {
           null, // username not used
           null, // password not used
           formData.value.token,
-          'HTTP' // always HTTP for these types
+          'HTTP', // always HTTP for these types
+          formData.value.filterInaccurateData,
+          formData.value.maxAllowedAccuracy,
+          formData.value.maxAllowedSpeed
         )
       }
       
@@ -1063,7 +1106,18 @@ const getHomeAssistantAutomationYaml = () => {
 // Lifecycle
 onMounted(async () => {
   try {
-    await gpsStore.fetchGpsConfigSources()
+    // Fetch both GPS configs and default values in parallel
+    await Promise.all([
+      gpsStore.fetchGpsConfigSources(),
+      gpsStore.fetchDefaultFilteringValues()
+    ])
+
+    // Initialize form with defaults from backend
+    const defaults = getDefaultFiltering()
+    formData.value.filterInaccurateData = defaults.filterInaccurateData
+    formData.value.maxAllowedAccuracy = defaults.maxAllowedAccuracy
+    formData.value.maxAllowedSpeed = defaults.maxAllowedSpeed
+
     // Ensure first tab is active after data loads
     await nextTick()
     setFirstTabActive()

@@ -32,12 +32,14 @@ public class HomeAssistantResource {
     public Response handleHA(HomeAssistantGpsData data, @HeaderParam("Authorization") String authToken) {
         log.info("Received payload for home assistant: {}", data);
 
-        Optional<UUID> userIdOpt = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
-        if (userIdOpt.isEmpty()) {
+        var authResult = authRegistry.authenticate(GpsSourceType.HOME_ASSISTANT, authToken);
+        if (authResult.isEmpty()) {
             return Response.status(Response.Status.UNAUTHORIZED).build();
         }
 
-        gpsPointService.saveHomeAssitantGpsPoint(data, userIdOpt.get(), GpsSourceType.HOME_ASSISTANT);
+        UUID userId = authResult.get().getUserId();
+        var config = authResult.get().getConfig();
+        gpsPointService.saveHomeAssitantGpsPoint(data, userId, GpsSourceType.HOME_ASSISTANT, config);
         return Response.ok().build();
     }
 }

@@ -19,4 +19,7 @@ public class GpsSourceConfigDTO {
     private UUID userId;
     private boolean active;
     private GpsSourceConfigEntity.ConnectionType connectionType;
+    private boolean filterInaccurateData;
+    private Integer maxAllowedAccuracy;
+    private Integer maxAllowedSpeed;
 }

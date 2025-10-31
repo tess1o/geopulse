@@ -17,5 +17,9 @@ public class CreateGpsSourceConfigDto {
     private String token;
     private UUID userId;
     private GpsSourceConfigEntity.ConnectionType connectionType;
+    // Use Boolean wrapper to allow null from frontend, will be converted to false in mapper if null
+    private Boolean filterInaccurateData;
+    private Integer maxAllowedAccuracy;
+    private Integer maxAllowedSpeed;
 }
 

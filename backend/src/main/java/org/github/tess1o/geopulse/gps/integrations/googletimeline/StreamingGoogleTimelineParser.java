@@ -3,7 +3,6 @@ package org.github.tess1o.geopulse.gps.integrations.googletimeline;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineGpsPoint;
 
@@ -31,7 +30,6 @@ import java.util.List;
 public class StreamingGoogleTimelineParser {
 
     private final InputStream inputStream;
-    private final ObjectMapper objectMapper;
     private final JsonFactory jsonFactory;
 
     /**
@@ -39,9 +37,8 @@ public class StreamingGoogleTimelineParser {
      */
     public static final int VISIT_INTERPOLATION_INTERVAL_MINUTES = 5;
 
-    public StreamingGoogleTimelineParser(InputStream inputStream, ObjectMapper objectMapper) {
+    public StreamingGoogleTimelineParser(InputStream inputStream) {
         this.inputStream = inputStream;
-        this.objectMapper = objectMapper;
         this.jsonFactory = new JsonFactory();
     }
 
@@ -151,7 +148,6 @@ public class StreamingGoogleTimelineParser {
         // Track which section we're in
         while (parser.nextToken() != JsonToken.END_OBJECT) {
             String fieldName = parser.getCurrentName();
-
             if (fieldName == null) continue;
 
             switch (fieldName) {
@@ -166,26 +162,44 @@ public class StreamingGoogleTimelineParser {
                     endTime = parseInstant(timeStr);
                 }
                 case "activity" -> {
-                    recordType = "activity";
-                    parseLegacyActivity(parser, startTime, endTime, callback, stats);
-                    stats.activityCount++;
+                    // Check if value is null before parsing
+                    JsonToken token = parser.nextToken();
+                    if (token != JsonToken.VALUE_NULL) {
+                        recordType = "activity";
+                        // Parser is already at START_OBJECT, so don't call nextToken() in the method
+                        parseLegacyActivityFromObject(parser, startTime, endTime, callback, stats);
+                        stats.activityCount++;
+                    }
+                    // If null, parser advances past it automatically
                 }
                 case "visit" -> {
-                    recordType = "visit";
-                    parseLegacyVisit(parser, startTime, endTime, callback, stats);
-                    stats.visitCount++;
+                    // Check if value is null before parsing
+                    JsonToken token = parser.nextToken();
+                    if (token != JsonToken.VALUE_NULL) {
+                        recordType = "visit";
+                        // Parser is already at START_OBJECT, so don't call nextToken() in the method
+                        parseLegacyVisitFromObject(parser, startTime, endTime, callback, stats);
+                        stats.visitCount++;
+                    }
+                    // If null, parser advances past it automatically
                 }
                 case "timelinePath" -> {
-                    recordType = "timelinePath";
-                    parseLegacyTimelinePath(parser, startTime, callback, stats);
-                    stats.timelinePathCount++;
+                    // Check if value is null before parsing
+                    JsonToken token = parser.nextToken();
+                    if (token != JsonToken.VALUE_NULL) {
+                        recordType = "timelinePath";
+                        // Parser is already at START_ARRAY, so don't call nextToken() in the method
+                        parseLegacyTimelinePathFromArray(parser, startTime, callback, stats);
+                        stats.timelinePathCount++;
+                    }
+                    // If null, parser advances past it automatically
                 }
                 default -> parser.skipChildren(); // Skip unknown fields
             }
         }
     }
 
-    private void parseLegacyActivity(JsonParser parser, Instant startTime, Instant endTime,
+    private void parseLegacyActivityFromObject(JsonParser parser, Instant startTime, Instant endTime,
                                      GpsPointCallback callback, ParsingStats stats) throws IOException {
         String start = null;
         String end = null;
@@ -193,7 +207,7 @@ public class StreamingGoogleTimelineParser {
         String activityType = "unknown";
         double confidence = 0.0;
 
-        parser.nextToken(); // START_OBJECT
+        // Parser is already at START_OBJECT, no need to advance
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
             String fieldName = parser.getCurrentName();
@@ -277,13 +291,13 @@ public class StreamingGoogleTimelineParser {
         }
     }
 
-    private void parseLegacyVisit(JsonParser parser, Instant startTime, Instant endTime,
+    private void parseLegacyVisitFromObject(JsonParser parser, Instant startTime, Instant endTime,
                                   GpsPointCallback callback, ParsingStats stats) throws IOException {
         String placeLocation = null;
         String semanticType = "unknown";
         double confidence = 0.0;
 
-        parser.nextToken(); // START_OBJECT
+        // Parser is already at START_OBJECT, no need to advance
 
         while (parser.nextToken() != JsonToken.END_OBJECT) {
             String fieldName = parser.getCurrentName();
@@ -327,49 +341,58 @@ public class StreamingGoogleTimelineParser {
         }
     }
 
-    private void parseLegacyTimelinePath(JsonParser parser, Instant startTime,
+    private void parseLegacyTimelinePathFromArray(JsonParser parser, Instant startTime,
                                         GpsPointCallback callback, ParsingStats stats) throws IOException {
-        parser.nextToken(); // START_ARRAY
+        // Parser is already at START_ARRAY, no need to advance
 
-        while (parser.nextToken() != JsonToken.END_ARRAY) {
-            // Parse one path point
-            String point = null;
-            int offsetMinutes = 0;
+        // Now advance into the array
+        JsonToken token = parser.nextToken();
+        while (token != JsonToken.END_ARRAY) {
+            // We should be at START_OBJECT for each path point
+            if (token == JsonToken.START_OBJECT) {
+                // Parse one path point
+                String point = null;
+                int offsetMinutes = 0;
 
-            while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.getCurrentName();
-                if (fieldName == null) continue;
+                while (parser.nextToken() != JsonToken.END_OBJECT) {
+                    String fieldName = parser.getCurrentName();
+                    if (fieldName == null) continue;
 
-                if ("point".equals(fieldName)) {
-                    parser.nextToken();
-                    point = parser.getValueAsString();
-                } else if ("durationMinutesOffsetFromStartTime".equals(fieldName)) {
-                    parser.nextToken();
-                    offsetMinutes = parser.getValueAsString() == null? 0 : Integer.parseInt(parser.getValueAsString());
-                } else {
-                    parser.skipChildren();
+                    if ("point".equals(fieldName)) {
+                        parser.nextToken();
+                        point = parser.getValueAsString();
+                    } else if ("durationMinutesOffsetFromStartTime".equals(fieldName)) {
+                        parser.nextToken();
+                        offsetMinutes = parser.getValueAsString() == null? 0 : Integer.parseInt(parser.getValueAsString());
+                    } else {
+                        parser.skipChildren();
+                    }
+                }
+
+                // Emit timeline point
+                double[] coords = parseGeoString(point);
+                if (coords != null && startTime != null) {
+                    Instant pointTime = startTime.plus(offsetMinutes, ChronoUnit.MINUTES);
+
+                    GoogleTimelineGpsPoint gpsPoint = GoogleTimelineGpsPoint.builder()
+                            .timestamp(pointTime)
+                            .latitude(coords[0])
+                            .longitude(coords[1])
+                            .recordType("timeline_point")
+                            .activityType("movement")
+                            .confidence(1.0)
+                            .build();
+
+                    stats.totalGpsPoints++;
+                    stats.updateTimestamp(pointTime);
+                    callback.onGpsPoint(gpsPoint, stats);
                 }
             }
 
-            // Emit timeline point
-            double[] coords = parseGeoString(point);
-            if (coords != null && startTime != null) {
-                Instant pointTime = startTime.plus(offsetMinutes, ChronoUnit.MINUTES);
-
-                GoogleTimelineGpsPoint gpsPoint = GoogleTimelineGpsPoint.builder()
-                        .timestamp(pointTime)
-                        .latitude(coords[0])
-                        .longitude(coords[1])
-                        .recordType("timeline_point")
-                        .activityType("movement")
-                        .confidence(1.0)
-                        .build();
-
-                stats.totalGpsPoints++;
-                stats.updateTimestamp(pointTime);
-                callback.onGpsPoint(gpsPoint, stats);
-            }
+            // Advance to next element or END_ARRAY
+            token = parser.nextToken();
         }
+        // Parser is now at END_ARRAY, which is correct for returning to parseLegacyRecord
     }
 
     /**
@@ -765,7 +788,7 @@ public class StreamingGoogleTimelineParser {
     }
 
     /**
-     * Parse ISO-8601 timestamp string to Instant
+     * Parse timestamp to Instant - handles both ISO-8601 strings and numeric epoch timestamps
      */
     private static Instant parseInstant(String timestampStr) {
         if (timestampStr == null || timestampStr.trim().isEmpty()) {
@@ -773,10 +796,19 @@ public class StreamingGoogleTimelineParser {
         }
 
         try {
+            // Try ISO-8601 format first (e.g., "2019-04-03T08:00:00.000+02:00")
             return Instant.parse(timestampStr);
         } catch (Exception e) {
-            log.debug("Failed to parse timestamp: {}", timestampStr);
-            return null;
+            // Try parsing as numeric epoch timestamp (seconds with optional fractional part)
+            try {
+                double epochSeconds = Double.parseDouble(timestampStr);
+                long seconds = (long) epochSeconds;
+                long nanos = (long) ((epochSeconds - seconds) * 1_000_000_000);
+                return Instant.ofEpochSecond(seconds, nanos);
+            } catch (NumberFormatException nfe) {
+                log.debug("Failed to parse timestamp as ISO-8601 or numeric: {}", timestampStr);
+                return null;
+            }
         }
     }
 

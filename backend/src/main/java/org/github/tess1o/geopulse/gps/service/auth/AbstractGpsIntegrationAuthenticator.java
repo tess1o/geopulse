@@ -3,11 +3,11 @@ package org.github.tess1o.geopulse.gps.service.auth;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
+import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceConfigProvider;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Abstract base class for GPS integration authenticators.
@@ -15,27 +15,33 @@ import java.util.UUID;
  */
 @Slf4j
 public abstract class AbstractGpsIntegrationAuthenticator implements GpsIntegrationAuthenticator {
-    
+
     @Inject
     protected GpsSourceConfigProvider configProvider;
-    
+
     @Override
-    public final Optional<UUID> authenticate(String authHeader) {
+    public final Optional<GpsAuthenticationResult> authenticate(String authHeader) {
         try {
             Optional<GpsSourceConfigEntity> configOpt = findConfig(authHeader);
             if (configOpt.isEmpty()) {
                 logConfigNotFound();
                 return Optional.empty();
             }
-            
+
             GpsSourceConfigEntity config = configOpt.get();
             if (!isConfigActive(config)) {
                 return Optional.empty();
             }
-            
+
             validateCredentials(authHeader, config);
-            return Optional.of(config.getUser().getId());
-            
+
+            // Return both userId and the full config for downstream filtering
+            // This avoids a second DB lookup - we already have the config loaded
+            return Optional.of(new GpsAuthenticationResult(
+                    config.getUser().getId(),
+                    config
+            ));
+
         } catch (InvalidPasswordException | IllegalArgumentException e) {
             logAuthenticationFailed(e);
             return Optional.empty();

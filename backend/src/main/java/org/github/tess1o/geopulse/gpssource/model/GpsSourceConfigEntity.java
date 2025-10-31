@@ -39,6 +39,15 @@ public class GpsSourceConfigEntity {
     @Builder.Default
     private ConnectionType connectionType = ConnectionType.HTTP;
 
+    @Column(name = "filter_inaccurate_data")
+    private boolean filterInaccurateData = false;
+
+    @Column(name = "max_allowed_accuracy")
+    private Integer maxAllowedAccuracy;
+
+    @Column(name = "max_allowed_speed")
+    private Integer maxAllowedSpeed;
+
     public enum ConnectionType {
         HTTP, MQTT
     }

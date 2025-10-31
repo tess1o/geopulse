@@ -13,4 +13,7 @@ public class UpdateGpsSourceConfigDto {
     private String token;
     private String userId;
     private GpsSourceConfigEntity.ConnectionType connectionType;
+    private boolean filterInaccurateData;
+    private Integer maxAllowedAccuracy;
+    private Integer maxAllowedSpeed;
 }

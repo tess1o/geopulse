@@ -10,6 +10,8 @@ import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLoca
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
+import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -22,9 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -38,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class GpsPointServiceTest {
 
     private UUID userId;
+    private GpsSourceConfigEntity testConfig;
 
     @Inject
     GpsPointService gpsPointService;
@@ -49,6 +50,9 @@ public class GpsPointServiceTest {
     UserRepository userRepository;
 
     @Inject
+    GpsSourceRepository gpsSourceRepository;
+
+    @Inject
     EntityManager em;
 
     @BeforeEach
@@ -56,6 +60,9 @@ public class GpsPointServiceTest {
     public void setup() {
         // Clean up GPS points first (due to foreign key constraints)
         gpsPointRepository.deleteAll();
+
+        // Clean up GPS source configs
+        gpsSourceRepository.deleteAll();
 
         // Clean up users
         userRepository.deleteAll();
@@ -68,6 +75,18 @@ public class GpsPointServiceTest {
                 .build();
         userRepository.persist(user);
         userId = user.getId();
+
+        // Create test GPS source config with filtering disabled for existing tests
+        testConfig = GpsSourceConfigEntity.builder()
+                .user(user)
+                .sourceType(GpsSourceType.OWNTRACKS)
+                .username("test-user")
+                .active(true)
+                .filterInaccurateData(false) // Filtering disabled for backward compatibility
+                .maxAllowedAccuracy(100)
+                .maxAllowedSpeed(250)
+                .build();
+        gpsSourceRepository.persist(testConfig);
     }
 
     @Test
@@ -86,7 +105,7 @@ public class GpsPointServiceTest {
         Statistics stats = getStatistics();
         stats.clear();  // Reset stats before operation
 
-        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS);
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
 
         var insertCount = stats.getEntityInsertCount();
         assertEquals(1, insertCount); // Expect 1 query
@@ -214,7 +233,7 @@ public class GpsPointServiceTest {
                 .vel(2.0)
                 .build();
 
-        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS);
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
     }
 
     private Statistics getStatistics() {
