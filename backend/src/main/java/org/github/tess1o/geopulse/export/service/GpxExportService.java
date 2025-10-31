@@ -267,8 +267,8 @@ public class GpxExportService {
     }
 
     /**
-     * Streams timeline trips as GPX tracks.
-     * These use simplified paths (already small), so no streaming needed.
+     * Streams timeline trips as GPX tracks with ALL raw GPS points (not simplified paths).
+     * CRITICAL FIX: Fetches raw GPS data for each trip to prevent data loss.
      */
     private void streamTimelineTripTracks(ExportJob job, XMLStreamWriter xml)
             throws XMLStreamException {
@@ -276,15 +276,23 @@ public class GpxExportService {
         var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
 
         for (TimelineTripEntity trip : trips) {
-            if (trip.getPath() == null || trip.getPath().getNumPoints() == 0) {
-                continue;
-            }
+            // Fetch ALL raw GPS points for this trip's time range
+            java.time.Instant tripStart = trip.getTimestamp();
+            java.time.Instant tripEnd = tripStart.plusSeconds(trip.getTripDuration());
 
-            Coordinate[] coordinates = trip.getPath().getCoordinates();
+            var tripGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                    trip.getUser().getId(),
+                    tripStart,
+                    tripEnd
+            );
+
+            if (tripGpsPoints.isEmpty()) {
+                continue; // Skip trips with no GPS data
+            }
 
             xml.writeStartElement("trk");
 
-            String timeStr = trip.getTimestamp().toString().substring(11, 16);
+            String timeStr = tripStart.toString().substring(11, 16);
             String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
             String distanceKm = String.format("%.1f", trip.getDistanceMeters() / 1000.0);
 
@@ -292,37 +300,46 @@ public class GpxExportService {
             xml.writeCharacters(String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType));
             xml.writeEndElement(); // name
 
+            xml.writeStartElement("desc");
+            xml.writeCharacters(String.format("%d GPS points, Duration: %d min, Distance: %s km",
+                    tripGpsPoints.size(), trip.getTripDuration() / 60, distanceKm));
+            xml.writeEndElement(); // desc
+
             xml.writeStartElement("trkseg");
 
-            long tripDurationSeconds = trip.getTripDuration();
-            java.time.Instant startTime = trip.getTimestamp();
-
-            for (int i = 0; i < coordinates.length; i++) {
+            // Write ALL raw GPS points for this trip
+            for (var gpsPoint : tripGpsPoints) {
                 xml.writeStartElement("trkpt");
-                xml.writeAttribute("lat", String.valueOf(coordinates[i].getY()));
-                xml.writeAttribute("lon", String.valueOf(coordinates[i].getX()));
+                xml.writeAttribute("lat", String.valueOf(gpsPoint.getCoordinates().getY()));
+                xml.writeAttribute("lon", String.valueOf(gpsPoint.getCoordinates().getX()));
 
-                if (!Double.isNaN(coordinates[i].getZ())) {
+                if (gpsPoint.getAltitude() != null) {
                     xml.writeStartElement("ele");
-                    xml.writeCharacters(String.valueOf(coordinates[i].getZ()));
+                    xml.writeCharacters(String.valueOf(gpsPoint.getAltitude()));
                     xml.writeEndElement(); // ele
                 }
 
-                double progress = coordinates.length > 1 ? (double) i / (coordinates.length - 1) : 0;
-                long secondsOffset = (long) (tripDurationSeconds * progress);
-
                 xml.writeStartElement("time");
-                xml.writeCharacters(startTime.plusSeconds(secondsOffset).toString());
+                xml.writeCharacters(gpsPoint.getTimestamp().toString());
                 xml.writeEndElement(); // time
+
+                if (gpsPoint.getVelocity() != null) {
+                    xml.writeStartElement("speed");
+                    xml.writeCharacters(String.valueOf(gpsPoint.getVelocity() / 3.6)); // km/h to m/s
+                    xml.writeEndElement(); // speed
+                }
 
                 xml.writeEndElement(); // trkpt
             }
 
             xml.writeEndElement(); // trkseg
             xml.writeEndElement(); // trk
+
+            log.debug("Streamed trip track with {} raw GPS points (was {} simplified path points)",
+                    tripGpsPoints.size(), trip.getPath() != null ? trip.getPath().getNumPoints() : 0);
         }
 
-        log.debug("Streamed {} timeline trip tracks", trips.size());
+        log.info("Streamed {} timeline trip tracks with raw GPS data", trips.size());
     }
 
     /**
@@ -508,12 +525,12 @@ public class GpxExportService {
     }
 
     /**
-     * Builds a GPX file for a single day containing all RAW GPS points for that day.
-     * IMPORTANT: Exports ALL GPS points, not simplified timeline paths, to prevent data loss!
+     * Builds a GPX file for a single day with ALL raw GPS points organized by trips/stays.
+     * IMPORTANT: Each trip gets its own track with ALL GPS points (not simplified path)!
      *
      * @param day    the date
-     * @param trips  the trips for that day (used only for metadata/organization)
-     * @param stays  the stays for that day (used only for waypoints)
+     * @param trips  the trips for that day
+     * @param stays  the stays for that day
      * @return the GPX file model
      */
     private GpxFile buildGpxFileForDay(java.time.LocalDate day, List<TimelineTripEntity> trips,
@@ -525,47 +542,89 @@ public class GpxExportService {
         // Set metadata
         GpxMetadata metadata = new GpxMetadata();
         metadata.setName(String.format("GeoPulse Export - %s", day.toString()));
-        metadata.setDescription(String.format("All GPS data for %s", day.toString()));
+        metadata.setDescription(String.format("GPS tracks and waypoints for %s", day.toString()));
         metadata.setTime(java.time.Instant.now());
         gpxFile.setMetadata(metadata);
 
-        // CRITICAL FIX: Export ALL raw GPS points for this day, not simplified timeline paths!
         var tracks = new ArrayList<GpxTrack>();
+        var waypoints = new ArrayList<GpxWaypoint>();
 
-        // Get day boundaries in UTC
-        java.time.Instant dayStart = day.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
-        java.time.Instant dayEnd = dayStart.plus(1, java.time.temporal.ChronoUnit.DAYS);
+        // CRITICAL FIX: Export each trip as a separate track with ALL raw GPS points
+        for (TimelineTripEntity trip : trips) {
+            // Fetch ALL raw GPS points for this trip's time range
+            java.time.Instant tripStart = trip.getTimestamp();
+            java.time.Instant tripEnd = tripStart.plusSeconds(trip.getTripDuration());
 
-        // Collect ALL GPS points for this day
-        UUID userId = !trips.isEmpty() ? trips.get(0).getUser().getId() :
-                      !stays.isEmpty() ? stays.get(0).getUser().getId() : null;
+            var tripGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                    trip.getUser().getId(),
+                    tripStart,
+                    tripEnd
+            );
 
-        if (userId != null) {
-            var dayGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(userId, dayStart, dayEnd);
+            if (!tripGpsPoints.isEmpty()) {
+                String timeStr = tripStart.toString().substring(11, 16);
+                String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
+                String distanceKm = String.format("%.1f", trip.getDistanceMeters() / 1000.0);
 
-            if (!dayGpsPoints.isEmpty()) {
                 GpxTrack track = convertGpsPointsToGpxTrack(
-                        dayGpsPoints,
-                        String.format("GPS Data - %s", day.toString()),
-                        String.format("%d GPS points for %s", dayGpsPoints.size(), day.toString())
+                        tripGpsPoints,
+                        String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType),
+                        String.format("%d GPS points, Duration: %d min, Distance: %s km",
+                                tripGpsPoints.size(), trip.getTripDuration() / 60, distanceKm)
                 );
 
                 if (track != null) {
                     tracks.add(track);
-                    log.info("Exported {} raw GPS points for day {}", dayGpsPoints.size(), day);
+                    log.debug("Exported {} raw GPS points for trip at {}", tripGpsPoints.size(), timeStr);
                 }
             }
         }
 
-        // Build waypoints from stays
-        var waypoints = new ArrayList<GpxWaypoint>();
+        // Export stays as waypoints with optional GPS tracks
         for (TimelineStayEntity stay : stays) {
+            // Create waypoint marker
             GpxWaypoint waypoint = createWaypointFromStay(stay);
             waypoints.add(waypoint);
+
+            // Optionally add GPS track for stay period (if there are GPS points during stay)
+            java.time.Instant stayStart = stay.getTimestamp();
+            java.time.Instant stayEnd = stayStart.plusSeconds(stay.getStayDuration());
+
+            var stayGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                    stay.getUser().getId(),
+                    stayStart,
+                    stayEnd
+            );
+
+            if (!stayGpsPoints.isEmpty()) {
+                long hours = stay.getStayDuration() / 3600;
+                long minutes = (stay.getStayDuration() % 3600) / 60;
+                String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
+                String locationName = stay.getLocationName() != null ? stay.getLocationName() : "Unknown";
+
+                GpxTrack stayTrack = convertGpsPointsToGpxTrack(
+                        stayGpsPoints,
+                        String.format("Stay: %s (%s)", locationName, durationStr),
+                        String.format("%d GPS points during stay", stayGpsPoints.size())
+                );
+
+                if (stayTrack != null) {
+                    tracks.add(stayTrack);
+                    log.debug("Exported {} raw GPS points for stay at {}", stayGpsPoints.size(), locationName);
+                }
+            }
         }
 
         gpxFile.setTracks(tracks);
         gpxFile.setWaypoints(waypoints);
+
+        log.info("Exported day {} with {} trip tracks, {} stay tracks, {} stay waypoints",
+                day, trips.size(), stays.stream().filter(s -> {
+                    var pts = dataCollectorService.collectGpsPointsInTimeRange(
+                        s.getUser().getId(), s.getTimestamp(),
+                        s.getTimestamp().plusSeconds(s.getStayDuration()));
+                    return !pts.isEmpty();
+                }).count(), stays.size());
 
         return gpxFile;
     }
