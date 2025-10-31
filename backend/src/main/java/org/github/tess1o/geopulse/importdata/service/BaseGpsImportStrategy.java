@@ -71,90 +71,117 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
         }
     }
     
-    @Override
-    public void processImportData(ImportJob job) throws IOException {
-        log.info("Processing {} import data for user {}", getFormat(), job.getUserId());
-        
+    /**
+     * Functional interface for streaming import operations.
+     * Implementations should perform streaming import with direct database writes.
+     */
+    @FunctionalInterface
+    protected interface StreamingImportFunction {
+        StreamingImportResult execute(ImportJob job, UserEntity user, boolean clearMode) throws IOException;
+    }
+
+    /**
+     * Template method for streaming import processing.
+     * Contains the common workflow for all GPS streaming imports:
+     * 1. User lookup
+     * 2. Data clearing (if requested)
+     * 3. Streaming import execution
+     * 4. Timeline generation
+     * 5. Error handling and temp file cleanup
+     *
+     * @param job The import job
+     * @param streamingFunction The format-specific streaming import function
+     * @param progressMessage The progress message to show during import
+     * @param recordTypeName The name of the record type being imported (for logging)
+     * @throws IOException if import fails
+     */
+    protected void processStreamingImport(
+            ImportJob job,
+            StreamingImportFunction streamingFunction,
+            String progressMessage,
+            String recordTypeName) throws IOException {
+
+        log.info("Processing {} import using TRUE STREAMING mode (minimal memory footprint)", getFormat());
+
         try {
             UserEntity user = userRepository.findById(job.getUserId());
             if (user == null) {
                 throw new IllegalStateException("User not found: " + job.getUserId());
             }
-            
-            // Parse format-specific data and convert to GPS entities
-            job.updateProgress(25, "Parsing import data...");
-            List<GpsPointEntity> gpsEntities = parseAndConvertToGpsEntities(job, user);
-            
-            if (gpsEntities.isEmpty()) {
-                log.warn("No GPS points to import for user {}", job.getUserId());
-                job.updateProgress(100, "Import completed - no data to process");
-                return;
-            }
-            
-            // Find the data range for smart deletion logic
-            ImportDataClearingService.DateRange fileDataRange = dataClearingService.extractDataRange(gpsEntities);
-            
-            // Clear existing data if requested
-            if (job.getOptions().isClearDataBeforeImport()) {
-                job.updateProgress(30, "Clearing existing data in date range...");
-                ImportDataClearingService.DateRange deletionRange = dataClearingService.calculateDeletionRange(job, fileDataRange);
+
+            boolean clearMode = job.getOptions().isClearDataBeforeImport();
+
+            // For clear mode, use timestamps captured during validation to delete old data
+            Instant firstTimestamp = job.getDataFirstTimestamp();
+
+            if (clearMode && firstTimestamp != null && job.getDataLastTimestamp() != null) {
+                job.updateProgress(20, "Clearing existing data in date range...");
+                log.info("Clearing old data using timestamps from validation: {} to {}",
+                        firstTimestamp, job.getDataLastTimestamp());
+
+                ImportDataClearingService.DateRange deletionRange =
+                    dataClearingService.calculateDeletionRange(job,
+                        new ImportDataClearingService.DateRange(firstTimestamp, job.getDataLastTimestamp()));
                 if (deletionRange != null) {
-                    int deletedCount = dataClearingService.clearGpsDataInRange(job.getUserId(), deletionRange);
-                    log.info("Cleared {} existing GPS points before import", deletedCount);
+                    int deletedCount = dataClearingService.clearGpsDataInRange(user.getId(), deletionRange);
+                    log.info("Cleared {} existing GPS points before streaming import", deletedCount);
                 }
             }
-            
-            // Find the earliest timestamp for timeline generation
-            Instant firstGpsTimestamp = gpsEntities.stream()
-                    .map(GpsPointEntity::getTimestamp)
-                    .min(Instant::compareTo)
-                    .orElse(null);
-            
-            // Process GPS points in batches using appropriate mode
-            boolean clearMode = job.getOptions().isClearDataBeforeImport();
-            String importMode = clearMode ? "bulk inserting" : "merging with existing data";
-            job.updateProgress(30, "Importing GPS points (" + importMode + ")...");
 
-            int optimalBatchSize = getBatchSize(gpsEntities, clearMode);
-            log.info("Using batch size {} for {} GPS points (dataset size: {}, clear mode: {})",
-                    optimalBatchSize, gpsEntities.size(), gpsEntities.size(), clearMode);
+            // Start streaming import with direct DB writes
+            job.updateProgress(20, progressMessage);
+            StreamingImportResult result = streamingFunction.execute(job, user, clearMode);
 
-            BatchProcessor.BatchResult result = batchProcessor.processInBatches(gpsEntities, optimalBatchSize, clearMode, job, 30, 60);
+            // Use timestamp from validation, or fall back to streaming result
+            if (firstTimestamp == null) {
+                firstTimestamp = result.firstTimestamp;
+            }
 
-            job.updateProgress(60, "Generating timeline (may include reverse geocoding)...");
-
-            // Trigger timeline generation since we only imported GPS data
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
+            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
+            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
 
             job.updateProgress(100, "Import completed successfully");
-            
-            log.info("{} import completed for user {}: {} imported, {} skipped from {} total GPS points",
-                    getFormat(), job.getUserId(), result.imported, result.skipped, gpsEntities.size());
-            
+
+            // Log completion with appropriate message based on whether processedFiles is present
+            if (result.processedFiles != null) {
+                log.info("{} streaming import completed: processed {} files, {} imported, {} skipped from {} total {}",
+                        getFormat(), result.processedFiles, result.imported, result.skipped,
+                        result.totalRecords, recordTypeName);
+            } else {
+                log.info("{} streaming import completed: {} imported, {} skipped from {} total {}",
+                        getFormat(), result.imported, result.skipped, result.totalRecords, recordTypeName);
+            }
+
         } catch (Exception e) {
-            log.error("Failed to process {} import for user {}: {}", getFormat(), job.getUserId(), e.getMessage(), e);
+            log.error("Failed to process {} streaming import: {}", getFormat(), e.getMessage(), e);
             throw new IOException("Failed to process " + getFormat() + " import: " + e.getMessage(), e);
+        } finally {
+            // Clean up temp file if it exists (whether success or failure)
+            if (job.hasTempFile()) {
+                try {
+                    java.nio.file.Path tempPath = java.nio.file.Paths.get(job.getTempFilePath());
+                    if (java.nio.file.Files.exists(tempPath)) {
+                        long fileSize = java.nio.file.Files.size(tempPath);
+                        java.nio.file.Files.delete(tempPath);
+                        log.info("Deleted temp file after import: {} ({} MB)",
+                                job.getTempFilePath(), fileSize / (1024 * 1024));
+                    }
+                } catch (IOException e) {
+                    log.warn("Failed to delete temp file {}: {}",
+                            job.getTempFilePath(), e.getMessage());
+                }
+            }
         }
     }
-    
+
     /**
      * Parse and validate format-specific data.
-     * 
+     *
      * @param job The import job containing the data
      * @return Validation result with counts
      * @throws IOException if parsing fails
      */
     protected abstract FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException;
-    
-    /**
-     * Parse format-specific data and convert to GPS entities.
-     * 
-     * @param job The import job containing the data
-     * @param user The user entity
-     * @return List of GPS point entities ready for batch processing
-     * @throws IOException if parsing fails
-     */
-    protected abstract List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException;
     
     /**
      * Get the optimal batch size for this format based on data characteristics.

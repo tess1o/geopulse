@@ -133,82 +133,13 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
         return new FormatValidationResult(totalValidPoints, totalValidPoints, firstTimestamp, lastTimestamp);
     }
 
-    @Override
-    protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
-        // This method should NEVER be called for GPX ZIP because we override processImportData()
-        throw new UnsupportedOperationException(
-            "parseAndConvertToGpsEntities should not be called for GPX ZIP! " +
-            "GPX ZIP uses streaming import via processImportData() override. " +
-            "This method loads all entities in memory and should never execute.");
-    }
-
     /**
-     * Override processImportData to use true streaming without accumulating all entities in memory.
+     * Use template method pattern to handle streaming import workflow.
      */
     @Override
     public void processImportData(ImportJob job) throws IOException {
-        log.info("Processing GPX ZIP import using TRUE STREAMING mode (minimal memory footprint)");
-
-        try {
-            UserEntity user = userRepository.findById(job.getUserId());
-            if (user == null) {
-                throw new IllegalStateException("User not found: " + job.getUserId());
-            }
-
-            boolean clearMode = job.getOptions().isClearDataBeforeImport();
-            Instant firstTimestamp = job.getDataFirstTimestamp();
-
-            if (clearMode && firstTimestamp != null && job.getDataLastTimestamp() != null) {
-                job.updateProgress(20, "Clearing existing data in date range...");
-                log.info("Clearing old data using timestamps from validation: {} to {}",
-                        firstTimestamp, job.getDataLastTimestamp());
-
-                ImportDataClearingService.DateRange deletionRange =
-                    dataClearingService.calculateDeletionRange(job,
-                        new ImportDataClearingService.DateRange(firstTimestamp, job.getDataLastTimestamp()));
-                if (deletionRange != null) {
-                    int deletedCount = dataClearingService.clearGpsDataInRange(user.getId(), deletionRange);
-                    log.info("Cleared {} existing GPS points before streaming import", deletedCount);
-                }
-            }
-
-            // Start streaming import with direct DB writes
-            job.updateProgress(20, "Processing GPX files from ZIP...");
-            StreamingImportResult result = streamingImportFromZip(job, user, clearMode);
-
-            // Use timestamp from validation, or fall back to streaming result
-            if (firstTimestamp == null) {
-                firstTimestamp = result.firstTimestamp;
-            }
-
-            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
-
-            job.updateProgress(100, "Import completed successfully");
-
-            log.info("GPX ZIP streaming import completed: processed {} files, {} imported, {} skipped from {} total GPS points",
-                    result.processedFiles, result.imported, result.skipped, result.totalGpsPoints);
-
-        } catch (Exception e) {
-            log.error("Failed to process GPX ZIP streaming import: {}", e.getMessage(), e);
-            throw new IOException("Failed to process GPX ZIP import: " + e.getMessage(), e);
-        } finally {
-            // Clean up temp file if it exists (whether success or failure)
-            if (job.hasTempFile()) {
-                try {
-                    java.nio.file.Path tempPath = java.nio.file.Paths.get(job.getTempFilePath());
-                    if (java.nio.file.Files.exists(tempPath)) {
-                        long fileSize = java.nio.file.Files.size(tempPath);
-                        java.nio.file.Files.delete(tempPath);
-                        log.info("Deleted temp file after import: {} ({} MB)",
-                                job.getTempFilePath(), fileSize / (1024 * 1024));
-                    }
-                } catch (IOException e) {
-                    log.warn("Failed to delete temp file {}: {}",
-                            job.getTempFilePath(), e.getMessage());
-                }
-            }
-        }
+        processStreamingImport(job, this::streamingImportFromZip,
+                "Processing GPX files from ZIP...", "GPS points");
     }
 
     /**
@@ -311,8 +242,8 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
                 totalImported.get(),
                 totalSkipped.get(),
                 totalGpsPoints.get(),
-                processedFiles.get(),
-                firstTimestamp.get()
+                firstTimestamp.get(),
+                processedFiles.get()
         );
     }
 
@@ -422,25 +353,6 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
         }
         int lastSlash = Math.max(fullPath.lastIndexOf('/'), fullPath.lastIndexOf('\\'));
         return lastSlash >= 0 ? fullPath.substring(lastSlash + 1) : fullPath;
-    }
-
-    /**
-     * Result of streaming import operation
-     */
-    private static class StreamingImportResult {
-        final int imported;
-        final int skipped;
-        final int totalGpsPoints;
-        final int processedFiles;
-        final Instant firstTimestamp;
-
-        StreamingImportResult(int imported, int skipped, int totalGpsPoints, int processedFiles, Instant firstTimestamp) {
-            this.imported = imported;
-            this.skipped = skipped;
-            this.totalGpsPoints = totalGpsPoints;
-            this.processedFiles = processedFiles;
-            this.firstTimestamp = firstTimestamp;
-        }
     }
 
     /**

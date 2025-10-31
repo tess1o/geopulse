@@ -288,7 +288,7 @@ class OwnTracksExportImportUnitTest {
     @Transactional
     void testDuplicateDetectionCriteria() throws Exception {
         Instant baseTime = Instant.now();
-        
+
         // Create original GPS point by importing first
         OwnTracksLocationMessage originalMessage = createOwnTracksMessage(37.7749, -122.4194, baseTime);
         String jsonContent = objectMapper.writeValueAsString(new OwnTracksLocationMessage[]{originalMessage});
@@ -300,19 +300,24 @@ class OwnTracksExportImportUnitTest {
 
         ImportJob job = new ImportJob(testUser.getId(), options, "original.json", jsonData);
         importDataService.processImportData(job);
-        
-        // Test duplicate scenarios by importing additional data
-        testDuplicateScenario(baseTime.plusSeconds(1), -122.4194, 37.7749, true, 
-            "Points 1 second apart at same location should be duplicates");
-        
-        testDuplicateScenario(baseTime.plusSeconds(10), -122.4194, 37.7749, false, 
-            "Points 10 seconds apart should not be duplicates");
-        
-        testDuplicateScenario(baseTime.plusSeconds(1), -122.4200, 37.7749, false, 
-            "Points at different locations should not be duplicates");
-        
-        testDuplicateScenario(baseTime.plusSeconds(1), -122.4194001, 37.7749001, true, 
-            "Points very close together should be duplicates");
+
+        // Test duplicate scenarios based on unique constraint: (user_id, timestamp, coordinates)
+        // Duplicates require EXACT match of timestamp AND coordinates
+
+        testDuplicateScenario(baseTime, -122.4194, 37.7749, true,
+            "Exact same timestamp and location should be duplicate");
+
+        testDuplicateScenario(baseTime.plusSeconds(1), -122.4194, 37.7749, false,
+            "Different timestamp (even 1 second) should NOT be duplicate");
+
+        testDuplicateScenario(baseTime.plusSeconds(10), -122.4194, 37.7749, false,
+            "Different timestamp should NOT be duplicate");
+
+        testDuplicateScenario(baseTime, -122.4200, 37.7749, false,
+            "Same timestamp but different location should NOT be duplicate");
+
+        testDuplicateScenario(baseTime, -122.4194001, 37.7749001, false,
+            "Same timestamp but slightly different coordinates should NOT be duplicate");
     }
 
     private void testDuplicateScenario(Instant newTime, double newLon, double newLat, 

@@ -83,6 +83,9 @@ class ImportDataPersistenceAcrossTimelineFailureTest {
         testUser.setUpdatedAt(Instant.now());
         userRepository.persist(testUser);
         testUserId = testUser.getId();
+
+        // Reset point counter for test isolation
+        pointCounter = 0;
     }
 
     /**
@@ -229,6 +232,8 @@ class ImportDataPersistenceAcrossTimelineFailureTest {
 
     // Helper methods
 
+    private long pointCounter = 0;  // Counter to ensure unique timestamps across test batches
+
     private List<GpsPointEntity> createTestGpsPoints(int count) {
         List<GpsPointEntity> points = new ArrayList<>();
         Instant baseTime = Instant.parse("2024-01-01T12:00:00Z");
@@ -236,13 +241,16 @@ class ImportDataPersistenceAcrossTimelineFailureTest {
         for (int i = 0; i < count; i++) {
             GpsPointEntity point = new GpsPointEntity();
             point.setUser(testUser);
-            point.setTimestamp(baseTime.plusSeconds(i * 60)); // 1 minute apart
+            // Use pointCounter to ensure unique timestamps across all batches in the test
+            // This prevents duplicate key violations from the unique constraint on (user_id, timestamp, coordinates)
+            point.setTimestamp(baseTime.plusSeconds(pointCounter * 60)); // 1 minute apart
             point.setCoordinates(GeoUtils.createPoint(
-                    -73.9851 + (i * 0.0001), // Slight variation in coordinates
-                    40.7589 + (i * 0.0001)
+                    -73.9851 + (pointCounter * 0.0001), // Slight variation in coordinates
+                    40.7589 + (pointCounter * 0.0001)
             ));
             point.setAccuracy(10.0);
             points.add(point);
+            pointCounter++;  // Increment for next point
         }
 
         return points;
