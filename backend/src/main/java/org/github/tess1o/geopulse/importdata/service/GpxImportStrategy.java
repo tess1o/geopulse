@@ -140,8 +140,9 @@ public class GpxImportStrategy extends BaseGpsImportStrategy {
 
             job.updateProgress(100, "Import completed successfully");
 
-            log.info("GPX streaming import completed: {} imported, {} skipped from {} total GPS points",
-                    result.imported, result.skipped, result.totalGpsPoints);
+            log.warn("GPX streaming import STATISTICS: {} imported, {} skipped from {} total GPS points (SKIP RATE: {}%)",
+                    result.imported, result.skipped, result.totalGpsPoints,
+                    result.totalGpsPoints > 0 ? (result.skipped * 100.0 / result.totalGpsPoints) : 0);
 
         } catch (Exception e) {
             log.error("Failed to process GPX streaming import: {}", e.getMessage(), e);
