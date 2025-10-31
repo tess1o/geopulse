@@ -10,6 +10,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
+import org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates;
 
 import java.util.List;
 
@@ -30,17 +31,14 @@ public class BatchProcessor {
     @StaticInitSafe
     int bulkInsertBatchSize;
     
-    @ConfigProperty(name = "geopulse.import.merge-batch-size", defaultValue = "250")
-    @StaticInitSafe
-    int mergeBatchSize;
-    
     /**
-     * Process a batch of GPS points with two different paths based on clear mode
+     * Process a batch of GPS points using intelligent upsert logic.
+     * Both CLEAR and MERGE modes use the same insert with ON CONFLICT DO UPDATE.
+     * The only difference is CLEAR mode deletes old data first (handled by caller).
      *
      * @param gpsPoints The GPS points to process
-     * @param clearModeEnabled If true, use fast bulk insert (no duplicate detection)
-     *                        If false, use merge mode with duplicate detection
-     * @return Number of GPS points imported
+     * @param clearModeEnabled Only used for logging (both modes use same upsert logic)
+     * @return Number of GPS points imported or updated
      */
     @Transactional
     public int processBatch(List<GpsPointEntity> gpsPoints, boolean clearModeEnabled) {
@@ -48,13 +46,14 @@ public class BatchProcessor {
     }
 
     /**
-     * Process a batch of GPS points with context for better logging
+     * Process a batch of GPS points with context for better logging.
+     * Uses bulk insert with ON CONFLICT DO UPDATE for both CLEAR and MERGE modes.
      *
      * @param gpsPoints The GPS points to process
-     * @param clearModeEnabled If true, use fast bulk insert (no duplicate detection)
+     * @param clearModeEnabled Only used for logging (both modes use same upsert logic)
      * @param totalProcessedSoFar Total points already processed before this batch
      * @param totalExpected Total expected points (0 if unknown)
-     * @return Number of GPS points imported
+     * @return Number of GPS points imported or updated
      */
     @Transactional
     public int processBatch(List<GpsPointEntity> gpsPoints, boolean clearModeEnabled,
@@ -63,30 +62,22 @@ public class BatchProcessor {
             return 0;
         }
 
-        if (clearModeEnabled) {
-            return processBatchClearMode(gpsPoints, totalProcessedSoFar, totalExpected);
-        } else {
-            return processBatchMergeMode(gpsPoints, totalProcessedSoFar, totalExpected);
-        }
+        // Both CLEAR and MERGE modes use the same logic now
+        // The only difference is CLEAR deletes data first (handled by caller)
+        return processBatchWithUpsert(gpsPoints, clearModeEnabled, totalProcessedSoFar, totalExpected);
     }
     
     /**
-     * Fast path: Clear mode - bulk insert without duplicate detection
+     * Unified batch processing with intelligent upsert.
+     * Uses ON CONFLICT DO UPDATE to handle duplicates and enrich existing data.
+     * Works for both CLEAR and MERGE modes (caller handles deletion for CLEAR mode).
      */
-    private int processBatchClearMode(List<GpsPointEntity> gpsPoints) {
-        return processBatchClearMode(gpsPoints, 0, 0);
-    }
-
-    /**
-     * Fast path: Clear mode - bulk insert with database-level deduplication using unique constraint.
-     * Uses ON CONFLICT DO NOTHING to automatically skip duplicates at database level.
-     * This is much faster than application-level duplicate checking.
-     */
-    private int processBatchClearMode(List<GpsPointEntity> gpsPoints, int totalProcessedSoFar, int totalExpected) {
+    private int processBatchWithUpsert(List<GpsPointEntity> gpsPoints, boolean clearModeEnabled,
+                                       int totalProcessedSoFar, int totalExpected) {
         final int BULK_INSERT_BATCH_SIZE = bulkInsertBatchSize;
-        int totalImported = 0;
-        int totalDuplicates = 0;
+        int totalUpserted = 0;
         long startTime = System.currentTimeMillis();
+        String mode = clearModeEnabled ? "CLEAR" : "MERGE";
 
         for (int i = 0; i < gpsPoints.size(); i += BULK_INSERT_BATCH_SIZE) {
             int endIndex = Math.min(i + BULK_INSERT_BATCH_SIZE, gpsPoints.size());
@@ -94,10 +85,9 @@ public class BatchProcessor {
 
             long batchStartTime = System.currentTimeMillis();
             try {
-                // Use native SQL with ON CONFLICT for database-level deduplication
-                int inserted = bulkInsertWithDuplicateHandling(subBatch);
-                totalImported += inserted;
-                totalDuplicates += (subBatch.size() - inserted);
+                // Use bulk insert with ON CONFLICT DO UPDATE
+                int upserted = bulkUpsertGpsPoints(subBatch);
+                totalUpserted += upserted;
 
                 long batchDuration = System.currentTimeMillis() - batchStartTime;
 
@@ -107,45 +97,36 @@ public class BatchProcessor {
                     ? String.format(" [%d / %d points, %.1f%%]", currentTotal, totalExpected, (currentTotal * 100.0 / totalExpected))
                     : String.format(" [%d points processed]", currentTotal);
 
-                if (inserted < subBatch.size()) {
-                    log.info("CLEAR MODE: Bulk inserted {} points, skipped {} duplicates in {}ms ({} points/sec){}",
-                            inserted, subBatch.size() - inserted, batchDuration,
-                            batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
-                            progressContext);
-                } else {
-                    log.info("CLEAR MODE: Bulk inserted {} points in {}ms ({} points/sec){}",
-                            inserted, batchDuration,
-                            batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
-                            progressContext);
-                }
+                log.info("{} MODE: Bulk upserted {} points in {}ms ({} points/sec){}",
+                        mode, upserted, batchDuration,
+                        batchDuration > 0 ? (subBatch.size() * 1000L / batchDuration) : 0,
+                        progressContext);
             } catch (Exception e) {
-                log.error("Failed to bulk insert GPS points sub-batch {}-{}: {}", i, endIndex - 1, e.getMessage());
+                log.error("Failed to bulk upsert GPS points sub-batch {}-{}: {}", i, endIndex - 1, e.getMessage(), e);
             }
         }
 
         long totalDuration = System.currentTimeMillis() - startTime;
-        if (totalDuplicates > 0) {
-            log.info("CLEAR MODE summary: {} points inserted, {} duplicates skipped in {}ms",
-                    totalImported, totalDuplicates, totalDuration);
-        }
-        return totalImported;
+        log.info("{} MODE summary: {} points upserted in {}ms", mode, totalUpserted, totalDuration);
+        return totalUpserted;
     }
 
     /**
-     * Bulk insert GPS points using native SQL with ON CONFLICT DO NOTHING for automatic deduplication.
-     * The unique constraint on (user_id, timestamp, coordinates) automatically prevents duplicates.
+     * Bulk insert/update GPS points using native SQL with ON CONFLICT DO UPDATE.
+     * The unique constraint on (user_id, timestamp, coordinates) triggers updates for duplicates.
+     * Updates enrich existing points with better accuracy or missing fields.
      *
-     * @param gpsPoints List of GPS points to insert
-     * @return Number of points actually inserted (excludes duplicates)
+     * @param gpsPoints List of GPS points to insert or update
+     * @return Number of rows affected (inserts + updates)
      */
-    private int bulkInsertWithDuplicateHandling(List<GpsPointEntity> gpsPoints) {
+    private int bulkUpsertGpsPoints(List<GpsPointEntity> gpsPoints) {
         if (gpsPoints.isEmpty()) {
             return 0;
         }
 
         // Build multi-row INSERT using the template from NativeSqlImportTemplates
         // This leverages the unique constraint: idx_gps_points_no_duplicates (user_id, timestamp, coordinates)
-        String singleRowTemplate = org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates.GPS_POINTS_INSERT_IGNORE_DUPLICATES;
+        String singleRowTemplate = NativeSqlImportTemplates.GPS_POINTS_INSERT_OR_UPDATE;
 
         // Extract the VALUES clause to build multi-row insert
         // Template format: INSERT INTO ... VALUES (?, ?, ...) ON CONFLICT ...
@@ -183,106 +164,14 @@ public class BatchProcessor {
             query.setParameter(paramIndex++, point.getCreatedAt());
         }
 
-        // Execute and get number of rows inserted (automatically excludes duplicates)
-        int rowsInserted = query.executeUpdate();
+        // Execute and get number of rows affected (inserts + updates)
+        int rowsAffected = query.executeUpdate();
 
         // Clear persistence context to avoid memory buildup
         entityManager.flush();
         entityManager.clear();
 
-        return rowsInserted;
-    }
-    
-    /**
-     * Optimized merge mode - batch duplicate detection
-     */
-    private int processBatchMergeMode(List<GpsPointEntity> gpsPoints) {
-        return processBatchMergeMode(gpsPoints, 0, 0);
-    }
-
-    /**
-     * Optimized merge mode - batch duplicate detection (with context)
-     */
-    private int processBatchMergeMode(List<GpsPointEntity> gpsPoints, int totalProcessedSoFar, int totalExpected) {
-        int imported = 0;
-        long startTime = System.currentTimeMillis();
-
-        // Use proper spatial+temporal duplicate detection
-        for (GpsPointEntity gpsPoint : gpsPoints) {
-            try {
-                // Check for existing GPS points using spatial+temporal criteria
-                var existingPoints = gpsPointRepository.findByUserAndTimestampAndCoordinates(
-                        gpsPoint.getUser(), gpsPoint.getTimestamp(), gpsPoint.getCoordinates());
-
-                if (existingPoints.isEmpty()) {
-                    // Insert new GPS point
-                    gpsPointRepository.persist(gpsPoint);
-                    imported++;
-                } else {
-                    // Update existing GPS point with better data if necessary
-                    GpsPointEntity existing = existingPoints.getFirst();
-                    updateGpsPointIfNecessary(existing, gpsPoint);
-                }
-
-            } catch (Exception e) {
-                log.error("Failed to import GPS point at {}", gpsPoint.getTimestamp(), e);
-            }
-        }
-
-        // Flush periodically to free memory
-        if (gpsPoints.size() > 100) {
-            entityManager.flush();
-            entityManager.clear();
-        }
-
-        // Always flush at the end to ensure persistence
-        entityManager.flush();
-
-        long totalDuration = System.currentTimeMillis() - startTime;
-        double pointsPerSecond = totalDuration > 0 ? (gpsPoints.size() * 1000.0 / totalDuration) : 0;
-
-        // Build progress context message
-        int currentTotal = totalProcessedSoFar + gpsPoints.size();
-        String progressContext = totalExpected > 0
-            ? String.format(" [%d / %d points, %.1f%%]", currentTotal, totalExpected, (currentTotal * 100.0 / totalExpected))
-            : String.format(" [%d points processed]", currentTotal);
-
-        log.info("MERGE MODE: Processed {} points, imported {} new, skipped {} duplicates in {}ms ({} points/sec){}",
-                gpsPoints.size(), imported, gpsPoints.size() - imported, totalDuration, pointsPerSecond, progressContext);
-
-        return imported;
-    }
-
-    /**
-     * Update existing GPS point with better data if available
-     */
-    private void updateGpsPointIfNecessary(GpsPointEntity existing, GpsPointEntity newPoint) {
-        boolean updated = false;
-
-        // Update fields if they have better/newer data
-        if (newPoint.getAccuracy() != null && (existing.getAccuracy() == null || newPoint.getAccuracy() < existing.getAccuracy())) {
-            existing.setAccuracy(newPoint.getAccuracy());
-            updated = true;
-        }
-
-        if (newPoint.getAltitude() != null && existing.getAltitude() == null) {
-            existing.setAltitude(newPoint.getAltitude());
-            updated = true;
-        }
-
-        if (newPoint.getVelocity() != null && existing.getVelocity() == null) {
-            existing.setVelocity(newPoint.getVelocity());
-            updated = true;
-        }
-
-        if (newPoint.getBattery() != null && existing.getBattery() == null) {
-            existing.setBattery(newPoint.getBattery());
-            updated = true;
-        }
-
-        if (updated) {
-            gpsPointRepository.persist(existing);
-        }
+        return rowsAffected;
     }
 
     /**

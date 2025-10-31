@@ -86,11 +86,13 @@ public final class NativeSqlImportTemplates {
         """;
 
     /**
-     * GPS points insert with deduplication based on natural key (user_id, timestamp, coordinates).
-     * Uses ON CONFLICT DO NOTHING to skip duplicates rather than updating them.
-     * This is used during GPS data imports (GPX, GeoJSON, etc.) where duplicates should be ignored.
+     * GPS points insert with automatic duplicate skipping.
+     * Uses ON CONFLICT DO NOTHING to skip duplicates based on unique index.
+     * Duplicates are defined as same user_id, timestamp, and coordinates.
+     *
+     * This is used for both CLEAR and MERGE import modes.
      */
-    public static final String GPS_POINTS_INSERT_IGNORE_DUPLICATES = """
+    public static final String GPS_POINTS_INSERT_OR_UPDATE = """
         INSERT INTO gps_points
         (user_id, device_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
         VALUES (?::uuid, ?, ST_GeomFromText(?, 4326), ?, ?, ?, ?, ?, ?, ?)
