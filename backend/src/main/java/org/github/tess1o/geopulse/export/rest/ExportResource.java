@@ -8,8 +8,10 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.export.model.CreateExportRequest;
+import org.github.tess1o.geopulse.export.model.DebugExportRequest;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportJobResponse;
+import org.github.tess1o.geopulse.export.service.DebugExportService;
 import org.github.tess1o.geopulse.export.service.ExportJobManager;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
@@ -33,6 +35,9 @@ public class ExportResource {
 
     @Inject
     ExportJobManager exportJobManager;
+
+    @Inject
+    DebugExportService debugExportService;
 
     @POST
     @Path("/owntracks/create")
@@ -521,16 +526,69 @@ public class ExportResource {
         }
     }
 
+    @POST
+    @Path("/debug/create")
+    public Response createDebugExport(DebugExportRequest request) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+
+            // Validate request
+            if (request.getStartDate() == null || request.getEndDate() == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date and end date are required"))
+                        .build();
+            }
+
+            if (request.getStartDate().isAfter(Instant.now())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date cannot be in the future"))
+                        .build();
+            }
+
+            if (request.getStartDate().isAfter(request.getEndDate())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date must be before end date"))
+                        .build();
+            }
+
+            if (request.getLatitudeShift() == null || request.getLongitudeShift() == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Latitude and longitude shift are required"))
+                        .build();
+            }
+
+            log.info("Creating debug export for user {} from {} to {}",
+                    userId, request.getStartDate(), request.getEndDate());
+
+            // Generate debug export synchronously (returns immediately with data)
+            byte[] exportData = debugExportService.generateDebugExport(userId, request);
+
+            // Return the ZIP file directly
+            return Response.ok(exportData)
+                    .header("Content-Type", "application/zip")
+                    .header("Content-Disposition",
+                            "attachment; filename=\"geopulse-debug-" +
+                            userId + "-" + Instant.now().getEpochSecond() + ".zip\"")
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to create debug export", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create debug export: " + e.getMessage()))
+                    .build();
+        }
+    }
+
     // Helper method to create error responses with custom format
     private Map<String, Object> createErrorResponse(String code, String message) {
         Map<String, Object> error = new HashMap<>();
         error.put("code", code);
         error.put("message", message);
-        
+
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
         response.put("error", error);
-        
+
         return response;
     }
 
