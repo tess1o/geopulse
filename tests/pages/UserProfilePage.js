@@ -17,6 +17,10 @@ export class UserProfilePage {
         timezoneDropdownTrigger: '#timezone .p-select-dropdown, #timezone .p-select-label',
         timezoneOptions: '[role="option"], .p-select-option',
         timezoneLabel: '#timezone .p-select-label',
+        defaultRedirectUrlDropdown: '#defaultRedirectUrl',
+        defaultRedirectUrlLabel: '#defaultRedirectUrl .p-select-label',
+        defaultRedirectUrlOptions: '[role="option"], .p-select-option',
+        customRedirectUrlInput: '#customRedirectUrl',
         saveButton: 'button[type="submit"]:has-text("Save Changes")',
         resetButton: 'button:has-text("Reset")',
         avatarOptions: '.avatar-option',
@@ -302,6 +306,112 @@ export class UserProfilePage {
       return userInfoStr ? JSON.parse(userInfoStr) : null;
     });
     return userInfo?.timezone || null;
+  }
+
+  /**
+   * Select default redirect URL from dropdown
+   */
+  async selectDefaultRedirectUrl(option) {
+    // Click on the dropdown to open it
+    await this.page.click(this.selectors.profile.defaultRedirectUrlLabel);
+
+    // Wait for dropdown options to appear
+    await this.page.waitForSelector(this.selectors.profile.defaultRedirectUrlOptions, { timeout: 10000 });
+
+    // Click on the specific option
+    const optionSelector = this.page.locator(this.selectors.profile.defaultRedirectUrlOptions).filter({ hasText: option });
+    await optionSelector.first().click();
+
+    // Wait for dropdown to close and selection to be processed
+    await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Get currently selected default redirect URL
+   */
+  async getSelectedDefaultRedirectUrl() {
+    const dropdownLabel = this.page.locator(this.selectors.profile.defaultRedirectUrlLabel);
+    const text = await dropdownLabel.textContent();
+
+    if (text === 'Select your default page') {
+      return null;
+    }
+
+    return text?.trim();
+  }
+
+  /**
+   * Fill custom redirect URL input
+   */
+  async fillCustomRedirectUrl(url) {
+    await this.page.fill(this.selectors.profile.customRedirectUrlInput, url);
+  }
+
+  /**
+   * Get custom redirect URL value
+   */
+  async getCustomRedirectUrlValue() {
+    try {
+      const input = this.page.locator(this.selectors.profile.customRedirectUrlInput);
+      if (await input.isVisible({ timeout: 2000 })) {
+        return await input.inputValue();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Get default redirect URL value from localStorage
+   */
+  async getDefaultRedirectUrlFromLocalStorage() {
+    const userInfo = await this.page.evaluate(() => {
+      const userInfoStr = localStorage.getItem('userInfo');
+      return userInfoStr ? JSON.parse(userInfoStr) : null;
+    });
+    return userInfo?.defaultRedirectUrl || null;
+  }
+
+  /**
+   * Check if custom URL input is visible
+   */
+  async isCustomRedirectUrlInputVisible() {
+    try {
+      const input = this.page.locator(this.selectors.profile.customRedirectUrlInput);
+      return await input.isVisible({ timeout: 2000 });
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Clear default redirect URL selection
+   */
+  async clearDefaultRedirectUrl() {
+    // Try to find and click the clear button
+    const clearIconSelectors = [
+      '#defaultRedirectUrl .p-select-clear-icon',
+      '#defaultRedirectUrl .p-dropdown-clear-icon',
+      '#defaultRedirectUrl button[aria-label="Clear"]',
+      '#defaultRedirectUrl .p-icon-times',
+      '#defaultRedirectUrl [role="button"][aria-label="Clear"]'
+    ];
+
+    for (const selector of clearIconSelectors) {
+      try {
+        const element = this.page.locator(selector);
+        if (await element.isVisible({ timeout: 1000 })) {
+          await element.click();
+          await this.page.waitForTimeout(500);
+          return true;
+        }
+      } catch (e) {
+        // Try next selector
+      }
+    }
+
+    return false;
   }
 
   // =============================================================================
