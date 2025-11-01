@@ -95,8 +95,6 @@
             </small>
             <small v-else class="help-text">
               Leave empty to use default OpenStreetMap tiles. URL must contain {z}, {x}, and {y} placeholders.
-              Your API key is secure - tiles are proxied through the GeoPulse backend.
-              <a href="https://docs.maptiler.com/leaflet/" target="_blank" rel="noopener">MapTiler docs</a>
             </small>
           </div>
 
@@ -117,6 +115,48 @@
             <small class="help-text">
               Affects how distances and speeds are displayed across the app.
             </small>
+          </div>
+
+          <div class="form-field">
+            <label for="defaultRedirectUrl" class="form-label">
+              Default Home Page
+              <i class="pi pi-info-circle" v-tooltip.right="'Choose where you want to land after login or when you visit the homepage.'"></i>
+            </label>
+            <Dropdown
+                id="defaultRedirectUrl"
+                v-model="form.defaultRedirectUrl"
+                :options="defaultRedirectUrlOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select your default page"
+                :invalid="!!errors.defaultRedirectUrl"
+                class="w-full"
+                showClear
+            />
+            <small v-if="errors.defaultRedirectUrl" class="error-message">
+              {{ errors.defaultRedirectUrl }}
+            </small>
+            <small v-else class="help-text">
+              Choose your preferred default page. Leave empty to use default behavior.
+            </small>
+
+            <!-- Custom URL input (shown when Custom option is selected) -->
+            <div v-if="form.defaultRedirectUrl === 'custom'" class="custom-url-field">
+              <label for="customRedirectUrl" class="form-label">Custom URL</label>
+              <InputText
+                id="customRedirectUrl"
+                v-model="form.customRedirectUrl"
+                placeholder="/app/your-custom-page"
+                :invalid="!!errors.customRedirectUrl"
+                class="w-full"
+              />
+              <small v-if="errors.customRedirectUrl" class="error-message">
+                {{ errors.customRedirectUrl }}
+              </small>
+              <small v-else class="help-text">
+                Enter an internal path starting with / (e.g., /app/dashboard).
+              </small>
+            </div>
           </div>
         </div>
 
@@ -169,6 +209,10 @@ const props = defineProps({
   userMeasureUnit: {
     type: String,
     default: 'METRIC'
+  },
+  userDefaultRedirectUrl: {
+    type: String,
+    default: ''
   }
 })
 
@@ -182,7 +226,9 @@ const form = ref({
   fullName: '',
   timezone: '',
   customMapTileUrl: '',
-  measureUnit: 'METRIC' // Default value
+  measureUnit: 'METRIC', // Default value
+  defaultRedirectUrl: '',
+  customRedirectUrl: ''
 })
 const errors = ref({})
 
@@ -267,13 +313,29 @@ const measureUnitOptions = [
   { label: 'Imperial (miles, feet)', value: 'IMPERIAL' }
 ]
 
+const defaultRedirectUrlOptions = [
+  { label: 'Timeline', value: '/app/timeline' },
+  { label: 'Dashboard', value: '/app/dashboard' },
+  { label: 'Journey Insights', value: '/app/journey-insights' },
+  { label: 'Friends', value: '/app/friends' },
+  { label: 'Rewind', value: '/app/rewind' },
+  { label: 'GPS Data', value: '/app/gps-data' },
+  { label: 'Location Sources', value: '/app/location-sources' },
+  { label: 'Custom URL...', value: 'custom' }
+]
+
 // Computed
 const hasChanges = computed(() => {
+  const effectiveRedirectUrl = form.value.defaultRedirectUrl === 'custom'
+    ? form.value.customRedirectUrl
+    : form.value.defaultRedirectUrl
+
   return form.value.fullName !== props.userName ||
          localAvatar.value !== props.userAvatar ||
          form.value.timezone !== props.userTimezone ||
          form.value.customMapTileUrl !== props.userCustomMapTileUrl ||
-         form.value.measureUnit !== props.userMeasureUnit
+         form.value.measureUnit !== props.userMeasureUnit ||
+         effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
 
 // Methods
@@ -299,6 +361,23 @@ const validate = () => {
     }
   }
 
+  // Validate custom redirect URL if "custom" option is selected
+  if (form.value.defaultRedirectUrl === 'custom') {
+    if (!form.value.customRedirectUrl || !form.value.customRedirectUrl.trim()) {
+      errors.value.customRedirectUrl = 'Custom URL is required'
+    } else {
+      const url = form.value.customRedirectUrl.trim()
+
+      if (!url.startsWith('/')) {
+        errors.value.customRedirectUrl = 'URL must be an internal path starting with /'
+      } else if (url.includes('..')) {
+        errors.value.customRedirectUrl = 'Invalid URL format'
+      } else if (url.length > 1000) {
+        errors.value.customRedirectUrl = 'URL is too long (max 1000 characters)'
+      }
+    }
+  }
+
   return Object.keys(errors.value).length === 0
 }
 
@@ -308,12 +387,18 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
+    // Use custom URL if "custom" option is selected, otherwise use dropdown value
+    const effectiveRedirectUrl = form.value.defaultRedirectUrl === 'custom'
+      ? form.value.customRedirectUrl?.trim() || ''
+      : form.value.defaultRedirectUrl?.trim() || ''
+
     await emit('save', {
       fullName: form.value.fullName.trim(),
       avatar: localAvatar.value,
       timezone: form.value.timezone,
       customMapTileUrl: form.value.customMapTileUrl?.trim() || '',
-      measureUnit: form.value.measureUnit
+      measureUnit: form.value.measureUnit,
+      defaultRedirectUrl: effectiveRedirectUrl
     })
   } finally {
     loading.value = false
@@ -325,6 +410,24 @@ const handleReset = () => {
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.customMapTileUrl = props.userCustomMapTileUrl || ''
   form.value.measureUnit = props.userMeasureUnit || 'METRIC'
+
+  // Check if the stored URL matches any predefined option
+  const userRedirectUrl = props.userDefaultRedirectUrl || ''
+  const matchesPredefined = defaultRedirectUrlOptions.some(opt => opt.value === userRedirectUrl && opt.value !== 'custom')
+
+  if (matchesPredefined) {
+    form.value.defaultRedirectUrl = userRedirectUrl
+    form.value.customRedirectUrl = ''
+  } else if (userRedirectUrl) {
+    // It's a custom URL
+    form.value.defaultRedirectUrl = 'custom'
+    form.value.customRedirectUrl = userRedirectUrl
+  } else {
+    // No URL set
+    form.value.defaultRedirectUrl = ''
+    form.value.customRedirectUrl = ''
+  }
+
   localAvatar.value = props.userAvatar || '/avatars/avatar1.png'
   errors.value = {}
 }
@@ -342,7 +445,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 </script>
@@ -493,6 +596,13 @@ watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCus
 :deep(.p-inputtext:disabled) {
   background: var(--gp-surface-light);
   color: var(--gp-text-secondary);
+}
+
+/* Custom URL Field */
+.custom-url-field {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gp-border-light);
 }
 
 /* Button Styling */

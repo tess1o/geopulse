@@ -199,6 +199,48 @@ public class UserService {
     }
 
     /**
+     * Validates default redirect URL to ensure it's a safe internal path.
+     * Must start with / and not contain dangerous patterns.
+     *
+     * @param redirectUrl the redirect URL to validate
+     * @throws IllegalArgumentException if the redirect URL is invalid
+     */
+    private void validateDefaultRedirectUrl(String redirectUrl) {
+        if (redirectUrl == null || redirectUrl.trim().isEmpty()) {
+            return; // Allow null/empty to use default behavior
+        }
+
+        String normalizedUrl = redirectUrl.trim();
+
+        // Security: Only allow relative paths (internal redirects)
+        if (!normalizedUrl.startsWith("/")) {
+            log.warn("Invalid redirect URL - must start with /: {}", redirectUrl);
+            throw new IllegalArgumentException("Default redirect URL must be an internal path starting with /");
+        }
+
+        // Security: Prevent absolute URLs and external redirects
+        if (normalizedUrl.startsWith("//") ||
+            normalizedUrl.toLowerCase().contains("http:") ||
+            normalizedUrl.toLowerCase().contains("https:") ||
+            normalizedUrl.toLowerCase().contains("javascript:") ||
+            normalizedUrl.toLowerCase().contains("data:")) {
+            log.warn("Dangerous pattern detected in redirect URL: {}", redirectUrl);
+            throw new IllegalArgumentException("Default redirect URL must be an internal path, not an external URL");
+        }
+
+        // Security: Basic path traversal check
+        if (normalizedUrl.contains("..")) {
+            log.warn("Path traversal attempt in redirect URL: {}", redirectUrl);
+            throw new IllegalArgumentException("Invalid redirect URL format");
+        }
+
+        // Validate URL length (already enforced by @Size, but double-check)
+        if (normalizedUrl.length() > 1000) {
+            throw new IllegalArgumentException("Default redirect URL is too long (max 1000 characters)");
+        }
+    }
+
+    /**
      * Validates avatar path to ensure it matches the expected format.
      * Only allows paths like /avatars/avatar1.png through /avatars/avatar20.png
      *
@@ -247,17 +289,21 @@ public class UserService {
             log.debug("Updated timezone for user {} to {}", user.getId(), validatedTimezone);
         }
 
-        // Validate and update custom map tile URL
         if (request.getCustomMapTileUrl() != null) {
             validateCustomMapTileUrl(request.getCustomMapTileUrl());
             user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
             log.debug("Updated custom map tile URL for user {}", user.getId());
         }
 
-        // Validate and update custom map tile URL
         if (request.getMeasureUnit() != null) {
             user.setMeasureUnit(request.getMeasureUnit());
-            log.debug("Updated custom map tile URL for user {}", user.getId());
+            log.debug("Updated measure unit for user {}", user.getId());
+        }
+
+        if (request.getDefaultRedirectUrl() != null) {
+            validateDefaultRedirectUrl(request.getDefaultRedirectUrl());
+            user.setDefaultRedirectUrl(request.getDefaultRedirectUrl().trim().isEmpty() ? null : request.getDefaultRedirectUrl().trim());
+            log.debug("Updated default redirect URL for user {}", user.getId());
         }
     }
 

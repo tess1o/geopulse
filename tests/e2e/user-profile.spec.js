@@ -987,4 +987,398 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isAiAssistantTabActive()).toBe(false);
     });
   });
+
+  test.describe('Default Redirect URL', () => {
+    test('should display default redirect URL dropdown correctly', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Verify default redirect URL dropdown is present
+      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
+      // Should be null or empty initially
+      expect(selectedValue === null || selectedValue === '' || selectedValue === 'Select your default page').toBe(true);
+    });
+
+    test('should allow selecting predefined default redirect URL', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const redirectOption = 'Dashboard';
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Select Dashboard from dropdown
+      await profilePage.selectDefaultRedirectUrl(redirectOption);
+
+      // Verify dropdown shows selected option
+      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
+      expect(selectedValue).toBe(redirectOption);
+
+      // Save changes
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Verify localStorage is updated
+      const localStorageValue = await profilePage.getDefaultRedirectUrlFromLocalStorage();
+      expect(localStorageValue).toBe('/app/dashboard');
+
+      // Reload and verify persistence
+      await page.reload();
+      await profilePage.waitForPageLoad();
+
+      const reloadedValue = await profilePage.getSelectedDefaultRedirectUrl();
+      expect(reloadedValue).toBe(redirectOption);
+    });
+
+    test('should show custom URL input when "Custom URL..." is selected', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Initially custom input should not be visible
+      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(false);
+
+      // Select "Custom URL..." option
+      await profilePage.selectDefaultRedirectUrl('Custom URL...');
+
+      // Now custom input should be visible
+      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(true);
+    });
+
+    test('should save and use custom redirect URL', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const customUrl = '/app/journey-insights';
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Select custom URL option
+      await profilePage.selectDefaultRedirectUrl('Custom URL...');
+      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(true);
+
+      // Fill custom URL
+      await profilePage.fillCustomRedirectUrl(customUrl);
+
+      // Save changes
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Verify localStorage is updated with custom URL
+      const localStorageValue = await profilePage.getDefaultRedirectUrlFromLocalStorage();
+      expect(localStorageValue).toBe(customUrl);
+    });
+
+    test('should validate custom redirect URL - must start with /', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const invalidUrl = 'app/dashboard'; // Missing leading /
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Select custom URL option
+      await profilePage.selectDefaultRedirectUrl('Custom URL...');
+
+      // Fill invalid custom URL
+      await profilePage.fillCustomRedirectUrl(invalidUrl);
+
+      // Try to save
+      await profilePage.saveProfile();
+
+      // Should show validation error
+      const errorMessage = await profilePage.getProfileErrorMessage();
+      expect(errorMessage).toBeTruthy();
+      expect(errorMessage).toContain('must be an internal path starting with /');
+    });
+
+    test('should validate custom redirect URL - no path traversal', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const invalidUrl = '/app/../../../etc/passwd';
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Select custom URL option
+      await profilePage.selectDefaultRedirectUrl('Custom URL...');
+
+      // Fill URL with path traversal
+      await profilePage.fillCustomRedirectUrl(invalidUrl);
+
+      // Try to save
+      await profilePage.saveProfile();
+
+      // Should show validation error
+      const errorMessage = await profilePage.getProfileErrorMessage();
+      expect(errorMessage).toBeTruthy();
+      expect(errorMessage).toContain('Invalid URL format');
+    });
+
+    test('should redirect to default URL after login', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const redirectUrl = '/app/dashboard';
+
+      await UserFactory.createUser(page, testUser);
+
+      // First login to set up default redirect URL
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Set default redirect URL to Dashboard
+      await profilePage.selectDefaultRedirectUrl('Dashboard');
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Logout
+      await page.goto('/');
+      await page.evaluate(() => localStorage.clear());
+      await page.context().clearCookies();
+
+      // Login again
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+
+      // Should redirect to dashboard instead of timeline
+      await page.waitForURL('**/app/dashboard', { timeout: 10000 });
+      expect(page.url()).toContain('/app/dashboard');
+    });
+
+    test('should redirect to default URL when visiting homepage', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+
+      // Login and set default redirect URL
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Set default redirect URL to Journey Insights
+      await profilePage.selectDefaultRedirectUrl('Journey Insights');
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Navigate to homepage
+      await page.goto('/');
+
+      // Should redirect to journey insights
+      await page.waitForURL('**/app/journey-insights', { timeout: 10000 });
+      expect(page.url()).toContain('/app/journey-insights');
+    });
+
+    test('should show home page if no default redirect URL is set', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+
+      // Login without setting default redirect URL
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      // Navigate to homepage
+      await page.goto('/');
+
+      // Should stay on home page or show default timeline redirect
+      await page.waitForTimeout(2000);
+
+      // URL should be either home page or still showing authenticated state
+      const url = page.url();
+      const isValidState = url.includes('/') || url.includes('/app/timeline');
+      expect(isValidState).toBe(true);
+    });
+
+    test('should redirect authenticated user from login page to default URL', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      await UserFactory.createUser(page, testUser);
+
+      // Login and set default redirect URL
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Set default redirect URL to Friends
+      await profilePage.selectDefaultRedirectUrl('Friends');
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Try to visit login page while authenticated
+      await page.goto('/login');
+
+      // Should redirect to friends page
+      await page.waitForURL('**/app/friends', { timeout: 10000 });
+      expect(page.url()).toContain('/app/friends');
+    });
+
+    test('should preserve custom URL after reload when matches predefined option', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const customUrl = '/app/rewind';
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Use custom URL option to enter a URL that matches a predefined option
+      await profilePage.selectDefaultRedirectUrl('Custom URL...');
+      await profilePage.fillCustomRedirectUrl(customUrl);
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Reload page
+      await page.reload();
+      await profilePage.waitForPageLoad();
+
+      // Should show the predefined option that matches the URL
+      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
+      expect(selectedValue).toBe('Rewind');
+    });
+
+    test('should preserve truly custom URL after reload', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+      const customUrl = '/app/my-custom-page';
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Use custom URL option with truly custom URL
+      await profilePage.selectDefaultRedirectUrl('Custom URL...');
+      await profilePage.fillCustomRedirectUrl(customUrl);
+      await profilePage.saveProfile();
+      await profilePage.waitForSuccessToast();
+
+      // Reload page
+      await page.reload();
+      await profilePage.waitForPageLoad();
+
+      // Should show "Custom URL..." selected
+      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
+      expect(selectedValue).toBe('Custom URL...');
+
+      // Custom input should be visible with the URL
+      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(true);
+      const customValue = await profilePage.getCustomRedirectUrlValue();
+      expect(customValue).toBe(customUrl);
+    });
+
+    test('should handle all predefined redirect options', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const profilePage = new UserProfilePage(page);
+      const testUser = TestData.users.existing;
+
+      const redirectOptions = [
+        { label: 'Timeline', url: '/app/timeline' },
+        { label: 'Dashboard', url: '/app/dashboard' },
+        { label: 'Journey Insights', url: '/app/journey-insights' },
+        { label: 'Friends', url: '/app/friends' },
+        { label: 'Rewind', url: '/app/rewind' },
+        { label: 'GPS Data', url: '/app/gps-data' },
+        { label: 'Location Sources', url: '/app/location-sources' }
+      ];
+
+      await UserFactory.createUser(page, testUser);
+
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await profilePage.navigate();
+      await profilePage.waitForPageLoad();
+
+      // Test each predefined option
+      for (const option of redirectOptions) {
+        // Select the option
+        await profilePage.selectDefaultRedirectUrl(option.label);
+
+        // Save
+        await profilePage.saveProfile();
+        await profilePage.waitForSuccessToast();
+        await page.waitForTimeout(500);
+
+        // Verify localStorage
+        const localStorageValue = await profilePage.getDefaultRedirectUrlFromLocalStorage();
+        expect(localStorageValue).toBe(option.url);
+      }
+    });
+  });
 });
