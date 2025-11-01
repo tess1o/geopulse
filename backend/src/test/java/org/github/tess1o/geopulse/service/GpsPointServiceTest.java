@@ -183,17 +183,17 @@ public class GpsPointServiceTest {
         // Test timezone fix: Create points that are clearly from different days in user timezone
         ZoneId gmtMinus8 = ZoneId.of("America/Los_Angeles"); // GMT-8 (Pacific Time)
 
-        // Use today's date but convert to specific times
-        LocalDate today = LocalDate.now();
-        LocalDate tomorrow = today.plusDays(1);
+        // Use "today" in Pacific Time zone (not server timezone) to ensure test works regardless of server location
+        LocalDate todayPacific = LocalDate.now(gmtMinus8);
+        LocalDate tomorrowPacific = todayPacific.plusDays(1);
 
         // Create test points:
-        // 1. Point from "today" in GMT-8 (should count as today)
-        ZonedDateTime todayPoint = today.atTime(10, 0).atZone(gmtMinus8);
+        // 1. Point from "today" in GMT-8 (should count as today from Pacific perspective)
+        ZonedDateTime todayPoint = todayPacific.atTime(10, 0).atZone(gmtMinus8);
         createTestGpsPoint(todayPoint.toInstant());
 
-        // 2. Point from "tomorrow" in GMT-8 (should NOT count as today)
-        ZonedDateTime tomorrowPoint = tomorrow.atTime(1, 0).atZone(gmtMinus8);
+        // 2. Point from "tomorrow" in GMT-8 (should NOT count as today from Pacific perspective)
+        ZonedDateTime tomorrowPoint = tomorrowPacific.atTime(1, 0).atZone(gmtMinus8);
         createTestGpsPoint(tomorrowPoint.toInstant());
 
         // Test the FIXED implementation with correct timezone

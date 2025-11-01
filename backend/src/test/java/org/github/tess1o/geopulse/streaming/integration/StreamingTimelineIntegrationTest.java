@@ -7,6 +7,7 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -52,6 +53,9 @@ class StreamingTimelineIntegrationTest {
     @Inject
     TimelineDataGapRepository timelineDataGapRepository;
 
+    @Inject
+    GpsSourceRepository gpsSourceRepository;
+
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private UserEntity testUser;
 
@@ -59,6 +63,7 @@ class StreamingTimelineIntegrationTest {
     @Transactional
     void setUp() {
         // Clean up previous test data
+        gpsSourceRepository.deleteAll();
         timelineDataGapRepository.deleteAll();
         timelineTripRepository.deleteAll();
         timelineStayRepository.deleteAll();
@@ -86,14 +91,14 @@ class StreamingTimelineIntegrationTest {
         // Trip: 10:00-10:30 (moving points every 2 minutes)
         List<GpsPointEntity> tripPoints = createMovingPoints(
             testUser, HOME_LAT, HOME_LON, OFFICE_LAT, OFFICE_LON,
-            "2024-08-15T10:00:00Z", "2024-08-15T10:30:00Z"
+            "2024-08-15T10:01:00Z", "2024-08-15T10:30:00Z"
         );
         allPoints.addAll(tripPoints);
 
         // Office stay: 10:30-15:00 (stationary points every 10 minutes)
         List<GpsPointEntity> officePoints = createStationaryPoints(
             testUser, OFFICE_LAT, OFFICE_LON,
-            "2024-08-15T10:30:00Z", "2024-08-15T15:00:00Z", 10
+            "2024-08-15T10:31:00Z", "2024-08-15T15:00:00Z", 10
         );
         allPoints.addAll(officePoints);
 

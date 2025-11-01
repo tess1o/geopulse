@@ -77,6 +77,9 @@ class GpxExportServiceTest {
     @Inject
     CleanupHelper cleanupHelper;
 
+    @Inject
+    org.github.tess1o.geopulse.importdata.service.GpxImportStrategy gpxImportStrategy;
+
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private final XmlMapper xmlMapper = XmlMapper.builder()
             .addModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
@@ -188,13 +191,10 @@ class GpxExportServiceTest {
     @Transactional
     void tearDown() {
         if (testUser != null) {
-            // Clean up test data
-            if (testStay != null && testStay.getId() != null) {
-                timelineStayRepository.delete(testStay);
-            }
-            if (testTrip != null && testTrip.getId() != null) {
-                timelineTripRepository.delete(testTrip);
-            }
+            // Clean up ALL test data for this user (not just specific test entities)
+            // This handles cases where tests create additional trips/stays beyond the setUp defaults
+            timelineStayRepository.delete("user.id", testUser.getId());
+            timelineTripRepository.delete("user.id", testUser.getId());
             gpsPointRepository.delete("user.id", testUser.getId());
             userRepository.delete(testUser);
         }
@@ -402,6 +402,40 @@ class GpxExportServiceTest {
         Instant day1Start = Instant.now().minus(3, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
         Instant day2Start = Instant.now().minus(2, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
 
+        // IMPORTANT: Create GPS points for ALL trips (needed since daily export now uses raw GPS data!)
+        // Day 1 Trip 1 GPS points (8:00 AM)
+        for (int i = 0; i < 30; i++) {
+            GpsPointEntity point = createGpsPoint(
+                    day1Start.plus(8, ChronoUnit.HOURS).plus(i * 20L, ChronoUnit.SECONDS),
+                    37.7749 + (i * 0.0001),
+                    -122.4194 + (i * 0.0001),
+                    100.0, 15.0, 95.0
+            );
+            gpsPointRepository.persist(point);
+        }
+
+        // Day 1 Trip 2 GPS points (2:00 PM)
+        for (int i = 0; i < 25; i++) {
+            GpsPointEntity point = createGpsPoint(
+                    day1Start.plus(14, ChronoUnit.HOURS).plus(i * 24L, ChronoUnit.SECONDS),
+                    37.7750 + (i * 0.0001),
+                    -122.4195 + (i * 0.0001),
+                    100.0, 15.0, 95.0
+            );
+            gpsPointRepository.persist(point);
+        }
+
+        // Day 2 Trip GPS points (10:00 AM)
+        for (int i = 0; i < 35; i++) {
+            GpsPointEntity point = createGpsPoint(
+                    day2Start.plus(10, ChronoUnit.HOURS).plus(i * 17L, ChronoUnit.SECONDS),
+                    37.7751 + (i * 0.0001),
+                    -122.4196 + (i * 0.0001),
+                    100.0, 15.0, 95.0
+            );
+            gpsPointRepository.persist(point);
+        }
+
         // Create trips and stays for day 1
         TimelineTripEntity trip1Day1 = createTestTripForTime(day1Start.plus(8, ChronoUnit.HOURS), "Day1-Trip1");
         TimelineTripEntity trip2Day1 = createTestTripForTime(day1Start.plus(14, ChronoUnit.HOURS), "Day1-Trip2");
@@ -466,14 +500,17 @@ class GpxExportServiceTest {
                 // Verify we have 2 daily files (one for each day)
                 assertEquals(2, dailyFileCount, "Should have 2 daily GPX files");
 
-                // Verify each day has the correct content
-                // Day 1 should have 2 trips and 1 stay
-                // Day 2 should have 1 trip and 2 stays
-                int totalTrips = tripCountByDay.values().stream().mapToInt(Integer::intValue).sum();
+                // VERIFY: With raw GPS export fix, each trip should be a separate track
+                // Day 1: 2 trips + 1 stay = 2 trip tracks + 1 stay track (if GPS points) + 1 waypoint
+                // Day 2: 1 trip + 2 stays = 1 trip track + 2 stay tracks (if GPS points) + 2 waypoints
+                int totalTracks = tripCountByDay.values().stream().mapToInt(Integer::intValue).sum();
                 int totalStays = stayCountByDay.values().stream().mapToInt(Integer::intValue).sum();
 
-                assertEquals(3, totalTrips, "Total trips across all daily files should be 3");
-                assertEquals(3, totalStays, "Total stays across all daily files should be 3");
+                // Should have tracks for trips + stays (if GPS data exists during stays)
+                // Minimum: 3 trip tracks (2 from day 1, 1 from day 2)
+                assertTrue(totalTracks >= 3,
+                    String.format("Should have at least 3 trip tracks, got %d", totalTracks));
+                assertEquals(3, totalStays, "Total stay waypoints should be 3");
             }
         } finally {
             // Clean up test data
@@ -601,6 +638,313 @@ class GpxExportServiceTest {
         assertTrue(gpxXml.contains("<ele>"), "GPX should contain elevation data");
     }
 
+    @Test
+    @Transactional
+    void testStreamingGpxExportWithLargeDataset() throws Exception {
+        // Arrange - Create large dataset (5000 GPS points)
+        log.info("Creating large test dataset with 5000 GPS points...");
+        Instant baseTime = Instant.now().minus(10, ChronoUnit.HOURS);
+        int pointCount = 5000;
+
+        for (int i = 0; i < pointCount; i++) {
+            double lat = 37.7749 + (i * 0.0001); // Move northward
+            double lon = -122.4194 + (i * 0.0001); // Move eastward
+            Instant timestamp = baseTime.plus(i, ChronoUnit.SECONDS);
+
+            GpsPointEntity point = createGpsPoint(timestamp, lat, lon,
+                    10.0 + (i % 50), 15.0 + (i % 30), 90.0 + (i % 10));
+            gpsPointRepository.persist(point);
+
+            if (i % 1000 == 0) {
+                log.info("Created {} GPS points...", i);
+            }
+        }
+
+        log.info("Large dataset created: {} GPS points", pointCount);
+
+        // Create export job spanning the entire dataset
+        ExportDateRange dateRange = new ExportDateRange();
+        dateRange.setStartDate(baseTime);
+        dateRange.setEndDate(baseTime.plus(pointCount, ChronoUnit.SECONDS));
+
+        ExportJob job = new ExportJob();
+        job.setUserId(testUser.getId());
+        job.setDateRange(dateRange);
+
+        try {
+            // Act - Export using streaming algorithm
+            log.info("Starting streaming GPX export...");
+            long startTime = System.currentTimeMillis();
+            byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
+            long exportTime = System.currentTimeMillis() - startTime;
+
+            log.info("Streaming export completed in {} ms, generated {} bytes",
+                    exportTime, gpxBytes.length);
+
+            // Assert - Validate XML structure
+            String gpxXml = new String(gpxBytes);
+            validateXmlWellFormed(gpxXml);
+
+            // Verify the GPX contains all points
+            Document doc = parseXmlDocument(gpxXml);
+            NodeList trkptNodes = doc.getElementsByTagName("trkpt");
+
+            log.info("Exported {} track points in GPX file", trkptNodes.getLength());
+
+            // Should have exactly the same number of track points as GPS points created
+            assertEquals(pointCount, trkptNodes.getLength(),
+                    "GPX should contain all " + pointCount + " GPS points");
+
+            // Verify first and last point coordinates
+            Element firstPoint = (Element) trkptNodes.item(0);
+            assertEquals(37.7749, Double.parseDouble(firstPoint.getAttribute("lat")), 0.0001);
+            assertEquals(-122.4194, Double.parseDouble(firstPoint.getAttribute("lon")), 0.0001);
+
+            Element lastPoint = (Element) trkptNodes.item(pointCount - 1);
+            double expectedLastLat = 37.7749 + ((pointCount - 1) * 0.0001);
+            double expectedLastLon = -122.4194 + ((pointCount - 1) * 0.0001);
+            assertEquals(expectedLastLat, Double.parseDouble(lastPoint.getAttribute("lat")), 0.0001);
+            assertEquals(expectedLastLon, Double.parseDouble(lastPoint.getAttribute("lon")), 0.0001);
+
+            // Verify all points have required elements
+            for (int i = 0; i < trkptNodes.getLength(); i++) {
+                Element trkpt = (Element) trkptNodes.item(i);
+
+                // Verify lat/lon attributes
+                assertTrue(trkpt.hasAttribute("lat"), "Track point should have lat attribute");
+                assertTrue(trkpt.hasAttribute("lon"), "Track point should have lon attribute");
+
+                // Verify required child elements
+                NodeList timeNodes = trkpt.getElementsByTagName("time");
+                assertEquals(1, timeNodes.getLength(), "Track point should have time element");
+
+                NodeList eleNodes = trkpt.getElementsByTagName("ele");
+                assertEquals(1, eleNodes.getLength(), "Track point should have elevation element");
+
+                NodeList speedNodes = trkpt.getElementsByTagName("speed");
+                assertEquals(1, speedNodes.getLength(), "Track point should have speed element");
+            }
+
+            log.info("All {} points verified successfully", trkptNodes.getLength());
+
+        } finally {
+            // Clean up large dataset
+            log.info("Cleaning up large test dataset...");
+            gpsPointRepository.delete("user.id", testUser.getId());
+        }
+    }
+
+    @Test
+    @Transactional
+    void testStreamingGpxExportPointCountAccuracy() throws Exception {
+        // Arrange - Create dataset with known point count
+        log.info("Testing point count accuracy with 2500 GPS points...");
+        Instant baseTime = Instant.now().minus(5, ChronoUnit.HOURS);
+        int expectedPointCount = 2500;
+
+        for (int i = 0; i < expectedPointCount; i++) {
+            GpsPointEntity point = createGpsPoint(
+                    baseTime.plus(i * 2L, ChronoUnit.SECONDS),
+                    37.7749 + (i * 0.00005),
+                    -122.4194 + (i * 0.00005),
+                    100.0, 20.0, 95.0
+            );
+            gpsPointRepository.persist(point);
+        }
+
+        ExportDateRange dateRange = new ExportDateRange();
+        dateRange.setStartDate(baseTime.minus(1, ChronoUnit.HOURS));
+        dateRange.setEndDate(baseTime.plus(2 * expectedPointCount, ChronoUnit.SECONDS).plus(1, ChronoUnit.HOURS));
+
+        ExportJob job = new ExportJob();
+        job.setUserId(testUser.getId());
+        job.setDateRange(dateRange);
+
+        try {
+            // Act
+            byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
+
+            // Assert
+            String gpxXml = new String(gpxBytes);
+            Document doc = parseXmlDocument(gpxXml);
+            NodeList trkptNodes = doc.getElementsByTagName("trkpt");
+
+            // CRITICAL: Verify exact point count
+            assertEquals(expectedPointCount, trkptNodes.getLength(),
+                    String.format("Expected exactly %d points, but got %d. " +
+                                    "This indicates data loss during export!",
+                            expectedPointCount, trkptNodes.getLength()));
+
+            log.info("✅ Point count accuracy verified: {} points exported correctly", trkptNodes.getLength());
+
+        } finally {
+            gpsPointRepository.delete("user.id", testUser.getId());
+        }
+    }
+
+    @Test
+    @Transactional
+    void testStreamingGpxExportPreservesAllDataFields() throws Exception {
+        // Arrange - Use a time range far from setUp() data
+        // setUp() creates data starting at testStartDate (now - 2 hours)
+        // We'll use data starting at now - 24 hours to avoid overlap
+        log.info("Testing data field preservation in streaming export...");
+        Instant baseTime = Instant.now().minus(24, ChronoUnit.HOURS);
+        int pointCount = 100;
+
+        for (int i = 0; i < pointCount; i++) {
+            GpsPointEntity point = createGpsPoint(
+                    baseTime.plus(i * 30L, ChronoUnit.SECONDS),
+                    37.7749 + (i * 0.0001),
+                    -122.4194 + (i * 0.0001),
+                    100.0 + i,  // Varying altitude
+                    20.0 + (i % 10),  // Varying velocity
+                    95.0 - (i % 5)   // Varying battery
+            );
+            gpsPointRepository.persist(point);
+        }
+
+        // Use date range that only covers our new test data
+        ExportDateRange dateRange = new ExportDateRange();
+        dateRange.setStartDate(baseTime.minus(10, ChronoUnit.MINUTES));
+        dateRange.setEndDate(baseTime.plus(pointCount * 30L, ChronoUnit.SECONDS).plus(10, ChronoUnit.MINUTES));
+
+        ExportJob job = new ExportJob();
+        job.setUserId(testUser.getId());
+        job.setDateRange(dateRange);
+
+        try {
+            // Act
+            byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
+
+            // Assert
+            String gpxXml = new String(gpxBytes);
+            Document doc = parseXmlDocument(gpxXml);
+            NodeList trkptNodes = doc.getElementsByTagName("trkpt");
+
+            assertEquals(pointCount, trkptNodes.getLength(), "Should have all points");
+
+            // Verify first point has all data fields
+            Element firstPoint = (Element) trkptNodes.item(0);
+
+            // Coordinates
+            assertEquals(37.7749, Double.parseDouble(firstPoint.getAttribute("lat")), 0.0001);
+            assertEquals(-122.4194, Double.parseDouble(firstPoint.getAttribute("lon")), 0.0001);
+
+            // Elevation
+            NodeList eleNodes = firstPoint.getElementsByTagName("ele");
+            assertEquals(1, eleNodes.getLength());
+            assertEquals(100.0, Double.parseDouble(eleNodes.item(0).getTextContent()), 0.1);
+
+            // Speed (should be converted from km/h to m/s)
+            NodeList speedNodes = firstPoint.getElementsByTagName("speed");
+            assertEquals(1, speedNodes.getLength());
+            double speedMs = Double.parseDouble(speedNodes.item(0).getTextContent());
+            assertEquals(20.0 / 3.6, speedMs, 0.1); // 20 km/h = 5.56 m/s
+
+            // Time
+            NodeList timeNodes = firstPoint.getElementsByTagName("time");
+            assertEquals(1, timeNodes.getLength());
+            assertFalse(timeNodes.item(0).getTextContent().isEmpty());
+
+            // Verify last point has correct altitude (should be 100 + 99 = 199)
+            Element lastPoint = (Element) trkptNodes.item(pointCount - 1);
+            NodeList lastEleNodes = lastPoint.getElementsByTagName("ele");
+            assertEquals(199.0, Double.parseDouble(lastEleNodes.item(0).getTextContent()), 0.1);
+
+            log.info("✅ All data fields preserved correctly in {} points", pointCount);
+
+        } finally {
+            gpsPointRepository.delete("user.id", testUser.getId());
+        }
+    }
+
+    @Test
+    @Transactional
+    void testStreamingGpxExportMemoryEfficiency() throws Exception {
+        // Arrange - This test verifies that streaming works without loading everything in memory
+        log.info("Testing memory efficiency of streaming export with 10000 points...");
+        Instant baseTime = Instant.now().minus(12, ChronoUnit.HOURS);
+        int largePointCount = 10000;
+
+        // Get memory before creating dataset
+        Runtime runtime = Runtime.getRuntime();
+        runtime.gc(); // Suggest garbage collection
+        long memoryBefore = runtime.totalMemory() - runtime.freeMemory();
+        log.info("Memory before test: {} MB", memoryBefore / (1024 * 1024));
+
+        // Create large dataset
+        for (int i = 0; i < largePointCount; i++) {
+            GpsPointEntity point = createGpsPoint(
+                    baseTime.plus(i, ChronoUnit.SECONDS),
+                    37.7749 + (i * 0.00001),
+                    -122.4194 + (i * 0.00001),
+                    100.0, 15.0, 95.0
+            );
+            gpsPointRepository.persist(point);
+
+            // Flush every 1000 points to avoid OOM during setup
+            if (i % 1000 == 0 && i > 0) {
+                gpsPointRepository.flush();
+                log.info("Persisted {} points...", i);
+            }
+        }
+
+        gpsPointRepository.flush();
+        runtime.gc();
+        long memoryAfterInsert = runtime.totalMemory() - runtime.freeMemory();
+        log.info("Memory after inserting data: {} MB", memoryAfterInsert / (1024 * 1024));
+
+        ExportDateRange dateRange = new ExportDateRange();
+        dateRange.setStartDate(baseTime);
+        dateRange.setEndDate(baseTime.plus(largePointCount, ChronoUnit.SECONDS));
+
+        ExportJob job = new ExportJob();
+        job.setUserId(testUser.getId());
+        job.setDateRange(dateRange);
+
+        try {
+            // Act - Perform streaming export
+            runtime.gc();
+            long memoryBeforeExport = runtime.totalMemory() - runtime.freeMemory();
+            log.info("Memory before export: {} MB", memoryBeforeExport / (1024 * 1024));
+
+            long startTime = System.currentTimeMillis();
+            byte[] gpxBytes = gpxExportService.generateGpxExport(job, false, "individual");
+            long exportTime = System.currentTimeMillis() - startTime;
+
+            runtime.gc();
+            long memoryAfterExport = runtime.totalMemory() - runtime.freeMemory();
+            long memoryUsedForExport = memoryAfterExport - memoryBeforeExport;
+
+            log.info("Memory after export: {} MB", memoryAfterExport / (1024 * 1024));
+            log.info("Memory used for export: {} MB", memoryUsedForExport / (1024 * 1024));
+            log.info("Export completed in {} ms", exportTime);
+
+            // Assert - Verify results
+            String gpxXml = new String(gpxBytes);
+            Document doc = parseXmlDocument(gpxXml);
+            NodeList trkptNodes = doc.getElementsByTagName("trkpt");
+
+            assertEquals(largePointCount, trkptNodes.getLength(),
+                    "Should export all " + largePointCount + " points");
+
+            // Memory efficiency check: Export should not use excessive memory
+            // With streaming, memory usage should be relatively constant regardless of dataset size
+            // Allow up to 200MB for export (very generous, should be much less with streaming)
+            long maxAllowedMemoryMB = 200;
+            assertTrue(memoryUsedForExport / (1024 * 1024) < maxAllowedMemoryMB,
+                    String.format("Export used %d MB, expected < %d MB with streaming",
+                            memoryUsedForExport / (1024 * 1024), maxAllowedMemoryMB));
+
+            log.info("✅ Memory efficiency verified: {} points exported with only {} MB overhead",
+                    largePointCount, memoryUsedForExport / (1024 * 1024));
+
+        } finally {
+            gpsPointRepository.delete("user.id", testUser.getId());
+        }
+    }
+
     // ========================================
     // Helper Methods
     // ========================================
@@ -640,5 +984,230 @@ class GpxExportServiceTest {
         factory.setNamespaceAware(true);
         DocumentBuilder builder = factory.newDocumentBuilder();
         return builder.parse(new InputSource(new StringReader(xml)));
+    }
+
+    /**
+     * Test that verifies:
+     * 1. GPX export creates duplicates in single file mode (raw GPS track + trip tracks + stay tracks)
+     * 2. Re-importing the duplicated GPX file results in correct deduplication via database unique constraint
+     *
+     * This test simulates the real-world scenario where a user exports 125K points,
+     * gets a GPX file with 185K track points due to duplication, then re-imports it
+     * and expects only 125K points in the database (duplicates removed).
+     */
+    @Test
+    @Transactional
+    void testExportCreatesDuplicatesAndImportDeduplicates() throws Exception {
+        log.info("=== Testing Export Duplication and Import Deduplication ===");
+
+        // STEP 1: Create realistic test data
+        // Create 2 trips and 2 stays with GPS points for each
+        Instant baseTime = Instant.now().minus(2, ChronoUnit.HOURS);
+
+        // Trip 1: 100 GPS points
+        TimelineTripEntity trip1 = createTripWithGpsPoints(baseTime, 100, "Trip 1");
+
+        // Stay 1: 50 GPS points
+        Instant stay1Start = baseTime.plus(15, ChronoUnit.MINUTES);
+        TimelineStayEntity stay1 = createStayWithGpsPoints(stay1Start, 50, "Stay 1");
+
+        // Trip 2: 75 GPS points
+        Instant trip2Start = baseTime.plus(30, ChronoUnit.MINUTES);
+        TimelineTripEntity trip2 = createTripWithGpsPoints(trip2Start, 75, "Trip 2");
+
+        // Stay 2: 25 GPS points
+        Instant stay2Start = baseTime.plus(45, ChronoUnit.MINUTES);
+        TimelineStayEntity stay2 = createStayWithGpsPoints(stay2Start, 25, "Stay 2");
+
+        // Total: 100 + 50 + 75 + 25 = 250 unique GPS points
+        int originalGpsPointCount = 250;
+
+        // Count GPS points in database before export
+        long pointsInDbBefore = gpsPointRepository.count();
+        log.info("GPS points in database before export: {}", pointsInDbBefore);
+        assertTrue(pointsInDbBefore >= originalGpsPointCount,
+            "Should have at least " + originalGpsPointCount + " GPS points");
+
+        // STEP 2: Export to single GPX file (creates duplicates)
+        ExportDateRange dateRange = new ExportDateRange();
+        dateRange.setStartDate(baseTime.minus(1, ChronoUnit.HOURS));
+        dateRange.setEndDate(baseTime.plus(2, ChronoUnit.HOURS));
+
+        ExportJob exportJob = new ExportJob();
+        exportJob.setUserId(testUser.getId());
+        exportJob.setDateRange(dateRange);
+
+        log.info("Exporting GPS data to single GPX file...");
+        byte[] gpxBytes = gpxExportService.generateGpxExport(exportJob, false, "single");
+        assertNotNull(gpxBytes);
+        assertTrue(gpxBytes.length > 0);
+
+        String gpxContent = new String(gpxBytes);
+        log.info("Generated GPX file size: {} bytes", gpxBytes.length);
+
+        // STEP 3: Count track points and waypoints in the exported GPX file
+        Document doc = parseXmlDocument(gpxContent);
+        NodeList trkptNodes = doc.getElementsByTagName("trkpt");
+        NodeList wptNodes = doc.getElementsByTagName("wpt");
+        int exportedTrackPointCount = trkptNodes.getLength();
+        int exportedWaypointCount = wptNodes.getLength();
+
+        log.info("Track points in exported GPX file: {}", exportedTrackPointCount);
+        log.info("Waypoints in exported GPX file: {} (trip start/end markers)", exportedWaypointCount);
+        log.info("Total points in GPX: {}", exportedTrackPointCount + exportedWaypointCount);
+        log.info("Original GPS points in database: {}", originalGpsPointCount);
+
+        // CRITICAL ASSERTION: Export should create duplicates in track points
+        // Single file mode creates: raw GPS track + trip tracks + stay tracks
+        // So we expect MORE track points in GPX than original GPS points
+        assertTrue(exportedTrackPointCount > originalGpsPointCount,
+            String.format("Expected export to create duplicates! " +
+                "Original: %d points, Exported: %d track points. " +
+                "Single file export should include raw GPS track + trip tracks + stay tracks, creating duplication.",
+                originalGpsPointCount, exportedTrackPointCount));
+
+        double duplicationRatio = (double) exportedTrackPointCount / originalGpsPointCount;
+        log.info("Duplication ratio: {:.2f}x ({} exported / {} original)",
+            duplicationRatio, exportedTrackPointCount, originalGpsPointCount);
+
+        // STEP 4: Re-import the GPX file with duplicates
+        log.info("Re-importing GPX file with {} track points (contains duplicates)...", exportedTrackPointCount);
+
+        // Create import options
+        org.github.tess1o.geopulse.importdata.model.ImportOptions importOptions =
+            new org.github.tess1o.geopulse.importdata.model.ImportOptions();
+        importOptions.setImportFormat("gpx");
+        importOptions.setClearDataBeforeImport(false); // Merge mode to test deduplication
+
+        // Create import job with proper constructor
+        org.github.tess1o.geopulse.importdata.model.ImportJob importJob =
+            new org.github.tess1o.geopulse.importdata.model.ImportJob(
+                testUser.getId(),
+                importOptions,
+                "test-export.gpx",
+                gpxBytes
+            );
+
+        // Validate and process import
+        gpxImportStrategy.validateAndDetectDataTypes(importJob);
+        gpxImportStrategy.processImportData(importJob);
+
+        // STEP 5: Verify deduplication worked
+        long pointsInDbAfter = gpsPointRepository.count();
+        int totalImported = (int)(pointsInDbAfter - pointsInDbBefore);
+        log.info("GPS points in database after re-import: {}", pointsInDbAfter);
+        log.info("New points imported: {}", totalImported);
+
+        // CRITICAL ASSERTIONS: Verify deduplication worked correctly
+
+        // 1. We should NOT import more than the original + waypoints
+        long maxExpected = pointsInDbBefore + exportedWaypointCount;
+        assertTrue(pointsInDbAfter <= maxExpected,
+            String.format("Too many points imported! " +
+                "Max expected: %d (Before: %d + Waypoints: %d), Got: %d. " +
+                "This suggests duplicate track points were not properly rejected.",
+                maxExpected, pointsInDbBefore, exportedWaypointCount, pointsInDbAfter));
+
+        // 2. We should import a small number (waypoints only, since track points are duplicates)
+        assertTrue(totalImported <= exportedWaypointCount,
+            String.format("Too many new points imported! " +
+                "Expected at most %d waypoints, but got %d new points. " +
+                "This suggests duplicate track points were not properly rejected.",
+                exportedWaypointCount, totalImported));
+
+        // 3. Verify massive deduplication occurred (99%+ of track points were duplicates)
+        double deduplicationRate = (double)(exportedTrackPointCount - (totalImported - exportedWaypointCount))
+            / exportedTrackPointCount * 100;
+        assertTrue(deduplicationRate > 99.0,
+            String.format("Insufficient deduplication! " +
+                "Expected >99%% of track points to be duplicates, but got %.1f%%. " +
+                "Track points: %d, Imported (excluding waypoints): %d",
+                deduplicationRate, exportedTrackPointCount, totalImported - exportedWaypointCount));
+
+        // Log success
+        log.info("✓ Deduplication successful:");
+        log.info("  - {} track points in GPX (with duplicates)", exportedTrackPointCount);
+        log.info("  - {}/{} waypoints imported (some may overlap with existing GPS points)",
+            totalImported, exportedWaypointCount);
+        log.info("  - {:.1f}% of track points were duplicates and correctly skipped", deduplicationRate);
+        log.info("  - Total in DB: {} points ({} original + {} new)",
+            pointsInDbAfter, pointsInDbBefore, totalImported);
+
+        log.info("=== Test Complete: Export duplication and import deduplication verified ===");
+    }
+
+    /**
+     * Helper: Create a trip with GPS points
+     */
+    private TimelineTripEntity createTripWithGpsPoints(Instant startTime, int pointCount, String tripName) {
+        // Create trip
+        TimelineTripEntity trip = new TimelineTripEntity();
+        trip.setUser(testUser);
+        trip.setTimestamp(startTime);
+        trip.setTripDuration(600L); // 10 minutes
+        trip.setDistanceMeters(5000L); // 5 km = 5000 meters
+        trip.setMovementType("WALKING");
+
+        // Set start and end points
+        trip.setStartPoint(GeoUtils.createPoint(-122.4194, 37.7749));
+        trip.setEndPoint(GeoUtils.createPoint(-122.4184, 37.7759));
+
+        // Create path
+        Coordinate[] coordinates = new Coordinate[]{
+            new Coordinate(-122.4194, 37.7749),
+            new Coordinate(-122.4184, 37.7759)
+        };
+        LineString path = geometryFactory.createLineString(coordinates);
+        trip.setPath(path);
+
+        timelineTripRepository.persist(trip);
+
+        // Create GPS points for the trip
+        long secondsPerPoint = 600L / pointCount; // Distribute points evenly over trip duration
+        for (int i = 0; i < pointCount; i++) {
+            Instant timestamp = startTime.plusSeconds(i * secondsPerPoint);
+            double lat = 37.7749 + (i * 0.0001); // Small increments
+            double lon = -122.4194 + (i * 0.0001);
+
+            GpsPointEntity gpsPoint = createGpsPoint(timestamp, lat, lon, 100.0, 15.0, 95.0);
+            gpsPointRepository.persist(gpsPoint);
+        }
+
+        log.info("Created trip '{}' with {} GPS points", tripName, pointCount);
+        return trip;
+    }
+
+    /**
+     * Helper: Create a stay with GPS points
+     */
+    private TimelineStayEntity createStayWithGpsPoints(Instant startTime, int pointCount, String stayName) {
+        // Create stay
+        TimelineStayEntity stay = new TimelineStayEntity();
+        stay.setUser(testUser);
+        stay.setTimestamp(startTime);
+        stay.setStayDuration(900L); // 15 minutes
+        stay.setLocationSource(LocationSource.GEOCODING);
+        stay.setLocationName("Test Location");
+
+        // Stay location (center point)
+        org.locationtech.jts.geom.Point centerPoint = GeoUtils.createPoint(-122.4180, 37.7755);
+        stay.setLocation(centerPoint);
+
+        timelineStayRepository.persist(stay);
+
+        // Create GPS points for the stay (clustered around center)
+        long secondsPerPoint = 900L / pointCount;
+        for (int i = 0; i < pointCount; i++) {
+            Instant timestamp = startTime.plusSeconds(i * secondsPerPoint);
+            // Small variations around center (stay points should be close together)
+            double lat = 37.7755 + ((Math.random() - 0.5) * 0.00005);
+            double lon = -122.4180 + ((Math.random() - 0.5) * 0.00005);
+
+            GpsPointEntity gpsPoint = createGpsPoint(timestamp, lat, lon, 50.0, 0.5, 85.0);
+            gpsPointRepository.persist(gpsPoint);
+        }
+
+        log.info("Created stay '{}' with {} GPS points", stayName, pointCount);
+        return stay;
     }
 }

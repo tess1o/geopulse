@@ -108,35 +108,40 @@ class OwnTracksExportImportIntegrationTest {
 
     @Transactional
     void cleanupTestData() {
-        cleanupHelper.cleanupTimeline();
+        cleanupHelper.cleanupAll();
         gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
         userRepository.delete("email = ?1", "test-owntracks@geopulse.app");
     }
 
     @Transactional
     void createTestGpsData() {
+        // Use whole-second timestamps to ensure proper duplicate detection
+        // OwnTracks format uses epoch seconds (no subsecond precision), so we must use whole seconds
+        // to make export/import cycles produce exact duplicates
+        Instant now = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+
         testGpsPoints = Arrays.asList(
                 // Point 1: Basic GPS point
                 createGpsPoint(
-                        Instant.now().minus(3, ChronoUnit.HOURS),
+                        now.minus(3, ChronoUnit.HOURS),
                         37.7749, -122.4194, // San Francisco
                         5.0, 100.0, 0.0, 85.0, "device-1"
                 ),
                 // Point 2: GPS point with higher accuracy
                 createGpsPoint(
-                        Instant.now().minus(2, ChronoUnit.HOURS),
+                        now.minus(2, ChronoUnit.HOURS),
                         37.7849, -122.4094, // Slightly different location
                         3.0, 110.0, 2.5, 80.0, "device-1"
                 ),
                 // Point 3: GPS point with missing optional data
                 createGpsPoint(
-                        Instant.now().minus(1, ChronoUnit.HOURS),
+                        now.minus(1, ChronoUnit.HOURS),
                         37.7949, -122.3994, // Another location
                         null, null, null, null, "device-2"
                 ),
                 // Point 4: Recent GPS point
                 createGpsPoint(
-                        Instant.now().minus(30, ChronoUnit.MINUTES),
+                        now.minus(30, ChronoUnit.MINUTES),
                         37.8049, -122.3894, // Most recent location
                         2.0, 120.0, 5.0, 75.0, "device-1"
                 )
@@ -227,10 +232,11 @@ class OwnTracksExportImportIntegrationTest {
 
         log.info("Duplicate import completed: {} GPS points (no duplicates created)", afterImportGpsCount);
 
-        // Step 4: Import modified data (should update existing points)
-        log.info("Step 4: Importing modified OwnTracks data (testing updates)");
+        // Step 4: Verify that re-importing with modified metadata doesn't create duplicates or update points
+        // The system uses ON CONFLICT DO NOTHING - exact duplicates are skipped (not updated)
+        log.info("Step 4: Verify duplicate detection with modified metadata (should still skip)");
 
-        // Modify the exported data to simulate updates
+        // Modify the exported data - same timestamp/coordinates, but better metadata
         OwnTracksLocationMessage[] modifiedMessages = Arrays.copyOf(exportedMessages, exportedMessages.length);
         for (int i = 0; i < modifiedMessages.length; i++) {
             OwnTracksLocationMessage message = modifiedMessages[i];
@@ -256,24 +262,12 @@ class OwnTracksExportImportIntegrationTest {
 
         importDataService.processImportData(modifiedImportJob);
 
-        // Verify data was updated
-        long afterUpdateGpsCount = gpsPointRepository.count("user = ?1", testUser);
-        assertEquals(originalGpsCount, afterUpdateGpsCount,
-                "GPS point count should still be the same after updates");
+        // Verify duplicates were skipped (not updated) - count should remain the same
+        long afterModifiedImportCount = gpsPointRepository.count("user = ?1", testUser);
+        assertEquals(originalGpsCount, afterModifiedImportCount,
+                "GPS point count should remain the same - duplicates skipped via ON CONFLICT DO NOTHING");
 
-        // Verify that some points were actually updated with better data
-        List<GpsPointEntity> updatedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
-                testUser.getId(),
-                Instant.now().minus(1, ChronoUnit.DAYS),
-                Instant.now().plus(1, ChronoUnit.HOURS)
-        );
-
-        long pointsWithGoodAccuracy = updatedPoints.stream()
-                .filter(p -> p.getAccuracy() != null && p.getAccuracy() <= 1.0)
-                .count();
-        assertTrue(pointsWithGoodAccuracy > 0, "Some points should have been updated with better accuracy");
-
-        log.info("Update import completed: {} points with improved accuracy", pointsWithGoodAccuracy);
+        log.info("Modified data import completed: {} GPS points (duplicates correctly skipped)", afterModifiedImportCount);
 
         log.info("=== OwnTracks Export/Import Integration Test Completed Successfully ===");
     }
@@ -376,52 +370,41 @@ class OwnTracksExportImportIntegrationTest {
     @Test
     @Transactional
     void testSpatialDuplicateDetection() throws Exception {
-        log.info("=== Testing Spatial Duplicate Detection ===");
+        log.info("=== Testing Exact Duplicate Detection ===");
 
-        // Create OwnTracks data with points very close to existing ones (should be detected as duplicates)
-        OwnTracksLocationMessage[] nearDuplicateMessages = testGpsPoints.stream()
+        // Create OwnTracks data with EXACT same timestamp and coordinates (exact duplicates)
+        // Duplicate detection uses unique constraint: (user_id, timestamp, coordinates)
+        // Only EXACT matches are considered duplicates
+        OwnTracksLocationMessage[] exactDuplicateMessages = testGpsPoints.stream()
                 .map(gpsPoint -> {
                     OwnTracksLocationMessage message = new OwnTracksLocationMessage();
-                    message.setLat(gpsPoint.getLatitude() + 0.000001); // Very small difference (about 0.1 meters)
-                    message.setLon(gpsPoint.getLongitude() + 0.000001);
-                    message.setTst((gpsPoint.getTimestamp().getEpochSecond() + 1)); // 1 second difference
+                    message.setLat(gpsPoint.getLatitude()); // EXACT same latitude
+                    message.setLon(gpsPoint.getLongitude()); // EXACT same longitude
+                    message.setTst(gpsPoint.getTimestamp().getEpochSecond()); // EXACT same timestamp
                     message.setAcc(2.0); // Better accuracy
                     message.setType("location");
                     return message;
                 }).toArray(OwnTracksLocationMessage[]::new);
 
-        String nearDuplicateJson = objectMapper.writeValueAsString(nearDuplicateMessages);
-        byte[] nearDuplicateData = nearDuplicateJson.getBytes();
+        String exactDuplicateJson = objectMapper.writeValueAsString(exactDuplicateMessages);
+        byte[] exactDuplicateData = exactDuplicateJson.getBytes();
 
         long originalCount = gpsPointRepository.count("user = ?1", testUser);
 
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("owntracks");
 
-        ImportJob nearDuplicateJob = importService.createOwnTracksImportJob(
-                testUser.getId(), importOptions, "near-duplicates.json", nearDuplicateData);
+        ImportJob exactDuplicateJob = importService.createOwnTracksImportJob(
+                testUser.getId(), importOptions, "exact-duplicates.json", exactDuplicateData);
 
-        importDataService.processImportData(nearDuplicateJob);
+        importDataService.processImportData(exactDuplicateJob);
 
-        // Should detect as duplicates and update existing points instead of creating new ones
-        long afterNearDuplicateCount = gpsPointRepository.count("user = ?1", testUser);
-        assertEquals(originalCount, afterNearDuplicateCount,
-                "Near-duplicate points should be detected and not create new records");
+        // Should detect as exact duplicates and skip them (ON CONFLICT DO NOTHING)
+        long afterDuplicateCount = gpsPointRepository.count("user = ?1", testUser);
+        assertEquals(originalCount, afterDuplicateCount,
+                "Exact duplicate points (same timestamp and coordinates) should be skipped");
 
-        // Verify that accuracy was improved for existing points
-        List<GpsPointEntity> updatedPoints = gpsPointRepository.findByUserIdAndTimePeriod(
-                testUser.getId(),
-                Instant.now().minus(1, ChronoUnit.DAYS),
-                Instant.now().plus(1, ChronoUnit.HOURS)
-        );
-
-        long pointsWithImprovedAccuracy = updatedPoints.stream()
-                .filter(p -> p.getAccuracy() != null && p.getAccuracy() <= 2.0)
-                .count();
-        assertTrue(pointsWithImprovedAccuracy > 0,
-                "Some points should have been updated with better accuracy from near-duplicates");
-
-        log.info("Spatial duplicate detection test completed: {} points updated", pointsWithImprovedAccuracy);
+        log.info("Exact duplicate detection test completed: {} points remain (duplicates skipped)", afterDuplicateCount);
     }
 
     @Test

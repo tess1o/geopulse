@@ -315,4 +315,13 @@ public class ExportDataCollectorService {
 
         return stay;
     }
+
+    /**
+     * Provides access to GPS point repository for streaming exports.
+     *
+     * @return the GPS point repository
+     */
+    public GpsPointRepository getGpsPointRepository() {
+        return gpsPointRepository;
+    }
 }

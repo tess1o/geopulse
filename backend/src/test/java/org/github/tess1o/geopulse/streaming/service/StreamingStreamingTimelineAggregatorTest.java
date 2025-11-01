@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
@@ -47,6 +48,9 @@ class StreamingStreamingTimelineAggregatorTest {
     @Inject
     TimelineDataGapRepository timelineDataGapRepository;
 
+    @Inject
+    GpsSourceRepository gpsSourceRepository;
+
     private final GeometryFactory geometryFactory = new GeometryFactory();
     @Inject
     CleanupHelper cleanupHelper;
@@ -61,6 +65,7 @@ class StreamingStreamingTimelineAggregatorTest {
         timelineTripRepository.deleteAll();
         timelineStayRepository.deleteAll();
         gpsPointRepository.deleteAll();
+        gpsSourceRepository.deleteAll();
         userRepository.deleteAll();
 
         // Create test user

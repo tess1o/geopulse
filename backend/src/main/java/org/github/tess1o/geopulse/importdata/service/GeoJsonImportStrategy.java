@@ -100,121 +100,13 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
         }
     }
 
-    @Override
-    protected List<GpsPointEntity> parseAndConvertToGpsEntities(ImportJob job, UserEntity user) throws IOException {
-        // This method should NEVER be called for GeoJSON because we override processImportData()
-        // If this executes, something is wrong - we want to know about it!
-        throw new UnsupportedOperationException(
-            "parseAndConvertToGpsEntities should not be called for GeoJSON! " +
-            "GeoJSON uses streaming import via processImportData() override. " +
-            "This method loads all entities in memory and should never execute.");
-
-        // Old implementation kept below for reference only (unreachable code)
-        /*
-        List<GpsPointEntity> allGpsPoints = new ArrayList<>();
-        StreamingGeoJsonParser parser = new StreamingGeoJsonParser(job.getZipData(), objectMapper);
-        parser.parseFeatures((feature, stats) -> {
-            if (!feature.hasValidGeometry()) {
-                return;
-            }
-
-            GeoJsonGeometry geometry = feature.getGeometry();
-            GeoJsonProperties properties = feature.getProperties();
-
-            if (geometry instanceof GeoJsonPoint point) {
-                GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);
-                if (gpsPoint != null) {
-                    allGpsPoints.add(gpsPoint);
-                }
-            } else if (geometry instanceof GeoJsonLineString lineString) {
-                for (GeoJsonPoint point : lineString.getPoints()) {
-                    GpsPointEntity gpsPoint = convertPointToGpsPoint(point, properties, user, job);
-                    if (gpsPoint != null) {
-                        allGpsPoints.add(gpsPoint);
-                    }
-                }
-            }
-        });
-        return allGpsPoints;
-        */
-    }
-
     /**
-     * Override processImportData to use true streaming without accumulating all entities in memory.
-     * This is the key optimization for handling large files (800MB+).
+     * Use template method pattern to handle streaming import workflow.
      */
     @Override
     public void processImportData(ImportJob job) throws IOException {
-        log.info("Processing GeoJSON import using TRUE STREAMING mode (minimal memory footprint)");
-
-        try {
-            UserEntity user = userRepository.findById(job.getUserId());
-            if (user == null) {
-                throw new IllegalStateException("User not found: " + job.getUserId());
-            }
-
-            // For streaming mode, we need to:
-            // 1. Optionally clear data (requires date range, which requires one pass)
-            // 2. Stream and write directly to DB
-            // 3. Track first timestamp for timeline generation
-
-            boolean clearMode = job.getOptions().isClearDataBeforeImport();
-
-            // For clear mode, use timestamps captured during validation to delete old data
-            // This avoids parsing the file twice!
-            Instant firstTimestamp = job.getDataFirstTimestamp();
-
-            if (clearMode && firstTimestamp != null && job.getDataLastTimestamp() != null) {
-                job.updateProgress(20, "Clearing existing data in date range...");
-                log.info("Clearing old data using timestamps from validation: {} to {}",
-                        firstTimestamp, job.getDataLastTimestamp());
-
-                ImportDataClearingService.DateRange deletionRange =
-                    dataClearingService.calculateDeletionRange(job,
-                        new ImportDataClearingService.DateRange(firstTimestamp, job.getDataLastTimestamp()));
-                if (deletionRange != null) {
-                    int deletedCount = dataClearingService.clearGpsDataInRange(user.getId(), deletionRange);
-                    log.info("Cleared {} existing GPS points before streaming import", deletedCount);
-                }
-            }
-
-            // Start streaming import with direct DB writes
-            job.updateProgress(20, "Parsing and inserting GPS data...");
-            StreamingImportResult result = streamingImportWithDirectWrites(job, user, clearMode);
-
-            // Use timestamp from validation, or fall back to streaming result
-            if (firstTimestamp == null) {
-                firstTimestamp = result.firstTimestamp;
-            }
-
-            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
-
-            job.updateProgress(100, "Import completed successfully");
-
-            log.info("GeoJSON streaming import completed: {} imported, {} skipped from {} total features",
-                    result.imported, result.skipped, result.totalFeatures);
-
-        } catch (Exception e) {
-            log.error("Failed to process GeoJSON streaming import: {}", e.getMessage(), e);
-            throw new IOException("Failed to process GeoJSON import: " + e.getMessage(), e);
-        } finally {
-            // Clean up temp file if it exists (whether success or failure)
-            if (job.hasTempFile()) {
-                try {
-                    java.nio.file.Path tempPath = java.nio.file.Paths.get(job.getTempFilePath());
-                    if (java.nio.file.Files.exists(tempPath)) {
-                        long fileSize = java.nio.file.Files.size(tempPath);
-                        java.nio.file.Files.delete(tempPath);
-                        log.info("Deleted temp file after import: {} ({} MB)",
-                                job.getTempFilePath(), fileSize / (1024 * 1024));
-                    }
-                } catch (IOException e) {
-                    log.warn("Failed to delete temp file {}: {}",
-                            job.getTempFilePath(), e.getMessage());
-                }
-            }
-        }
+        processStreamingImport(job, this::streamingImportWithDirectWrites,
+                "Parsing and inserting GPS data...", "features");
     }
 
     /**
@@ -345,24 +237,6 @@ public class GeoJsonImportStrategy extends BaseGpsImportStrategy {
         } catch (Exception e) {
             log.error("Failed to flush batch to database: {}", e.getMessage(), e);
             // Continue processing even if one batch fails
-        }
-    }
-
-
-    /**
-     * Result of streaming import operation
-     */
-    private static class StreamingImportResult {
-        final int imported;
-        final int skipped;
-        final int totalFeatures;
-        final Instant firstTimestamp;
-
-        StreamingImportResult(int imported, int skipped, int totalFeatures, Instant firstTimestamp) {
-            this.imported = imported;
-            this.skipped = skipped;
-            this.totalFeatures = totalFeatures;
-            this.firstTimestamp = firstTimestamp;
         }
     }
 

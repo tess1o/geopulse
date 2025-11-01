@@ -12,8 +12,15 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.locationtech.jts.geom.Coordinate;
 
+import javax.xml.stream.XMLOutputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +45,48 @@ public class GpxExportService {
     ExportDataCollectorService dataCollectorService;
 
     /**
+     * Converts a list of GPS points to a GPX track.
+     * This is the core conversion logic used by all export methods.
+     *
+     * @param gpsPoints List of GPS point entities
+     * @param trackName Name for the GPX track
+     * @param trackDescription Description for the GPX track
+     * @return GPX track with all points, or null if no points
+     */
+    private GpxTrack convertGpsPointsToGpxTrack(List<org.github.tess1o.geopulse.gps.model.GpsPointEntity> gpsPoints,
+                                                String trackName, String trackDescription) {
+        if (gpsPoints == null || gpsPoints.isEmpty()) {
+            return null;
+        }
+
+        var trackPoints = new ArrayList<GpxTrackPoint>();
+        for (var gpsPoint : gpsPoints) {
+            GpxTrackPoint trackPoint = new GpxTrackPoint();
+            trackPoint.setLat(gpsPoint.getCoordinates().getY());
+            trackPoint.setLon(gpsPoint.getCoordinates().getX());
+            trackPoint.setElevation(gpsPoint.getAltitude());
+            trackPoint.setTime(gpsPoint.getTimestamp());
+
+            // Convert velocity from km/h to m/s
+            if (gpsPoint.getVelocity() != null) {
+                trackPoint.setSpeed(gpsPoint.getVelocity() / 3.6);
+            }
+
+            trackPoints.add(trackPoint);
+        }
+
+        GpxTrackSegment segment = new GpxTrackSegment();
+        segment.setTrackPoints(trackPoints);
+
+        GpxTrack track = new GpxTrack();
+        track.setName(trackName);
+        track.setDescription(trackDescription);
+        track.setTrackSegments(List.of(segment));
+
+        return track;
+    }
+
+    /**
      * Generates a GPX export, either as a single file or as a ZIP with per-trip files.
      *
      * @param job         the export job
@@ -58,17 +107,280 @@ public class GpxExportService {
     }
 
     /**
-     * Generates a single GPX file containing all data.
+     * Generates a single GPX file containing all data using STREAMING export.
+     * This handles millions of GPS points without loading them all into memory.
      *
      * @param job the export job
      * @return the GPX file as bytes
      * @throws IOException if an I/O error occurs
      */
     private byte[] generateSingleGpxFile(ExportJob job) throws IOException {
-        GpxFile gpxFile = buildGpxFile(job);
-        String xml = xmlMapper.writeValueAsString(gpxFile);
-        log.debug("Generated single GPX export with {} bytes", xml.getBytes().length);
-        return xml.getBytes();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try {
+            streamGpxFileToOutput(job, baos);
+            byte[] result = baos.toByteArray();
+            log.info("Generated streaming GPX export with {} bytes", result.length);
+            return result;
+        } catch (XMLStreamException e) {
+            throw new IOException("Failed to generate GPX export: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Streams a complete GPX file to the output stream without loading all data into memory.
+     * Uses XMLStreamWriter for memory-efficient export of millions of GPS points.
+     *
+     * @param job the export job
+     * @param outputStream the output stream to write to
+     * @throws XMLStreamException if XML writing fails
+     * @throws IOException if data collection fails
+     */
+    private void streamGpxFileToOutput(ExportJob job, ByteArrayOutputStream outputStream)
+            throws XMLStreamException, IOException {
+
+        XMLOutputFactory factory = XMLOutputFactory.newInstance();
+        Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+        XMLStreamWriter xml = factory.createXMLStreamWriter(writer);
+
+        try {
+            // Start GPX document
+            xml.writeStartDocument("UTF-8", "1.0");
+            xml.writeStartElement("gpx");
+            xml.writeAttribute("version", "1.1");
+            xml.writeAttribute("creator", "GeoPulse");
+            xml.writeAttribute("xmlns", "http://www.topografix.com/GPX/1/1");
+
+            // Write metadata
+            xml.writeStartElement("metadata");
+            xml.writeStartElement("name");
+            xml.writeCharacters("GeoPulse Export");
+            xml.writeEndElement(); // name
+            xml.writeStartElement("desc");
+            xml.writeCharacters("GPS tracks and waypoints exported from GeoPulse");
+            xml.writeEndElement(); // desc
+            xml.writeStartElement("time");
+            xml.writeCharacters(java.time.Instant.now().toString());
+            xml.writeEndElement(); // time
+            xml.writeEndElement(); // metadata
+
+            // Stream raw GPS data as first track (MEMORY EFFICIENT!)
+            streamRawGpsTrack(job, xml);
+
+            // Add timeline trips as tracks (these are already small/simplified)
+            streamTimelineTripTracks(job, xml);
+
+            // Add timeline stays as waypoints
+            streamTimelineStayWaypoints(job, xml);
+
+            xml.writeEndElement(); // gpx
+            xml.writeEndDocument();
+            xml.flush();
+
+        } finally {
+            xml.close();
+        }
+    }
+
+    /**
+     * Streams raw GPS points as a GPX track without loading all into memory.
+     * Processes GPS points in batches to maintain constant memory usage.
+     */
+    private void streamRawGpsTrack(ExportJob job, XMLStreamWriter xml)
+            throws XMLStreamException {
+
+        final int BATCH_SIZE = 1000; // Process 1000 points at a time
+        int page = 0;
+        long totalPoints = 0;
+        boolean trackStarted = false;
+
+        log.info("Starting streaming export of raw GPS data");
+
+        while (true) {
+            // Fetch batch of GPS points
+            var batch = dataCollectorService.getGpsPointRepository().findByUserAndDateRange(
+                    job.getUserId(),
+                    job.getDateRange().getStartDate(),
+                    job.getDateRange().getEndDate(),
+                    page,
+                    BATCH_SIZE,
+                    "timestamp",
+                    "asc"
+            );
+
+            if (batch.isEmpty()) {
+                break;
+            }
+
+            // Start track on first batch
+            if (!trackStarted) {
+                xml.writeStartElement("trk");
+                xml.writeStartElement("name");
+                xml.writeCharacters("Raw GPS Data");
+                xml.writeEndElement(); // name
+                xml.writeStartElement("desc");
+                xml.writeCharacters("All GPS points for the selected date range");
+                xml.writeEndElement(); // desc
+                xml.writeStartElement("trkseg");
+                trackStarted = true;
+            }
+
+            // Write each GPS point in batch
+            for (var gpsPoint : batch) {
+                xml.writeStartElement("trkpt");
+                xml.writeAttribute("lat", String.valueOf(gpsPoint.getCoordinates().getY()));
+                xml.writeAttribute("lon", String.valueOf(gpsPoint.getCoordinates().getX()));
+
+                if (gpsPoint.getAltitude() != null) {
+                    xml.writeStartElement("ele");
+                    xml.writeCharacters(String.valueOf(gpsPoint.getAltitude()));
+                    xml.writeEndElement(); // ele
+                }
+
+                xml.writeStartElement("time");
+                xml.writeCharacters(gpsPoint.getTimestamp().toString());
+                xml.writeEndElement(); // time
+
+                if (gpsPoint.getVelocity() != null) {
+                    xml.writeStartElement("speed");
+                    xml.writeCharacters(String.valueOf(gpsPoint.getVelocity() / 3.6)); // km/h to m/s
+                    xml.writeEndElement(); // speed
+                }
+
+                xml.writeEndElement(); // trkpt
+                totalPoints++;
+            }
+
+            page++;
+
+            if (page % 10 == 0) {
+                log.debug("Streamed {} GPS points so far...", totalPoints);
+            }
+        }
+
+        // Close track if we wrote any points
+        if (trackStarted) {
+            xml.writeEndElement(); // trkseg
+            xml.writeEndElement(); // trk
+            log.info("Completed streaming {} raw GPS points", totalPoints);
+        }
+    }
+
+    /**
+     * Streams timeline trips as GPX tracks with ALL raw GPS points (not simplified paths).
+     * CRITICAL FIX: Fetches raw GPS data for each trip to prevent data loss.
+     */
+    private void streamTimelineTripTracks(ExportJob job, XMLStreamWriter xml)
+            throws XMLStreamException {
+
+        var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
+
+        for (TimelineTripEntity trip : trips) {
+            // Fetch ALL raw GPS points for this trip's time range
+            java.time.Instant tripStart = trip.getTimestamp();
+            java.time.Instant tripEnd = tripStart.plusSeconds(trip.getTripDuration());
+
+            var tripGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                    trip.getUser().getId(),
+                    tripStart,
+                    tripEnd
+            );
+
+            if (tripGpsPoints.isEmpty()) {
+                continue; // Skip trips with no GPS data
+            }
+
+            xml.writeStartElement("trk");
+
+            String timeStr = tripStart.toString().substring(11, 16);
+            String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
+            String distanceKm = String.format("%.1f", trip.getDistanceMeters() / 1000.0);
+
+            xml.writeStartElement("name");
+            xml.writeCharacters(String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType));
+            xml.writeEndElement(); // name
+
+            xml.writeStartElement("desc");
+            xml.writeCharacters(String.format("%d GPS points, Duration: %d min, Distance: %s km",
+                    tripGpsPoints.size(), trip.getTripDuration() / 60, distanceKm));
+            xml.writeEndElement(); // desc
+
+            xml.writeStartElement("trkseg");
+
+            // Write ALL raw GPS points for this trip
+            for (var gpsPoint : tripGpsPoints) {
+                xml.writeStartElement("trkpt");
+                xml.writeAttribute("lat", String.valueOf(gpsPoint.getCoordinates().getY()));
+                xml.writeAttribute("lon", String.valueOf(gpsPoint.getCoordinates().getX()));
+
+                if (gpsPoint.getAltitude() != null) {
+                    xml.writeStartElement("ele");
+                    xml.writeCharacters(String.valueOf(gpsPoint.getAltitude()));
+                    xml.writeEndElement(); // ele
+                }
+
+                xml.writeStartElement("time");
+                xml.writeCharacters(gpsPoint.getTimestamp().toString());
+                xml.writeEndElement(); // time
+
+                if (gpsPoint.getVelocity() != null) {
+                    xml.writeStartElement("speed");
+                    xml.writeCharacters(String.valueOf(gpsPoint.getVelocity() / 3.6)); // km/h to m/s
+                    xml.writeEndElement(); // speed
+                }
+
+                xml.writeEndElement(); // trkpt
+            }
+
+            xml.writeEndElement(); // trkseg
+            xml.writeEndElement(); // trk
+
+            log.debug("Streamed trip track with {} raw GPS points (was {} simplified path points)",
+                    tripGpsPoints.size(), trip.getPath() != null ? trip.getPath().getNumPoints() : 0);
+        }
+
+        log.info("Streamed {} timeline trip tracks with raw GPS data", trips.size());
+    }
+
+    /**
+     * Streams timeline stays as GPX waypoints.
+     */
+    private void streamTimelineStayWaypoints(ExportJob job, XMLStreamWriter xml)
+            throws XMLStreamException {
+
+        var stays = dataCollectorService.collectTimelineStaysWithExpansion(job);
+
+        for (TimelineStayEntity stay : stays) {
+            xml.writeStartElement("wpt");
+            xml.writeAttribute("lat", String.valueOf(stay.getLocation().getY()));
+            xml.writeAttribute("lon", String.valueOf(stay.getLocation().getX()));
+
+            xml.writeStartElement("time");
+            xml.writeCharacters(stay.getTimestamp().toString());
+            xml.writeEndElement(); // time
+
+            xml.writeStartElement("name");
+            xml.writeCharacters(stay.getLocationName() != null ? stay.getLocationName() : "Unknown Location");
+            xml.writeEndElement(); // name
+
+            long hours = stay.getStayDuration() / 3600;
+            long minutes = (stay.getStayDuration() % 3600) / 60;
+            String durationStr = hours > 0 ?
+                    String.format("%dh %dm", hours, minutes) :
+                    String.format("%dm", minutes);
+
+            xml.writeStartElement("desc");
+            xml.writeCharacters(String.format("Duration: %s", durationStr));
+            xml.writeEndElement(); // desc
+
+            xml.writeStartElement("sym");
+            xml.writeCharacters("Flag");
+            xml.writeEndElement(); // sym
+
+            xml.writeEndElement(); // wpt
+        }
+
+        log.debug("Streamed {} timeline stay waypoints", stays.size());
     }
 
     /**
@@ -213,7 +525,8 @@ public class GpxExportService {
     }
 
     /**
-     * Builds a GPX file for a single day containing all trips and stays for that day.
+     * Builds a GPX file for a single day with ALL raw GPS points organized by trips/stays.
+     * IMPORTANT: Each trip gets its own track with ALL GPS points (not simplified path)!
      *
      * @param day    the date
      * @param trips  the trips for that day
@@ -233,24 +546,85 @@ public class GpxExportService {
         metadata.setTime(java.time.Instant.now());
         gpxFile.setMetadata(metadata);
 
-        // Build tracks from trips
         var tracks = new ArrayList<GpxTrack>();
+        var waypoints = new ArrayList<GpxWaypoint>();
+
+        // CRITICAL FIX: Export each trip as a separate track with ALL raw GPS points
         for (TimelineTripEntity trip : trips) {
-            GpxTrack track = buildGpxTrackFromTrip(trip);
-            if (track != null) {
-                tracks.add(track);
+            // Fetch ALL raw GPS points for this trip's time range
+            java.time.Instant tripStart = trip.getTimestamp();
+            java.time.Instant tripEnd = tripStart.plusSeconds(trip.getTripDuration());
+
+            var tripGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                    trip.getUser().getId(),
+                    tripStart,
+                    tripEnd
+            );
+
+            if (!tripGpsPoints.isEmpty()) {
+                String timeStr = tripStart.toString().substring(11, 16);
+                String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
+                String distanceKm = String.format("%.1f", trip.getDistanceMeters() / 1000.0);
+
+                GpxTrack track = convertGpsPointsToGpxTrack(
+                        tripGpsPoints,
+                        String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType),
+                        String.format("%d GPS points, Duration: %d min, Distance: %s km",
+                                tripGpsPoints.size(), trip.getTripDuration() / 60, distanceKm)
+                );
+
+                if (track != null) {
+                    tracks.add(track);
+                    log.debug("Exported {} raw GPS points for trip at {}", tripGpsPoints.size(), timeStr);
+                }
             }
         }
 
-        // Build waypoints from stays
-        var waypoints = new ArrayList<GpxWaypoint>();
+        // Export stays as waypoints with optional GPS tracks
         for (TimelineStayEntity stay : stays) {
+            // Create waypoint marker
             GpxWaypoint waypoint = createWaypointFromStay(stay);
             waypoints.add(waypoint);
+
+            // Optionally add GPS track for stay period (if there are GPS points during stay)
+            java.time.Instant stayStart = stay.getTimestamp();
+            java.time.Instant stayEnd = stayStart.plusSeconds(stay.getStayDuration());
+
+            var stayGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                    stay.getUser().getId(),
+                    stayStart,
+                    stayEnd
+            );
+
+            if (!stayGpsPoints.isEmpty()) {
+                long hours = stay.getStayDuration() / 3600;
+                long minutes = (stay.getStayDuration() % 3600) / 60;
+                String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
+                String locationName = stay.getLocationName() != null ? stay.getLocationName() : "Unknown";
+
+                GpxTrack stayTrack = convertGpsPointsToGpxTrack(
+                        stayGpsPoints,
+                        String.format("Stay: %s (%s)", locationName, durationStr),
+                        String.format("%d GPS points during stay", stayGpsPoints.size())
+                );
+
+                if (stayTrack != null) {
+                    tracks.add(stayTrack);
+                    log.debug("Exported {} raw GPS points for stay at {}", stayGpsPoints.size(), locationName);
+                }
+            }
         }
 
         gpxFile.setTracks(tracks);
         gpxFile.setWaypoints(waypoints);
+
+        log.info("Exported day {} with {} trip tracks, {} stay tracks, {} stay waypoints",
+                day, trips.size(), stays.stream().filter(s -> {
+                    var pts = dataCollectorService.collectGpsPointsInTimeRange(
+                        s.getUser().getId(), s.getTimestamp(),
+                        s.getTimestamp().plusSeconds(s.getStayDuration()));
+                    return !pts.isEmpty();
+                }).count(), stays.size());
 
         return gpxFile;
     }
@@ -293,216 +667,7 @@ public class GpxExportService {
         return xml.getBytes();
     }
 
-    /**
-     * Builds a complete GPX file with all data from the export job.
-     *
-     * @param job the export job
-     * @return the GPX file model
-     */
-    private GpxFile buildGpxFile(ExportJob job) {
-        GpxFile gpxFile = new GpxFile();
-        gpxFile.setVersion("1.1");
-        gpxFile.setCreator("GeoPulse");
-
-        // Set metadata
-        GpxMetadata metadata = new GpxMetadata();
-        metadata.setName("GeoPulse Export");
-        metadata.setDescription("GPS tracks and waypoints exported from GeoPulse");
-        metadata.setTime(java.time.Instant.now());
-        gpxFile.setMetadata(metadata);
-
-        // Build tracks and waypoints
-        var tracks = new ArrayList<GpxTrack>();
-        var waypoints = new ArrayList<GpxWaypoint>();
-
-        // Add raw GPS data as Track 1
-        GpxTrack rawGpsTrack = buildRawGpsTrack(job);
-        if (rawGpsTrack != null) {
-            tracks.add(rawGpsTrack);
-        }
-
-        // Add timeline trips as separate tracks
-        var tripTracks = buildTimelineTripTracks(job);
-        tracks.addAll(tripTracks);
-
-        // Add timeline stays as waypoints
-        var stayWaypoints = buildTimelineStayWaypoints(job);
-        waypoints.addAll(stayWaypoints);
-
-        gpxFile.setTracks(tracks);
-        gpxFile.setWaypoints(waypoints);
-
-        return gpxFile;
-    }
-
-    /**
-     * Builds a GPX track from raw GPS points.
-     *
-     * @param job the export job
-     * @return the GPX track, or null if no GPS points found
-     */
-    private GpxTrack buildRawGpsTrack(ExportJob job) {
-        var allPoints = dataCollectorService.collectGpsPoints(job);
-        if (allPoints.isEmpty()) {
-            return null;
-        }
-
-        var allTrackPoints = new ArrayList<GpxTrackPoint>();
-
-        for (var gpsPoint : allPoints) {
-            GpxTrackPoint trackPoint = new GpxTrackPoint();
-            trackPoint.setLat(gpsPoint.getCoordinates().getY());
-            trackPoint.setLon(gpsPoint.getCoordinates().getX());
-            trackPoint.setElevation(gpsPoint.getAltitude());
-            trackPoint.setTime(gpsPoint.getTimestamp());
-
-            // Convert velocity from km/h to m/s
-            if (gpsPoint.getVelocity() != null) {
-                trackPoint.setSpeed(gpsPoint.getVelocity() / 3.6);
-            }
-
-            allTrackPoints.add(trackPoint);
-        }
-
-        GpxTrackSegment segment = new GpxTrackSegment();
-        segment.setTrackPoints(allTrackPoints);
-
-        GpxTrack track = new GpxTrack();
-        track.setName("Raw GPS Data");
-        track.setDescription("All GPS points for the selected date range");
-        track.setTrackSegments(List.of(segment));
-
-        log.debug("Built raw GPS track with {} points", allTrackPoints.size());
-        return track;
-    }
-
-    /**
-     * Builds GPX tracks from timeline trips.
-     *
-     * @param job the export job
-     * @return list of GPX tracks
-     */
-    private List<GpxTrack> buildTimelineTripTracks(ExportJob job) {
-        var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
-        var tracks = new ArrayList<GpxTrack>();
-
-        for (TimelineTripEntity trip : trips) {
-            GpxTrack track = buildGpxTrackFromTrip(trip);
-            if (track != null) {
-                tracks.add(track);
-            }
-        }
-
-        log.debug("Built {} timeline trip tracks", tracks.size());
-        return tracks;
-    }
-
-    /**
-     * Builds a GPX track from a single timeline trip.
-     *
-     * @param trip the timeline trip entity
-     * @return the GPX track, or null if no path data
-     */
-    private GpxTrack buildGpxTrackFromTrip(TimelineTripEntity trip) {
-        if (trip.getPath() == null || trip.getPath().getNumPoints() == 0) {
-            return null;
-        }
-
-        var trackPoints = new ArrayList<GpxTrackPoint>();
-        Coordinate[] coordinates = trip.getPath().getCoordinates();
-
-        // Fetch original GPS points for this trip to get altitude data
-        java.time.Instant endTime = trip.getTimestamp().plusSeconds(trip.getTripDuration());
-        var gpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
-                trip.getUser().getId(),
-                trip.getTimestamp(),
-                endTime
-        );
-
-        // Create a map of GPS points by location for quick lookup
-        var gpsPointMap = new HashMap<String, org.github.tess1o.geopulse.gps.model.GpsPointEntity>();
-        for (var gpsPoint : gpsPoints) {
-            // Use rounded coordinates as key (to handle minor GPS variations)
-            String key = String.format("%.6f,%.6f", gpsPoint.getLatitude(), gpsPoint.getLongitude());
-            gpsPointMap.put(key, gpsPoint);
-        }
-
-        // Interpolate timestamps along the path
-        long tripDurationSeconds = trip.getTripDuration();
-        java.time.Instant startTime = trip.getTimestamp();
-
-        for (int i = 0; i < coordinates.length; i++) {
-            GpxTrackPoint trackPoint = new GpxTrackPoint();
-            trackPoint.setLat(coordinates[i].getY());
-            trackPoint.setLon(coordinates[i].getX());
-
-            // Try to get elevation from the original GPS point
-            String key = String.format("%.6f,%.6f", coordinates[i].getY(), coordinates[i].getX());
-            var matchingGpsPoint = gpsPointMap.get(key);
-            if (matchingGpsPoint != null && matchingGpsPoint.getAltitude() != null) {
-                trackPoint.setElevation(matchingGpsPoint.getAltitude());
-                // Use actual GPS speed instead of average if available
-                if (matchingGpsPoint.getVelocity() != null) {
-                    trackPoint.setSpeed(matchingGpsPoint.getVelocity() / 3.6); // Convert km/h to m/s
-                }
-            } else if (!Double.isNaN(coordinates[i].getZ())) {
-                // Fallback to 3D coordinate if available
-                trackPoint.setElevation(coordinates[i].getZ());
-            }
-
-            // Interpolate timestamp
-            double progress = coordinates.length > 1 ? (double) i / (coordinates.length - 1) : 0;
-            long secondsOffset = (long) (tripDurationSeconds * progress);
-            trackPoint.setTime(startTime.plusSeconds(secondsOffset));
-
-            // Add average speed if no GPS point matched and we have trip average
-            if (matchingGpsPoint == null && trip.getAvgGpsSpeed() != null) {
-                trackPoint.setSpeed(trip.getAvgGpsSpeed());
-            }
-
-            trackPoints.add(trackPoint);
-        }
-
-        GpxTrackSegment segment = new GpxTrackSegment();
-        segment.setTrackPoints(trackPoints);
-
-        GpxTrack track = new GpxTrack();
-
-        // Format track name with time and movement type
-        String timeStr = startTime.toString().substring(11, 16); // HH:mm
-        String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
-        String distanceKm = String.format("%.1f", trip.getDistanceMeters() / 1000.0);
-
-        track.setName(String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType));
-        track.setDescription(String.format("Duration: %d min, Distance: %s km, Movement: %s",
-                tripDurationSeconds / 60, distanceKm, movementType));
-        track.setTrackSegments(List.of(segment));
-
-        log.debug("Built GPX track from trip with {} points, {} had elevation data",
-                trackPoints.size(),
-                trackPoints.stream().filter(p -> p.getElevation() != null).count());
-
-        return track;
-    }
-
-    /**
-     * Builds GPX waypoints from timeline stays.
-     *
-     * @param job the export job
-     * @return list of GPX waypoints
-     */
-    private List<GpxWaypoint> buildTimelineStayWaypoints(ExportJob job) {
-        var stays = dataCollectorService.collectTimelineStaysWithExpansion(job);
-        var waypoints = new ArrayList<GpxWaypoint>();
-
-        for (TimelineStayEntity stay : stays) {
-            GpxWaypoint waypoint = createWaypointFromStay(stay);
-            waypoints.add(waypoint);
-        }
-
-        log.debug("Built {} timeline stay waypoints", waypoints.size());
-        return waypoints;
-    }
+    // Old non-streaming methods removed - replaced by streamGpxFileToOutput() and streaming helpers
 
     /**
      * Creates a GPX waypoint from a timeline stay.
@@ -531,7 +696,8 @@ public class GpxExportService {
     }
 
     /**
-     * Builds a GPX file for a single trip with start/end waypoints.
+     * Builds a GPX file for a single trip with ALL raw GPS points.
+     * IMPORTANT: Exports ALL GPS points from trip time range, not simplified timeline path!
      *
      * @param trip the timeline trip entity
      * @return the GPX file model
@@ -546,9 +712,31 @@ public class GpxExportService {
         metadata.setTime(java.time.Instant.now());
         gpxFile.setMetadata(metadata);
 
-        GpxTrack track = buildGpxTrackFromTrip(trip);
+        // CRITICAL FIX: Export ALL raw GPS points for this trip, not simplified timeline path!
+        java.time.Instant endTime = trip.getTimestamp().plusSeconds(trip.getTripDuration());
+        var gpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                trip.getUser().getId(),
+                trip.getTimestamp(),
+                endTime
+        );
+
+        String timeStr = trip.getTimestamp().toString().substring(11, 16);
+        String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
+        String distanceKm = String.format("%.1f", trip.getDistanceMeters() / 1000.0);
+
+        GpxTrack track = convertGpsPointsToGpxTrack(
+                gpsPoints,
+                String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType),
+                String.format("%d GPS points, Duration: %d min, Distance: %s km",
+                        gpsPoints.size(), trip.getTripDuration() / 60, distanceKm)
+        );
+
         if (track != null) {
             gpxFile.setTracks(List.of(track));
+            log.info("Exported {} raw GPS points for trip (was {} simplified path points)",
+                    gpsPoints.size(), trip.getPath() != null ? trip.getPath().getNumPoints() : 0);
+        } else {
+            gpxFile.setTracks(List.of());
         }
 
         // Add start and end waypoints
@@ -576,7 +764,8 @@ public class GpxExportService {
     }
 
     /**
-     * Builds a GPX file for a single stay.
+     * Builds a GPX file for a single stay with ALL raw GPS points from the stay period.
+     * IMPORTANT: Exports ALL GPS points from stay time range to prevent data loss!
      *
      * @param stay the timeline stay entity
      * @return the GPX file model
@@ -591,11 +780,34 @@ public class GpxExportService {
         metadata.setTime(java.time.Instant.now());
         gpxFile.setMetadata(metadata);
 
-        // Create waypoint for the stay
+        // Create waypoint marker for the stay
         GpxWaypoint waypoint = createWaypointFromStay(stay);
-
         gpxFile.setWaypoints(List.of(waypoint));
-        gpxFile.setTracks(List.of()); // No tracks for a stay
+
+        // CRITICAL FIX: Export ALL raw GPS points during the stay period
+        java.time.Instant endTime = stay.getTimestamp().plusSeconds(stay.getStayDuration());
+        var gpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+                stay.getUser().getId(),
+                stay.getTimestamp(),
+                endTime
+        );
+
+        long hours = stay.getStayDuration() / 3600;
+        long minutes = (stay.getStayDuration() % 3600) / 60;
+        String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
+
+        GpxTrack track = convertGpsPointsToGpxTrack(
+                gpsPoints,
+                String.format("Stay: %s (%s)", stay.getLocationName() != null ? stay.getLocationName() : "Unknown", durationStr),
+                String.format("%d GPS points during stay", gpsPoints.size())
+        );
+
+        if (track != null) {
+            gpxFile.setTracks(List.of(track));
+            log.info("Exported {} raw GPS points for stay (duration: {} seconds)", gpsPoints.size(), stay.getStayDuration());
+        } else {
+            gpxFile.setTracks(List.of());
+        }
 
         return gpxFile;
     }

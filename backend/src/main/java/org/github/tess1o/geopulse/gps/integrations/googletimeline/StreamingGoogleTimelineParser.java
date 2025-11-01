@@ -710,7 +710,7 @@ public class StreamingGoogleTimelineParser {
             if (fieldName == null) continue;
 
             switch (fieldName) {
-                case "latLng" -> {
+                case "latLng", "LatLng" -> {  // Handle both lowercase and capitalized versions
                     parser.nextToken();
                     latLng = parser.getValueAsString();
                 }
