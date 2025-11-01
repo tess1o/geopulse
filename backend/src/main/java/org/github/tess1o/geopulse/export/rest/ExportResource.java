@@ -327,6 +327,7 @@ public class ExportResource {
             response.setExportJobId(job.getJobId());
             response.setStatus(job.getStatus().name().toLowerCase());
             response.setProgress(job.getProgress());
+            response.setProgressMessage(job.getProgressMessage());
             response.setCreatedAt(job.getCreatedAt());
             response.setCompletedAt(job.getCompletedAt());
             response.setDataTypes(job.getDataTypes());

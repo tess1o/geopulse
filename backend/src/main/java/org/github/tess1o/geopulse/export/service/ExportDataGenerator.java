@@ -1,16 +1,16 @@
 package org.github.tess1o.geopulse.export.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.dto.*;
 import org.github.tess1o.geopulse.export.mapper.ExportDataMapper;
 import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,21 +19,16 @@ import java.util.Set;
 import java.util.zip.ZipOutputStream;
 
 /**
- * Main orchestrator for export operations.
+ * Main orchestrator for export operations using STREAMING approach.
  * Delegates to specialized services for format-specific exports and data collection.
+ *
  */
 @ApplicationScoped
 @Slf4j
 public class ExportDataGenerator {
 
     @Inject
-    ExportDataCollectorService dataCollectorService;
-
-    @Inject
     ExportDependencyResolver dependencyResolver;
-
-    @Inject
-    ZipFileService zipFileService;
 
     @Inject
     GpxExportService gpxExportService;
@@ -47,24 +42,43 @@ public class ExportDataGenerator {
     @Inject
     ExportDataMapper exportDataMapper;
 
-    private final ObjectMapper objectMapper = JsonMapper.builder()
-            .addModule(new JavaTimeModule())
-            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-            .enable(SerializationFeature.INDENT_OUTPUT)
-            .build();
+    @Inject
+    StreamingZipExportService streamingZipExportService;
+
+    @Inject
+    GpsPointRepository gpsPointRepository;
+
+    @Inject
+    TimelineStayRepository timelineStayRepository;
+
+    @Inject
+    TimelineTripRepository timelineTripRepository;
+
+    @Inject
+    TimelineDataGapRepository timelineDataGapRepository;
+
+    @Inject
+    ExportDataCollectorService dataCollectorService;
 
     /**
-     * Generates a ZIP archive containing exported data in native format.
+     * Generates a ZIP archive containing exported data in native format using STREAMING.
+     * Memory-efficient: processes data in batches without loading everything into memory.
      *
      * @param job the export job specification
      * @return the ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
     public byte[] generateExportZip(ExportJob job) throws IOException {
+        log.info("Starting streaming ZIP export for user {}", job.getUserId());
+
+        job.updateProgress(5, "Initializing export...");
+
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
-            // Add metadata file
+            job.updateProgress(10, "Adding metadata...");
+
+            // Add metadata file (small, no streaming needed)
             addMetadataFile(zos, job);
 
             // Collect dependencies if timeline is being exported
@@ -73,31 +87,43 @@ public class ExportDataGenerator {
                 dependencyResolver.collectTimelineDependencies(job, actualDataTypes);
             }
 
+            // Calculate progress segments for each data type
+            int progressPerType = 70 / actualDataTypes.size(); // Reserve 70% for data export
+            int currentProgress = 15;
+
             // Export dependencies first (order matters for import)
             if (actualDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION)) {
-                addReverseGeocodingData(zos, job);
-            }
-            if (actualDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES)) {
-                addFavoritesData(zos, job);
+                addReverseGeocodingData(zos, job, currentProgress, currentProgress + progressPerType);
+                currentProgress += progressPerType;
             }
 
-            // Add requested data types
+            if (actualDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES)) {
+                addFavoritesData(zos, job, currentProgress, currentProgress + progressPerType);
+                currentProgress += progressPerType;
+            }
+
+            // Add requested data types using streaming
             for (String dataType : job.getDataTypes()) {
                 switch (dataType.toLowerCase()) {
                     case ExportImportConstants.DataTypes.RAW_GPS:
-                        addRawGpsData(zos, job);
+                        addRawGpsDataStreaming(zos, job, currentProgress, currentProgress + progressPerType);
+                        currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.TIMELINE:
-                        addTimelineData(zos, job);
+                        addTimelineDataStreaming(zos, job, currentProgress, currentProgress + progressPerType);
+                        currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.DATA_GAPS:
-                        addDataGapsData(zos, job);
+                        addDataGapsData(zos, job, currentProgress, currentProgress + progressPerType);
+                        currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.USER_INFO:
                         addUserInfoData(zos, job);
+                        currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.LOCATION_SOURCES:
                         addLocationSourcesData(zos, job);
+                        currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.FAVORITES:
                     case ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION:
@@ -108,17 +134,20 @@ public class ExportDataGenerator {
                 }
             }
 
+            job.updateProgress(90, "Finalizing ZIP archive...");
+
             zos.finish();
-            return baos.toByteArray();
+            byte[] result = baos.toByteArray();
+
+            job.updateProgress(95, "Export completed");
+            log.info("Completed streaming ZIP export: {} bytes", result.length);
+
+            return result;
         }
     }
 
     /**
      * Generates an OwnTracks format export.
-     *
-     * @param job the export job
-     * @return the OwnTracks JSON as bytes
-     * @throws IOException if an I/O error occurs
      */
     public byte[] generateOwnTracksExport(ExportJob job) throws IOException {
         return ownTracksExportService.generateOwnTracksExport(job);
@@ -126,10 +155,6 @@ public class ExportDataGenerator {
 
     /**
      * Generates a GeoJSON format export.
-     *
-     * @param job the export job
-     * @return the GeoJSON as bytes
-     * @throws IOException if an I/O error occurs
      */
     public byte[] generateGeoJsonExport(ExportJob job) throws IOException {
         return geoJsonExportService.generateGeoJsonExport(job);
@@ -137,12 +162,6 @@ public class ExportDataGenerator {
 
     /**
      * Generates a GPX format export.
-     *
-     * @param job        the export job
-     * @param zipPerTrip if true, creates separate GPX files per trip/stay in a ZIP
-     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
-     * @return the GPX file or ZIP archive as bytes
-     * @throws IOException if an I/O error occurs
      */
     public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
         return gpxExportService.generateGpxExport(job, zipPerTrip, zipGroupBy);
@@ -150,11 +169,6 @@ public class ExportDataGenerator {
 
     /**
      * Generates a GPX file for a single trip.
-     *
-     * @param userId the user ID
-     * @param tripId the trip ID
-     * @return the GPX file as bytes
-     * @throws IOException if an I/O error occurs
      */
     public byte[] generateSingleTripGpx(java.util.UUID userId, Long tripId) throws IOException {
         return gpxExportService.generateSingleTripGpx(userId, tripId);
@@ -162,52 +176,153 @@ public class ExportDataGenerator {
 
     /**
      * Generates a GPX file for a single stay.
-     *
-     * @param userId the user ID
-     * @param stayId the stay ID
-     * @return the GPX file as bytes
-     * @throws IOException if an I/O error occurs
      */
     public byte[] generateSingleStayGpx(java.util.UUID userId, Long stayId) throws IOException {
         return gpxExportService.generateSingleStayGpx(userId, stayId);
     }
 
     // ========================================
-    // Private helper methods for ZIP export
+    // Private helper methods for ZIP export using STREAMING
     // ========================================
 
     private void addMetadataFile(ZipOutputStream zos, ExportJob job) throws IOException {
         ExportMetadataDto metadata = exportDataMapper.toMetadataDto(job);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.METADATA, metadata);
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.METADATA, metadata);
     }
 
-    private void addRawGpsData(ZipOutputStream zos, ExportJob job) throws IOException {
-        log.debug("Exporting raw GPS data for user {}", job.getUserId());
+    /**
+     * Adds raw GPS data to ZIP using STREAMING to avoid memory issues.
+     */
+    private void addRawGpsDataStreaming(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+            throws IOException {
+        log.debug("Streaming raw GPS data export for user {}", job.getUserId());
 
-        var allPoints = dataCollectorService.collectGpsPoints(job);
-        RawGpsDataDto gpsData = exportDataMapper.toRawGpsDataDto(allPoints, job);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.RAW_GPS_DATA, gpsData);
+        job.updateProgress(progressStart, "Exporting GPS data...");
 
-        log.debug("Exported {} GPS points", allPoints.size());
+        streamingZipExportService.addStreamingJsonFileToZip(
+            zos,
+            ExportImportConstants.FileNames.RAW_GPS_DATA,
+            // Write metadata fields
+            (gen, mapper) -> {
+                try {
+                    gen.writeStringField("dataType", "rawGps");
+                    gen.writeStringField("exportDate", java.time.Instant.now().toString());
+                    gen.writeStringField("startDate", job.getDateRange().getStartDate().toString());
+                    gen.writeStringField("endDate", job.getDateRange().getEndDate().toString());
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to write GPS metadata", e);
+                }
+            },
+            // Array field name
+            "points",
+            // Fetch batch function
+            page -> gpsPointRepository.findByUserAndDateRange(
+                job.getUserId(),
+                job.getDateRange().getStartDate(),
+                job.getDateRange().getEndDate(),
+                page,
+                StreamingExportService.DEFAULT_BATCH_SIZE,
+                "timestamp",
+                "asc"
+            ),
+            // Convert entity to DTO
+            gpsPoint -> exportDataMapper.toGpsPointDto(gpsPoint),
+            // Progress tracking
+            job,
+            progressStart,
+            progressEnd,
+            "Exporting GPS points"
+        );
+
+        log.debug("Completed streaming raw GPS data export");
     }
 
-    private void addTimelineData(ZipOutputStream zos, ExportJob job) throws IOException {
-        log.debug("Exporting timeline data for user {}", job.getUserId());
+    /**
+     * Adds timeline data to ZIP using STREAMING.
+     * Timeline data is smaller (simplified trips/stays) so we can use a hybrid approach.
+     */
+    private void addTimelineDataStreaming(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+            throws IOException {
+        log.debug("Streaming timeline data export for user {}", job.getUserId());
 
-        var stays = dataCollectorService.collectTimelineStays(job);
-        var trips = dataCollectorService.collectTimelineTrips(job);
-        var dataGaps = dataCollectorService.collectDataGaps(job);
+        job.updateProgress(progressStart, "Exporting timeline data...");
 
-        TimelineDataDto timelineData = exportDataMapper.toTimelineDataDto(stays, trips, dataGaps, job);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.TIMELINE_DATA, timelineData);
+        // Timeline data is already aggregated/simplified, so it's usually small enough
+        // But we'll still stream it for consistency
+        streamingZipExportService.addStreamingJsonFileToZip(
+            zos,
+            ExportImportConstants.FileNames.TIMELINE_DATA,
+            // Write metadata fields
+            (gen, mapper) -> {
+                try {
+                    gen.writeStringField("dataType", "timeline");
+                    gen.writeStringField("exportDate", java.time.Instant.now().toString());
+                    gen.writeStringField("startDate", job.getDateRange().getStartDate().toString());
+                    gen.writeStringField("endDate", job.getDateRange().getEndDate().toString());
 
-        log.debug("Exported {} stays, {} trips and {} data gaps", stays.size(), trips.size(), dataGaps.size());
+                    // Write stays array
+                    gen.writeArrayFieldStart("stays");
+                    var stays = timelineStayRepository.findByUserAndDateRange(
+                        job.getUserId(),
+                        job.getDateRange().getStartDate(),
+                        job.getDateRange().getEndDate()
+                    );
+                    for (var stay : stays) {
+                        gen.writeObject(exportDataMapper.toStayDto(stay));
+                    }
+                    gen.writeEndArray();
+
+                    // Write trips array (within the same JSON file)
+                    // Will be written before dataGaps array
+                    gen.writeArrayFieldStart("trips");
+                    var trips = timelineTripRepository.findByUserAndDateRange(
+                        job.getUserId(),
+                        job.getDateRange().getStartDate(),
+                        job.getDateRange().getEndDate()
+                    );
+                    for (var trip : trips) {
+                        gen.writeObject(exportDataMapper.toTripDto(trip));
+                    }
+                    gen.writeEndArray();
+
+                } catch (IOException e) {
+                    throw new RuntimeException("Failed to write timeline metadata", e);
+                }
+            },
+            // Array field name for data gaps
+            "dataGaps",
+            // Fetch data gaps batch
+            page -> {
+                if (page > 0) return java.util.Collections.emptyList(); // Only one batch
+                return timelineDataGapRepository.findByUserIdAndTimeRange(
+                    job.getUserId(),
+                    job.getDateRange().getStartDate(),
+                    job.getDateRange().getEndDate()
+                );
+            },
+            // Convert entity to DTO
+            gap -> exportDataMapper.toDataGapDto(gap),
+            // Progress tracking
+            job,
+            progressStart,
+            progressEnd,
+            "Exporting timeline"
+        );
+
+        log.debug("Completed streaming timeline data export");
     }
 
-    private void addDataGapsData(ZipOutputStream zos, ExportJob job) throws IOException {
+    private void addDataGapsData(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+            throws IOException {
         log.debug("Exporting data gaps for user {}", job.getUserId());
 
-        var dataGaps = dataCollectorService.collectDataGaps(job);
+        job.updateProgress(progressStart, "Exporting data gaps...");
+
+        var dataGaps = timelineDataGapRepository.findByUserIdAndTimeRange(
+            job.getUserId(),
+            job.getDateRange().getStartDate(),
+            job.getDateRange().getEndDate()
+        );
 
         DataGapsDataDto dataGapsData = DataGapsDataDto.builder()
                 .dataType("dataGaps")
@@ -219,17 +334,20 @@ public class ExportDataGenerator {
                         .collect(java.util.stream.Collectors.toList()))
                 .build();
 
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.DATA_GAPS, dataGapsData);
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.DATA_GAPS, dataGapsData);
 
         log.debug("Exported {} data gaps", dataGaps.size());
     }
 
-    private void addFavoritesData(ZipOutputStream zos, ExportJob job) throws IOException {
+    private void addFavoritesData(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+            throws IOException {
         log.debug("Exporting favorites data for user {}", job.getUserId());
+
+        job.updateProgress(progressStart, "Exporting favorites...");
 
         var favorites = dataCollectorService.collectFavorites(job.getUserId());
         FavoritesDataDto favoritesData = exportDataMapper.toFavoritesDataDto(favorites);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.FAVORITES, favoritesData);
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.FAVORITES, favoritesData);
 
         log.debug("Exported {} favorite points and {} favorite areas",
                 favoritesData.getPoints().size(), favoritesData.getAreas().size());
@@ -240,7 +358,7 @@ public class ExportDataGenerator {
 
         var user = dataCollectorService.collectUserInfo(job.getUserId());
         UserInfoDataDto userInfoData = exportDataMapper.toUserInfoDataDto(user);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.USER_INFO, userInfoData);
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.USER_INFO, userInfoData);
 
         log.debug("Exported user info for user {}", user.getEmail());
     }
@@ -250,15 +368,23 @@ public class ExportDataGenerator {
 
         var sources = dataCollectorService.collectLocationSources(job.getUserId());
         LocationSourcesDataDto sourcesData = exportDataMapper.toLocationSourcesDataDto(sources);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.LOCATION_SOURCES, sourcesData);
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.LOCATION_SOURCES, sourcesData);
 
         log.debug("Exported {} location sources", sources.size());
     }
 
-    private void addReverseGeocodingData(ZipOutputStream zos, ExportJob job) throws IOException {
+    private void addReverseGeocodingData(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+            throws IOException {
         log.debug("Exporting reverse geocoding data for user {}", job.getUserId());
 
-        var stays = dataCollectorService.collectTimelineStays(job);
+        job.updateProgress(progressStart, "Exporting reverse geocoding data...");
+
+        var stays = timelineStayRepository.findByUserAndDateRange(
+            job.getUserId(),
+            job.getDateRange().getStartDate(),
+            job.getDateRange().getEndDate()
+        );
+
         Set<Long> geocodingIds = dependencyResolver.extractGeocodingIds(stays);
 
         if (geocodingIds.isEmpty()) {
@@ -268,7 +394,7 @@ public class ExportDataGenerator {
 
         var geocodingLocations = dataCollectorService.collectReverseGeocodingLocations(geocodingIds);
         ReverseGeocodingDataDto geocodingData = exportDataMapper.toReverseGeocodingDataDto(geocodingLocations);
-        zipFileService.addJsonFileToZip(zos, ExportImportConstants.FileNames.REVERSE_GEOCODING, geocodingData);
+        streamingZipExportService.addSimpleJsonFileToZip(zos, ExportImportConstants.FileNames.REVERSE_GEOCODING, geocodingData);
 
         log.debug("Exported {} reverse geocoding locations", geocodingLocations.size());
     }

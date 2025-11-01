@@ -267,7 +267,12 @@
               <span class="detail-label">Progress:</span>
               <div class="detail-value">
                 <ProgressBar :value="currentExportJob.progress" class="job-progress"/>
-                <span class="progress-text">{{ currentExportJob.progress }}%</span>
+                <div class="progress-info">
+                  <span class="progress-text">{{ currentExportJob.progress }}%</span>
+                  <span v-if="currentExportJob.progressMessage" class="progress-message">
+                    {{ currentExportJob.progressMessage }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -460,7 +465,7 @@ const setDateRange = (days) => {
 
   if (days === null) {
     // All time - set to a very early date
-    exportStartDate.value = timezone.create('2020-01-01').toDate()
+    exportStartDate.value = timezone.create('2000-01-01').toDate()
   } else {
     const start = timezone.now().subtract(days, 'day')
     exportStartDate.value = start.toDate()

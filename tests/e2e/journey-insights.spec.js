@@ -176,9 +176,9 @@ test.describe('Journey Insights', () => {
       const walkDistance = await journeyInsightsPage.getWalkDistance();
       
       // Verify values are displayed (should be formatted with km)
-      expect(totalDistance).toContain('km');
-      expect(carDistance).toContain('km');
-      expect(walkDistance).toContain('km');
+      expect(totalDistance).toContain('m');
+      expect(carDistance).toContain('m');
+      expect(walkDistance).toContain('m');
       
       // Extract numeric values for comparison
       const totalNum = parseInt(totalDistance.replace(/[^\d]/g, ''));

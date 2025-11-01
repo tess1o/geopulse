@@ -55,17 +55,6 @@ public class ImportService {
         return job;
     }
 
-    /**
-     * Create GeoPulse-specific import job (legacy method for backward compatibility)
-     * @deprecated Use createImportJob directly or format-specific methods
-     */
-    @Deprecated
-    public ImportJob createGeoPulseImportJob(UUID userId, ImportOptions options, String fileName, byte[] zipData) {
-        // Force format to be geopulse for clarity
-        options.setImportFormat("geopulse");
-        return createImportJob(userId, options, fileName, zipData);
-    }
-
     public ImportJob createOwnTracksImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
         // Check if user has too many active jobs
         long userActiveJobs = activeJobs.values().stream()

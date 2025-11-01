@@ -424,6 +424,12 @@ const handleTabChange = (event) => {
   font-weight: 500;
 }
 
+:deep(.progress-message) {
+  font-size: 0.8rem;
+  color: var(--gp-text-secondary);
+  font-style: italic;
+}
+
 :deep(.progress-phase) {
   font-size: 0.8rem;
   color: var(--gp-text-secondary);
