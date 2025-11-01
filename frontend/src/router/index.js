@@ -12,6 +12,7 @@ import TimelinePreferencesPage from "@/views/app/TimelinePreferencesPage.vue";
 import UserProfilePage from "@/views/app/UserProfilePage.vue";
 import ShareLinksPage from "@/views/app/ShareLinksPage.vue";
 import DataExportImportPage from "@/views/app/DataExportImportPage.vue";
+import DebugExportPage from "@/views/app/DebugExportPage.vue";
 import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
@@ -160,6 +161,12 @@ const routes = [
         path: '/app/data-export-import',
         name: 'Data Export & Import',
         component: DataExportImportPage,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/debug-export',
+        name: 'Debug Export',
+        component: DebugExportPage,
         beforeEnter: requireAuth
     },
     {

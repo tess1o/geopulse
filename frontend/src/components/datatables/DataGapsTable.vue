@@ -114,15 +114,14 @@
 </template>
 
 <script setup>
-import {ref, computed, watch} from 'vue'
+import {computed} from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import {useTimezone} from '@/composables/useTimezone'
-import { useTableFilters } from '@/composables/useTableFilters'
+import {useTableFilters} from '@/composables/useTableFilters'
 import {formatDurationSmart} from "@/utils/calculationsHelpers";
 
 const timezone = useTimezone()
