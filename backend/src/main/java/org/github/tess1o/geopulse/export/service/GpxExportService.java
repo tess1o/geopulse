@@ -10,7 +10,6 @@ import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
-import org.locationtech.jts.geom.Coordinate;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -96,8 +95,10 @@ public class GpxExportService {
      * @throws IOException if an I/O error occurs
      */
     public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
-        log.debug("Generating GPX export for user {}, zipPerTrip={}, zipGroupBy={}",
+        log.info("Generating GPX export for user {}, zipPerTrip={}, zipGroupBy={}",
                 job.getUserId(), zipPerTrip, zipGroupBy);
+
+        job.updateProgress(5, "Initializing GPX export...");
 
         if (zipPerTrip) {
             return generateGpxExportAsZip(job, zipGroupBy);
@@ -117,10 +118,15 @@ public class GpxExportService {
     private byte[] generateSingleGpxFile(ExportJob job) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
+        job.updateProgress(10, "Starting GPX generation...");
+
         try {
             streamGpxFileToOutput(job, baos);
             byte[] result = baos.toByteArray();
+
+            job.updateProgress(95, "Finalizing GPX export...");
             log.info("Generated streaming GPX export with {} bytes", result.length);
+
             return result;
         } catch (XMLStreamException e) {
             throw new IOException("Failed to generate GPX export: " + e.getMessage(), e);
@@ -196,6 +202,8 @@ public class GpxExportService {
 
         log.info("Starting streaming export of raw GPS data");
 
+        job.updateProgress(15, "Streaming raw GPS data...");
+
         while (true) {
             // Fetch batch of GPS points
             var batch = dataCollectorService.getGpsPointRepository().findByUserAndDateRange(
@@ -253,8 +261,10 @@ public class GpxExportService {
 
             page++;
 
+            // Update progress periodically
             if (page % 10 == 0) {
                 log.debug("Streamed {} GPS points so far...", totalPoints);
+                job.updateProgress(15 + (page % 50), String.format("Streamed %d GPS points...", totalPoints));
             }
         }
 
@@ -264,6 +274,8 @@ public class GpxExportService {
             xml.writeEndElement(); // trk
             log.info("Completed streaming {} raw GPS points", totalPoints);
         }
+
+        job.updateProgress(60, String.format("Completed streaming %d raw GPS points", totalPoints));
     }
 
     /**
@@ -272,6 +284,8 @@ public class GpxExportService {
      */
     private void streamTimelineTripTracks(ExportJob job, XMLStreamWriter xml)
             throws XMLStreamException {
+
+        job.updateProgress(65, "Exporting timeline trips...");
 
         var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
 
@@ -348,6 +362,8 @@ public class GpxExportService {
     private void streamTimelineStayWaypoints(ExportJob job, XMLStreamWriter xml)
             throws XMLStreamException {
 
+        job.updateProgress(75, "Exporting timeline stays...");
+
         var stays = dataCollectorService.collectTimelineStaysWithExpansion(job);
 
         for (TimelineStayEntity stay : stays) {
@@ -411,6 +427,8 @@ public class GpxExportService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
 
+            job.updateProgress(10, "Loading trips and stays...");
+
             // Get timeline trips
             var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
 
@@ -418,6 +436,9 @@ public class GpxExportService {
             var stays = dataCollectorService.collectTimelineStaysWithExpansion(job);
 
             log.debug("Exporting {} trips and {} stays as separate GPX files in zip", trips.size(), stays.size());
+
+            int totalItems = trips.size() + stays.size();
+            int processedItems = 0;
 
             // Export trips
             for (int i = 0; i < trips.size(); i++) {
@@ -433,6 +454,12 @@ public class GpxExportService {
                 String xml = xmlMapper.writeValueAsString(gpxFile);
                 zos.write(xml.getBytes());
                 zos.closeEntry();
+
+                processedItems++;
+                if (processedItems % 10 == 0 || processedItems == totalItems) {
+                    int progress = 10 + (int) ((double) processedItems / totalItems * 80);
+                    job.updateProgress(progress, String.format("Exporting GPX files: %d / %d", processedItems, totalItems));
+                }
             }
 
             // Export stays
@@ -449,9 +476,19 @@ public class GpxExportService {
                 String xml = xmlMapper.writeValueAsString(gpxFile);
                 zos.write(xml.getBytes());
                 zos.closeEntry();
+
+                processedItems++;
+                if (processedItems % 10 == 0 || processedItems == totalItems) {
+                    int progress = 10 + (int) ((double) processedItems / totalItems * 80);
+                    job.updateProgress(progress, String.format("Exporting GPX files: %d / %d", processedItems, totalItems));
+                }
             }
 
+            job.updateProgress(90, "Finalizing ZIP archive...");
+
             zos.finish();
+
+            job.updateProgress(95, "GPX ZIP export completed");
             log.debug("Generated GPX zip with {} trips and {} stays, {} bytes total",
                     trips.size(), stays.size(), baos.toByteArray().length);
             return baos.toByteArray();
@@ -469,6 +506,8 @@ public class GpxExportService {
     private byte[] generateGpxExportAsZipGroupedByDay(ExportJob job) throws IOException {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              ZipOutputStream zos = new ZipOutputStream(baos)) {
+
+            job.updateProgress(10, "Loading trips and stays...");
 
             // Get timeline trips and stays
             var trips = dataCollectorService.collectTimelineTripsWithExpansion(job);
@@ -498,7 +537,10 @@ public class GpxExportService {
             log.debug("Grouping {} trips and {} stays into {} daily GPX files",
                     trips.size(), stays.size(), allDays.size());
 
+            job.updateProgress(20, String.format("Creating %d daily GPX files...", allDays.size()));
+
             // Create one GPX file per day
+            int dayCount = 0;
             for (java.time.LocalDate day : allDays) {
                 GpxFile gpxFile = buildGpxFileForDay(day,
                         tripsByDay.getOrDefault(day, List.of()),
@@ -512,12 +554,22 @@ public class GpxExportService {
                 zos.write(xml.getBytes());
                 zos.closeEntry();
 
+                dayCount++;
+                if (dayCount % 5 == 0 || dayCount == allDays.size()) {
+                    int progress = 20 + (int) ((double) dayCount / allDays.size() * 70);
+                    job.updateProgress(progress, String.format("Created %d / %d daily GPX files", dayCount, allDays.size()));
+                }
+
                 log.debug("Added {} with {} trips and {} stays", filename,
                         tripsByDay.getOrDefault(day, List.of()).size(),
                         staysByDay.getOrDefault(day, List.of()).size());
             }
 
+            job.updateProgress(90, "Finalizing ZIP archive...");
+
             zos.finish();
+
+            job.updateProgress(95, "GPX ZIP export completed");
             log.debug("Generated GPX zip with {} daily files, {} bytes total",
                     allDays.size(), baos.toByteArray().length);
             return baos.toByteArray();

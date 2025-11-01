@@ -14,6 +14,7 @@ public class ExportJobResponse {
     private UUID exportJobId;
     private String status;
     private Integer progress;
+    private String progressMessage;
     private Instant createdAt;
     private Instant completedAt;
     private String downloadUrl;

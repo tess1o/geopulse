@@ -1,49 +1,78 @@
 package org.github.tess1o.geopulse.export.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
- * Service responsible for generating OwnTracks format exports.
+ * Service responsible for generating OwnTracks format exports using streaming approach.
+ * Memory-efficient: processes GPS points in batches without loading all data into memory.
  */
 @ApplicationScoped
 @Slf4j
 public class OwnTracksExportService {
 
     @Inject
-    ObjectMapper objectMapper;
-
-    @Inject
     GpsPointMapper gpsPointMapper;
 
     @Inject
-    ExportDataCollectorService dataCollectorService;
+    GpsPointRepository gpsPointRepository;
+
+    @Inject
+    StreamingExportService streamingExportService;
 
     /**
-     * Generates an OwnTracks export for the given export job.
+     * Generates an OwnTracks export for the given export job using STREAMING approach.
+     * Memory usage: O(batch_size) instead of O(total_records).
      *
      * @param job the export job
      * @return the OwnTracks JSON as bytes
      * @throws IOException if an I/O error occurs
      */
     public byte[] generateOwnTracksExport(ExportJob job) throws IOException {
-        log.debug("Generating OwnTracks export for user {}", job.getUserId());
+        log.info("Starting streaming OwnTracks export for user {}", job.getUserId());
 
-        var allPoints = dataCollectorService.collectGpsPoints(job);
+        job.updateProgress(5, "Initializing OwnTracks export...");
 
-        // Convert GPS points to OwnTracks format
-        var ownTracksMessages = gpsPointMapper.toOwnTracksLocationMessages(allPoints);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-        // Create JSON array for OwnTracks format
-        String json = objectMapper.writeValueAsString(ownTracksMessages);
+        job.updateProgress(10, "Starting to stream GPS data...");
 
-        log.debug("Generated OwnTracks export with {} GPS points", allPoints.size());
-        return json.getBytes();
+        // Stream as simple JSON array
+        int totalWritten = streamingExportService.streamJsonArray(
+            baos,
+            // Fetch batch function
+            page -> gpsPointRepository.findByUserAndDateRange(
+                job.getUserId(),
+                job.getDateRange().getStartDate(),
+                job.getDateRange().getEndDate(),
+                page,
+                StreamingExportService.DEFAULT_BATCH_SIZE,
+                "timestamp",
+                "asc"
+            ),
+            // Convert GPS point to OwnTracks message DTO
+            gpsPoint -> gpsPointMapper.toOwnTracksLocationMessage(gpsPoint),
+            // Progress tracking
+            job,
+            -1, // Unknown total, will track by batches
+            10,  // progress start: 10%
+            90,  // progress end: 90%
+            "Exporting GPS points:"
+        );
+
+        byte[] result = baos.toByteArray();
+
+        job.updateProgress(95, "Finalizing OwnTracks export...");
+        log.info("Completed streaming OwnTracks export: {} messages, {} bytes", totalWritten, result.length);
+        job.updateProgress(100, "Export completed");
+
+        return result;
     }
 }

@@ -15,6 +15,7 @@ public class ExportJob {
     private UUID userId;
     private ExportStatus status;
     private int progress;
+    private String progressMessage;
     private List<String> dataTypes;
     private ExportDateRange dateRange;
     private String format;
@@ -44,5 +45,17 @@ public class ExportJob {
     public ExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format, Map<String, Object> options) {
         this(userId, dataTypes, dateRange, format);
         this.options = options;
+    }
+
+    /**
+     * Updates the progress of the export job.
+     * Thread-safe for concurrent updates.
+     *
+     * @param progress the progress percentage (0-100)
+     * @param message the progress message describing current operation
+     */
+    public synchronized void updateProgress(int progress, String message) {
+        this.progress = Math.min(100, Math.max(0, progress));
+        this.progressMessage = message;
     }
 }

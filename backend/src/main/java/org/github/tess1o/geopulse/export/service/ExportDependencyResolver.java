@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 
 import java.util.List;
 import java.util.Set;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 public class ExportDependencyResolver {
 
     @Inject
-    ExportDataCollectorService dataCollectorService;
+    TimelineStayRepository timelineStayRepository;
 
     /**
      * Collects timeline dependencies and adds them to the actualDataTypes set.
@@ -32,8 +33,12 @@ public class ExportDependencyResolver {
     public void collectTimelineDependencies(ExportJob job, Set<String> actualDataTypes) {
         log.debug("Collecting timeline dependencies for user {}", job.getUserId());
 
-        // Get all stays to collect dependency IDs
-        var stays = dataCollectorService.collectTimelineStays(job);
+        // Get all stays to collect dependency IDs (use repository directly)
+        var stays = timelineStayRepository.findByUserAndDateRange(
+            job.getUserId(),
+            job.getDateRange().getStartDate(),
+            job.getDateRange().getEndDate()
+        );
 
         // Collect unique favorite IDs
         Set<Long> favoriteIds = extractFavoriteIds(stays);
