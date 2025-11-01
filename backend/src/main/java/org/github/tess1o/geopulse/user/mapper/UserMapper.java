@@ -31,6 +31,7 @@ public class UserMapper {
                 .timezone(entity.getTimezone())
                 .customMapTileUrl(entity.getCustomMapTileUrl())
                 .measureUnit(entity.getMeasureUnit())
+                .defaultRedirectUrl(entity.getDefaultRedirectUrl())
                 .build();
     }
 }

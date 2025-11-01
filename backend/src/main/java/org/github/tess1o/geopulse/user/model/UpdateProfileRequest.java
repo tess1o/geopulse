@@ -25,5 +25,8 @@ public class UpdateProfileRequest {
 
     private MeasureUnit measureUnit;
 
+    @Size(max = 1000, message = "Default redirect URL cannot exceed 1000 characters")
+    private String defaultRedirectUrl;
+
     private UUID userId;
 }

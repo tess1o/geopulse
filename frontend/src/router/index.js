@@ -58,7 +58,8 @@ const requireGuest = async (to, from, next) => {
 
         // If authenticated, redirect away from login/register
         if (authStore.isAuthenticated) {
-            next('/app/timeline')
+            const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+            next(redirectUrl)
         } else {
             next()
         }
@@ -86,6 +87,27 @@ const routes = [
         path: '/',
         name: 'Home',
         component: Home,
+        beforeEnter: async (to, from, next) => {
+            const authStore = useAuthStore()
+
+            try {
+                // Check auth if not already authenticated
+                if (!authStore.user) {
+                    await authStore.checkAuth()
+                }
+
+                // If authenticated and has default redirect URL, redirect there
+                if (authStore.isAuthenticated && authStore.defaultRedirectUrl) {
+                    next(authStore.defaultRedirectUrl)
+                } else {
+                    // Show home page for non-authenticated users or authenticated users without redirect URL
+                    next()
+                }
+            } catch (error) {
+                // On error, show home page
+                next()
+            }
+        }
     },
     {
         path: '/login',

@@ -73,8 +73,10 @@ onMounted(async () => {
       life: 3000
     })
 
-    // Redirect new users to location sources for onboarding, existing users to timeline
-    const redirectPath = authResponse.redirectUri || (isNewUser ? '/app/location-sources' : '/app/timeline')
+    // Redirect based on priority: redirectUri > defaultRedirectUrl > onboarding logic
+    const redirectPath = authResponse.redirectUri ||
+                        authResponse.defaultRedirectUrl ||
+                        (isNewUser ? '/app/location-sources' : '/app/timeline')
     await router.push(redirectPath)
 
   } catch (err) {
@@ -129,8 +131,10 @@ const handleLinkingSuccess = async (authResponse) => {
     life: 3000
   })
 
-  // Redirect new users to location sources for onboarding, existing users to timeline
-  const redirectPath = authResponse.redirectUri || (isNewUser ? '/app/location-sources' : '/app/timeline')
+  // Redirect based on priority: redirectUri > defaultRedirectUrl > onboarding logic
+  const redirectPath = authResponse.redirectUri ||
+                      authResponse.defaultRedirectUrl ||
+                      (isNewUser ? '/app/location-sources' : '/app/timeline')
   await router.push(redirectPath)
 }
 

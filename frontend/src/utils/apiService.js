@@ -496,7 +496,8 @@ const apiService = {
                     hasPassword: responseData.hasPassword,
                     timezone: responseData.timezone,
                     customMapTileUrl: responseData.customMapTileUrl || '',
-                    measureUnit: responseData.measureUnit || 'METRIC'
+                    measureUnit: responseData.measureUnit || 'METRIC',
+                    defaultRedirectUrl: responseData.defaultRedirectUrl || ''
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;

@@ -26,4 +26,5 @@ public class AuthResponse {
     private boolean hasPassword;
     private String customMapTileUrl;
     private MeasureUnit measureUnit;
+    private String defaultRedirectUrl;
 }

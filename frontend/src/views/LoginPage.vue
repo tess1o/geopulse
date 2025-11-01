@@ -185,9 +185,10 @@ const handleSubmit = async () => {
       detail: 'You have successfully signed in',
       life: 3000
     })
-    
-    // Navigate to the app
-    await router.push('/app/timeline')
+
+    // Navigate to default redirect URL or fallback to timeline
+    const redirectUrl = authStore.defaultRedirectUrl || '/app/timeline'
+    await router.push(redirectUrl)
     
   } catch (error) {
     console.error('Login error:', error)

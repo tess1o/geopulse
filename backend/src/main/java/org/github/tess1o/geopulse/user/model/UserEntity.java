@@ -92,6 +92,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "measure_unit", length = 1000)
     private MeasureUnit measureUnit;
 
+    @Size(max = 1000, message = "Default redirect URL after login or when we navigate to / page")
+    @Column(name = "default_redirect_url", length = 1000)
+    private String defaultRedirectUrl;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

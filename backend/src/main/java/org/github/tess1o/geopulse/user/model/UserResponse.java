@@ -24,5 +24,6 @@ public class UserResponse {
     private boolean hasPassword;
     private String customMapTileUrl;
     private MeasureUnit measureUnit;
+    private String defaultRedirectUrl;
     // Don't include passwordHash in responses
 }

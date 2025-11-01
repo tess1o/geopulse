@@ -23,6 +23,7 @@ export const useAuthStore = defineStore('auth', {
         hasPassword: (state) => state.user?.hasPassword || false,
         customMapTileUrl: (state) => state.user?.customMapTileUrl || '',
         measureUnit: (state) => state.user?.measureUnit || 'METRIC',
+        defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
     },
 
     actions: {
@@ -42,7 +43,8 @@ export const useAuthStore = defineStore('auth', {
                     createdAt: user.createdAt,
                     hasPassword: user.hasPassword,
                     customMapTileUrl: user.customMapTileUrl || '',
-                    measureUnit: user.measureUnit || 'METRIC'
+                    measureUnit: user.measureUnit || 'METRIC',
+                    defaultRedirectUrl: user.defaultRedirectUrl || ''
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 timezone.setTimezone(user.timezone || 'UTC');
@@ -90,7 +92,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         //TODO: remove userId, find it on backend.
-        async updateProfile(fullName, avatar, timezone, customMapTileUrl, measureUnit, userId) {
+        async updateProfile(fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl, userId) {
             try {
                 await apiService.post(`/users/update`, {
                     fullName,
@@ -98,6 +100,7 @@ export const useAuthStore = defineStore('auth', {
                     timezone,
                     customMapTileUrl,
                     measureUnit,
+                    defaultRedirectUrl,
                     userId
                 });
 
@@ -108,11 +111,12 @@ export const useAuthStore = defineStore('auth', {
                 userInfo.timezone = timezone;
                 userInfo.customMapTileUrl = customMapTileUrl || '';
                 userInfo.measureUnit = measureUnit || 'METRIC';
+                userInfo.defaultRedirectUrl = defaultRedirectUrl || '';
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
                 // Update the user in store
                 if (this.user) {
-                    this.user = {...this.user, fullName, avatar, timezone, customMapTileUrl, measureUnit}
+                    this.user = {...this.user, fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl}
                 }
             } catch (error) {
                 throw error
@@ -172,7 +176,8 @@ export const useAuthStore = defineStore('auth', {
                     createdAt: userInfo.createdAt,
                     hasPassword: userInfo.hasPassword,
                     customMapTileUrl: userInfo.customMapTileUrl || '',
-                    measureUnit: userInfo.measureUnit || 'METRIC'
+                    measureUnit: userInfo.measureUnit || 'METRIC',
+                    defaultRedirectUrl: userInfo.defaultRedirectUrl || ''
                 }
 
                 this.setUser(user)
