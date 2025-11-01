@@ -11,7 +11,7 @@ services:
   geopulse-backend-e2e:
     build:
       context: ..
-      dockerfile: backend/Dockerfile
+      dockerfile: backend/Dockerfile.native
     container_name: geopulse-backend-e2e
     restart: "no"
     env_file:

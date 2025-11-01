@@ -551,6 +551,12 @@ public class ExportResource {
                         .build();
             }
 
+            if (request.getLatitudeShift() == null || request.getLongitudeShift() == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Latitude and longitude shift are required"))
+                        .build();
+            }
+
             log.info("Creating debug export for user {} from {} to {}",
                     userId, request.getStartDate(), request.getEndDate());
 

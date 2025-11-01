@@ -85,6 +85,7 @@
                         v-model="latitudeShift"
                         :minFractionDigits="6"
                         :maxFractionDigits="6"
+                        :allowEmpty="false"
                         placeholder="e.g., 12.345678"
                         class="shift-input"
                     />
@@ -95,6 +96,7 @@
                         v-model="longitudeShift"
                         :minFractionDigits="6"
                         :maxFractionDigits="6"
+                        :allowEmpty="false"
                         placeholder="e.g., 45.678901"
                         class="shift-input"
                     />
@@ -274,12 +276,12 @@ const exportDebugData = async () => {
 
   try {
     // Adjust dates to ensure we capture full days in user's timezone
-    // This converts calendar dates to UTC range that covers full days
+    // createDateRangeFromPicker already returns UTC ISO strings for start/end of day
     const dateRange = timezone.createDateRangeFromPicker(startDate.value, endDate.value)
 
     const requestData = {
-      startDate: dateRange.start,
-      endDate: dateRange.end,
+      startDate: dateRange.start,  // Already UTC ISO string (start of day in user's timezone)
+      endDate: dateRange.end,      // Already UTC ISO string (end of day in user's timezone)
       latitudeShift: latitudeShift.value,
       longitudeShift: longitudeShift.value,
       includeConfiguration: includeConfiguration.value
