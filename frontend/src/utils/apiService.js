@@ -318,6 +318,11 @@ const apiService = {
                 axiosOptions.params = options.params;
             }
 
+            // Add responseType if specified (for blob downloads)
+            if (options.responseType) {
+                axiosOptions.responseType = options.responseType;
+            }
+
             let response;
             if (method === 'post') {
                 response = await axios.post(`${API_BASE_URL}${endpoint}`, data, axiosOptions);
@@ -335,7 +340,9 @@ const apiService = {
                 }
             }
 
-            return response.data;
+            // For blob responses, return the full response object
+            // Otherwise return just the data
+            return options.responseType === 'blob' ? response : response.data;
 
         } catch (error) {
             // Quarkus REST CSRF handles token validation automatically

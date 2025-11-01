@@ -136,24 +136,6 @@ const initializeMap = async () => {
           try {
             const tileLayer = L.tileLayer(tileUrl, tileLayerOptions)
 
-            // Add success handler for tile loads
-            tileLayer.on('tileload', function(event) {
-              console.log('[BaseMap] Tile loaded successfully:', {
-                coords: event.coords,
-                url: event.tile.src
-              })
-            })
-
-            // Add loading start handler
-            tileLayer.on('loading', function() {
-              console.log('[BaseMap] Tiles loading started')
-            })
-
-            // Add loading complete handler
-            tileLayer.on('load', function() {
-              console.log('[BaseMap] All tiles loaded successfully')
-            })
-
             // Add error handling for individual tile load failures
             tileLayer.on('tileerror', function(error) {
               // Don't log errors for data URLs (errorTileUrl fallbacks)

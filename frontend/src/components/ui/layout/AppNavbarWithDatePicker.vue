@@ -2,7 +2,7 @@
   <Toolbar class="gp-app-navbar-toolbar gp-app-navbar-with-datepicker" :class="toolbarClasses">
     <template #start>
       <div class="gp-navbar-start">
-        <AppNavigation :variant="navigationVariant" @navigate="handleNavigate" />
+        <AppNavigation :variant="navigationVariant" @navigate="handleNavigate"/>
         <div class="gp-navbar-logo">
           <router-link to="/" class="gp-navbar-logo-link">
             <span class="gp-navbar-logo-text">GeoPulse</span>
@@ -10,57 +10,97 @@
         </div>
       </div>
     </template>
-    
+
     <template #center>
-      <slot name="center" />
+      <slot name="center"/>
     </template>
-    
+
     <template #end>
       <div class="gp-navbar-end">
         <!-- Custom end content -->
-        <slot name="end-before" />
-        
+        <slot name="end-before"/>
+
         <!-- Date Picker -->
         <div class="gp-navbar-datepicker">
           <FloatLabel variant="on">
             <DatePicker
-              id="navbar-date-selector"
-              v-model="dateRange"
-              selectionMode="range"
-              :size="datePickerSize"
-              class="gp-datepicker"
-              :class="datePickerClasses"
-              :style="datePickerStyle"
-              :manualInput="false"
-              iconDisplay="input"
-              variant="filled"
-              showIcon
-              :showOnFocus="true"
-              :showWeek="false"
-              dateFormat="mm/dd/yy"
-            />
-<!--            <label for="navbar-date-selector" class="gp-datepicker-label">-->
-<!--              {{ datePickerLabel }}-->
-<!--            </label>-->
+                id="navbar-date-selector"
+                v-model="dateRange"
+                selectionMode="range"
+                :size="datePickerSize"
+                class="gp-datepicker"
+                :class="datePickerClasses"
+                :style="datePickerStyle"
+                :manualInput="false"
+                iconDisplay="input"
+                variant="filled"
+                showIcon
+                :showOnFocus="true"
+                :showWeek="false"
+                dateFormat="mm/dd/yy"
+            >
+              <template #footer>
+                <Select
+                    :options="presets"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Preset"
+                    defaultValue="today"
+                    v-model="selectedPreset"
+                    @change="setPresetRange"
+                />
+              </template>
+            </DatePicker>
           </FloatLabel>
         </div>
-        
+
         <!-- Additional end content -->
-        <slot name="end-after" />
+        <slot name="end-after"/>
       </div>
     </template>
   </Toolbar>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { storeToRefs } from 'pinia'
+import {ref, computed} from 'vue'
+import {storeToRefs} from 'pinia'
 import Toolbar from 'primevue/toolbar'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
+import Select from 'primevue/select'
 import AppNavigation from './AppNavigation.vue'
-import { useTimezone } from '@/composables/useTimezone'
-import { useDateRangeStore } from '@/stores/dateRange'
+import {useDateRangeStore} from '@/stores/dateRange'
+import {useTimezone} from '@/composables/useTimezone'
+
+const userTz = useTimezone();
+
+const presets = ref([
+  {label: 'Today', value: 'today'},
+  {label: 'Yesterday', value: 'yesterday'},
+  {label: 'Last 7 days', value: 'lastWeek'},
+  {label: 'Last 30 days', value: 'lastMonth'}
+])
+
+const selectedPreset = ref()
+
+const setPresetRange = () => {
+  if (selectedPreset.value === 'today') {
+    setDateToToday();
+    return;
+  }
+  if (selectedPreset.value === 'yesterday') {
+    setDateToYesterday();
+    return
+  }
+  if (selectedPreset.value === 'lastWeek') {
+    setDateToLast7Days();
+    return;
+  }
+  if (selectedPreset.value === 'lastMonth') {
+    setDateToLast30Days();
+    return;
+  }
+}
 
 const props = defineProps({
   variant: {
@@ -93,7 +133,7 @@ const timezone = useTimezone()
 
 // Pinia store
 const dateRangeStore = useDateRangeStore()
-const { dateRange: storeDateRange } = storeToRefs(dateRangeStore)
+const {dateRange: storeDateRange} = storeToRefs(dateRangeStore)
 
 // Computed properties
 const toolbarClasses = computed(() => ({
@@ -138,12 +178,39 @@ const setValidDateRange = (value) => {
     const [newStartDate, newEndDate] = value
 
     // Create UTC date range from picker dates using the timezone composable
-    const { start, end } = timezone.createDateRangeFromPicker(newStartDate, newEndDate)
+    const {start, end} = timezone.createDateRangeFromPicker(newStartDate, newEndDate)
 
     dateRangeStore.setDateRange([start, end])
     emit('date-change', [start, end])
+  } else if (!value) { // Handle clear
+    dateRangeStore.setDateRange(null)
+    emit('date-change', null)
   }
 }
+
+const setDateToToday = () => {
+  const today = userTz.getTodayRangeUtc()
+  dateRangeStore.setDateRange([today.start, today.end])
+  emit('date-change', [today.start, today.end])
+};
+
+const setDateToYesterday = () => {
+  const yesterday = userTz.getYesterdayRangeUtc()
+  dateRangeStore.setDateRange([yesterday.start, yesterday.end])
+  emit('date-change', [yesterday.start, yesterday.end])
+};
+
+const setDateToLast7Days = () => {
+  const week = userTz.getLastWeekRange();
+  dateRangeStore.setDateRange([week.start, week.end])
+  emit('date-change', [week.start, week.end])
+};
+
+const setDateToLast30Days = () => {
+  const month = userTz.getLastMonthRange();
+  dateRangeStore.setDateRange([month.start, month.end])
+  emit('date-change', [month.start, month.end])
+};
 
 const handleNavigate = (item) => {
   emit('navigate', item)
@@ -263,7 +330,7 @@ const handleNavigate = (item) => {
   .gp-navbar-datepicker {
     order: -1;
   }
-  
+
   .gp-navbar-end {
     flex-direction: row-reverse;
   }
@@ -313,7 +380,7 @@ const handleNavigate = (item) => {
   .gp-navbar-logo-text {
     display: none;
   }
-  
+
   .gp-navbar-datepicker {
     min-width: 180px;
     flex: 1;
@@ -495,14 +562,14 @@ const handleNavigate = (item) => {
   .gp-app-navbar-with-datepicker {
     padding: 0 var(--gp-spacing-sm) !important;
   }
-  
+
   .gp-navbar-datepicker .gp-datepicker {
     font-size: 0.8rem !important;
     padding: var(--gp-spacing-sm) !important;
     min-height: 44px;
     width: 100% !important;
   }
-  
+
   .gp-navbar-datepicker .p-floatlabel label {
     font-size: 0.75rem !important;
   }
