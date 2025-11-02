@@ -5,7 +5,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
@@ -32,6 +32,7 @@ public class UserService {
     private final Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent;
     private final Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent;
     private final Event<TimelineStructureUpdatedEvent> structureUpdatedEvent;
+    private final AuthConfigurationService authConfigurationService;
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
@@ -41,22 +42,21 @@ public class UserService {
             "Europe/Kiev", "Europe/Kyiv"  // JavaScript may send old name, normalize to new name
     );
 
-    @ConfigProperty(name = "geoupuse.auth.sign-up-enabled", defaultValue = "true")
-    private boolean isSignUpEnabled;
-
     @Inject
     public UserService(UserRepository userRepository,
                        SecurePasswordUtils securePasswordUtils,
                        TimelinePreferencesUpdater preferencesUpdater,
                        Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent,
                        Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent,
-                       Event<TimelineStructureUpdatedEvent> structureUpdatedEvent) {
+                       Event<TimelineStructureUpdatedEvent> structureUpdatedEvent,
+                       AuthConfigurationService authConfigurationService) {
         this.userRepository = userRepository;
         this.securePasswordUtils = securePasswordUtils;
         this.preferencesUpdater = preferencesUpdater;
         this.preferencesUpdatedEvent = preferencesUpdatedEvent;
         this.classificationUpdatedEvent = classificationUpdatedEvent;
         this.structureUpdatedEvent = structureUpdatedEvent;
+        this.authConfigurationService = authConfigurationService;
     }
 
     /**
@@ -71,7 +71,7 @@ public class UserService {
      */
     @Transactional
     public UserEntity registerUser(String email, String password, String fullName, String timezone) {
-        if (!isSignUpEnabled) {
+        if (!authConfigurationService.isPasswordRegistrationEnabled()) {
             throw new IllegalArgumentException("Registration is disabled");
         }
         // Check if the user already exists
@@ -374,9 +374,6 @@ public class UserService {
         }
     }
 
-    public boolean isSignUpEnabled() {
-        return isSignUpEnabled;
-    }
 
     /**
      * Check if the update contains travel classification parameters.

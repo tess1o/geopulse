@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.auth;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.auth.dto.AuthStatusResponse;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
@@ -25,6 +26,7 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
                 AuthResponse.class,
                 LoginRequest.class,
                 TokenRefreshRequest.class,
+                AuthStatusResponse.class
         }
 )
 public class AuthNativeConfig {

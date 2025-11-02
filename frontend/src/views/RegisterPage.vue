@@ -8,9 +8,10 @@
           <img src="/geopulse-logo.svg" alt="GeoPulse" class="app-logo"/>
         </div>
 
-        <div v-if="!signUpEnabled" class="signup-disabled-message">
+        <div v-if="!registrationStatus.passwordRegistrationEnabled" class="signup-disabled-message">
           <i class="pi pi-exclamation-triangle"></i>
-          <span>Sign up using email/password is currently disabled.</span>
+          <span v-if="oidcProviders?.length !== 0">Sign up using email/password is currently disabled. Use OIDC for registration</span>
+          <span v-else>Sign up using email/password is currently disabled.</span>
         </div>
 
         <!-- Register Form -->
@@ -24,7 +25,8 @@
               </div>
 
               <!-- Register Form -->
-              <form @submit.prevent="handleSubmit" class="register-form">
+              <form @submit.prevent="handleSubmit" class="register-form"
+                    v-if="registrationStatus.passwordRegistrationEnabled">
                 <!-- Email Field -->
                 <div class="form-field">
                   <label for="email" class="field-label">Email Address</label>
@@ -105,7 +107,7 @@
                     label="Create Account"
                     icon="pi pi-user-plus"
                     :loading="isLoading"
-                    :disabled="isLoading || !isFormValid || !signUpEnabled"
+                    :disabled="isLoading || !isFormValid || !registrationStatus.passwordRegistrationEnabled"
                     class="submit-button"
                 />
 
@@ -118,8 +120,10 @@
 
               <!-- OIDC Providers Section -->
               <OidcProvidersSection
+                  v-if="registrationStatus.oidcRegistrationEnabled"
                   :providers="oidcProviders"
                   :disabled="isLoading"
+                  :show-divider="registrationStatus.passwordRegistrationEnabled"
                   @provider-selected="handleOidcLogin"
               />
 
@@ -158,7 +162,7 @@ const authStore = useAuthStore()
 const isLoading = ref(false)
 const registerError = ref('')
 const oidcProviders = ref([])
-const signUpEnabled = ref(true);
+const registrationStatus = ref({passwordRegistrationEnabled: true, oidcRegistrationEnabled: true});
 
 // Form data
 const formData = ref({
@@ -309,17 +313,6 @@ const getOidcProviders = async () => {
   }
 }
 
-const isSignUpEnabled = async () => {
-  try {
-    const enabled = await authStore.isSignUpEnabled();
-    signUpEnabled.value = enabled;
-  } catch (error) {
-    console.error('Failed to check sign-up status:', error);
-    return false;
-  }
-}
-
-
 // Lifecycle
 onMounted(async () => {
   // Clear any existing auth data
@@ -328,18 +321,31 @@ onMounted(async () => {
   }
 
   try {
-    await Promise.all([
-      getOidcProviders(),
-      isSignUpEnabled()
-    ])
+    const status = await authStore.getRegistrationStatus();
+    registrationStatus.value = status;
+
+    if (!status.passwordRegistrationEnabled && !status.oidcRegistrationEnabled) {
+      toast.add({
+        severity: 'error',
+        summary: 'Registration Disabled',
+        detail: 'New user registration is currently disabled.',
+        life: 5000
+      });
+      router.push({path: '/login', query: {reason: 'registration_disabled'}});
+      return;
+    }
+
+    if (status.oidcRegistrationEnabled) {
+      await getOidcProviders();
+    }
   } catch (error) {
-    console.error('Failed to load OIDC providers or sign up status', error)
+    console.error('Failed to load registration status or OIDC providers', error)
     toast.add({
       severity: 'error',
       summary: 'Could not load registration options',
-      detail: 'Failed to retrieve external registration providers or sign up configuration',
+      detail: 'Failed to retrieve registration configuration.',
       life: 5000
-    })
+    });
   }
 })
 </script>

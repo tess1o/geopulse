@@ -1,6 +1,6 @@
 <template>
   <div v-if="providers.length > 0" class="oidc-section">
-    <div class="divider">
+    <div class="divider" v-if="showDivider">
       <span>{{ dividerText }}</span>
     </div>
     <div class="oidc-providers">
@@ -27,6 +27,10 @@ const props = defineProps({
   disabled: {
     type: Boolean,
     default: false
+  },
+  showDivider: {
+    type: Boolean,
+    default: true
   },
   dividerText: {
     type: String,

@@ -4,14 +4,12 @@ import io.smallrye.jwt.auth.principal.ParseException;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.CookieParam;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
+import org.github.tess1o.geopulse.auth.dto.AuthStatusResponse;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
@@ -30,12 +28,15 @@ public class AuthenticationResource {
 
     private final AuthenticationService authenticationService;
     private final CookieService cookieService;
+    private AuthConfigurationService authConfigurationService;
 
     @Inject
     public AuthenticationResource(AuthenticationService authenticationService,
-                                  CookieService cookieService) {
+                                  CookieService cookieService,
+                                  AuthConfigurationService authConfigurationService) {
         this.authenticationService = authenticationService;
         this.cookieService = cookieService;
+        this.authConfigurationService = authConfigurationService;
     }
 
     /**
@@ -158,7 +159,7 @@ public class AuthenticationResource {
 
             // Use existing refresh token logic
             var refreshResponse = authenticationService.refreshToken(refreshTokenCookie);
-            
+
             // Create new cookies with refreshed tokens
             var newAccessTokenCookie = cookieService.createAccessTokenCookie(
                     refreshResponse.accessToken(),
@@ -221,5 +222,15 @@ public class AuthenticationResource {
                     .entity(ApiResponse.error("Logout failed"))
                     .build();
         }
+    }
+
+    @GET
+    @Path("/status")
+    public Response getAuthStatus() {
+        AuthStatusResponse status = AuthStatusResponse.builder()
+                .passwordRegistrationEnabled(authConfigurationService.isPasswordRegistrationEnabled())
+                .oidcRegistrationEnabled(authConfigurationService.isOidcRegistrationEnabled())
+                .build();
+        return Response.ok(ApiResponse.success(status)).build();
     }
 }
