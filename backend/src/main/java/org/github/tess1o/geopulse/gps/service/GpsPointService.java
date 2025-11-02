@@ -65,10 +65,23 @@ public class GpsPointService {
             return false;
         }
 
-        // Persist the entity
-        gpsPointRepository.persist(entity);
-        log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
-        return true;
+        // Check for existing point with the same unique key
+        Optional<GpsPointEntity> existingPoint = gpsPointRepository.findByUniqueKey(
+                entity.getUser().getId(),
+                entity.getTimestamp(),
+                entity.getCoordinates()
+        );
+
+        if (existingPoint.isPresent()) {
+            // It's a duplicate, reject it
+            log.info("Skipping duplicate GPS point for user {} at timestamp {} with same coordinates", entity.getUser().getId(), entity.getTimestamp());
+            return false;
+        } else {
+            // Persist the new entity
+            gpsPointRepository.persist(entity);
+            log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
+            return true;
+        }
     }
 
     @Transactional

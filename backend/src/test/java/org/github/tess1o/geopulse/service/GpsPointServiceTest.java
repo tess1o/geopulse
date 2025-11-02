@@ -1,5 +1,10 @@
 package org.github.tess1o.geopulse.service;
 
+import io.quarkus.test.junit.TestProfile;
+import io.quarkus.test.junit.QuarkusTestProfile;
+
+import java.util.Map;
+
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -35,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @QuarkusTest
 @QuarkusTestResource(PostgisTestResource.class)
+@TestProfile(GpsPointServiceTest.DisableLocationTimeThresholdTestProfile.class)
 public class GpsPointServiceTest {
 
     private UUID userId;
@@ -125,6 +131,37 @@ public class GpsPointServiceTest {
         assertEquals(5.0, savedGpsPoint.getVelocity(), 0.000001);
         assertEquals("test-device", savedGpsPoint.getDeviceId());
         assertEquals(tst, (int) savedGpsPoint.getTimestamp().getEpochSecond());
+    }
+
+    @Test
+    @Transactional
+    public void testSaveOwnTracksGpsPointDuplicate() {
+        long tst = (int) Instant.now().plusSeconds(20000).toEpochMilli() / 1000;
+        OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
+                .type("location")
+                .acc(0.2)
+                .lat(40.0)
+                .lon(-74.0)
+                .tst(tst)
+                .vel(5.0)
+                .build();
+
+        Statistics stats = getStatistics();
+        stats.clear();  // Reset stats before operation
+
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
+
+        var insertCount = stats.getEntityInsertCount();
+        assertEquals(1, insertCount); // Expect 1 query
+
+        var selectCount = stats.getQueryExecutionCount();
+        assertTrue(selectCount <= 2); //for duplication check and possbile
+
+        assertEquals(1, gpsPointRepository.count());
+
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
+        assertEquals(1, gpsPointRepository.count());
+
     }
 
     @Test
@@ -240,6 +277,13 @@ public class GpsPointServiceTest {
         Session session = em.unwrap(Session.class);
         SessionFactory sessionFactory = session.getSessionFactory();
         return sessionFactory.getStatistics();
+    }
+
+    public static class DisableLocationTimeThresholdTestProfile implements QuarkusTestProfile {
+        @Override
+        public Map<String, String> getConfigOverrides() {
+            return Map.of("geopulse.gps.duplicate-detection.location-time-threshold-minutes", "-1");
+        }
     }
 
 }

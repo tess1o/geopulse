@@ -146,6 +146,11 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         return list("user.id = ?1", userId);
     }
 
+    public Optional<GpsPointEntity> findByUniqueKey(UUID userId, Instant timestamp, Point coordinates) {
+        return find("user.id = ?1 AND timestamp = ?2 AND coordinates = ?3", userId, timestamp, coordinates)
+                .firstResultOptional();
+    }
+
     // =================== LIGHTWEIGHT GPS POINT METHODS FOR PERFORMANCE ===================
 
     /**
