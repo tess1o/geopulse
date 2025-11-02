@@ -223,6 +223,17 @@
           },
           "connectionType" : {
             "$ref" : "#/components/schemas/ConnectionType"
+          },
+          "filterInaccurateData" : {
+            "type" : "boolean"
+          },
+          "maxAllowedAccuracy" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxAllowedSpeed" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -335,6 +346,31 @@
           "course" : {
             "format" : "double",
             "type" : "number"
+          }
+        }
+      },
+      "DebugExportRequest" : {
+        "type" : "object",
+        "properties" : {
+          "startDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "latitudeShift" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitudeShift" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "includeTimeline" : {
+            "type" : "boolean"
+          },
+          "includeConfiguration" : {
+            "type" : "boolean"
           }
         }
       },
@@ -779,6 +815,17 @@
           },
           "connectionType" : {
             "$ref" : "#/components/schemas/ConnectionType"
+          },
+          "filterInaccurateData" : {
+            "type" : "boolean"
+          },
+          "maxAllowedAccuracy" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxAllowedSpeed" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -829,6 +876,10 @@
           },
           "measureUnit" : {
             "$ref" : "#/components/schemas/MeasureUnit"
+          },
+          "defaultRedirectUrl" : {
+            "maxLength" : 1000,
+            "type" : "string"
           },
           "userId" : {
             "$ref" : "#/components/schemas/UUID"
@@ -1450,6 +1501,17 @@
         "tags" : [ "Authentication Resource" ]
       }
     },
+    "/api/auth/status" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Auth Status",
+        "tags" : [ "Authentication Resource" ]
+      }
+    },
     "/api/dawarich/api/v1/health" : {
       "get" : {
         "responses" : {
@@ -1593,6 +1655,39 @@
           }
         },
         "summary" : "Create Export",
+        "tags" : [ "Export Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/export/debug/create" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DebugExportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Debug Export",
         "tags" : [ "Export Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -2735,6 +2830,26 @@
           }
         },
         "summary" : "Add Gps Source Cnfig",
+        "tags" : [ "Gps Source Config Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/gps/source/defaults" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Default Filtering Values",
         "tags" : [ "Gps Source Config Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -3962,17 +4077,6 @@
         "tags" : [ "User Resource" ]
       }
     },
-    "/api/users/sign-up/status" : {
-      "get" : {
-        "responses" : {
-          "200" : {
-            "description" : "OK"
-          }
-        },
-        "summary" : "Is Sign Up Enabled",
-        "tags" : [ "User Resource" ]
-      }
-    },
     "/api/users/update" : {
       "post" : {
         "requestBody" : {
@@ -4227,7 +4331,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.1.3",
+    "version" : "1.2.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
