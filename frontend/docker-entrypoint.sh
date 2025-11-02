@@ -12,7 +12,7 @@ if grep -q "127.0.0.11" /etc/resolv.conf; then
   DEFAULT_RESOLVER="127.0.0.11 8.8.8.8"
 else
   # We're likely in Kubernetes or bare metal — use system nameservers + fallback
-  SYSTEM_NAMESERVERS=$(grep '^nameserver' /etc/resolv.conf | awk '{print $2}' | paste -sd " " -)
+  SYSTEM_NAMESERVERS=$(grep '^nameserver' /etc/resolv.conf | awk '{if ($2 ~ ":") print "["$2"]"; else print $2}' | paste -sd " " -)
   DEFAULT_RESOLVER="${SYSTEM_NAMESERVERS:-8.8.8.8}"
 fi
 
