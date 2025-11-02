@@ -10,6 +10,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.exceptions.OidcAccountLinkingRequiredException;
@@ -123,6 +124,10 @@ public class OidcAuthenticationResource {
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)
+                    .build();
+        } catch (OidcRegistrationDisabledException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (OidcAccountLinkingRequiredException e) {
             // Handle account linking requirement

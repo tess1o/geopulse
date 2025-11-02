@@ -84,7 +84,7 @@
               />
 
               <!-- Register Link -->
-              <div class="register-section">
+              <div v-if="registrationStatus.passwordRegistrationEnabled || registrationStatus.oidcRegistrationEnabled" class="register-section">
                 <span class="register-text">Don't have an account?</span>
                 <router-link to="/register" class="register-link">
                   Create account
@@ -103,7 +103,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import { useErrorHandler } from '@/composables/useErrorHandler'
@@ -112,6 +112,7 @@ import OidcProvidersSection from '@/components/auth/OidcProvidersSection.vue'
 
 // Composables
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 const authStore = useAuthStore()
 const { handleError } = useErrorHandler()
@@ -121,6 +122,8 @@ const isLoading = ref(false)
 const loginError = ref('')
 
 const oidcProviders = ref([])
+
+const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
 
 // Form data
 const formData = ref({
@@ -245,10 +248,23 @@ const handleOidcLogin = async (providerName) => {
 
 // Lifecycle
 onMounted(() => {
+  if (route.query.reason === 'registration_disabled') {
+    toast.add({
+      severity: 'warn',
+      summary: 'Registration Disabled',
+      detail: 'New user registration is currently disabled. Please log in if you already have an account.',
+      life: 7000
+    });
+  }
+
   // Clear any existing auth data
   if (authStore.isAuthenticated) {
     router.push('/app/timeline')
   }
+
+  authStore.getRegistrationStatus().then(status => {
+    registrationStatus.value = status;
+  });
 
   // Load available OIDC providers
   authStore.getOidcProviders().then(providers => {
