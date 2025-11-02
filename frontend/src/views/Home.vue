@@ -43,6 +43,7 @@
           <div class="hero-actions">
             <div v-if="!authStore.isAuthenticated" class="auth-buttons">
               <Button
+                v-if="registrationStatus.passwordRegistrationEnabled || registrationStatus.oidcRegistrationEnabled"
                 label="Start Your Journey"
                 icon="pi pi-arrow-right"
                 as="router-link"
@@ -162,6 +163,7 @@ import { useAuthStore } from '@/stores/auth'
 
 // Composables
 const authStore = useAuthStore()
+const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
 
 // Dark mode state
 const isDarkMode = ref(false)
@@ -220,6 +222,10 @@ onMounted(async () => {
   
   // Check authentication state to display correct buttons
   await authStore.checkAuth()
+
+  authStore.getRegistrationStatus().then(status => {
+    registrationStatus.value = status;
+  });
 })
 </script>
 

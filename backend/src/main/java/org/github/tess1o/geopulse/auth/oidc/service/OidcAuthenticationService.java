@@ -19,6 +19,8 @@ import jakarta.ws.rs.core.Form;
 import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
+import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
@@ -63,6 +65,9 @@ public class OidcAuthenticationService {
 
     @Inject
     OidcSessionStateRepository sessionStateRepository;
+
+    @Inject
+    AuthConfigurationService authConfigurationService;
 
     @Inject
     OidcLinkingTokenService linkingTokenService;
@@ -146,6 +151,9 @@ public class OidcAuthenticationService {
             // Generate JWT tokens
             return authenticationService.createAuthResponse(user);
 
+        } catch (OidcRegistrationDisabledException e) {
+            log.warn("Registration via OIDC is disabled", e);
+            throw e;
         } catch (OidcAccountLinkingRequiredException e) {
             // Clean up session state but let the linking exception bubble up
             try {
@@ -223,6 +231,9 @@ public class OidcAuthenticationService {
         }
 
         // Create new user with OIDC connection
+        if (!authConfigurationService.isOidcRegistrationEnabled()) {
+            throw new OidcRegistrationDisabledException("New user registration via OIDC is disabled.");
+        }
         return createNewUserWithOidcConnection(userInfo, sessionState.getProviderName());
     }
 

@@ -160,10 +160,4 @@ public class UserResource {
                     .build();
         }
     }
-
-    @GET
-    @Path("/sign-up/status")
-    public Response isSignUpEnabled() {
-        return Response.ok(ApiResponse.success(userService.isSignUpEnabled())).build();
-    }
 }

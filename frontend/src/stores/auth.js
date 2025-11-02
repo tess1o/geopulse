@@ -268,13 +268,14 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async isSignUpEnabled() {
+        async getRegistrationStatus() {
             try {
-                const response = await apiService.get('/users/sign-up/status');
+                const response = await apiService.get('/auth/status');
                 return response.data;
             } catch (error) {
-                console.error('Failed to fetch sign up status:', error);
-                throw error;
+                console.error('Failed to fetch registration status:', error);
+                // Return a default that disables registration UI elements
+                return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false };
             }
         }
     }
