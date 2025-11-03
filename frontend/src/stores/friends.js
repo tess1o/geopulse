@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
 
 export const useFriendsStore = defineStore('friends', {
@@ -230,6 +230,16 @@ export const useFriendsStore = defineStore('friends', {
             if (this.hasReceivedInviteFrom(userId)) return 'received_invite'
             if (this.hasSentInvitationTo(userId)) return 'sent_invitation'
             return 'none'
+        },
+
+        async searchUsersToInvite(query) {
+            try {
+                const response = await apiService.get(`/friends/search-users-to-invite?query=${query}`)
+                return response.data // Assuming response.data is an array of user objects
+            } catch (error) {
+                console.error('Error searching users to invite:', error)
+                throw error
+            }
         },
 
         // Batch operations

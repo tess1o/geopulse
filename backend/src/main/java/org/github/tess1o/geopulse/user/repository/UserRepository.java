@@ -36,4 +36,9 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
     public List<UserEntity> findActiveUsers() {
         return list("isActive = true");
     }
+
+    public List<UserEntity> findByEmailOrFullNameContainingIgnoreCase(String query) {
+        String likeQuery = "%" + query.toLowerCase() + "%";
+        return list("lower(email) LIKE ?1 OR lower(fullName) LIKE ?1", likeQuery);
+    }
 }

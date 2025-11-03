@@ -273,35 +273,56 @@ x
             v-model:visible="showInviteDialog"
             :header="'Invite Friend'"
             modal
-            class="invite-dialog"
+            :style="{ width: '25rem' }"
         >
-          <div class="invite-form">
-            <div class="form-field">
-              <label for="friendEmail" class="form-label">Friend's Email Address</label>
-              <InputText
+          <div class="flex items-end gap-2 mb-4">
+              <AutoComplete
                   id="friendEmail"
                   v-model="inviteForm.email"
-                  placeholder="Enter email address"
+                  :suggestions="filteredUsers"
+                  @complete="searchUsers"
+                  field="email"
+                  optionLabel="email"
+                  placeholder="Enter email address or search users"
                   :invalid="!!inviteErrors.email"
-                  class="w-full"
                   @keyup.enter="sendInvite"
-              />
+              >
+                <template #option="slotProps">
+                  <div class="flex align-items-center">
+                    <Avatar
+                        :image="slotProps.option.avatar || '/avatars/avatar1.png'"
+                        size="small"
+                        shape="circle"
+                        class="mr-2"
+                    />
+                    <div>
+                      <div class="font-bold">{{ slotProps.option.fullName }}</div>
+                      <div class="text-sm text-color-secondary">{{ slotProps.option.email }}</div>
+                    </div>
+                  </div>
+                </template>
+              </AutoComplete>
               <small v-if="inviteErrors.email" class="error-message">
                 {{ inviteErrors.email }}
               </small>
-            </div>
           </div>
 
-          <template #footer>
-            <div class="dialog-footer">
-              <Button label="Cancel" outlined @click="closeInviteDialog"/>
-              <Button
-                  label="Send Invitation"
-                  @click="sendInvite"
-                  :loading="inviteLoading"
-              />
-            </div>
-          </template>
+          <div class="flex justify-end gap-2">
+            <Button label="Cancel" outlined @click="closeInviteDialog"/>
+            <Button
+                label="Send Invitation"
+                @click="sendInvite"
+                :loading="inviteLoading"
+            />
+          </div>
+
+
+
+<!--          <template #footer>-->
+<!--            <div class="dialog-footer">-->
+
+<!--            </div>-->
+<!--          </template>-->
         </Dialog>
 
         <!-- Confirm Delete Dialog -->
@@ -321,6 +342,7 @@ import {useConfirm} from 'primevue/useconfirm'
 import {useTimezone} from '@/composables/useTimezone'
 import {useLocationStore} from '@/stores/location'
 import {useAuthStore} from '@/stores/auth'
+import AutoComplete from 'primevue/autocomplete'
 
 const timezone = useTimezone()
 
@@ -385,6 +407,8 @@ const inviteLoading = ref(false)
 const refreshing = ref(false)
 const friendsMapRef = ref(null)
 const initialFriendEmailToZoom = ref(null)
+const filteredUsers = ref(null)
+const selectedUser = ref(null)
 
 // Form data
 const inviteForm = ref({
@@ -752,6 +776,20 @@ const refreshFriendsData = async () => {
     })
   } finally {
     refreshing.value = false
+  }
+}
+
+const searchUsers = async (event) => {
+  try {
+    const users = await friendsStore.searchUsersToInvite(event.query)
+    filteredUsers.value = users.map(user => ({
+      fullName: user.fullName,
+      email: user.email,
+      avatar: user.avatar
+    }))
+  } catch (error) {
+    console.error('Error searching users:', error)
+    filteredUsers.value = []
   }
 }
 
@@ -1179,9 +1217,6 @@ onMounted(async () => {
 }
 
 /* Dialog */
-.invite-dialog {
-  min-width: 400px;
-}
 
 .invite-form {
   display: flex;
