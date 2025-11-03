@@ -127,6 +127,7 @@ x
                   ref="friendsMapRef"
                   :friends="friendsWithLocation"
                   :current-user="currentUser"
+                  :initial-friend-email="initialFriendEmailToZoom"
                   :key="`friends-map-${activeTab}-${friendsWithLocation.length}`"
                   @friend-located="handleFriendLocated"
                   class="friends-map"
@@ -383,6 +384,7 @@ const activeTabIndex = computed(() => {
 const inviteLoading = ref(false)
 const refreshing = ref(false)
 const friendsMapRef = ref(null)
+const initialFriendEmailToZoom = ref(null)
 
 // Form data
 const inviteForm = ref({
@@ -434,6 +436,10 @@ watch(() => route.params.tab, (newTab) => {
     // If tab is invalid or not present, default to 'map' and update URL
     router.replace({name: 'Friends', params: {tab: 'map'}})
   }
+}, {immediate: true})
+
+watch(() => route.query.friend, (newFriendEmail) => {
+  initialFriendEmailToZoom.value = newFriendEmail || null
 }, {immediate: true})
 
 const validateInviteForm = () => {
@@ -521,7 +527,11 @@ const deleteFriend = async (friendId) => {
 }
 
 const showFriendOnMap = (friend) => {
-  router.push({name: 'Friends', params: {tab: 'map'}}).then(() => {
+  router.replace({
+    name: 'Friends',
+    params: {tab: 'map'},
+    query: {friend: friend.email}
+  }).then(() => {
     // Give more time for map to initialize after tab switch
     setTimeout(() => {
       if (friendsMapRef.value) {

@@ -82,7 +82,8 @@ import {useFriendsStore} from '@/stores/friends'
 
 const props = defineProps({
   friends: Array,
-  currentUser: Object
+  currentUser: Object,
+  initialFriendEmail: String
 })
 
 const emit = defineEmits(['friend-located'])
@@ -180,8 +181,11 @@ const hasLocations = computed(() => {
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
 
-  // Fit map to friends data if available
-  if (hasLocations.value && dataBounds.value) {
+  // If an initial friend email is provided, try to zoom to that friend
+  if (props.initialFriendEmail) {
+    tryZoomToInitialFriend()
+  } else if (hasLocations.value && dataBounds.value) {
+    // Otherwise, fit map to all friends data if available
     nextTick(() => {
       mapInstance.fitBounds(dataBounds.value, {padding: [20, 20]})
     })
@@ -256,14 +260,6 @@ const zoomToFriend = (friend) => {
     friendsLayerRef.value.focusOnFriend(friend)
   }
 
-  // Show success message
-  toast.add({
-    severity: 'success',
-    summary: 'Friend located',
-    detail: `Showing ${friend.fullName || friend.name}'s location`,
-    life: 2000
-  })
-
   emit('friend-located', friend)
   return true
 }
@@ -308,11 +304,35 @@ watch(() => props.friends, (newFriends) => {
   }
 }, {deep: true})
 
+const tryZoomToInitialFriend = () => {
+  if (props.initialFriendEmail && props.friends?.length && map.value) {
+    const friendToZoom = props.friends.find(f => f.email === props.initialFriendEmail)
+    if (friendToZoom) {
+      // Ensure map is ready before zooming
+      nextTick(() => {
+        zoomToFriend(friendToZoom)
+      })
+    }
+  }
+}
+
+// Watch for initialFriendEmail prop changes
+watch(() => props.initialFriendEmail, (newEmail) => {
+  if (newEmail) {
+    tryZoomToInitialFriend()
+  }
+})
+
 // Lifecycle
 onMounted(async () => {
   // Load initial data
   if (props.friends?.length) {
     await loadFriendLocations()
+  }
+
+  // Attempt to zoom to initial friend if provided, after data is potentially loaded
+  if (props.initialFriendEmail) {
+    tryZoomToInitialFriend()
   }
 })
 
