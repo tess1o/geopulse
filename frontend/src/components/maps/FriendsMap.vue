@@ -67,6 +67,12 @@
             @friend-click="handleFriendClick"
             @friend-hover="handleFriendHover"
           />
+          <CurrentLocationLayer
+            v-if="map && isReady && currentUser"
+            :map="map"
+            :location="currentUser"
+            :visible="true"
+          />
         </template>
       </MapContainer>
     </div>
@@ -80,21 +86,21 @@ import { useToast } from 'primevue/usetoast'
 import { Badge, Button, ProgressSpinner } from 'primevue'
 
 // Map components
-import { MapContainer, FriendsLayer } from '@/components/maps'
+import { MapContainer, FriendsLayer, CurrentLocationLayer } from '@/components/maps'
 
 
 // Store
 import { useFriendsStore } from '@/stores/friends'
 
 const props = defineProps({
-  friends: Array
+  friends: Array,
+  currentUser: Object
 })
 
 const emit = defineEmits(['friend-located'])
 
 // Pinia store
 const friendsStore = useFriendsStore()
-const { getFriendsWithLocations } = storeToRefs(friendsStore)
 
 const toast = useToast()
 
@@ -107,16 +113,21 @@ const processedFriendsData = computed(() => {
 })
 
 const dataBounds = computed(() => {
-  if (!hasLocations.value) return null
-  
   const bounds = []
-  props.friends.forEach(friend => {
-    if (friend.lastLatitude && friend.lastLongitude) {
-      bounds.push([friend.lastLatitude, friend.lastLongitude])
-    }
-  })
   
-  return bounds.length > 1 ? bounds : null
+  if (props.friends) {
+    props.friends.forEach(friend => {
+      if (friend.lastLatitude && friend.lastLongitude) {
+        bounds.push([friend.lastLatitude, friend.lastLongitude])
+      }
+    })
+  }
+  
+  if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
+    bounds.push([props.currentUser.latitude, props.currentUser.longitude])
+  }
+  
+  return bounds.length > 0 ? bounds : null
 })
 
 // Template refs
@@ -131,6 +142,11 @@ const uniqueMapId = computed(() => `friends-map-${mapKey.value}-${Date.now()}-${
 
 // Map configuration
 const mapCenter = computed(() => {
+  // Center on the current user if available
+  if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
+    return [props.currentUser.latitude, props.currentUser.longitude]
+  }
+
   // If we have friends with locations, center on the first friend
   if (hasLocations.value && props.friends && props.friends.length > 0) {
     const firstFriendWithLocation = props.friends.find(friend => 
@@ -146,7 +162,7 @@ const mapCenter = computed(() => {
     }
   }
   
-  // Default to London if no friends with locations
+  // Default to London if no locations
   return [51.505, -0.09]
 })
 
@@ -154,33 +170,22 @@ const mapZoom = ref(15)
 
 // Computed
 const hasLocations = computed(() => {
-  if (!props.friends || !Array.isArray(props.friends) || props.friends.length === 0) {
-    return false
-  }
-
-  const result = props.friends.some(friend => {
-    const hasValidLocation = (
-        friend &&
-        typeof friend.lastLatitude === 'number' &&
-        typeof friend.lastLongitude === 'number' &&
-        !isNaN(friend.lastLatitude) &&
-        !isNaN(friend.lastLongitude)
-    )
-
-    if (!hasValidLocation) {
-      console.log('FriendsMap: Friend without valid location:', {
-        friend: friend?.fullName || friend?.email,
-        lastLatitude: friend?.lastLatitude,
-        lastLongitude: friend?.lastLongitude,
-        latType: typeof friend?.lastLatitude,
-        lngType: typeof friend?.lastLongitude
-      })
-    }
-
-    return hasValidLocation
-  })
+  const hasFriendLocation = props.friends?.some(friend => 
+    friend &&
+    typeof friend.lastLatitude === 'number' &&
+    typeof friend.lastLongitude === 'number' &&
+    !isNaN(friend.lastLatitude) &&
+    !isNaN(friend.lastLongitude)
+  )
   
-  return result
+  const hasCurrentUserLocation = 
+    props.currentUser &&
+    typeof props.currentUser.latitude === 'number' &&
+    typeof props.currentUser.longitude === 'number' &&
+    !isNaN(props.currentUser.latitude) &&
+    !isNaN(props.currentUser.longitude)
+
+  return hasFriendLocation || hasCurrentUserLocation
 })
 
 // Methods

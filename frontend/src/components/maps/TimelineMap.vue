@@ -160,9 +160,7 @@ import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 
 // Map components
-import {FavoritesLayer, MapContainer, MapControls, PathLayer, TimelineLayer} from '@/components/maps'
-import CurrentLocationLayer from '@/components/maps/CurrentLocationLayer.vue'
-import ImmichLayer from '@/components/maps/layers/ImmichLayer.vue'
+import {FavoritesLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer} from '@/components/maps'
 
 // Dialog components
 import AddFavoriteDialog from '@/components/dialogs/AddFavoriteDialog.vue'

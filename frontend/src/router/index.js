@@ -128,7 +128,7 @@ const routes = [
         component: () => import('@/views/OidcCallback.vue')
     },
     {
-        path: '/app/friends',
+        path: '/app/friends/:tab?',
         name: 'Friends',
         component: FriendsPage,
         beforeEnter: requireAuth
