@@ -3,6 +3,7 @@
 # ==========================
 FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:25.0-java25 AS build
 ARG VERSION
+ARG QUARKUS_NATIVE_BUILD_ARGS=""
 
 # Set working directory
 WORKDIR /app
@@ -24,7 +25,7 @@ RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.9.0:go-offline 
 COPY --chown=quarkus:quarkus backend/src backend/src
 
 # Build the native executable
-RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
+RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod -Dquarkus.native.additional-build-args=${QUARKUS_NATIVE_BUILD_ARGS}
 
 # ==========================
 # Stage 2: Runtime image

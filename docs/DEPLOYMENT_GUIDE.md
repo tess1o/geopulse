@@ -110,6 +110,16 @@ chmod +x mosquitto_entrypoint.sh
 >     image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
 > ```
 
+> #### A note on Rasberry Pi support
+> If you are deploying on a Raspberry Pi, you can use the `tess1o/geopulse-backend:1.2.0-native-raspi` image.
+> 
+> Change `docker-compose.yml` to use this image.
+>
+> ```yaml
+>    geopulse-backend:
+>      image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-raspi
+> ```
+
 ### 2. Configure Environment (`.env`)
 
 The `.env` file is the central place for configuring your GeoPulse instance.
