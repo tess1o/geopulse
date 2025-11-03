@@ -24,16 +24,16 @@
 
       <!-- Map Container -->
       <MapContainer
-        v-if="hasLocations"
-        :key="mapKey"
-        ref="mapContainerRef"
-        :map-id="uniqueMapId"
-        :center="mapCenter"
-        :zoom="mapZoom"
-        :show-controls="false"
-        height="100%"
-        width="100%"
-        @map-ready="handleMapReady"
+          v-if="hasLocations"
+          :key="mapKey"
+          ref="mapContainerRef"
+          :map-id="uniqueMapId"
+          :center="mapCenter"
+          :zoom="mapZoom"
+          :show-controls="false"
+          height="100%"
+          width="100%"
+          @map-ready="handleMapReady"
       >
         <template #controls="{ map, isReady }">
           <div v-if="isReady" class="leaflet-top leaflet-right">
@@ -48,19 +48,19 @@
         <!-- Friends Layer -->
         <template #overlays="{ map, isReady }">
           <FriendsLayer
-            v-if="map && isReady && hasLocations"
-            ref="friendsLayerRef"
-            :map="map"
-            :friends-data="processedFriendsData"
-            :visible="true"
-            @friend-click="handleFriendClick"
-            @friend-hover="handleFriendHover"
+              v-if="map && isReady && hasLocations"
+              ref="friendsLayerRef"
+              :map="map"
+              :friends-data="processedFriendsData"
+              :visible="true"
+              @friend-click="handleFriendClick"
+              @friend-hover="handleFriendHover"
           />
           <CurrentLocationLayer
-            v-if="map && isReady && currentUser"
-            :map="map"
-            :location="currentUser"
-            :visible="true"
+              v-if="map && isReady && currentUser"
+              :map="map"
+              :location="currentUser"
+              :visible="true"
           />
         </template>
       </MapContainer>
@@ -69,17 +69,16 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useToast } from 'primevue/usetoast'
-import { Badge, Button, ProgressSpinner } from 'primevue'
+import {ref, computed, watch, onMounted, nextTick} from 'vue'
+import {useToast} from 'primevue/usetoast'
+import {ProgressSpinner} from 'primevue'
 
 // Map components
-import { MapContainer, FriendsLayer, CurrentLocationLayer } from '@/components/maps'
+import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
 
 
 // Store
-import { useFriendsStore } from '@/stores/friends'
+import {useFriendsStore} from '@/stores/friends'
 
 const props = defineProps({
   friends: Array,
@@ -96,14 +95,14 @@ const toast = useToast()
 // Computed data
 const processedFriendsData = computed(() => {
   if (!props.friends) return []
-  
+
   // Debug logging
   return processFriendsForMap(props.friends)
 })
 
 const dataBounds = computed(() => {
   const bounds = []
-  
+
   if (props.friends) {
     props.friends.forEach(friend => {
       if (friend.lastLatitude && friend.lastLongitude) {
@@ -111,11 +110,11 @@ const dataBounds = computed(() => {
       }
     })
   }
-  
+
   if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
     bounds.push([props.currentUser.latitude, props.currentUser.longitude])
   }
-  
+
   return bounds.length > 0 ? bounds : null
 })
 
@@ -138,19 +137,19 @@ const mapCenter = computed(() => {
 
   // If we have friends with locations, center on the first friend
   if (hasLocations.value && props.friends && props.friends.length > 0) {
-    const firstFriendWithLocation = props.friends.find(friend => 
-      friend &&
-      typeof friend.lastLatitude === 'number' &&
-      typeof friend.lastLongitude === 'number' &&
-      !isNaN(friend.lastLatitude) &&
-      !isNaN(friend.lastLongitude)
+    const firstFriendWithLocation = props.friends.find(friend =>
+        friend &&
+        typeof friend.lastLatitude === 'number' &&
+        typeof friend.lastLongitude === 'number' &&
+        !isNaN(friend.lastLatitude) &&
+        !isNaN(friend.lastLongitude)
     )
-    
+
     if (firstFriendWithLocation) {
       return [firstFriendWithLocation.lastLatitude, firstFriendWithLocation.lastLongitude]
     }
   }
-  
+
   // Default to London if no locations
   return [51.505, -0.09]
 })
@@ -159,20 +158,20 @@ const mapZoom = ref(15)
 
 // Computed
 const hasLocations = computed(() => {
-  const hasFriendLocation = props.friends?.some(friend => 
-    friend &&
-    typeof friend.lastLatitude === 'number' &&
-    typeof friend.lastLongitude === 'number' &&
-    !isNaN(friend.lastLatitude) &&
-    !isNaN(friend.lastLongitude)
+  const hasFriendLocation = props.friends?.some(friend =>
+      friend &&
+      typeof friend.lastLatitude === 'number' &&
+      typeof friend.lastLongitude === 'number' &&
+      !isNaN(friend.lastLatitude) &&
+      !isNaN(friend.lastLongitude)
   )
-  
-  const hasCurrentUserLocation = 
-    props.currentUser &&
-    typeof props.currentUser.latitude === 'number' &&
-    typeof props.currentUser.longitude === 'number' &&
-    !isNaN(props.currentUser.latitude) &&
-    !isNaN(props.currentUser.longitude)
+
+  const hasCurrentUserLocation =
+      props.currentUser &&
+      typeof props.currentUser.latitude === 'number' &&
+      typeof props.currentUser.longitude === 'number' &&
+      !isNaN(props.currentUser.latitude) &&
+      !isNaN(props.currentUser.longitude)
 
   return hasFriendLocation || hasCurrentUserLocation
 })
@@ -180,26 +179,17 @@ const hasLocations = computed(() => {
 // Methods
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
-  
+
   // Fit map to friends data if available
   if (hasLocations.value && dataBounds.value) {
     nextTick(() => {
-      mapInstance.fitBounds(dataBounds.value, { padding: [20, 20] })
+      mapInstance.fitBounds(dataBounds.value, {padding: [20, 20]})
     })
   }
 }
 
 const handleFriendClick = (event) => {
-  const { friend } = event
-
-  // Show success message
-  toast.add({
-    severity: 'success',
-    summary: 'Friend selected',
-    detail: `Showing ${friend.fullName || friend.name}'s location`,
-    life: 2000
-  })
-
+  const {friend} = event
   emit('friend-located', friend)
 }
 
@@ -281,18 +271,18 @@ const zoomToFriend = (friend) => {
 // Process friends data for the map
 const processFriendsForMap = (friends) => {
   if (!friends || !Array.isArray(friends)) return []
-  
+
   return friends
-    .filter(friend => friend.lastLatitude && friend.lastLongitude)
-    .map(friend => ({
-      ...friend,
-      latitude: friend.lastLatitude,
-      longitude: friend.lastLongitude,
-      id: friend.id || friend.email,
-      name: friend.fullName || friend.email,
-      avatar: friend.avatar,
-      lastSeen: friend.lastSeen
-    }))
+      .filter(friend => friend.lastLatitude && friend.lastLongitude)
+      .map(friend => ({
+        ...friend,
+        latitude: friend.lastLatitude,
+        longitude: friend.lastLongitude,
+        id: friend.id || friend.email,
+        name: friend.fullName || friend.email,
+        avatar: friend.avatar,
+        lastSeen: friend.lastSeen
+      }))
 }
 
 // No watchers needed - using computed properties
@@ -302,7 +292,7 @@ watch(dataBounds, (newBounds) => {
   if (newBounds && map.value) {
     nextTick(() => {
       try {
-        map.value.fitBounds(newBounds, { padding: [20, 20] })
+        map.value.fitBounds(newBounds, {padding: [20, 20]})
       } catch (error) {
         console.warn('Error fitting bounds:', error)
       }
@@ -316,7 +306,7 @@ watch(() => props.friends, (newFriends) => {
   if (newFriends && newFriends.length > 0 && !map.value) {
     mapKey.value++
   }
-}, { deep: true })
+}, {deep: true})
 
 // Lifecycle
 onMounted(async () => {
@@ -433,11 +423,11 @@ export default {
     min-height: 400px;
     border-radius: 1rem;
   }
-  
+
   .friends-map-content {
     min-height: 300px;
   }
-  
+
   .friends-map-header {
     padding: 0.75rem;
   }
