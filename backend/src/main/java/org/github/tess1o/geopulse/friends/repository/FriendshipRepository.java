@@ -51,21 +51,55 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
     }
 
     public List<FriendInfoDTO> findFriends(UUID userId) {
+        // Optimized query using LATERAL joins for efficient index-only lookups
+        // LATERAL allows correlated subqueries that execute once per row using indexes
+        // Each LATERAL subquery uses LIMIT 1 with ORDER BY DESC to get latest record efficiently
         String sql = """
-                select user_id, friend_id, email, full_name, avatar, t.timestamp, coordinates
-                from (select f.user_id,
-                             f.friend_id,
-                             u.email,
-                             u.full_name,
-                             u.avatar,
-                             gps.timestamp,
-                             gps.coordinates,
-                             rank() over (partition by f.friend_id order by gps.timestamp desc) as r
-                      from user_friends f
-                               join users u on f.friend_id = u.id
-                               left join gps_points gps on u.id = gps.user_id
-                      where f.user_id = :userId) t
-                where r = 1;
+                SELECT f.user_id,
+                       f.friend_id,
+                       u.email,
+                       u.full_name,
+                       u.avatar,
+                       latest_gps.timestamp as gps_timestamp,
+                       latest_gps.coordinates,
+                       CASE
+                           WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
+                           WHEN latest_stay.timestamp IS NULL THEN 'TRIP'
+                           WHEN latest_trip.timestamp IS NULL THEN 'STAY'
+                           WHEN latest_stay.timestamp > latest_trip.timestamp THEN 'STAY'
+                           ELSE 'TRIP'
+                       END as latest_activity_type,
+                       CASE
+                           WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
+                           WHEN latest_stay.timestamp IS NULL THEN latest_trip.trip_duration
+                           WHEN latest_trip.timestamp IS NULL THEN latest_stay.stay_duration
+                           WHEN latest_stay.timestamp > latest_trip.timestamp THEN latest_stay.stay_duration
+                           ELSE latest_trip.trip_duration
+                       END as latest_activity_duration_seconds
+                FROM user_friends f
+                JOIN users u ON f.friend_id = u.id
+                LEFT JOIN LATERAL (
+                    SELECT timestamp, coordinates
+                    FROM gps_points
+                    WHERE user_id = u.id
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ) latest_gps ON true
+                LEFT JOIN LATERAL (
+                    SELECT timestamp, stay_duration
+                    FROM timeline_stays
+                    WHERE user_id = u.id
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ) latest_stay ON true
+                LEFT JOIN LATERAL (
+                    SELECT timestamp, trip_duration
+                    FROM timeline_trips
+                    WHERE user_id = u.id
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ) latest_trip ON true
+                WHERE f.user_id = :userId;
                 """;
 
         // Create a native query and set the parameter
@@ -86,6 +120,8 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                         .lastSeen(getLastSeen(record[5]))
                         .lastLongitude(getCoordinate(record[6], 0))
                         .lastLatitude(getCoordinate(record[6], 1))
+                        .latestActivityType(record[7] == null ? null : record[7].toString())
+                        .latestActivityDurationSeconds(record[8] == null ? 0 : ((Number) record[8]).intValue())
                         .build())
                 .toList();
     }
@@ -105,5 +141,28 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
             return null;
         }
         return ((Point) value).getPosition().getCoordinate(index);
+    }
+
+    /**
+     * Find only friend IDs for a user (lightweight version without extra data).
+     *
+     * @param userId The ID of the user
+     * @return List of friend UUIDs
+     */
+    public List<UUID> findFriendIds(UUID userId) {
+        String sql = """
+                SELECT f.friend_id
+                FROM user_friends f
+                WHERE f.user_id = :userId
+                """;
+
+        Query query = entityManager.createNativeQuery(sql)
+                .setParameter("userId", userId);
+
+        List<Object> results = query.getResultList();
+
+        return results.stream()
+                .map(id -> UUID.fromString(id.toString()))
+                .toList();
     }
 }

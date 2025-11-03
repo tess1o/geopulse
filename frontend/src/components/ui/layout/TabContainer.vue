@@ -13,6 +13,7 @@
           <div class="p-tabmenu-item-link">
             <i v-if="tab.icon" :class="['p-tabmenu-item-icon', tab.icon]"></i>
             <span class="p-tabmenu-item-label">{{ tab.label }}</span>
+            <Badge v-if="tab.badge" :value="tab.badge" :severity="tab.badgeType || 'info'" class="p-tabmenu-item-badge"></Badge>
           </div>
         </div>
       </div>
@@ -25,6 +26,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import Badge from 'primevue/badge'
 
 const props = defineProps({
   tabs: {
@@ -240,6 +242,10 @@ const handleTabClick = (index) => {
 .gp-tab-menu .p-tabmenu-item-icon {
   margin-right: var(--gp-spacing-sm);
   font-size: 0.875rem;
+}
+
+.p-tabmenu-item-badge {
+  margin-left: var(--gp-spacing-sm);
 }
 
 /* Compact Variant */

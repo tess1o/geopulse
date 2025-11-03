@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.friends.exceptions.FriendsException;
+import org.github.tess1o.geopulse.friends.invitation.repository.FriendInvitationRepository;
 import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -12,6 +13,9 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
 import org.github.tess1o.geopulse.user.exceptions.NotAuthorizedUserException;
+import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.user.model.UserSearchDTO;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.locationtech.jts.geom.Point;
 
 import java.util.List;
@@ -24,15 +28,21 @@ public class FriendService {
     private final GpsPointRepository gpsPointRepository;
     private final LocationPointResolver locationPointResolver;
     private final FriendshipRepository friendshipRepository;
+    private final FriendInvitationRepository friendInvitationRepository;
+    private final UserRepository userRepository;
 
     @Inject
     public FriendService(
             GpsPointRepository gpsPointRepository,
             LocationPointResolver locationPointResolver,
-            FriendshipRepository friendshipRepository) {
+            FriendshipRepository friendshipRepository,
+            FriendInvitationRepository friendInvitationRepository,
+            UserRepository userRepository) {
         this.gpsPointRepository = gpsPointRepository;
         this.locationPointResolver = locationPointResolver;
         this.friendshipRepository = friendshipRepository;
+        this.friendInvitationRepository = friendInvitationRepository;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -83,5 +93,20 @@ public class FriendService {
             }
         });
         return friends;
+    }
+
+    /**
+     * Search for users to invite as friends.
+     * This method uses a single optimized SQL query to exclude:
+     * - The current user
+     * - Existing friends
+     * - Users with pending invitations (sent or received)
+     *
+     * @param currentUserId The ID of the current user
+     * @param query The search query (email or full name)
+     * @return List of users matching the search criteria (max 20)
+     */
+    public List<UserSearchDTO> searchUsersToInvite(UUID currentUserId, String query) {
+        return userRepository.searchUsersToInvite(currentUserId, query);
     }
 }

@@ -6,13 +6,14 @@
     :latitude="location.latitude"
     :longitude="location.longitude"
     :share-data="shareData"
+    :avatar-url="location.avatar"
     :open-popup="false"
   />
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import SharedLocationMarker from './SharedLocationMarker.vue'
+import SharedLocationMarker from '../SharedLocationMarker.vue'
 import { useTimezone } from '@/composables/useTimezone';
 
 // Props

@@ -21,4 +21,6 @@ public class FriendInfoDTO {
     private String email;
     private String lastSeen;
     private String lastLocation;
+    private String latestActivityType;  //STAY or TRIP
+    private int latestActivityDurationSeconds;
 }

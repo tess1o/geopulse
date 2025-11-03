@@ -1,26 +1,5 @@
 <template>
   <div class="friends-map-container">
-    <div class="friends-map-header">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i class="pi pi-map text-blue-500"></i>
-          <span class="font-bold text-lg friends-map-title">Friends Map</span>
-          <Badge v-if="hasLocations" :value="friends.length" severity="info"/>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Button
-              icon="pi pi-refresh"
-              size="small"
-              outlined
-              severity="secondary"
-              :loading="isLoading"
-              @click="refreshLocations"
-          />
-        </div>
-      </div>
-    </div>
-
     <div class="friends-map-content">
       <!-- Loading overlay -->
       <div v-if="isLoading" class="map-loading-overlay">
@@ -45,27 +24,43 @@
 
       <!-- Map Container -->
       <MapContainer
-        v-if="hasLocations"
-        :key="mapKey"
-        ref="mapContainerRef"
-        :map-id="uniqueMapId"
-        :center="mapCenter"
-        :zoom="mapZoom"
-        :show-controls="false"
-        height="100%"
-        width="100%"
-        @map-ready="handleMapReady"
+          v-if="hasLocations"
+          :key="mapKey"
+          ref="mapContainerRef"
+          :map-id="uniqueMapId"
+          :center="mapCenter"
+          :zoom="mapZoom"
+          :show-controls="false"
+          height="100%"
+          width="100%"
+          @map-ready="handleMapReady"
       >
+        <template #controls="{ map, isReady }">
+          <div v-if="isReady" class="leaflet-top leaflet-right">
+            <div class="leaflet-control">
+              <button @click="refreshLocations" title="Refresh Locations" class="custom-map-control-button">
+                <i class="pi pi-refresh"></i>
+              </button>
+            </div>
+          </div>
+        </template>
+
         <!-- Friends Layer -->
         <template #overlays="{ map, isReady }">
           <FriendsLayer
-            v-if="map && isReady && hasLocations"
-            ref="friendsLayerRef"
-            :map="map"
-            :friends-data="processedFriendsData"
-            :visible="true"
-            @friend-click="handleFriendClick"
-            @friend-hover="handleFriendHover"
+              v-if="map && isReady && hasLocations"
+              ref="friendsLayerRef"
+              :map="map"
+              :friends-data="processedFriendsData"
+              :visible="true"
+              @friend-click="handleFriendClick"
+              @friend-hover="handleFriendHover"
+          />
+          <CurrentLocationLayer
+              v-if="map && isReady && currentUser"
+              :map="map"
+              :location="currentUser"
+              :visible="true"
           />
         </template>
       </MapContainer>
@@ -74,49 +69,54 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useToast } from 'primevue/usetoast'
-import { Badge, Button, ProgressSpinner } from 'primevue'
+import {ref, computed, watch, onMounted, nextTick} from 'vue'
+import {useToast} from 'primevue/usetoast'
+import {ProgressSpinner} from 'primevue'
 
 // Map components
-import { MapContainer, FriendsLayer } from '@/components/maps'
+import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
 
 
 // Store
-import { useFriendsStore } from '@/stores/friends'
+import {useFriendsStore} from '@/stores/friends'
 
 const props = defineProps({
-  friends: Array
+  friends: Array,
+  currentUser: Object,
+  initialFriendEmail: String
 })
 
-const emit = defineEmits(['friend-located'])
+const emit = defineEmits(['friend-located', 'refresh'])
 
 // Pinia store
 const friendsStore = useFriendsStore()
-const { getFriendsWithLocations } = storeToRefs(friendsStore)
 
 const toast = useToast()
 
 // Computed data
 const processedFriendsData = computed(() => {
   if (!props.friends) return []
-  
+
   // Debug logging
   return processFriendsForMap(props.friends)
 })
 
 const dataBounds = computed(() => {
-  if (!hasLocations.value) return null
-  
   const bounds = []
-  props.friends.forEach(friend => {
-    if (friend.lastLatitude && friend.lastLongitude) {
-      bounds.push([friend.lastLatitude, friend.lastLongitude])
-    }
-  })
-  
-  return bounds.length > 1 ? bounds : null
+
+  if (props.friends) {
+    props.friends.forEach(friend => {
+      if (friend.lastLatitude && friend.lastLongitude) {
+        bounds.push([friend.lastLatitude, friend.lastLongitude])
+      }
+    })
+  }
+
+  if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
+    bounds.push([props.currentUser.latitude, props.currentUser.longitude])
+  }
+
+  return bounds.length > 0 ? bounds : null
 })
 
 // Template refs
@@ -131,35 +131,14 @@ const uniqueMapId = computed(() => `friends-map-${mapKey.value}-${Date.now()}-${
 
 // Map configuration
 const mapCenter = computed(() => {
+  // Center on the current user if available
+  if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
+    return [props.currentUser.latitude, props.currentUser.longitude]
+  }
+
   // If we have friends with locations, center on the first friend
   if (hasLocations.value && props.friends && props.friends.length > 0) {
-    const firstFriendWithLocation = props.friends.find(friend => 
-      friend &&
-      typeof friend.lastLatitude === 'number' &&
-      typeof friend.lastLongitude === 'number' &&
-      !isNaN(friend.lastLatitude) &&
-      !isNaN(friend.lastLongitude)
-    )
-    
-    if (firstFriendWithLocation) {
-      return [firstFriendWithLocation.lastLatitude, firstFriendWithLocation.lastLongitude]
-    }
-  }
-  
-  // Default to London if no friends with locations
-  return [51.505, -0.09]
-})
-
-const mapZoom = ref(15)
-
-// Computed
-const hasLocations = computed(() => {
-  if (!props.friends || !Array.isArray(props.friends) || props.friends.length === 0) {
-    return false
-  }
-
-  const result = props.friends.some(friend => {
-    const hasValidLocation = (
+    const firstFriendWithLocation = props.friends.find(friend =>
         friend &&
         typeof friend.lastLatitude === 'number' &&
         typeof friend.lastLongitude === 'number' &&
@@ -167,45 +146,54 @@ const hasLocations = computed(() => {
         !isNaN(friend.lastLongitude)
     )
 
-    if (!hasValidLocation) {
-      console.log('FriendsMap: Friend without valid location:', {
-        friend: friend?.fullName || friend?.email,
-        lastLatitude: friend?.lastLatitude,
-        lastLongitude: friend?.lastLongitude,
-        latType: typeof friend?.lastLatitude,
-        lngType: typeof friend?.lastLongitude
-      })
+    if (firstFriendWithLocation) {
+      return [firstFriendWithLocation.lastLatitude, firstFriendWithLocation.lastLongitude]
     }
+  }
 
-    return hasValidLocation
-  })
-  
-  return result
+  // Default to London if no locations
+  return [51.505, -0.09]
+})
+
+const mapZoom = ref(15)
+
+// Computed
+const hasLocations = computed(() => {
+  const hasFriendLocation = props.friends?.some(friend =>
+      friend &&
+      typeof friend.lastLatitude === 'number' &&
+      typeof friend.lastLongitude === 'number' &&
+      !isNaN(friend.lastLatitude) &&
+      !isNaN(friend.lastLongitude)
+  )
+
+  const hasCurrentUserLocation =
+      props.currentUser &&
+      typeof props.currentUser.latitude === 'number' &&
+      typeof props.currentUser.longitude === 'number' &&
+      !isNaN(props.currentUser.latitude) &&
+      !isNaN(props.currentUser.longitude)
+
+  return hasFriendLocation || hasCurrentUserLocation
 })
 
 // Methods
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
-  
-  // Fit map to friends data if available
-  if (hasLocations.value && dataBounds.value) {
+
+  // If an initial friend email is provided, try to zoom to that friend
+  if (props.initialFriendEmail) {
+    tryZoomToInitialFriend()
+  } else if (hasLocations.value && dataBounds.value) {
+    // Otherwise, fit map to all friends data if available
     nextTick(() => {
-      mapInstance.fitBounds(dataBounds.value, { padding: [20, 20] })
+      mapInstance.fitBounds(dataBounds.value, {padding: [20, 20]})
     })
   }
 }
 
 const handleFriendClick = (event) => {
-  const { friend } = event
-
-  // Show success message
-  toast.add({
-    severity: 'success',
-    summary: 'Friend selected',
-    detail: `Showing ${friend.fullName || friend.name}'s location`,
-    life: 2000
-  })
-
+  const {friend} = event
   emit('friend-located', friend)
 }
 
@@ -234,10 +222,9 @@ const loadFriendLocations = async () => {
   }
 }
 
-const refreshLocations = async () => {
-  // Force re-render of map to ensure clean state
-  mapKey.value++
-  await loadFriendLocations()
+const refreshLocations = () => {
+  // Emit refresh event to parent to trigger full data refresh
+  emit('refresh')
 }
 
 const zoomToFriend = (friend) => {
@@ -261,24 +248,10 @@ const zoomToFriend = (friend) => {
     return false
   }
 
-  // Zoom to the friend's location
-  map.value.setView([friend.lastLatitude, friend.lastLongitude], 16, {
-    animate: true,
-    duration: 1
-  })
-
   // Focus on the friend in the layer
   if (friendsLayerRef.value) {
     friendsLayerRef.value.focusOnFriend(friend)
   }
-
-  // Show success message
-  toast.add({
-    severity: 'success',
-    summary: 'Friend located',
-    detail: `Showing ${friend.fullName || friend.name}'s location`,
-    life: 2000
-  })
 
   emit('friend-located', friend)
   return true
@@ -287,18 +260,18 @@ const zoomToFriend = (friend) => {
 // Process friends data for the map
 const processFriendsForMap = (friends) => {
   if (!friends || !Array.isArray(friends)) return []
-  
+
   return friends
-    .filter(friend => friend.lastLatitude && friend.lastLongitude)
-    .map(friend => ({
-      ...friend,
-      latitude: friend.lastLatitude,
-      longitude: friend.lastLongitude,
-      id: friend.id || friend.email,
-      name: friend.fullName || friend.email,
-      avatar: friend.avatar,
-      lastSeen: friend.lastSeen
-    }))
+      .filter(friend => friend.lastLatitude && friend.lastLongitude)
+      .map(friend => ({
+        ...friend,
+        latitude: friend.lastLatitude,
+        longitude: friend.lastLongitude,
+        id: friend.id || friend.email,
+        name: friend.fullName || friend.email,
+        avatar: friend.avatar,
+        lastSeen: friend.lastSeen
+      }))
 }
 
 // No watchers needed - using computed properties
@@ -308,7 +281,7 @@ watch(dataBounds, (newBounds) => {
   if (newBounds && map.value) {
     nextTick(() => {
       try {
-        map.value.fitBounds(newBounds, { padding: [20, 20] })
+        map.value.fitBounds(newBounds, {padding: [20, 20]})
       } catch (error) {
         console.warn('Error fitting bounds:', error)
       }
@@ -322,13 +295,38 @@ watch(() => props.friends, (newFriends) => {
   if (newFriends && newFriends.length > 0 && !map.value) {
     mapKey.value++
   }
-}, { deep: true })
+}, {deep: true})
+
+const tryZoomToInitialFriend = () => {
+  if (props.initialFriendEmail && props.friends?.length && map.value) {
+    const friendToZoom = props.friends.find(f => f.email === props.initialFriendEmail)
+    if (friendToZoom) {
+      // Ensure map is ready before zooming
+      nextTick(() => {
+        zoomToFriend(friendToZoom)
+      })
+    }
+  }
+}
+
+// Watch for initialFriendEmail prop changes
+watch(() => props.initialFriendEmail, (newEmail) => {
+  if (newEmail) {
+    tryZoomToInitialFriend()
+  }
+})
 
 // Lifecycle
 onMounted(async () => {
   // Load initial data
-  if (props.friends?.length) {
+  if (props.friends?.length === 0) {
+    console.log('Loading initial friend locations...', props.friends.length)
     await loadFriendLocations()
+  }
+
+  // Attempt to zoom to initial friend if provided, after data is potentially loaded
+  if (props.initialFriendEmail) {
+    tryZoomToInitialFriend()
   }
 })
 
@@ -347,14 +345,8 @@ export default {
 
 <style scoped>
 .friends-map-container {
-  background: var(--p-surface-0);
-  border: 1px solid var(--p-surface-200);
-  border-radius: 1.5rem;
-  overflow: hidden;
   height: 100%;
-  min-height: 500px;
   width: 100%;
-
   display: flex;
   flex-direction: column;
 }
@@ -416,17 +408,40 @@ export default {
   background: var(--p-surface-800);
 }
 
+.custom-map-control-button {
+  background-color: var(--gp-primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--gp-shadow-large);
+}
+
+.custom-map-control-button:hover {
+  background-color: var(--gp-primary-hover);
+}
+
+.custom-map-control-button i {
+  font-size: 1.2rem;
+  color: white;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .friends-map-container {
     min-height: 400px;
     border-radius: 1rem;
   }
-  
+
   .friends-map-content {
     min-height: 300px;
   }
-  
+
   .friends-map-header {
     padding: 0.75rem;
   }

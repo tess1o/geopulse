@@ -18,6 +18,7 @@ import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.NotAuthorizedUserException;
+import org.github.tess1o.geopulse.user.model.UserSearchDTO;
 
 import java.util.List;
 import java.util.UUID;
@@ -144,6 +145,27 @@ public class FriendResource {
             log.error("Failed to get friend location {} for user", friendId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve friend location"))
+                    .build();
+        }
+    }
+
+    /**
+     * Search for users to invite as friends.
+     *
+     * @param query The search query string (email or full name).
+     * @return A list of UserSearchDTOs.
+     */
+    @GET
+    @Path("/search-users-to-invite")
+    public Response searchUsersToInvite(@QueryParam("query") @NotNull String query) {
+        try {
+            UUID currentUserId = currentUserService.getCurrentUserId();
+            List<UserSearchDTO> users = friendService.searchUsersToInvite(currentUserId, query);
+            return Response.ok(ApiResponse.success(users)).build();
+        } catch (Exception e) {
+            log.error("Failed to search users to invite for user {}", currentUserService.getCurrentUserId(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to search users"))
                     .build();
         }
     }

@@ -48,6 +48,11 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .firstResultOptional();
     }
 
+    public Optional<GpsPointEntity> findLatest(UUID userId) {
+        return find("user.id = ?1 ORDER BY timestamp DESC", userId)
+                .firstResultOptional();
+    }
+
     /**
      * Find GPS points for a user within a date range with pagination and sorting.
      *
@@ -61,13 +66,13 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @return A list of GPS point entities for the page
      */
     public List<GpsPointEntity> findByUserAndDateRange(UUID userId, Instant startTime, Instant endTime,
-                                                        int page, int pageSize, String sortBy, String sortOrder) {
+                                                       int page, int pageSize, String sortBy, String sortOrder) {
         // Validate sort field to prevent SQL injection
         String validatedSortBy = validateSortField(sortBy);
         String validatedSortOrder = sortOrder.equalsIgnoreCase("asc") ? "ASC" : "DESC";
 
         String query = String.format("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3 ORDER BY %s %s",
-                                     validatedSortBy, validatedSortOrder);
+                validatedSortBy, validatedSortOrder);
 
         return find(query, userId, startTime, endTime)
                 .page(page, pageSize)

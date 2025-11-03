@@ -27,6 +27,10 @@ const props = defineProps({
     type: Object,
     default: () => ({})
   },
+  avatarUrl: {
+    type: String,
+    default: null
+  },
   openPopup: {
     type: Boolean,
     default: true
@@ -41,15 +45,27 @@ const createMarker = () => {
     props.map.removeLayer(marker)
   }
 
-  marker = L.circleMarker([props.latitude, props.longitude], {
-    radius: 12,
-    fillColor: '#9c27b0',  // purple
-    color: '#ffffff',
-    weight: 3,
-    opacity: 1,
-    fillOpacity: 0.9
-  })
-      .addTo(props.map)
+  if (props.avatarUrl) {
+    const icon = L.divIcon({
+      html: `<img src="${props.avatarUrl}" class="leaflet-avatar-icon">`,
+      className: 'leaflet-avatar-icon-container',
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+      popupAnchor: [0, -40]
+    });
+    marker = L.marker([props.latitude, props.longitude], { icon });
+  } else {
+    marker = L.circleMarker([props.latitude, props.longitude], {
+      radius: 12,
+      fillColor: '#9c27b0',  // purple
+      color: '#ffffff',
+      weight: 3,
+      opacity: 1,
+      fillOpacity: 0.9
+    });
+  }
+
+  marker.addTo(props.map)
       .bindPopup(`
       <div style="text-align: center;">
         <strong>${props.shareData.sharedBy}</strong><br/>
@@ -64,7 +80,7 @@ const createMarker = () => {
 }
 
 // Watch for prop changes and recreate marker
-watch(() => [props.latitude, props.longitude, props.shareData, props.openPopup], createMarker, {immediate: true})
+watch(() => [props.latitude, props.longitude, props.shareData, props.openPopup, props.avatarUrl], createMarker, {immediate: true})
 
 onUnmounted(() => {
   if (marker && props.map) {
@@ -72,3 +88,18 @@ onUnmounted(() => {
   }
 })
 </script>
+
+<style>
+.leaflet-avatar-icon-container {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-avatar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 3px solid #ffffff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+</style>

@@ -408,4 +408,8 @@ public class GpsPointService {
     private void triggerSynchronousTimelineRegenerationIfNeeded(UUID userId, Instant affectedTimestamp) {
         streamingTimelineGenerationService.generateTimelineFromTimestamp(userId, affectedTimestamp);
     }
+
+    public Optional<GpsPointDTO> getLastKnownPosition(UUID userId) {
+        return gpsPointRepository.findLatest(userId).map(gpsPointMapper::toGpsPointDTO);
+    }
 }
