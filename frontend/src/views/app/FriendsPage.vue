@@ -461,9 +461,13 @@ watch(() => route.query.friend, (newFriendEmail) => {
 const validateInviteForm = () => {
   inviteErrors.value = {}
 
-  if (!inviteForm.value.email?.trim()) {
+  const emailToValidate = typeof inviteForm.value.email === 'object' && inviteForm.value.email !== null
+      ? inviteForm.value.email.email
+      : inviteForm.value.email
+
+  if (!emailToValidate?.trim()) {
     inviteErrors.value.email = 'Email address is required'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteForm.value.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToValidate)) {
     inviteErrors.value.email = 'Please enter a valid email address'
   }
 
@@ -475,13 +479,17 @@ const sendInvite = async () => {
 
   inviteLoading.value = true
 
+  const emailToSend = typeof inviteForm.value.email === 'object' && inviteForm.value.email !== null
+      ? inviteForm.value.email.email
+      : inviteForm.value.email
+
   try {
-    await friendsStore.sendFriendRequest(inviteForm.value.email.trim())
+    await friendsStore.sendFriendRequest(emailToSend.trim())
 
     toast.add({
       severity: 'success',
       summary: 'Invitation Sent',
-      detail: `Friend request sent to ${inviteForm.value.email}`,
+      detail: `Friend request sent to ${emailToSend}`,
       life: 3000
     })
 
