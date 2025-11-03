@@ -249,12 +249,6 @@ const zoomToFriend = (friend) => {
     return false
   }
 
-  // Zoom to the friend's location
-  map.value.setView([friend.lastLatitude, friend.lastLongitude], 16, {
-    animate: true,
-    duration: 1
-  })
-
   // Focus on the friend in the layer
   if (friendsLayerRef.value) {
     friendsLayerRef.value.focusOnFriend(friend)

@@ -123,7 +123,7 @@ const clearFriendMarkers = () => {
 
 const getMarkerByFriend = (friendData) => {
   const found = friendMarkers.value.find(({friend}) =>
-      friend.id === friendData.id || friend === friendData
+      friend.friendId === friendData.friendId
   )
   return found?.marker
 }
@@ -131,7 +131,7 @@ const getMarkerByFriend = (friendData) => {
 const focusOnFriend = (friendData) => {
   const marker = getMarkerByFriend(friendData)
   if (marker && props.map) {
-    props.map.setView(marker.getLatLng(), 15)
+    props.map.setView(marker.getLatLng(), 17)
     marker.openPopup()
   }
 }
