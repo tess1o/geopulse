@@ -1,212 +1,212 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Journey Insights"
-      subtitle="Discover patterns and achievements from your location data"
-      :loading="isLoading"
+        title="Journey Insights"
+        subtitle="Discover patterns and achievements from your location data"
+        :loading="isLoading"
     >
-    <!-- Loading State -->
-    <template v-if="isLoading">
-      <div class="insights-loading">
-        <ProgressSpinner size="large" />
-        <p>Loading your journey insights...</p>
-      </div>
-    </template>
+      <!-- Loading State -->
+      <template v-if="isLoading">
+        <div class="insights-loading">
+          <ProgressSpinner size="large" />
+          <p>Loading your journey insights...</p>
+        </div>
+      </template>
 
-    <template v-else>
-      <div class="insights-content-wrapper">
-      <!-- Geographic Section -->
-      <div class="insights-section">
-        <h2 class="insights-section-title">
-          <i class="pi pi-globe"></i>
-          Geographic Adventures
-        </h2>
-        <div class="geographic-grid">
-          <!-- Countries Card -->
-          <div class="geographic-card">
-            <div class="geographic-header">
-              <span class="geographic-count">{{ geographic.countries?.length || 0 }}</span>
-              <span class="geographic-label">Countries Explored</span>
+      <template v-else>
+        <div class="insights-content-wrapper">
+          <!-- Geographic Section -->
+          <div class="insights-section">
+            <h2 class="insights-section-title">
+              <i class="pi pi-globe"></i>
+              Geographic Adventures
+            </h2>
+            <div class="geographic-grid">
+              <!-- Countries Card -->
+              <div class="geographic-card">
+                <div class="geographic-header">
+                  <span class="geographic-count">{{ geographic.countries?.length || 0 }}</span>
+                  <span class="geographic-label">Countries Explored</span>
+                </div>
+                <div class="geographic-list" v-if="geographic.countries?.length > 0">
+                  <div
+                      v-for="country in displayedCountries"
+                      :key="country.name"
+                      class="geographic-item"
+                  >
+                    <img
+                        v-if="country.flagUrl"
+                        :src="country.flagUrl"
+                        :alt="`${country.name} flag`"
+                        class="country-flag-img"
+                        @error="handleFlagError(country)"
+                    />
+                    <span v-else class="country-flag-placeholder">🏳️</span>
+                    <span class="country-name">{{ country.name }}</span>
+                  </div>
+                </div>
+                <div v-else class="no-data">Start exploring to discover countries!</div>
+              </div>
+
+              <!-- Cities Card -->
+              <div class="geographic-card">
+                <div class="geographic-header">
+                  <span class="geographic-count">{{ geographic.cities?.length || 0 }}</span>
+                  <span class="geographic-label">Cities Visited</span>
+                </div>
+                <div class="geographic-list" v-if="geographic.cities?.length > 0">
+                  <div
+                      v-for="city in displayedCities"
+                      :key="city.name"
+                      class="geographic-item city-item"
+                  >
+                    <i class="pi pi-map-marker city-icon"></i>
+                    <span class="city-name">{{ city.name }}</span>
+                    <span class="city-visits">{{ city.visits }} visits</span>
+                  </div>
+                </div>
+                <div v-else class="no-data">Start tracking to discover cities!</div>
+              </div>
+
             </div>
-            <div class="geographic-list" v-if="geographic.countries?.length > 0">
+          </div>
+
+          <!-- Travel Records Section -->
+          <div class="insights-section">
+            <h2 class="insights-section-title">
+              <i class="pi pi-chart-line"></i>
+              Your Travel Story
+            </h2>
+            <div class="travel-records-grid">
+              <!-- Total Distance -->
+              <div class="insight-stat-large travel-card">
+                <div class="travel-icon">🛣️</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.total * 1000 || 0) }}</div>
+                <div class="stat-label">Total Distance Traveled</div>
+                <div class="stat-detail">{{ getTotalDistancePhrase(distanceTraveled?.total * 1000 || 0) }}</div>
+              </div>
+
+              <!-- Distance by Car -->
+              <div class="insight-stat-large travel-card">
+                <div class="travel-icon">🚗</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byCar * 1000 || 0) }}</div>
+                <div class="stat-label">Distance by Car</div>
+                <div class="stat-detail">
+                  {{ getCarPercentage(distanceTraveled) }} - {{ getCarPhrase(distanceTraveled?.byCar || 0) }}
+                </div>
+              </div>
+
+              <!-- Distance Walking -->
+              <div class="insight-stat-large travel-card">
+                <div class="travel-icon">🚶</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byWalk * 1000 || 0) }}</div>
+                <div class="stat-label">Distance Walking</div>
+                <div class="stat-detail">
+                  {{ getWalkPercentage(distanceTraveled) }} - {{ getWalkPhrase(distanceTraveled?.byWalk || 0) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity Patterns Section -->
+          <div class="insights-section">
+            <h2 class="insights-section-title">
+              <i class="pi pi-calendar"></i>
+              Time Patterns
+            </h2>
+            <div class="insights-grid-simple">
+              <div class="insight-stat-pattern enhanced">
+                <div class="pattern-icon">📅</div>
+                <div class="pattern-content">
+                  <div class="pattern-value">{{ timePatterns.mostActiveMonth || 'N/A' }}</div>
+                  <div class="pattern-label">Most Active Month Ever</div>
+                  <div class="pattern-insight">
+                    ↳ Your historical peak activity period
+                  </div>
+                </div>
+              </div>
+
+              <div class="insight-stat-pattern enhanced">
+                <div class="pattern-icon">📊</div>
+                <div class="pattern-content">
+                  <div class="pattern-value">{{ currentMonthName }}</div>
+                  <div class="pattern-label">Current Month Performance</div>
+                  <div class="pattern-insight" v-if="timePatterns.monthlyComparison">
+                    ↳ {{ timePatterns.monthlyComparison }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="insight-stat-pattern enhanced">
+                <div class="pattern-icon">📍</div>
+                <div class="pattern-content">
+                  <div class="pattern-value">{{ timePatterns.busiestDayOfWeek || 'N/A' }}</div>
+                  <div class="pattern-label">Busiest Day of Week</div>
+                  <div class="pattern-insight" v-if="timePatterns.dayInsight">
+                    ↳ {{ timePatterns.dayInsight }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="insight-stat-pattern enhanced">
+                <div class="pattern-icon">🕐</div>
+                <div class="pattern-content">
+                  <div class="pattern-value">{{ localMostActiveTime }}</div>
+                  <div class="pattern-label">Most Active Time of Day</div>
+                  <div class="pattern-insight" v-if="timePatterns.timeInsight">
+                    ↳ {{ timePatterns.timeInsight }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Milestones Section -->
+          <div class="insights-section">
+            <h2 class="insights-section-title">
+              <i class="pi pi-trophy"></i>
+              Your Journey Milestones ({{ inProgressAchievementsCount }} / {{achievementBadges.length}})
+            </h2>
+            <div class="milestones-grid">
+              <!-- Achievement Badges -->
               <div
-                v-for="country in displayedCountries"
-                :key="country.name"
-                class="geographic-item"
+                  v-for="badge in achievementBadges"
+                  :key="badge.id"
+                  class="milestone-card achievement-badge"
+                  :class="{ 'earned': badge.earned }"
               >
-                <img
-                  v-if="country.flagUrl"
-                  :src="country.flagUrl"
-                  :alt="`${country.name} flag`"
-                  class="country-flag-img"
-                  @error="handleFlagError(country)"
-                />
-                <span v-else class="country-flag-placeholder">🏳️</span>
-                <span class="country-name">{{ country.name }}</span>
-              </div>
-            </div>
-            <div v-else class="no-data">Start exploring to discover countries!</div>
-          </div>
-
-          <!-- Cities Card -->
-          <div class="geographic-card">
-            <div class="geographic-header">
-              <span class="geographic-count">{{ geographic.cities?.length || 0 }}</span>
-              <span class="geographic-label">Cities Visited</span>
-            </div>
-            <div class="geographic-list" v-if="geographic.cities?.length > 0">
-              <div
-                v-for="city in displayedCities"
-                :key="city.name"
-                class="geographic-item city-item"
-              >
-                <i class="pi pi-map-marker city-icon"></i>
-                <span class="city-name">{{ city.name }}</span>
-                <span class="city-visits">{{ city.visits }} visits</span>
-              </div>
-            </div>
-            <div v-else class="no-data">Start tracking to discover cities!</div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Travel Records Section -->
-      <div class="insights-section">
-        <h2 class="insights-section-title">
-          <i class="pi pi-chart-line"></i>
-          Your Travel Story
-        </h2>
-        <div class="travel-records-grid">
-          <!-- Total Distance -->
-          <div class="insight-stat-large travel-card">
-            <div class="travel-icon">🛣️</div>
-            <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.total || 0) }}</div>
-            <div class="stat-label">Total Distance Traveled</div>
-            <div class="stat-detail">{{ getTotalDistancePhrase(distanceTraveled?.total || 0) }}</div>
-          </div>
-
-          <!-- Distance by Car -->
-          <div class="insight-stat-large travel-card">
-            <div class="travel-icon">🚗</div>
-            <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byCar || 0) }}</div>
-            <div class="stat-label">Distance by Car</div>
-            <div class="stat-detail">
-              {{ getCarPercentage(distanceTraveled) }} - {{ getCarPhrase(distanceTraveled?.byCar || 0) }}
-            </div>
-          </div>
-
-          <!-- Distance Walking -->
-          <div class="insight-stat-large travel-card">
-            <div class="travel-icon">🚶</div>
-            <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byWalk || 0) }}</div>
-            <div class="stat-label">Distance Walking</div>
-            <div class="stat-detail">
-              {{ getWalkPercentage(distanceTraveled) }} - {{ getWalkPhrase(distanceTraveled?.byWalk || 0) }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Activity Patterns Section -->
-      <div class="insights-section">
-        <h2 class="insights-section-title">
-          <i class="pi pi-calendar"></i>
-          Time Patterns
-        </h2>
-        <div class="insights-grid-simple">
-          <div class="insight-stat-pattern enhanced">
-            <div class="pattern-icon">📅</div>
-            <div class="pattern-content">
-              <div class="pattern-value">{{ timePatterns.mostActiveMonth || 'N/A' }}</div>
-              <div class="pattern-label">Most Active Month Ever</div>
-              <div class="pattern-insight">
-                ↳ Your historical peak activity period
-              </div>
-            </div>
-          </div>
-
-          <div class="insight-stat-pattern enhanced">
-            <div class="pattern-icon">📊</div>
-            <div class="pattern-content">
-              <div class="pattern-value">{{ currentMonthName }}</div>
-              <div class="pattern-label">Current Month Performance</div>
-              <div class="pattern-insight" v-if="timePatterns.monthlyComparison">
-                ↳ {{ timePatterns.monthlyComparison }}
-              </div>
-            </div>
-          </div>
-
-          <div class="insight-stat-pattern enhanced">
-            <div class="pattern-icon">📍</div>
-            <div class="pattern-content">
-              <div class="pattern-value">{{ timePatterns.busiestDayOfWeek || 'N/A' }}</div>
-              <div class="pattern-label">Busiest Day of Week</div>
-              <div class="pattern-insight" v-if="timePatterns.dayInsight">
-                ↳ {{ timePatterns.dayInsight }}
-              </div>
-            </div>
-          </div>
-
-          <div class="insight-stat-pattern enhanced">
-            <div class="pattern-icon">🕐</div>
-            <div class="pattern-content">
-              <div class="pattern-value">{{ localMostActiveTime }}</div>
-              <div class="pattern-label">Most Active Time of Day</div>
-              <div class="pattern-insight" v-if="timePatterns.timeInsight">
-                ↳ {{ timePatterns.timeInsight }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Milestones Section -->
-      <div class="insights-section">
-        <h2 class="insights-section-title">
-          <i class="pi pi-trophy"></i>
-          Your Journey Milestones ({{ inProgressAchievementsCount }} / {{achievementBadges.length}})
-        </h2>
-        <div class="milestones-grid">
-          <!-- Achievement Badges -->
-          <div
-            v-for="badge in achievementBadges"
-            :key="badge.id"
-            class="milestone-card achievement-badge"
-            :class="{ 'earned': badge.earned }"
-          >
-            <div class="badge-icon">{{ badge.icon }}</div>
-            <div class="badge-title">{{ badge.title }}</div>
-            <div class="badge-description">{{ badge.description }}</div>
-            <div class="badge-progress" v-if="!badge.earned">
-              <div class="progress-bar">
-                <div
-                  class="progress-fill"
-                  :style="{ width: `${badge.progress}%` }"
-                ></div>
-              </div>
-              <span class="progress-text">{{ badge.progressText }}</span>
-            </div>
-            <div class="badge-earned" v-else>
-              <span class="earned-text">Earned!</span>
-              <span class="earned-date" v-if="badge.earnedDate">
+                <div class="badge-icon">{{ badge.icon }}</div>
+                <div class="badge-title">{{ badge.title }}</div>
+                <div class="badge-description">{{ badge.description }}</div>
+                <div class="badge-progress" v-if="!badge.earned">
+                  <div class="progress-bar">
+                    <div
+                        class="progress-fill"
+                        :style="{ width: `${badge.progress}%` }"
+                    ></div>
+                  </div>
+                  <span class="progress-text">{{ badge.progressText }}</span>
+                </div>
+                <div class="badge-earned" v-else>
+                  <span class="earned-text">Earned!</span>
+                  <span class="earned-date" v-if="badge.earnedDate">
                 {{ timezone.formatDate(badge.earnedDate)}}
               </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Empty State -->
-      <div v-if="!hasAnyData" class="empty-insights">
-        <i class="pi pi-compass empty-icon"></i>
-        <h3 class="empty-title">No Journey Data Available</h3>
-        <p class="empty-message">
-          Start tracking your location to unlock insights about your travel patterns and achievements.
-        </p>
-      </div>
-      </div>
-    </template>
+          <!-- Empty State -->
+          <div v-if="!hasAnyData" class="empty-insights">
+            <i class="pi pi-compass empty-icon"></i>
+            <h3 class="empty-title">No Journey Data Available</h3>
+            <p class="empty-message">
+              Start tracking your location to unlock insights about your travel patterns and achievements.
+            </p>
+          </div>
+        </div>
+      </template>
     </PageContainer>
   </AppLayout>
 </template>
@@ -385,13 +385,13 @@ const fetchCountryFlags = async () => {
 
   // Get flags for countries that don't have them cached
   countries
-    .filter(country => !countryFlags.value.has(country.name))
-    .forEach(country => {
-      const flagUrl = getFlagByLocalName(country.name)
-      if (flagUrl) {
-        countryFlags.value.set(country.name, flagUrl)
-      }
-    })
+      .filter(country => !countryFlags.value.has(country.name))
+      .forEach(country => {
+        const flagUrl = getFlagByLocalName(country.name)
+        if (flagUrl) {
+          countryFlags.value.set(country.name, flagUrl)
+        }
+      })
 }
 
 const handleFlagError = (country) => {
@@ -414,81 +414,81 @@ const getWalkPercentage = (distanceData) => {
 // Motivational phrase collections
 const totalDistancePhrases = [
   { min: 0, max: 50, phrases: [
-    "Every journey begins with a single step!",
-    "You're just getting started on your adventure!",
-    "Great start to your exploration journey!"
-  ]},
+      "Every journey begins with a single step!",
+      "You're just getting started on your adventure!",
+      "Great start to your exploration journey!"
+    ]},
   { min: 50, max: 200, phrases: [
-    "You're building some great travel momentum!",
-    "Nice exploration of your local area!",
-    "You're discovering your neighborhood!"
-  ]},
+      "You're building some great travel momentum!",
+      "Nice exploration of your local area!",
+      "You're discovering your neighborhood!"
+    ]},
   { min: 200, max: 1000, phrases: [
-    "You're becoming a real explorer!",
-    "That's some serious ground covered!",
-    "You're seeing the world around you!"
-  ]},
+      "You're becoming a real explorer!",
+      "That's some serious ground covered!",
+      "You're seeing the world around you!"
+    ]},
   { min: 1000, max: 5000, phrases: [
-    "That's like going around the Earth! (well, a small part of it)",
-    "You could have driven across several countries!",
-    "Impressive distance coverage!"
-  ]},
+      "That's like going around the Earth! (well, a small part of it)",
+      "You could have driven across several countries!",
+      "Impressive distance coverage!"
+    ]},
   { min: 5000, max: 50000, phrases: [
-    "You could have crossed continents with that distance!",
-    "That's some serious globe-trotting distance!",
-    "You're a true travel enthusiast!"
-  ]},
+      "You could have crossed continents with that distance!",
+      "That's some serious globe-trotting distance!",
+      "You're a true travel enthusiast!"
+    ]},
   { min: 50000, max: Infinity, phrases: [
-    "You could have gone around the Earth multiple times!",
-    "That's astronomical travel distance!",
-    "You're practically a space traveler!"
-  ]}
+      "You could have gone around the Earth multiple times!",
+      "That's astronomical travel distance!",
+      "You're practically a space traveler!"
+    ]}
 ]
 
 const carPhrases = [
   { min: 0, max: 50, phrases: [
-    "Perfect for quick local trips!",
-    "Great for nearby adventures!",
-    "Local explorer mode activated!"
-  ]},
+      "Perfect for quick local trips!",
+      "Great for nearby adventures!",
+      "Local explorer mode activated!"
+    ]},
   { min: 50, max: 500, phrases: [
-    "You enjoy scenic drives!",
-    "Road trip enthusiast in the making!",
-    "You love the freedom of the road!"
-  ]},
+      "You enjoy scenic drives!",
+      "Road trip enthusiast in the making!",
+      "You love the freedom of the road!"
+    ]},
   { min: 500, max: 2000, phrases: [
-    "You're a road trip enthusiast!",
-    "The highway is your playground!",
-    "You've mastered the art of driving!"
-  ]},
+      "You're a road trip enthusiast!",
+      "The highway is your playground!",
+      "You've mastered the art of driving!"
+    ]},
   { min: 2000, max: Infinity, phrases: [
-    "You're basically living on the road!",
-    "Professional road warrior status!",
-    "The car is your second home!"
-  ]}
+      "You're basically living on the road!",
+      "Professional road warrior status!",
+      "The car is your second home!"
+    ]}
 ]
 
 const walkPhrases = [
   { min: 0, max: 10, phrases: [
-    "Every step counts - keep it up!",
-    "Start small, dream big!",
-    "Your walking journey begins!"
-  ]},
+      "Every step counts - keep it up!",
+      "Start small, dream big!",
+      "Your walking journey begins!"
+    ]},
   { min: 10, max: 50, phrases: [
-    "Keep exploring on foot!",
-    "You're building healthy habits!",
-    "Walking warrior in training!"
-  ]},
+      "Keep exploring on foot!",
+      "You're building healthy habits!",
+      "Walking warrior in training!"
+    ]},
   { min: 50, max: 200, phrases: [
-    "You're a walking enthusiast!",
-    "Your feet are your best travel companions!",
-    "Impressive pedestrian achievements!"
-  ]},
+      "You're a walking enthusiast!",
+      "Your feet are your best travel companions!",
+      "Impressive pedestrian achievements!"
+    ]},
   { min: 200, max: Infinity, phrases: [
-    "You've practically walked across countries!",
-    "Marathon-level walking achievements!",
-    "You're a walking legend!"
-  ]}
+      "You've practically walked across countries!",
+      "Marathon-level walking achievements!",
+      "You're a walking legend!"
+    ]}
 ]
 
 const getTotalDistancePhrase = (distance) => {
