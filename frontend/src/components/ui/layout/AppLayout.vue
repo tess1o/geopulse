@@ -5,7 +5,10 @@
     <!-- Navbar Slot -->
     <header class="gp-app-navbar">
       <slot name="navbar">
-        <AppNavbar />
+        <AppNavbar 
+          :show-invite-friend-button="showInviteFriendButton"
+          @invite-friend="emit('invite-friend')"
+        />
       </slot>
     </header>
     
@@ -40,8 +43,14 @@ const props = defineProps({
     type: String,
     default: 'default',
     validator: (value) => ['none', 'small', 'default', 'large'].includes(value)
+  },
+  showInviteFriendButton: {
+    type: Boolean,
+    default: false
   }
 })
+
+const emit = defineEmits(['invite-friend'])
 
 const layoutClasses = computed(() => ({
   [`gp-app-layout--${props.variant}`]: props.variant !== 'default',

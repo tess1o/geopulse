@@ -1,19 +1,9 @@
 x
 <template>
-  <AppLayout>
+  <AppLayout :showInviteFriendButton="true" @invite-friend="showInviteDialog = true">
     <PageContainer padding="none" maxWidth="xlarge">
       <div class="friends-page">
-                <!-- Page Header -->
-                <div class="page-header">
-                  <div class="header-content">
-                    <h1 class="page-title">Friends</h1>
-                                <Button 
-                                  icon="pi pi-user-plus"
-                                  rounded
-                                  @click="showInviteDialog = true"
-                                  aria-label="Invite Friend"
-                                />                  </div>
-                </div>
+        <!-- Page Header Removed -->
         <!-- Status Overview Removed -->
 
         <!-- Main Content Tabs -->

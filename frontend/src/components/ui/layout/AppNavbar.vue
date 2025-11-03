@@ -17,6 +17,14 @@
     
     <template #end>
       <div class="gp-navbar-end">
+        <Button 
+          v-if="showInviteFriendButton"
+          icon="pi pi-user-plus"
+          rounded
+          @click="$emit('invite-friend')"
+          aria-label="Invite Friend"
+          class="p-button-sm"
+        />
         <slot name="end" />
       </div>
     </template>
@@ -41,10 +49,14 @@ const props = defineProps({
   transparent: {
     type: Boolean,
     default: false
+  },
+  showInviteFriendButton: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['navigate'])
+const emit = defineEmits(['navigate', 'invite-friend'])
 
 const toolbarClasses = computed(() => ({
   [`gp-navbar--${props.variant}`]: props.variant !== 'default',
