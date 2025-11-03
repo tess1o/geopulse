@@ -86,7 +86,7 @@ const props = defineProps({
   initialFriendEmail: String
 })
 
-const emit = defineEmits(['friend-located'])
+const emit = defineEmits(['friend-located', 'refresh'])
 
 // Pinia store
 const friendsStore = useFriendsStore()
@@ -222,10 +222,9 @@ const loadFriendLocations = async () => {
   }
 }
 
-const refreshLocations = async () => {
-  // Force re-render of map to ensure clean state
-  mapKey.value++
-  await loadFriendLocations()
+const refreshLocations = () => {
+  // Emit refresh event to parent to trigger full data refresh
+  emit('refresh')
 }
 
 const zoomToFriend = (friend) => {
