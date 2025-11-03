@@ -26,6 +26,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -248,7 +249,7 @@ public class GpsPointResource {
                 throw new DateTimeParseException("Invalid timestamp format. Use ISO-8601 format (e.g., 2025-08-10T00:00:00.000Z)", timeStr, 0);
             }
         }
-        
+
         // Fallback to date-only parsing (e.g., 2025-08-10)
         return parseDate(dateStr, isStartDate);
     }
@@ -405,4 +406,15 @@ public class GpsPointResource {
         }
     }
 
+    @GET
+    @Path("/last-known-position")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    @RolesAllowed("USER")
+    public Response getLastKnownPosition() {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to get last known position for user {}", userId);
+        Optional<GpsPointDTO> lastPosition = gpsPointService.getLastKnownPosition(userId);
+        return Response.ok(ApiResponse.success(lastPosition.orElseGet(() -> null))).build();
+    }
 }

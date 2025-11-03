@@ -806,8 +806,7 @@ onMounted(async () => {
     const now = timezone.now()
     const yesterday = now.subtract(1, 'day')
 
-    await locationStore.fetchLocationPath(yesterday.toISOString(), now.toISOString())
-    const lastPosition = locationStore.getLastKnownPosition()
+    const lastPosition = await locationStore.getLastKnownPosition()
 
     if (lastPosition) {
       const user = authStore.user

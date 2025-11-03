@@ -93,17 +93,18 @@ export const useLocationStore = defineStore('location', {
         },
 
         // Utility methods for common operations
-        getLastKnownPosition() {
-            const points = this.locationPath?.points || []
-            if (points.length === 0) return null
+        async getLastKnownPosition() {
+            const lastPoint = await apiService.get('/gps/last-known-position');
 
-            // Assuming points are sorted by timestamp
-            const lastPoint = points[points.length - 1]
-            return {
-                lat: lastPoint.lat || lastPoint.latitude,
-                lon: lastPoint.lon || lastPoint.longitude,
-                timestamp: lastPoint.timestamp
+            if (lastPoint?.status === "success" && lastPoint?.data) {
+                const data = lastPoint.data;
+                return {
+                    lat: data.coordinates.lat,
+                    lon: data.coordinates.lng,
+                    timestamp: data.timestamp
+                }
             }
+            return null;
         },
     }
 })
