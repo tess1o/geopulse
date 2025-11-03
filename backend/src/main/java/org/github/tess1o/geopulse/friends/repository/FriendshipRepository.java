@@ -51,50 +51,55 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
     }
 
     public List<FriendInfoDTO> findFriends(UUID userId) {
+        // Optimized query using LATERAL joins for efficient index-only lookups
+        // LATERAL allows correlated subqueries that execute once per row using indexes
+        // Each LATERAL subquery uses LIMIT 1 with ORDER BY DESC to get latest record efficiently
         String sql = """
-                select user_id, friend_id, email, full_name, avatar, t.timestamp, coordinates,
-                       latest_activity_type, latest_activity_duration_seconds
-                from (select f.user_id,
-                             f.friend_id,
-                             u.email,
-                             u.full_name,
-                             u.avatar,
-                             gps.timestamp,
-                             gps.coordinates,
-                             CASE
-                                 WHEN stays.timestamp IS NULL AND trips.timestamp IS NULL THEN NULL
-                                 WHEN stays.timestamp IS NULL THEN 'TRIP'
-                                 WHEN trips.timestamp IS NULL THEN 'STAY'
-                                 WHEN stays.timestamp > trips.timestamp THEN 'STAY'
-                                 ELSE 'TRIP'
-                             END as latest_activity_type,
-                             CASE
-                                 WHEN stays.timestamp IS NULL AND trips.timestamp IS NULL THEN NULL
-                                 WHEN stays.timestamp IS NULL THEN trips.trip_duration
-                                 WHEN trips.timestamp IS NULL THEN stays.stay_duration
-                                 WHEN stays.timestamp > trips.timestamp THEN stays.stay_duration
-                                 ELSE trips.trip_duration
-                             END as latest_activity_duration_seconds,
-                             rank() over (partition by f.friend_id order by gps.timestamp desc) as r
-                      from user_friends f
-                               join users u on f.friend_id = u.id
-                               left join gps_points gps on u.id = gps.user_id
-                               left join lateral (
-                                   select timestamp, stay_duration
-                                   from timeline_stays
-                                   where user_id = u.id
-                                   order by timestamp desc
-                                   limit 1
-                               ) stays on true
-                               left join lateral (
-                                   select timestamp, trip_duration
-                                   from timeline_trips
-                                   where user_id = u.id
-                                   order by timestamp desc
-                                   limit 1
-                               ) trips on true
-                      where f.user_id = :userId) t
-                where r = 1;
+                SELECT f.user_id,
+                       f.friend_id,
+                       u.email,
+                       u.full_name,
+                       u.avatar,
+                       latest_gps.timestamp as gps_timestamp,
+                       latest_gps.coordinates,
+                       CASE
+                           WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
+                           WHEN latest_stay.timestamp IS NULL THEN 'TRIP'
+                           WHEN latest_trip.timestamp IS NULL THEN 'STAY'
+                           WHEN latest_stay.timestamp > latest_trip.timestamp THEN 'STAY'
+                           ELSE 'TRIP'
+                       END as latest_activity_type,
+                       CASE
+                           WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
+                           WHEN latest_stay.timestamp IS NULL THEN latest_trip.trip_duration
+                           WHEN latest_trip.timestamp IS NULL THEN latest_stay.stay_duration
+                           WHEN latest_stay.timestamp > latest_trip.timestamp THEN latest_stay.stay_duration
+                           ELSE latest_trip.trip_duration
+                       END as latest_activity_duration_seconds
+                FROM user_friends f
+                JOIN users u ON f.friend_id = u.id
+                LEFT JOIN LATERAL (
+                    SELECT timestamp, coordinates
+                    FROM gps_points
+                    WHERE user_id = u.id
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ) latest_gps ON true
+                LEFT JOIN LATERAL (
+                    SELECT timestamp, stay_duration
+                    FROM timeline_stays
+                    WHERE user_id = u.id
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ) latest_stay ON true
+                LEFT JOIN LATERAL (
+                    SELECT timestamp, trip_duration
+                    FROM timeline_trips
+                    WHERE user_id = u.id
+                    ORDER BY timestamp DESC
+                    LIMIT 1
+                ) latest_trip ON true
+                WHERE f.user_id = :userId;
                 """;
 
         // Create a native query and set the parameter
