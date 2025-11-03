@@ -59,7 +59,7 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
         }
 
         // Format display name using Google Maps specific logic
-        String formattedDisplayName = formatGoogleMapsDisplayName(firstResult);
+        String formattedDisplayName = getFormattedDisplayName(firstResult);
         builder.formattedDisplayName(formattedDisplayName);
 
         // Extract city and country from address components
@@ -73,84 +73,19 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
         return builder.build();
     }
 
+    private static String getFormattedDisplayName(GoogleMapsResult firstResult) {
+        String formattedAddress = firstResult.getFormattedAddress();
+        if (formattedAddress != null && !formattedAddress.isBlank()) {
+            return formattedAddress;
+        }
+        return "Unknown location";
+    }
+
     @Override
     public String getProviderName() {
         return PROVIDER_NAME;
     }
 
-    /**
-     * Format display name for Google Maps results.
-     * Follows the pattern: "Name (Street Address)" or just "Formatted Address" if no name.
-     */
-    private String formatGoogleMapsDisplayName(GoogleMapsResult result) {
-        String establishmentName = extractEstablishmentName(result.getAddressComponents());
-        String streetAddress = extractStreetAddress(result.getAddressComponents());
-
-        if (establishmentName != null && !establishmentName.isBlank()) {
-            if (streetAddress != null && !streetAddress.isBlank()) {
-                return String.format("%s (%s)", establishmentName, streetAddress);
-            } else {
-                return establishmentName;
-            }
-        } else {
-            // Fallback to formatted address
-            return result.getFormattedAddress() != null ?
-                    result.getFormattedAddress() :
-                    "Unknown location";
-        }
-    }
-
-    /**
-     * Extract establishment/POI name from address components.
-     */
-    private String extractEstablishmentName(List<GoogleMapsAddressComponent> components) {
-        if (components == null) {
-            return null;
-        }
-
-        return components.stream()
-                .filter(c -> c.getTypes() != null &&
-                        (c.getTypes().contains("establishment") ||
-                                c.getTypes().contains("point_of_interest") ||
-                                c.getTypes().contains("premise")))
-                .map(GoogleMapsAddressComponent::getLongName)
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
-     * Extract street address (number + route) from address components.
-     */
-    private String extractStreetAddress(List<GoogleMapsAddressComponent> components) {
-        if (components == null) {
-            return null;
-        }
-
-        String streetNumber = null;
-        String route = null;
-
-        for (GoogleMapsAddressComponent component : components) {
-            if (component.getTypes() == null) {
-                continue;
-            }
-
-            if (component.getTypes().contains("street_number")) {
-                streetNumber = component.getLongName();
-            } else if (component.getTypes().contains("route")) {
-                route = component.getLongName();
-            }
-        }
-
-        if (route != null) {
-            if (streetNumber != null) {
-                return String.format("%s %s", streetNumber, route);
-            } else {
-                return route;
-            }
-        }
-
-        return null;
-    }
 
     /**
      * Extract city name from address components.
@@ -163,8 +98,8 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
         return components.stream()
                 .filter(c -> c.getTypes() != null &&
                         (c.getTypes().contains("locality") ||
-                         c.getTypes().contains("administrative_area_level_2") ||
-                         c.getTypes().contains("sublocality")))
+                                c.getTypes().contains("administrative_area_level_2") ||
+                                c.getTypes().contains("sublocality")))
                 .map(GoogleMapsAddressComponent::getLongName)
                 .findFirst()
                 .orElse(null);
