@@ -803,9 +803,6 @@ onMounted(async () => {
     await friendsStore.refreshAllFriendsData()
 
     // Fetch current user's last known location
-    const now = timezone.now()
-    const yesterday = now.subtract(1, 'day')
-
     const lastPosition = await locationStore.getLastKnownPosition()
 
     if (lastPosition) {

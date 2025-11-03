@@ -96,6 +96,7 @@ public class FriendService {
         return friends;
     }
 
+    //TODO: FIX this nonsense, use one SQL query
     public List<UserSearchDTO> searchUsersToInvite(UUID currentUserId, String query) {
         // Find users matching the query (email or full name)
         List<UserEntity> matchingUsers = userRepository.findByEmailOrFullNameContainingIgnoreCase(query);

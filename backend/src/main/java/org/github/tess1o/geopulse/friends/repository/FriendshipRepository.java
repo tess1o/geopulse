@@ -52,7 +52,8 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
 
     public List<FriendInfoDTO> findFriends(UUID userId) {
         String sql = """
-                select user_id, friend_id, email, full_name, avatar, t.timestamp, coordinates
+                select user_id, friend_id, email, full_name, avatar, t.timestamp, coordinates,
+                       latest_activity_type, latest_activity_duration_seconds
                 from (select f.user_id,
                              f.friend_id,
                              u.email,
@@ -60,10 +61,38 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                              u.avatar,
                              gps.timestamp,
                              gps.coordinates,
+                             CASE
+                                 WHEN stays.timestamp IS NULL AND trips.timestamp IS NULL THEN NULL
+                                 WHEN stays.timestamp IS NULL THEN 'TRIP'
+                                 WHEN trips.timestamp IS NULL THEN 'STAY'
+                                 WHEN stays.timestamp > trips.timestamp THEN 'STAY'
+                                 ELSE 'TRIP'
+                             END as latest_activity_type,
+                             CASE
+                                 WHEN stays.timestamp IS NULL AND trips.timestamp IS NULL THEN NULL
+                                 WHEN stays.timestamp IS NULL THEN trips.trip_duration
+                                 WHEN trips.timestamp IS NULL THEN stays.stay_duration
+                                 WHEN stays.timestamp > trips.timestamp THEN stays.stay_duration
+                                 ELSE trips.trip_duration
+                             END as latest_activity_duration_seconds,
                              rank() over (partition by f.friend_id order by gps.timestamp desc) as r
                       from user_friends f
                                join users u on f.friend_id = u.id
                                left join gps_points gps on u.id = gps.user_id
+                               left join lateral (
+                                   select timestamp, stay_duration
+                                   from timeline_stays
+                                   where user_id = u.id
+                                   order by timestamp desc
+                                   limit 1
+                               ) stays on true
+                               left join lateral (
+                                   select timestamp, trip_duration
+                                   from timeline_trips
+                                   where user_id = u.id
+                                   order by timestamp desc
+                                   limit 1
+                               ) trips on true
                       where f.user_id = :userId) t
                 where r = 1;
                 """;
@@ -86,6 +115,8 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                         .lastSeen(getLastSeen(record[5]))
                         .lastLongitude(getCoordinate(record[6], 0))
                         .lastLatitude(getCoordinate(record[6], 1))
+                        .latestActivityType(record[7] == null ? null : record[7].toString())
+                        .latestActivityDurationSeconds(record[8] == null ? 0 : ((Number) record[8]).intValue())
                         .build())
                 .toList();
     }

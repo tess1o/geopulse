@@ -320,7 +320,8 @@ watch(() => props.initialFriendEmail, (newEmail) => {
 // Lifecycle
 onMounted(async () => {
   // Load initial data
-  if (props.friends?.length) {
+  if (props.friends?.length === 0) {
+    console.log('Loading initial friend locations...', props.friends.length)
     await loadFriendLocations()
   }
 
