@@ -1,26 +1,5 @@
 <template>
   <div class="friends-map-container">
-    <div class="friends-map-header">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <i class="pi pi-map text-blue-500"></i>
-          <span class="font-bold text-lg friends-map-title">Friends Map</span>
-          <Badge v-if="hasLocations" :value="friends.length" severity="info"/>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <Button
-              icon="pi pi-refresh"
-              size="small"
-              outlined
-              severity="secondary"
-              :loading="isLoading"
-              @click="refreshLocations"
-          />
-        </div>
-      </div>
-    </div>
-
     <div class="friends-map-content">
       <!-- Loading overlay -->
       <div v-if="isLoading" class="map-loading-overlay">
@@ -56,6 +35,16 @@
         width="100%"
         @map-ready="handleMapReady"
       >
+        <template #controls="{ map, isReady }">
+          <div v-if="isReady" class="leaflet-top leaflet-right">
+            <div class="leaflet-control">
+              <button @click="refreshLocations" title="Refresh Locations" class="custom-map-control-button">
+                <i class="pi pi-refresh"></i>
+              </button>
+            </div>
+          </div>
+        </template>
+
         <!-- Friends Layer -->
         <template #overlays="{ map, isReady }">
           <FriendsLayer
@@ -352,14 +341,8 @@ export default {
 
 <style scoped>
 .friends-map-container {
-  background: var(--p-surface-0);
-  border: 1px solid var(--p-surface-200);
-  border-radius: 1.5rem;
-  overflow: hidden;
   height: 100%;
-  min-height: 500px;
   width: 100%;
-
   display: flex;
   flex-direction: column;
 }
@@ -419,6 +402,29 @@ export default {
 .dark .map-loading-overlay,
 .dark .map-empty-overlay {
   background: var(--p-surface-800);
+}
+
+.custom-map-control-button {
+  background-color: var(--gp-primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--gp-shadow-large);
+}
+
+.custom-map-control-button:hover {
+  background-color: var(--gp-primary-hover);
+}
+
+.custom-map-control-button i {
+  font-size: 1.2rem;
+  color: white;
 }
 
 /* Mobile responsiveness */
