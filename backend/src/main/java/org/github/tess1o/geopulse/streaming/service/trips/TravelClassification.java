@@ -22,22 +22,26 @@ public class TravelClassification {
      * @return classified trip type
      */
     public TripType classifyTravelType(TimelineTripEntity trip, TimelineConfig config) {
+        TripType initialClassification;
         // If GPS statistics are available, use enhanced classification
         if (trip.getAvgGpsSpeed() != null && trip.getMaxGpsSpeed() != null) {
             TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(),
                     trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
-            return classifyWithGpsStatistics(statistics, trip.getDistanceMeters(), config);
+            initialClassification = classifyWithGpsStatistics(statistics, trip.getDistanceMeters(), config);
+        } else {
+            // Fallback to path-based classification for legacy trips
+            log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
+
+            // Convert distance and duration for fallback calculation
+            double distanceKm = trip.getDistanceMeters() / 1000.0;
+            double hours = trip.getTripDuration() / 3600.0;
+            double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+
+            initialClassification = classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
         }
 
-        // Fallback to path-based classification for legacy trips
-        log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
-
-        // Convert distance and duration for fallback calculation
-        double distanceKm = trip.getDistanceMeters() / 1000.0;
-        double hours = trip.getTripDuration() / 3600.0;
-        double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
-
-        return classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+        // Final verification to correct unrealistic classifications
+        return verifyAndCorrectClassification(initialClassification, trip.getDistanceMeters(), trip.getTripDuration(), config);
     }
 
     public TripType classifyTravelType(TripGpsStatistics statistics, long distanceMeters, TimelineConfig config) {
@@ -64,7 +68,9 @@ public class TravelClassification {
 
         TripType result = classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, lowAccuracyCount, config);
 
-        return result;
+        // Final verification to correct unrealistic classifications
+        long estimatedDuration = (long) (distanceKm / avgSpeedKmh * 3600.0);
+        return verifyAndCorrectClassification(result, distanceMeters, estimatedDuration, config);
     }
 
     /**
@@ -152,5 +158,31 @@ public class TravelClassification {
         } else {
             return UNKNOWN;
         }
+    }
+
+    /**
+     * Verifies and corrects the trip classification based on realistic speed constraints.
+     * If a trip is classified as WALK but the speed is unrealistically high, it's corrected to CAR.
+     *
+     * @param tripType       the initial trip classification
+     * @param distanceMeters the total distance of the trip in meters
+     * @param tripDuration   the duration of the trip in seconds
+     * @param config         the timeline configuration
+     * @return the corrected trip type
+     */
+    private TripType verifyAndCorrectClassification(TripType tripType, long distanceMeters, long tripDuration, TimelineConfig config) {
+        if (tripType == WALK) {
+            final double distanceKm = distanceMeters / 1000.0;
+            final double hours = tripDuration / 3600.0;
+            final double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+            final double coefficient = 1.2;
+
+            // If speed is unrealistically high for walking, re-classify as CAR.
+            if (avgSpeedKmh > config.getWalkingMaxMaxSpeed() * coefficient) {
+                log.debug("Correcting WALK to CAR due to unrealistic speed: {} km/h", avgSpeedKmh);
+                return CAR;
+            }
+        }
+        return tripType;
     }
 }
