@@ -20,7 +20,6 @@ import org.locationtech.jts.geom.Point;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -96,36 +95,18 @@ public class FriendService {
         return friends;
     }
 
-    //TODO: FIX this nonsense, use one SQL query
+    /**
+     * Search for users to invite as friends.
+     * This method uses a single optimized SQL query to exclude:
+     * - The current user
+     * - Existing friends
+     * - Users with pending invitations (sent or received)
+     *
+     * @param currentUserId The ID of the current user
+     * @param query The search query (email or full name)
+     * @return List of users matching the search criteria (max 20)
+     */
     public List<UserSearchDTO> searchUsersToInvite(UUID currentUserId, String query) {
-        // Find users matching the query (email or full name)
-        List<UserEntity> matchingUsers = userRepository.findByEmailOrFullNameContainingIgnoreCase(query);
-
-        // Get current user's friends and pending invitations
-        List<UUID> friendIds = friendshipRepository.findFriends(currentUserId).stream()
-                .map(FriendInfoDTO::getUserId)
-                .toList();
-        List<UUID> sentInvitationReceiverIds = friendInvitationRepository.findPendingInvitationsByReceiverId(currentUserId).stream()
-                .map(f -> f.getReceiver().getId())
-                .toList();
-        List<UUID> receivedInvitationSenderIds = friendInvitationRepository.findPendingInvitationsBySenderId(currentUserId)
-                .stream()
-                .map(f -> f.getSender().getId())
-                .toList();
-
-        // Filter out current user, existing friends, and users with pending invitations
-        return matchingUsers.stream()
-                .filter(user -> !user.getId().equals(currentUserId))
-                .filter(user -> !friendIds.contains(user.getId()))
-                .filter(user -> !sentInvitationReceiverIds.contains(user.getId()))
-                .filter(user -> !receivedInvitationSenderIds.contains(user.getId()))
-                .limit(20) // Limit results to 20 as discussed
-                .map(user -> UserSearchDTO.builder()
-                        .userId(user.getId())
-                        .email(user.getEmail())
-                        .fullName(user.getFullName())
-                        .avatar(user.getAvatar())
-                        .build())
-                .collect(Collectors.toList());
+        return userRepository.searchUsersToInvite(currentUserId, query);
     }
 }

@@ -142,4 +142,27 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
         }
         return ((Point) value).getPosition().getCoordinate(index);
     }
+
+    /**
+     * Find only friend IDs for a user (lightweight version without extra data).
+     *
+     * @param userId The ID of the user
+     * @return List of friend UUIDs
+     */
+    public List<UUID> findFriendIds(UUID userId) {
+        String sql = """
+                SELECT f.friend_id
+                FROM user_friends f
+                WHERE f.user_id = :userId
+                """;
+
+        Query query = entityManager.createNativeQuery(sql)
+                .setParameter("userId", userId);
+
+        List<Object> results = query.getResultList();
+
+        return results.stream()
+                .map(id -> UUID.fromString(id.toString()))
+                .toList();
+    }
 }
