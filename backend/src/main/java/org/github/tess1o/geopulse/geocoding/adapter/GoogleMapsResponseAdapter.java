@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.geocoding.adapter;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
+import org.github.tess1o.geopulse.geocoding.mapper.CountryMapper;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.googlemaps.*;
@@ -21,6 +23,9 @@ import java.util.List;
 public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<GoogleMapsResponse> {
 
     private static final String PROVIDER_NAME = "GoogleMaps";
+
+    @Inject
+    CountryMapper countryMapper;
 
     @Override
     public FormattableGeocodingResult adapt(GoogleMapsResponse googleResponse, Point requestCoordinates, String providerName) {
@@ -60,7 +65,9 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
         // Extract city and country from address components
         if (firstResult.getAddressComponents() != null) {
             builder.city(extractCity(firstResult.getAddressComponents()));
-            builder.country(extractCountry(firstResult.getAddressComponents()));
+            String country = extractCountry(firstResult.getAddressComponents());
+            String normalizedCountry = countryMapper.normalize(country);
+            builder.country(normalizedCountry);
         }
 
         return builder.build();

@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.geocoding.adapter;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.geocoding.mapper.CountryMapper;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.nominatim.NominatimAddressFormatter;
@@ -23,10 +24,12 @@ public class NominatimResponseAdapter implements GeocodingResponseAdapter<Nomina
 
     private static final String PROVIDER_NAME = "Nominatim";
     private final NominatimAddressFormatter addressFormatter;
+    private final CountryMapper countryMapper;
 
     @Inject
-    public NominatimResponseAdapter(NominatimAddressFormatter addressFormatter) {
+    public NominatimResponseAdapter(NominatimAddressFormatter addressFormatter, CountryMapper countryMapper) {
         this.addressFormatter = addressFormatter;
+        this.countryMapper = countryMapper;
     }
 
     @Override
@@ -71,7 +74,8 @@ public class NominatimResponseAdapter implements GeocodingResponseAdapter<Nomina
                 city = nominatimResponse.getAddress().getTown();
             }
             builder.city(city);
-            builder.country(nominatimResponse.getAddress().getCountry());
+            String country = nominatimResponse.getAddress().getCountry();
+            builder.country(countryMapper.normalize(country));
         }
 
         return builder.build();

@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.geocoding.adapter;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
+import org.github.tess1o.geopulse.geocoding.mapper.CountryMapper;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.model.photon.PhotonResponse;
@@ -23,6 +25,9 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
 
     private static final String PROVIDER_NAME = "Photon";
 
+    @Inject
+    CountryMapper countryMapper;
+
 
     @Override
     public FormattableGeocodingResult adapt(PhotonResponse response, Point requestCoordinates, String providerName) {
@@ -38,6 +43,9 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
         PhotonResponse.Properties props = feature.getProperties();
         PhotonResponse.Geometry geom = feature.getGeometry();
 
+        String country = props.getCountry();
+        String normalizedCountry = countryMapper.normalize(country);
+
         return SimpleFormattableResult.builder()
                 .requestCoordinates(requestCoordinates)
                 .resultCoordinates(createPoint(geom))
@@ -45,7 +53,7 @@ public class PhotonResponseAdapter implements GeocodingResponseAdapter<PhotonRes
                 .formattedDisplayName(formatAddress(props))
                 .providerName(PROVIDER_NAME)
                 .city(extractCity(props))
-                .country(props.getCountry())
+                .country(normalizedCountry)
                 .build();
     }
 
