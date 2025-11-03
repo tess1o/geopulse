@@ -271,58 +271,50 @@ x
         <!-- Invite Friend Dialog -->
         <Dialog
             v-model:visible="showInviteDialog"
-            :header="'Invite Friend'"
+            header="Invite Friend"
             modal
-            :style="{ width: '25rem' }"
+            :style="{ width: '350px', maxWidth: '90vw' }"
         >
-          <div class="flex items-end gap-2 mb-4">
-              <AutoComplete
-                  id="friendEmail"
-                  v-model="inviteForm.email"
-                  :suggestions="filteredUsers"
-                  @complete="searchUsers"
-                  field="email"
-                  optionLabel="email"
-                  placeholder="Enter email address or search users"
-                  :invalid="!!inviteErrors.email"
-                  @keyup.enter="sendInvite"
-              >
-                <template #option="slotProps">
-                  <div class="flex align-items-center">
-                    <Avatar
-                        :image="slotProps.option.avatar || '/avatars/avatar1.png'"
-                        size="small"
-                        shape="circle"
-                        class="mr-2"
-                    />
-                    <div>
-                      <div class="font-bold">{{ slotProps.option.fullName }}</div>
-                      <div class="text-sm text-color-secondary">{{ slotProps.option.email }}</div>
-                    </div>
+          <div class="p-fluid">
+            <label for="friendEmail" class="block mb-3 font-semibold text-lg">Friend's Email Address or Name</label>
+            <AutoComplete
+                fluid
+                id="friendEmail"
+                v-model="inviteForm.email"
+                :suggestions="filteredUsers"
+                @complete="searchUsers"
+                field="email"
+                optionLabel="email"
+                placeholder="Enter email address or search users"
+                :invalid="!!inviteErrors.email"
+                class="w-full mb-2"
+                inputClass="p-inputtext-lg"
+                @keyup.enter="sendInvite"
+            >
+              <template #option="slotProps">
+                <div class="flex align-items-center">
+                  <Avatar
+                      :image="slotProps.option.avatar || '/avatars/avatar1.png'"
+                      size="small"
+                      shape="circle"
+                      class="mr-2"
+                  />
+                  <div>
+                    <div class="font-bold">{{ slotProps.option.fullName }}</div>
+                    <div class="text-sm text-color-secondary">{{ slotProps.option.email }}</div>
                   </div>
-                </template>
-              </AutoComplete>
-              <small v-if="inviteErrors.email" class="error-message">
-                {{ inviteErrors.email }}
-              </small>
+                </div>
+              </template>
+            </AutoComplete>
+            <small v-if="inviteErrors.email" class="p-error block mb-3">
+              {{ inviteErrors.email }}
+            </small>
+
+            <div class="flex justify-content-end gap-2 mt-5">
+              <Button label="Cancel" severity="secondary" outlined size="large" @click="closeInviteDialog"/>
+              <Button label="Send Invitation" size="large" @click="sendInvite" :loading="inviteLoading"/>
+            </div>
           </div>
-
-          <div class="flex justify-end gap-2">
-            <Button label="Cancel" outlined @click="closeInviteDialog"/>
-            <Button
-                label="Send Invitation"
-                @click="sendInvite"
-                :loading="inviteLoading"
-            />
-          </div>
-
-
-
-<!--          <template #footer>-->
-<!--            <div class="dialog-footer">-->
-
-<!--            </div>-->
-<!--          </template>-->
         </Dialog>
 
         <!-- Confirm Delete Dialog -->
@@ -1214,39 +1206,6 @@ onMounted(async () => {
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-}
-
-/* Dialog */
-
-.invite-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-}
-
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.85rem;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
 }
 
 /* Tab Styling */
