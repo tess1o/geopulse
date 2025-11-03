@@ -81,57 +81,58 @@ x
           </div>
 
           <!-- Friends Map Tab -->
-                    <div v-if="activeTab === 'map'">
-                        <div v-if="!friends?.length" class="empty-state">
-                          <div class="empty-icon">
-                            <i class="pi pi-map"></i>
-                          </div>
-                          <h3 class="empty-title">No Friends to Show</h3>
-                          <p class="empty-description">
-                            Add friends to see their locations on the map
-                          </p>
-                          <Button 
-                            label="Invite Friends"
-                            icon="pi pi-user-plus"
-                            @click="showInviteDialog = true"
-                          />
-                        </div>
-          
-                        <div v-else-if="!friendsWithLocation.length" class="empty-state">
-                          <div class="empty-icon">
-                            <i class="pi pi-map-marker"></i>
-                          </div>
-                          <h3 class="empty-title">No Location Data Available</h3>
-                          <p class="empty-description">
-                            Your friends haven't shared their location data yet. Location sharing happens automatically when they use location tracking apps.
-                          </p>
-                          <div class="empty-actions">
-                            <Button 
-                              label="Refresh"
-                              icon="pi pi-refresh"
-                              outlined
-                              @click="refreshFriendsData"
-                              :loading="refreshing"
-                            />
-                            <Button 
-                              label="Invite More Friends"
-                              icon="pi pi-user-plus"
-                              @click="showInviteDialog = true"
-                            />
-                          </div>
-                        </div>
-          
-                        <div v-else class="map-wrapper">
-                            <FriendsMap
-                              ref="friendsMapRef"
-                              :friends="friendsWithLocation"
-                              :current-user="currentUser"
-                              :key="`friends-map-${activeTab}-${friendsWithLocation.length}`"
-                              @friend-located="handleFriendLocated"
-                              class="friends-map"
-                            />
-                        </div>
-                    </div>
+          <div v-if="activeTab === 'map'">
+            <div v-if="!friends?.length" class="empty-state">
+              <div class="empty-icon">
+                <i class="pi pi-map"></i>
+              </div>
+              <h3 class="empty-title">No Friends to Show</h3>
+              <p class="empty-description">
+                Add friends to see their locations on the map
+              </p>
+              <Button
+                  label="Invite Friends"
+                  icon="pi pi-user-plus"
+                  @click="showInviteDialog = true"
+              />
+            </div>
+
+            <div v-else-if="!friendsWithLocation.length" class="empty-state">
+              <div class="empty-icon">
+                <i class="pi pi-map-marker"></i>
+              </div>
+              <h3 class="empty-title">No Location Data Available</h3>
+              <p class="empty-description">
+                Your friends haven't shared their location data yet. Location sharing happens automatically when they
+                use location tracking apps.
+              </p>
+              <div class="empty-actions">
+                <Button
+                    label="Refresh"
+                    icon="pi pi-refresh"
+                    outlined
+                    @click="refreshFriendsData"
+                    :loading="refreshing"
+                />
+                <Button
+                    label="Invite More Friends"
+                    icon="pi pi-user-plus"
+                    @click="showInviteDialog = true"
+                />
+              </div>
+            </div>
+
+            <div v-else class="map-wrapper">
+              <FriendsMap
+                  ref="friendsMapRef"
+                  :friends="friendsWithLocation"
+                  :current-user="currentUser"
+                  :key="`friends-map-${activeTab}-${friendsWithLocation.length}`"
+                  @friend-located="handleFriendLocated"
+                  class="friends-map"
+              />
+            </div>
+          </div>
 
           <!-- Invitations Tab -->
           <div v-if="activeTab === 'invites'">
@@ -786,10 +787,11 @@ onMounted(async () => {
 .friends-page {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0;
   box-sizing: border-box;
   width: 100%;
   min-height: auto;
+  border-radius: var(--gp-radius-large);
 }
 
 .friends-page * {
@@ -1247,6 +1249,19 @@ onMounted(async () => {
   transition: all 0.2s ease;
 }
 
+:deep(.gp-page-container) {
+  margin: 0;
+  padding: 0;
+}
+
+:deep(.gp-tab-menu) {
+  border-radius: 0;
+}
+
+.map-wrapper {
+  height: 75vh; /* Use viewport height to make map taller */
+}
+
 :deep(.p-inputtext:focus),
 :deep(.p-textarea:focus) {
   border-color: var(--gp-primary);
@@ -1278,10 +1293,6 @@ onMounted(async () => {
 
   .page-title {
     font-size: 1.5rem;
-  }
-
-  .header-content {
-    /* The flex-direction: column was causing the header to be on two rows on mobile. */
   }
 
   .status-cards {
@@ -1318,14 +1329,16 @@ onMounted(async () => {
     align-items: stretch;
   }
 
-    .invite-actions {
-      justify-content: center;
-    }
-    
-      .map-wrapper {
-        height: 65vh; /* Use viewport height to make map taller */
-      }    
-    :deep(.p-tabs-tab) {    padding: 0.75rem 1rem;
+  .invite-actions {
+    justify-content: center;
+  }
+
+  .map-wrapper {
+    height: 70vh; /* Use viewport height to make map taller */
+  }
+
+  :deep(.p-tabs-tab) {
+    padding: 0.75rem 1rem;
     font-size: 0.9rem;
   }
 }

@@ -110,6 +110,7 @@ const handleNavigate = (item) => {
   display: flex;
   align-items: center;
   gap: var(--gp-spacing-md);
+  padding-right: var(--gp-spacing-md);
 }
 
 /* Navbar Variants */
