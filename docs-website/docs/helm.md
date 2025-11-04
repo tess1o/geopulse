@@ -22,7 +22,9 @@ This Helm chart deploys GeoPulse, a self-hosted location tracking and analysis p
 
 ## Manual Installation (Advanced)
 
-This section describes how to install the chart directly with Helm, bypassing the interactive scripts. This is intended for advanced users or automated workflows. For a simpler, interactive setup, please see the **[Kubernetes Deployment Guide](../../docs/KUBERNETES_DEPLOYMENT.md)**.
+This section describes how to install the chart directly with Helm, bypassing the interactive scripts. This is intended
+for advanced users or automated workflows. For a simpler, interactive setup, please see the *
+*[Kubernetes Deployment Guide](kubernetes-deployment.md)**.
 
 ### 1. Clone the Repository
 
@@ -33,7 +35,8 @@ cd GeoPulse
 
 ### 2. Install the Chart
 
-You can install the chart using the `helm install` command. You must provide your own values, either with `--set` flags or a custom values file (`-f my-values.yaml`).
+You can install the chart using the `helm install` command. You must provide your own values, either with `--set` flags
+or a custom values file (`-f my-values.yaml`).
 
 ```bash
 # Example installing with a custom values file from the examples
@@ -177,77 +180,77 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 
 ### Global Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `global.imagePullPolicy` | Image pull policy | `IfNotPresent` |
-| `global.imagePullSecrets` | Image pull secrets | `[]` |
+| Parameter                 | Description        | Default        |
+|---------------------------|--------------------|----------------|
+| `global.imagePullPolicy`  | Image pull policy  | `IfNotPresent` |
+| `global.imagePullSecrets` | Image pull secrets | `[]`           |
 
 ### Backend Parameters
 
-| Parameter | Description | Default                   |
-|-----------|-------------|---------------------------|
-| `backend.image.repository` | Backend image repository | `tess1o/geopulse-backend` |
-| `backend.image.tag` | Backend image tag | `1.2.1-native`            |
-| `backend.replicaCount` | Number of backend replicas | `1`                       |
-| `backend.service.type` | Backend service type | `ClusterIP`               |
-| `backend.service.port` | Backend service port | `8080`                    |
-| `backend.resources.limits.memory` | Backend memory limit | `1Gi`                     |
-| `backend.resources.limits.cpu` | Backend CPU limit | `1000m`                   |
+| Parameter                         | Description                | Default                   |
+|-----------------------------------|----------------------------|---------------------------|
+| `backend.image.repository`        | Backend image repository   | `tess1o/geopulse-backend` |
+| `backend.image.tag`               | Backend image tag          | `1.2.1-native`            |
+| `backend.replicaCount`            | Number of backend replicas | `1`                       |
+| `backend.service.type`            | Backend service type       | `ClusterIP`               |
+| `backend.service.port`            | Backend service port       | `8080`                    |
+| `backend.resources.limits.memory` | Backend memory limit       | `1Gi`                     |
+| `backend.resources.limits.cpu`    | Backend CPU limit          | `1000m`                   |
 
 ### Frontend Parameters
 
-| Parameter | Description | Default              |
-|-----------|-------------|----------------------|
-| `frontend.image.repository` | Frontend image repository | `tess1o/geopulse-ui` |
-| `frontend.image.tag` | Frontend image tag | `1.2.1`              |
-| `frontend.replicaCount` | Number of frontend replicas | `1`                  |
-| `frontend.service.type` | Frontend service type | `ClusterIP`          |
-| `frontend.service.port` | Frontend service port | `80`                 |
+| Parameter                   | Description                 | Default              |
+|-----------------------------|-----------------------------|----------------------|
+| `frontend.image.repository` | Frontend image repository   | `tess1o/geopulse-ui` |
+| `frontend.image.tag`        | Frontend image tag          | `1.2.1`              |
+| `frontend.replicaCount`     | Number of frontend replicas | `1`                  |
+| `frontend.service.type`     | Frontend service type       | `ClusterIP`          |
+| `frontend.service.port`     | Frontend service port       | `80`                 |
 
 ### PostgreSQL Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `postgres.enabled` | Deploy PostgreSQL | `true` |
-| `postgres.image.repository` | PostgreSQL image | `postgis/postgis` |
-| `postgres.image.tag` | PostgreSQL image tag | `17-3.5` |
-| `postgres.persistence.enabled` | Enable persistence | `true` |
-| `postgres.persistence.size` | PVC size | `10Gi` |
-| `postgres.persistence.storageClass` | Storage class | `""` |
-| `postgres.database` | Database name | `geopulse` |
-| `postgres.username` | Database username | `geopulse-user` |
-| `postgres.config.sharedBuffers` | PostgreSQL shared_buffers | `256MB` |
+| Parameter                           | Description               | Default           |
+|-------------------------------------|---------------------------|-------------------|
+| `postgres.enabled`                  | Deploy PostgreSQL         | `true`            |
+| `postgres.image.repository`         | PostgreSQL image          | `postgis/postgis` |
+| `postgres.image.tag`                | PostgreSQL image tag      | `17-3.5`          |
+| `postgres.persistence.enabled`      | Enable persistence        | `true`            |
+| `postgres.persistence.size`         | PVC size                  | `10Gi`            |
+| `postgres.persistence.storageClass` | Storage class             | `""`              |
+| `postgres.database`                 | Database name             | `geopulse`        |
+| `postgres.username`                 | Database username         | `geopulse-user`   |
+| `postgres.config.sharedBuffers`     | PostgreSQL shared_buffers | `256MB`           |
 
 ### MQTT (Mosquitto) Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `mosquitto.enabled` | Deploy MQTT broker | `false` |
-| `mosquitto.image.repository` | Mosquitto image | `iegomez/mosquitto-go-auth` |
-| `mosquitto.image.tag` | Mosquitto image tag | `3.0.0-mosquitto_2.0.18` |
-| `mosquitto.username` | MQTT admin username | `geopulse_mqtt_admin` |
-| `mosquitto.persistence.enabled` | Enable persistence | `true` |
+| Parameter                       | Description         | Default                     |
+|---------------------------------|---------------------|-----------------------------|
+| `mosquitto.enabled`             | Deploy MQTT broker  | `false`                     |
+| `mosquitto.image.repository`    | Mosquitto image     | `iegomez/mosquitto-go-auth` |
+| `mosquitto.image.tag`           | Mosquitto image tag | `3.0.0-mosquitto_2.0.18`    |
+| `mosquitto.username`            | MQTT admin username | `geopulse_mqtt_admin`       |
+| `mosquitto.persistence.enabled` | Enable persistence  | `true`                      |
 
 ### Ingress Parameters
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `ingress.enabled` | Enable ingress | `false` |
-| `ingress.className` | Ingress class name | `nginx` |
-| `ingress.hostname` | Hostname | `geopulse.example.com` |
-| `ingress.tls.enabled` | Enable TLS | `false` |
-| `ingress.tls.secretName` | TLS secret name | `geopulse-tls` |
+| Parameter                | Description        | Default                |
+|--------------------------|--------------------|------------------------|
+| `ingress.enabled`        | Enable ingress     | `false`                |
+| `ingress.className`      | Ingress class name | `nginx`                |
+| `ingress.hostname`       | Hostname           | `geopulse.example.com` |
+| `ingress.tls.enabled`    | Enable TLS         | `false`                |
+| `ingress.tls.secretName` | TLS secret name    | `geopulse-tls`         |
 
 ### Application Configuration
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `config.uiUrl` | Frontend URL (for CORS) | `http://localhost:5555` |
-| `config.cookieDomain` | Cookie domain for authentication. **Keep empty for standard nginx-based deployments.** Only set for non-standard deployments without nginx using separate subdomains. See [DEPLOYMENT_GUIDE.md](../../docs/DEPLOYMENT_GUIDE.md#understanding-geopulse_cookie_domain) | `""` |
-| `config.authSecureCookies` | Use secure cookies (HTTPS only) | `false` |
-| `config.oidc.enabled` | Enable OIDC | `false` |
+| Parameter                  | Description                                                                                                                                                           | Default                 |
+|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+| `config.uiUrl`             | Frontend URL (for CORS)                                                                                                                                               | `http://localhost:5555` |
+| `config.cookieDomain`      | Cookie domain for authentication. **Keep empty for standard nginx-based deployments.** Only set for non-standard deployments without nginx using separate subdomains. | `""`                    |
+| `config.authSecureCookies` | Use secure cookies (HTTPS only)                                                                                                                                       | `false`                 |
+| `config.oidc.enabled`      | Enable OIDC                                                                                                                                                           | `false`                 |
 
-For a complete list of parameters, see [values.yaml](values.yaml).
+For a complete list of parameters, see `values.yaml`
 
 ## Upgrading
 
@@ -284,6 +287,7 @@ helm test geopulse
 ### With Ingress
 
 Access via the configured hostname:
+
 ```
 https://geopulse.example.com
 ```
@@ -323,11 +327,13 @@ Configure storage classes and sizes in `values.yaml`.
 ## Monitoring
 
 Check pod status:
+
 ```bash
 kubectl get pods -l app.kubernetes.io/instance=geopulse
 ```
 
 View logs:
+
 ```bash
 # Backend
 kubectl logs -l app.kubernetes.io/component=backend -f
@@ -344,6 +350,7 @@ kubectl logs -l app.kubernetes.io/component=database -f
 ### Pods not starting
 
 Check events:
+
 ```bash
 kubectl get events --sort-by='.lastTimestamp'
 ```
@@ -351,6 +358,7 @@ kubectl get events --sort-by='.lastTimestamp'
 ### Database connection issues
 
 Verify PostgreSQL is running:
+
 ```bash
 kubectl get pods -l app.kubernetes.io/component=database
 kubectl logs -l app.kubernetes.io/component=database
@@ -359,6 +367,7 @@ kubectl logs -l app.kubernetes.io/component=database
 ### JWT key issues
 
 Check keygen job:
+
 ```bash
 kubectl get jobs
 kubectl logs job/geopulse-keygen
@@ -367,6 +376,7 @@ kubectl logs job/geopulse-keygen
 ### MQTT not working
 
 Ensure MQTT is enabled and check logs:
+
 ```bash
 kubectl logs -l app.kubernetes.io/component=mqtt
 ```
