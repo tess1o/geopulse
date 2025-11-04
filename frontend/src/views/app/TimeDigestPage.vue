@@ -155,10 +155,6 @@ const loadDigest = async () => {
   }
 }
 
-watch(viewMode, async (newMode) => {
-  await loadDigest();
-});
-
 const updateURL = () => {
   const query = { viewMode: viewMode.value, year: selectedYear.value };
   if (viewMode.value === 'monthly') {

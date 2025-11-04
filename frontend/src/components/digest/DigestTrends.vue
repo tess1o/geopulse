@@ -54,8 +54,36 @@ const chartLabels = computed(() => {
   const carLabels = props.chartData?.carChart?.labels || []
   const walkLabels = props.chartData?.walkChart?.labels || []
 
-  // Combine and deduplicate labels while maintaining order
-  const allLabels = [...new Set([...carLabels, ...walkLabels])].sort()
+  // Combine and deduplicate labels
+  const allLabels = [...new Set([...carLabels, ...walkLabels])]
+
+  // Sort chronologically based on view mode
+  if (props.viewMode === 'yearly') {
+    // For yearly view, sort months chronologically
+    // Support both full and abbreviated month names
+    const monthOrder = {
+      'January': 0, 'Jan': 0,
+      'February': 1, 'Feb': 1,
+      'March': 2, 'Mar': 2,
+      'April': 3, 'Apr': 3,
+      'May': 4,
+      'June': 5, 'Jun': 5,
+      'July': 6, 'Jul': 6,
+      'August': 7, 'Aug': 7,
+      'September': 8, 'Sep': 8, 'Sept': 8,
+      'October': 9, 'Oct': 9,
+      'November': 10, 'Nov': 10,
+      'December': 11, 'Dec': 11
+    }
+    allLabels.sort((a, b) => {
+      const orderA = monthOrder[a] ?? 999
+      const orderB = monthOrder[b] ?? 999
+      return orderA - orderB
+    })
+  } else {
+    // For monthly view (weeks), sort naturally
+    allLabels.sort()
+  }
 
   return allLabels
 })
