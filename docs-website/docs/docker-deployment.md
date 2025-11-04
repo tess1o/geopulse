@@ -360,16 +360,6 @@ server {
 }
 ```
 
----
-
-## Kubernetes Deployment with Helm
-
-For production environments or for those who prefer orchestrating with Kubernetes, a Helm chart is available for deploying GeoPulse. The Helm chart provides a highly configurable way to manage the application, including scaling, persistence, ingress, and more.
-
-**→ For detailed instructions, please see the [Kubernetes Deployment Guide](./KUBERNETES_DEPLOYMENT.md).**
-
----
-
 ## Troubleshooting
 
 **Port conflicts:**

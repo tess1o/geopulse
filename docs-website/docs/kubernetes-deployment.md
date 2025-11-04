@@ -2,7 +2,7 @@
 
 This guide explains how to deploy GeoPulse to a Kubernetes cluster using the provided helper scripts and Helm.
 
-For advanced configuration and a full list of tunable parameters, please refer to the **[official chart README](../helm/geopulse/README.md)**.
+For advanced configuration and a full list of tunable parameters, please refer to the **[official chart README](helm.md)**.
 
 ## Prerequisites
 
@@ -88,7 +88,7 @@ If the interactive installer does not cover your needs, you can bypass it and us
     helm install geopulse ./helm/geopulse -f my-values.yaml
     ```
 
-For a complete list of all available parameters, consult the **[Helm Chart README](../helm/geopulse/README.md)**.
+For a complete list of all available parameters, consult the **[Helm Chart README](helm.md)**.
 
 
 ## GeoPulse Installation Troubleshooting

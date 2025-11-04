@@ -19,7 +19,7 @@ const sidebars = {
         {
             type: 'category',
             label: 'Deployment',
-            items: ['docker-deployment', 'kubernetes-deployment'],
+            items: ['docker-deployment', 'kubernetes-deployment', 'helm'],
         },
         {
             type: 'category',
