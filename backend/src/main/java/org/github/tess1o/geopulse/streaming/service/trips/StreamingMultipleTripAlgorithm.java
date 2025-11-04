@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @ApplicationScoped
-    public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
+public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
     /**
      * Minimum contribution ratio for a travel mode to be considered significant.

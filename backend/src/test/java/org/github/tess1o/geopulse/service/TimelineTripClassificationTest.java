@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -52,7 +53,7 @@ public class TimelineTripClassificationTest {
 
         TripGpsStatistics statistics = gpsStatisticsCalculator.calculateStatistics(path);
         double tripDistance = calculateTripDistance(path);
-        TripType tripType = classification.classifyTravelType(statistics, Double.valueOf(tripDistance).longValue(), config);
+        TripType tripType = classification.classifyTravelType(statistics, Duration.ofSeconds(300), Double.valueOf(tripDistance).longValue(), config);
 
         assertEquals(TripType.WALK, tripType);
     }
@@ -67,7 +68,7 @@ public class TimelineTripClassificationTest {
         );
         TripGpsStatistics statistics = gpsStatisticsCalculator.calculateStatistics(path);
         double tripDistance = calculateTripDistance(path);
-        TripType tripType = classification.classifyTravelType(statistics, Double.valueOf(tripDistance).longValue(), config);
+        TripType tripType = classification.classifyTravelType(statistics, Duration.ofSeconds(180), Double.valueOf(tripDistance).longValue(), config);
 
         assertEquals(TripType.CAR, tripType);
     }
@@ -91,7 +92,25 @@ public class TimelineTripClassificationTest {
     @Test
     void testEmptyGpsStatistics() {
         TripGpsStatistics statistics = TripGpsStatistics.empty();
-        TripType tripType = classification.classifyTravelType(statistics, 0, config);
+        TripType tripType = classification.classifyTravelType(statistics, Duration.ZERO, 0, config);
         assertEquals(TripType.UNKNOWN, tripType);
+    }
+
+    @Test
+    void testNoSpeedCalculationCar() {
+        TripType car20kmh = classification.classifyTravelType(TripGpsStatistics.empty(), Duration.ofMinutes(30), 10500, config);
+        assertEquals(TripType.CAR, car20kmh);
+
+        TripType car50kmh = classification.classifyTravelType(TripGpsStatistics.empty(), Duration.ofMinutes(60), 50*1000, config);
+        assertEquals(TripType.CAR, car50kmh);
+
+    }
+
+    @Test
+    void testNoSpeedCalculationWalk() {
+        TripType walk1 = classification.classifyTravelType(TripGpsStatistics.empty(), Duration.ofMinutes(10), 600, config);
+        assertEquals(TripType.WALK, walk1);
+        TripType walk2 = classification.classifyTravelType(TripGpsStatistics.empty(), Duration.ofMinutes(60), 3000, config);
+        assertEquals(TripType.WALK, walk2);
     }
 }

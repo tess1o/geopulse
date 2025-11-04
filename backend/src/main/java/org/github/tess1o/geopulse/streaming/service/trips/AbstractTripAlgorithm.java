@@ -72,7 +72,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
 
         // Classify the overall trip mode
         TripGpsStatistics tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(combinedPath);
-        TripType overallTripType = classifyMergedTrip(totalDistance, tripGpsStatistics, config);
+        TripType overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
 
         Trip mergedTrip = Trip.builder()
                 .startTime(firstTrip.getStartTime())
@@ -92,7 +92,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
     /**
      * Classify the overall trip type for merged trips.
      */
-    protected TripType classifyMergedTrip(double totalDistance, TripGpsStatistics tripGpsStatistics, TimelineConfig config) {
-        return travelClassification.classifyTravelType(tripGpsStatistics, Double.valueOf(totalDistance).longValue(), config);
+    protected TripType classifyMergedTrip(double totalDistance, Duration tripDuration, TripGpsStatistics tripGpsStatistics, TimelineConfig config) {
+        return travelClassification.classifyTravelType(tripGpsStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
     }
 }

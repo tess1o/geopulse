@@ -7,6 +7,8 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 
+import java.time.Duration;
+
 import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 
 @ApplicationScoped
@@ -27,7 +29,7 @@ public class TravelClassification {
         if (trip.getAvgGpsSpeed() != null && trip.getMaxGpsSpeed() != null) {
             TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(),
                     trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
-            initialClassification = classifyWithGpsStatistics(statistics, trip.getDistanceMeters(), config);
+            initialClassification = classifyWithGpsStatistics(statistics, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters(), config);
         } else {
             // Fallback to path-based classification for legacy trips
             log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
@@ -44,18 +46,18 @@ public class TravelClassification {
         return verifyAndCorrectClassification(initialClassification, trip.getDistanceMeters(), trip.getTripDuration(), config);
     }
 
-    public TripType classifyTravelType(TripGpsStatistics statistics, long distanceMeters, TimelineConfig config) {
-        return classifyWithGpsStatistics(statistics, distanceMeters, config);
+    public TripType classifyTravelType(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
+        return classifyWithGpsStatistics(statistics, tripDuration, distanceMeters, config);
     }
 
     /**
      * Enhanced classification using pre-calculated GPS statistics.
      * Provides more accurate results by using real GPS speed data and variance analysis.
      */
-    private TripType classifyWithGpsStatistics(TripGpsStatistics statistics, long distanceMeters, TimelineConfig config) {
+    private TripType classifyWithGpsStatistics(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
         if (statistics == null || !statistics.hasValidData()) {
-            log.warn("Trip statistics is null or has no valid data, falling back to UNKNOWN");
-            return UNKNOWN;
+            log.warn("Trip statistics is null or has no valid data, falling back to calculate based on distance and duration");
+            return classifyWithoutSpeed(config, tripDuration, distanceMeters);
         }
         // Convert speeds from m/s to km/h
         double avgSpeedKmh = statistics.avgGpsSpeed() * 3.6;
@@ -66,11 +68,18 @@ public class TravelClassification {
         Double speedVariance = statistics.speedVariance();
         Integer lowAccuracyCount = statistics.lowAccuracyPointsCount();
 
-        TripType result = classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, lowAccuracyCount, config);
+        return classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, lowAccuracyCount, config);
+    }
 
-        // Final verification to correct unrealistic classifications
-        long estimatedDuration = (long) (distanceKm / avgSpeedKmh * 3600.0);
-        return verifyAndCorrectClassification(result, distanceMeters, estimatedDuration, config);
+    private TripType classifyWithoutSpeed(TimelineConfig config, Duration tripDuration, long distanceMeters) {
+        double distanceKm = distanceMeters / 1000.0;
+        double hours = tripDuration.getSeconds() / 3600.0;
+        double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+        if (hours > 0 && distanceKm > 0) {
+            return classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+        } else {
+            return UNKNOWN;
+        }
     }
 
     /**
