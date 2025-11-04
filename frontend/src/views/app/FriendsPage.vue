@@ -14,7 +14,11 @@ x
             class="friends-tabs"
         >
           <keep-alive>
-            <component :is="currentTabComponent" :key="activeTab" />
+            <component
+              :is="currentTabComponent"
+              :key="activeTab"
+              :ref="activeTab === 'map' ? (el) => friendsMapTabRef = el : undefined"
+            />
           </keep-alive>
         </TabContainer>
 
@@ -198,7 +202,7 @@ const currentTabComponent = computed(() => {
   const tabConfig = components[activeTab.value]
   if (!tabConfig) return null
 
-  return h(tabConfig.component, { ...tabConfig.props, ...tabConfig.handlers, ref: setTabRef })
+  return h(tabConfig.component, { ...tabConfig.props, ...tabConfig.handlers })
 })
 
 const inviteLoading = ref(false)
@@ -207,14 +211,6 @@ const dataLoading = ref(true)
 const friendsMapTabRef = ref(null)
 const initialFriendEmailToZoom = ref(null)
 const filteredUsers = ref(null)
-const selectedUser = ref(null)
-
-// Set ref for tab components
-const setTabRef = (el) => {
-  if (activeTab.value === 'map') {
-    friendsMapTabRef.value = el
-  }
-}
 
 // Form data
 const inviteForm = ref({
