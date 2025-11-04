@@ -1,0 +1,5 @@
+# Sharing
+
+| Environment Variable      | Default   | Description                                                                                                                                                               |
+|---------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_SHARE_BASE_URL` | _(empty)_ | Overrides the base URL for share links. If not set, the current base URL is used. <br/> Useful for custom proxies or when you want to have a separate domain for sharing. |

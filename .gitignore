@@ -67,3 +67,4 @@ npm-debug.log*
 /frontend/components.d.ts
 /tests/downloads/
 /backend/src/main/gen/
+build_native.sh

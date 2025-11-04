@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" class="geopulse-logo">
+  <defs>
+    <!-- Gradient for the main circle -->
+    <radialGradient id="pulseGradient" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#1a56db" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1e40af" stop-opacity="1"/>
+    </radialGradient>
+    
+    <!-- Gradient for pulse rings -->
+    <radialGradient id="ringGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6"/>
+      <stop offset="70%" stop-color="#1a56db" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1a56db" stop-opacity="0.1"/>
+    </radialGradient>
+    
+    <!-- Dark mode gradients -->
+    <radialGradient id="pulseGradientDark" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#3b82f6" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#1d4ed8" stop-opacity="1"/>
+    </radialGradient>
+    
+    <radialGradient id="ringGradientDark" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#60a5fa" stop-opacity="0.7"/>
+      <stop offset="70%" stop-color="#3b82f6" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.2"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Outer pulse ring -->
+  <circle 
+    cx="60" 
+    cy="60" 
+    r="45" 
+    fill="none" 
+    stroke="url(#ringGradient)" 
+    stroke-width="2" 
+    opacity="0.6"
+    class="pulse-ring-outer">
+    <animate attributeName="r" values="45;50;45" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.6;0.2;0.6" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Middle pulse ring -->
+  <circle 
+    cx="60" 
+    cy="60" 
+    r="35" 
+    fill="none" 
+    stroke="url(#ringGradient)" 
+    stroke-width="2" 
+    opacity="0.8"
+    class="pulse-ring-middle">
+    <animate attributeName="r" values="35;40;35" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.8;0.3;0.8" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Main location pin circle -->
+  <circle 
+    cx="60" 
+    cy="60" 
+    r="25" 
+    fill="url(#pulseGradient)"
+    class="main-circle"/>
+  
+  <!-- Location pin shape inside -->
+  <path 
+    d="M60 45 C65 45, 70 50, 70 55 C70 62, 60 75, 60 75 C60 75, 50 62, 50 55 C50 50, 55 45, 60 45 Z" 
+    fill="white" 
+    opacity="0.9"/>
+  
+  <!-- Location pin center dot -->
+  <circle 
+    cx="60" 
+    cy="55" 
+    r="4" 
+    fill="#1e40af"
+    class="pin-center"/>
+  
+  <!-- Path trail elements -->
+  <path 
+    d="M25 95 Q35 85, 45 90 T65 85 T85 90" 
+    fill="none" 
+    stroke="#1a56db" 
+    stroke-width="3" 
+    stroke-linecap="round" 
+    opacity="0.6"
+    class="path-trail">
+    <animate attributeName="stroke-dasharray" values="0,100;50,50;100,0" dur="4s" repeatCount="indefinite"/>
+  </path>
+  
+  <!-- Small location dots along the path -->
+  <circle cx="30" cy="92" r="2" fill="#1a56db" opacity="0.8"/>
+  <circle cx="50" cy="88" r="2" fill="#1a56db" opacity="0.6"/>
+  <circle cx="70" cy="87" r="2" fill="#1a56db" opacity="0.8"/>
+  <circle cx="85" cy="90" r="2" fill="#1a56db" opacity="0.6"/>
+  
+  <style>
+    /* Default light mode */
+    .geopulse-logo .main-circle {
+      fill: url(#pulseGradient);
+    }
+    
+    .geopulse-logo .pulse-ring-outer,
+    .geopulse-logo .pulse-ring-middle {
+      stroke: url(#ringGradient);
+    }
+    
+    .geopulse-logo .pin-center {
+      fill: #1e40af;
+    }
+    
+    .geopulse-logo .path-trail {
+      stroke: #1a56db;
+    }
+    
+    /* Dark mode adjustments */
+    .p-dark .geopulse-logo .main-circle {
+      fill: url(#pulseGradientDark);
+    }
+    
+    .p-dark .geopulse-logo .pulse-ring-outer,
+    .p-dark .geopulse-logo .pulse-ring-middle {
+      stroke: url(#ringGradientDark);
+    }
+    
+    .p-dark .geopulse-logo .pin-center {
+      fill: #1d4ed8;
+    }
+    
+    .p-dark .geopulse-logo .path-trail {
+      stroke: #3b82f6;
+    }
+    
+    /* Ensure white pin stays visible in dark mode */
+    .p-dark .geopulse-logo path[fill="white"] {
+      fill: #f1f5f9;
+    }
+  </style>
+</svg>

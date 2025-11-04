@@ -1,0 +1,48 @@
+/* ===============================
+   GeoPulse Theme Overrides
+   =============================== */
+
+/* Light theme (default) */
+:root {
+    /* Primary brand colors */
+    --ifm-color-primary: #1a56db;
+    --ifm-color-primary-dark: #1e40af;
+    --ifm-color-primary-darker: #1c4ed8;
+    --ifm-color-primary-darkest: #1d4ed8;
+    --ifm-color-primary-light: #3b82f6;
+    --ifm-color-primary-lighter: #60a5fa;
+    --ifm-color-primary-lightest: #93c5fd;
+
+    /* Code styling */
+    --ifm-code-font-size: 95%;
+    --docusaurus-highlighted-code-line-bg: rgba(26, 86, 219, 0.08);
+}
+
+/* Dark theme */
+[data-theme='dark'] {
+    /* Primary brand colors for dark mode */
+    --ifm-color-primary: #3b82f6;
+    --ifm-color-primary-dark: #1d4ed8;
+    --ifm-color-primary-darker: #1e40af;
+    --ifm-color-primary-darkest: #1e3a8a;
+    --ifm-color-primary-light: #60a5fa;
+    --ifm-color-primary-lighter: #93c5fd;
+    --ifm-color-primary-lightest: #bfdbfe;
+
+    /* Highlighted code background */
+    --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.05);
+
+    /* Optional: integrate your GeoPulse dark palette */
+    --gp-text-primary: #f1f5f9;
+    --gp-text-secondary: #cbd5e1;
+    --gp-text-muted: #94a3b8;
+    --gp-surface-white: #1e293b;
+    --gp-surface-light: #334155;
+    --gp-surface-gray: #475569;
+    --gp-surface-dark: #1e293b;
+    --gp-surface-darker: #0f172a;
+    --gp-border-light: rgba(255, 255, 255, 0.1);
+    --gp-border-medium: rgba(255, 255, 255, 0.2);
+    --gp-border-subtle: #334155;
+    --gp-border-dark: rgba(255, 255, 255, 0.1);
+}

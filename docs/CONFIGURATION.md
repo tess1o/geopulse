@@ -162,14 +162,11 @@ GEOPULSE_AUTH_SECURE_COOKIES=false
 GeoPulse provides a flexible, hierarchical system to control new user registration. You can disable all registration
 globally or control email/password and OIDC registration independently.
 
-| Environment Variable | Default | Description - `GEOPULSE_AUTH_REGISTRATION_ENABLED` | `true` | **Master switch for all
-new user registrations.** If set to `false`, all registration methods (email/password and OIDC) will be disabled,
-regardless of the specific settings below. |
-| `GEOPULSE_AUTH_PASSWORD_REGISTRATION_ENABLED` | `true` | Enables or disables user registration via email and password.
-This is a specific switch that is only effective if the master switch is enabled. |
-| `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED` | `true` | Enables or disables new user registration via OIDC providers.
-Existing users can still log in and link their accounts. This is a specific switch that is only effective if the master
-switch is enabled. |
+| Environment Variable                          | Default | Description                                                                                                                                                                                              |
+|-----------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_AUTH_REGISTRATION_ENABLED`          | `true`  | **Master switch for all new user registrations.** If set to `false`, all registration methods (email/password and OIDC) will be disabled, regardless of the specific settings below                      |
+| `GEOPULSE_AUTH_PASSWORD_REGISTRATION_ENABLED` | `true`  | Enables or disables user registration via email and password. This is a specific switch that is only effective if the master switch is enabled.                                                          |
+| `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED`     | `true`  | Enables or disables new user registration via OIDC providers. Existing users can still log in and link their accounts. This is a specific switch that is only effective if the master  switch is enabled |
 
 #### Deprecated Property
 
