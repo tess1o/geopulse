@@ -7,6 +7,8 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 
+import java.time.Duration;
+
 import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 
 @ApplicationScoped
@@ -22,36 +24,34 @@ public class TravelClassification {
      * @return classified trip type
      */
     public TripType classifyTravelType(TimelineTripEntity trip, TimelineConfig config) {
+        TripType initialClassification;
         // If GPS statistics are available, use enhanced classification
         if (trip.getAvgGpsSpeed() != null && trip.getMaxGpsSpeed() != null) {
-            TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(),
-                    trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
-            return classifyWithGpsStatistics(statistics, trip.getDistanceMeters(), config);
+            TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(), trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
+            initialClassification = classifyWithGpsStatistics(statistics, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters(), config);
+        } else {
+            // Fallback to path-based classification for legacy trips
+            log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
+            initialClassification = classifyWithoutSpeed(config, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters());
         }
 
-        // Fallback to path-based classification for legacy trips
-        log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
-
-        // Convert distance and duration for fallback calculation
-        double distanceKm = trip.getDistanceMeters() / 1000.0;
-        double hours = trip.getTripDuration() / 3600.0;
-        double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
-
-        return classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+        // Final verification to correct unrealistic classifications
+        return verifyAndCorrectClassification(initialClassification, trip.getDistanceMeters(), trip.getTripDuration(), config);
     }
 
-    public TripType classifyTravelType(TripGpsStatistics statistics, long distanceMeters, TimelineConfig config) {
-        return classifyWithGpsStatistics(statistics, distanceMeters, config);
+    public TripType classifyTravelType(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
+        TripType initialClassification = classifyWithGpsStatistics(statistics, tripDuration, distanceMeters, config);
+        return verifyAndCorrectClassification(initialClassification, distanceMeters, tripDuration.getSeconds(), config);
     }
 
     /**
      * Enhanced classification using pre-calculated GPS statistics.
      * Provides more accurate results by using real GPS speed data and variance analysis.
      */
-    private TripType classifyWithGpsStatistics(TripGpsStatistics statistics, long distanceMeters, TimelineConfig config) {
+    private TripType classifyWithGpsStatistics(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
         if (statistics == null || !statistics.hasValidData()) {
-            log.warn("Trip statistics is null or has no valid data, falling back to UNKNOWN");
-            return UNKNOWN;
+            log.warn("Trip statistics is null or has no valid data, falling back to calculate based on distance and duration");
+            return classifyWithoutSpeed(config, tripDuration, distanceMeters);
         }
         // Convert speeds from m/s to km/h
         double avgSpeedKmh = statistics.avgGpsSpeed() * 3.6;
@@ -62,9 +62,18 @@ public class TravelClassification {
         Double speedVariance = statistics.speedVariance();
         Integer lowAccuracyCount = statistics.lowAccuracyPointsCount();
 
-        TripType result = classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, lowAccuracyCount, config);
+        return classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, lowAccuracyCount, config);
+    }
 
-        return result;
+    private TripType classifyWithoutSpeed(TimelineConfig config, Duration tripDuration, long distanceMeters) {
+        double distanceKm = distanceMeters / 1000.0;
+        double hours = tripDuration.getSeconds() / 3600.0;
+        double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+        if (hours > 0 && distanceKm > 0) {
+            return classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+        } else {
+            return UNKNOWN;
+        }
     }
 
     /**
@@ -152,5 +161,31 @@ public class TravelClassification {
         } else {
             return UNKNOWN;
         }
+    }
+
+    /**
+     * Verifies and corrects the trip classification based on realistic speed constraints.
+     * If a trip is classified as WALK but the speed is unrealistically high, it's corrected to CAR.
+     *
+     * @param tripType       the initial trip classification
+     * @param distanceMeters the total distance of the trip in meters
+     * @param tripDuration   the duration of the trip in seconds
+     * @param config         the timeline configuration
+     * @return the corrected trip type
+     */
+    private TripType verifyAndCorrectClassification(TripType tripType, long distanceMeters, long tripDuration, TimelineConfig config) {
+        if (tripType == WALK) {
+            final double distanceKm = distanceMeters / 1000.0;
+            final double hours = tripDuration / 3600.0;
+            final double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+            final double coefficient = 1.2;
+
+            // If speed is unrealistically high for walking, re-classify as CAR.
+            if (avgSpeedKmh > config.getWalkingMaxMaxSpeed() * coefficient) {
+                log.debug("Correcting WALK to CAR due to unrealistic speed: {} km/h", avgSpeedKmh);
+                return CAR;
+            }
+        }
+        return tripType;
     }
 }

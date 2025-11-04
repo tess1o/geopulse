@@ -160,7 +160,7 @@ public class TimelineEventFinalizationService {
         Duration tripDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
         double totalDistance = calculateTripDistance(tripPath);
         TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
-        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, Double.valueOf(totalDistance).longValue(), config);
+        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
 
         Trip trip = Trip.builder()
                 .startTime(firstPoint.getTimestamp())
@@ -199,7 +199,7 @@ public class TimelineEventFinalizationService {
         Duration tripDuration = Duration.between(firstPoint.getTimestamp(), lastPoint.getTimestamp());
         double totalDistance = calculateTripDistance(tripPath);
         TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
-        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, Double.valueOf(totalDistance).longValue(), config);
+        TripType tripType = travelClassification.classifyTravelType(gpsStatistics, tripDuration, Double.valueOf(totalDistance).longValue(), config);
 
         return Trip.builder()
                 .startTime(firstPoint.getTimestamp())
