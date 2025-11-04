@@ -109,8 +109,8 @@ const createLastActivitySection = (friend) => {
     const activityType = friend.latestActivityType
     if (!activityType) return null
 
+    const atCurrentPosition = createElement('div', 'popup-last-seen')
     if (activityType === 'STAY') {
-        const atCurrentPosition = createElement('div', 'popup-last-seen')
         atCurrentPosition.textContent = `At current position for ${formatDuration(friend.latestActivityDurationSeconds)}`
         return atCurrentPosition;
     }
