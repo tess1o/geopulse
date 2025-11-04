@@ -7,6 +7,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -15,6 +17,7 @@ import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +29,9 @@ import java.util.UUID;
 @ApplicationScoped
 @Slf4j
 public class OwnTracksMqttService {
+
+    @ConfigProperty(name = "geopulse.owntracks.ping.timestamp.override", defaultValue = "false")
+    private boolean timestampOverride;
 
     private static final String CLIENT_ID = "geopulse-owntracks";
     private static final String TOPIC_PATTERN = "owntracks/+/+";
@@ -181,6 +187,12 @@ public class OwnTracksMqttService {
 
             GpsAuthenticationResult authenticationResult = userIdOpt.get();
             OwnTracksLocationMessage locationMessage = OBJECT_MAPPER.convertValue(messageData, OwnTracksLocationMessage.class);
+
+            if (timestampOverride) {
+                if ("p".equals(locationMessage.getT())) {
+                    locationMessage.setTst(Instant.now().getEpochSecond());
+                }
+            }            
 
             // Save GPS point
             gpsPointService.saveOwnTracksGpsPoint(locationMessage, authenticationResult.getUserId(), deviceId, GpsSourceType.OWNTRACKS, authenticationResult.getConfig());
