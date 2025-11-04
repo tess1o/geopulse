@@ -20,7 +20,7 @@ const config = {
     },
 
     url: 'https://tess1o.github.io',
-    baseUrl: '/GeoPulse/',
+    baseUrl: '/geopulse/',
     organizationName: 'tess1o', // your GitHub username
     projectName: 'GeoPulse', // your repo name
     deploymentBranch: 'gh-pages',
