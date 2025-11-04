@@ -76,17 +76,7 @@ public class MapboxResponseAdapter implements GeocodingResponseAdapter<MapboxRes
     }
 
     private String getDisplayName(MapboxFeature firstFeature) {
-        MapboxProperties properties = firstFeature.getProperties();
-        if (properties.getNamePreffered() != null && !"".equals(properties.getNamePreffered())) {
-            return properties.getNamePreffered();
-        }
-        if (properties.getName() != null && !"".equals(properties.getName())) {
-            return properties.getName();
-        }
-        if (properties.getFullAddress() != null && !"".equals(properties.getFullAddress())) {
-            return properties.getFullAddress();
-        }
-        return "Unknown location";
+        return firstFeature.getPlaceName() == null ? "Unknown location" : firstFeature.getPlaceName();
     }
 
 
