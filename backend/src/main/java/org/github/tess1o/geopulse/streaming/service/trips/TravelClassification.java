@@ -27,19 +27,12 @@ public class TravelClassification {
         TripType initialClassification;
         // If GPS statistics are available, use enhanced classification
         if (trip.getAvgGpsSpeed() != null && trip.getMaxGpsSpeed() != null) {
-            TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(),
-                    trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
+            TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(), trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
             initialClassification = classifyWithGpsStatistics(statistics, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters(), config);
         } else {
             // Fallback to path-based classification for legacy trips
             log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
-
-            // Convert distance and duration for fallback calculation
-            double distanceKm = trip.getDistanceMeters() / 1000.0;
-            double hours = trip.getTripDuration() / 3600.0;
-            double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
-
-            initialClassification = classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+            initialClassification = classifyWithoutSpeed(config, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters());
         }
 
         // Final verification to correct unrealistic classifications
@@ -47,7 +40,8 @@ public class TravelClassification {
     }
 
     public TripType classifyTravelType(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
-        return classifyWithGpsStatistics(statistics, tripDuration, distanceMeters, config);
+        TripType initialClassification = classifyWithGpsStatistics(statistics, tripDuration, distanceMeters, config);
+        return verifyAndCorrectClassification(initialClassification, distanceMeters, tripDuration.getSeconds(), config);
     }
 
     /**
