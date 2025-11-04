@@ -111,7 +111,7 @@ chmod +x mosquitto_entrypoint.sh
 > ```
 
 > #### A note on Rasberry Pi support
-> If you are deploying on a Raspberry Pi, you can use the `tess1o/geopulse-backend:1.2.0-native-raspi` image.
+> If you are deploying on a Raspberry Pi, you can use the `tess1o/geopulse-backend:1.2.1-native-raspi` image.
 > 
 > Change `docker-compose.yml` to use this image.
 >

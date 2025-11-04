@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
-        <version>1.2.0</version>
+        <version>1.2.1</version>
     </parent>
     <artifactId>backend</artifactId>
 
@@ -34,6 +34,7 @@
         <org.eclipse.paho.client.mqttv3.version>1.2.5</org.eclipse.paho.client.mqttv3.version>
         <langchain4j.version>1.7.1</langchain4j.version>
         <hypersistence-utils-hibernate-71.version>3.11.0</hypersistence-utils-hibernate-71.version>
+        <extra.native.build.args></extra.native.build.args>
     </properties>
 
     <dependencyManagement>
@@ -426,7 +427,7 @@
                     -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.logcat,
                     -H:IncludeResourceBundles=org.eclipse.paho.client.mqttv3.internal.nls.messages,
                     -H:+UnlockExperimentalVMOptions,
-                    -H:+UseServiceLoaderFeature
+                    -H:+UseServiceLoaderFeature${env.QUARKUS_NATIVE_BUILD_ARGS}
                 </quarkus.native.additional-build-args>
             </properties>
         </profile>

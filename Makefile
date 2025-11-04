@@ -50,7 +50,7 @@ build-backend-native-raspi: ensure-builder
 		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-raspi \
 		-t $(GHCR_BACKEND_IMAGE):native-latest-raspi \
 		--build-arg VERSION=$(VERSION_NATIVE) \
-		--build-arg QUARKUS_NATIVE_BUILD_ARGS="-march=armv8-a" \
+		--build-arg QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a" \
 		-f backend/Dockerfile.native \
 		--push \
 		.
@@ -63,7 +63,7 @@ build-backend-native-amd64: ensure-builder
 		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
 		-t $(BACKEND_IMAGE):native-latest-amd64 \
 		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64 \
-		-t $(GHCR_BACKEND_IMAGE):native-latest-amd64 \		
+		-t $(GHCR_BACKEND_IMAGE):native-latest-amd64 \
 		--build-arg VERSION=$(VERSION_NATIVE) \
 		--build-arg QUARKUS_NATIVE_BUILD_ARGS="" \
 		-f backend/Dockerfile.native \
