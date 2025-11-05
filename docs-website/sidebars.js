@@ -26,6 +26,7 @@ const sidebars = {
           items: [
             'getting-started/deployment/docker-compose',
             'getting-started/deployment/kubernetes-helm',
+              'getting-started/deployment/helm',
           ],
         },
       ],
