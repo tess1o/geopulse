@@ -16,20 +16,42 @@
  */
 const sidebars = {
     docsSidebar: [
+        'intro',
         {
             type: 'category',
             label: 'Deployment',
-            items: ['docker-deployment', 'kubernetes-deployment', 'helm'],
+            items: ['deployment/docker-deployment', 'deployment/kubernetes-deployment', 'deployment/helm'],
         },
         {
             type: 'category',
             label: 'System Configuration',
-            items: ['authentification-config', 'user-registration', 'oidc-config', 'reverse-geocoding-config', 'frontend-nginx-config', 'sharing-config', 'ai-config'],
+            items: [
+                'system-configuration/overview',
+                'system-configuration/authentication-config',
+                'system-configuration/user-registration',
+                'system-configuration/oidc-config',
+                'system-configuration/reverse-geocoding-config',
+                'system-configuration/frontend-nginx-config',
+                'system-configuration/sharing-config',
+                'system-configuration/ai-config'],
         },
         {
             type: 'category',
-            label: 'Personal configuration',
-            items: ['custom-map-tiles'],
+            label: 'User Settings',
+            items: [
+                'user-settings/custom-map-tiles',
+                'user-settings/measure-unit',
+                'user-settings/ai-settings',
+                'user-settings/immich-settings',
+            ],
+        },
+        {
+            type: 'category',
+            label: 'Favorites and Reverse Geocoding',
+            items: [
+                'favorites-and-geocoding/favorite-locations',
+                'favorites-and-geocoding/reverse-geocoding'
+            ],
         },
     ],
 };
