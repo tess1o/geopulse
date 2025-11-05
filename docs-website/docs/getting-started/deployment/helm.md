@@ -24,7 +24,7 @@ This Helm chart deploys GeoPulse, a self-hosted location tracking and analysis p
 
 This section describes how to install the chart directly with Helm, bypassing the interactive scripts. This is intended
 for advanced users or automated workflows. For a simpler, interactive setup, please see the *
-*[Kubernetes Deployment Guide](kubernetes-deployment.md)**.
+*[Kubernetes Deployment Guide](kubernetes-helm.md)**.
 
 ### 1. Clone the Repository
 

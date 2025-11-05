@@ -37,5 +37,5 @@ Customize map tiles, define favorite places, configure time zones, measurement u
 
 ## Next Steps
 
-- [Deployment](./deployment/docker-deployment.md) – Install GeoPulse using Docker or Kubernetes
-- [System Configuration](system-configuration/authentication-config.md) – Set up authentication and integrations
+- [Deployment](./deployment/docker-compose.md) – Install GeoPulse using Docker or Kubernetes
+- [System Administration](../system-administration/initial-setup.md) – Set up authentication and integrations

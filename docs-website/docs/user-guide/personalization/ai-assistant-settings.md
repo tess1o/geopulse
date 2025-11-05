@@ -17,7 +17,7 @@ Open the settings page by navigating to:
 
 **Menu → Profile → AI Assistant** or go directly to `https://geopulse.mydomain.com/app/profile`
 
-![AI Assistant Settings Page](./img/ai-settings.png)
+![AI Assistant Settings Page](/img/ai-settings.png)
 
 ---
 
@@ -88,7 +88,7 @@ Once the AI Assistant is enabled, the following settings become available:
 - **Action:**  
   Saves the configured AI Assistant settings **for your user only**.  
   All AI settings are encrypted using the `ai-encryption-key` defined in
-  the [AI Configuration](../system-configuration/ai-config.md) section.
+  the [AI Configuration](/system-administration/configuration/ai-assistant.md) section.
 
 ---
 
@@ -114,5 +114,5 @@ The assistant uses your location history and statistics to generate natural-lang
 
 :::info
 Each user can connect to a different LLM provider or model. For system-wide AI configuration (encryption settings),
-see [AI Configuration → System Configuration](../system-configuration/ai-config.md).
+see [AI Configuration → System Configuration](/system-administration/configuration/ai-assistant.md).
 :::

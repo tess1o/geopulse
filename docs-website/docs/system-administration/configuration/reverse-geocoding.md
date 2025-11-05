@@ -87,7 +87,14 @@ GEOPULSE_GEOCODING_NOMINATIM_ENABLED=true
 GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED=true
 GEOPULSE_GEOCODING_MAPBOX_ENABLED=false
 
+# Custom URLs
+GEOPULSE_GEOCODING_NOMINATIM_URL=https://nominatim.openstreetmap.org
+GEOPULSE_GEOCODING_PHOTON_URL=https://photon.komoot.io
+
 # API Credentials (if using paid services)
 GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY=your_google_api_key_here
 GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
+
+#Delay between requests to geocoding provider
+GEOPULSE_GEOCODING_DELAY_MS=1000
 ```

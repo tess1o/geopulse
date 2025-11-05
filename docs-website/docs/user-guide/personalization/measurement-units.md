@@ -5,18 +5,20 @@ description: Configure Metric or Imperial measurement units in GeoPulse.
 
 # Measurement Unit
 
-GeoPulse supports both **Metric** and **Imperial** measurement systems.  
-This setting controls how distances, speeds, and other units are displayed throughout the app, without changing the way data is stored.
+GeoPulse supports both **Metric** and **Imperial** measurement systems. This setting controls how distances, speeds, and
+other units are displayed throughout the app, without changing the way data is stored.
 
 ---
 
 ## Default Setting
 
 By default, GeoPulse uses the **Metric system**, displaying values in:
+
 - **Meters** and **kilometers** for distance
 - **km/h** for speed
 
 If you prefer the **Imperial system**, you can switch to:
+
 - **Feet** and **miles** for distance
 - **mph** for speed
 
@@ -30,8 +32,7 @@ If you prefer the **Imperial system**, you can switch to:
 3. Select your preferred option:
     - **Metric (default)**
     - **Imperial**
-4. Save your changes.  
-   The new measurement system will be applied immediately across all pages.
+4. Save your changes. The new measurement system will be applied immediately across all pages.
 
 ---
 
@@ -57,13 +58,14 @@ Changing units only affects how data is displayed — not how it’s saved or pr
 
 ## Example
 
-| Setting | Distance Example | Speed Example |
-|----------|------------------|----------------|
-| **Metric** | 12.4 km | 65 km/h |
-| **Imperial** | 7.7 mi | 40 mph |
+| Setting      | Distance Example | Speed Example |
+|--------------|------------------|---------------|
+| **Metric**   | 12.4 km          | 65 km/h       |
+| **Imperial** | 7.7 mi           | 40 mph        |
 
 ---
 
 :::info
-Switching between Metric and Imperial units is safe — no data will be lost or recalculated. It’s purely a display preference applied per user.
+Switching between Metric and Imperial units is safe — no data will be lost or recalculated. It’s purely a display
+preference applied per user.
 :::

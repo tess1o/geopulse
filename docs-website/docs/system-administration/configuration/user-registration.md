@@ -1,4 +1,4 @@
-# User Registration
+# User Registration Management
 
 GeoPulse provides a flexible, hierarchical system to control new user registration. You can disable all registration
 globally or control email/password and OIDC registration independently.

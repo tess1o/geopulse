@@ -8,7 +8,7 @@ GeoPulse supports integration with your **Immich** server, allowing you to see y
 
 You can set up Immich integration from your **Profile → Immich** tab (`/app/profile`).
 
-![Immich Settings Page](./img/immich.png)
+![Immich Settings Page](/img/immich.png)
 
 **Available settings:**
 - **Enable Immich Integration** — turn the feature on or off.
