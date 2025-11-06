@@ -570,7 +570,205 @@ class GoogleTimelineImportStrategyTest {
                 .count();
         assertTrue(stationaryPoints > 100, "Should have many stationary points from interpolated visit");
 
-        log.info("Semantic segments format verified: {} total points imported", importedPoints.size());
+        // Verify raw signal point has accuracy and altitude from semantic segments format
+        GpsPointEntity rawSignalPoint = importedPoints.stream()
+                .filter(p -> Math.abs(p.getLatitude() - 48.833657) < 0.0001 &&
+                            Math.abs(p.getLongitude() - 2.256223) < 0.0001)
+                .findFirst()
+                .orElse(null);
+        assertNotNull(rawSignalPoint, "Should find raw signal point");
+        assertNotNull(rawSignalPoint.getAccuracy(), "Raw signal point should have accuracy");
+        assertEquals(13.0, rawSignalPoint.getAccuracy(), 0.01, "Accuracy should be 13 meters");
+        assertNotNull(rawSignalPoint.getAltitude(), "Raw signal point should have altitude");
+        assertEquals(90.7, rawSignalPoint.getAltitude(), 0.1, "Altitude should be 90.7 meters");
+
+        log.info("Semantic segments format verified: {} total points imported with accuracy and altitude", importedPoints.size());
+    }
+
+    @Test
+    @Transactional
+    void testRecordsJsonFormat() throws Exception {
+        log.info("=== Testing Records.json Format (Third Google Timeline Format) ===");
+
+        // Create test data in Records.json format with locations array
+        String recordsJson = """
+        {
+          "locations": [
+            {
+              "latitudeE7": 324564025,
+              "longitudeE7": 350534863,
+              "accuracy": 78,
+              "altitude": 140,
+              "verticalAccuracy": 16,
+              "source": "WIFI",
+              "deviceTag": 1664314150,
+              "platformType": "ANDROID",
+              "osLevel": 33,
+              "serverTimestamp": "2023-11-24T00:08:40.526Z",
+              "deviceTimestamp": "2023-11-24T00:08:40.071Z",
+              "batteryCharging": true,
+              "formFactor": "PHONE",
+              "timestamp": "2023-11-24T00:00:12.137Z"
+            },
+            {
+              "latitudeE7": 324564025,
+              "longitudeE7": 350534863,
+              "accuracy": 100,
+              "altitude": 140,
+              "verticalAccuracy": 23,
+              "source": "WIFI",
+              "deviceTag": 1664314150,
+              "platformType": "ANDROID",
+              "osLevel": 33,
+              "serverTimestamp": "2023-11-24T00:08:40.526Z",
+              "deviceTimestamp": "2023-11-24T00:08:40.071Z",
+              "batteryCharging": true,
+              "formFactor": "PHONE",
+              "timestamp": "2023-11-24T00:00:32.137Z"
+            },
+            {
+              "latitudeE7": 324565123,
+              "longitudeE7": 350536789,
+              "accuracy": 45,
+              "altitude": 145,
+              "source": "GPS",
+              "deviceTag": 1664314150,
+              "platformType": "ANDROID",
+              "osLevel": 33,
+              "timestamp": "2023-11-24T00:01:00.000Z"
+            }
+          ]
+        }
+        """;
+
+        byte[] jsonData = recordsJson.getBytes();
+
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setImportFormat("google-timeline");
+
+        ImportJob importJob = importService.createImportJob(
+                testUser.getId(), importOptions, "test-records.json", jsonData);
+
+        // Validate
+        List<String> detectedDataTypes = googleTimelineImportStrategy.validateAndDetectDataTypes(importJob);
+        assertEquals(1, detectedDataTypes.size());
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS));
+
+        log.info("Validation successful for Records.json format");
+
+        // Process
+        googleTimelineImportStrategy.processImportData(importJob);
+
+        List<GpsPointEntity> importedPoints = gpsPointRepository.list("user = ?1", testUser);
+
+        // Should have 3 location points
+        assertEquals(3, importedPoints.size(), "Should have imported 3 location points from Records.json");
+
+        // Verify E7 coordinate conversion (latitudeE7 / 10000000.0)
+        // First point: latitudeE7=324564025, longitudeE7=350534863
+        // Expected: lat=32.4564025, lng=35.0534863
+        GpsPointEntity firstPoint = importedPoints.stream()
+                .filter(p -> p.getTimestamp().toString().equals("2023-11-24T00:00:12.137Z"))
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(firstPoint, "First point should exist");
+        assertEquals(32.4564025, firstPoint.getLatitude(), 0.0000001, "Latitude should be converted from E7 format");
+        assertEquals(35.0534863, firstPoint.getLongitude(), 0.0000001, "Longitude should be converted from E7 format");
+
+        // Verify second point (same coordinates but different timestamp)
+        GpsPointEntity secondPoint = importedPoints.stream()
+                .filter(p -> p.getTimestamp().toString().equals("2023-11-24T00:00:32.137Z"))
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(secondPoint, "Second point should exist");
+        assertEquals(32.4564025, secondPoint.getLatitude(), 0.0000001, "Second point should have same coordinates");
+        assertEquals(35.0534863, secondPoint.getLongitude(), 0.0000001, "Second point should have same coordinates");
+
+        // Verify third point (different coordinates)
+        GpsPointEntity thirdPoint = importedPoints.stream()
+                .filter(p -> p.getTimestamp().toString().equals("2023-11-24T00:01:00Z"))
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(thirdPoint, "Third point should exist");
+        assertEquals(32.4565123, thirdPoint.getLatitude(), 0.0000001, "Third point should have different latitude");
+        assertEquals(35.0536789, thirdPoint.getLongitude(), 0.0000001, "Third point should have different longitude");
+
+        // Verify all points have GOOGLE_TIMELINE source type
+        for (GpsPointEntity point : importedPoints) {
+            assertEquals(GpsSourceType.GOOGLE_TIMELINE, point.getSourceType(),
+                    "All imported points should have GOOGLE_TIMELINE source type");
+            assertEquals("google-timeline-import", point.getDeviceId(),
+                    "All imported points should have google-timeline-import device ID");
+        }
+
+        // Verify accuracy and altitude are saved correctly
+        assertNotNull(firstPoint.getAccuracy(), "First point should have accuracy");
+        assertEquals(78.0, firstPoint.getAccuracy(), 0.01, "Accuracy should match source data");
+        assertNotNull(firstPoint.getAltitude(), "First point should have altitude");
+        assertEquals(140.0, firstPoint.getAltitude(), 0.01, "Altitude should match source data");
+
+        assertNotNull(secondPoint.getAccuracy(), "Second point should have accuracy");
+        assertEquals(100.0, secondPoint.getAccuracy(), 0.01, "Accuracy should match source data");
+        assertNotNull(secondPoint.getAltitude(), "Second point should have altitude");
+        assertEquals(140.0, secondPoint.getAltitude(), 0.01, "Altitude should match source data");
+
+        assertNotNull(thirdPoint.getAccuracy(), "Third point should have accuracy");
+        assertEquals(45.0, thirdPoint.getAccuracy(), 0.01, "Accuracy should match source data");
+        assertNotNull(thirdPoint.getAltitude(), "Third point should have altitude");
+        assertEquals(145.0, thirdPoint.getAltitude(), 0.01, "Altitude should match source data");
+
+        log.info("Records.json format verified: {} location points imported with correct E7 coordinate conversion, accuracy, and altitude",
+                importedPoints.size());
+    }
+
+    @Test
+    @Transactional
+    void testRecordsJsonFormatInvalidData() throws Exception {
+        log.info("=== Testing Records.json Format with Invalid Data ===");
+
+        // Test 1: Empty locations array
+        String emptyLocationsJson = """
+        {
+          "locations": []
+        }
+        """;
+
+        byte[] emptyData = emptyLocationsJson.getBytes();
+        ImportOptions importOptions = new ImportOptions();
+        importOptions.setImportFormat("google-timeline");
+
+        ImportJob emptyJob = importService.createImportJob(
+                testUser.getId(), importOptions, "empty-records.json", emptyData);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            googleTimelineImportStrategy.validateAndDetectDataTypes(emptyJob);
+        }, "Empty locations array should throw validation exception");
+
+        // Test 2: Missing required fields (no timestamp)
+        String missingFieldsJson = """
+        {
+          "locations": [
+            {
+              "latitudeE7": 324564025,
+              "longitudeE7": 350534863,
+              "accuracy": 78
+            }
+          ]
+        }
+        """;
+
+        byte[] missingFieldsData = missingFieldsJson.getBytes();
+        ImportJob missingFieldsJob = importService.createImportJob(
+                testUser.getId(), importOptions, "missing-fields-records.json", missingFieldsData);
+
+        assertThrows(IllegalArgumentException.class, () -> {
+            googleTimelineImportStrategy.validateAndDetectDataTypes(missingFieldsJob);
+        }, "Missing timestamp field should throw validation exception");
+
+        log.info("Records.json invalid data handling verified");
     }
 
     private void verifyImportedData(List<GpsPointEntity> importedPoints) {
