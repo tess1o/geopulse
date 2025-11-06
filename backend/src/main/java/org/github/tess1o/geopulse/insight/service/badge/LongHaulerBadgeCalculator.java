@@ -42,7 +42,7 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
         List<Object[]> result = (List<Object[]>) query.getResultList();
         if (result == null || result.isEmpty()) {
             return Badge.builder()
-                    .id("long_hauler")
+                    .id(getBadgeId())
                     .icon("🚛")
                     .title("Long Hauler")
                     .description("Complete a trip lasting 4+ hours")
@@ -58,7 +58,7 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
         LocalDateTime maxDate = (LocalDateTime) result.get(0)[1];
 
         return Badge.builder()
-                .id("long_hauler")
+                .id(getBadgeId())
                 .icon("🚛")
                 .title("Long Hauler")
                 .description("Complete a trip lasting 4+ hours")

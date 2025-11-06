@@ -18,12 +18,12 @@ public class EarlyBirdBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "early_bird";
+        return "time_of_day_early_bird";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
         return timeOfDayBadgeCalculator.calculateTimeOfDayBadge(
-                userId, "early_bird", TITLE, "🌅", "< 6", "Start a trip before 6:00 AM");
+                userId, getBadgeId(), TITLE, "🌅", "< 6", "Start a trip before 6:00 AM");
     }
 }

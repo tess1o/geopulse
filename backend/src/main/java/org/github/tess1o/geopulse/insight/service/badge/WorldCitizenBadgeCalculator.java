@@ -1,30 +1,28 @@
 package org.github.tess1o.geopulse.insight.service.badge;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 import org.github.tess1o.geopulse.insight.service.CountriesBadgeCalculator;
 
 import java.util.UUID;
 
 @ApplicationScoped
-public class BorderCrosserBadgeCalculator implements BadgeCalculator {
+public class WorldCitizenBadgeCalculator implements BadgeCalculator {
 
-    private static final int COUNTRIES_THRESHOLD = 2;
+    private static final int COUNTRIES_THRESHOLD = 50;
     private final CountriesBadgeCalculator countriesBadgeCalculator;
 
-    public BorderCrosserBadgeCalculator(CountriesBadgeCalculator countriesBadgeCalculator) {
+    public WorldCitizenBadgeCalculator(CountriesBadgeCalculator countriesBadgeCalculator) {
         this.countriesBadgeCalculator = countriesBadgeCalculator;
     }
 
     @Override
     public String getBadgeId() {
-        return "country_visited_2";
+        return "country_visited_50";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
-        return countriesBadgeCalculator.calculateCountriesBadge(userId, getBadgeId(), "Border Crosser", "🌐", COUNTRIES_THRESHOLD);
+        return countriesBadgeCalculator.calculateCountriesBadge(userId, getBadgeId(), "World Citizen", "🌏", COUNTRIES_THRESHOLD);
     }
 }

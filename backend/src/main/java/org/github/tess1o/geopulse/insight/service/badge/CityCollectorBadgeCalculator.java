@@ -6,24 +6,24 @@ import org.github.tess1o.geopulse.insight.model.Badge;
 import java.util.UUID;
 
 @ApplicationScoped
-public class GlobeTrotterBadgeCalculator implements BadgeCalculator {
+public class CityCollectorBadgeCalculator implements BadgeCalculator {
 
-    private static final int CITIES_THRESHOLD = 10;
-    private static final String TITLE = "Globe Trotter";
+    private static final int CITIES_THRESHOLD = 100;
+    private static final String TITLE = "City Collector";
 
     private final CitiesBadgeCalculator citiesBadgeCalculator;
 
-    public GlobeTrotterBadgeCalculator(CitiesBadgeCalculator citiesBadgeCalculator) {
+    public CityCollectorBadgeCalculator(CitiesBadgeCalculator citiesBadgeCalculator) {
         this.citiesBadgeCalculator = citiesBadgeCalculator;
     }
 
     @Override
     public String getBadgeId() {
-        return "cites_visited_10";
+        return "cites_visited_100";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
-        return citiesBadgeCalculator.calculateCitiesBadge(userId, getBadgeId(), TITLE, "🌍", CITIES_THRESHOLD);
+        return citiesBadgeCalculator.calculateCitiesBadge(userId, getBadgeId(), TITLE, "🌆", CITIES_THRESHOLD);
     }
 }

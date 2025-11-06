@@ -19,11 +19,11 @@ public class CityStarterBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "city_starter";
+        return "cites_visited_3";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
-        return citiesBadgeCalculator.calculateCitiesBadge(userId, "city_starter", TITLE, "🏙️", CITIES_THRESHOLD);
+        return citiesBadgeCalculator.calculateCitiesBadge(userId, getBadgeId(), TITLE, "🏙️", CITIES_THRESHOLD);
     }
 }

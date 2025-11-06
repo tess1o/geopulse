@@ -19,7 +19,7 @@ public class WorldExplorerBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "city_world_explorer";
+        return "cites_visited_20";
     }
 
     @Override

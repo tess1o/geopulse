@@ -29,7 +29,7 @@ public class WeekStreakBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "week_streak";
+        return "track_data_week_1";
     }
 
     @Override
@@ -41,7 +41,7 @@ public class WeekStreakBadgeCalculator implements BadgeCalculator {
 
         if (trackingDates == null || trackingDates.isEmpty()) {
             return Badge.builder()
-                    .id("week_streak")
+                    .id(getBadgeId())
                     .icon("⏰")
                     .title("Week Streak")
                     .description("Track trips for 7 consecutive days")
@@ -77,7 +77,7 @@ public class WeekStreakBadgeCalculator implements BadgeCalculator {
         boolean earned = maxStreak >= 7;
 
         return Badge.builder()
-                .id("week_streak")
+                .id(getBadgeId())
                 .icon("⏰")
                 .title("Week Streak")
                 .description("Track trips for 7 consecutive days")

@@ -19,12 +19,12 @@ public class LongDistanceBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "long_distance";
+        return "target_trip_distance_500";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
         return singleTripDistanceBadgeCalculator.calculateSingleTripDistanceBadge(
-                userId, "long_distance", TITLE, "🛣️", TARGET_DISTANCE_METERS, "Travelled 500km in a single trip");
+                userId, getBadgeId(), TITLE, "🛣️", TARGET_DISTANCE_METERS, "Travelled 500km in a single trip");
     }
 }

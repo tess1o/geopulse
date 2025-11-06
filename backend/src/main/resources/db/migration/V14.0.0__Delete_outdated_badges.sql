@@ -1,0 +1,29 @@
+delete
+from user_badges
+where badge_id in (
+                   'night_owl',
+                   'long_distance',
+                   'city_world_explorer',
+                   'country_country_collector',
+                   'globe_trotter',
+                   'continental_cruiser',
+                   'global_nomad',
+                   'country_international_explorer',
+                   'country_passport_veteran',
+                   'million_mile_master',
+                   'transcontinental_traveler',
+                   'planet_circler',
+                   'city_urban_nomad',
+                   'city_collector',
+                   'city_metropolis_conqueror',
+                   'country_world_citizen',
+                   'border_crosser',
+                   'midnight_move',
+                   'city_starter',
+                   'week_streak',
+                   'early_bird',
+                   'marathon_runner',
+                   'country_border_crosser',
+                   'century_rider',
+                  'road_warrior'
+    );

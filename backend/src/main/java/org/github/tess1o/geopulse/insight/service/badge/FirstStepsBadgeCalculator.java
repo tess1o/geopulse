@@ -42,7 +42,7 @@ public class FirstStepsBadgeCalculator implements BadgeCalculator {
         LocalDateTime earnedDate = earned ? result : null;
 
         return Badge.builder()
-                .id("first_steps")
+                .id(getBadgeId())
                 .icon("👣")
                 .title("First Steps")
                 .description("Complete your first trip (≥1 km)")

@@ -19,12 +19,12 @@ public class MarathonRunnerBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "marathon_runner";
+        return "target_trip_distance_42195";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
         return singleTripDistanceBadgeCalculator.calculateSingleTripDistanceBadge(
-                userId, "marathon_runner", TITLE, "🏃‍♂️", TARGET_DISTANCE, "Complete a trip of 42+ km");
+                userId, getBadgeId(), TITLE, "🏃‍♂️", TARGET_DISTANCE, "Complete a trip of 42+ km");
     }
 }

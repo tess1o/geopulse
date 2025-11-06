@@ -47,7 +47,7 @@ public class LocalLegendBadgeCalculator implements BadgeCalculator {
         int maxVisits = result != null ? result.intValue() : 0;
 
         return Badge.builder()
-                .id("local_legend")
+                .id(getBadgeId())
                 .title("Local Legend")
                 .icon("🏆")
                 .description("Visit the same place 10 times")
