@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.StreamingOutput;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gps.model.*;
@@ -16,18 +17,25 @@ import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
+import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * REST resource for GPS point data.
@@ -92,7 +100,7 @@ public class GpsPointResource {
     }
 
     /**
-     * Get summary statistics for GPS points.
+     * Get summary statistics for GPS points with optional filters.
      * This endpoint requires authentication and uses the user's stored timezone.
      *
      * @return Summary statistics for the user's GPS points
@@ -101,19 +109,30 @@ public class GpsPointResource {
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
     @RolesAllowed("USER")
-    public Response getGpsPointSummary() {
+    public Response getGpsPointSummary(
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime,
+            @QueryParam("accuracyMin") Double accuracyMin,
+            @QueryParam("accuracyMax") Double accuracyMax,
+            @QueryParam("speedMin") Double speedMin,
+            @QueryParam("speedMax") Double speedMax,
+            @QueryParam("sourceTypes") String sourceTypes) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to get GPS point summary for user {} with timezone {}", user.getId(), user.getTimezone());
 
         try {
+            // Parse filters
+            GpsPointFilterDTO filters = buildFilters(startTime, endTime, accuracyMin, accuracyMax,
+                    speedMin, speedMax, sourceTypes);
+
             GpsPointSummaryDTO summary;
 
             try {
                 ZoneId userTimezone = ZoneId.of(user.getTimezone());
-                summary = gpsPointService.getGpsPointSummary(user.getId(), userTimezone);
+                summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), userTimezone, filters);
             } catch (DateTimeException e) {
                 log.warn("Invalid timezone '{}' for user {}, falling back to UTC", user.getTimezone(), user.getId());
-                summary = gpsPointService.getGpsPointSummary(user.getId());
+                summary = gpsPointService.getGpsPointSummaryWithFilters(user.getId(), ZoneId.of("UTC"), filters);
             }
 
             return Response.ok(ApiResponse.success(summary)).build();
@@ -126,7 +145,7 @@ public class GpsPointResource {
     }
 
     /**
-     * Get paginated GPS points with optional date filtering and sorting.
+     * Get paginated GPS points with optional filtering and sorting.
      * This endpoint requires authentication.
      *
      * @param page      Page number (default: 1)
@@ -148,10 +167,15 @@ public class GpsPointResource {
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime,
             @QueryParam("sortBy") @DefaultValue("timestamp") String sortBy,
-            @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder) {
+            @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder,
+            @QueryParam("accuracyMin") Double accuracyMin,
+            @QueryParam("accuracyMax") Double accuracyMax,
+            @QueryParam("speedMin") Double speedMin,
+            @QueryParam("speedMax") Double speedMax,
+            @QueryParam("sourceTypes") String sourceTypes) {
         UUID userId = currentUserService.getCurrentUserId();
-        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, startDate: {}, endDate: {}, startTime: {}, endTime: {}, sortBy: {}, sortOrder: {}",
-                userId, page, limit, startDate, endDate, startTime, endTime, sortBy, sortOrder);
+        log.info("Received request to get GPS points for user {} - page: {}, limit: {}, filters: accuracyMin: {}, accuracyMax: {}, speedMin: {}, speedMax: {}",
+                userId, page, limit, accuracyMin, accuracyMax, speedMin, speedMax);
 
         try {
             // Validate pagination parameters
@@ -173,17 +197,19 @@ public class GpsPointResource {
                         .build();
             }
 
-            // Parse date/time parameters - prioritize precise timestamps over dates
-            Instant start = parseDateTime(startTime, startDate, true);
-            Instant end = parseDateTime(endTime, endDate, false);
+            // Build filters
+            GpsPointFilterDTO filters = buildFilters(startTime != null ? startTime : (startDate != null ? startDate : null),
+                    endTime != null ? endTime : (endDate != null ? endDate : null),
+                    accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
-            GpsPointPageDTO result = gpsPointService.getGpsPointsPage(userId, start, end, page, limit, sortBy, sortOrder);
+            GpsPointPageDTO result = gpsPointService.getGpsPointsPageWithFilters(userId, filters, page, limit, sortBy, sortOrder);
             return Response.ok(ApiResponse.success(result)).build();
         } catch (DateTimeParseException e) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid date format. Use YYYY-MM-DD format"))
+                    .entity(ApiResponse.error("Invalid date/time format"))
                     .build();
         } catch (Exception e) {
+            log.error("Failed to retrieve GPS points for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve GPS points: " + e.getMessage()))
                     .build();
@@ -191,12 +217,12 @@ public class GpsPointResource {
     }
 
     /**
-     * Export GPS points as CSV.
-     * This endpoint requires authentication.
+     * Export GPS points as CSV with streaming to prevent OOM.
+     * This endpoint requires authentication and supports all filters.
      *
      * @param startDate Start date filter (format: YYYY-MM-DD)
      * @param endDate   End date filter (format: YYYY-MM-DD)
-     * @return CSV file with GPS points
+     * @return CSV file with GPS points (streamed)
      */
     @GET
     @Path("/export")
@@ -206,30 +232,59 @@ public class GpsPointResource {
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate,
             @QueryParam("startTime") String startTime,
-            @QueryParam("endTime") String endTime) {
+            @QueryParam("endTime") String endTime,
+            @QueryParam("accuracyMin") Double accuracyMin,
+            @QueryParam("accuracyMax") Double accuracyMax,
+            @QueryParam("speedMin") Double speedMin,
+            @QueryParam("speedMax") Double speedMax,
+            @QueryParam("sourceTypes") String sourceTypes) {
         UserEntity user = currentUserService.getCurrentUser();
-        log.info("Received request to export GPS points for user {} - startDate: {}, endDate: {}, startTime: {}, endTime: {}",
-                user.getId(), startDate, endDate, startTime, endTime);
+        log.info("Received request to export GPS points for user {} with filters", user.getId());
 
         try {
-            // Parse date/time parameters - prioritize precise timestamps over dates
-            Instant start = parseDateTime(startTime, startDate, true);
-            Instant end = parseDateTime(endTime, endDate, false);
+            // Build filters
+            GpsPointFilterDTO filters = buildFilters(
+                    startTime != null ? startTime : startDate,
+                    endTime != null ? endTime : endDate,
+                    accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
 
-            List<GpsPointEntity> points = gpsPointService.getGpsPointsForExport(user.getId(), start, end);
-            String csv = generateCsv(points, user.getMeasureUnit());
+            // Create streaming output to avoid loading all data into memory
+            StreamingOutput stream = output -> {
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
+                    // Write CSV header
+                    if (user.getMeasureUnit() == MeasureUnit.METRIC) {
+                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType\n");
+                    } else {
+                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType\n");
+                    }
+
+                    // Stream GPS points in batches of 1000
+                    gpsPointService.streamGpsPointsForExport(user.getId(), filters, 1000, batch -> {
+                        try {
+                            for (GpsPointEntity point : batch) {
+                                writer.write(formatCsvRow(point, user.getMeasureUnit()));
+                            }
+                            writer.flush(); // Flush after each batch
+                        } catch (Exception e) {
+                            throw new RuntimeException("Error writing CSV batch", e);
+                        }
+                    });
+                }
+            };
 
             String filename = String.format("gps-points-export-%s.csv",
                     startDate != null && endDate != null ? startDate + "_" + endDate : "all");
 
-            return Response.ok(csv)
+            return Response.ok(stream)
                     .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .header("Content-Type", "text/csv; charset=utf-8")
                     .build();
         } catch (DateTimeParseException e) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error("Invalid date format. Use YYYY-MM-DD format"))
+                    .entity(ApiResponse.error("Invalid date/time format"))
                     .build();
         } catch (Exception e) {
+            log.error("Failed to export GPS points for user {}", user.getId(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to export GPS points: " + e.getMessage()))
                     .build();
@@ -272,37 +327,95 @@ public class GpsPointResource {
     }
 
     /**
-     * Generate CSV from GPS points.
+     * Format a single GPS point as a CSV row.
      *
-     * @param points      List of GPS points
-     * @param measureUnit
-     * @return CSV string
+     * @param point       GPS point entity
+     * @param measureUnit User's measurement unit preference
+     * @return CSV row string
      */
-    private String generateCsv(List<GpsPointEntity> points, MeasureUnit measureUnit) {
-        StringWriter writer = new StringWriter();
-        if (measureUnit == MeasureUnit.METRIC) {
-            writer.append("id,timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType\n");
-        } else {
-            writer.append("id,timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType\n");
+    private String formatCsvRow(GpsPointEntity point, MeasureUnit measureUnit) {
+        StringBuilder row = new StringBuilder();
+
+        Double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
+        if (measureUnit == MeasureUnit.IMPERIAL) {
+            velocity = velocity * 0.621371; // Convert km/h to mph
         }
 
-        for (GpsPointEntity point : points) {
-            Double velocity = point.getVelocity() != null ? point.getVelocity() : 0.0;
-            if (measureUnit == MeasureUnit.IMPERIAL) {
-                velocity = velocity * 0.621371; //change to mph
+        row.append(point.getTimestamp().toString()).append(",");
+        row.append(point.getLatitude()).append(",");
+        row.append(point.getLongitude()).append(",");
+        row.append(point.getAccuracy() != null ? point.getAccuracy() : "").append(",");
+        row.append(point.getBattery() != null ? point.getBattery() : "").append(",");
+        row.append(velocity).append(",");
+        row.append(point.getAltitude() != null ? point.getAltitude() : "").append(",");
+        row.append(point.getSourceType().name()).append("\n");
+
+        return row.toString();
+    }
+
+    /**
+     * Build filter DTO from query parameters.
+     *
+     * @return GpsPointFilterDTO with all filters
+     */
+    private GpsPointFilterDTO buildFilters(String startTime, String endTime,
+                                           Double accuracyMin, Double accuracyMax,
+                                           Double speedMin, Double speedMax,
+                                           String sourceTypes) {
+        GpsPointFilterDTO.GpsPointFilterDTOBuilder builder = GpsPointFilterDTO.builder();
+
+        // Parse time range
+        if (startTime != null && !startTime.trim().isEmpty()) {
+            try {
+                Instant start = Instant.parse(startTime.trim());
+                builder.startTime(start);
+            } catch (DateTimeParseException e) {
+                // Try parsing as date
+                try {
+                    LocalDate date = LocalDate.parse(startTime.trim());
+                    builder.startTime(date.atStartOfDay().toInstant(java.time.ZoneOffset.UTC));
+                } catch (DateTimeParseException ex) {
+                    log.warn("Failed to parse startTime: {}", startTime);
+                }
             }
-            writer.append(String.valueOf(point.getId())).append(",");
-            writer.append(point.getTimestamp().toString()).append(",");
-            writer.append(String.valueOf(point.getLatitude())).append(",");
-            writer.append(String.valueOf(point.getLongitude())).append(",");
-            writer.append(point.getAccuracy() != null ? String.valueOf(point.getAccuracy()) : "").append(",");
-            writer.append(point.getBattery() != null ? String.valueOf(point.getBattery()) : "").append(",");
-            writer.append(String.valueOf(velocity)).append(",");
-            writer.append(point.getAltitude() != null ? String.valueOf(point.getAltitude()) : "").append(",");
-            writer.append(point.getSourceType().name()).append("\n");
         }
 
-        return writer.toString();
+        if (endTime != null && !endTime.trim().isEmpty()) {
+            try {
+                Instant end = Instant.parse(endTime.trim());
+                builder.endTime(end);
+            } catch (DateTimeParseException e) {
+                // Try parsing as date
+                try {
+                    LocalDate date = LocalDate.parse(endTime.trim());
+                    builder.endTime(date.atTime(23, 59, 59).toInstant(java.time.ZoneOffset.UTC));
+                } catch (DateTimeParseException ex) {
+                    log.warn("Failed to parse endTime: {}", endTime);
+                }
+            }
+        }
+
+        // Set filter values
+        builder.accuracyMin(accuracyMin)
+                .accuracyMax(accuracyMax)
+                .speedMin(speedMin)
+                .speedMax(speedMax);
+
+        // Parse source types
+        if (sourceTypes != null && !sourceTypes.trim().isEmpty()) {
+            try {
+                List<GpsSourceType> sourceTypeList = Arrays.stream(sourceTypes.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(GpsSourceType::valueOf)
+                        .collect(Collectors.toList());
+                builder.sourceTypes(sourceTypeList);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid source type in: {}", sourceTypes, e);
+            }
+        }
+
+        return builder.build();
     }
 
     /**

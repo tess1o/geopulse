@@ -7,7 +7,8 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             totalPoints: 0,
             pointsToday: 0,
             firstPointDate: null,
-            lastPointDate: null
+            lastPointDate: null,
+            filteredPoints: null  // Only populated when filters are applied
         },
         gpsPoints: [],
         totalRecords: 0,
@@ -41,7 +42,8 @@ export const useTechnicalDataStore = defineStore('technicalData', {
                 totalPoints: 0,
                 pointsToday: 0,
                 firstPointDate: null,
-                lastPointDate: null
+                lastPointDate: null,
+                filteredPoints: null
             }
             this.gpsPoints = []
             this.totalRecords = 0
@@ -49,15 +51,15 @@ export const useTechnicalDataStore = defineStore('technicalData', {
 
 
         // API Actions
-        async fetchSummaryStats() {
+        async fetchSummaryStats(params = {}) {
             try {
                 this.setLoading(true)
-                
-                const response = await apiService.get('/gps/summary')
+
+                const response = await apiService.get('/gps/summary', params)
                 // Extract data from wrapper response
                 const summaryData = response.data || response
                 this.setSummaryStats(summaryData)
-                
+
                 return summaryData
             } catch (error) {
                 console.error('Error fetching summary stats:', error)
@@ -70,16 +72,18 @@ export const useTechnicalDataStore = defineStore('technicalData', {
         async fetchGPSPoints(params = {}) {
             try {
                 this.setLoading(true)
-                
+
                 const response = await apiService.get('/gps', params)
-                
+
                 // Extract data from wrapper response
                 const responseData = response.data || response
                 const gpsPoints = responseData.data || []
-                
-                // If pagination is not provided, use summary total as fallback
-                const totalRecords = responseData.pagination?.total || this.summaryStats.totalPoints || 0
-                
+
+                // Use pagination total if available (including 0), otherwise fallback to summary total
+                const totalRecords = responseData.pagination?.total !== undefined
+                    ? responseData.pagination.total
+                    : (this.summaryStats.totalPoints || 0)
+
                 this.setGpsPoints(gpsPoints, totalRecords)
                 
                 return {

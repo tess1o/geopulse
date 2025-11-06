@@ -4,6 +4,7 @@ import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
@@ -11,9 +12,13 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @ApplicationScoped
 public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
@@ -278,5 +283,155 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 speed,
                 accuracy
         );
+    }
+
+    // =================== FILTERING METHODS ===================
+
+    /**
+     * Find GPS points with filters, pagination and sorting.
+     *
+     * @param userId    The ID of the user
+     * @param filters   Filter criteria
+     * @param page      Page number (0-based)
+     * @param pageSize  Number of items per page
+     * @param sortBy    Field to sort by
+     * @param sortOrder Sort order (asc or desc)
+     * @return A list of GPS point entities for the page
+     */
+    public List<GpsPointEntity> findByUserAndFilters(UUID userId, GpsPointFilterDTO filters,
+                                                      int page, int pageSize, String sortBy, String sortOrder) {
+        QueryBuilder queryBuilder = buildFilterQuery(userId, filters);
+
+        // Add sorting
+        String validatedSortBy = validateSortField(sortBy);
+        String validatedSortOrder = sortOrder.equalsIgnoreCase("asc") ? "ASC" : "DESC";
+        queryBuilder.query.append(String.format(" ORDER BY %s %s", validatedSortBy, validatedSortOrder));
+
+        Query query = getEntityManager().createQuery(queryBuilder.query.toString(), GpsPointEntity.class);
+        queryBuilder.params.forEach(query::setParameter);
+
+        query.setFirstResult(page * pageSize);
+        query.setMaxResults(pageSize);
+
+        return query.getResultList();
+    }
+
+    /**
+     * Count GPS points matching filters.
+     *
+     * @param userId  The ID of the user
+     * @param filters Filter criteria
+     * @return Count of GPS points matching the filters
+     */
+    public long countByUserAndFilters(UUID userId, GpsPointFilterDTO filters) {
+        QueryBuilder queryBuilder = buildFilterQuery(userId, filters);
+
+        // Replace SELECT with COUNT
+        String countQuery = "SELECT COUNT(gp) FROM GpsPointEntity gp WHERE " + queryBuilder.whereClause;
+
+        Query query = getEntityManager().createQuery(countQuery, Long.class);
+        queryBuilder.params.forEach(query::setParameter);
+
+        return (Long) query.getSingleResult();
+    }
+
+    /**
+     * Stream GPS points for export in batches to avoid OOM.
+     * Processes results in chunks and calls consumer for each batch.
+     *
+     * @param userId       The ID of the user
+     * @param filters      Filter criteria
+     * @param batchSize    Number of records to process at a time
+     * @param consumer     Consumer to process each batch
+     */
+    public void streamByUserAndFilters(UUID userId, GpsPointFilterDTO filters,
+                                       int batchSize, Consumer<List<GpsPointEntity>> consumer) {
+        long totalCount = countByUserAndFilters(userId, filters);
+        int totalBatches = (int) Math.ceil((double) totalCount / batchSize);
+
+        for (int batch = 0; batch < totalBatches; batch++) {
+            List<GpsPointEntity> batchData = findByUserAndFilters(
+                    userId, filters, batch, batchSize, "timestamp", "asc");
+
+            if (!batchData.isEmpty()) {
+                consumer.accept(batchData);
+
+                // Clear the persistence context to free memory
+                getEntityManager().clear();
+            }
+        }
+    }
+
+    /**
+     * Build filter query with WHERE clause and parameters.
+     * Helper method to construct dynamic queries based on active filters.
+     *
+     * @param userId  The ID of the user
+     * @param filters Filter criteria
+     * @return QueryBuilder containing query string and parameters
+     */
+    private QueryBuilder buildFilterQuery(UUID userId, GpsPointFilterDTO filters) {
+        StringBuilder query = new StringBuilder("SELECT gp FROM GpsPointEntity gp WHERE ");
+        StringBuilder whereClause = new StringBuilder();
+        Map<String, Object> params = new HashMap<>();
+
+        // Always filter by user
+        whereClause.append("gp.user.id = :userId");
+        params.put("userId", userId);
+
+        // Time range filters
+        if (filters.getStartTime() != null) {
+            whereClause.append(" AND gp.timestamp >= :startTime");
+            params.put("startTime", filters.getStartTime());
+        }
+        if (filters.getEndTime() != null) {
+            whereClause.append(" AND gp.timestamp <= :endTime");
+            params.put("endTime", filters.getEndTime());
+        }
+
+        // Accuracy filters
+        if (filters.getAccuracyMin() != null) {
+            whereClause.append(" AND gp.accuracy >= :accuracyMin");
+            params.put("accuracyMin", filters.getAccuracyMin());
+        }
+        if (filters.getAccuracyMax() != null) {
+            whereClause.append(" AND gp.accuracy <= :accuracyMax");
+            params.put("accuracyMax", filters.getAccuracyMax());
+        }
+
+        // Speed filters (velocity is stored in km/h)
+        if (filters.getSpeedMin() != null) {
+            whereClause.append(" AND gp.velocity >= :speedMin");
+            params.put("speedMin", filters.getSpeedMin());
+        }
+        if (filters.getSpeedMax() != null) {
+            whereClause.append(" AND gp.velocity <= :speedMax");
+            params.put("speedMax", filters.getSpeedMax());
+        }
+
+        // Source type filter
+        if (filters.getSourceTypes() != null && !filters.getSourceTypes().isEmpty()) {
+            whereClause.append(" AND gp.sourceType IN :sourceTypes");
+            params.put("sourceTypes", filters.getSourceTypes());
+        }
+
+        query.append(whereClause);
+
+        return new QueryBuilder(query, whereClause.toString(), params);
+    }
+
+    /**
+     * Helper class to encapsulate query building results.
+     */
+    private static class QueryBuilder {
+        final StringBuilder query;
+        final String whereClause;
+        final Map<String, Object> params;
+
+        QueryBuilder(StringBuilder query, String whereClause, Map<String, Object> params) {
+            this.query = query;
+            this.whereClause = whereClause;
+            this.params = params;
+        }
     }
 }
