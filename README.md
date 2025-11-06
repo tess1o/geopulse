@@ -39,7 +39,7 @@ Deploy GeoPulse in under 5 minutes:
 
 Both scenarios optionally support MQTT for real-time OwnTracks integration.
 
-**👉 [Docker Deployment Instructions](docs/DEPLOYMENT_GUIDE.md)**
+**👉 [Docker Deployment Instructions](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose)**
 
 Once deployed:
 
@@ -48,22 +48,25 @@ Once deployed:
 
 ### Kubernetes Deployment
 
-For Kubernetes clusters, GeoPulse provides an easy-to-use set of scripts to manage the installation via Helm.
+For Kubernetes clusters you can install GeoPulse using the provided Helm chart.
 
-1. Clone the repository: `git clone https://github.com/tess1o/GeoPulse.git`
-2. Run the installer: `cd GeoPulse && ./helm/install.sh`
+```shell
+helm repo add geopulse https://tess1o.github.io/geopulse/charts
+helm repo update
+helm install my-geopulse geopulse/geopulse
+```
 
 The interactive script will guide you through the process.
 
-**👉 [View the Full Kubernetes/Helm Guide](docs/KUBERNETES_DEPLOYMENT.md)**
-
+**👉 [View the Full Kubernete Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm)**
+**👉 [View the Full Helm Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/helm)**
 ---
 
 ## Features
 
 **GPS Data Integration**
 
-- Works with OwnTracks (HTTP or MQTT), Overland, Dawarich and HomeAssistant tracking apps
+- Works with OwnTracks (HTTP or MQTT), Overland, Dawarich, HomeAssistant and GPSLogger tracking apps
 - Real-time data sync with GPS tracking apps.
 - Manual import from Google Timeline, GPX, GeoJSON or OwnTracks JSON files
 
@@ -117,9 +120,8 @@ The interactive script will guide you through the process.
 
 ### Detailed Guides
 
-- **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)** - Comprehensive deployment options and troubleshooting
-- **[Configuration Guide](docs/CONFIGURATION.md)** - Advanced configuration and environment variables
-- **[Setup Guide](docs/SETUP.md)** - GPS sources setup and initial configuration
+- **[Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose)** - Comprehensive deployment options and troubleshooting
+- **[Configuration Guide](https://tess1o.github.io/geopulse/docs/system-administration/initial-setup)** - Advanced configuration and environment variables
 
 ## Architecture
 
@@ -132,10 +134,11 @@ The interactive script will guide you through the process.
 
 ## Compatible Apps
 
-**OwnTracks** (iOS, Android)
+**OwnTracks** (iOS, Android) - HTTP and MQTT
 **Overland** (iOS)
 **Dawarich** (iOS)
 **Home Assistant**
+**GPSLogger**
 
 ## Authentication
 
