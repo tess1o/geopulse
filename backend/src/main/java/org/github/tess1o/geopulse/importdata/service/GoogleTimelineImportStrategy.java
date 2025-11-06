@@ -174,6 +174,16 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
                 gpsEntity.setVelocity(point.getVelocityMs() * 3.6); // Convert m/s to km/h
             }
 
+            // Set accuracy if available (already in meters)
+            if (point.getAccuracy() != null) {
+                gpsEntity.setAccuracy(point.getAccuracy());
+            }
+
+            // Set altitude if available (already in meters)
+            if (point.getAltitude() != null) {
+                gpsEntity.setAltitude(point.getAltitude());
+            }
+
             return gpsEntity;
 
         } catch (Exception e) {

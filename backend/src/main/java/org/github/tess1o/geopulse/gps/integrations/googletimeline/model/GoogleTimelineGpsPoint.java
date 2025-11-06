@@ -11,7 +11,7 @@ import java.time.Instant;
 @Data
 @Builder
 public class GoogleTimelineGpsPoint {
-    
+
     private Instant timestamp;
     private double latitude;
     private double longitude;
@@ -19,5 +19,7 @@ public class GoogleTimelineGpsPoint {
     private String activityType;
     private double confidence;
     private Double velocityMs; // velocity in m/s, null if not available
+    private Double accuracy; // accuracy in meters, null if not available
+    private Double altitude; // altitude in meters, null if not available
     private int recordIndex; // index in original data
 }

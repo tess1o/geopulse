@@ -17,13 +17,13 @@ import java.util.List;
  * Streaming parser for Google Timeline JSON files.
  * Processes both legacy format (array of records) and new format (semantic segments)
  * using Jackson's streaming API for memory-efficient parsing.
- *
+ * <p>
  * This parser:
  * - Parses JSON incrementally without loading entire file into memory
  * - Extracts only the fields we actually need for GPS points
  * - Skips unused fields like userLocationProfile, frequentPlaces, etc.
  * - Uses callback-based processing to avoid accumulating all entities in memory
- *
+ * <p>
  * Memory usage: Constant O(1) - only current segment/record in memory at a time.
  */
 @Slf4j
@@ -57,6 +57,7 @@ public class StreamingGoogleTimelineParser {
         public int totalRecords = 0;          // For legacy format: number of records
         public int totalSemanticSegments = 0;  // For new format: number of semantic segments
         public int totalRawSignals = 0;        // For new format: number of raw signals
+        public int totalRecordsLocations = 0;  // For records format: number of location entries
         public int visitCount = 0;
         public int activityCount = 0;
         public int timelinePathCount = 0;
@@ -80,12 +81,13 @@ public class StreamingGoogleTimelineParser {
     public enum FormatType {
         LEGACY_ARRAY,
         SEMANTIC_SEGMENTS,
+        RECORDS,
         UNKNOWN
     }
 
     /**
      * Parse Google Timeline JSON and invoke callback for each GPS point.
-     * Automatically detects format (legacy array vs semantic segments).
+     * Automatically detects format (legacy array vs semantic segments vs records).
      *
      * @param callback function to call for each parsed GPS point
      * @return parsing statistics
@@ -104,18 +106,34 @@ public class StreamingGoogleTimelineParser {
                 log.info("Detected Google Timeline legacy format (array of records)");
                 parseLegacyFormat(parser, callback, stats);
             } else if (token == JsonToken.START_OBJECT) {
-                // New format: object with semanticSegments
-                stats.formatType = FormatType.SEMANTIC_SEGMENTS;
-                log.info("Detected Google Timeline semantic segments format");
-                parseSemanticSegmentsFormat(parser, callback, stats);
+                // Object format - need to distinguish between RECORDS and SEMANTIC_SEGMENTS
+                // Look at first field name to determine format
+                token = parser.nextToken();
+                if (token == JsonToken.FIELD_NAME) {
+                    String firstField = parser.getCurrentName();
+                    if ("locations".equals(firstField)) {
+                        // Records format: object with locations array
+                        stats.formatType = FormatType.RECORDS;
+                        log.info("Detected Google Timeline Records format (locations array)");
+                        parseRecordsFormat(parser, callback, stats);
+                    } else {
+                        // Semantic segments format: object with semanticSegments, rawSignals, etc.
+                        stats.formatType = FormatType.SEMANTIC_SEGMENTS;
+                        log.info("Detected Google Timeline semantic segments format");
+                        // We've already consumed the first field name, so pass it to the parser
+                        parseSemanticSegmentsFormat(parser, callback, stats);
+                    }
+                } else {
+                    throw new IllegalArgumentException("Unknown Google Timeline format - expected field name in object");
+                }
             } else {
                 throw new IllegalArgumentException("Unknown Google Timeline format - expected array or object");
             }
         }
 
-        log.info("Google Timeline parsing complete: format={}, records={}, segments={}, rawSignals={}, gpsPoints={}, dateRange={} to {}",
+        log.info("Google Timeline parsing complete: format={}, records={}, segments={}, rawSignals={}, recordsLocations={}, gpsPoints={}, dateRange={} to {}",
                 stats.formatType, stats.totalRecords, stats.totalSemanticSegments,
-                stats.totalRawSignals, stats.totalGpsPoints,
+                stats.totalRawSignals, stats.totalRecordsLocations, stats.totalGpsPoints,
                 stats.firstTimestamp, stats.lastTimestamp);
 
         return stats;
@@ -200,7 +218,7 @@ public class StreamingGoogleTimelineParser {
     }
 
     private void parseLegacyActivityFromObject(JsonParser parser, Instant startTime, Instant endTime,
-                                     GpsPointCallback callback, ParsingStats stats) throws IOException {
+                                               GpsPointCallback callback, ParsingStats stats) throws IOException {
         String start = null;
         String end = null;
         Double distanceMeters = null;
@@ -235,7 +253,7 @@ public class StreamingGoogleTimelineParser {
                             activityType = parser.getValueAsString();
                         } else if ("probability".equals(tcField)) {
                             parser.nextToken();
-                            confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
+                            confidence = parser.getValueAsString() == null ? null : Double.valueOf(parser.getValueAsString());
                         } else {
                             parser.skipChildren();
                         }
@@ -292,7 +310,7 @@ public class StreamingGoogleTimelineParser {
     }
 
     private void parseLegacyVisitFromObject(JsonParser parser, Instant startTime, Instant endTime,
-                                  GpsPointCallback callback, ParsingStats stats) throws IOException {
+                                            GpsPointCallback callback, ParsingStats stats) throws IOException {
         String placeLocation = null;
         String semanticType = "unknown";
         double confidence = 0.0;
@@ -306,7 +324,7 @@ public class StreamingGoogleTimelineParser {
             switch (fieldName) {
                 case "probability" -> {
                     parser.nextToken();
-                    confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
+                    confidence = parser.getValueAsString() == null ? null : Double.valueOf(parser.getValueAsString());
                 }
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
@@ -342,7 +360,7 @@ public class StreamingGoogleTimelineParser {
     }
 
     private void parseLegacyTimelinePathFromArray(JsonParser parser, Instant startTime,
-                                        GpsPointCallback callback, ParsingStats stats) throws IOException {
+                                                  GpsPointCallback callback, ParsingStats stats) throws IOException {
         // Parser is already at START_ARRAY, no need to advance
 
         // Now advance into the array
@@ -363,7 +381,7 @@ public class StreamingGoogleTimelineParser {
                         point = parser.getValueAsString();
                     } else if ("durationMinutesOffsetFromStartTime".equals(fieldName)) {
                         parser.nextToken();
-                        offsetMinutes = parser.getValueAsString() == null? 0 : Integer.parseInt(parser.getValueAsString());
+                        offsetMinutes = parser.getValueAsString() == null ? 0 : Integer.parseInt(parser.getValueAsString());
                     } else {
                         parser.skipChildren();
                     }
@@ -396,23 +414,129 @@ public class StreamingGoogleTimelineParser {
     }
 
     /**
+     * Parse Records format: object with locations array
+     */
+    private void parseRecordsFormat(JsonParser parser, GpsPointCallback callback, ParsingStats stats)
+            throws IOException {
+
+        // Parser is positioned at FIELD_NAME "locations" after format detection
+        // Advance to the array value
+        parser.nextToken(); // Should be START_ARRAY
+
+        if (parser.getCurrentToken() != JsonToken.START_ARRAY) {
+            throw new IllegalArgumentException("Records format: expected 'locations' to be an array");
+        }
+
+        // Process each location in the array
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
+            parseRecordsLocation(parser, callback, stats);
+            stats.totalRecordsLocations++;
+        }
+
+        // Skip any remaining fields in the root object (though typically there are none)
+        while (parser.nextToken() != JsonToken.END_OBJECT) {
+            parser.skipChildren();
+        }
+    }
+
+    /**
+     * Parse a single location entry from Records format
+     */
+    private void parseRecordsLocation(JsonParser parser, GpsPointCallback callback, ParsingStats stats)
+            throws IOException {
+
+        Integer latitudeE7 = null;
+        Integer longitudeE7 = null;
+        Instant timestamp = null;
+        Double accuracy = null;
+        Double altitude = null;
+
+        // Parser is positioned at START_OBJECT of a location entry
+        while (parser.nextToken() != JsonToken.END_OBJECT) {
+            String fieldName = parser.getCurrentName();
+            if (fieldName == null) continue;
+
+            switch (fieldName) {
+                case "latitudeE7" -> {
+                    parser.nextToken();
+                    latitudeE7 = parser.getIntValue();
+                }
+                case "longitudeE7" -> {
+                    parser.nextToken();
+                    longitudeE7 = parser.getIntValue();
+                }
+                case "timestamp" -> {
+                    parser.nextToken();
+                    timestamp = parseInstant(parser.getValueAsString());
+                }
+                case "accuracy" -> {
+                    parser.nextToken();
+                    // Accuracy can be integer or double
+                    accuracy = parser.getDoubleValue();
+                }
+                case "altitude" -> {
+                    parser.nextToken();
+                    // Altitude can be integer or double
+                    altitude = parser.getDoubleValue();
+                }
+                default -> parser.skipChildren(); // Skip other fields like source, deviceTag, etc.
+            }
+        }
+
+        // Convert E7 coordinates to decimal and emit GPS point
+        if (latitudeE7 != null && longitudeE7 != null && timestamp != null) {
+            double latitude = latitudeE7 / 10000000.0;
+            double longitude = longitudeE7 / 10000000.0;
+
+            GoogleTimelineGpsPoint point = GoogleTimelineGpsPoint.builder()
+                    .timestamp(timestamp)
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .recordType("records_location")
+                    .activityType("location")
+                    .confidence(accuracy != null ? Math.min(1.0, 100.0 / accuracy) : 0.5) // Convert accuracy to confidence (lower accuracy = higher confidence)
+                    .accuracy(accuracy) // Store raw accuracy in meters
+                    .altitude(altitude) // Store altitude in meters
+                    .build();
+
+            stats.totalGpsPoints++;
+            stats.updateTimestamp(timestamp);
+            callback.onGpsPoint(point, stats);
+        }
+    }
+
+    /**
      * Parse semantic segments format: object with semanticSegments and rawSignals
      */
     private void parseSemanticSegmentsFormat(JsonParser parser, GpsPointCallback callback, ParsingStats stats)
             throws IOException {
 
-        // We're already positioned at START_OBJECT
+        // Parser may be positioned at FIELD_NAME (if we peeked during format detection)
+        // or at START_OBJECT (if called directly)
+        // Handle the first field if we're already at it
+        if (parser.getCurrentToken() == JsonToken.FIELD_NAME) {
+            String fieldName = parser.getCurrentName();
+            processSemanticSegmentField(parser, fieldName, callback, stats);
+        }
+
+        // Continue processing remaining fields
         while (parser.nextToken() != JsonToken.END_OBJECT) {
             String fieldName = parser.getCurrentName();
-
             if (fieldName == null) continue;
+            processSemanticSegmentField(parser, fieldName, callback, stats);
+        }
+    }
 
-            switch (fieldName) {
-                case "semanticSegments" -> parseSemanticSegmentsArray(parser, callback, stats);
-                case "rawSignals" -> parseRawSignalsArray(parser, callback, stats);
-                case "userLocationProfile" -> parser.skipChildren(); // Skip - we don't use this
-                default -> parser.skipChildren();
-            }
+    /**
+     * Process a single field in semantic segments format
+     */
+    private void processSemanticSegmentField(JsonParser parser, String fieldName,
+                                             GpsPointCallback callback, ParsingStats stats) throws IOException {
+        switch (fieldName) {
+            case "semanticSegments" -> parseSemanticSegmentsArray(parser, callback, stats);
+            case "rawSignals" -> parseRawSignalsArray(parser, callback, stats);
+            case "userLocationProfile" -> parser.skipChildren(); // Skip - we don't use this
+            default -> parser.skipChildren();
         }
     }
 
@@ -478,7 +602,7 @@ public class StreamingGoogleTimelineParser {
             switch (fieldName) {
                 case "probability" -> {
                     parser.nextToken();
-                    confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
+                    confidence = parser.getValueAsString() == null ? null : Double.valueOf(parser.getValueAsString());
                 }
                 case "topCandidate" -> {
                     parser.nextToken(); // START_OBJECT
@@ -570,7 +694,7 @@ public class StreamingGoogleTimelineParser {
                             activityType = parser.getValueAsString();
                         } else if ("probability".equals(tcField)) {
                             parser.nextToken();
-                            confidence = parser.getValueAsString() == null? null : Double.valueOf(parser.getValueAsString());
+                            confidence = parser.getValueAsString() == null ? null : Double.valueOf(parser.getValueAsString());
                         } else {
                             parser.skipChildren();
                         }
@@ -702,6 +826,8 @@ public class StreamingGoogleTimelineParser {
         Instant timestamp = null;
         String source = "unknown";
         Double speedMs = null;
+        Double accuracyMeters = null;
+        Double altitudeMeters = null;
 
         parser.nextToken(); // START_OBJECT
 
@@ -726,6 +852,24 @@ public class StreamingGoogleTimelineParser {
                     parser.nextToken();
                     speedMs = parser.getDoubleValue();
                 }
+                case "accuracyMeters" -> {
+                    parser.nextToken();
+                    try {
+                        accuracyMeters = parser.getDoubleValue();
+                    } catch (Exception e) {
+                        log.error("Error parsing accuracyMeters", e.getMessage());
+                        //do nothing
+                    }
+                }
+                case "altitudeMeters" -> {
+                    parser.nextToken();
+                    try {
+                        altitudeMeters = parser.getDoubleValue();
+                    } catch (Exception e) {
+                        log.error("Error parsing accuracyMeters", e.getMessage());
+                        //do nothing
+                    }
+                }
                 default -> parser.skipChildren();
             }
         }
@@ -741,6 +885,8 @@ public class StreamingGoogleTimelineParser {
                     .activityType(source)
                     .confidence(1.0)
                     .velocityMs(speedMs)
+                    .accuracy(accuracyMeters)
+                    .altitude(altitudeMeters)
                     .build();
 
             stats.totalGpsPoints++;
