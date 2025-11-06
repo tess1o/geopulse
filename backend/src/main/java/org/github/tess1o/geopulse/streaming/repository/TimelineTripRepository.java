@@ -48,7 +48,7 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
     /**
      * Find timeline trips for a user within a time range, including boundary expansion.
      * Includes trips that start before the range but extend into it.
-     * 
+     *
      * @param userId user ID
      * @param startTime start of time range
      * @param endTime end of time range
@@ -61,7 +61,7 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
         return find("user.id = ?1 AND (" +
                    "(timestamp >= ?2 AND timestamp <= ?3) OR " +  // Starts within range
                    "(timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, tripDuration, timestamp) > ?2)" + // Starts before but extends into range
-                   ") ORDER BY timestamp", 
+                   ") ORDER BY timestamp",
                    userId, startTime, endTime).list();
     }
 

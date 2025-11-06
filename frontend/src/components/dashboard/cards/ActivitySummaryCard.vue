@@ -134,49 +134,71 @@ const hasChartData = computed(() => {
 })
 
 const chartLabels = computed(() => {
-  // If we have car data, use car labels
-  if (props.stats?.distanceCarChart?.labels?.length > 0) {
-    return props.stats.distanceCarChart.labels
+  const carLabels = props.stats?.distanceCarChart?.labels || []
+  const walkLabels = props.stats?.distanceWalkChart?.labels || []
+
+  // Merge unique labels from both charts
+  const allLabels = [...new Set([...carLabels, ...walkLabels])]
+
+  if (allLabels.length === 0) return []
+
+  // Define day order for sorting
+  const dayOrder = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+
+  // Check if labels are day abbreviations or date strings (MM/DD format)
+  const isDateFormat = allLabels.some(label => /^\d{2}\/\d{2}$/.test(label))
+
+  if (isDateFormat) {
+    // Sort by date (MM/DD format)
+    return allLabels.sort((a, b) => {
+      const [aMonth, aDay] = a.split('/').map(Number)
+      const [bMonth, bDay] = b.split('/').map(Number)
+      return aMonth !== bMonth ? aMonth - bMonth : aDay - bDay
+    })
+  } else {
+    // Sort by day of week
+    return allLabels.sort((a, b) => {
+      const aIndex = dayOrder.indexOf(a.toUpperCase())
+      const bIndex = dayOrder.indexOf(b.toUpperCase())
+      // Handle unknown day names by putting them at the end
+      if (aIndex === -1) return 1
+      if (bIndex === -1) return -1
+      return aIndex - bIndex
+    })
   }
-  
-  // If we have walk data, use walk labels
-  if (props.stats?.distanceWalkChart?.labels?.length > 0) {
-    return props.stats.distanceWalkChart.labels
-  }
-  
-  // If both exist with data, we might need to merge - for now use the one with data
-  if (props.stats?.distanceCarChart?.data?.length > 0) {
-    return props.stats.distanceCarChart.labels || []
-  }
-  
-  if (props.stats?.distanceWalkChart?.data?.length > 0) {
-    return props.stats.distanceWalkChart.labels || []
-  }
-  
-  return []
 })
 
 const chartDatasets = computed(() => {
   const datasets = []
-  
+  const mergedLabels = chartLabels.value
+
+  const carLabels = props.stats?.distanceCarChart?.labels || []
+  const carData = props.stats?.distanceCarChart?.data || []
+  const walkLabels = props.stats?.distanceWalkChart?.labels || []
+  const walkData = props.stats?.distanceWalkChart?.data || []
+
+  // Create label-to-value maps for easy lookup
+  const carMap = new Map(carLabels.map((label, i) => [label, carData[i] || 0]))
+  const walkMap = new Map(walkLabels.map((label, i) => [label, walkData[i] || 0]))
+
   // Add car distance data if available
-  if (props.stats?.distanceCarChart?.data?.length > 0) {
+  if (carData.length > 0) {
     datasets.push({
       label: 'Car Distance',
-      data: props.stats.distanceCarChart.data,
+      data: mergedLabels.map(label => carMap.get(label) || 0),
       color: 'primary'
     })
   }
-  
+
   // Add walk distance data if available
-  if (props.stats?.distanceWalkChart?.data?.length > 0) {
+  if (walkData.length > 0) {
     datasets.push({
       label: 'Walk Distance',
-      data: props.stats.distanceWalkChart.data,
+      data: mergedLabels.map(label => walkMap.get(label) || 0),
       color: 'success'
     })
   }
-  
+
   return datasets
 })
 
