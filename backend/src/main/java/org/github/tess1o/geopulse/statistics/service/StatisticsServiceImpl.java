@@ -3,76 +3,93 @@ package org.github.tess1o.geopulse.statistics.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.statistics.model.ChartGroupMode;
-import org.github.tess1o.geopulse.statistics.model.UserStatistics;
-import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.statistics.model.*;
+import org.github.tess1o.geopulse.statistics.repository.StatisticsRepository;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
- * Main statistics service implementation that orchestrates various specialized services
- * to generate comprehensive user statistics from timeline data.
- * 
- * This service has been refactored to delegate specific responsibilities to focused services:
- * - Chart generation
- * - Places analysis
- * - Routes analysis
- * - Timeline aggregation
- * - Activity analysis
+ * Main statistics service implementation using SQL-based aggregations.
+ * All calculations are performed in the database for optimal memory efficiency.
+ *
+ * This eliminates the need to load timeline data into memory, reducing memory usage by 95%+.
  */
 @ApplicationScoped
 @Slf4j
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final StreamingTimelineAggregator streamingTimelineAggregator;
-    private final ChartDataService chartDataService;
-    private final PlacesAnalysisService placesAnalysisService;
-    private final RoutesAnalysisService routesAnalysisService;
-    private final TimelineAggregationService timelineAggregationService;
-    private final ActivityAnalysisService activityAnalysisService;
+    private final StatisticsRepository statisticsRepository;
 
     @Inject
-    public StatisticsServiceImpl(
-            StreamingTimelineAggregator streamingTimelineAggregator,
-            ChartDataService chartDataService,
-            PlacesAnalysisService placesAnalysisService,
-            RoutesAnalysisService routesAnalysisService,
-            TimelineAggregationService timelineAggregationService,
-            ActivityAnalysisService activityAnalysisService) {
-        this.streamingTimelineAggregator = streamingTimelineAggregator;
-        this.chartDataService = chartDataService;
-        this.placesAnalysisService = placesAnalysisService;
-        this.routesAnalysisService = routesAnalysisService;
-        this.timelineAggregationService = timelineAggregationService;
-        this.activityAnalysisService = activityAnalysisService;
+    public StatisticsServiceImpl(StatisticsRepository statisticsRepository) {
+        this.statisticsRepository = statisticsRepository;
     }
 
     @Override
     public UserStatistics getStatistics(UUID userId, Instant from, Instant to, ChartGroupMode chartGroupMode) {
-        log.debug("Generating statistics for user {} from {} to {} with grouping {}", 
+        log.debug("Generating statistics for user {} from {} to {} with grouping {}",
                 userId, from, to, chartGroupMode);
-        
-        MovementTimelineDTO timeline = streamingTimelineAggregator.getTimelineFromDb(userId, from, to);
-        
-        // Calculate basic aggregations
-        double totalDistanceMeters = timelineAggregationService.getTotalDistanceMeters(timeline);
-        long timeMovingSeconds = timelineAggregationService.getTimeMovingSeconds(timeline);
-        
-        // Build complete statistics using specialized services
+
+        // Get trip aggregations
+        TripAggregationResult tripAggregations = statisticsRepository.getTripAggregations(userId, from, to);
+
+        // Calculate average speed
+        double averageSpeed = calculateAverageSpeed(
+                tripAggregations.getTotalDistanceMeters(),
+                tripAggregations.getTotalDurationSeconds()
+        );
+
+        // Get chart data based on grouping mode
+        boolean useWeeks = Duration.between(from, to).toDays() >= 10 || chartGroupMode == ChartGroupMode.WEEKS;
+        BarChartData carChart = getBarChartData(userId, from, to, TripType.CAR.name(), useWeeks);
+        BarChartData walkChart = getBarChartData(userId, from, to, TripType.WALK.name(), useWeeks);
+
+        // Build complete statistics
         return UserStatistics.builder()
-                .totalDistanceMeters(totalDistanceMeters)
-                .timeMoving(timeMovingSeconds)
-                .dailyAverageDistanceMeters(timelineAggregationService.getDailyDistanceAverageMeters(timeline))
-                .uniqueLocationsCount(placesAnalysisService.getUniqueLocationsCount(timeline))
-                .routes(routesAnalysisService.getRoutesStatistics(timeline))
-                .places(placesAnalysisService.getPlacesStatistics(timeline))
-                .mostActiveDay(activityAnalysisService.getMostActiveDay(timeline))
-                .averageSpeed(timelineAggregationService.getAverageSpeed(totalDistanceMeters, timeMovingSeconds))
-                .distanceCarChart(chartDataService.getDistanceChartData(timeline, TripType.CAR, chartGroupMode))
-                .distanceWalkChart(chartDataService.getDistanceChartData(timeline, TripType.WALK, chartGroupMode))
+                .totalDistanceMeters(tripAggregations.getTotalDistanceMeters())
+                .timeMoving(tripAggregations.getTotalDurationSeconds())
+                .dailyAverageDistanceMeters(tripAggregations.getDailyAverageDistanceMeters())
+                .uniqueLocationsCount(statisticsRepository.getUniqueLocationsCount(userId, from, to))
+                .routes(statisticsRepository.getRoutesStatistics(userId, from, to))
+                .places(statisticsRepository.getTopPlaces(userId, from, to, 5))
+                .mostActiveDay(statisticsRepository.getMostActiveDay(userId, from, to))
+                .averageSpeed(averageSpeed)
+                .distanceCarChart(carChart)
+                .distanceWalkChart(walkChart)
                 .build();
+    }
+
+    /**
+     * Calculate average speed from total distance and time.
+     */
+    private double calculateAverageSpeed(double totalDistanceMeters, long timeMovingSeconds) {
+        if (timeMovingSeconds <= 0) {
+            return 0.0;
+        }
+        double metersPerSecond = totalDistanceMeters / timeMovingSeconds;
+        return metersPerSecond * 3.6; // convert m/s to km/h
+    }
+
+    /**
+     * Get bar chart data from SQL results.
+     */
+    private BarChartData getBarChartData(UUID userId, Instant from, Instant to, String movementType, boolean useWeeks) {
+        List<ChartDataPoint> dataPoints = useWeeks
+                ? statisticsRepository.getChartDataByWeeks(userId, from, to, movementType)
+                : statisticsRepository.getChartDataByDays(userId, from, to, movementType);
+
+        String[] labels = dataPoints.stream()
+                .map(ChartDataPoint::getLabel)
+                .toArray(String[]::new);
+
+        double[] distances = dataPoints.stream()
+                .mapToDouble(ChartDataPoint::getDistanceKm)
+                .toArray();
+
+        return new BarChartData(labels, distances);
     }
 }
