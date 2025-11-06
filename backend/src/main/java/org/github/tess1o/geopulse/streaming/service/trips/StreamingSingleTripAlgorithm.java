@@ -36,8 +36,6 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                                     mergedTrip.getDistanceMeters(), mergedTrip.getDuration().toMinutes());
                             processedEvents.add(mergedTrip);
                         }
-                    } else {
-                        log.error("Failed to create trip between stays - this should not happen");
                     }
                 } else if (currentStay != null && tripsToMerge.isEmpty()) {
                     log.error("TIMELINE INTEGRITY ISSUE: No trips between consecutive stays at {} and {}",
@@ -50,11 +48,17 @@ public class StreamingSingleTripAlgorithm extends AbstractTripAlgorithm {
                 processedEvents.add(stay);
 
             } else if (event instanceof Trip) {
-                Trip trip = (Trip) event;
-                tripsToMerge.add(trip);
+                tripsToMerge.add((Trip) event);
 
             } else {
-                // Data gaps and other events pass through unchanged
+                // Data gaps and other events finalize the current trip segment
+                if (!tripsToMerge.isEmpty()) {
+                    Trip mergedTrip = mergeTripSegments(tripsToMerge, config);
+                    if (mergedTrip != null && isValidTrip(mergedTrip, config)) {
+                        processedEvents.add(mergedTrip);
+                    }
+                    tripsToMerge.clear();
+                }
                 processedEvents.add(event);
             }
         }

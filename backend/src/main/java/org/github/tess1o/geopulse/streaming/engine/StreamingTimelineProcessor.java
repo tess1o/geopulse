@@ -68,7 +68,6 @@ public class StreamingTimelineProcessor {
 
 
         // 2. Process new points (with gap detection, except for first point after context)
-        boolean isFirstNewPoint = false;
         for (GPSPoint point : filteredNewPoints) {
             // Skip gap detection for first new point if we had context points 
             // (to avoid detecting gap in deleted event period)

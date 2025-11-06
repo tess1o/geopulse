@@ -65,10 +65,17 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                 processedEvents.add(stay);
 
             } else if (event instanceof Trip) {
-                Trip trip = (Trip) event;
-                tripSegment.add(trip);
+                tripSegment.add((Trip) event);
 
             } else {
+                if (!tripSegment.isEmpty()) {
+                    List<Trip> processedTrips = analyzeMultiModalSegment(tripSegment, config);
+                    List<Trip> validTrips = processedTrips.stream()
+                            .filter(trip -> isValidTrip(trip, config))
+                            .collect(Collectors.toList());
+                    processedEvents.addAll(validTrips);
+                    tripSegment.clear();
+                }
                 processedEvents.add(event);
             }
         }
