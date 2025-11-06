@@ -19,7 +19,7 @@ public class ContinentalCruiserBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "total_distance_50000";
+        return "total_distance_10000";
     }
 
     @Override
