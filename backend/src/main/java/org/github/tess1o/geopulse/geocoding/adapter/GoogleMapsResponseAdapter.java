@@ -22,6 +22,14 @@ import java.util.List;
 @Slf4j
 public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<GoogleMapsResponse> {
 
+    public static final List<String> CITY_TYPES_ORDERED = List.of(
+            "locality",
+            "postal_town",
+            "administrative_area_level_3",
+            "administrative_area_level_2",
+            "administrative_area_level_1"
+    );
+
     private static final String PROVIDER_NAME = "GoogleMaps";
 
     @Inject
@@ -91,18 +99,19 @@ public class GoogleMapsResponseAdapter implements GeocodingResponseAdapter<Googl
      * Extract city name from address components.
      */
     private String extractCity(List<GoogleMapsAddressComponent> components) {
-        if (components == null) {
+        if (components == null || components.isEmpty()) {
             return null;
         }
 
-        return components.stream()
-                .filter(c -> c.getTypes() != null &&
-                        (c.getTypes().contains("locality") ||
-                                c.getTypes().contains("administrative_area_level_2") ||
-                                c.getTypes().contains("sublocality")))
-                .map(GoogleMapsAddressComponent::getLongName)
-                .findFirst()
-                .orElse(null);
+        for (String type : CITY_TYPES_ORDERED) {
+            for (GoogleMapsAddressComponent c : components) {
+                if (c.getTypes() != null && c.getTypes().contains(type) && c.getLongName() != null && !c.getLongName().isBlank()) {
+                    return c.getLongName();
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
