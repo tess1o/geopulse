@@ -44,7 +44,7 @@ public class DailyDriverBadgeCalculator implements BadgeCalculator {
         int maxDailyDistance = result != null ? result.intValue() : 0;
 
         return Badge.builder()
-                .id("daily_driver")
+                .id(getBadgeId())
                 .icon("🚙")
                 .title("Daily Driver")
                 .description("Travel 50+ km in a single day")

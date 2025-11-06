@@ -18,7 +18,7 @@ public class CountryCollectorBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "country_country_collector";
+        return "country_visited_5";
     }
 
     @Override

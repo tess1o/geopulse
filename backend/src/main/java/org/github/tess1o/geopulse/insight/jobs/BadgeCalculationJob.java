@@ -38,7 +38,7 @@ public class BadgeCalculationJob {
      * Scheduled job to process badges for all users every 30 minutes.
      * Ensures all badge types exist for every user, then updates incomplete badges.
      */
-    @Scheduled(every = "30m", delay = 5)
+    @Scheduled(every = "30m", delay = 0)
     public void processBadges() {
         if (!badgeCalculationEnabled) {
             log.debug("Badge calculation is disabled, skipping scheduled update");

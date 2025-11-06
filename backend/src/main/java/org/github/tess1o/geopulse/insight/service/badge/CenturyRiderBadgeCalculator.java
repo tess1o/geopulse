@@ -19,12 +19,12 @@ public class CenturyRiderBadgeCalculator implements BadgeCalculator {
 
     @Override
     public String getBadgeId() {
-        return "century_rider";
+        return "target_trip_distance_100";
     }
 
     @Override
     public Badge calculateBadge(UUID userId) {
         return singleTripDistanceBadgeCalculator.calculateSingleTripDistanceBadge(
-                userId, "century_rider", TITLE, "💯", TARGET_DISTANCE, "Complete a trip of 100+ km");
+                userId, getBadgeId(), TITLE, "💯", TARGET_DISTANCE, "Complete a trip of 100+ km");
     }
 }

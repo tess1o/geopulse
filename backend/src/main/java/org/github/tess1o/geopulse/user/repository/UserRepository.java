@@ -41,19 +41,6 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
     }
 
     /**
-     * Find all active users (not deleted/deactivated).
-     * Used for batch processing operations like daily timeline generation.
-     */
-    public List<UserEntity> findActiveUsers() {
-        return list("isActive = true");
-    }
-
-    public List<UserEntity> findByEmailOrFullNameContainingIgnoreCase(String query) {
-        String likeQuery = "%" + query.toLowerCase() + "%";
-        return list("lower(email) LIKE ?1 OR lower(fullName) LIKE ?1", likeQuery);
-    }
-
-    /**
      * Search users to invite by excluding current user, existing friends, and users with pending invitations.
      * This is an optimized single SQL query version.
      *
