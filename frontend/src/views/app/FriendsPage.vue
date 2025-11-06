@@ -177,7 +177,8 @@ const currentTabComponent = computed(() => {
       handlers: {
         onInviteFriend: () => { showInviteDialog.value = true },
         onRefresh: refreshFriendsData,
-        onFriendLocated: handleFriendLocated
+        onFriendLocated: handleFriendLocated,
+        onShowAll: handleShowAll
       }
     },
     invites: {
@@ -513,6 +514,14 @@ const handleCancelAllInvites = async () => {
 }
 
 const handleFriendLocated = (friend) => {
+}
+
+const handleShowAll = () => {
+  router.replace({
+    name: 'Friends',
+    params: {tab: 'map'},
+    query: {friend: undefined}
+  });
 }
 
 const refreshFriendsData = async () => {

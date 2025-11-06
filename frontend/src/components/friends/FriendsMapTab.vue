@@ -57,6 +57,7 @@
           :key="`friends-map-${friendsWithLocation.length}`"
           @friend-located="$emit('friend-located', $event)"
           @refresh="$emit('refresh')"
+          @show-all="$emit('show-all')"
           class="friends-map"
       />
     </div>
@@ -90,7 +91,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['invite-friend', 'refresh', 'friend-located'])
+const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all'])
 
 const friendsMapRef = ref(null)
 

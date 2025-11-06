@@ -38,8 +38,12 @@
         <template #controls="{ map, isReady }">
           <div v-if="isReady" class="leaflet-top leaflet-right">
             <div class="leaflet-control">
-              <button @click="refreshLocations" title="Refresh Locations" class="custom-map-control-button">
+              <button @click="refreshLocations" title="Refresh Locations" class="custom-map-control-button" style="margin-bottom: 5px">
                 <i class="pi pi-refresh"></i>
+              </button>
+              <button v-if="initialFriendEmail != null" @click="resetFriendSelections" title="Show all"
+                      class="custom-map-control-button">
+                <i class="pi pi-filter-slash"></i>
               </button>
             </div>
           </div>
@@ -72,10 +76,10 @@
 import {ref, computed, watch, onMounted, nextTick} from 'vue'
 import {useToast} from 'primevue/usetoast'
 import {ProgressSpinner} from 'primevue'
+import {useRouter, useRoute} from 'vue-router'
 
 // Map components
 import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
-
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
@@ -86,7 +90,7 @@ const props = defineProps({
   initialFriendEmail: String
 })
 
-const emit = defineEmits(['friend-located', 'refresh'])
+const emit = defineEmits(['friend-located', 'refresh', 'show-all'])
 
 // Pinia store
 const friendsStore = useFriendsStore()
@@ -227,6 +231,10 @@ const refreshLocations = () => {
   emit('refresh')
 }
 
+const resetFriendSelections = () => {
+  emit('show-all')
+}
+
 const zoomToFriend = (friend) => {
   if (!map.value) {
     toast.add({
@@ -313,6 +321,11 @@ const tryZoomToInitialFriend = () => {
 watch(() => props.initialFriendEmail, (newEmail) => {
   if (newEmail) {
     tryZoomToInitialFriend()
+  } else if (map.value && dataBounds.value) {
+    // If the friend is deselected, fit the map to the data bounds
+    nextTick(() => {
+      map.value.fitBounds(dataBounds.value, { padding: [20, 20] });
+    });
   }
 })
 
