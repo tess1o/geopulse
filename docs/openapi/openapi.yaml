@@ -1866,6 +1866,16 @@ paths:
   /api/gps:
     get:
       parameters:
+      - name: accuracyMax
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: accuracyMin
+        in: query
+        schema:
+          format: double
+          type: number
       - name: endDate
         in: query
         schema:
@@ -1896,6 +1906,20 @@ paths:
         schema:
           default: desc
           type: string
+      - name: sourceTypes
+        in: query
+        schema:
+          type: string
+      - name: speedMax
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: speedMin
+        in: query
+        schema:
+          format: double
+          type: number
       - name: startDate
         in: query
         schema:
@@ -1941,6 +1965,16 @@ paths:
   /api/gps/export:
     get:
       parameters:
+      - name: accuracyMax
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: accuracyMin
+        in: query
+        schema:
+          format: double
+          type: number
       - name: endDate
         in: query
         schema:
@@ -1949,6 +1983,24 @@ paths:
         in: query
         schema:
           type: string
+      - name: ids
+        in: query
+        schema:
+          type: string
+      - name: sourceTypes
+        in: query
+        schema:
+          type: string
+      - name: speedMax
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: speedMin
+        in: query
+        schema:
+          format: double
+          type: number
       - name: startDate
         in: query
         schema:
@@ -2126,6 +2178,39 @@ paths:
       - jwt: []
   /api/gps/summary:
     get:
+      parameters:
+      - name: accuracyMax
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: accuracyMin
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: sourceTypes
+        in: query
+        schema:
+          type: string
+      - name: speedMax
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: speedMin
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startTime
+        in: query
+        schema:
+          type: string
       responses:
         "200":
           description: OK
@@ -3097,7 +3182,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.2.2
+  version: 1.2.3
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
