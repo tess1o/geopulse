@@ -77,6 +77,7 @@ import org.github.tess1o.geopulse.gps.model.*;
         HomeAssistantBattery.class,
         HomeAssistantGpsData.class,
         HomeAssistantLocation.class,
+        GpsPointFilterDTO.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeatureCollection.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonFeature.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonGeometry.class,

@@ -8,7 +8,16 @@
     >
     <template #actions>
       <div class="header-actions">
-        <Button 
+        <Badge
+          v-if="selectedRows.length > 0"
+          :value="selectedRows.length"
+          severity="info"
+          class="selection-badge"
+        >
+          <span class="selection-text">{{ selectedRows.length }} selected</span>
+        </Badge>
+
+        <Button
           v-if="selectedRows.length > 0"
           label="Delete Selected"
           icon="pi pi-trash"
@@ -18,12 +27,12 @@
           :disabled="selectedRows.length === 0"
           class="bulk-delete-button"
         />
-        <Button 
-          label="Export CSV" 
-          icon="pi pi-download" 
+        <Button
+          :label="exportButtonLabel"
+          icon="pi pi-download"
           @click="handleExportCSV"
           :loading="exportLoading"
-          :disabled="!hasData"
+          :disabled="!hasData || totalRecords === 0"
         />
       </div>
     </template>
@@ -73,26 +82,165 @@
 
     <!-- Date Filter -->
     <BaseCard class="filter-section">
+      <div class="filter-header">
+        <h3 class="filter-title">Filters</h3>
+        <div class="filter-header-actions">
+          <Button
+            v-if="activeFilterCount > 0"
+            :label="`${activeFilterCount} active`"
+            severity="info"
+            size="small"
+            outlined
+            :badge="activeFilterCount.toString()"
+          />
+          <Button
+            v-if="hasActiveFilters"
+            label="Clear All"
+            severity="secondary"
+            size="small"
+            text
+            @click="clearAllFilters"
+          />
+          <Button
+            :icon="showAdvancedFilters ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+            :label="showAdvancedFilters ? 'Hide Advanced' : 'Show Advanced'"
+            text
+            size="small"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          />
+        </div>
+      </div>
+
+      <!-- Quick Date Presets -->
+      <div class="quick-presets">
+        <Button label="Today" size="small" outlined @click="setToday" />
+        <Button label="Yesterday" size="small" outlined @click="setYesterday" />
+        <Button label="Last 7 Days" size="small" outlined @click="setLast7Days" />
+        <Button label="Last 30 Days" size="small" outlined @click="setLast30Days" />
+      </div>
+
       <div class="filter-controls">
-        <div class="filter-group">
-          <label class="filter-label">Date Range:</label>
+        <div class="filter-group filter-group-wide">
+          <label class="filter-label">Date & Time Range:</label>
           <DatePicker
             v-model="dateRange"
             selection-mode="range"
+            show-time
+            hour-format="24"
             :number-of-months="1"
             date-format="mm/dd/yy"
-            placeholder="Select date range"
-            class="date-picker"
+            placeholder="Select range"
+            class="date-picker date-picker-wide"
             @date-select="handleDateChange"
           />
         </div>
-        <Button 
-          label="Clear Filter" 
-          severity="secondary" 
+        <Button
+          v-if="hasDateFilter"
+          label="Clear"
+          severity="secondary"
           size="small"
+          text
+          icon="pi pi-times"
           @click="clearDateFilter"
-          :disabled="!dateRange || dateRange.length === 0"
         />
+      </div>
+
+      <!-- Advanced Filters -->
+      <div v-if="showAdvancedFilters" class="advanced-filters">
+        <div class="filter-row">
+          <div class="filter-field">
+            <label class="filter-label">Source Types:</label>
+            <MultiSelect
+              v-model="filters.sourceTypes"
+              :options="sourceTypeOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="All Sources"
+              display="chip"
+              class="filter-input"
+            />
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <div class="filter-field">
+            <label class="filter-label">Accuracy (meters):</label>
+            <div class="range-inputs">
+              <InputNumber
+                v-model="filters.accuracyMin"
+                placeholder="Min"
+                :min="0"
+                :max="10000"
+                class="range-input"
+              />
+              <span class="range-separator">to</span>
+              <InputNumber
+                v-model="filters.accuracyMax"
+                placeholder="Max"
+                :min="0"
+                :max="10000"
+                class="range-input"
+              />
+            </div>
+          </div>
+
+          <div class="filter-field">
+            <label class="filter-label">Speed (km/h):</label>
+            <div class="range-inputs">
+              <InputNumber
+                v-model="filters.speedMin"
+                placeholder="Min"
+                :min="0"
+                :max="500"
+                class="range-input"
+              />
+              <span class="range-separator">to</span>
+              <InputNumber
+                v-model="filters.speedMax"
+                placeholder="Max"
+                :min="0"
+                :max="500"
+                class="range-input"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Filter Chips -->
+      <div v-if="hasActiveFilters" class="active-filter-chips">
+        <Chip
+          v-if="hasDateFilter"
+          :label="`Date: ${formatDateRange(dateRange)}`"
+          removable
+          @remove="clearDateFilter"
+        />
+        <Chip
+          v-if="filters.accuracyMin !== null || filters.accuracyMax !== null"
+          :label="`Accuracy: ${filters.accuracyMin || 0} - ${filters.accuracyMax || '∞'} m`"
+          removable
+          @remove="filters.accuracyMin = null; filters.accuracyMax = null"
+        />
+        <Chip
+          v-if="filters.speedMin !== null || filters.speedMax !== null"
+          :label="`Speed: ${filters.speedMin || 0} - ${filters.speedMax || '∞'} km/h`"
+          removable
+          @remove="filters.speedMin = null; filters.speedMax = null"
+        />
+        <Chip
+          v-if="filters.sourceTypes && filters.sourceTypes.length > 0"
+          :label="`Sources: ${filters.sourceTypes.length} selected`"
+          removable
+          @remove="filters.sourceTypes = []"
+        />
+      </div>
+    </BaseCard>
+
+    <!-- Filtered Results Banner -->
+    <BaseCard v-if="hasActiveFilters && filteredRecordsText" class="filtered-banner">
+      <div class="filtered-banner-content">
+        <i class="pi pi-filter"></i>
+        <span class="filtered-text">{{ filteredRecordsText }}</span>
       </div>
     </BaseCard>
 
@@ -104,6 +252,7 @@
         paginator
         :rows="pageSize"
         :total-records="totalRecords"
+        :first="currentPage * pageSize"
         lazy
         @page="onPageChange"
         @sort="onSort"
@@ -123,12 +272,36 @@
           paginator: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700'
         }"
       >
+        <template #paginatorstart>
+          <span class="paginator-info">Page {{ currentPage + 1 }} of {{ totalPages.toLocaleString() }}</span>
+        </template>
+        <template #paginatorend>
+          <span class="paginator-info">{{ totalRecords.toLocaleString() }} total</span>
+        </template>
         <template #header>
           <div class="table-header">
-            <span class="table-title">GPS Points</span>
-            <span class="table-subtitle" v-if="hasDateFilter">
-              {{ formatDateRange(dateRange) }}
-            </span>
+            <div class="table-header-left">
+              <span class="table-title">GPS Points</span>
+              <span class="table-subtitle">
+                <template v-if="totalRecords > 0">
+                  Showing {{ currentPage * pageSize + 1 }}-{{ Math.min((currentPage + 1) * pageSize, totalRecords) }} of {{ totalRecords.toLocaleString() }} points
+                  <span v-if="hasActiveFilters && summaryStats.filteredPoints" class="filtered-info">
+                    (filtered from {{ summaryStats.totalPoints.toLocaleString() }})
+                  </span>
+                </template>
+                <template v-else>
+                  No points found
+                </template>
+              </span>
+            </div>
+            <div class="table-header-right">
+              <label class="page-size-label">Rows per page:</label>
+              <Dropdown
+                v-model="pageSize"
+                :options="pageSizeOptions"
+                class="page-size-dropdown"
+              />
+            </div>
           </div>
         </template>
 
@@ -318,6 +491,11 @@ import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
+import MultiSelect from 'primevue/multiselect'
+import InputNumber from 'primevue/inputnumber'
+import Chip from 'primevue/chip'
+import Badge from 'primevue/badge'
+import Dropdown from 'primevue/dropdown'
 import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
@@ -332,6 +510,30 @@ const pageSize = ref(50)
 const currentPage = ref(0)
 const sortField = ref('timestamp')
 const sortOrder = ref(-1) // -1 for descending, 1 for ascending
+
+// Advanced filters
+const showAdvancedFilters = ref(false)
+const filters = ref({
+  sourceTypes: [],
+  accuracyMin: null,
+  accuracyMax: null,
+  speedMin: null,
+  speedMax: null
+})
+
+// Source type options for multi-select
+const sourceTypeOptions = ref([
+  { label: 'OwnTracks', value: 'OWNTRACKS' },
+  { label: 'Overland', value: 'OVERLAND' },
+  { label: 'Google Timeline', value: 'GOOGLE_TIMELINE' },
+  { label: 'GPX', value: 'GPX' },
+  { label: 'Dawarich', value: 'DAWARICH' },
+  { label: 'Home Assistant', value: 'HOME_ASSISTANT' },
+  { label: 'GeoJSON', value: 'GEOJSON' }
+])
+
+// Page size options
+const pageSizeOptions = ref([25, 50, 100, 200, 500])
 
 // Loading states
 const isLoading = ref(false)
@@ -355,12 +557,70 @@ const gpsPoints = computed(() => technicalDataStore.gpsPoints)
 const totalRecords = computed(() => technicalDataStore.totalRecords)
 
 const hasData = computed(() => summaryStats.value.totalPoints > 0)
-const hasDateFilter = computed(() => 
-  dateRange.value && 
-  dateRange.value.length === 2 && 
-  dateRange.value[0] && 
-  dateRange.value[1]
+const hasDateFilter = computed(() =>
+  dateRange.value &&
+  ((Array.isArray(dateRange.value) && dateRange.value.length === 2 && dateRange.value[0] && dateRange.value[1]) ||
+   (dateRange.value[0] && dateRange.value[1]))
 )
+
+const hasActiveFilters = computed(() => {
+  return hasDateFilter.value ||
+         (filters.value.accuracyMin !== null && filters.value.accuracyMin !== undefined) ||
+         (filters.value.accuracyMax !== null && filters.value.accuracyMax !== undefined) ||
+         (filters.value.speedMin !== null && filters.value.speedMin !== undefined) ||
+         (filters.value.speedMax !== null && filters.value.speedMax !== undefined) ||
+         (filters.value.sourceTypes && filters.value.sourceTypes.length > 0)
+})
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (hasDateFilter.value) count++
+  if (filters.value.accuracyMin !== null || filters.value.accuracyMax !== null) count++
+  if (filters.value.speedMin !== null || filters.value.speedMax !== null) count++
+  if (filters.value.sourceTypes && filters.value.sourceTypes.length > 0) count++
+  return count
+})
+
+const filteredRecordsText = computed(() => {
+  if (!hasActiveFilters.value) return ''
+
+  const filtered = totalRecords.value
+  const unfilteredTotal = summaryStats.value.totalPoints
+
+  if (filtered === 0) {
+    return 'No points available for selected period'
+  }
+
+  // Show comparison: filtered count vs unfiltered total
+  if (filtered < unfilteredTotal) {
+    return `Showing ${filtered.toLocaleString()} of ${unfilteredTotal.toLocaleString()} points`
+  }
+
+  return `Showing ${filtered.toLocaleString()} points`
+})
+
+const exportButtonLabel = computed(() => {
+  // Priority 1: Manual selection (regardless of filters)
+  if (selectedRows.value.length > 0) {
+    return `Export CSV (${selectedRows.value.length} selected)`
+  }
+
+  // Priority 2: Filters applied, no manual selection
+  if (hasActiveFilters.value) {
+    if (totalRecords.value === 0) {
+      return 'Export CSV (0 pts)'
+    }
+    return `Export CSV (${totalRecords.value.toLocaleString()} pts)`
+  }
+
+  // Priority 3: No filters and no manual selection
+  return 'Export CSV'
+})
+
+const totalPages = computed(() => {
+  if (!totalRecords.value || !pageSize.value) return 0
+  return Math.ceil(totalRecords.value / pageSize.value)
+})
 
 // Removed - using timezone composable directly
 
@@ -420,14 +680,71 @@ const handleResize = () => {
 const handleDateChange = async () => {
   if (hasDateFilter.value) {
     currentPage.value = 0
+    selectedRows.value = [] // Clear selection when date filter changes
     await loadGPSPoints()
+    await loadSummaryStats()
   }
 }
 
 const clearDateFilter = async () => {
   dateRange.value = null
   currentPage.value = 0
+  selectedRows.value = [] // Clear selection when clearing filters
   await loadGPSPoints()
+  await loadSummaryStats()
+}
+
+// Quick date preset methods
+const setToday = () => {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+  dateRange.value = [start, end]
+  handleDateChange()
+}
+
+const setYesterday = () => {
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0, 0)
+  const end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59)
+  dateRange.value = [start, end]
+  handleDateChange()
+}
+
+const setLast7Days = () => {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 7)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(23, 59, 59, 999)
+  dateRange.value = [start, end]
+  handleDateChange()
+}
+
+const setLast30Days = () => {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 30)
+  start.setHours(0, 0, 0, 0)
+  end.setHours(23, 59, 59, 999)
+  dateRange.value = [start, end]
+  handleDateChange()
+}
+
+const clearAllFilters = async () => {
+  dateRange.value = null
+  filters.value = {
+    sourceTypes: [],
+    accuracyMin: null,
+    accuracyMax: null,
+    speedMin: null,
+    speedMax: null
+  }
+  currentPage.value = 0
+  selectedRows.value = [] // Clear selection when clearing all filters
+  await loadGPSPoints()
+  await loadSummaryStats()
 }
 
 const onPageChange = async (event) => {
@@ -445,7 +762,11 @@ const onSort = async (event) => {
 const loadSummaryStats = async () => {
   try {
     isLoading.value = true
-    await technicalDataStore.fetchSummaryStats()
+
+    // Build filter params for summary
+    const params = buildFilterParams()
+
+    await technicalDataStore.fetchSummaryStats(params)
   } catch (error) {
     console.error('Error loading summary stats:', error)
     toast.add({
@@ -459,25 +780,51 @@ const loadSummaryStats = async () => {
   }
 }
 
+// Helper to build filter params
+const buildFilterParams = () => {
+  const params = {}
+
+  // Date/time range
+  if (hasDateFilter.value) {
+    const dates = Array.isArray(dateRange.value) ? dateRange.value : [dateRange.value[0], dateRange.value[1]]
+    if (dates[0]) params.startTime = formatDateForAPI(dates[0], false)
+    if (dates[1]) params.endTime = formatDateForAPI(dates[1], true)
+  }
+
+  // Advanced filters
+  if (filters.value.accuracyMin !== null && filters.value.accuracyMin !== undefined) {
+    params.accuracyMin = filters.value.accuracyMin
+  }
+  if (filters.value.accuracyMax !== null && filters.value.accuracyMax !== undefined) {
+    params.accuracyMax = filters.value.accuracyMax
+  }
+  if (filters.value.speedMin !== null && filters.value.speedMin !== undefined) {
+    params.speedMin = filters.value.speedMin
+  }
+  if (filters.value.speedMax !== null && filters.value.speedMax !== undefined) {
+    params.speedMax = filters.value.speedMax
+  }
+  if (filters.value.sourceTypes && filters.value.sourceTypes.length > 0) {
+    params.sourceTypes = filters.value.sourceTypes.join(',')
+  }
+
+  return params
+}
+
 const loadGPSPoints = async () => {
   try {
     tableLoading.value = true
+
+    // Start with pagination and sorting
     const params = {
       page: currentPage.value + 1,
-      limit: pageSize.value
+      limit: pageSize.value,
+      sortBy: sortField.value,
+      sortOrder: sortOrder.value === 1 ? 'asc' : 'desc'
     }
 
-    if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      // Send precise UTC timestamps for start/end of day in user timezone
-      params.startTime = formatDateForAPI(dateRange.value[0], false)
-      params.endTime = formatDateForAPI(dateRange.value[1], true)
-    }
-
-    // Add sorting parameters
-    if (sortField.value) {
-      params.sortBy = sortField.value
-      params.sortOrder = sortOrder.value === 1 ? 'asc' : 'desc'
-    }
+    // Merge with filter params
+    Object.assign(params, buildFilterParams())
 
     await technicalDataStore.fetchGPSPoints(params)
   } catch (error) {
@@ -496,21 +843,31 @@ const loadGPSPoints = async () => {
 const handleExportCSV = async () => {
   try {
     exportLoading.value = true
-    const params = {}
-    
-    if (hasDateFilter.value && dateRange.value[0] && dateRange.value[1]) {
-      // Send precise UTC timestamps for start/end of day in user timezone
-      params.startTime = formatDateForAPI(dateRange.value[0], false)
-      params.endTime = formatDateForAPI(dateRange.value[1], true)
+
+    // Priority 1: If manual selection is active, export only selected rows
+    if (selectedRows.value.length > 0) {
+      const selectedIds = selectedRows.value.map(row => row.id)
+      await technicalDataStore.exportGPSPoints({}, selectedIds)
+
+      toast.add({
+        severity: 'success',
+        summary: 'Export Started',
+        detail: `Exporting ${selectedRows.value.length} selected GPS points. Download will start shortly.`,
+        life: 4000
+      })
+      return
     }
-    
+
+    // Priority 2 & 3: Export with filters or all data
+    const params = buildFilterParams()
     await technicalDataStore.exportGPSPoints(params)
-    
+
+    const recordCount = totalRecords.value || summaryStats.value.totalPoints
     toast.add({
       severity: 'success',
       summary: 'Export Started',
-      detail: 'Your GPS data export has started downloading',
-      life: 3000
+      detail: `Exporting ${recordCount.toLocaleString()} GPS points. Download will start shortly.`,
+      life: 4000
     })
   } catch (error) {
     console.error('Error exporting GPS points:', error)
@@ -665,6 +1022,14 @@ watch(pageSize, async () => {
   currentPage.value = 0
   await loadGPSPoints()
 })
+
+// Watch filters for changes
+watch(filters, async () => {
+  currentPage.value = 0
+  selectedRows.value = [] // Clear selection when filters change
+  await loadGPSPoints()
+  await loadSummaryStats()
+}, { deep: true })
 </script>
 
 <style scoped>
@@ -763,6 +1128,16 @@ watch(pageSize, async () => {
 .date-picker {
   flex: 1;
   max-width: 300px;
+}
+
+.date-picker-wide {
+  max-width: 500px !important;
+  min-width: 400px;
+}
+
+.filter-group-wide {
+  flex: 1;
+  max-width: 600px;
 }
 
 /* Large screen filter optimizations */
@@ -1095,9 +1470,15 @@ watch(pageSize, async () => {
     max-width: 100%;
   }
 
-  .date-picker {
+  .date-picker,
+  .date-picker-wide {
     max-width: 100%;
     width: 100%;
+    min-width: unset;
+  }
+
+  .filter-group-wide {
+    max-width: 100%;
   }
 
   /* Ensure datepicker component fits */
@@ -1361,6 +1742,28 @@ watch(pageSize, async () => {
   border-color: var(--gp-primary) !important;
 }
 
+/* Paginator styling */
+.gps-data-table :deep(.p-paginator .p-paginator-pages) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gps-data-table :deep(.p-paginator .p-paginator-page) {
+  min-width: 2.5rem;
+  height: 2.5rem;
+}
+
+.paginator-info {
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  padding: 0 0.5rem;
+}
+
+.p-dark .paginator-info {
+  color: var(--gp-text-secondary);
+}
+
 /* Remove unwanted focus/active borders on page header */
 :deep(.gp-page-header) {
   outline: none !important;
@@ -1484,7 +1887,7 @@ watch(pageSize, async () => {
     width: 100%;
     justify-content: flex-start;
   }
-  
+
   .bulk-delete-button {
     flex: 0 0 auto;
     width: auto;
@@ -1492,7 +1895,7 @@ watch(pageSize, async () => {
     max-width: 140px;
     order: 1;
   }
-  
+
   .header-actions > button:not(.bulk-delete-button) {
     flex: 0 0 auto;
     width: auto;
@@ -1500,5 +1903,221 @@ watch(pageSize, async () => {
     max-width: 120px;
     order: 2;
   }
+}
+
+/* Filter Enhancements */
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--gp-spacing-md);
+  padding-bottom: var(--gp-spacing-sm);
+  border-bottom: 1px solid var(--gp-border-light);
+}
+
+.filter-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--gp-text-primary);
+}
+
+.filter-header-actions {
+  display: flex;
+  gap: var(--gp-spacing-sm);
+  align-items: center;
+}
+
+.quick-presets {
+  display: flex;
+  gap: var(--gp-spacing-sm);
+  margin-bottom: var(--gp-spacing-md);
+  flex-wrap: wrap;
+}
+
+.advanced-filters {
+  margin-top: var(--gp-spacing-md);
+  padding-top: var(--gp-spacing-md);
+  border-top: 1px solid var(--gp-border-light);
+}
+
+.filter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gp-spacing-md);
+  margin-bottom: var(--gp-spacing-md);
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs);
+}
+
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.range-input {
+  flex: 1;
+}
+
+.range-separator {
+  color: var(--gp-text-muted);
+  font-size: 0.9rem;
+}
+
+.filter-input {
+  width: 100%;
+}
+
+.active-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gp-spacing-sm);
+  margin-top: var(--gp-spacing-md);
+  padding-top: var(--gp-spacing-md);
+  border-top: 1px solid var(--gp-border-light);
+}
+
+/* Filtered Banner */
+.filtered-banner {
+  margin-bottom: var(--gp-spacing-lg);
+  background: var(--p-primary-50);
+  border-left: 4px solid var(--gp-primary);
+}
+
+.filtered-banner-content {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-sm);
+}
+
+.filtered-banner-content i {
+  color: var(--gp-primary);
+  font-size: 1.2rem;
+}
+
+.filtered-text {
+  font-weight: 500;
+  color: var(--gp-text-primary);
+}
+
+/* Table Header Enhancements */
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--gp-spacing-md);
+  width: 100%;
+}
+
+.table-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.table-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  flex-shrink: 0;
+}
+
+.page-size-label {
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
+  white-space: nowrap;
+}
+
+.page-size-dropdown {
+  min-width: 80px;
+}
+
+.filtered-info {
+  color: var(--gp-text-muted);
+  font-size: 0.85rem;
+}
+
+/* Selection Badge */
+.selection-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+  padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+  background: var(--p-primary-50);
+  border-radius: var(--gp-radius-small);
+}
+
+.selection-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gp-primary);
+}
+
+/* Mobile Responsive Filters */
+@media (max-width: 768px) {
+  .filter-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .filter-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .quick-presets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .filter-row {
+    grid-template-columns: 1fr;
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .table-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* Dark Mode Filters */
+.p-dark .filter-header {
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .advanced-filters {
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .active-filter-chips {
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .filtered-banner {
+  background: var(--p-primary-900);
+  border-color: var(--gp-primary);
+}
+
+.p-dark .filter-input :deep(.p-chip) {
+  background: var(--p-surface-800) !important;
+  color: var(--p-text-color) !important;
+}
+
+.p-dark .filter-input :deep(.p-chip .p-chip-remove-icon) {
+  color: var(--p-text-color) !important;
 }
 </style>

@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssis
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
 import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -26,6 +27,7 @@ import java.time.*;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 @ApplicationScoped
 @Slf4j
@@ -214,7 +216,7 @@ public class GpsPointService {
         Instant firstTimestamp = getInstantSafe(summaryData[2]);
         Instant lastTimestamp = getInstantSafe(summaryData[3]);
 
-        return new GpsPointSummaryDTO(totalPoints, pointsToday, firstTimestamp, lastTimestamp);
+        return new GpsPointSummaryDTO(totalPoints, pointsToday, firstTimestamp, lastTimestamp, null);
     }
 
     private static Instant getInstantSafe(Object date) {
@@ -411,5 +413,82 @@ public class GpsPointService {
 
     public Optional<GpsPointDTO> getLastKnownPosition(UUID userId) {
         return gpsPointRepository.findLatest(userId).map(gpsPointMapper::toGpsPointDTO);
+    }
+
+    /**
+     * Get paginated GPS points with filters.
+     *
+     * @param userId    The ID of the user
+     * @param filters   Filter criteria
+     * @param page      Page number (1-based)
+     * @param limit     Number of items per page
+     * @param sortBy    Field to sort by
+     * @param sortOrder Sort order (asc or desc)
+     * @return Paginated GPS points
+     */
+    public GpsPointPageDTO getGpsPointsPageWithFilters(UUID userId, GpsPointFilterDTO filters,
+                                                        int page, int limit, String sortBy, String sortOrder) {
+        int pageIndex = page - 1; // Convert to 0-based for repository
+
+        List<GpsPointEntity> points = gpsPointRepository.findByUserAndFilters(userId, filters,
+                pageIndex, limit, sortBy, sortOrder);
+        long total = gpsPointRepository.countByUserAndFilters(userId, filters);
+
+        List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
+
+        long totalPages = (total + limit - 1) / limit; // Ceiling division
+        GpsPointPaginationDTO pagination = new GpsPointPaginationDTO(page, limit, total, totalPages);
+
+        return new GpsPointPageDTO(pointDTOs, pagination);
+    }
+
+    /**
+     * Get summary statistics with optional filters.
+     *
+     * @param userId       The ID of the user
+     * @param userTimezone The user's timezone for calculating "today"
+     * @param filters      Optional filter criteria
+     * @return Summary statistics
+     */
+    public GpsPointSummaryDTO getGpsPointSummaryWithFilters(UUID userId, ZoneId userTimezone, GpsPointFilterDTO filters) {
+        // Calculate "today" in the user's timezone
+        ZonedDateTime nowInUserTz = ZonedDateTime.now(userTimezone);
+        ZonedDateTime todayStartInUserTz = nowInUserTz.toLocalDate().atStartOfDay(userTimezone);
+        ZonedDateTime todayEndInUserTz = todayStartInUserTz.plusDays(1);
+
+        Instant todayStart = todayStartInUserTz.toInstant();
+        Instant todayEnd = todayEndInUserTz.toInstant();
+
+        // Get total summary data (no filters)
+        Object[] summaryData = gpsPointRepository.getGpsPointSummaryData(userId, todayStart, todayEnd);
+
+        long totalPoints = ((Number) summaryData[0]).longValue();
+        long pointsToday = ((Number) summaryData[1]).longValue();
+        Instant firstTimestamp = getInstantSafe(summaryData[2]);
+        Instant lastTimestamp = getInstantSafe(summaryData[3]);
+
+        GpsPointSummaryDTO summary = new GpsPointSummaryDTO(totalPoints, pointsToday, firstTimestamp, lastTimestamp, null);
+
+        // If filters are active, get filtered count
+        if (filters != null && filters.hasFilters()) {
+            long filteredPoints = gpsPointRepository.countByUserAndFilters(userId, filters);
+            summary.setFilteredPoints(filteredPoints);
+        }
+
+        return summary;
+    }
+
+    /**
+     * Stream GPS points for export with filters.
+     * Uses batching to avoid OOM with large datasets.
+     *
+     * @param userId       The ID of the user
+     * @param filters      Filter criteria
+     * @param batchSize    Number of records to process at a time
+     * @param consumer     Consumer to process each batch
+     */
+    public void streamGpsPointsForExport(UUID userId, GpsPointFilterDTO filters,
+                                         int batchSize, Consumer<List<GpsPointEntity>> consumer) {
+        gpsPointRepository.streamByUserAndFilters(userId, filters, batchSize, consumer);
     }
 }

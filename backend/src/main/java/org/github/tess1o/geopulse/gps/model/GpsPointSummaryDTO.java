@@ -17,4 +17,5 @@ public class GpsPointSummaryDTO {
     private long pointsToday;
     private Instant firstPointDate;
     private Instant lastPointDate;
+    private Long filteredPoints; // Optional - only populated when filters are applied
 }
