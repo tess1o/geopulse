@@ -379,6 +379,14 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         whereClause.append("gp.user.id = :userId");
         params.put("userId", userId);
 
+        // If ID filtering is active, ignore all other filters and only filter by IDs
+        if (filters.hasIdFilter()) {
+            whereClause.append(" AND gp.id IN :gpsPointIds");
+            params.put("gpsPointIds", filters.getGpsPointIds());
+            query.append(whereClause);
+            return new QueryBuilder(query, whereClause.toString(), params);
+        }
+
         // Time range filters
         if (filters.getStartTime() != null) {
             whereClause.append(" AND gp.timestamp >= :startTime");

@@ -56,11 +56,25 @@ public class GpsPointFilterDTO {
     private List<GpsSourceType> sourceTypes;
 
     /**
+     * List of specific GPS point IDs to include.
+     * When provided, all other filters are ignored and only these specific points are returned.
+     */
+    private List<Long> gpsPointIds;
+
+    /**
      * Check if any filters are active
      */
     public boolean hasFilters() {
         return accuracyMin != null || accuracyMax != null ||
                speedMin != null || speedMax != null ||
-               (sourceTypes != null && !sourceTypes.isEmpty());
+               (sourceTypes != null && !sourceTypes.isEmpty()) ||
+               (gpsPointIds != null && !gpsPointIds.isEmpty());
+    }
+
+    /**
+     * Check if ID-based filtering is active
+     */
+    public boolean hasIdFilter() {
+        return gpsPointIds != null && !gpsPointIds.isEmpty();
     }
 }

@@ -600,20 +600,20 @@ const filteredRecordsText = computed(() => {
 })
 
 const exportButtonLabel = computed(() => {
-  // If rows are selected, show selected count
+  // Priority 1: Manual selection (regardless of filters)
   if (selectedRows.value.length > 0) {
     return `Export CSV (${selectedRows.value.length} selected)`
   }
 
-  // If filters are active, show filtered count
-  if (hasActiveFilters.value && totalRecords.value > 0) {
+  // Priority 2: Filters applied, no manual selection
+  if (hasActiveFilters.value) {
+    if (totalRecords.value === 0) {
+      return 'Export CSV (0 pts)'
+    }
     return `Export CSV (${totalRecords.value.toLocaleString()} pts)`
   }
-  if (hasActiveFilters.value && totalRecords.value === 0) {
-    return 'Export CSV (0 pts)'
-  }
 
-  // No filters or selection, show total
+  // Priority 3: No filters and no manual selection
   return 'Export CSV'
 })
 
@@ -844,9 +844,22 @@ const handleExportCSV = async () => {
   try {
     exportLoading.value = true
 
-    // Build filter params for export
-    const params = buildFilterParams()
+    // Priority 1: If manual selection is active, export only selected rows
+    if (selectedRows.value.length > 0) {
+      const selectedIds = selectedRows.value.map(row => row.id)
+      await technicalDataStore.exportGPSPoints({}, selectedIds)
 
+      toast.add({
+        severity: 'success',
+        summary: 'Export Started',
+        detail: `Exporting ${selectedRows.value.length} selected GPS points. Download will start shortly.`,
+        life: 4000
+      })
+      return
+    }
+
+    // Priority 2 & 3: Export with filters or all data
+    const params = buildFilterParams()
     await technicalDataStore.exportGPSPoints(params)
 
     const recordCount = totalRecords.value || summaryStats.value.totalPoints
@@ -2097,66 +2110,6 @@ watch(filters, async () => {
 .p-dark .filtered-banner {
   background: var(--p-primary-900);
   border-color: var(--gp-primary);
-}
-
-/* Dark Mode MultiSelect Fix - Using PrimeVue Design Tokens */
-.p-dark .filter-input :deep(.p-multiselect) {
-  background: var(--p-surface-900) !important;
-  border-color: var(--p-content-border-color) !important;
-  color: var(--p-text-color) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect:hover) {
-  border-color: var(--gp-primary) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-label-container) {
-  background: transparent !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-label) {
-  color: var(--p-text-color) !important;
-  background: transparent !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-label.p-placeholder) {
-  color: var(--p-text-muted-color) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-dropdown) {
-  background: transparent !important;
-  color: var(--p-text-color) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-dropdown .p-icon) {
-  color: var(--p-text-color) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-overlay) {
-  background: var(--p-surface-900) !important;
-  border-color: var(--p-content-border-color) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-list) {
-  background: var(--p-surface-900) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-option) {
-  color: var(--p-text-color) !important;
-  background: transparent !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-option:hover) {
-  background: var(--p-content-hover-background) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-option.p-focus) {
-  background: var(--p-content-hover-background) !important;
-}
-
-.p-dark .filter-input :deep(.p-multiselect-option-selected) {
-  background: var(--p-highlight-background) !important;
-  color: var(--p-highlight-color) !important;
 }
 
 .p-dark .filter-input :deep(.p-chip) {

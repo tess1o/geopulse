@@ -237,7 +237,8 @@ public class GpsPointResource {
             @QueryParam("accuracyMax") Double accuracyMax,
             @QueryParam("speedMin") Double speedMin,
             @QueryParam("speedMax") Double speedMax,
-            @QueryParam("sourceTypes") String sourceTypes) {
+            @QueryParam("sourceTypes") String sourceTypes,
+            @QueryParam("ids") String ids) {
         UserEntity user = currentUserService.getCurrentUser();
         log.info("Received request to export GPS points for user {} with filters", user.getId());
 
@@ -247,6 +248,24 @@ public class GpsPointResource {
                     startTime != null ? startTime : startDate,
                     endTime != null ? endTime : endDate,
                     accuracyMin, accuracyMax, speedMin, speedMax, sourceTypes);
+
+            // If IDs are provided, add them to filters (overrides other filters)
+            if (ids != null && !ids.trim().isEmpty()) {
+                try {
+                    List<Long> gpsPointIds = Arrays.stream(ids.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList());
+                    filters.setGpsPointIds(gpsPointIds);
+                    log.info("Exporting {} specific GPS points by IDs", gpsPointIds.size());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid GPS point IDs format: {}", ids, e);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid GPS point IDs format"))
+                            .build();
+                }
+            }
 
             // Create streaming output to avoid loading all data into memory
             StreamingOutput stream = output -> {

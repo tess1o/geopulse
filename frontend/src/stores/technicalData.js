@@ -103,8 +103,12 @@ export const useTechnicalDataStore = defineStore('technicalData', {
             }
         },
 
-        async exportGPSPoints(params = {}) {
+        async exportGPSPoints(params = {}, selectedIds = null) {
             try {
+                // If selectedIds are provided, add them to params
+                if (selectedIds && selectedIds.length > 0) {
+                    params = { ...params, ids: selectedIds.join(',') }
+                }
                 await apiService.download('/gps/export', params)
                 return true
             } catch (error) {
