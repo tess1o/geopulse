@@ -143,42 +143,16 @@ publish-helm:
 	helm package helm/geopulse -d charts
 
 	@echo "🧩 Updating Helm repo index..."
-	@if [ -f charts/index.yaml ]; then \
-		helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml; \
-	else \
-		helm repo index charts --url https://tess1o.github.io/geopulse/charts; \
-	fi
+	helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
 
-	@echo "💾 Stashing local changes temporarily..."
-	git add charts
-	git stash push -m "helm-temp" || true
+	@echo "📂 Copying charts to docs-website static directory..."
+	mkdir -p docs-website/static/charts
+	cp -r charts/* docs-website/static/charts/
 
-	@echo "🌿 Switching to gh-pages branch..."
-	git fetch origin gh-pages || true
-	@if git show-ref --quiet refs/heads/gh-pages; then \
-		git checkout gh-pages; \
-	else \
-		git checkout --orphan gh-pages; \
-	fi
+	@echo "🚀 Deploying documentation with Helm charts..."
+	cd docs-website && npm run deploy
 
-	@echo "📂 Copying updated charts..."
-	mkdir -p charts
-	git stash show -p | git apply --allow-empty || true
-	cp -r ../charts/* charts/ 2>/dev/null || true
-
-	@echo "🔄 Syncing remote gh-pages..."
-	git pull --rebase origin gh-pages || true
-
-	@echo "💾 Committing and pushing charts..."
-	git add charts
-	git commit -m "Update Helm charts" || echo "No changes to commit"
-	git push origin gh-pages || (echo "⚠️ Force pushing to resolve non-fast-forward..." && git push --force origin gh-pages)
-
-	@echo "🌱 Returning to main branch..."
-	git checkout main
-	git stash drop || true
-
-	@echo "✅ Helm charts published to: https://tess1o.github.io/geopulse/charts/index.yaml"
+	@echo "✅ Helm charts and documentation published successfully!"
 
 # Backend unit tests
 .PHONY: backend-test-unit
