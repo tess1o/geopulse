@@ -149,6 +149,10 @@ publish-helm:
 		helm repo index charts --url https://tess1o.github.io/geopulse/charts; \
 	fi
 
+	@echo "💾 Stashing local changes temporarily..."
+	git add charts
+	git stash push -m "helm-temp" || true
+
 	@echo "🌿 Switching to gh-pages branch..."
 	git fetch origin gh-pages || true
 	@if git show-ref --quiet refs/heads/gh-pages; then \
@@ -159,12 +163,17 @@ publish-helm:
 
 	@echo "📂 Copying updated charts..."
 	mkdir -p charts
-	cp -r ../charts/* charts/
+	git stash show -p | git apply --directory=charts --allow-empty || true
+	cp -r ../charts/* charts/ 2>/dev/null || true
 
 	@echo "💾 Committing and pushing charts to gh-pages..."
 	git add charts
 	git commit -m "Update Helm charts" || echo "No changes to commit"
 	git push origin gh-pages
+
+	@echo "🌱 Returning to main branch..."
+	git checkout main
+	git stash drop || true
 
 	@echo "✅ Helm charts published to: https://tess1o.github.io/geopulse/charts/index.yaml"
 
