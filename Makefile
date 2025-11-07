@@ -163,13 +163,16 @@ publish-helm:
 
 	@echo "📂 Copying updated charts..."
 	mkdir -p charts
-	git stash show -p | git apply --directory=charts --allow-empty || true
+	git stash show -p | git apply --allow-empty || true
 	cp -r ../charts/* charts/ 2>/dev/null || true
 
-	@echo "💾 Committing and pushing charts to gh-pages..."
+	@echo "🔄 Syncing remote gh-pages..."
+	git pull --rebase origin gh-pages || true
+
+	@echo "💾 Committing and pushing charts..."
 	git add charts
 	git commit -m "Update Helm charts" || echo "No changes to commit"
-	git push origin gh-pages
+	git push origin gh-pages || (echo "⚠️ Force pushing to resolve non-fast-forward..." && git push --force origin gh-pages)
 
 	@echo "🌱 Returning to main branch..."
 	git checkout main
