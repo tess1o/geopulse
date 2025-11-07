@@ -44,8 +44,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
+
+const router = useRouter()
 
 const props = defineProps({
   stayItem: {
@@ -58,6 +61,16 @@ const emit = defineEmits(['click', 'export-gpx'])
 
 const contextMenu = ref(null)
 const contextMenuItems = ref([
+  {
+    label: 'View all visits to this place',
+    icon: 'pi pi-map-marker',
+    command: () => {
+      navigateToPlaceDetails()
+    }
+  },
+  {
+    separator: true
+  },
   {
     label: 'Export as GPX',
     icon: 'pi pi-download',
@@ -76,6 +89,19 @@ const handleClick = () => {
 const showContextMenu = (event) => {
   event.preventDefault()
   contextMenu.value.show(event)
+}
+
+const navigateToPlaceDetails = () => {
+  // Determine type (favorite or geocoding) and id
+  const type = props.stayItem.favoriteId ? 'favorite' : 'geocoding'
+  const id = props.stayItem.favoriteId || props.stayItem.geocodingId
+
+  if (id) {
+    router.push({
+      name: 'Place Details',
+      params: { type, id }
+    })
+  }
 }
 
 const isOvernight = computed(() => {

@@ -106,16 +106,28 @@
       </Column>
 
       <!-- Location Name Column -->
-      <Column 
-        field="locationName" 
-        header="Location" 
+      <Column
+        field="locationName"
+        header="Location"
         :sortable="true"
         :style="{ 'min-width': '200px' }"
       >
         <template #body="slotProps">
           <div class="location-info">
-            <div class="location-name">
-              {{ slotProps.data.locationName || 'Unknown Location' }}
+            <div class="location-name-wrapper">
+              <span class="location-name">
+                {{ slotProps.data.locationName || 'Unknown Location' }}
+              </span>
+              <Button
+                v-if="hasPlaceDetails(slotProps.data)"
+                icon="pi pi-external-link"
+                v-tooltip.top="'View Place Details'"
+                text
+                rounded
+                size="small"
+                @click="navigateToPlaceDetails(slotProps.data)"
+                class="place-details-link"
+              />
             </div>
             <div v-if="slotProps.data.address" class="location-address">
               {{ slotProps.data.address }}
@@ -179,6 +191,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -191,6 +204,7 @@ import { useTableFilters } from '@/composables/useTableFilters'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
 
 const timezone = useTimezone()
+const router = useRouter()
 
 const props = defineProps({
   stays: {
@@ -286,6 +300,18 @@ const showDetails = (stay) => {
 const closeDetailsDialog = () => {
   detailsDialogVisible.value = false
   selectedStayForDetails.value = null
+}
+
+const hasPlaceDetails = (stay) => {
+  return (stay.favoriteId && stay.favoriteId > 0) || (stay.geocodingId && stay.geocodingId > 0)
+}
+
+const navigateToPlaceDetails = (stay) => {
+  if (stay.favoriteId && stay.favoriteId > 0) {
+    router.push(`/app/place-details/favorite/${stay.favoriteId}`)
+  } else if (stay.geocodingId && stay.geocodingId > 0) {
+    router.push(`/app/place-details/geocoding/${stay.geocodingId}`)
+  }
 }
 
 </script>
@@ -393,9 +419,28 @@ const closeDetailsDialog = () => {
   gap: 2px;
 }
 
+.location-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .location-name {
   font-weight: 500;
   color: var(--gp-text-primary);
+  flex: 1;
+}
+
+.place-details-link {
+  color: var(--gp-primary) !important;
+  min-width: 28px !important;
+  width: 28px !important;
+  height: 28px !important;
+  flex-shrink: 0;
+}
+
+.place-details-link:hover {
+  background-color: var(--gp-primary-light) !important;
 }
 
 .location-address {

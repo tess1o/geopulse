@@ -147,6 +147,15 @@
           <template #body="slotProps">
             <div class="actions-buttons">
               <Button
+                icon="pi pi-eye"
+                severity="primary"
+                size="small"
+                text
+                @click="viewDetails(slotProps.data)"
+                v-tooltip.top="'View Details'"
+                class="action-button view-button"
+              />
+              <Button
                 icon="pi pi-pencil"
                 severity="secondary"
                 size="small"
@@ -195,6 +204,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useGeocodingStore } from '@/stores/geocoding'
 import { useTimezone } from '@/composables/useTimezone'
@@ -219,6 +229,7 @@ import InputText from 'primevue/inputtext'
 // Store and utils
 const geocodingStore = useGeocodingStore()
 const toast = useToast()
+const router = useRouter()
 
 // Reactive state
 const isMobile = ref(false)
@@ -371,6 +382,10 @@ const loadAvailableProviders = async () => {
   } catch (error) {
     console.error('Error loading available providers:', error)
   }
+}
+
+const viewDetails = (result) => {
+  router.push(`/app/place-details/geocoding/${result.id}`)
 }
 
 const editResult = (result) => {
@@ -659,6 +674,11 @@ watch(pageSize, async () => {
 .reconcile-button:hover {
   background-color: var(--p-cyan-50) !important;
   color: var(--p-cyan-600) !important;
+}
+
+.view-button:hover {
+  background-color: var(--gp-primary-light) !important;
+  color: var(--gp-primary) !important;
 }
 
 /* Header Actions */

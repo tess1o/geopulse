@@ -154,6 +154,7 @@
 
 <script setup>
 import {computed, nextTick, onMounted, readonly, ref, watch} from 'vue'
+import {useRouter} from 'vue-router'
 import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
@@ -212,6 +213,9 @@ const emit = defineEmits([
   'highlighted-path-click',
   'timeline-marker-click'
 ])
+
+// Router
+const router = useRouter()
 
 // Composables
 const {
@@ -344,6 +348,18 @@ const mapMenuItems = ref([
 
 // Favorite context menu items
 const favoriteMenuItems = ref([
+  {
+    label: 'View all visits',
+    icon: 'pi pi-chart-line',
+    command: () => {
+      if (dialogState.value.selectedFavorite) {
+        navigateToFavoriteDetails(dialogState.value.selectedFavorite)
+      }
+    }
+  },
+  {
+    separator: true
+  },
   {
     label: 'Edit',
     icon: 'pi pi-pencil',
@@ -537,17 +553,17 @@ const handleFavoriteDelete = (event) => {
 const handleFavoriteContextMenu = (event) => {
   // Set flag to prevent map context menu
   favoriteContextMenuActive.value = true
-  
+
   // Prevent default browser context menu and map context menu
   if (event.event) {
     event.event.preventDefault()
     event.event.stopPropagation()
     event.event.stopImmediatePropagation()
   }
-  
+
   // Store the selected favorite for context menu actions
   dialogState.value.selectedFavorite = event
-  
+
   // Show favorite context menu
   if (favoriteContextMenuRef.value && event.event) {
     // Use setTimeout to ensure the event has fully propagated/stopped
@@ -558,6 +574,18 @@ const handleFavoriteContextMenu = (event) => {
         favoriteContextMenuActive.value = false
       }, 100)
     }, 10)
+  }
+}
+
+const navigateToFavoriteDetails = (favorite) => {
+  if (favorite && favorite.favorite && favorite.favorite.id) {
+    router.push({
+      name: 'Place Details',
+      params: {
+        type: 'favorite',
+        id: favorite.favorite.id
+      }
+    })
   }
 }
 

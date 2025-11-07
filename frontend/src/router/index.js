@@ -18,6 +18,7 @@ import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
 import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
+import PlaceDetailsPage from "@/views/app/PlaceDetailsPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
@@ -197,6 +198,12 @@ const routes = [
         path: '/app/ai/chat',
         name: 'AI Assistant',
         component: AIChatPage,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/place-details/:type/:id',
+        name: 'Place Details',
+        component: PlaceDetailsPage,
         beforeEnter: requireAuth
     },
     {

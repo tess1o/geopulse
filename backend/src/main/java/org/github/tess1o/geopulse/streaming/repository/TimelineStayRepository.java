@@ -527,7 +527,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
             LEFT JOIN dominant_locations dl ON mg.month_key = dl.month_key AND dl.rn = 1
             ORDER BY mg.month_key DESC
             """;
-        
+
         @SuppressWarnings("unchecked")
         List<Object[]> results = getEntityManager().createNativeQuery(sql)
                 .setParameter(1, userId)
@@ -537,7 +537,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .setParameter(5, startTime)
                 .setParameter(6, endTime)
                 .getResultList();
-        
+
         return results.stream()
                 .map(row -> AIStayStatsDTO.builder()
                     .groupKey((String) row[0])
@@ -555,5 +555,215 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                     .build())
                 .toList();
     }
-    
+
+    // Place Details Feature - Paginated queries for specific locations
+
+    /**
+     * Find all stays for a specific favorite location with pagination and sorting.
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @param page       zero-based page number
+     * @param pageSize   number of items per page
+     * @param sortBy     field to sort by (default: "timestamp")
+     * @param ascending  sort direction (true for ascending, false for descending)
+     * @return list of timeline stays for the page
+     */
+    public List<TimelineStayEntity> findByFavoriteLocationIdPaginated(
+            Long favoriteId, UUID userId, int page, int pageSize, String sortBy, boolean ascending) {
+        String orderClause = sortBy + (ascending ? " asc" : " desc");
+        return find("favoriteLocation.id = ?1 and user.id = ?2 order by " + orderClause,
+                favoriteId, userId)
+                .page(page, pageSize)
+                .list();
+    }
+
+    /**
+     * Find all stays for a specific geocoding location with pagination and sorting.
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @param page        zero-based page number
+     * @param pageSize    number of items per page
+     * @param sortBy      field to sort by (default: "timestamp")
+     * @param ascending   sort direction (true for ascending, false for descending)
+     * @return list of timeline stays for the page
+     */
+    public List<TimelineStayEntity> findByGeocodingLocationIdPaginated(
+            Long geocodingId, UUID userId, int page, int pageSize, String sortBy, boolean ascending) {
+        String orderClause = sortBy + (ascending ? " asc" : " desc");
+        return find("geocodingLocation.id = ?1 and user.id = ?2 order by " + orderClause,
+                geocodingId, userId)
+                .page(page, pageSize)
+                .list();
+    }
+
+    /**
+     * Find all stays for a specific favorite location with sorting (no pagination).
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @param sortBy     field to sort by (default: "timestamp")
+     * @param ascending  sort direction (true for ascending, false for descending)
+     * @return list of all timeline stays
+     */
+    public List<TimelineStayEntity> findByFavoriteLocationId(
+            Long favoriteId, UUID userId, String sortBy, boolean ascending) {
+        String orderClause = sortBy + (ascending ? " asc" : " desc");
+        return find("favoriteLocation.id = ?1 and user.id = ?2 order by " + orderClause,
+                favoriteId, userId).list();
+    }
+
+    /**
+     * Find all stays for a specific geocoding location with sorting (no pagination).
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @param sortBy      field to sort by (default: "timestamp")
+     * @param ascending   sort direction (true for ascending, false for descending)
+     * @return list of all timeline stays
+     */
+    public List<TimelineStayEntity> findByGeocodingLocationId(
+            Long geocodingId, UUID userId, String sortBy, boolean ascending) {
+        String orderClause = sortBy + (ascending ? " asc" : " desc");
+        return find("geocodingLocation.id = ?1 and user.id = ?2 order by " + orderClause,
+                geocodingId, userId).list();
+    }
+
+    /**
+     * Count total stays for a specific favorite location.
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @return total count of stays
+     */
+    public long countByFavoriteLocationId(Long favoriteId, UUID userId) {
+        return count("favoriteLocation.id = ?1 and user.id = ?2", favoriteId, userId);
+    }
+
+    /**
+     * Count total stays for a specific geocoding location.
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @return total count of stays
+     */
+    public long countByGeocodingLocationId(Long geocodingId, UUID userId) {
+        return count("geocodingLocation.id = ?1 and user.id = ?2", geocodingId, userId);
+    }
+
+    /**
+     * Get aggregate statistics for stays at a specific favorite location.
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @return array containing [totalDuration, avgDuration, minDuration, maxDuration, firstVisit, lastVisit]
+     */
+    public Object[] getStatisticsByFavoriteLocationId(Long favoriteId, UUID userId) {
+        String query = """
+            SELECT SUM(s.stayDuration), AVG(s.stayDuration), MIN(s.stayDuration),
+                   MAX(s.stayDuration), MIN(s.timestamp), MAX(s.timestamp)
+            FROM TimelineStayEntity s
+            WHERE s.favoriteLocation.id = ?1 AND s.user.id = ?2
+            """;
+        return (Object[]) getEntityManager().createQuery(query)
+                .setParameter(1, favoriteId)
+                .setParameter(2, userId)
+                .getSingleResult();
+    }
+
+    /**
+     * Get aggregate statistics for stays at a specific geocoding location.
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @return array containing [totalDuration, avgDuration, minDuration, maxDuration, firstVisit, lastVisit]
+     */
+    public Object[] getStatisticsByGeocodingLocationId(Long geocodingId, UUID userId) {
+        String query = """
+            SELECT SUM(s.stayDuration), AVG(s.stayDuration), MIN(s.stayDuration),
+                   MAX(s.stayDuration), MIN(s.timestamp), MAX(s.timestamp)
+            FROM TimelineStayEntity s
+            WHERE s.geocodingLocation.id = ?1 AND s.user.id = ?2
+            """;
+        return (Object[]) getEntityManager().createQuery(query)
+                .setParameter(1, geocodingId)
+                .setParameter(2, userId)
+                .getSingleResult();
+    }
+
+    /**
+     * Get time-based visit counts for a specific favorite location.
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @return array containing [visitsThisWeek, visitsThisMonth, visitsThisYear]
+     */
+    public Object[] getVisitCountsByFavoriteLocationId(Long favoriteId, UUID userId) {
+        Instant now = Instant.now();
+        Instant weekAgo = now.minus(7, java.time.temporal.ChronoUnit.DAYS);
+        Instant monthAgo = now.minus(30, java.time.temporal.ChronoUnit.DAYS);
+        Instant yearAgo = now.minus(365, java.time.temporal.ChronoUnit.DAYS);
+
+        long visitsThisWeek = count("favoriteLocation.id = ?1 and user.id = ?2 and timestamp >= ?3",
+                favoriteId, userId, weekAgo);
+        long visitsThisMonth = count("favoriteLocation.id = ?1 and user.id = ?2 and timestamp >= ?3",
+                favoriteId, userId, monthAgo);
+        long visitsThisYear = count("favoriteLocation.id = ?1 and user.id = ?2 and timestamp >= ?3",
+                favoriteId, userId, yearAgo);
+
+        return new Object[]{visitsThisWeek, visitsThisMonth, visitsThisYear};
+    }
+
+    /**
+     * Get time-based visit counts for a specific geocoding location.
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @return array containing [visitsThisWeek, visitsThisMonth, visitsThisYear]
+     */
+    public Object[] getVisitCountsByGeocodingLocationId(Long geocodingId, UUID userId) {
+        Instant now = Instant.now();
+        Instant weekAgo = now.minus(7, java.time.temporal.ChronoUnit.DAYS);
+        Instant monthAgo = now.minus(30, java.time.temporal.ChronoUnit.DAYS);
+        Instant yearAgo = now.minus(365, java.time.temporal.ChronoUnit.DAYS);
+
+        long visitsThisWeek = count("geocodingLocation.id = ?1 and user.id = ?2 and timestamp >= ?3",
+                geocodingId, userId, weekAgo);
+        long visitsThisMonth = count("geocodingLocation.id = ?1 and user.id = ?2 and timestamp >= ?3",
+                geocodingId, userId, monthAgo);
+        long visitsThisYear = count("geocodingLocation.id = ?1 and user.id = ?2 and timestamp >= ?3",
+                geocodingId, userId, yearAgo);
+
+        return new Object[]{visitsThisWeek, visitsThisMonth, visitsThisYear};
+    }
+
+    /**
+     * Update cached location name for all stays associated with a favorite location.
+     * This maintains data consistency when a favorite is renamed.
+     *
+     * @param favoriteId ID of the favorite location
+     * @param userId     user ID
+     * @param newName    new location name
+     * @return number of stays updated
+     */
+    public int updateLocationNameByFavoriteId(Long favoriteId, UUID userId, String newName) {
+        return update("locationName = ?1 where favoriteLocation.id = ?2 and user.id = ?3",
+                newName, favoriteId, userId);
+    }
+
+    /**
+     * Update cached location name for all stays associated with a geocoding location.
+     * This maintains data consistency when a geocoding location is updated.
+     *
+     * @param geocodingId ID of the geocoding location
+     * @param userId      user ID
+     * @param newName     new location name
+     * @return number of stays updated
+     */
+    public int updateLocationNameByGeocodingId(Long geocodingId, UUID userId, String newName) {
+        return update("locationName = ?1 where geocodingLocation.id = ?2 and user.id = ?3",
+                newName, geocodingId, userId);
+    }
+
 }
