@@ -125,7 +125,7 @@ const formatDate = (timestamp) => {
 <style scoped>
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gp-spacing-xl);
 }
 
@@ -154,6 +154,7 @@ const formatDate = (timestamp) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--gp-spacing-lg);
   padding: var(--gp-spacing-md);
   background: var(--gp-surface-light);
   border-radius: var(--gp-radius-medium);
@@ -167,16 +168,22 @@ const formatDate = (timestamp) => {
   color: var(--gp-text-secondary);
   font-weight: 500;
   font-size: 0.9rem;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .stat-label i {
   color: var(--gp-primary);
+  flex-shrink: 0;
 }
 
 .stat-value {
   color: var(--gp-text-primary);
   font-weight: 600;
   font-size: 1rem;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Dark mode */
@@ -199,6 +206,12 @@ const formatDate = (timestamp) => {
 }
 
 /* Responsive design */
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: 1fr;

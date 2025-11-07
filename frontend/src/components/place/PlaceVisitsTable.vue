@@ -294,6 +294,49 @@ const handleSort = (event) => {
   color: var(--gp-text-primary);
 }
 
+/* Dark Mode - DataTable */
+.p-dark .visits-data-table :deep(.p-datatable) {
+  background: var(--gp-surface-dark) !important;
+  color: var(--gp-text-primary) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-datatable-header) {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-datatable-tbody > tr) {
+  background: var(--gp-surface-dark) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-datatable-tbody > tr:hover) {
+  background: var(--gp-surface-light) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-datatable-tbody > tr > td) {
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-datatable-thead > tr > th) {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-datatable-wrapper) {
+  background: var(--gp-surface-dark) !important;
+}
+
+.p-dark .visits-data-table :deep(.p-paginator) {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .table-header {

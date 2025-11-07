@@ -1,13 +1,15 @@
 <template>
-  <PageContainer
-    :title="pageTitle"
-    subtitle="Detailed information about this place and your visit history"
-    :loading="isLoading"
-  >
+  <AppLayout variant="default">
+    <PageContainer
+      :title="pageTitle"
+      subtitle="Detailed information about this place and your visit history"
+      :loading="isLoading"
+      variant="fullwidth"
+    >
     <!-- Breadcrumb Navigation -->
     <div class="breadcrumb-nav">
       <Button
-        label="Back to Timeline"
+        label="Back"
         icon="pi pi-arrow-left"
         class="p-button-text"
         @click="goBack"
@@ -45,23 +47,62 @@
         :place-details="placeDetails"
         @update-name="handleUpdateName"
         @edit-details="handleOpenEditDialog"
+        @create-favorite="handleCreateFavorite"
       />
 
-      <!-- Statistics -->
+      <!-- Related Favorite Notice (for geocoding with no visits) - Show FIRST -->
+      <BaseCard v-if="placeDetails.relatedFavorite" class="related-favorite-notice">
+        <div class="notice-content">
+          <div class="notice-icon">
+            <i class="pi pi-info-circle"></i>
+          </div>
+          <div class="notice-body">
+            <h3 class="notice-title">
+              {{ relatedFavoriteTitle }}
+            </h3>
+            <p class="notice-message">
+              {{ relatedFavoriteMessage }}
+            </p>
+            <div class="favorite-info">
+              <div class="favorite-name-row">
+                <i class="pi pi-map-marker favorite-icon"></i>
+                <span class="favorite-name">{{ placeDetails.relatedFavorite.name }}</span>
+                <span class="favorite-distance" v-if="placeDetails.relatedFavorite.distanceMeters > 0">
+                  ({{ formatDistance(placeDetails.relatedFavorite.distanceMeters) }} away)
+                </span>
+              </div>
+              <div class="favorite-stats" v-if="placeDetails.relatedFavorite.totalVisits">
+                <i class="pi pi-clock"></i>
+                <span>{{ placeDetails.relatedFavorite.totalVisits }} visits tracked</span>
+              </div>
+            </div>
+            <Button
+              :label="`View ${placeDetails.relatedFavorite.name} Details`"
+              icon="pi pi-arrow-right"
+              @click="navigateToRelatedFavorite"
+              class="view-favorite-button"
+            />
+          </div>
+        </div>
+      </BaseCard>
+
+      <!-- Statistics - Only show if NOT a related favorite case -->
       <PlaceStatsCard
-        v-if="placeDetails.statistics"
+        v-if="placeDetails.statistics && !placeDetails.relatedFavorite"
         :statistics="placeDetails.statistics"
       />
 
       <!-- Map -->
       <PlaceMap
         v-if="placeDetails.geometry"
+        :key="`place-map-${placeType}-${placeId}`"
         :geometry="placeDetails.geometry"
         :location-name="placeDetails.locationName"
       />
 
       <!-- Visits Table -->
       <PlaceVisitsTable
+        v-if="!placeDetails.relatedFavorite"
         :visits="placeVisits"
         :pagination="pagination"
         :loading="visitsLoading"
@@ -88,11 +129,55 @@
       @save="handleSaveGeocoding"
       @close="showEditDialog = false"
     />
-  </PageContainer>
+
+    <!-- Create Favorite Dialog -->
+    <Dialog
+      v-model:visible="showCreateFavoriteDialog"
+      modal
+      header="Create Favorite Location"
+      :style="{ width: '450px' }"
+    >
+      <div class="create-favorite-content">
+        <p class="dialog-message">
+          Create a favorite location at this geocoding point. You can give it a custom name.
+        </p>
+        <div class="form-field">
+          <label for="favorite-name">Favorite Name</label>
+          <InputText
+            id="favorite-name"
+            v-model="newFavoriteName"
+            placeholder="e.g., Home, Work, Gym"
+            autofocus
+            @keyup.enter="submitCreateFavorite"
+            style="width: 100%"
+          />
+        </div>
+        <small class="coordinates-info">
+          Coordinates: {{ placeDetails?.geometry?.latitude?.toFixed(6) }}, {{ placeDetails?.geometry?.longitude?.toFixed(6) }}
+        </small>
+      </div>
+      <template #footer>
+        <Button
+          label="Cancel"
+          severity="secondary"
+          @click="showCreateFavoriteDialog = false"
+          outlined
+        />
+        <Button
+          label="Create Favorite"
+          icon="pi pi-heart"
+          severity="success"
+          @click="submitCreateFavorite"
+          :disabled="!newFavoriteName.trim()"
+        />
+      </template>
+    </Dialog>
+    </PageContainer>
+  </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -100,6 +185,7 @@ import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 
 // Layout Components
+import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 
@@ -120,6 +206,10 @@ import { useGeocodingStore } from '@/stores/geocoding'
 // Utilities
 import apiService from '@/utils/apiService'
 
+// PrimeVue
+import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
@@ -137,6 +227,8 @@ const currentSortDirection = ref('desc')
 const showEditDialog = ref(false)
 const editFavoriteData = ref(null)
 const editGeocodingData = ref(null)
+const showCreateFavoriteDialog = ref(false)
+const newFavoriteName = ref('')
 
 // Computed
 const placeType = computed(() => route.params.type)
@@ -151,7 +243,85 @@ const pageTitle = computed(() => {
 
 const isLoading = computed(() => loading.value)
 
+const relatedFavoriteTitle = computed(() => {
+  if (!placeDetails.value?.relatedFavorite) return ''
+
+  const reason = placeDetails.value.relatedFavorite.reason
+  if (reason === 'contains_point') {
+    return 'Visits Grouped with Area Favorite'
+  }
+  return 'Visits Grouped with Favorite'
+})
+
+const relatedFavoriteMessage = computed(() => {
+  if (!placeDetails.value?.relatedFavorite) return ''
+
+  const reason = placeDetails.value.relatedFavorite.reason
+  if (reason === 'contains_point') {
+    return 'This location is within your favorite area. Your visits here are being tracked under:'
+  }
+  return 'Your visits to this location are being tracked under your nearby favorite:'
+})
+
 // Methods
+const formatDistance = (meters) => {
+  if (meters === 0) return '0m'
+  if (meters < 1000) {
+    return `${Math.round(meters)}m`
+  }
+  return `${(meters / 1000).toFixed(1)}km`
+}
+
+const navigateToRelatedFavorite = () => {
+  if (placeDetails.value?.relatedFavorite) {
+    router.push(`/app/place-details/favorite/${placeDetails.value.relatedFavorite.id}`)
+  }
+}
+
+const handleCreateFavorite = () => {
+  // Pre-fill the name with the geocoding location name
+  newFavoriteName.value = placeDetails.value?.locationName || ''
+  showCreateFavoriteDialog.value = true
+}
+
+const submitCreateFavorite = async () => {
+  if (!newFavoriteName.value.trim()) {
+    return
+  }
+
+  try {
+    const geometry = placeDetails.value?.geometry
+    if (!geometry || !geometry.latitude || !geometry.longitude) {
+      throw new Error('Invalid coordinates')
+    }
+
+    await apiService.post('/favorites/point', {
+      name: newFavoriteName.value.trim(),
+      lat: geometry.latitude,
+      lon: geometry.longitude
+    })
+
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Favorite location created successfully',
+      life: 3000
+    })
+
+    showCreateFavoriteDialog.value = false
+    newFavoriteName.value = ''
+  } catch (err) {
+    console.error('Error creating favorite:', err)
+    const errorMessage = err.response?.data?.message || err.message || 'Failed to create favorite location'
+
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: errorMessage,
+      life: 5000
+    })
+  }
+}
 const loadPlaceData = async () => {
   error.value = null
 
@@ -245,11 +415,11 @@ const handleExportVisits = async () => {
     }
 
     // Show loading toast
-    const loadingToast = toast.add({
+    toast.add({
       severity: 'info',
       summary: 'Exporting',
       detail: 'Preparing CSV export...',
-      life: 0
+      life: 3000
     })
 
     // Call backend API to get CSV file
@@ -261,9 +431,6 @@ const handleExportVisits = async () => {
         'Authorization': `Bearer ${localStorage.getItem('authToken')}` || ''
       }
     })
-
-    // Remove loading toast
-    toast.remove(loadingToast)
 
     if (!response.ok) {
       throw new Error(`Export failed with status ${response.status}`)
@@ -409,11 +576,31 @@ onMounted(async () => {
   // Load new data
   await loadPlaceData()
 })
+
+// Watch for route parameter changes to reload data when navigating between places
+watch(
+  () => [route.params.type, route.params.id],
+  async ([newType, newId], [oldType, oldId]) => {
+    // Only reload if the parameters actually changed
+    if (newType !== oldType || newId !== oldId) {
+      // Clear previous data
+      placeStore.clearPlaceData()
+
+      // Load new data
+      await loadPlaceData()
+    }
+  }
+)
 </script>
 
 <style scoped>
 .breadcrumb-nav {
   margin-bottom: var(--gp-spacing-lg);
+  padding: 0 var(--gp-spacing-lg);
+}
+
+:deep(.gp-page-content) {
+  padding: 0 var(--gp-spacing-lg);
 }
 
 .loading-container {
@@ -460,6 +647,130 @@ onMounted(async () => {
   max-width: 500px;
 }
 
+/* Related Favorite Notice */
+.related-favorite-notice {
+  margin-bottom: var(--gp-spacing-xl);
+  border-left: 4px solid var(--gp-primary);
+  background: var(--gp-primary-50);
+}
+
+.notice-content {
+  display: flex;
+  gap: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-lg);
+}
+
+.notice-icon {
+  flex-shrink: 0;
+  font-size: 2.5rem;
+  color: var(--gp-primary);
+  line-height: 1;
+}
+
+.notice-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-md);
+}
+
+.notice-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.notice-message {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--gp-text-secondary);
+  line-height: 1.5;
+}
+
+.favorite-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-md);
+  background: var(--gp-surface-white);
+  border-radius: var(--gp-radius-medium);
+  border: 1px solid var(--gp-border-light);
+}
+
+.favorite-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.favorite-icon {
+  color: var(--gp-primary);
+  font-size: 1.25rem;
+}
+
+.favorite-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.favorite-distance {
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  font-style: italic;
+}
+
+.favorite-stats {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-xs);
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  padding-left: calc(1.25rem + var(--gp-spacing-sm));
+}
+
+.favorite-stats i {
+  color: var(--gp-primary);
+}
+
+.view-favorite-button {
+  align-self: flex-start;
+  margin-top: var(--gp-spacing-sm);
+}
+
+/* Create Favorite Dialog */
+.create-favorite-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-lg);
+  padding: var(--gp-spacing-md) 0;
+}
+
+.dialog-message {
+  margin: 0;
+  color: var(--gp-text-secondary);
+  line-height: 1.5;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-sm);
+}
+
+.form-field label {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  font-size: 0.9rem;
+}
+
+.coordinates-info {
+  color: var(--gp-text-muted);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
 /* Dark Mode */
 .p-dark .loading-text {
   color: var(--gp-text-secondary);
@@ -470,6 +781,36 @@ onMounted(async () => {
 }
 
 .p-dark .error-message {
+  color: var(--gp-text-secondary);
+}
+
+.p-dark .related-favorite-notice {
+  background: var(--gp-primary-900);
+  border-left-color: var(--gp-primary-400);
+}
+
+.p-dark .notice-title {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .notice-message {
+  color: var(--gp-text-secondary);
+}
+
+.p-dark .favorite-info {
+  background: var(--gp-surface-950);
+  border-color: var(--gp-border-dark);
+}
+
+.p-dark .favorite-name {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .favorite-distance {
+  color: var(--gp-text-secondary);
+}
+
+.p-dark .favorite-stats {
   color: var(--gp-text-secondary);
 }
 
@@ -490,6 +831,27 @@ onMounted(async () => {
 
   .error-title {
     font-size: 1.25rem;
+  }
+
+  .notice-content {
+    flex-direction: column;
+    gap: var(--gp-spacing-md);
+  }
+
+  .notice-icon {
+    font-size: 2rem;
+  }
+
+  .notice-title {
+    font-size: 1.125rem;
+  }
+
+  .favorite-name {
+    font-size: 1rem;
+  }
+
+  .favorite-name-row {
+    flex-wrap: wrap;
   }
 }
 </style>

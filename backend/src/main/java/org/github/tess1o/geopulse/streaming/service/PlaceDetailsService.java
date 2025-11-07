@@ -214,6 +214,12 @@ public class PlaceDetailsService {
         PlaceStatisticsDTO statistics = calculateGeocodingStatistics(geocodingId, userId);
         PlaceGeometryDTO geometry = extractGeocodingGeometry(geocoding);
 
+        // Check for related favorite if this geocoding location has no visits
+        FavoriteRelationDTO relatedFavorite = null;
+        if (statistics.getTotalVisits() == 0) {
+            relatedFavorite = findRelatedFavorite(geocoding, userId);
+        }
+
         return Optional.of(PlaceDetailsDTO.builder()
                 .type("geocoding")
                 .id(geocodingId)
@@ -221,6 +227,7 @@ public class PlaceDetailsService {
                 .canEdit(false) // Geocoding locations cannot be edited by users
                 .geometry(geometry)
                 .statistics(statistics)
+                .relatedFavorite(relatedFavorite)
                 .build());
     }
 
@@ -348,6 +355,102 @@ public class PlaceDetailsService {
                 .longitude(entity.getLocation().getX())
                 .locationName(entity.getLocationName())
                 .build();
+    }
+
+    /**
+     * Find a related favorite location for a geocoding point that has no visits.
+     * Checks if there's a favorite within 10 meters or an area containing the point.
+     *
+     * @param geocoding the geocoding location entity
+     * @param userId    the user ID
+     * @return FavoriteRelationDTO if a related favorite is found, null otherwise
+     */
+    private FavoriteRelationDTO findRelatedFavorite(ReverseGeocodingLocationEntity geocoding, UUID userId) {
+        // Get the point coordinates (prefer result coordinates over request)
+        Point point = geocoding.getResultCoordinates() != null
+                ? geocoding.getResultCoordinates()
+                : geocoding.getRequestCoordinates();
+
+        if (point == null) {
+            return null;
+        }
+
+        // Look for favorites within 10 meters for points, or containing this point for areas
+        Optional<FavoritesEntity> favoriteOpt = favoritesRepository.findByPoint(userId, point, 10, 10);
+
+        if (favoriteOpt.isEmpty()) {
+            return null;
+        }
+
+        FavoritesEntity favorite = favoriteOpt.get();
+
+        // Calculate distance and determine reason
+        double distance = calculateDistance(point, favorite);
+        String reason = determineRelationReason(point, favorite);
+
+        // Get total visits for this favorite
+        long totalVisits = timelineStayRepository.countByFavoriteLocationId(favorite.getId(), userId);
+
+        return FavoriteRelationDTO.builder()
+                .id(favorite.getId())
+                .name(favorite.getName())
+                .distanceMeters(distance)
+                .reason(reason)
+                .totalVisits(totalVisits)
+                .build();
+    }
+
+    /**
+     * Calculate distance between a point and a favorite location.
+     */
+    private double calculateDistance(Point point, FavoritesEntity favorite) {
+        Geometry favoriteGeom = favorite.getGeometry();
+
+        if (favorite.getType() == org.github.tess1o.geopulse.favorites.model.FavoriteLocationType.POINT) {
+            // For point favorites, calculate direct distance
+            Point favoritePoint = (Point) favoriteGeom;
+            return calculateHaversineDistance(
+                    point.getY(), point.getX(),
+                    favoritePoint.getY(), favoritePoint.getX()
+            );
+        } else {
+            // For area favorites, distance to the boundary (or 0 if contained)
+            if (favoriteGeom.contains(point)) {
+                return 0.0;
+            }
+            // Calculate distance to nearest point on boundary
+            return favoriteGeom.distance(point) * 111320; // Convert degrees to meters (approximate)
+        }
+    }
+
+    /**
+     * Determine the relationship reason between a point and favorite.
+     */
+    private String determineRelationReason(Point point, FavoritesEntity favorite) {
+        if (favorite.getType() == org.github.tess1o.geopulse.favorites.model.FavoriteLocationType.AREA
+                && favorite.getGeometry().contains(point)) {
+            return "contains_point";
+        }
+        return "nearby";
+    }
+
+    /**
+     * Calculate distance between two lat/lon points using Haversine formula.
+     * Returns distance in meters.
+     */
+    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371000; // Earth's radius in meters
+
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+        return R * c;
     }
 
     private String validateSortField(String sortBy) {

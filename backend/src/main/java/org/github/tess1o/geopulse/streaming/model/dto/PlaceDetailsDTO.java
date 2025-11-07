@@ -25,4 +25,7 @@ public class PlaceDetailsDTO {
 
     // Statistics
     private PlaceStatisticsDTO statistics;
+
+    // Related favorite (for geocoding points with no visits due to favorite priority)
+    private FavoriteRelationDTO relatedFavorite;
 }

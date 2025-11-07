@@ -33,6 +33,15 @@
                 v-tooltip.top="'Edit location details'"
                 label="Edit Details"
               />
+              <Button
+                v-if="placeType === 'geocoding' && !isEditing"
+                icon="pi pi-heart"
+                class="p-button-outlined p-button-sm"
+                severity="success"
+                @click="createFavorite"
+                v-tooltip.top="'Create a favorite location at this point'"
+                label="Create Favorite"
+              />
             </div>
           </div>
           <div v-if="isEditing" class="edit-actions">
@@ -79,7 +88,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update-name', 'edit-details'])
+const emit = defineEmits(['update-name', 'edit-details', 'create-favorite'])
 
 const isEditing = ref(false)
 const editedName = ref('')
@@ -141,6 +150,10 @@ const cancelEdit = () => {
 const openAdvancedEdit = () => {
   emit('edit-details')
 }
+
+const createFavorite = () => {
+  emit('create-favorite')
+}
 </script>
 
 <style scoped>
@@ -178,6 +191,7 @@ const openAdvancedEdit = () => {
 .place-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .place-name-section {
@@ -189,9 +203,14 @@ const openAdvancedEdit = () => {
 
 .name-with-edit {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--gp-spacing-md);
   flex-wrap: wrap;
+}
+
+.name-with-edit .place-name {
+  flex: 1;
+  min-width: 0;
 }
 
 .place-name {
@@ -200,6 +219,12 @@ const openAdvancedEdit = () => {
   font-weight: 600;
   color: var(--gp-text-primary);
   line-height: 1.3;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  white-space: normal;
+  max-width: 100%;
 }
 
 .place-name-input {
