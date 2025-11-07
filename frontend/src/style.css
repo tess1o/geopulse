@@ -609,6 +609,12 @@ body {
         color: var(--gp-text-muted) !important;
         opacity: 0.4 !important;
     }
+
+    .p-dark .p-datepicker-time-picker {
+        background: var(--gp-surface-dark) !important;
+        border-color: var(--gp-border-dark) !important;
+        color: var(--gp-text-primary) !important;
+    }
     
     /* ================================
        CONFIRM DIALOG GLOBAL STYLING
