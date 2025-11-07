@@ -2599,6 +2599,20 @@
     "/api/gps" : {
       "get" : {
         "parameters" : [ {
+          "name" : "accuracyMax",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "accuracyMin",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
           "name" : "endDate",
           "in" : "query",
           "schema" : {
@@ -2639,6 +2653,26 @@
           "schema" : {
             "default" : "desc",
             "type" : "string"
+          }
+        }, {
+          "name" : "sourceTypes",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "speedMax",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "speedMin",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
           }
         }, {
           "name" : "startDate",
@@ -2707,6 +2741,20 @@
     "/api/gps/export" : {
       "get" : {
         "parameters" : [ {
+          "name" : "accuracyMax",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "accuracyMin",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
           "name" : "endDate",
           "in" : "query",
           "schema" : {
@@ -2717,6 +2765,32 @@
           "in" : "query",
           "schema" : {
             "type" : "string"
+          }
+        }, {
+          "name" : "ids",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sourceTypes",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "speedMax",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "speedMin",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
           }
         }, {
           "name" : "startDate",
@@ -2975,6 +3049,53 @@
     },
     "/api/gps/summary" : {
       "get" : {
+        "parameters" : [ {
+          "name" : "accuracyMax",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "accuracyMin",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "sourceTypes",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "speedMax",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "speedMin",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
         "responses" : {
           "200" : {
             "description" : "OK"
@@ -4379,7 +4500,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.2.2",
+    "version" : "1.2.3",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",

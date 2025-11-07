@@ -139,8 +139,34 @@ openapi:
 
 .PHONY: publish-helm
 publish-helm:
+	@echo "📦 Packaging Helm chart..."
 	helm package helm/geopulse -d charts
-	helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
+
+	@echo "🧩 Updating Helm repo index..."
+	@if [ -f charts/index.yaml ]; then \
+		helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml; \
+	else \
+		helm repo index charts --url https://tess1o.github.io/geopulse/charts; \
+	fi
+
+	@echo "🌿 Switching to gh-pages branch..."
+	git fetch origin gh-pages || true
+	@if git show-ref --quiet refs/heads/gh-pages; then \
+		git checkout gh-pages; \
+	else \
+		git checkout --orphan gh-pages; \
+	fi
+
+	@echo "📂 Copying updated charts..."
+	mkdir -p charts
+	cp -r ../charts/* charts/
+
+	@echo "💾 Committing and pushing charts to gh-pages..."
+	git add charts
+	git commit -m "Update Helm charts" || echo "No changes to commit"
+	git push origin gh-pages
+
+	@echo "✅ Helm charts published to: https://tess1o.github.io/geopulse/charts/index.yaml"
 
 # Backend unit tests
 .PHONY: backend-test-unit
