@@ -64,6 +64,8 @@ public class FavoriteLocationMapper {
                 .longitude(point.getX())
                 .latitude(point.getY())
                 .type(FavoriteLocationType.POINT.name())
+                .city(favorite.getCity())
+                .country(favorite.getCountry())
                 .build();
     }
 
@@ -82,6 +84,8 @@ public class FavoriteLocationMapper {
         dto.setName(favorite.getName());
         dto.setUserId(favorite.getUser().getId());
         dto.setType(FavoriteLocationType.AREA.name());
+        dto.setCity(favorite.getCity());
+        dto.setCountry(favorite.getCountry());
 
         return dto;
     }

@@ -172,6 +172,12 @@
         />
       </template>
     </Dialog>
+
+    <!-- Timeline Regeneration Modal -->
+    <TimelineRegenerationModal
+      v-model:visible="timelineRegenerationVisible"
+      :type="timelineRegenerationType"
+    />
     </PageContainer>
   </AppLayout>
 </template>
@@ -198,6 +204,7 @@ import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
 // Dialogs
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
+import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
 // Store
 import { usePlaceStatisticsStore } from '@/stores/placeStatistics'
@@ -229,6 +236,11 @@ const editFavoriteData = ref(null)
 const editGeocodingData = ref(null)
 const showCreateFavoriteDialog = ref(false)
 const newFavoriteName = ref('')
+
+// Timeline regeneration modal state
+const timelineRegenerationVisible = ref(false)
+const timelineRegenerationType = ref('general')
+const modalShowStartTime = ref(null)
 
 // Computed
 const placeType = computed(() => route.params.type)
@@ -295,6 +307,9 @@ const submitCreateFavorite = async () => {
       throw new Error('Invalid coordinates')
     }
 
+    // Show timeline regeneration modal
+    showTimelineRegenerationModal('favorite')
+
     await apiService.post('/favorites/point', {
       name: newFavoriteName.value.trim(),
       lat: geometry.latitude,
@@ -310,6 +325,9 @@ const submitCreateFavorite = async () => {
 
     showCreateFavoriteDialog.value = false
     newFavoriteName.value = ''
+
+    // Close regeneration modal with minimum display time
+    closeTimelineRegenerationModal()
   } catch (err) {
     console.error('Error creating favorite:', err)
     const errorMessage = err.response?.data?.message || err.message || 'Failed to create favorite location'
@@ -320,7 +338,33 @@ const submitCreateFavorite = async () => {
       detail: errorMessage,
       life: 5000
     })
+
+    // Close regeneration modal immediately on error
+    timelineRegenerationVisible.value = false
   }
+}
+
+// Timeline regeneration modal helpers
+const showTimelineRegenerationModal = (type) => {
+  timelineRegenerationType.value = type
+  modalShowStartTime.value = Date.now()
+  timelineRegenerationVisible.value = true
+}
+
+const closeTimelineRegenerationModal = () => {
+  if (!modalShowStartTime.value) {
+    timelineRegenerationVisible.value = false
+    return
+  }
+
+  const elapsed = Date.now() - modalShowStartTime.value
+  const minimumDisplayTime = 3000 // 3 seconds
+  const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
+
+  setTimeout(() => {
+    timelineRegenerationVisible.value = false
+    modalShowStartTime.value = null
+  }, remainingTime)
 }
 const loadPlaceData = async () => {
   error.value = null

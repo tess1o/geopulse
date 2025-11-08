@@ -198,6 +198,8 @@ public class PlaceDetailsService {
                 .id(favoriteId)
                 .locationName(favorite.getName())
                 .canEdit(true) // Favorites can be edited
+                .city(favorite.getCity())
+                .country(favorite.getCountry())
                 .geometry(geometry)
                 .statistics(statistics)
                 .build());
@@ -225,6 +227,9 @@ public class PlaceDetailsService {
                 .id(geocodingId)
                 .locationName(geocoding.getDisplayName())
                 .canEdit(false) // Geocoding locations cannot be edited by users
+                .city(geocoding.getCity())
+                .country(geocoding.getCountry())
+                .providerName(geocoding.getProviderName())
                 .geometry(geometry)
                 .statistics(statistics)
                 .relatedFavorite(relatedFavorite)

@@ -16,6 +16,7 @@ import DebugExportPage from "@/views/app/DebugExportPage.vue";
 import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
+import FavoritesManagementPage from "@/views/app/FavoritesManagementPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
 import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
 import PlaceDetailsPage from "@/views/app/PlaceDetailsPage.vue";
@@ -192,6 +193,12 @@ const routes = [
         path: '/app/geocoding-management',
         name: 'Geocoding Management',
         component: GeocodingManagementPage,
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/favorites-management',
+        name: 'Favorites Management',
+        component: FavoritesManagementPage,
         beforeEnter: requireAuth
     },
     {

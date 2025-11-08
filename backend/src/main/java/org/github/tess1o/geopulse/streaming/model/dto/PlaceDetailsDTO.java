@@ -20,6 +20,11 @@ public class PlaceDetailsDTO {
     private String locationName;        // Display name of the place
     private boolean canEdit;            // Whether the user can edit this place name
 
+    // Location details
+    private String city;                // City name (if available)
+    private String country;             // Country name (if available)
+    private String providerName;        // Provider name (for geocoding results)
+
     // Geometry (point or area)
     private PlaceGeometryDTO geometry;
 
