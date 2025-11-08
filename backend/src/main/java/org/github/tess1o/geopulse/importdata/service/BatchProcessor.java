@@ -8,7 +8,6 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
-import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates;
 
@@ -20,9 +19,6 @@ import java.util.List;
 @ApplicationScoped
 @Slf4j
 public class BatchProcessor {
-
-    @Inject
-    GpsPointRepository gpsPointRepository;
 
     @Inject
     EntityManager entityManager;

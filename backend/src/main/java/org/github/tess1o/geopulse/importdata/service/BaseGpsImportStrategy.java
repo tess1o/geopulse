@@ -1,18 +1,19 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Abstract base class for GPS-only import strategies (OwnTracks, Google Timeline, GPX).
@@ -32,14 +33,6 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
     
     @Inject
     protected ImportDataClearingService dataClearingService;
-    
-    @ConfigProperty(name = "geopulse.import.bulk-insert-batch-size", defaultValue = "500")
-    @StaticInitSafe
-    int bulkInsertBatchSize;
-    
-    @ConfigProperty(name = "geopulse.import.merge-batch-size", defaultValue = "250")
-    @StaticInitSafe
-    int mergeBatchSize;
     
     @Override
     public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
@@ -137,10 +130,15 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
                 firstTimestamp = result.firstTimestamp;
             }
 
-            job.updateProgress(70, "Generating timeline (may include reverse geocoding)...");
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
+            // Update progress to 70% FIRST, before blocking timeline trigger
+            job.updateProgress(70, "Triggering timeline generation...");
 
-            job.updateProgress(100, "Import completed successfully");
+            // Trigger timeline generation (may block for 30s with retry logic)
+            // Note: timelineJobId is set inside this method, which also updates progress to 75%
+            UUID timelineJobId = timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstTimestamp);
+            log.info("Timeline job {} triggered for import {}", timelineJobId, job.getJobId());
+
+            // Note: Import will be marked as completed by ImportService once timeline job completes
 
             // Log completion with appropriate message based on whether processedFiles is present
             if (result.processedFiles != null) {
@@ -159,10 +157,10 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
             // Clean up temp file if it exists (whether success or failure)
             if (job.hasTempFile()) {
                 try {
-                    java.nio.file.Path tempPath = java.nio.file.Paths.get(job.getTempFilePath());
-                    if (java.nio.file.Files.exists(tempPath)) {
-                        long fileSize = java.nio.file.Files.size(tempPath);
-                        java.nio.file.Files.delete(tempPath);
+                    Path tempPath = Paths.get(job.getTempFilePath());
+                    if (Files.exists(tempPath)) {
+                        long fileSize = Files.size(tempPath);
+                        Files.delete(tempPath);
                         log.info("Deleted temp file after import: {} ({} MB)",
                                 job.getTempFilePath(), fileSize / (1024 * 1024));
                     }
@@ -182,39 +180,6 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
      * @throws IOException if parsing fails
      */
     protected abstract FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException;
-    
-    /**
-     * Get the optimal batch size for this format based on data characteristics.
-     * Implements tiered batch sizing: larger batches for smaller datasets, smaller batches for larger datasets.
-     * 
-     * @return The batch size to use for processing
-     */
-    protected int getBatchSize(List<GpsPointEntity> gpsEntities, boolean clearMode) {
-        int datasetSize = gpsEntities.size();
-        int baseBatchSize = clearMode ? bulkInsertBatchSize : mergeBatchSize;
-        
-        // Tiered batch sizing based on dataset size
-        if (datasetSize < 10_000) {
-            // Small datasets: use larger batches (2x base size)
-            return Math.min(baseBatchSize * 2, 1000);
-        } else if (datasetSize < 100_000) {
-            // Medium datasets: use configured batch size
-            return baseBatchSize;
-        } else {
-            // Large datasets: use smaller batches (half base size)
-            return Math.max(baseBatchSize / 2, 100);
-        }
-    }
-    
-    /**
-     * Get the optimal batch size for this format.
-     * Legacy method for backward compatibility.
-     * 
-     * @return The default batch size
-     */
-    protected int getBatchSize() {
-        return bulkInsertBatchSize;
-    }
     
     /**
      * Apply date range filter to a GPS entity if specified in import options.

@@ -125,10 +125,8 @@ public class StreamingTimelineGenerationService {
             // Step 3: Loading GPS data (30%)
             updateProgress(jobId, "Loading GPS data from database", 3, 15, null);
 
-            Thread.sleep(2000L);
             List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime, jobId);
 
-            Thread.sleep(2500L);
             if (newPoints.isEmpty()) {
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
                 updateProgress(jobId, "No GPS data to process", 9, 100, null);
@@ -148,14 +146,10 @@ public class StreamingTimelineGenerationService {
             // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
             // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
 
-            Thread.sleep(5000L);
-
             // Step 5: Post-processing trips (70%)
             updateProgress(jobId, "Post-processing trips and validating detections", 5, 70, null);
 
             List<TimelineEvent> events = tripPostProcessor.postProcessTrips(rawEvents, config);
-
-            Thread.sleep(2000L);
 
             if (!events.isEmpty()) {
                 // Create RawTimeline from events to preserve rich GPS data
@@ -180,7 +174,6 @@ public class StreamingTimelineGenerationService {
                 // Step 7: Persisting timeline to database (80%)
                 updateProgress(jobId, "Persisting timeline events to database", 7, 80, null);
 
-                Thread.sleep(2000L);
                 // Persist raw timeline with GPS statistics calculation
                 persistenceManager.persistRawTimeline(userId, rawTimeline, jobId);
             }
@@ -209,24 +202,28 @@ public class StreamingTimelineGenerationService {
         return regenerateFullTimeline(userId, null);
     }
 
-    @Transactional
     public boolean regenerateFullTimeline(UUID userId, UUID jobId) {
+        // Note: generateTimelineFromTimestamp() is @Transactional
+        // Completion logic (badge recalc, completeJob) must run AFTER that transaction commits
         this.generateTimelineFromTimestamp(userId, DEFAULT_START_DATE, jobId);
 
-        // Trigger badge recalculation after successful timeline regeneration
-        try {
-            updateProgress(jobId, "Recalculating achievement badges", 9, 99, null);
-            badgeRecalculationService.recalculateAllBadgesForUser(userId);
-            log.info("Triggered badge recalculation for user {} after timeline regeneration", userId);
-        } catch (Exception e) {
-            log.error("Failed to recalculate badges for user {} after timeline regeneration: {}",
-                    userId, e.getMessage(), e);
-            // Don't fail the timeline generation if badge calculation fails
-        }
+        // Complete the job OUTSIDE the transactional method
+        // Badge recalculation and job completion must happen after transaction commits
+        if (jobId != null) {
+            try {
+                updateProgress(jobId, "Recalculating achievement badges", 9, 99, null);
+                badgeRecalculationService.recalculateAllBadgesForUser(userId);
+                log.info("Triggered badge recalculation for user {} after timeline regeneration", userId);
+            } catch (Exception e) {
+                log.error("Failed to recalculate badges for user {} after timeline regeneration: {}",
+                        userId, e.getMessage(), e);
+                // Don't fail the timeline generation if badge calculation fails
+            }
 
-        // Mark job as completed (100%)
-        updateProgress(jobId, "Timeline generation completed", 9, 100, null);
-        completeJob(jobId);
+            // Mark job as completed (100%)
+            updateProgress(jobId, "Timeline generation completed", 9, 100, null);
+            completeJob(jobId);
+        }
 
         return true;
     }

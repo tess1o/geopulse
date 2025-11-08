@@ -649,6 +649,7 @@ public class ImportResource {
                         response.setCreatedAt(job.getCreatedAt());
                         response.setCompletedAt(job.getCompletedAt());
                         response.setError(job.getError());
+                        response.setTimelineJobId(job.getTimelineJobId());
                         return response;
                     })
                     .toList();
@@ -692,6 +693,7 @@ public class ImportResource {
             response.setCreatedAt(job.getCreatedAt());
             response.setCompletedAt(job.getCompletedAt());
             response.setError(job.getError());
+            response.setTimelineJobId(job.getTimelineJobId());
 
             return Response.ok(response).build();
 

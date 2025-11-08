@@ -12,7 +12,7 @@ export function useTimelineJobProgress() {
   const isPolling = ref(false)
   const error = ref(null)
   let pollIntervalId = null
-  const POLL_INTERVAL_MS = 1000 // 1 seconds
+  const POLL_INTERVAL_MS = 2000 // 2 seconds (aligned with import polling)
 
   /**
    * Start polling job progress
