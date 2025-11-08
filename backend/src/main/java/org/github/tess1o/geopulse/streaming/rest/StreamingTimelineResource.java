@@ -43,6 +43,12 @@ public class StreamingTimelineResource {
     @Inject
     TimelineConfigurationProvider configurationProvider;
 
+    @Inject
+    org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService jobProgressService;
+
+    @Inject
+    org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService;
+
     @GET
     @RolesAllowed("USER")
     public Response getTimeline(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
@@ -111,7 +117,9 @@ public class StreamingTimelineResource {
      * This operation will clear all existing timeline data and regenerate it from scratch
      * based on all available GPS data and current timeline preferences.
      *
-     * @return Success message if regeneration completed successfully
+     * The regeneration runs asynchronously, returning a job ID immediately for progress tracking.
+     *
+     * @return Job ID for tracking progress
      */
     @POST
     @Path("/regenerate-all")
@@ -121,20 +129,95 @@ public class StreamingTimelineResource {
         log.info("Full streaming timeline regeneration requested by user {}", userId);
 
         try {
-            boolean success = streamingTimelineGenerationService.regenerateFullTimeline(userId);
+            // Start the regeneration asynchronously and get job ID immediately
+            UUID jobId = asyncTimelineGenerationService.regenerateTimelineAsync(userId);
 
-            if (success) {
-                return Response.ok(ApiResponse.success("Streaming timeline regeneration completed successfully")).build();
-            } else {
-                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                        .entity(ApiResponse.error("Streaming timeline regeneration failed. Please try again or contact support."))
+            log.info("Timeline regeneration job {} created for user {}", jobId, userId);
+
+            return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
+
+        } catch (IllegalStateException e) {
+            // User already has an active job
+            log.warn("Timeline regeneration rejected for user {}: {}", userId, e.getMessage());
+            return Response.status(Response.Status.CONFLICT)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to start timeline regeneration for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to start timeline regeneration: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get the progress of a specific timeline generation job
+     *
+     * @param jobId The job ID
+     * @return Job progress information
+     */
+    @GET
+    @Path("/jobs/{jobId}")
+    @RolesAllowed("USER")
+    public Response getJobProgress(@PathParam("jobId") String jobId) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            UUID jobUuid = UUID.fromString(jobId);
+            var jobProgress = jobProgressService.getJobProgress(jobUuid);
+
+            if (jobProgress.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Job not found"))
                         .build();
             }
 
+            // Verify the job belongs to the current user
+            if (!jobProgress.get().getUserId().equals(userId)) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(ApiResponse.error("Access denied"))
+                        .build();
+            }
+
+            return Response.ok(ApiResponse.success(jobProgress.get())).build();
+
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid job ID format"))
+                    .build();
         } catch (Exception e) {
-            log.error("Failed to regenerate full streaming timeline for user {}", userId, e);
+            log.error("Failed to get job progress for job {}", jobId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Streaming timeline regeneration failed: " + e.getMessage()))
+                    .entity(ApiResponse.error("Failed to get job progress: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get the active timeline generation job for the current user, if any
+     *
+     * @return Active job information or empty if no active job
+     */
+    @GET
+    @Path("/jobs/active")
+    @RolesAllowed("USER")
+    public Response getActiveJob() {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var activeJob = jobProgressService.getUserActiveJob(userId);
+
+            if (activeJob.isEmpty()) {
+                return Response.ok(ApiResponse.success(null)).build();
+            }
+
+            return Response.ok(ApiResponse.success(activeJob.get())).build();
+
+        } catch (Exception e) {
+            log.error("Failed to get active job for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get active job: " + e.getMessage()))
                     .build();
         }
     }

@@ -157,13 +157,34 @@ export const useTimelineStore = defineStore('timeline', {
             return this.fetchMovementTimeline(startTime, endTime)
         },
 
-        // Regenerate entire timeline from scratch
+        // Regenerate entire timeline from scratch (returns jobId for progress tracking)
         async regenerateAllTimeline() {
             try {
                 const response = await apiService.post('/streaming-timeline/regenerate-all')
                 // Clear current timeline data since it's been regenerated
                 this.clearTimelineData()
-                return response
+                // Return the job ID from the response
+                return response.data.jobId
+            } catch (error) {
+                throw error
+            }
+        },
+
+        // Get job progress by job ID
+        async getJobProgress(jobId) {
+            try {
+                const response = await apiService.get(`/streaming-timeline/jobs/${jobId}`)
+                return response.data
+            } catch (error) {
+                throw error
+            }
+        },
+
+        // Get active job for current user (if any)
+        async getUserActiveJob() {
+            try {
+                const response = await apiService.get('/streaming-timeline/jobs/active')
+                return response.data
             } catch (error) {
                 throw error
             }

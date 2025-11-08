@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -25,18 +26,33 @@ public class GpsDataLoader {
     @Inject
     GpsPointRepository gpsPointRepository;
 
+    @Inject
+    TimelineJobProgressService jobProgressService;
+
     // Configuration constants
     private static final int DEFAULT_CHUNK_SIZE = 10_000;
     private static final int ESTIMATED_BYTES_PER_POINT = 40; // Lightweight DTO size
 
     /**
      * Load GPS points for timeline processing with automatic chunking for large datasets.
-     * 
+     *
      * @param userId The user ID
      * @param fromTimestamp Start timestamp for data range
      * @return Complete list of lightweight GPS points, loaded efficiently
      */
     public List<GPSPoint> loadGpsPointsForTimeline(UUID userId, Instant fromTimestamp) {
+        return loadGpsPointsForTimeline(userId, fromTimestamp, null);
+    }
+
+    /**
+     * Load GPS points for timeline processing with automatic chunking for large datasets and progress tracking.
+     *
+     * @param userId The user ID
+     * @param fromTimestamp Start timestamp for data range
+     * @param jobId Optional job ID for progress tracking
+     * @return Complete list of lightweight GPS points, loaded efficiently
+     */
+    public List<GPSPoint> loadGpsPointsForTimeline(UUID userId, Instant fromTimestamp, UUID jobId) {
         long startTime = System.currentTimeMillis();
         
         // Estimate data size for memory allocation optimization
@@ -54,10 +70,10 @@ public class GpsDataLoader {
         // Decide loading strategy based on dataset size
         if (estimatedCount <= DEFAULT_CHUNK_SIZE) {
             // Small dataset - load all at once
-            return loadAllAtOnce(userId, fromTimestamp, estimatedCount.intValue(), startTime);
+            return loadAllAtOnce(userId, fromTimestamp, estimatedCount.intValue(), startTime, jobId);
         } else {
             // Large dataset - use chunked loading
-            return loadInChunks(userId, fromTimestamp, estimatedCount.intValue(), startTime);
+            return loadInChunks(userId, fromTimestamp, estimatedCount.intValue(), startTime, jobId);
         }
     }
 
@@ -65,7 +81,7 @@ public class GpsDataLoader {
      * Load all GPS points in a single query for small datasets.
      */
     private List<GPSPoint> loadAllAtOnce(UUID userId, Instant fromTimestamp,
-                                                   int estimatedCount, long startTime) {
+                                                   int estimatedCount, long startTime, UUID jobId) {
         log.debug("Loading {} GPS points in single query for user {}", estimatedCount, userId);
         
         List<GPSPoint> points = gpsPointRepository.findEssentialDataForTimeline(userId, fromTimestamp);
@@ -81,7 +97,7 @@ public class GpsDataLoader {
      * Load GPS points in chunks for large datasets to prevent timeouts and memory spikes.
      */
     private List<GPSPoint> loadInChunks(UUID userId, Instant fromTimestamp,
-                                                  int estimatedCount, long startTime) {
+                                                  int estimatedCount, long startTime, UUID jobId) {
         log.debug("Loading {} GPS points in chunks for user {}", estimatedCount, userId);
         
         // Pre-allocate list with estimated capacity to avoid resizing
@@ -115,11 +131,21 @@ public class GpsDataLoader {
                 }
                 
                 // Optional: Progress monitoring for very large datasets
-                if (chunkCount % 5 == 0) {
+                if (chunkCount % 5 == 0 || chunk.size() < DEFAULT_CHUNK_SIZE) {
                     long elapsedTime = System.currentTimeMillis() - startTime;
                     double progress = (double) allPoints.size() / estimatedCount * 100;
                     log.info("Progress: {}% ({}/{} points) in {}ms",
                             progress, allPoints.size(), estimatedCount, elapsedTime);
+
+                    // Report progress to job tracker
+                    if (jobId != null) {
+                        // Progress from 15% to 30% during GPS loading
+                        int jobProgress = 15 + (int)(progress * 0.15);
+                        jobProgressService.updateProgress(jobId,
+                            String.format("Loading GPS data (%d/%d points)", allPoints.size(), estimatedCount),
+                            3, jobProgress,
+                            Map.of("gpsPointsLoaded", allPoints.size(), "totalGpsPoints", estimatedCount));
+                    }
                 }
             }
             

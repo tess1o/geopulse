@@ -12,7 +12,15 @@
               </p>
             </div>
             <div class="header-actions">
-              <Button 
+              <Button
+                label="View Active Job"
+                icon="pi pi-eye"
+                severity="info"
+                outlined
+                @click="goToActiveJob"
+                title="Check if timeline generation is currently running"
+              />
+              <Button
                 label="Reset to Defaults"
                 icon="pi pi-refresh"
                 severity="secondary"
@@ -20,7 +28,7 @@
                 @click="confirmResetDefaults"
                 :disabled="timelineRegenerationVisible"
               />
-              <Button 
+              <Button
                 label="Regenerate Timeline"
                 icon="pi pi-replay"
                 severity="danger"
@@ -28,7 +36,7 @@
                 @click="confirmRegenerateTimeline"
                 :disabled="timelineRegenerationVisible"
               />
-              <Button 
+              <Button
                 label="Save Changes"
                 icon="pi pi-save"
                 @click="confirmSavePreferences"
@@ -662,6 +670,7 @@
         <TimelineRegenerationModal
           v-model:visible="timelineRegenerationVisible"
           :type="timelineRegenerationType"
+          :job-id="currentJobId"
         />
       </div>
     </PageContainer>
@@ -670,6 +679,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -689,6 +699,7 @@ import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
 import { useTimelineStore } from '@/stores/timeline'
 
 // Composables
+const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
 const timelinePreferencesStore = useTimelinePreferencesStore()
@@ -738,6 +749,7 @@ const regenerateLoading = ref(false)
 // Timeline regeneration modal state
 const timelineRegenerationVisible = ref(false)
 const timelineRegenerationType = ref('general')
+const currentJobId = ref(null)
 
 const prefs = ref({})
 
@@ -903,8 +915,10 @@ const savePreferences = async (saveType = 'full') => {
   // Show modal for both classification and full regeneration
   timelineRegenerationType.value = saveType === 'classification' ? 'classification' : 'preferences'
   timelineRegenerationVisible.value = true
-  
+  currentJobId.value = null
+
   try {
+    let jobId
     await ensureMinimumDuration(async () => {
       const changes = getChangedPrefs()
 
@@ -1032,12 +1046,16 @@ const regenerateTimeline = async () => {
   // Show modal and set type
   timelineRegenerationType.value = 'general'
   timelineRegenerationVisible.value = true
-  
+  currentJobId.value = null
+
   try {
-    await ensureMinimumDuration(async () => {
-      await timelineStore.regenerateAllTimeline()
-    })
-    
+    // Start regeneration and get job ID
+    const jobId = await timelineStore.regenerateAllTimeline()
+    currentJobId.value = jobId
+
+    // Poll for job completion
+    await pollJobCompletion(jobId)
+
     toast.add({
       severity: 'success',
       summary: 'Timeline Regenerated',
@@ -1055,7 +1073,35 @@ const regenerateTimeline = async () => {
     })
   } finally {
     timelineRegenerationVisible.value = false
+    currentJobId.value = null
   }
+}
+
+const pollJobCompletion = async (jobId) => {
+  return new Promise((resolve, reject) => {
+    const interval = setInterval(async () => {
+      try {
+        const progress = await timelineStore.getJobProgress(jobId)
+        console.log('Job progress:', progress)
+
+        if (progress.status === 'COMPLETED') {
+          clearInterval(interval)
+          // Keep modal open for 3 seconds to show completion state clearly
+          setTimeout(resolve, 3000)
+        } else if (progress.status === 'FAILED') {
+          clearInterval(interval)
+          reject(new Error(progress.errorMessage || 'Timeline generation failed'))
+        }
+      } catch (error) {
+        clearInterval(interval)
+        reject(error)
+      }
+    }, 1000) // Poll every 3 seconds
+  })
+}
+
+const goToActiveJob = () => {
+  router.push('/app/timeline/jobs')
 }
 
 // Watchers

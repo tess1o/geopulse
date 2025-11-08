@@ -26,7 +26,9 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -72,6 +74,9 @@ public class StreamingTimelineGenerationService {
     @Inject
     GpsDataLoader gpsDataLoader;
 
+    @Inject
+    TimelineJobProgressService jobProgressService;
+
     /**
      * Regenerates timeline starting from the earliest affected GPS point timestamp.
      * This method finds the latest stay before the affected timestamp, deletes all timeline
@@ -82,39 +87,84 @@ public class StreamingTimelineGenerationService {
      */
     @Transactional
     public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp) {
+        generateTimelineFromTimestamp(userId, earliestAffectedTimestamp, null);
+    }
+
+    /**
+     * Regenerates timeline starting from the earliest affected GPS point timestamp with progress tracking.
+     * This method finds the latest stay before the affected timestamp, deletes all timeline
+     * events after that point, and regenerates the timeline.
+     *
+     * @param userId                    The user ID
+     * @param earliestAffectedTimestamp The timestamp of the earliest GPS point that was affected (edited/deleted)
+     * @param jobId                     Optional job ID for progress tracking
+     */
+    @Transactional
+    public void generateTimelineFromTimestamp(UUID userId, Instant earliestAffectedTimestamp, UUID jobId) {
         log.info("Starting timeline regeneration for user {} from timestamp {}", userId, earliestAffectedTimestamp);
         long startTime = System.currentTimeMillis();
 
+        // Step 1: Acquiring lock (5%)
+        updateProgress(jobId, "Acquiring timeline lock", 1, 5, null);
+
         if (!acquireLock(userId)) {
             log.warn("Could not acquire lock for user {}. Timeline regeneration already in progress.", userId);
+            failJob(jobId, "Timeline regeneration already in progress");
             throw new TimelineGenerationLockException(userId);
         }
 
         try {
+            // Step 2: Cleaning up old data (10%)
+            updateProgress(jobId, "Cleaning up old timeline data", 2, 10, null);
+
             // Find latest stay before the affected timestamp and clean up from that point
             Instant regenerationStartTime = deleteFromStayBeforeTimestampAndCleanup(userId, earliestAffectedTimestamp);
 
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
 
-            List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime);
+            // Step 3: Loading GPS data (30%)
+            updateProgress(jobId, "Loading GPS data from database", 3, 15, null);
 
+            Thread.sleep(2000L);
+            List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime, jobId);
+
+            Thread.sleep(2500L);
             if (newPoints.isEmpty()) {
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
+                updateProgress(jobId, "No GPS data to process", 9, 100, null);
+                completeJob(jobId);
                 // Even if no new points, check for ongoing data gap
                 dataGapService.checkAndCreateOngoingDataGap(userId, config);
                 return;
             }
 
-            // Convert to algorithm format (lightweight conversion)
+            updateProgress(jobId, "Loaded " + newPoints.size() + " GPS points", 3, 30,
+                Map.of("totalGpsPoints", newPoints.size()));
 
-            List<TimelineEvent> rawEvents = processor.processPoints(newPoints, config, userId);
+            // Step 4: Processing points and geocoding (40-65%)
+            updateProgress(jobId, "Processing GPS points through state machine", 4, 40, null);
 
-            // Apply trip detection algorithm and validation
+            List<TimelineEvent> rawEvents = processor.processPoints(newPoints, config, userId, jobId);
+            // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
+            // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
+
+            Thread.sleep(5000L);
+
+            // Step 5: Post-processing trips (70%)
+            updateProgress(jobId, "Post-processing trips and validating detections", 5, 70, null);
+
             List<TimelineEvent> events = tripPostProcessor.postProcessTrips(rawEvents, config);
+
+            Thread.sleep(2000L);
 
             if (!events.isEmpty()) {
                 // Create RawTimeline from events to preserve rich GPS data
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
+
+                // Step 6: Merging and simplification (75%)
+                if (config.getIsMergeEnabled() || isPathSimplificationEnabled(config)) {
+                    updateProgress(jobId, "Merging and simplifying timeline", 6, 75, null);
+                }
 
                 // Apply merging on raw objects
                 if (config.getIsMergeEnabled()) {
@@ -127,15 +177,28 @@ public class StreamingTimelineGenerationService {
                     rawTimeline = applyPathSimplification(config, rawTimeline);
                 }
 
+                // Step 7: Persisting timeline to database (80%)
+                updateProgress(jobId, "Persisting timeline events to database", 7, 80, null);
+
+                Thread.sleep(2000L);
                 // Persist raw timeline with GPS statistics calculation
-                persistenceManager.persistRawTimeline(userId, rawTimeline);
+                persistenceManager.persistRawTimeline(userId, rawTimeline, jobId);
             }
 
+            // Step 8: Data gap detection (90%)
+            updateProgress(jobId, "Detecting data gaps", 8, 90, null);
+
             dataGapService.checkAndCreateOngoingDataGap(userId, config);
+
+            // Step 9: Finalizing (95%)
+            updateProgress(jobId, "Finalizing timeline generation", 9, 95, null);
 
             log.info("Successfully completed timeline regeneration for user {} " + "from timestamp {} in {} seconds",
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);
 
+        } catch (Exception e) {
+            failJob(jobId, "Timeline generation failed: " + e.getMessage());
+            throw new RuntimeException("Timeline generation failed", e);
         } finally {
             releaseLock(userId);
         }
@@ -143,9 +206,16 @@ public class StreamingTimelineGenerationService {
 
     @Transactional
     public boolean regenerateFullTimeline(UUID userId) {
-        this.generateTimelineFromTimestamp(userId, DEFAULT_START_DATE);
+        return regenerateFullTimeline(userId, null);
+    }
+
+    @Transactional
+    public boolean regenerateFullTimeline(UUID userId, UUID jobId) {
+        this.generateTimelineFromTimestamp(userId, DEFAULT_START_DATE, jobId);
+
         // Trigger badge recalculation after successful timeline regeneration
         try {
+            updateProgress(jobId, "Recalculating achievement badges", 9, 99, null);
             badgeRecalculationService.recalculateAllBadgesForUser(userId);
             log.info("Triggered badge recalculation for user {} after timeline regeneration", userId);
         } catch (Exception e) {
@@ -153,6 +223,11 @@ public class StreamingTimelineGenerationService {
                     userId, e.getMessage(), e);
             // Don't fail the timeline generation if badge calculation fails
         }
+
+        // Mark job as completed (100%)
+        updateProgress(jobId, "Timeline generation completed", 9, 100, null);
+        completeJob(jobId);
+
         return true;
     }
 
@@ -295,5 +370,32 @@ public class StreamingTimelineGenerationService {
     private void releaseLock(UUID userId) {
         UserEntity.update("timelineStatus = :status where id = :userId",
                 Parameters.with("status", TimelineStatus.IDLE).and("userId", userId));
+    }
+
+    /**
+     * Helper method to update job progress if job tracking is enabled
+     */
+    private void updateProgress(UUID jobId, String step, int stepIndex, int percentage, Map<String, Object> details) {
+        if (jobId != null) {
+            jobProgressService.updateProgress(jobId, step, stepIndex, percentage, details);
+        }
+    }
+
+    /**
+     * Helper method to complete a job if job tracking is enabled
+     */
+    private void completeJob(UUID jobId) {
+        if (jobId != null) {
+            jobProgressService.completeJob(jobId);
+        }
+    }
+
+    /**
+     * Helper method to fail a job if job tracking is enabled
+     */
+    private void failJob(UUID jobId, String errorMessage) {
+        if (jobId != null) {
+            jobProgressService.failJob(jobId, errorMessage);
+        }
     }
 }
