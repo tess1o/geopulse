@@ -5,11 +5,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
+import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
@@ -72,7 +74,7 @@ public class StreamingTimelineGenerationService {
     BadgeRecalculationService badgeRecalculationService;
 
     @Inject
-    GpsDataLoader gpsDataLoader;
+    GpsPointRepository gpsPointRepository;
 
     @Inject
     TimelineJobProgressService jobProgressService;
@@ -122,12 +124,12 @@ public class StreamingTimelineGenerationService {
 
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
 
-            // Step 3: Loading GPS data (30%)
-            updateProgress(jobId, "Loading GPS data from database", 3, 15, null);
+            // Step 3: Check if there are GPS points to process
+            updateProgress(jobId, "Checking GPS data availability", 3, 15, null);
 
-            List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime, jobId);
+            Long estimatedCount = gpsPointRepository.estimatePointCount(userId, regenerationStartTime);
 
-            if (newPoints.isEmpty()) {
+            if (estimatedCount == null || estimatedCount == 0) {
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
                 updateProgress(jobId, "No GPS data to process", 9, 100, null);
                 completeJob(jobId);
@@ -136,13 +138,19 @@ public class StreamingTimelineGenerationService {
                 return;
             }
 
-            updateProgress(jobId, "Loaded " + newPoints.size() + " GPS points", 3, 30,
-                Map.of("totalGpsPoints", newPoints.size()));
+            log.info("Estimated {} GPS points to process for user {} using streaming iterator",
+                     estimatedCount, userId);
+            updateProgress(jobId, "Processing " + estimatedCount + " GPS points", 3, 30,
+                Map.of("totalGpsPoints", estimatedCount));
 
-            // Step 4: Processing points and geocoding (40-65%)
+            // Step 4: Create streaming iterable (memory-efficient - no loading all points!)
+            StreamingGpsIterable gpsStream = new StreamingGpsIterable(
+                gpsPointRepository, userId, regenerationStartTime, 10_000);
+
             updateProgress(jobId, "Processing GPS points through state machine", 4, 40, null);
 
-            List<TimelineEvent> rawEvents = processor.processPoints(newPoints, config, userId, jobId);
+            // Process points using streaming iterator - loads data lazily in 10K chunks
+            List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId);
             // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
             // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
 
