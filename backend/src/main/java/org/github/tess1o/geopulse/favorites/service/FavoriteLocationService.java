@@ -40,19 +40,22 @@ public class FavoriteLocationService {
     private final Event<FavoriteAddedEvent> favoriteAddedEvent;
     private final Event<FavoriteDeletedEvent> favoriteDeletedEvent;
     private final Event<FavoriteRenamedEvent> favoriteRenamedEvent;
+    private final org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService;
 
     public FavoriteLocationService(FavoritesRepository repository,
                                    FavoriteLocationMapper mapper,
                                    GeocodingService geocodingService,
                                    Event<FavoriteAddedEvent> favoriteAddedEvent,
                                    Event<FavoriteDeletedEvent> favoriteDeletedEvent,
-                                   Event<FavoriteRenamedEvent> favoriteRenamedEvent) {
+                                   Event<FavoriteRenamedEvent> favoriteRenamedEvent,
+                                   org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService) {
         this.repository = repository;
         this.mapper = mapper;
         this.geocodingService = geocodingService;
         this.favoriteAddedEvent = favoriteAddedEvent;
         this.favoriteDeletedEvent = favoriteDeletedEvent;
         this.favoriteRenamedEvent = favoriteRenamedEvent;
+        this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.maxDistanceFromPoint = maxDistanceFromPoint;
         this.maxDistanceFromArea = maxDistanceFromArea;
     }
@@ -70,25 +73,25 @@ public class FavoriteLocationService {
                 userId, favorite.getName(), favorite.getLat(), favorite.getLon());
 
         FavoritesEntity entity = mapper.toEntity(favorite, userId);
-        
+
         // Get geocoding data to populate city and country
         try {
             Point point = GeoUtils.createPoint(favorite.getLon(), favorite.getLat());
             FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
             entity.setCity(geocodingResult.getCity());
             entity.setCountry(geocodingResult.getCountry());
-            
-            log.debug("Populated geocoding data for favorite: city={}, country={}", 
+
+            log.debug("Populated geocoding data for favorite: city={}, country={}",
                      geocodingResult.getCity(), geocodingResult.getCountry());
         } catch (Exception e) {
-            log.warn("Failed to get geocoding data for favorite at [{}, {}]: {}", 
+            log.warn("Failed to get geocoding data for favorite at [{}, {}]: {}",
                      favorite.getLat(), favorite.getLon(), e.getMessage());
             // Continue without geocoding data - city and country will be null
         }
-        
+
         repository.persist(entity);
-        
-        // Fire event for timeline system
+
+        // Fire event for timeline system (for rename handling)
         favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
                 .favoriteId(entity.getId())
                 .userId(userId)
@@ -110,27 +113,27 @@ public class FavoriteLocationService {
                 favorite.getSouthWestLat(), favorite.getSouthWestLon());
 
         FavoritesEntity entity = mapper.toEntity(favorite, userId);
-        
+
         // Get geocoding data using the center point of the area
         try {
             double centerLat = (favorite.getNorthEastLat() + favorite.getSouthWestLat()) / 2.0;
             double centerLon = (favorite.getNorthEastLon() + favorite.getSouthWestLon()) / 2.0;
             Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
-            
+
             FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
             entity.setCity(geocodingResult.getCity());
             entity.setCountry(geocodingResult.getCountry());
-            
-            log.debug("Populated geocoding data for area favorite using center point [{}, {}]: city={}, country={}", 
+
+            log.debug("Populated geocoding data for area favorite using center point [{}, {}]: city={}, country={}",
                      centerLat, centerLon, geocodingResult.getCity(), geocodingResult.getCountry());
         } catch (Exception e) {
             log.warn("Failed to get geocoding data for area favorite: {}", e.getMessage());
             // Continue without geocoding data - city and country will be null
         }
-        
+
         repository.persist(entity);
-        
-        // Fire event for timeline system
+
+        // Fire event for timeline system (for rename handling)
         favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
                 .favoriteId(entity.getId())
                 .userId(userId)
@@ -239,6 +242,21 @@ public class FavoriteLocationService {
                 .build());
 
         log.info("User {} successfully deleted favorite {} ('{}')", userId, id, favoriteName);
+    }
+
+    /**
+     * Create async job for timeline regeneration after favorite add/delete.
+     * This method is NOT transactional and should be called after the transaction commits.
+     */
+    public UUID createTimelineRegenerationJob(UUID userId) {
+        try {
+            UUID jobId = asyncTimelineGenerationService.regenerateTimelineAsync(userId);
+            log.info("Created async timeline regeneration job {} for user {}", jobId, userId);
+            return jobId;
+        } catch (IllegalStateException e) {
+            log.warn("Could not create regeneration job for user {}: {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     // Validation methods

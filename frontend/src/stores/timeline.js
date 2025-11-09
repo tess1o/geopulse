@@ -190,6 +190,16 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        // Get historical jobs for current user
+        async getUserHistoryJobs() {
+            try {
+                const response = await apiService.get('/streaming-timeline/jobs/history')
+                return response.data
+            } catch (error) {
+                throw error
+            }
+        },
+
         // Find timeline item index (useful for component interactions)
         findTimelineItemIndex(timestamp, latitude, longitude) {
             if (!this.timelineData) return -1

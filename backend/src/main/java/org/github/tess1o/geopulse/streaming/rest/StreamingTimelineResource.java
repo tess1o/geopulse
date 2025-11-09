@@ -9,14 +9,18 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -35,19 +39,16 @@ public class StreamingTimelineResource {
     StreamingTimelineAggregator streamingTimelineAggregator;
 
     @Inject
-    StreamingTimelineGenerationService streamingTimelineGenerationService;
-
-    @Inject
     CurrentUserService currentUserService;
 
     @Inject
     TimelineConfigurationProvider configurationProvider;
 
     @Inject
-    org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService jobProgressService;
+    TimelineJobProgressService jobProgressService;
 
     @Inject
-    org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService;
+    AsyncTimelineGenerationService asyncTimelineGenerationService;
 
     @GET
     @RolesAllowed("USER")
@@ -116,7 +117,7 @@ public class StreamingTimelineResource {
      * Regenerate the complete timeline for the current user using streaming algorithm.
      * This operation will clear all existing timeline data and regenerate it from scratch
      * based on all available GPS data and current timeline preferences.
-     *
+     * <p>
      * The regeneration runs asynchronously, returning a job ID immediately for progress tracking.
      *
      * @return Job ID for tracking progress
@@ -218,6 +219,34 @@ public class StreamingTimelineResource {
             log.error("Failed to get active job for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get active job: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get the active timeline generation job for the current user, if any
+     *
+     * @return Active job information or empty if no active job
+     */
+    @GET
+    @Path("/jobs/history")
+    @RolesAllowed("USER")
+    public Response getJobHistory() {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            List<TimelineJobProgress> historyJobs = jobProgressService.getUserHistoryJobs(userId);
+
+            if (historyJobs == null || historyJobs.isEmpty()) {
+                return Response.ok(ApiResponse.success(null)).build();
+            }
+
+            return Response.ok(ApiResponse.success(historyJobs)).build();
+
+        } catch (Exception e) {
+            log.error("Failed to get history jobs for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get history jobs: " + e.getMessage()))
                     .build();
         }
     }

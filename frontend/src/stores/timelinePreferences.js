@@ -73,10 +73,14 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         async updateTimelinePreferences(changes) {
             try {
                 console.log(changes)
-                await apiService.put(`/users/preferences/timeline`, {...changes})
+                const response = await apiService.put(`/users/preferences/timeline`, {...changes})
 
                 // Refresh preferences to get updated data from backend
                 await this.fetchTimelinePreferences()
+
+                // Return job ID if available (for async timeline regeneration)
+                // Response structure: { status: "success", data: { jobId: "..." } }
+                return response?.data?.jobId || null
             } catch (error) {
                 throw error
             }
@@ -84,10 +88,14 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
 
         async resetTimelinePreferencesToDefaults() {
             try {
-                await apiService.delete(`/users/preferences/timeline`)
+                const response = await apiService.delete(`/users/preferences/timeline`)
 
                 // Refresh preferences after reset
                 await this.fetchTimelinePreferences()
+
+                // Return job ID if available (for async timeline regeneration)
+                // Response structure: { status: "success", data: { jobId: "..." } }
+                return response?.data?.jobId || null
             } catch (error) {
                 throw error
             }

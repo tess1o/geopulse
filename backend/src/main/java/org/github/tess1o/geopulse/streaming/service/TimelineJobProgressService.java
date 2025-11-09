@@ -171,6 +171,20 @@ public class TimelineJobProgressService {
     }
 
     /**
+     * Get historical (completed or failed) jobs for a user, sorted by start time descending
+     *
+     * @param userId The user ID
+     * @return List of historical jobs (completed or failed), sorted by most recent first
+     */
+    public List<TimelineJobProgress> getUserHistoryJobs(UUID userId) {
+        return jobStore.values().stream()
+                .filter(job -> job.getUserId().equals(userId))
+                .filter(TimelineJobProgress::isTerminal) // Only completed or failed jobs
+                .sorted(Comparator.comparing(TimelineJobProgress::getStartTime).reversed()) // Most recent first
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Clean up old completed jobs to prevent memory leaks.
      * Called by the cleanup scheduler.
      *

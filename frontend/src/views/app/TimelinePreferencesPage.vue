@@ -932,8 +932,15 @@ const savePreferences = async (saveType = 'full') => {
         return
       }
 
-      await timelinePreferencesStore.updateTimelinePreferences(changes)
+      jobId = await timelinePreferencesStore.updateTimelinePreferences(changes)
     })
+
+    // Set job ID for modal tracking
+    if (jobId) {
+      currentJobId.value = jobId
+      // Keep modal open for job progress tracking
+      await pollJobCompletion(jobId)
+    }
 
     // Enhanced toast messages based on save type
     if (saveType === 'classification') {
@@ -987,12 +994,21 @@ const resetDefaults = async () => {
   // Show modal and set type
   timelineRegenerationType.value = 'preferences'
   timelineRegenerationVisible.value = true
-  
+  currentJobId.value = null
+
   try {
+    let jobId
     await ensureMinimumDuration(async () => {
-      await timelinePreferencesStore.resetTimelinePreferencesToDefaults()
+      jobId = await timelinePreferencesStore.resetTimelinePreferencesToDefaults()
     })
-    
+
+    // Set job ID for modal tracking
+    if (jobId) {
+      currentJobId.value = jobId
+      // Keep modal open for job progress tracking
+      await pollJobCompletion(jobId)
+    }
+
     toast.add({
       severity: 'success',
       summary: 'Settings Reset',

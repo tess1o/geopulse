@@ -146,6 +146,7 @@
         <TimelineRegenerationModal
           v-model:visible="timelineRegenerationVisible"
           :type="timelineRegenerationType"
+          :job-id="currentJobId"
         />
       </template>
     </MapContainer>
@@ -304,6 +305,7 @@ const photoViewerIndex = ref(0)
 const timelineRegenerationVisible = ref(false)
 const timelineRegenerationType = ref('general')
 const modalShowStartTime = ref(null)
+const currentJobId = ref(null)
 
 // Computed getters for dialog state (for template compatibility)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
@@ -528,6 +530,9 @@ const handleFavoriteDelete = (event) => {
         },
         onError: () => {
           closeTimelineRegenerationModal()
+        },
+        onJobCreated: (jobId) => {
+          currentJobId.value = jobId
         }
       })
     }
@@ -619,6 +624,9 @@ const onFavoritePointSubmit = (favoriteData) => {
     },
     onError: () => {
       closeTimelineRegenerationModal()
+    },
+    onJobCreated: (jobId) => {
+      currentJobId.value = jobId
     }
   })
 }
@@ -652,6 +660,9 @@ const onFavoriteAreaSubmit = (favoriteData) => {
     },
     onError: () => {
       closeTimelineRegenerationModal()
+    },
+    onJobCreated: (jobId) => {
+      currentJobId.value = jobId
     }
   })
 }
