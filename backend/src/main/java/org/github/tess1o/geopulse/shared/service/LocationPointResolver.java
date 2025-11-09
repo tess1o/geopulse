@@ -300,6 +300,14 @@ public class LocationPointResolver {
                             .formattedDisplayName(String.format("Location unavailable (%.6f, %.6f)", point.getY(), point.getX()))
                             .providerName("fallback-error")
                             .build();
+
+                    // Cache the fallback result to prevent retry loops on subsequent runs
+                    try {
+                        cacheGeocodingService.cacheGeocodingResult(geocodingResult);
+                        log.debug("Cached fallback result for {}", coordKey);
+                    } catch (Exception cacheError) {
+                        log.warn("Failed to cache fallback result for {}: {}", coordKey, cacheError.getMessage());
+                    }
                 }
 
                 Long geocodingId = cacheGeocodingService.getCachedGeocodingResultId(point).orElse(null);
