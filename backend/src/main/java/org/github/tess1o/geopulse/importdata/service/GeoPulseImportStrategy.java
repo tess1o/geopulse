@@ -30,10 +30,7 @@ import org.locationtech.jts.geom.LineString;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -221,11 +218,18 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
         // 4. Always regenerate timeline after GPS import (skipping timeline/gaps data in export)
         if (hasGpsData && firstGpsTimestamp != null) {
-            job.updateProgress(totalProgress, "Generating timeline (may include reverse geocoding)...");
             log.info("Regenerating timeline from imported GPS data starting from timestamp: {}", firstGpsTimestamp);
-            timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
+
+            // Update progress FIRST, before blocking timeline trigger
+            job.updateProgress(totalProgress, "Triggering timeline generation...");
+
+            // Trigger timeline generation (may block for 30s with retry logic)
+            // Note: timelineJobId is set inside this method, which also updates progress
+            UUID timelineJobId = timelineImportHelper.triggerTimelineGenerationForImportedGpsData(job, firstGpsTimestamp);
+            log.info("Timeline job {} triggered for import {}", timelineJobId, job.getJobId());
+
+            // Note: Import will be marked as completed by ImportService once timeline job completes
             totalProgress += 35;
-            job.setProgress(totalProgress);
         }
 
         // 5. Import user info
@@ -748,7 +752,4 @@ public class GeoPulseImportStrategy implements ImportStrategy {
             log.warn("Failed to clear GPS data before import: {}", e.getMessage());
         }
     }
-    
-    // Timeline clearing removed - timeline regeneration handles clearing automatically
-
 }

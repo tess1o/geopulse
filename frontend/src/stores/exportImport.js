@@ -553,36 +553,52 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // Utility actions
-        async pollJobStatus(jobId, isExport = true) {
-            const maxAttempts = 60 // 5 minutes with 5-second intervals
-            let attempts = 0
+        pollJobStatus(jobId, isExport = true) {
+            let timeoutId = null
+            let isCancelled = false
 
             const poll = async () => {
-                attempts++
-                
+                if (isCancelled) return
+
                 try {
-                    const response = isExport 
+                    const response = isExport
                         ? await this.fetchExportStatus(jobId)
                         : await this.fetchImportStatus(jobId)
 
+                    // Stop polling only when job completes or fails
                     if (['completed', 'failed'].includes(response.status)) {
                         return response
                     }
 
-                    if (attempts < maxAttempts) {
-                        setTimeout(() => poll(), 2000) // Poll every 2 seconds
+                    // Keep polling for processing/validating jobs
+                    // Important: Timeline generation during imports can take 10-30 minutes
+                    if (!isCancelled) {
+                        timeoutId = setTimeout(() => poll(), 2000) // Poll every 2 seconds
                     }
 
                     return response
                 } catch (error) {
-                    if (attempts < maxAttempts) {
-                        setTimeout(() => poll(), 5000) // Retry after 5 seconds on error
+                    console.error('Polling error:', error)
+                    // Retry on error after longer delay
+                    if (!isCancelled) {
+                        timeoutId = setTimeout(() => poll(), 5000)
                     }
-                    throw error
                 }
             }
 
-            return poll()
+            // Start polling
+            poll()
+
+            // Return cancel function
+            return {
+                cancel: () => {
+                    isCancelled = true
+                    if (timeoutId) {
+                        clearTimeout(timeoutId)
+                        timeoutId = null
+                    }
+                }
+            }
         },
 
         // Clear all data

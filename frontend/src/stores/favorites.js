@@ -103,7 +103,7 @@ export const useFavoritesStore = defineStore('favorites', {
 
         async addPointToFavorites(name, lat, lon) {
             try {
-                await apiService.post(`/favorites/point`, {
+                const response = await apiService.post(`/favorites/point`, {
                     name,
                     lat,
                     lon
@@ -111,6 +111,10 @@ export const useFavoritesStore = defineStore('favorites', {
 
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
+
+                // Return job ID if available (for async timeline regeneration)
+                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
+                return response?.data?.jobId || null
             } catch (error) {
                 throw error
             }
@@ -118,7 +122,7 @@ export const useFavoritesStore = defineStore('favorites', {
 
         async addAreaToFavorites(name, northEastLat, northEastLon, southWestLat, southWestLon) {
             try {
-                await apiService.post(`/favorites/area`, {
+                const response = await apiService.post(`/favorites/area`, {
                     name,
                     northEastLat,
                     northEastLon,
@@ -128,6 +132,10 @@ export const useFavoritesStore = defineStore('favorites', {
 
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
+
+                // Return job ID if available (for async timeline regeneration)
+                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
+                return response?.data?.jobId || null
             } catch (error) {
                 throw error
             }
@@ -148,10 +156,14 @@ export const useFavoritesStore = defineStore('favorites', {
 
         async deleteFavorite(id) {
             try {
-                await apiService.delete(`/favorites/${id}`, {})
+                const response = await apiService.delete(`/favorites/${id}`, {})
 
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
+
+                // Return job ID if available (for async timeline regeneration)
+                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
+                return response?.data?.jobId || null
             } catch (error) {
                 throw error
             }

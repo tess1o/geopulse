@@ -50,13 +50,25 @@ public class StreamingTimelineProcessor {
      *   <li>Populates location data for finalized stays</li>
      * </ol>
      *
-     * @param contextPoints existing GPS points for warming up the state machine
-     * @param newPoints     new GPS points to process
-     * @param config        timeline configuration with accuracy thresholds
-     * @param userId        user identifier for location resolution
+     * @param newPoints new GPS points to process
+     * @param config    timeline configuration with accuracy thresholds
+     * @param userId    user identifier for location resolution
      * @return list of finalized timeline events
      */
     public List<TimelineEvent> processPoints(List<GPSPoint> newPoints, TimelineConfig config, UUID userId) {
+        return processPoints(newPoints, config, userId, null);
+    }
+
+    /**
+     * Process GPS points to generate timeline events (stays, trips, data gaps) with progress tracking.
+     *
+     * @param newPoints new GPS points to process
+     * @param config    timeline configuration with accuracy thresholds
+     * @param userId    user identifier for location resolution
+     * @param jobId     optional job ID for progress tracking
+     * @return list of finalized timeline events
+     */
+    public List<TimelineEvent> processPoints(List<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId) {
         UserState userState = new UserState();
         List<TimelineEvent> finalizedEvents = new ArrayList<>();
 
@@ -80,8 +92,8 @@ public class StreamingTimelineProcessor {
             finalizedEvents.add(finalEvent);
         }
 
-        // 4. Batch populate location data for all stays at once
-        finalizationService.populateStayLocations(finalizedEvents, userId);
+        // 4. Batch populate location data for all stays at once (with progress tracking if jobId provided)
+        finalizationService.populateStayLocations(finalizedEvents, userId, jobId);
 
         return finalizedEvents;
     }

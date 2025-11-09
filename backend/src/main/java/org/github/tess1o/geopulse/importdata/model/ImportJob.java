@@ -24,6 +24,10 @@ public class ImportJob {
     private Instant completedAt;
     private Instant estimatedProcessingTime;
 
+    // Timeline job ID - tracks the associated timeline generation job
+    // Created when timeline generation starts during import (nullable for legacy imports)
+    private UUID timelineJobId;
+
     // Timestamps from data (captured during validation for use in clear mode)
     private Instant dataFirstTimestamp;
     private Instant dataLastTimestamp;
@@ -34,6 +38,11 @@ public class ImportJob {
     // Temporary file path for large files (memory optimization)
     // If set, use this instead of zipData
     private String tempFilePath;
+
+    // Flag to track if data processing (GPS import, validation, etc.) is complete
+    // Separate from overall status - job can be PROCESSING (waiting for timeline)
+    // but data import is done. This prevents re-processing the same job.
+    private boolean dataProcessingCompleted = false;
 
     @ToString.Exclude
     private byte[] zipData;

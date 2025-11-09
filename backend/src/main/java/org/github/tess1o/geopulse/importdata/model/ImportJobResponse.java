@@ -21,4 +21,8 @@ public class ImportJobResponse {
     private String progressMessage;
     private Instant createdAt;
     private Instant completedAt;
+
+    // Timeline job ID - tracks the associated timeline generation job
+    // Null for imports that don't generate timeline (e.g., favorites-only imports)
+    private UUID timelineJobId;
 }

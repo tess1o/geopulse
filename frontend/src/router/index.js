@@ -152,6 +152,18 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
+        path: '/app/timeline/jobs',
+        name: 'Timeline Jobs',
+        component: () => import('@/views/app/TimelineJobsListPage.vue'),
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/timeline/jobs/:jobId',
+        name: 'Timeline Job Details',
+        component: () => import('@/views/app/TimelineJobDetailsPage.vue'),
+        beforeEnter: requireAuth
+    },
+    {
         path: '/app/share-links',
         name: 'Share Links',
         component: ShareLinksPage,

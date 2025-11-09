@@ -37,7 +37,7 @@ public class StreamingTimelineEventsService {
     @Transactional
     public void onFavoriteAdded(@Observes FavoriteAddedEvent event) {
         log.info("Processing favorite added event: {} for user {}", event.getFavoriteName(), event.getUserId());
-        regenerateTimeline(event.getUserId());
+        // Timeline regeneration is now handled by FavoriteLocationService with async job
     }
 
     @Transactional(value = Transactional.TxType.MANDATORY)
@@ -46,7 +46,7 @@ public class StreamingTimelineEventsService {
 
         timelineStayRepository.delete("user.id = ?1 and favoriteLocation.id = ?2", event.getUserId(), event.getFavoriteId());
 
-        regenerateTimeline(event.getUserId());
+        // Timeline regeneration is now handled by FavoriteLocationService with async job
     }
 
     /**
@@ -64,21 +64,12 @@ public class StreamingTimelineEventsService {
         log.info("Processing timeline preferences updated event for user {} (resetToDefaults={})",
                 event.getUserId(), event.isWasResetToDefaults());
 
-        regenerateTimeline(event.getUserId());
+        // Timeline regeneration is now handled by UserService with async job
     }
 
-    private void regenerateTimeline(UUID userId) {
-        try {
-            streamingTimelineGenerationService.regenerateFullTimeline(userId);
-        } catch (Exception e) {
-            log.error("Failed to process timeline preferences updated event for user {}: {}",
-                    userId, e.getMessage(), e);
-        }
-    }
-    
     /**
      * Handle travel classification updated events - fast trip type recalculation.
-     * This is much faster than full timeline regeneration.
+     * This is much faster than full timeline regeneration and runs synchronously.
      */
     @Transactional
     public void onTravelClassificationUpdated(@Observes TravelClassificationUpdatedEvent event) {
@@ -91,7 +82,7 @@ public class StreamingTimelineEventsService {
                     event.getUserId(), e.getMessage(), e);
         }
     }
-    
+
     /**
      * Handle timeline structure updated events - full timeline regeneration.
      * Used when structural parameters (staypoint detection, merging, etc.) change.
@@ -100,7 +91,7 @@ public class StreamingTimelineEventsService {
     public void onTimelineStructureUpdated(@Observes TimelineStructureUpdatedEvent event) {
         log.info("Processing timeline structure updated event for user {} (resetToDefaults={})",
                 event.getUserId(), event.isWasResetToDefaults());
-        regenerateTimeline(event.getUserId());
+        // Timeline regeneration is now handled by UserService with async job
     }
 
     private void renameTimelineLocation(FavoriteRenamedEvent event) {
