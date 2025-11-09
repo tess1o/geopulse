@@ -172,6 +172,7 @@ const contentClasses = computed(() => ({
 .gp-page-header-text {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .gp-page-title {
@@ -180,6 +181,12 @@ const contentClasses = computed(() => ({
   color: var(--gp-text-primary);
   margin: 0 0 var(--gp-spacing-sm);
   line-height: 1.2;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  white-space: normal;
+  max-width: 100%;
 }
 
 .gp-page-subtitle {

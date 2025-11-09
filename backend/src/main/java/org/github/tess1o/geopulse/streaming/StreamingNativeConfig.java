@@ -6,10 +6,7 @@ import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEventType;
-import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineDataGapDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
-import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.*;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
@@ -29,6 +26,12 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         TimelineConfig.class,
         TimelineJobProgress.class,
         TimelineJobProgress.JobStatus.class,
+        PagedPlaceVisitsDTO.class,
+        PlaceDetailsDTO.class,
+        PlaceGeometryDTO.class,
+        PlaceStatisticsDTO.class,
+        PlaceVisitDTO.class,
+        FavoriteRelationDTO.class
 })
 public class StreamingNativeConfig {
 }

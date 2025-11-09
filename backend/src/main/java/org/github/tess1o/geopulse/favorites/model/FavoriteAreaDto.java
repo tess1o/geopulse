@@ -20,4 +20,6 @@ public class FavoriteAreaDto {
     private double northEastLon;
     private double southWestLat;
     private double southWestLon;
+    private String city;
+    private String country;
 }

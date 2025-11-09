@@ -216,6 +216,12 @@ const accountItems = computed(() => [
     key: 'geocoding-management'
   },
   {
+    label: 'Favorites Management',
+    icon: 'pi pi-heart',
+    to: '/app/favorites-management',
+    key: 'favorites-management'
+  },
+  {
     label: 'Preferences',
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',

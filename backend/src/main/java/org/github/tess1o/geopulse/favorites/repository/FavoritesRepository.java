@@ -29,6 +29,10 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         return list("user.id", userId);
     }
 
+    public Optional<FavoritesEntity> findByIdAndUserId(Long id, UUID userId) {
+        return find("id = ?1 and user.id = ?2", id, userId).firstResultOptional();
+    }
+
     public Optional<FavoritesEntity> findByPoint(UUID userId, Point point, int maxDistanceFromPoint, int maxDistanceFromArea) {
         String query = """
                 SELECT *

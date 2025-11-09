@@ -18,4 +18,6 @@ public class FavoritePointDto {
     private String name;
     private UUID userId;
     private String type;
+    private String city;
+    private String country;
 }
