@@ -265,6 +265,50 @@
               </div>
             </div>
 
+            <!-- Timeline Generation Progress (Compact Inline Display) -->
+            <div v-if="currentImportJob.timelineJobId && currentImportJob.status === 'processing' && currentImportJob.progress >= 70"
+                 class="timeline-progress-container">
+              <div class="timeline-progress-header">
+                <h4 class="timeline-progress-title">Timeline Generation</h4>
+                <span v-if="timelineJobProgress" class="timeline-progress-percentage">
+                  {{ timelineJobProgress.progressPercentage }}%
+                </span>
+              </div>
+
+              <ProgressBar
+                  v-if="timelineJobProgress"
+                  :value="timelineJobProgress.progressPercentage"
+                  :showValue="false"
+                  class="timeline-progress-bar"
+              />
+
+              <div class="timeline-progress-details">
+                <div v-if="timelineJobProgress" class="timeline-current-step">
+                  <i class="pi pi-sync pi-spin" style="font-size: 0.875rem; margin-right: 0.5rem;"></i>
+                  <span>{{ timelineJobProgress.currentStep }}</span>
+                </div>
+                <div v-else class="timeline-current-step">
+                  <i class="pi pi-sync pi-spin" style="font-size: 0.875rem; margin-right: 0.5rem;"></i>
+                  <span>Initializing timeline generation...</span>
+                </div>
+
+                <div v-if="timelineKeyMetric" class="timeline-key-metric">
+                  <i :class="['pi', timelineKeyMetric.icon]"></i>
+                  <span>{{ timelineKeyMetric.text }}</span>
+                </div>
+              </div>
+
+              <Button
+                  label="View Detailed Progress"
+                  icon="pi pi-external-link"
+                  severity="info"
+                  outlined
+                  size="small"
+                  @click="openTimelineJobDetails(currentImportJob.timelineJobId)"
+                  class="timeline-details-btn"
+              />
+            </div>
+
             <div v-if="currentImportJob.importSummary && currentImportJob.status === 'completed'"
                  class="import-summary">
               <h4 class="summary-title">Import Summary</h4>
@@ -352,15 +396,24 @@
 </template>
 
 <script setup>
-import {ref, computed, watch, onMounted} from 'vue'
+import {ref, computed, watch, onMounted, onUnmounted} from 'vue'
 import {storeToRefs} from 'pinia'
+import {useRouter} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useTimezone} from '@/composables/useTimezone'
 import {useExportImportStore} from '@/stores/exportImport'
+import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
 
+const router = useRouter()
 const timezone = useTimezone()
 const toast = useToast()
 const exportImportStore = useExportImportStore()
+
+// Timeline job progress tracking
+const {jobProgress: timelineJobProgress, startPolling: startTimelinePolling, stopPolling: stopTimelinePolling} = useTimelineJobProgress()
+
+// Import polling canceller
+let importPollCanceller = null
 
 // Store refs
 const {
@@ -534,7 +587,7 @@ const startImport = async () => {
 
     // Start polling for status updates
     if (currentImportJob.value) {
-      exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
+      importPollCanceller = exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
     }
   } catch (error) {
     console.error('Import error:', error)
@@ -645,6 +698,77 @@ const getProgressPhaseDescription = (job) => {
   return job.status
 }
 
+const openTimelineJobDetails = (timelineJobId) => {
+  if (timelineJobId) {
+    // Open in new tab
+    const url = router.resolve(`/app/timeline/jobs/${timelineJobId}`).href
+    window.open(url, '_blank')
+  }
+}
+
+// Extract timeline job ID as computed to avoid watch triggering on every poll update
+const currentTimelineJobId = computed(() => currentImportJob.value?.timelineJobId)
+const currentImportStatus = computed(() => currentImportJob.value?.status)
+
+// Watch for timeline job ID changes to start/stop polling
+watch(currentTimelineJobId, (newTimelineJobId, oldTimelineJobId) => {
+  // Only start polling when ID first appears (null -> uuid)
+  if (newTimelineJobId && !oldTimelineJobId && currentImportStatus.value === 'processing') {
+    // Start polling timeline job progress
+    startTimelinePolling(newTimelineJobId)
+  } else if (!newTimelineJobId && oldTimelineJobId) {
+    // Stop polling if timeline job ID is removed
+    stopTimelinePolling()
+  }
+}, { immediate: true })
+
+// Stop polling when import completes
+watch(() => currentImportJob.value?.status, (newStatus) => {
+  if (newStatus === 'completed' || newStatus === 'failed') {
+    stopTimelinePolling()
+  }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  // Cancel import polling
+  if (importPollCanceller) {
+    importPollCanceller.cancel()
+    importPollCanceller = null
+  }
+
+  // Stop timeline polling
+  stopTimelinePolling()
+})
+
+// Computed property for timeline progress key metric
+const timelineKeyMetric = computed(() => {
+  if (!timelineJobProgress.value?.details) return null
+
+  const details = timelineJobProgress.value.details
+
+  // GPS loading phase
+  if (details.gpsPointsLoaded !== undefined && details.totalGpsPoints) {
+    return {
+      icon: 'pi-map-marker',
+      text: `${details.gpsPointsLoaded.toLocaleString()} / ${details.totalGpsPoints.toLocaleString()} GPS points loaded`
+    }
+  }
+
+  // Geocoding phase
+  if (details.totalLocations !== undefined) {
+    const resolved = details.totalResolved || 0
+    const pending = details.externalPending || 0
+    const pendingText = pending > 0 ? ` (${pending} pending)` : ''
+    return {
+      icon: 'pi-globe',
+      text: `${resolved} / ${details.totalLocations} locations geocoded${pendingText}`
+    }
+  }
+
+  return null
+})
+
 // Watch for import job completion
 watch(() => currentImportJob.value?.status, (newStatus, oldStatus) => {
   if (oldStatus && oldStatus !== 'completed' && newStatus === 'completed') {
@@ -670,11 +794,11 @@ onMounted(async () => {
     if (activeJob) {
       console.log('Found active import job on mount:', activeJob.importJobId)
       exportImportStore.setCurrentImportJob(activeJob)
-      exportImportStore.pollJobStatus(activeJob.importJobId, false)
+      importPollCanceller = exportImportStore.pollJobStatus(activeJob.importJobId, false)
     } else if (currentImportJob.value && ['processing', 'validating'].includes(currentImportJob.value.status)) {
       // Fallback: if currentImportJob is set but not in the jobs list, poll it anyway
       console.log('Resuming polling for current import job:', currentImportJob.value.importJobId)
-      exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
+      importPollCanceller = exportImportStore.pollJobStatus(currentImportJob.value.importJobId, false)
     }
   } catch (error) {
     console.error('Failed to fetch import jobs on mount:', error)
@@ -871,6 +995,75 @@ onMounted(async () => {
 .summary-item i {
   color: var(--gp-primary);
   width: 1rem;
+}
+
+/* Timeline Progress (Compact Inline) */
+.timeline-progress-container {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.timeline-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.timeline-progress-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0;
+}
+
+.timeline-progress-percentage {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--gp-primary-color);
+}
+
+.timeline-progress-bar {
+  margin: 0.25rem 0;
+}
+
+.timeline-progress-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timeline-current-step {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  color: var(--gp-text-primary);
+  font-weight: 500;
+}
+
+.timeline-key-metric {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  padding-left: 1.375rem; /* Align with step text (icon width + gap) */
+}
+
+.timeline-key-metric i {
+  color: var(--gp-primary-color);
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.timeline-details-btn {
+  align-self: flex-start;
+  margin-top: 0.25rem;
 }
 
 /* Import History */

@@ -85,7 +85,19 @@ public class FavoritesResource {
         try {
             UUID authenticatedUserId = currentUserService.getCurrentUserId();
             log.info("User {} deleting favorite {}", authenticatedUserId, favoriteId);
+
+            // Delete favorite within transaction
             service.deleteFavorite(authenticatedUserId, favoriteId);
+
+            // Create async job AFTER transaction commits
+            UUID jobId = service.createTimelineRegenerationJob(authenticatedUserId);
+            if (jobId != null) {
+                return Response.ok(ApiResponse.success(java.util.Map.of(
+                    "message", "Favorite deleted successfully",
+                    "jobId", jobId.toString()
+                ))).build();
+            }
+
             return Response.ok(ApiResponse.success("Favorite deleted successfully")).build();
         } catch (SecurityException e) {
             log.warn("User {} attempted to delete favorite {} without authorization",
@@ -108,13 +120,26 @@ public class FavoritesResource {
 
     @POST
     @Path("/point")
-    @Transactional
     public Response addPointToFavorites(@Valid AddPointToFavoritesDto dto) {
         try {
             UUID authenticatedUserId = currentUserService.getCurrentUserId();
             log.info("User {} adding point favorite: {} at [{}, {}]",
                     authenticatedUserId, dto.getName(), dto.getLat(), dto.getLon());
+
+            // Add favorite within transaction (service method is @Transactional)
             service.addFavorite(authenticatedUserId, dto);
+
+            // Create async job AFTER transaction commits (no @Transactional here)
+            UUID jobId = service.createTimelineRegenerationJob(authenticatedUserId);
+            if (jobId != null) {
+                return Response.status(Response.Status.CREATED)
+                        .entity(ApiResponse.success(java.util.Map.of(
+                            "message", "Point favorite added successfully",
+                            "jobId", jobId.toString()
+                        )))
+                        .build();
+            }
+
             return Response.status(Response.Status.CREATED)
                     .entity(ApiResponse.success("Point favorite added successfully"))
                     .build();
@@ -133,7 +158,6 @@ public class FavoritesResource {
 
     @POST
     @Path("/area")
-    @Transactional
     public Response addAreaToFavorites(@Valid AddAreaToFavoritesDto dto) {
         try {
             UUID authenticatedUserId = currentUserService.getCurrentUserId();
@@ -141,7 +165,21 @@ public class FavoritesResource {
                     authenticatedUserId, dto.getName(),
                     dto.getNorthEastLat(), dto.getNorthEastLon(),
                     dto.getSouthWestLat(), dto.getSouthWestLon());
+
+            // Add favorite within transaction (service method is @Transactional)
             service.addFavorite(authenticatedUserId, dto);
+
+            // Create async job AFTER transaction commits (no @Transactional here)
+            UUID jobId = service.createTimelineRegenerationJob(authenticatedUserId);
+            if (jobId != null) {
+                return Response.status(Response.Status.CREATED)
+                        .entity(ApiResponse.success(java.util.Map.of(
+                            "message", "Area favorite added successfully",
+                            "jobId", jobId.toString()
+                        )))
+                        .build();
+            }
+
             return Response.status(Response.Status.CREATED)
                     .entity(ApiResponse.success("Area favorite added successfully"))
                     .build();

@@ -86,6 +86,18 @@ public class TimelineEventFinalizationService {
      * @param userId user identifier for location resolution
      */
     public void populateStayLocations(List<TimelineEvent> events, UUID userId) {
+        populateStayLocations(events, userId, null);
+    }
+
+    /**
+     * Populate location data for all stay events using batch resolution with progress tracking.
+     * This method processes all stays at once to optimize database queries.
+     *
+     * @param events list of timeline events (will modify Stay events in place)
+     * @param userId user identifier for location resolution
+     * @param jobId optional job ID for progress tracking
+     */
+    public void populateStayLocations(List<TimelineEvent> events, UUID userId, UUID jobId) {
         // Extract all stays that need location resolution
         List<Stay> staysToPopulate = events.stream()
                 .filter(event -> event instanceof Stay)
@@ -107,7 +119,7 @@ public class TimelineEventFinalizationService {
 
         // Batch resolve all locations
         Map<String, LocationResolutionResult> locationResults =
-                locationPointResolver.resolveLocationsWithReferencesBatch(userId, stayPoints);
+                locationPointResolver.resolveLocationsWithReferencesBatch(userId, stayPoints, jobId);
 
         // Populate each stay with its resolved location data
         for (Stay stay : staysToPopulate) {

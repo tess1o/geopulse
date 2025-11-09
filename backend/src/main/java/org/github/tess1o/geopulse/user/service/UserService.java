@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
+import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -33,6 +34,7 @@ public class UserService {
     private final Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent;
     private final Event<TimelineStructureUpdatedEvent> structureUpdatedEvent;
     private final AuthConfigurationService authConfigurationService;
+    private final AsyncTimelineGenerationService asyncTimelineGenerationService;
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
@@ -49,7 +51,8 @@ public class UserService {
                        Event<TimelinePreferencesUpdatedEvent> preferencesUpdatedEvent,
                        Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent,
                        Event<TimelineStructureUpdatedEvent> structureUpdatedEvent,
-                       AuthConfigurationService authConfigurationService) {
+                       AuthConfigurationService authConfigurationService,
+                       AsyncTimelineGenerationService asyncTimelineGenerationService) {
         this.userRepository = userRepository;
         this.securePasswordUtils = securePasswordUtils;
         this.preferencesUpdater = preferencesUpdater;
@@ -57,6 +60,7 @@ public class UserService {
         this.classificationUpdatedEvent = classificationUpdatedEvent;
         this.structureUpdatedEvent = structureUpdatedEvent;
         this.authConfigurationService = authConfigurationService;
+        this.asyncTimelineGenerationService = asyncTimelineGenerationService;
     }
 
     /**
@@ -108,22 +112,6 @@ public class UserService {
 
     public void persist(UserEntity user) {
         this.userRepository.persist(user);
-    }
-
-    @Transactional
-    public void resetTimelinePreferencesToDefaults(UUID userId) {
-        UserEntity user = userRepository.findById(userId);
-        if (user == null) {
-            throw new UserNotFoundException("User not found");
-        }
-        user.timelinePreferences = null;
-
-        // Fire event to trigger timeline invalidation
-        preferencesUpdatedEvent.fire(new TimelinePreferencesUpdatedEvent(
-                userId,
-                null, // null indicates reset to defaults
-                true  // wasResetToDefaults = true
-        ));
     }
 
     /**
@@ -329,8 +317,12 @@ public class UserService {
         user.setPasswordHash(securePasswordUtils.hashPassword(request.getNewPassword()));
     }
 
+    /**
+     * Update timeline preferences and return type of change made.
+     * @return "classification" for classification-only changes, "structural" for full regeneration needed, null for no changes
+     */
     @Transactional
-    public void updateTimelinePreferences(UUID userId, UpdateTimelinePreferencesRequest update) {
+    public String updateTimelinePreferences(UUID userId, UpdateTimelinePreferencesRequest update) {
         UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new UserNotFoundException("User not found");
@@ -348,29 +340,52 @@ public class UserService {
         boolean hasStructuralChanges = hasStructuralParameters(update);
 
         if (hasClassificationChanges && !hasStructuralChanges) {
-            // Fire classification-only event for fast trip type recalculation
+            // Synchronous trip type recalculation (fast, no job needed)
             log.info("Firing travel classification updated event for user {} (classification-only changes)", userId);
             classificationUpdatedEvent.fire(new TravelClassificationUpdatedEvent(
                     userId,
                     user.timelinePreferences,
                     false // wasResetToDefaults = false
             ));
+            return "classification"; // Classification-only changes
         } else if (hasStructuralChanges) {
-            // Fire structural event for full timeline regeneration
-            log.info("Firing timeline structure updated event for user {} (structural changes)", userId);
-            structureUpdatedEvent.fire(new TimelineStructureUpdatedEvent(
-                    userId,
-                    user.timelinePreferences,
-                    false // wasResetToDefaults = false
-            ));
+            // Structural changes require full timeline regeneration
+            log.info("Structural timeline changes detected for user {}", userId);
+            return "structural"; // Full regeneration needed
         } else {
-            // Fallback to original event for backward compatibility
-            log.info("Firing timeline preferences updated event for user {} (no parameter changes detected)", userId);
-            preferencesUpdatedEvent.fire(new TimelinePreferencesUpdatedEvent(
-                    userId,
-                    user.timelinePreferences,
-                    false // wasResetToDefaults = false
-            ));
+            // No timeline changes needed
+            log.info("No timeline regeneration needed for user {} (no parameter changes detected)", userId);
+            return null;
+        }
+    }
+
+    /**
+     * Reset preferences to defaults.
+     * @return true if timeline regeneration is needed, false otherwise
+     */
+    @Transactional
+    public boolean resetTimelinePreferencesToDefaults(UUID userId) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new UserNotFoundException("User not found");
+        }
+        user.timelinePreferences = null;
+        log.info("Reset timeline preferences to defaults for user {}", userId);
+        return true; // Always need timeline regeneration when resetting
+    }
+
+    /**
+     * Create async job for timeline regeneration.
+     * This method is NOT transactional and should be called after the transaction commits.
+     */
+    public UUID createTimelineRegenerationJob(UUID userId) {
+        try {
+            UUID jobId = asyncTimelineGenerationService.regenerateTimelineAsync(userId);
+            log.info("Created async timeline regeneration job {} for user {}", jobId, userId);
+            return jobId;
+        } catch (IllegalStateException e) {
+            log.warn("Could not create regeneration job for user {}: {}", userId, e.getMessage());
+            return null;
         }
     }
 

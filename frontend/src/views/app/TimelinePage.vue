@@ -138,49 +138,54 @@ const handleEditFavorite = async (favorite) => {
 }
 
 // New handlers for favorites with timeline regeneration modal
-const handleAddPointWithRegeneration = async ({ favorite, onComplete, onError }) => {
+const handleAddPointWithRegeneration = async ({ favorite, onComplete, onError, onJobCreated }) => {
   try {
-    // Add the favorite point (this triggers timeline regeneration on backend)
-    await favoritesStore.addPointToFavorites(
+    // Add the favorite point (this triggers timeline regeneration on backend and returns job ID)
+    const jobId = await favoritesStore.addPointToFavorites(
       favorite.name,
       favorite.lat,
       favorite.lon
     )
 
+    // Pass job ID to TimelineMap for progress tracking
+    if (jobId && onJobCreated) {
+      onJobCreated(jobId)
+    }
+
     if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
       await fetchTimelineData(dateRange.value[0], dateRange.value[1])
     }
-    
+
     // Show success message
     toast.add({
       severity: 'success',
       summary: 'Favorite Added',
-      detail: 'Your favorite point has been added and timeline has been regenerated with the latest data.',
+      detail: 'Your favorite point has been added and timeline regeneration has been initiated.',
       life: 5000
     })
-    
+
     // Close the modal
     onComplete()
   } catch (error) {
     console.error('Error adding point to favorites:', error)
-    
+
     const errorMessage = error.response?.data?.message || error.message || 'Could not add the point to your favorites'
     toast.add({
-      severity: 'error', 
+      severity: 'error',
       summary: 'Failed to Add Favorite',
       detail: errorMessage,
       life: 5000
     })
-    
+
     // Close the modal
     onError()
   }
 }
 
-const handleAddAreaWithRegeneration = async ({ favorite, onComplete, onError }) => {
+const handleAddAreaWithRegeneration = async ({ favorite, onComplete, onError, onJobCreated }) => {
   try {
-    // Add the favorite area (this triggers timeline regeneration on backend)
-    await favoritesStore.addAreaToFavorites(
+    // Add the favorite area (this triggers timeline regeneration on backend and returns job ID)
+    const jobId = await favoritesStore.addAreaToFavorites(
       favorite.name,
       favorite.northEastLat,
       favorite.northEastLon,
@@ -188,10 +193,15 @@ const handleAddAreaWithRegeneration = async ({ favorite, onComplete, onError }) 
       favorite.southWestLon
     )
 
+    // Pass job ID to TimelineMap for progress tracking
+    if (jobId && onJobCreated) {
+      onJobCreated(jobId)
+    }
+
     if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
       await fetchTimelineData(dateRange.value[0], dateRange.value[1])
     }
-    
+
     // Show success message
     toast.add({
       severity: 'success',
@@ -199,48 +209,53 @@ const handleAddAreaWithRegeneration = async ({ favorite, onComplete, onError }) 
       detail: 'Your favorite area has been added and timeline has been regenerated with the latest data.',
       life: 5000
     })
-    
+
     // Close the modal
     onComplete()
   } catch (error) {
     console.error('Error adding area to favorites:', error)
-    
+
     const errorMessage = error.response?.data?.message || error.message || 'Could not add the area to your favorites'
     toast.add({
       severity: 'error',
-      summary: 'Failed to Add Favorite Area', 
+      summary: 'Failed to Add Favorite Area',
       detail: errorMessage,
       life: 5000
     })
-    
+
     // Close the modal
     onError()
   }
 }
 
-const handleDeleteFavoriteWithRegeneration = async ({ favorite, onComplete, onError }) => {
+const handleDeleteFavoriteWithRegeneration = async ({ favorite, onComplete, onError, onJobCreated }) => {
   try {
-    // Delete the favorite (this triggers timeline regeneration on backend)
-    await favoritesStore.deleteFavorite(favorite.id)
+    // Delete the favorite (this triggers timeline regeneration on backend and returns job ID)
+    const jobId = await favoritesStore.deleteFavorite(favorite.id)
+
+    // Pass job ID to TimelineMap for progress tracking
+    if (jobId && onJobCreated) {
+      onJobCreated(jobId)
+    }
 
     // Refresh timeline data using existing function with proper error handling
     if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
       await fetchTimelineData(dateRange.value[0], dateRange.value[1])
     }
-    
+
     // Show success message
     toast.add({
       severity: 'success',
       summary: 'Favorite Deleted',
-      detail: 'Your favorite location has been deleted and timeline has been regenerated with the latest data.',
+      detail: 'Your favorite location has been deleted and timeline regeneration has been initiated.',
       life: 5000
     })
-    
+
     // Close the modal
     onComplete()
   } catch (error) {
     console.error('Error deleting favorite:', error)
-    
+
     const errorMessage = error.response?.data?.message || error.message || 'Could not delete the favorite location'
     toast.add({
       severity: 'error',
@@ -248,7 +263,7 @@ const handleDeleteFavoriteWithRegeneration = async ({ favorite, onComplete, onEr
       detail: errorMessage,
       life: 5000
     })
-    
+
     // Close the modal
     onError()
   }

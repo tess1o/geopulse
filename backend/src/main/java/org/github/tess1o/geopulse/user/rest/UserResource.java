@@ -127,7 +127,19 @@ public class UserResource {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Updating timeline preferences for user {}", userId);
         log.debug("Timeline preferences: {}", request);
-        userService.updateTimelinePreferences(userId, request);
+
+        // Update preferences within transaction
+        String changeType = userService.updateTimelinePreferences(userId, request);
+
+        // Create async job AFTER transaction commits (if needed)
+        if ("structural".equals(changeType)) {
+            UUID jobId = userService.createTimelineRegenerationJob(userId);
+            if (jobId != null) {
+                return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
+            }
+        }
+
+        // No job created (classification-only or no changes)
         return Response.noContent().build();
     }
 
@@ -136,7 +148,19 @@ public class UserResource {
     @Path("/preferences/timeline")
     public Response resetPreferencesToDefaults() {
         UUID userId = currentUserService.getCurrentUserId();
-        userService.resetTimelinePreferencesToDefaults(userId);
+
+        // Reset preferences within transaction
+        boolean needsRegeneration = userService.resetTimelinePreferencesToDefaults(userId);
+
+        // Create async job AFTER transaction commits
+        if (needsRegeneration) {
+            UUID jobId = userService.createTimelineRegenerationJob(userId);
+            if (jobId != null) {
+                return Response.ok(ApiResponse.success(java.util.Map.of("jobId", jobId.toString()))).build();
+            }
+        }
+
+        // No job created
         return Response.noContent().build();
     }
 
