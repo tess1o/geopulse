@@ -16,6 +16,8 @@ PLATFORMS := linux/amd64,linux/arm64
 # Build both backend and frontend images for multiple architectures
 .PHONY: all
 all: build-backend-jvm build-backend-native build-backend-native-raspi build-frontend openapi publish-helm
+.PHONY: build-all
+build-all: build-backend-jvm build-backend-native build-backend-native-raspi build-frontend
 
 # ==========================
 # Create or reuse builder
