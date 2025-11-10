@@ -141,6 +141,7 @@ openapi:
 
 .PHONY: publish-helm
 publish-helm:
+    export GI
 	@echo "📦 Packaging Helm chart..."
 	helm package helm/geopulse -d charts
 
