@@ -656,6 +656,7 @@ const initAreaDrawControl = () => {
 
 // Dialog handlers
 const onFavoritePointSubmit = async (favoriteData) => {
+  const pointLatLng = dialogState.value.addToFavoritesLatLng
   // Check if there's already an active job
   const activeJobCheck = await checkActiveJob()
 
@@ -675,13 +676,21 @@ const onFavoritePointSubmit = async (favoriteData) => {
     return
   }
 
-  console.log(favoriteData);
-  console.log(dialogState.value);
+  if (!pointLatLng) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Could not add favorite. Location data was missing. Please try again.',
+      life: 4000
+    })
+    closeAddFavoritePoint()
+    return
+  }
 
   const newFavorite = {
     name: favoriteData,
-    lat: dialogState.value.addToFavoritesLatLng.lat,
-    lon: dialogState.value.addToFavoritesLatLng.lng,
+    lat: pointLatLng.lat,
+    lon: pointLatLng.lng,
     type: 'point'
   }
 
