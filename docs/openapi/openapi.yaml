@@ -632,6 +632,11 @@ components:
           type: string
         enabled:
           type: boolean
+    UpdatePlaceNameRequest:
+      type: object
+      properties:
+        name:
+          type: string
     UpdateProfileRequest:
       type: object
       properties:
@@ -2564,6 +2569,149 @@ paths:
       summary: Handle Own Tracks
       tags:
       - Own Tracks Resource
+  /api/place-details/{type}/{id}:
+    put:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlaceNameRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Place Name
+      tags:
+      - Place Details Resource
+      security:
+      - jwt: []
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Place Details
+      tags:
+      - Place Details Resource
+      security:
+      - jwt: []
+  /api/place-details/{type}/{id}/visits:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          format: int32
+          default: 0
+          type: integer
+      - name: size
+        in: query
+        schema:
+          format: int32
+          default: 50
+          type: integer
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortDirection
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Place Visits
+      tags:
+      - Place Details Resource
+      security:
+      - jwt: []
+  /api/place-details/{type}/{id}/visits/export:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortDirection
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Export Place Visits
+      tags:
+      - Place Details Resource
+      security:
+      - jwt: []
   /api/share-links:
     get:
       responses:
@@ -2766,6 +2914,54 @@ paths:
         "403":
           description: Not Allowed
       summary: Get Timeline
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+  /api/streaming-timeline/jobs/active:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Active Job
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+  /api/streaming-timeline/jobs/history:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Job History
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+  /api/streaming-timeline/jobs/{jobId}:
+    get:
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Job Progress
       tags:
       - Streaming Timeline Resource
       security:
