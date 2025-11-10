@@ -1,10 +1,14 @@
 package org.github.tess1o.geopulse.streaming.service.trips;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Service for calculating GPS-based statistics from GPS point sequences.
@@ -14,6 +18,9 @@ import java.util.List;
 @Slf4j
 public class GpsStatisticsCalculator {
 
+    @Inject
+    GpsPointRepository gpsPointRepository;
+
     private static final double ACCURACY_THRESHOLD_METERS = 50.0; // GPS points with accuracy > 50m are considered low quality
 
     /**
@@ -22,6 +29,13 @@ public class GpsStatisticsCalculator {
      * @param gpsPoints list of GPS points with speed and accuracy data
      * @return GPS statistics object
      */
+
+    public TripGpsStatistics calculateStatistics(UUID userId, Instant startTime, Instant endTime) {
+        List<GPSPoint> points = gpsPointRepository.findEssentialPointsInInterval(userId, startTime, endTime);
+        return calculateStatistics(points);
+
+    }
+
     public TripGpsStatistics calculateStatistics(List<GPSPoint> gpsPoints) {
         if (gpsPoints == null || gpsPoints.isEmpty()) {
             return TripGpsStatistics.empty();

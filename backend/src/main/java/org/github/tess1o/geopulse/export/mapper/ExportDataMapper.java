@@ -95,16 +95,6 @@ public class ExportDataMapper {
                 .duration(trip.getTripDuration()) // Duration in seconds
                 .transportMode(trip.getMovementType());
 
-        // Convert LineString path to coordinate array
-        if (trip.getPath() != null) {
-            List<List<Double>> pathCoordinates = new ArrayList<>();
-            Coordinate[] coordinates = trip.getPath().getCoordinates();
-            for (Coordinate coordinate : coordinates) {
-                pathCoordinates.add(Arrays.asList(coordinate.x, coordinate.y)); // [longitude, latitude]
-            }
-            builder.path(pathCoordinates);
-        }
-
         return builder.build();
     }
 
@@ -115,30 +105,6 @@ public class ExportDataMapper {
                 .endTime(dataGap.getEndTime())
                 .durationSeconds(dataGap.getDurationSeconds())
                 .createdAt(dataGap.getCreatedAt())
-                .build();
-    }
-
-    public TimelineDataDto toTimelineDataDto(List<TimelineStayEntity> stays, List<TimelineTripEntity> trips, List<TimelineDataGapEntity> dataGaps, ExportJob job) {
-        List<TimelineDataDto.StayDto> stayDtos = stays.stream()
-                .map(this::toStayDto)
-                .collect(Collectors.toList());
-
-        List<TimelineDataDto.TripDto> tripDtos = trips.stream()
-                .map(this::toTripDto)
-                .collect(Collectors.toList());
-
-        List<TimelineDataDto.DataGapDto> dataGapDtos = dataGaps.stream()
-                .map(this::toDataGapDto)
-                .collect(Collectors.toList());
-
-        return TimelineDataDto.builder()
-                .dataType("timeline")
-                .exportDate(Instant.now())
-                .startDate(job.getDateRange().getStartDate())
-                .endDate(job.getDateRange().getEndDate())
-                .stays(stayDtos)
-                .trips(tripDtos)
-                .dataGaps(dataGapDtos)
                 .build();
     }
 
@@ -235,35 +201,35 @@ public class ExportDataMapper {
     }
 
     public ReverseGeocodingDataDto.ReverseGeocodingLocationDto toReverseGeocodingLocationDto(ReverseGeocodingLocationEntity location) {
-        ReverseGeocodingDataDto.ReverseGeocodingLocationDto.ReverseGeocodingLocationDtoBuilder builder = 
-            ReverseGeocodingDataDto.ReverseGeocodingLocationDto.builder()
-                .id(location.getId())
-                .displayName(location.getDisplayName())
-                .providerName(location.getProviderName())
-                .createdAt(location.getCreatedAt())
-                .lastAccessedAt(location.getLastAccessedAt())
-                .city(location.getCity())
-                .country(location.getCountry());
+        ReverseGeocodingDataDto.ReverseGeocodingLocationDto.ReverseGeocodingLocationDtoBuilder builder =
+                ReverseGeocodingDataDto.ReverseGeocodingLocationDto.builder()
+                        .id(location.getId())
+                        .displayName(location.getDisplayName())
+                        .providerName(location.getProviderName())
+                        .createdAt(location.getCreatedAt())
+                        .lastAccessedAt(location.getLastAccessedAt())
+                        .city(location.getCity())
+                        .country(location.getCountry());
 
         // Handle request coordinates
         if (location.getRequestCoordinates() != null) {
             builder.requestLatitude(location.getRequestCoordinates().getY())
-                   .requestLongitude(location.getRequestCoordinates().getX());
+                    .requestLongitude(location.getRequestCoordinates().getX());
         }
 
         // Handle result coordinates
         if (location.getResultCoordinates() != null) {
             builder.resultLatitude(location.getResultCoordinates().getY())
-                   .resultLongitude(location.getResultCoordinates().getX());
+                    .resultLongitude(location.getResultCoordinates().getX());
         }
 
         // Handle bounding box
         if (location.getBoundingBox() != null) {
             Envelope env = location.getBoundingBox().getEnvelopeInternal();
             builder.boundingBoxNorthEastLatitude(env.getMaxY())
-                   .boundingBoxNorthEastLongitude(env.getMaxX())
-                   .boundingBoxSouthWestLatitude(env.getMinY())
-                   .boundingBoxSouthWestLongitude(env.getMinX());
+                    .boundingBoxNorthEastLongitude(env.getMaxX())
+                    .boundingBoxSouthWestLatitude(env.getMinY())
+                    .boundingBoxSouthWestLongitude(env.getMinX());
         }
 
         return builder.build();

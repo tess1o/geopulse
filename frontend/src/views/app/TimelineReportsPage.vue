@@ -316,6 +316,12 @@ const exportAllData = async () => {
   }
 }
 
+const handleRowSelect = (rowData) => {
+  // This method is called when a row is selected in any of the tables
+  // The child tables handle their own dialogs, so we just log for debugging
+  console.log('Row selected:', rowData)
+}
+
 // Initialize when date range changes
 watch(dateRange, async (newValue) => {
   if (newValue && isValidRange.value) {

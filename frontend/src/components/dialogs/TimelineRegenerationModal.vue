@@ -45,7 +45,13 @@
             <!-- GPS Loading -->
             <div v-if="jobProgress.details.gpsPointsLoaded" class="detail-item">
               <i class="pi pi-map-marker"></i>
-              <span>{{ jobProgress.details.gpsPointsLoaded.toLocaleString() }} / {{ jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }} GPS points</span>
+              <span>{{ jobProgress.details.gpsPointsLoaded.toLocaleString() }} / {{ jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }} GPS points loaded</span>
+            </div>
+
+            <!-- GPS Processing (State Machine) -->
+            <div v-if="jobProgress.details.processedPoints !== undefined" class="detail-item">
+              <i class="pi pi-cog"></i>
+              <span>{{ jobProgress.details.processedPoints.toLocaleString() }} / {{ jobProgress.details.totalPoints?.toLocaleString() || '?' }} points processed</span>
             </div>
 
             <!-- Geocoding Summary -->

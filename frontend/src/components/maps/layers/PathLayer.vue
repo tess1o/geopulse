@@ -1,20 +1,23 @@
 <template>
   <BaseLayer
-    ref="baseLayerRef"
-    :map="map"
-    :visible="visible"
-    @layer-ready="handleLayerReady"
+      ref="baseLayerRef"
+      :map="map"
+      :visible="visible"
+      @layer-ready="handleLayerReady"
   />
 </template>
 
 <script setup>
-import { ref, watch, computed, readonly } from 'vue'
+import {ref, watch, computed, readonly} from 'vue'
 import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
-import { createHighlightedPathStartMarker, createHighlightedPathEndMarker } from '@/utils/mapHelpers'
+import {createHighlightedPathStartMarker, createHighlightedPathEndMarker} from '@/utils/mapHelpers'
 import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
-import { useTimezone } from '@/composables/useTimezone'
+import {useTimezone} from '@/composables/useTimezone'
 
+import {useLocationStore} from '@/stores/location'  // Add import at top
+
+const locationStore = useLocationStore()
 const timezone = useTimezone()
 
 const props = defineProps({
@@ -144,7 +147,7 @@ watch(() => props.pathData, () => {
   if (baseLayerRef.value?.isReady) {
     renderPaths()
   }
-}, { deep: true })
+}, {deep: true})
 
 // Trip-specific state
 const tripPathLayer = ref(null)
@@ -166,39 +169,38 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
     baseLayerRef.value?.removeFromLayer(tripEndMarker.value)
     tripEndMarker.value = null
   }
-  
-  if (newTrip && newTrip.type === 'trip' && newTrip.path && newTrip.path.length > 1) {
-    
-    // Create trip path coordinates
-    const tripCoords = newTrip.path.map(point => [point.latitude, point.longitude])
-    
-    // Create highlighted trip polyline
+
+  if (newTrip && newTrip.type === 'trip') {
+    const tripPath = reconstructTripPath(newTrip)
+    if (!tripPath || tripPath.length < 2) {
+      console.warn('Could not reconstruct trip path - insufficient GPS points')
+      return
+    }
+
+    const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
+
     tripPathLayer.value = L.polyline(tripCoords, {
       color: '#ff6b6b',
       weight: 6,
       opacity: 1,
       dashArray: '10, 5'
     })
-    
-    // Add to layer
-    baseLayerRef.value?.addToLayer(tripPathLayer.value)
-    
-    // Add start and end markers using centralized functions
-    const startPoint = newTrip.path[0]
-    const endPoint = newTrip.path[newTrip.path.length - 1]
-    
+
+    const startPoint = tripPath[0]
+    const endPoint = tripPath[tripPath.length - 1]
+
     tripStartMarker.value = createHighlightedPathStartMarker(
-      startPoint.latitude, 
-      startPoint.longitude, 
-      true // instant appearance
+        startPoint.latitude,
+        startPoint.longitude,
+        true // instant appearance
     )
-    
+
     tripEndMarker.value = createHighlightedPathEndMarker(
-      endPoint.latitude, 
-      endPoint.longitude, 
-      true // instant appearance
+        endPoint.latitude,
+        endPoint.longitude,
+        true // instant appearance
     )
-    
+
     // Add popup to trip path
     const tripInfo = `
       <div class="trip-popup">
@@ -216,11 +218,11 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
         </div>
       </div>
     `
-    
+
     // Create detailed tooltips for start and end markers
     const startTime = timezone.fromUtc(newTrip.timestamp);
     const endTime = startTime.add(newTrip.tripDuration, 'second');
-    
+
     const startInfo = `
       <div class="trip-popup">
         <div class="trip-title trip-start">
@@ -260,7 +262,7 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
         </div>
       </div>
     `
-    
+
     // Add click handlers to trip markers
     tripStartMarker.value.on('click', (e) => {
       emit('trip-marker-click', {
@@ -276,11 +278,11 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
     tripStartMarker.value.on('mouseout', function (e) {
       this.closePopup();
     });
-    
+
     tripEndMarker.value.on('click', (e) => {
       emit('trip-marker-click', {
         tripData: newTrip,
-        markerType: 'end', 
+        markerType: 'end',
         event: e
       })
     })
@@ -291,36 +293,60 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
     tripEndMarker.value.on('mouseout', function (e) {
       this.closePopup();
     });
-    
+
     tripPathLayer.value.bindPopup(tripInfo)
     tripStartMarker.value.bindPopup(startInfo)
     tripEndMarker.value.bindPopup(endInfo)
-    
+
+    // Add all layers to the map
+    baseLayerRef.value?.addToLayer(tripPathLayer.value)
     baseLayerRef.value?.addToLayer(tripStartMarker.value)
     baseLayerRef.value?.addToLayer(tripEndMarker.value)
-    
+
     // Zoom to trip bounds
     if (props.map) {
       const bounds = L.latLngBounds(tripCoords)
-      props.map.fitBounds(bounds, { 
+      props.map.fitBounds(bounds, {
         padding: [20, 20],
         animate: true,
         duration: 0.8
       })
-      
+
       // Open trip info popup after zoom
       setTimeout(() => {
         tripPathLayer.value?.openPopup()
       }, 500)
     }
   }
-}, { deep: true })
+}, {deep: true})
+
+const reconstructTripPath = (trip) => {
+  if (!trip || !props.pathData || props.pathData.length === 0) {
+    return null
+  }
+
+  // Calculate trip end time
+  const tripStartTime = new Date(trip.timestamp)
+  const tripEndTime = new Date(tripStartTime.getTime() + (trip.tripDuration * 1000))
+
+  // Filter GPS points by trip time range
+  // pathData is array of arrays (one array per "segment")
+  // Flatten and filter
+  const allPoints = props.pathData.flat()
+
+  const tripPoints = allPoints.filter(point => {
+    const pointTime = new Date(point.timestamp)
+    return pointTime >= tripStartTime && pointTime <= tripEndTime
+  })
+
+  return tripPoints
+}
 
 watch(() => props.pathOptions, () => {
   if (baseLayerRef.value?.isReady) {
     renderPaths()
   }
-}, { deep: true })
+}, {deep: true})
 
 // Expose methods
 defineExpose({

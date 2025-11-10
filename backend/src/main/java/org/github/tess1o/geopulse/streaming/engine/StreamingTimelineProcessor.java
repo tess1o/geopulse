@@ -3,11 +3,14 @@ package org.github.tess1o.geopulse.streaming.engine;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
+import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Duration;
 import java.util.*;
@@ -39,6 +42,13 @@ public class StreamingTimelineProcessor {
     @Inject
     FavoriteLocationService favoriteLocationService;
 
+    @Inject
+    TimelineJobProgressService jobProgressService;
+
+    @Inject
+    GpsPointRepository gpsPointRepository;
+
+
     /**
      * Process GPS points to generate timeline events (stays, trips, data gaps).
      *
@@ -50,40 +60,58 @@ public class StreamingTimelineProcessor {
      *   <li>Populates location data for finalized stays</li>
      * </ol>
      *
-     * @param newPoints new GPS points to process
+     * @param newPoints new GPS points to process (can be streaming iterable for memory efficiency)
      * @param config    timeline configuration with accuracy thresholds
      * @param userId    user identifier for location resolution
      * @return list of finalized timeline events
      */
-    public List<TimelineEvent> processPoints(List<GPSPoint> newPoints, TimelineConfig config, UUID userId) {
+    public List<TimelineEvent> processPoints(Iterable<GPSPoint> newPoints, TimelineConfig config, UUID userId) {
         return processPoints(newPoints, config, userId, null);
     }
 
     /**
      * Process GPS points to generate timeline events (stays, trips, data gaps) with progress tracking.
      *
-     * @param newPoints new GPS points to process
+     * @param newPoints new GPS points to process (can be streaming iterable for memory efficiency)
      * @param config    timeline configuration with accuracy thresholds
      * @param userId    user identifier for location resolution
      * @param jobId     optional job ID for progress tracking
      * @return list of finalized timeline events
      */
-    public List<TimelineEvent> processPoints(List<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId) {
+    public List<TimelineEvent> processPoints(Iterable<GPSPoint> newPoints, TimelineConfig config, UUID userId, UUID jobId) {
         UserState userState = new UserState();
         List<TimelineEvent> finalizedEvents = new ArrayList<>();
 
         // Pre-load user's favorite areas for stay detection enhancement
         List<FavoriteAreaDto> userFavoriteAreas = loadUserFavoriteAreas(userId);
 
-        // Filter points by accuracy before processing
-        List<GPSPoint> filteredNewPoints = filterPointsByAccuracy(newPoints, config);
+        // Determine total point count for progress tracking
+        Long totalPoints = null;
+        if (jobId != null && newPoints instanceof StreamingGpsIterable) {
+            StreamingGpsIterable streamingIterable = (StreamingGpsIterable) newPoints;
+            totalPoints = streamingIterable.getTotalCount();
+        }
 
+        final int progressUpdateThreshold = 5000;
+        int processedCount = 0;
 
-        // 2. Process new points (with gap detection, except for first point after context)
-        for (GPSPoint point : filteredNewPoints) {
-            // Skip gap detection for first new point if we had context points 
-            // (to avoid detecting gap in deleted event period)
-            processPoint(point, userState, config, finalizedEvents, userFavoriteAreas);
+        // Process points with inline accuracy filtering (streaming-friendly)
+        for (GPSPoint point : newPoints) {
+            processedCount++;
+            // Apply accuracy filter inline to support streaming without loading all points
+            if (shouldIncludePoint(point, config)) {
+                processPoint(point, userState, config, finalizedEvents, userFavoriteAreas);
+            }
+
+            // Update progress periodically
+            if (jobId != null && processedCount % progressUpdateThreshold == 0) {
+                updateProcessingProgress(jobId, processedCount, totalPoints);
+            }
+        }
+
+        // Final progress update to ensure we capture the last batch
+        if (jobId != null && totalPoints != null) {
+            updateProcessingProgress(jobId, processedCount, totalPoints);
         }
 
         // 3. Finalize any remaining active event
@@ -96,6 +124,42 @@ public class StreamingTimelineProcessor {
         finalizationService.populateStayLocations(finalizedEvents, userId, jobId);
 
         return finalizedEvents;
+    }
+
+    /**
+     * Update processing progress with detailed point counts.
+     *
+     * @param jobId          the job ID
+     * @param processedCount number of points processed so far
+     * @param totalPoints    total number of points to process (null if unknown)
+     */
+    private void updateProcessingProgress(UUID jobId, int processedCount, Long totalPoints) {
+        // Calculate percentage in the 40-70% range
+        int percentage;
+        Map<String, Object> details = new HashMap<>();
+
+        if (totalPoints != null && totalPoints > 0) {
+            // Calculate proportional progress from 40% to 70%
+            double progressRatio = (double) processedCount / totalPoints;
+            percentage = 40 + (int) (progressRatio * 30); // Maps 0-100% progress to 40-70%
+            percentage = Math.min(70, percentage); // Cap at 70%
+
+            details.put("processedPoints", processedCount);
+            details.put("totalPoints", totalPoints);
+            details.put("pointsRemaining", totalPoints - processedCount);
+        } else {
+            // Fallback when total is unknown
+            percentage = 40;
+            details.put("processedPoints", processedCount);
+        }
+
+        jobProgressService.updateProgress(
+            jobId,
+            "Processing GPS points through state machine",
+            4,
+            percentage,
+            details
+        );
     }
 
     /**
@@ -170,11 +234,11 @@ public class StreamingTimelineProcessor {
         double distance = centroid.distanceTo(point);
         double stayRadius = getStayRadius(config);
 
-        log.debug("POTENTIAL_STAY: point={}, centroid={}, distance={}, stayRadius={}",
+        log.trace("POTENTIAL_STAY: point={}, centroid={}, distance={}, stayRadius={}",
                 point.getTimestamp(), centroid.getTimestamp(), distance, stayRadius);
 
         if (distance > stayRadius) {
-            log.debug("Distance {} > stayRadius {} - checking favorite areas before transitioning to trip", distance, stayRadius);
+            log.trace("Distance {} > stayRadius {} - checking favorite areas before transitioning to trip", distance, stayRadius);
 
             // Before transitioning to trip, check if both points are within same favorite area
             FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
@@ -183,7 +247,7 @@ public class StreamingTimelineProcessor {
             if (currentPointArea != null && centroidArea != null &&
                     currentPointArea.getId() == centroidArea.getId()) {
                 // Both points within same favorite area - continue stay detection despite distance
-                log.debug("Points within same favorite area '{}' - continuing stay detection", currentPointArea.getName());
+                log.trace("Points within same favorite area '{}' - continuing stay detection", currentPointArea.getName());
                 userState.addActivePoint(point);
 
                 // Check duration for confirmation as normal
@@ -191,14 +255,14 @@ public class StreamingTimelineProcessor {
                 Duration minStayDuration = getMinStayDuration(config);
 
                 if (stayDuration.compareTo(minStayDuration) >= 0) {
-                    log.debug("CONFIRMED_STAY in favorite area: Duration {} >= min duration {}", stayDuration, minStayDuration);
+                    log.trace("CONFIRMED_STAY in favorite area: Duration {} >= min duration {}", stayDuration, minStayDuration);
                     userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
                 }
 
                 return ProcessingResult.withStateOnly(userState);
             } else {
                 // Points not in same favorite area - transition to trip as before
-                log.debug("Points not in same favorite area - transitioning to trip");
+                log.trace("Points not in same favorite area - transitioning to trip");
                 return transitionToTrip(point, userState);
             }
         } else {
@@ -209,11 +273,11 @@ public class StreamingTimelineProcessor {
             Duration stayDuration = calculateCurrentStayDuration(userState);
             Duration minStayDuration = getMinStayDuration(config);
 
-            log.debug("POTENTIAL_STAY: stayDuration={}, minStayDuration={}, activePoints={}",
+            log.trace("POTENTIAL_STAY: stayDuration={}, minStayDuration={}, activePoints={}",
                     stayDuration, minStayDuration, userState.getActivePoints().size());
 
             if (stayDuration.compareTo(minStayDuration) >= 0) {
-                log.debug("CONFIRMED_STAY: Duration {} >= min duration {}", stayDuration, minStayDuration);
+                log.trace("CONFIRMED_STAY: Duration {} >= min duration {}", stayDuration, minStayDuration);
                 userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
             }
 
@@ -231,7 +295,7 @@ public class StreamingTimelineProcessor {
         double stayRadius = getStayRadius(config);
 
         if (distance > stayRadius) {
-            log.debug("Distance {} > stayRadius {} in CONFIRMED_STAY - checking favorite areas", distance, stayRadius);
+            log.trace("Distance {} > stayRadius {} in CONFIRMED_STAY - checking favorite areas", distance, stayRadius);
 
             // Before finalizing stay, check if both points are within same favorite area
             FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
@@ -240,12 +304,12 @@ public class StreamingTimelineProcessor {
             if (currentPointArea != null && centroidArea != null &&
                     currentPointArea.getId() == centroidArea.getId()) {
                 // Both points within same favorite area - continue stay despite distance
-                log.debug("Still within same favorite area '{}' - continuing stay", currentPointArea.getName());
+                log.trace("Still within same favorite area '{}' - continuing stay", currentPointArea.getName());
                 userState.addActivePoint(point);
                 return ProcessingResult.withStateOnly(userState);
             } else {
                 // Points not in same favorite area - finalize stay and start trip as before
-                log.debug("User has moved out of favorite area - finalizing stay");
+                log.trace("User has moved out of favorite area - finalizing stay");
                 TimelineEvent finalizedStay = finalizationService.finalizeStayWithoutLocation(userState, config);
 
                 // Start new trip
@@ -415,36 +479,26 @@ public class StreamingTimelineProcessor {
     }
 
     /**
-     * Filter GPS points based on accuracy threshold to improve data quality.
+     * Check if a GPS point should be included based on accuracy threshold.
      * Points with accuracy exceeding the threshold are filtered out to prevent
      * unreliable GPS data from affecting timeline processing.
      *
-     * @param points the GPS points to filter
+     * @param point the GPS point to check
      * @param config timeline configuration containing accuracy threshold
-     * @return filtered list of GPS points with acceptable accuracy
+     * @return true if point should be included, false if it should be filtered out
      */
-    private List<GPSPoint> filterPointsByAccuracy(List<GPSPoint> points, TimelineConfig config) {
-        if (points == null || points.isEmpty()) {
-            return points;
+    private boolean shouldIncludePoint(GPSPoint point, TimelineConfig config) {
+        if (point == null) {
+            return false;
         }
 
         Double maxAccuracyThreshold = config.getStaypointMaxAccuracyThreshold();
         if (maxAccuracyThreshold == null || maxAccuracyThreshold <= 0) {
             // No filtering if threshold is not set or invalid
-            return points;
+            return true;
         }
 
-        List<GPSPoint> filteredPoints = points.stream()
-                .filter(point -> point.getAccuracy() <= maxAccuracyThreshold)
-                .toList();
-
-        if (filteredPoints.size() != points.size()) {
-            log.debug("Filtered {} GPS points due to poor accuracy (threshold: {}m). Remaining: {}/{}",
-                    points.size() - filteredPoints.size(), maxAccuracyThreshold,
-                    filteredPoints.size(), points.size());
-        }
-
-        return filteredPoints;
+        return point.getAccuracy() <= maxAccuracyThreshold;
     }
 
     /**

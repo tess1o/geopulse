@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,7 +29,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * This is for legitimate cases like drive→walk or walk→drive transitions.
      */
     @Override
-    public List<TimelineEvent> apply(List<TimelineEvent> events, TimelineConfig config) {
+    public List<TimelineEvent> apply(UUID userId, List<TimelineEvent> events, TimelineConfig config) {
         List<TimelineEvent> processedEvents = new ArrayList<>();
 
         Stay currentStay = null;
@@ -40,7 +41,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
                 // Process accumulated trips for multi-modal analysis
                 if (!tripSegment.isEmpty() && currentStay != null) {
-                    List<Trip> processedTrips = analyzeMultiModalSegment(tripSegment, config);
+                    List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
 
                     // Ensure at least one trip between stays for continuity
                     List<Trip> validTrips = processedTrips.stream()
@@ -69,7 +70,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
             } else {
                 if (!tripSegment.isEmpty()) {
-                    List<Trip> processedTrips = analyzeMultiModalSegment(tripSegment, config);
+                    List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
                     List<Trip> validTrips = processedTrips.stream()
                             .filter(trip -> isValidTrip(trip, config))
                             .collect(Collectors.toList());
@@ -82,7 +83,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         // Handle remaining trips
         if (!tripSegment.isEmpty()) {
-            List<Trip> processedTrips = analyzeMultiModalSegment(tripSegment, config);
+            List<Trip> processedTrips = analyzeMultiModalSegment(userId, tripSegment, config);
             List<Trip> validTrips = processedTrips.stream()
                     .filter(trip -> isValidTrip(trip, config))
                     .collect(Collectors.toList());
@@ -109,7 +110,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * Analyze trip segment for multi-modal patterns.
      * Only split if confident about legitimate mode changes.
      */
-    private List<Trip> analyzeMultiModalSegment(List<Trip> trips, TimelineConfig config) {
+    private List<Trip> analyzeMultiModalSegment(UUID userId, List<Trip> trips, TimelineConfig config) {
         if (trips.isEmpty()) {
             return new ArrayList<>();
         }
@@ -119,7 +120,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         }
 
         // Step 1: Merge consecutive same-type trips first to avoid fragmentation
-        List<Trip> condensedTrips = mergeConsecutiveSameTypeTrips(trips, config);
+        List<Trip> condensedTrips = mergeConsecutiveSameTypeTrips(userId, trips, config);
 
         if (condensedTrips.size() == 1) {
             return condensedTrips;
@@ -134,7 +135,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         } else {
             // Merge remaining trips
             log.debug("Multi algorithm: merging {} similar trips", condensedTrips.size());
-            Trip merged = mergeTripSegments(condensedTrips, config);
+            Trip merged = mergeTripSegments(userId, condensedTrips, config);
             return merged != null ? List.of(merged) : new ArrayList<>();
         }
     }
@@ -143,7 +144,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * Merge consecutive trips of the same type to eliminate fragmentation.
      * For example: [WALK, WALK, WALK, CAR] -> [WALK, CAR]
      */
-    private List<Trip> mergeConsecutiveSameTypeTrips(List<Trip> trips, TimelineConfig config) {
+    private List<Trip> mergeConsecutiveSameTypeTrips(UUID userId, List<Trip> trips, TimelineConfig config) {
         if (trips.isEmpty()) {
             return new ArrayList<>();
         }
@@ -159,7 +160,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                 currentType = trip.getTripType();
             } else {
                 // Different type - merge current group and start new one
-                Trip merged = mergeTripSegments(currentGroup, config);
+                Trip merged = mergeTripSegments(userId, currentGroup, config);
                 if (merged != null) {
                     result.add(merged);
                 }
@@ -171,7 +172,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
         // Merge final group
         if (!currentGroup.isEmpty()) {
-            Trip merged = mergeTripSegments(currentGroup, config);
+            Trip merged = mergeTripSegments(userId, currentGroup, config);
             if (merged != null) {
                 result.add(merged);
             }
@@ -213,8 +214,8 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         boolean legitimate = walkRatio >= MIN_MODE_CONTRIBUTION_RATIO && driveRatio >= MIN_MODE_CONTRIBUTION_RATIO;
 
         log.debug("Mode change analysis: walking={} ({}m, {:.1f}%), driving={} ({}m, {:.1f}%), legitimate={}",
-                walkingTrips, (long)totalWalkDistance, walkRatio * 100,
-                drivingTrips, (long)totalDriveDistance, driveRatio * 100, legitimate);
+                walkingTrips, (long) totalWalkDistance, walkRatio * 100,
+                drivingTrips, (long) totalDriveDistance, driveRatio * 100, legitimate);
 
         return legitimate;
     }

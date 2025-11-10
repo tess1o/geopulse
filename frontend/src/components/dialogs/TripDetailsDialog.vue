@@ -64,7 +64,7 @@
             </div>
             <div class="detail-item">
               <span class="detail-label">Route Points:</span>
-              <span class="detail-value">{{ trip?.path?.length || 0 }} points</span>
+              <span class="detail-value">{{ tripGpsPoints.length }} points</span>
             </div>
           </div>
 
@@ -119,9 +119,11 @@ import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
+import { useLocationStore } from '@/stores/location'
 
 const timezone = useTimezone()
 const toast = useToast()
+const locationStore = useLocationStore()
 
 const props = defineProps({
   visible: {
@@ -147,6 +149,7 @@ const internalVisible = computed({
 
 const mapId = ref(Date.now())
 const mapInstance = ref(null)
+const tripGpsPoints = ref([])
 
 const dialogTitle = computed(() => {
   if (!props.trip) return 'Trip Details'
@@ -223,24 +226,58 @@ const copyToClipboard = async (text) => {
   }
 }
 
-const handleMapReady = (map) => {
+const handleMapReady = async (map) => {
   mapInstance.value = map
-  
+
+  // Fetch GPS points for the trip
+  if (props.trip) {
+    await fetchTripGpsPoints()
+  }
+
   // Create PathLayer instance and add it to the map when trip data is available
   nextTick(() => {
-    if (props.trip?.path && props.trip.path.length > 0) {
+    if (tripGpsPoints.value.length > 0) {
       addPathToMap()
     }
   })
 }
 
+const fetchTripGpsPoints = async () => {
+  if (!props.trip?.timestamp || !props.trip?.tripDuration) {
+    tripGpsPoints.value = []
+    return
+  }
+
+  try {
+    const startTime = timezone.fromUtc(props.trip.timestamp)
+    const endTime = startTime.clone().add(props.trip.tripDuration, 'seconds')
+
+    // Fetch GPS points for the trip time range
+    await locationStore.fetchLocationPath(
+      startTime.toISOString(),
+      endTime.toISOString()
+    )
+
+    // Get the points from the store
+    tripGpsPoints.value = locationStore.getLocationPoints || []
+  } catch (error) {
+    console.error('Error fetching trip GPS points:', error)
+    tripGpsPoints.value = []
+    toast.add({
+      severity: 'warn',
+      summary: 'GPS Data Unavailable',
+      detail: 'Could not load GPS points for this trip',
+      life: 3000
+    })
+  }
+}
+
 const addPathToMap = () => {
-  if (!mapInstance.value || !props.trip?.path) return
+  if (!mapInstance.value || tripGpsPoints.value.length === 0) return
 
   try {
     // Create PathLayer with trip data
     const pathData = {
-      path: props.trip.path,
       color: getPathColor(props.trip.movementType),
       weight: 4,
       opacity: 0.8
@@ -248,7 +285,7 @@ const addPathToMap = () => {
 
     // Add path to map
     const pathLayer = new window.L.polyline(
-      props.trip.path.map(point => [point.latitude, point.longitude]),
+      tripGpsPoints.value.map(point => [point.latitude, point.longitude]),
       pathData
     ).addTo(mapInstance.value)
 
@@ -298,8 +335,9 @@ const getPathColor = (movementType) => {
 }
 
 // Watch for trip changes to update map
-watch(() => props.trip, (newTrip) => {
+watch(() => props.trip, async (newTrip) => {
   if (newTrip && mapInstance.value) {
+    await fetchTripGpsPoints()
     nextTick(() => {
       addPathToMap()
     })
@@ -307,9 +345,16 @@ watch(() => props.trip, (newTrip) => {
 }, { deep: true })
 
 // Reset map ID when dialog opens/closes to ensure fresh map
-watch(() => props.visible, (isVisible) => {
+watch(() => props.visible, async (isVisible) => {
   if (isVisible) {
     mapId.value = Date.now()
+    // Fetch GPS points when dialog opens
+    if (props.trip) {
+      await fetchTripGpsPoints()
+    }
+  } else {
+    // Clear GPS points when dialog closes
+    tripGpsPoints.value = []
   }
 })
 </script>

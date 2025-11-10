@@ -1,7 +1,10 @@
 package org.github.tess1o.geopulse.streaming.service.converters;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
+import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
@@ -10,17 +13,11 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
-import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
-import org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculator;
-import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
-import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.locationtech.jts.geom.Coordinate;
-
-import jakarta.persistence.EntityManager;
 
 import java.util.List;
 import java.util.UUID;
@@ -37,36 +34,11 @@ import java.util.stream.IntStream;
 public class StreamingTimelineConverter {
 
     private final EntityManager entityManager;
-    private final GpsStatisticsCalculator gpsStatisticsCalculator;
 
-    public StreamingTimelineConverter(EntityManager entityManager, 
-                                    GpsStatisticsCalculator gpsStatisticsCalculator) {
+    public StreamingTimelineConverter(EntityManager entityManager) {
         this.entityManager = entityManager;
-        this.gpsStatisticsCalculator = gpsStatisticsCalculator;
     }
 
-
-    /**
-     * Convert domain GPS point to shared GPS point interface for LineString conversion.
-     */
-    private GpsPoint convertDomainToSharedGpsPoint(GPSPoint domainPoint) {
-        return new org.github.tess1o.geopulse.shared.geo.GpsPoint() {
-            @Override
-            public double getLatitude() {
-                return domainPoint.getLatitude();
-            }
-
-            @Override
-            public double getLongitude() {
-                return domainPoint.getLongitude();
-            }
-
-            @Override
-            public java.time.Instant getTimestamp() {
-                return domainPoint.getTimestamp();
-            }
-        };
-    }
 
     /**
      * Convert TimelineStayLocationDTO to TimelineStayEntity using pre-loaded entity maps
@@ -83,7 +55,7 @@ public class StreamingTimelineConverter {
             UserEntity userRef,
             java.util.Map<Long, FavoritesEntity> favoriteMap,
             java.util.Map<Long, ReverseGeocodingLocationEntity> geocodingMap) {
-        
+
         if (stay == null) return null;
 
         TimelineStayEntity entity = new TimelineStayEntity();
@@ -145,29 +117,15 @@ public class StreamingTimelineConverter {
             entity.setEndPoint(GeoUtils.createPoint(endLocation.getLongitude(), endLocation.getLatitude()));
         }
 
-        // Convert path and calculate GPS statistics
-        List<GPSPoint> tripPath = trip.getPath();
-        if (tripPath != null && !tripPath.isEmpty()) {
-            // Convert domain GPS points to shared GPS points for LineString conversion
-            List<GpsPoint> sharedGpsPoints = tripPath.stream()
-                    .map(this::convertDomainToSharedGpsPoint)
-                    .toList();
-            entity.setPath(convertPathToLineString(sharedGpsPoints));
-
-            TripGpsStatistics stats = trip.getStatistics();
-
-            if (stats == null) {
-                stats = gpsStatisticsCalculator.calculateStatistics(tripPath);
-            }
-            // Calculate and store GPS statistics
-            if (stats.hasValidData()) {
-                entity.setAvgGpsSpeed(stats.avgGpsSpeed());
-                entity.setMaxGpsSpeed(stats.maxGpsSpeed());
-                entity.setSpeedVariance(stats.speedVariance());
-                entity.setLowAccuracyPointsCount(stats.lowAccuracyPointsCount());
-            } else {
-                log.debug("No valid GPS statistics calculated for trip with {} points", tripPath.size());
-            }
+        TripGpsStatistics stats = trip.getStatistics();
+        // Calculate and store GPS statistics
+        if (stats != null && stats.hasValidData()) {
+            entity.setAvgGpsSpeed(stats.avgGpsSpeed());
+            entity.setMaxGpsSpeed(stats.maxGpsSpeed());
+            entity.setSpeedVariance(stats.speedVariance());
+            entity.setLowAccuracyPointsCount(stats.lowAccuracyPointsCount());
+        } else {
+            log.debug("No valid GPS statistics calculated for trip");
         }
 
         return entity;
@@ -234,12 +192,6 @@ public class StreamingTimelineConverter {
                 .tripDuration(entity.getTripDuration()) // Already in seconds
                 .distanceMeters(entity.getDistanceMeters())
                 .movementType(entity.getMovementType());
-
-        // Convert LineString path to GPS points if available
-        if (entity.getPath() != null) {
-            List<GpsPoint> pathPoints = convertLineStringToGpsPoints(entity.getPath());
-            builder.path(pathPoints);
-        }
 
         return builder.build();
     }

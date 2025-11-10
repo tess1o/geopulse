@@ -64,7 +64,6 @@ public class TimelineDataDto {
          */
         private Long duration;
         private String transportMode;
-        private List<List<Double>> path; // Array of [longitude, latitude] coordinate pairs
     }
     
     @Data

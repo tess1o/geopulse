@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Post-processes streaming timeline events to implement proper trip detection algorithms.
@@ -27,13 +28,13 @@ public class StreamingTripPostProcessor {
      * @param config Timeline configuration with algorithm selection
      * @return Processed events with proper trip detection applied
      */
-    public List<TimelineEvent> postProcessTrips(List<TimelineEvent> events, TimelineConfig config) {
+    public List<TimelineEvent> postProcessTrips(UUID userId, List<TimelineEvent> events, TimelineConfig config) {
         String algorithm = config.getTripDetectionAlgorithm();
 
         log.debug("Post-processing trips with algorithm: {}", algorithm);
 
         StreamTripAlgorithm streamTripAlgorithm = algorithmFactory.get(algorithm);
-        return streamTripAlgorithm.apply(events, config);
+        return streamTripAlgorithm.apply(userId, events, config);
 
     }
 }

@@ -20,7 +20,7 @@ public class TimelineJobProgressService {
 
     private static final int TOTAL_STEPS = 9;
     private static final int MAX_JOBS_IN_MEMORY = 1000;
-    private static final Duration JOB_RETENTION_PERIOD = Duration.ofHours(1);
+    private static final Duration JOB_RETENTION_PERIOD = Duration.ofHours(24);
 
     /**
      * In-memory storage of job progress indexed by job ID

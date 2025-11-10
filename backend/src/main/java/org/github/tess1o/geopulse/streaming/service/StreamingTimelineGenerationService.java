@@ -5,15 +5,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
-import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
 import org.github.tess1o.geopulse.streaming.exception.TimelineGenerationLockException;
-import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
+import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
-import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.service.trips.StreamingTripPostProcessor;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
@@ -26,7 +24,6 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
 
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -66,13 +63,10 @@ public class StreamingTimelineGenerationService {
     StreamingDataGapService dataGapService;
 
     @Inject
-    PathSimplificationService pathSimplificationService;
-
-    @Inject
     BadgeRecalculationService badgeRecalculationService;
 
     @Inject
-    GpsDataLoader gpsDataLoader;
+    GpsPointRepository gpsPointRepository;
 
     @Inject
     TimelineJobProgressService jobProgressService;
@@ -122,12 +116,12 @@ public class StreamingTimelineGenerationService {
 
             TimelineConfig config = configurationProvider.getConfigurationForUser(userId);
 
-            // Step 3: Loading GPS data (30%)
-            updateProgress(jobId, "Loading GPS data from database", 3, 15, null);
+            // Step 3: Prepare GPS data processing (check count and create streaming iterator)
+            updateProgress(jobId, "Preparing GPS data processing", 3, 25, null);
 
-            List<GPSPoint> newPoints = gpsDataLoader.loadGpsPointsForTimeline(userId, regenerationStartTime, jobId);
+            Long estimatedCount = gpsPointRepository.estimatePointCount(userId, regenerationStartTime);
 
-            if (newPoints.isEmpty()) {
+            if (estimatedCount == null || estimatedCount == 0) {
                 log.debug("No points to process for user {} from timestamp {}", userId, regenerationStartTime);
                 updateProgress(jobId, "No GPS data to process", 9, 100, null);
                 completeJob(jobId);
@@ -136,39 +130,36 @@ public class StreamingTimelineGenerationService {
                 return;
             }
 
-            updateProgress(jobId, "Loaded " + newPoints.size() + " GPS points", 3, 30,
-                Map.of("totalGpsPoints", newPoints.size()));
+            log.info("Estimated {} GPS points to process for user {} using streaming iterator", estimatedCount, userId);
 
-            // Step 4: Processing points and geocoding (40-65%)
+            // Create streaming iterable (memory-efficient - no loading all points!)
+            StreamingGpsIterable gpsStream = new StreamingGpsIterable(gpsPointRepository, userId, regenerationStartTime, 10_000);
+
+            updateProgress(jobId, "Ready to process " + estimatedCount + " GPS points", 3, 35,
+                    Map.of("totalGpsPoints", estimatedCount));
+
+            // Step 4: Process GPS points using streaming approach (loads and processes in chunks)
             updateProgress(jobId, "Processing GPS points through state machine", 4, 40, null);
 
-            List<TimelineEvent> rawEvents = processor.processPoints(newPoints, config, userId, jobId);
+            // Process points using streaming iterator - loads data lazily in 10K chunks
+            List<TimelineEvent> rawEvents = processor.processPoints(gpsStream, config, userId, jobId);
             // Note: processor.processPoints() calls finalizationService.populateStayLocations(jobId)
             // which does the reverse geocoding! Progress updates happen inside LocationPointResolver.
 
             // Step 5: Post-processing trips (70%)
             updateProgress(jobId, "Post-processing trips and validating detections", 5, 70, null);
 
-            List<TimelineEvent> events = tripPostProcessor.postProcessTrips(rawEvents, config);
+            List<TimelineEvent> events = tripPostProcessor.postProcessTrips(userId, rawEvents, config);
 
             if (!events.isEmpty()) {
                 // Create RawTimeline from events to preserve rich GPS data
                 RawTimeline rawTimeline = RawTimeline.fromEvents(userId, events);
 
                 // Step 6: Merging and simplification (75%)
-                if (config.getIsMergeEnabled() || isPathSimplificationEnabled(config)) {
-                    updateProgress(jobId, "Merging and simplifying timeline", 6, 75, null);
-                }
-
                 // Apply merging on raw objects
                 if (config.getIsMergeEnabled()) {
+                    updateProgress(jobId, "Merging timeline", 6, 75, null);
                     rawTimeline = timelineMerger.mergeSameNamedLocations(config, rawTimeline);
-                }
-
-                // Apply path simplification on raw objects
-                if (isPathSimplificationEnabled(config)) {
-                    log.debug("Applying GPS path simplification for user {}", rawTimeline.getUserId());
-                    rawTimeline = applyPathSimplification(config, rawTimeline);
                 }
 
                 // Step 7: Persisting timeline to database (80%)
@@ -300,60 +291,6 @@ public class StreamingTimelineGenerationService {
 
         // Return early date to ensure we process all GPS points from the beginning
         return DEFAULT_START_DATE;
-    }
-
-    /**
-     * Apply path simplification to a RawTimeline, preserving rich GPS data.
-     */
-    private RawTimeline applyPathSimplification(TimelineConfig config, RawTimeline timeline) {
-        if (timeline == null || timeline.getTrips() == null || timeline.getTrips().isEmpty()) {
-            return timeline;
-        }
-
-        log.debug("Simplifying paths for {} trips in raw timeline", timeline.getTrips().size());
-
-        List<Trip> simplifiedTrips = timeline.getTrips().stream()
-                .map(trip -> simplifyTripPath(trip, config))
-                .toList();
-
-        return RawTimeline.builder()
-                .userId(timeline.getUserId())
-                .stays(timeline.getStays())
-                .trips(simplifiedTrips)
-                .dataGaps(timeline.getDataGaps())
-                .build();
-    }
-
-    /**
-     * Simplify the path of a single Trip domain object.
-     * Preserves rich GPS data (speed, accuracy) throughout simplification.
-     */
-    private Trip simplifyTripPath(Trip trip, TimelineConfig config) {
-
-        if (trip.getPath() == null || trip.getPath().isEmpty()) {
-            return trip; // No path to simplify
-        }
-
-        List<? extends GpsPoint> simplifiedPoints = pathSimplificationService.simplify(trip.getPath(), config);
-
-        @SuppressWarnings("unchecked")
-        List<GPSPoint> simplifiedDomainPoints = (List<GPSPoint>) simplifiedPoints;
-
-        return Trip.builder()
-                .startTime(trip.getStartTime())
-                .duration(trip.getDuration())
-                .path(simplifiedDomainPoints)
-                .statistics(trip.getStatistics())
-                .distanceMeters(trip.getDistanceMeters())
-                .tripType(trip.getTripType())
-                .build();
-    }
-
-    private boolean isPathSimplificationEnabled(TimelineConfig config) {
-        return config.getPathSimplificationEnabled() != null &&
-                config.getPathSimplificationEnabled() &&
-                config.getPathSimplificationTolerance() != null &&
-                config.getPathSimplificationTolerance() > 0;
     }
 
     private boolean acquireLock(UUID userId) {
