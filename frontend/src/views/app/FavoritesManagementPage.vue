@@ -1,227 +1,230 @@
 <template>
   <AppLayout variant="default">
     <PageContainer
-      title="Favorite Locations Management"
-      subtitle="View, manage, and organize your favorite places"
-      :loading="isLoading"
-      variant="fullwidth"
+        title="Favorite Locations Management"
+        subtitle="View, manage, and organize your favorite places"
+        :loading="isLoading"
+        variant="fullwidth"
     >
-    <template #actions>
-      <div class="header-actions">
-        <span class="header-info">Right-click on map to add favorites</span>
-      </div>
-    </template>
+      <template #actions>
+        <div class="header-actions">
+          <span class="header-info">Right-click on map to add favorites</span>
+        </div>
+      </template>
 
-    <!-- Map Section -->
-    <BaseCard class="map-section">
-      <div class="map-header">
-        <h3 class="map-title">Favorites Map</h3>
-        <span class="map-subtitle">{{ totalRecords }} favorite{{ totalRecords !== 1 ? 's' : '' }} on map</span>
-      </div>
-      <div class="map-container">
-        <div ref="mapElement" class="map-element"></div>
-      </div>
-    </BaseCard>
+      <!-- Map Section -->
+      <BaseCard class="map-section">
+        <div class="map-header">
+          <h3 class="map-title">Favorites Map</h3>
+          <span class="map-subtitle">{{ totalRecords }} favorite{{ totalRecords !== 1 ? 's' : '' }} on map</span>
+        </div>
+        <div class="map-container">
+          <div ref="mapElement" class="map-element"></div>
+        </div>
+      </BaseCard>
 
-    <!-- Filters -->
-    <BaseCard class="filter-section">
-      <div class="filter-controls">
-        <div class="filter-group">
-          <label class="filter-label">Type:</label>
-          <Select
-            v-model="selectedType"
-            :options="typeOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="All Types"
-            class="type-select"
-            @change="handleFilterChange"
+      <!-- Filters -->
+      <BaseCard class="filter-section">
+        <div class="filter-controls">
+          <div class="filter-group">
+            <label class="filter-label">Type:</label>
+            <Select
+                v-model="selectedType"
+                :options="typeOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="All Types"
+                class="type-select"
+                @change="handleFilterChange"
+            />
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Search:</label>
+            <InputText
+                v-model="searchText"
+                placeholder="Search by name or location"
+                class="search-input"
+                @input="handleSearchChange"
+            />
+          </div>
+          <Button
+              label="Clear Filters"
+              severity="secondary"
+              size="small"
+              @click="clearFilters"
+              :disabled="!hasActiveFilters"
           />
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Search:</label>
-          <InputText
-            v-model="searchText"
-            placeholder="Search by name or location"
-            class="search-input"
-            @input="handleSearchChange"
-          />
-        </div>
-        <Button
-          label="Clear Filters"
-          severity="secondary"
-          size="small"
-          @click="clearFilters"
-          :disabled="!hasActiveFilters"
-        />
-      </div>
-    </BaseCard>
+      </BaseCard>
 
-    <!-- Favorites Table -->
-    <BaseCard class="table-section">
-      <DataTable
-        :value="displayedFavorites"
-        :loading="tableLoading"
-        paginator
-        :rows="pageSize"
-        data-key="id"
-        responsive-layout="scroll"
-        class="favorites-table"
-      >
-        <template #header>
-          <div class="table-header">
-            <span class="table-title">Favorite Locations</span>
-          </div>
-        </template>
-
-        <template #empty>
-          <div class="empty-state">
-            <i class="pi pi-map-marker empty-icon"></i>
-            <h3>No Favorite Locations Found</h3>
-            <p>Add your first favorite location to get started.</p>
-          </div>
-        </template>
-
-        <Column field="name" header="Name" sortable class="name-col">
-          <template #body="slotProps">
-            <div class="name-cell">
-              <i :class="getFavoriteIcon(slotProps.data.type)" class="type-icon"></i>
-              <span>{{ slotProps.data.name }}</span>
+      <!-- Favorites Table -->
+      <BaseCard class="table-section">
+        <DataTable
+            :value="displayedFavorites"
+            :loading="tableLoading"
+            paginator
+            :rows="pageSize"
+            data-key="id"
+            responsive-layout="scroll"
+            class="favorites-table"
+        >
+          <template #header>
+            <div class="table-header">
+              <span class="table-title">Favorite Locations</span>
             </div>
           </template>
-        </Column>
 
-        <Column field="type" header="Type" sortable class="type-col" v-if="!isMobile">
-          <template #body="slotProps">
-            <Tag
-              :value="slotProps.data.type"
-              :severity="getTypeSeverity(slotProps.data.type)"
-              class="type-tag"
-            />
+          <template #empty>
+            <div class="empty-state">
+              <i class="pi pi-map-marker empty-icon"></i>
+              <h3>No Favorite Locations Found</h3>
+              <p>Add your first favorite location to get started.</p>
+            </div>
           </template>
-        </Column>
 
-        <Column header="Location" class="location-col" v-if="!isMobile">
-          <template #body="slotProps">
-            <div class="location-cell">
+          <Column field="name" header="Name" sortable class="name-col">
+            <template #body="slotProps">
+              <div class="name-cell">
+                <i :class="getFavoriteIcon(slotProps.data.type)" class="type-icon"></i>
+                <span>{{ slotProps.data.name }}</span>
+              </div>
+            </template>
+          </Column>
+
+          <Column field="type" header="Type" sortable class="type-col" v-if="!isMobile">
+            <template #body="slotProps">
+              <Tag
+                  :value="slotProps.data.type"
+                  :severity="getTypeSeverity(slotProps.data.type)"
+                  class="type-tag"
+              />
+            </template>
+          </Column>
+
+          <Column header="Location" class="location-col" v-if="!isMobile">
+            <template #body="slotProps">
+              <div class="location-cell">
               <span v-if="slotProps.data.type === 'POINT'">
                 {{ formatCoordinates(slotProps.data) }}
               </span>
-              <span v-else>
+                <span v-else>
                 Area ({{ formatAreaBounds(slotProps.data) }})
               </span>
-            </div>
-          </template>
-        </Column>
+              </div>
+            </template>
+          </Column>
 
-        <Column field="city" header="City" sortable class="city-col" v-if="!isMobile && !isTablet">
-          <template #body="slotProps">
-            <span v-if="slotProps.data.city">{{ slotProps.data.city }}</span>
-            <span v-else class="null-value">-</span>
-          </template>
-        </Column>
+          <Column field="city" header="City" sortable class="city-col" v-if="!isMobile && !isTablet">
+            <template #body="slotProps">
+              <span v-if="slotProps.data.city">{{ slotProps.data.city }}</span>
+              <span v-else class="null-value">-</span>
+            </template>
+          </Column>
 
-        <Column field="country" header="Country" sortable class="country-col" v-if="!isMobile && !isTablet">
-          <template #body="slotProps">
-            <span v-if="slotProps.data.country">{{ slotProps.data.country }}</span>
-            <span v-else class="null-value">-</span>
-          </template>
-        </Column>
+          <Column field="country" header="Country" sortable class="country-col" v-if="!isMobile && !isTablet">
+            <template #body="slotProps">
+              <span v-if="slotProps.data.country">{{ slotProps.data.country }}</span>
+              <span v-else class="null-value">-</span>
+            </template>
+          </Column>
 
-        <Column header="Actions" class="actions-col">
-          <template #body="slotProps">
-            <div class="actions-buttons">
-              <Button
-                icon="pi pi-eye"
-                severity="primary"
-                size="small"
-                text
-                @click="viewDetails(slotProps.data)"
-                v-tooltip.top="'View Details'"
-                class="action-button view-button"
-              />
-              <Button
-                icon="pi pi-pencil"
-                severity="secondary"
-                size="small"
-                text
-                @click="editFavorite(slotProps.data)"
-                v-tooltip.top="'Edit'"
-                class="action-button edit-button"
-              />
-              <Button
-                icon="pi pi-trash"
-                severity="danger"
-                size="small"
-                text
-                @click="deleteFavorite(slotProps.data)"
-                v-tooltip.top="'Delete'"
-                class="action-button delete-button"
-              />
-              <Button
-                icon="pi pi-map"
-                severity="info"
-                size="small"
-                text
-                @click="focusOnMap(slotProps.data)"
-                v-tooltip.top="'Show on Map'"
-                class="action-button map-button"
-              />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-    </BaseCard>
+          <Column header="Actions" class="actions-col">
+            <template #body="slotProps">
+              <div class="actions-buttons">
+                <Button
+                    icon="pi pi-eye"
+                    severity="primary"
+                    size="small"
+                    text
+                    @click="viewDetails(slotProps.data)"
+                    v-tooltip.top="'View Details'"
+                    class="action-button view-button"
+                />
+                <Button
+                    icon="pi pi-pencil"
+                    severity="secondary"
+                    size="small"
+                    text
+                    @click="editFavorite(slotProps.data)"
+                    v-tooltip.top="'Edit'"
+                    class="action-button edit-button"
+                />
+                <Button
+                    icon="pi pi-trash"
+                    severity="danger"
+                    size="small"
+                    text
+                    @click="deleteFavorite(slotProps.data)"
+                    v-tooltip.top="'Delete'"
+                    class="action-button delete-button"
+                />
+                <Button
+                    icon="pi pi-map"
+                    severity="info"
+                    size="small"
+                    text
+                    @click="focusOnMap(slotProps.data)"
+                    v-tooltip.top="'Show on Map'"
+                    class="action-button map-button"
+                />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
+      </BaseCard>
 
-    <!-- Edit Dialog -->
-    <EditFavoriteDialog
-      :visible="showEditDialog"
-      :header="'Edit Favorite Location'"
-      :favorite-location="selectedFavorite"
-      @edit-favorite="handleEditSave"
-      @close="showEditDialog = false"
-    />
+      <!-- Edit Dialog -->
+      <EditFavoriteDialog
+          :visible="showEditDialog"
+          :header="'Edit Favorite Location'"
+          :favorite-location="selectedFavorite"
+          @edit-favorite="handleEditSave"
+          @close="showEditDialog = false"
+      />
 
-    <!-- Add Favorite Dialog -->
-    <AddFavoriteDialog
-      :visible="showAddDialog"
-      :header="addDialogHeader"
-      @add-to-favorites="handleAddFavorite"
-      @close="handleCloseAddDialog"
-    />
+      <!-- Add Favorite Dialog -->
+      <AddFavoriteDialog
+          :visible="showAddDialog"
+          :header="addDialogHeader"
+          @add-to-favorites="handleAddFavorite"
+          @close="handleCloseAddDialog"
+      />
 
-    <!-- Confirm Dialog -->
-    <ConfirmDialog></ConfirmDialog>
+      <!-- Confirm Dialog -->
+      <ConfirmDialog></ConfirmDialog>
 
-    <!-- Timeline Regeneration Modal -->
-    <TimelineRegenerationModal
-      v-model:visible="timelineRegenerationVisible"
-      :type="timelineRegenerationType"
-    />
+      <!-- Timeline Regeneration Modal -->
+      <TimelineRegenerationModal
+          v-model:visible="timelineRegenerationVisible"
+          :type="timelineRegenerationType"
+          :job-id="currentJobId"
+      />
 
-    <!-- Context Menus -->
-    <ContextMenu
-      ref="mapContextMenuRef"
-      :model="mapMenuItems"
-      :popup="true"
-    />
+      <!-- Context Menus -->
+      <ContextMenu
+          ref="mapContextMenuRef"
+          :model="mapMenuItems"
+          :popup="true"
+      />
 
-    <ContextMenu
-      ref="favoriteContextMenuRef"
-      :model="favoriteMenuItems"
-      :popup="true"
-    />
+      <ContextMenu
+          ref="favoriteContextMenuRef"
+          :model="favoriteMenuItems"
+          :popup="true"
+      />
     </PageContainer>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { useToast } from 'primevue/usetoast'
-import { useConfirm } from 'primevue/useconfirm'
-import { useFavoritesStore } from '@/stores/favorites'
-import { useRectangleDrawing } from '@/composables/useRectangleDrawing'
+import {ref, computed, onMounted, onUnmounted, watch} from 'vue'
+import {useRouter} from 'vue-router'
+import {useToast} from 'primevue/usetoast'
+import {useConfirm} from 'primevue/useconfirm'
+import {useFavoritesStore} from '@/stores/favorites'
+import {useRectangleDrawing} from '@/composables/useRectangleDrawing'
+import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
+import {useTimelineJobCheck} from '@/composables/useTimelineJobCheck'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
@@ -240,7 +243,6 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
-import Dialog from 'primevue/dialog'
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 
@@ -273,6 +275,11 @@ const pendingAddBounds = ref(null)
 const timelineRegenerationVisible = ref(false)
 const timelineRegenerationType = ref('general')
 const modalShowStartTime = ref(null)
+const currentJobId = ref(null)
+
+// Job progress tracking
+const {jobProgress, startPolling, stopPolling} = useTimelineJobProgress()
+const {checkActiveJob} = useTimelineJobCheck()
 
 // Context menu refs
 const mapContextMenuRef = ref(null)
@@ -315,8 +322,8 @@ const {
 
 // Computed properties
 const allFavorites = computed(() => {
-  const points = favoritesStore.getFavoritePoints.map(p => ({ ...p, type: 'POINT' }))
-  const areas = favoritesStore.getFavoriteAreas.map(a => ({ ...a, type: 'AREA' }))
+  const points = favoritesStore.getFavoritePoints.map(p => ({...p, type: 'POINT'}))
+  const areas = favoritesStore.getFavoriteAreas.map(a => ({...a, type: 'AREA'}))
   return [...points, ...areas]
 })
 
@@ -332,9 +339,9 @@ const displayedFavorites = computed(() => {
   if (searchText.value && searchText.value.trim() !== '') {
     const searchLower = searchText.value.toLowerCase()
     filtered = filtered.filter(f =>
-      f.name.toLowerCase().includes(searchLower) ||
-      f.city?.toLowerCase().includes(searchLower) ||
-      f.country?.toLowerCase().includes(searchLower)
+        f.name.toLowerCase().includes(searchLower) ||
+        f.city?.toLowerCase().includes(searchLower) ||
+        f.country?.toLowerCase().includes(searchLower)
     )
   }
 
@@ -344,13 +351,13 @@ const displayedFavorites = computed(() => {
 const totalRecords = computed(() => displayedFavorites.value.length)
 
 const typeOptions = [
-  { label: 'All Types', value: null },
-  { label: 'Point', value: 'POINT' },
-  { label: 'Area', value: 'AREA' }
+  {label: 'All Types', value: null},
+  {label: 'Point', value: 'POINT'},
+  {label: 'Area', value: 'AREA'}
 ]
 
 const hasActiveFilters = computed(() =>
-  selectedType.value !== null || (searchText.value && searchText.value.trim() !== '')
+    selectedType.value !== null || (searchText.value && searchText.value.trim() !== '')
 )
 
 // Context menu items
@@ -459,7 +466,28 @@ const editFavorite = (favorite) => {
   showEditDialog.value = true
 }
 
-const deleteFavorite = (favorite) => {
+const deleteFavorite = async (favorite) => {
+  // Check if there's already an active job
+  const activeJobCheck = await checkActiveJob()
+
+  console.log(activeJobCheck);
+
+  if (activeJobCheck.hasActiveJob) {
+    confirm.require({
+      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
+      header: 'Timeline Job In Progress',
+      icon: 'pi pi-info-circle',
+      rejectLabel: 'Cancel',
+      acceptLabel: 'View Progress',
+      accept: () => {
+        // Open the job details page in a new tab
+        const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
+        window.open(url, '_blank')
+      }
+    })
+    return
+  }
+
   // Confirm deletion with message about timeline regeneration
   confirm.require({
     message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
@@ -482,7 +510,12 @@ const confirmDelete = async (favorite) => {
     // Show timeline regeneration modal
     showTimelineRegenerationModal('favorite-delete')
 
-    await favoritesStore.deleteFavorite(favoriteId)
+    const jobId = await favoritesStore.deleteFavorite(favoriteId)
+
+    // Track job progress
+    if (jobId) {
+      currentJobId.value = jobId
+    }
 
     toast.add({
       severity: 'success',
@@ -494,8 +527,7 @@ const confirmDelete = async (favorite) => {
     // Update map
     await loadFavorites()
 
-    // Close regeneration modal with minimum display time
-    closeTimelineRegenerationModal()
+    // Modal will close automatically when job completes
   } catch (error) {
     console.error('Error deleting favorite:', error)
     toast.add({
@@ -507,6 +539,7 @@ const confirmDelete = async (favorite) => {
 
     // Close regeneration modal immediately on error
     timelineRegenerationVisible.value = false
+    currentJobId.value = null
   }
 }
 
@@ -584,16 +617,37 @@ const handleAddAreaFromContextMenu = () => {
 const handleAddFavorite = async (name) => {
   if (!name || !name.trim()) return
 
+  // Check if there's already an active job
+  const activeJobCheck = await checkActiveJob()
+
+  if (activeJobCheck.hasActiveJob) {
+    confirm.require({
+      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before adding favorites.`,
+      header: 'Timeline Job In Progress',
+      icon: 'pi pi-info-circle',
+      rejectLabel: 'Cancel',
+      acceptLabel: 'View Progress',
+      accept: () => {
+        // Open the job details page in a new tab
+        const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
+        window.open(url, '_blank')
+      }
+    })
+    return
+  }
+
   try {
     // Show timeline regeneration modal
     showTimelineRegenerationModal('favorite')
 
+    let jobId = null
+
     if (pendingAddCoordinates.value) {
       // Add point favorite
-      await favoritesStore.addPointToFavorites(
-        name.trim(),
-        pendingAddCoordinates.value.lat,
-        pendingAddCoordinates.value.lng
+      jobId = await favoritesStore.addPointToFavorites(
+          name.trim(),
+          pendingAddCoordinates.value.lat,
+          pendingAddCoordinates.value.lng
       )
 
       toast.add({
@@ -604,12 +658,12 @@ const handleAddFavorite = async (name) => {
       })
     } else if (pendingAddBounds.value) {
       // Add area favorite
-      await favoritesStore.addAreaToFavorites(
-        name.trim(),
-        pendingAddBounds.value.northEastLat,
-        pendingAddBounds.value.northEastLon,
-        pendingAddBounds.value.southWestLat,
-        pendingAddBounds.value.southWestLon
+      jobId = await favoritesStore.addAreaToFavorites(
+          name.trim(),
+          pendingAddBounds.value.northEastLat,
+          pendingAddBounds.value.northEastLon,
+          pendingAddBounds.value.southWestLat,
+          pendingAddBounds.value.southWestLon
       )
 
       toast.add({
@@ -621,6 +675,11 @@ const handleAddFavorite = async (name) => {
 
       // Clean up the temp layer
       cleanupTempLayer()
+    }
+
+    // Track job progress
+    if (jobId) {
+      currentJobId.value = jobId
     }
 
     showAddDialog.value = false
@@ -636,8 +695,7 @@ const handleAddFavorite = async (name) => {
     // Update map
     await loadFavorites()
 
-    // Close regeneration modal with minimum display time
-    closeTimelineRegenerationModal()
+    // Modal will close automatically when job completes
   } catch (error) {
     console.error('Error adding favorite:', error)
     toast.add({
@@ -649,6 +707,7 @@ const handleAddFavorite = async (name) => {
 
     // Close regeneration modal immediately on error
     timelineRegenerationVisible.value = false
+    currentJobId.value = null
   }
 }
 
@@ -683,20 +742,41 @@ const showTimelineRegenerationModal = (type) => {
 }
 
 const closeTimelineRegenerationModal = () => {
-  if (!modalShowStartTime.value) {
-    timelineRegenerationVisible.value = false
-    return
-  }
-
-  const elapsed = Date.now() - modalShowStartTime.value
-  const minimumDisplayTime = 3000 // 3 seconds
-  const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
-
-  setTimeout(() => {
-    timelineRegenerationVisible.value = false
-    modalShowStartTime.value = null
-  }, remainingTime)
+  // Don't close immediately - let the job complete first
+  // The modal will close automatically when job status becomes COMPLETED
+  // This is handled by the watch below
 }
+
+// Watch for currentJobId changes to start polling
+watch(currentJobId, (newJobId) => {
+  if (newJobId) {
+    startPolling(newJobId)
+  } else {
+    stopPolling()
+  }
+})
+
+// Watch for job completion to auto-close modal
+watch(() => jobProgress.value?.status, (status) => {
+  if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
+    // Ensure minimum display time of 3 seconds for better UX
+    if (!modalShowStartTime.value) {
+      timelineRegenerationVisible.value = false
+      currentJobId.value = null
+      return
+    }
+
+    const elapsed = Date.now() - modalShowStartTime.value
+    const minimumDisplayTime = 3000 // 3 seconds
+    const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
+
+    setTimeout(() => {
+      timelineRegenerationVisible.value = false
+      modalShowStartTime.value = null
+      currentJobId.value = null
+    }, remainingTime)
+  }
+})
 
 const focusOnMap = (favorite) => {
   if (!mapInstance.value) return
@@ -708,10 +788,10 @@ const focusOnMap = (favorite) => {
     })
   } else if (favorite.type === 'AREA') {
     const bounds = L.latLngBounds(
-      [favorite.southWestLat, favorite.southWestLon],
-      [favorite.northEastLat, favorite.northEastLon]
+        [favorite.southWestLat, favorite.southWestLon],
+        [favorite.northEastLat, favorite.northEastLon]
     )
-    mapInstance.value.fitBounds(bounds, { padding: [50, 50], animate: true })
+    mapInstance.value.fitBounds(bounds, {padding: [50, 50], animate: true})
   }
 }
 
@@ -899,7 +979,7 @@ const updateMapMarkers = () => {
     })
 
     if (bounds.length > 0) {
-      mapInstance.value.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 })
+      mapInstance.value.fitBounds(bounds, {padding: [50, 50], maxZoom: 15})
     }
   }
 }
@@ -907,7 +987,7 @@ const updateMapMarkers = () => {
 // Watch for filter changes to update map
 watch(() => displayedFavorites.value, () => {
   updateMapMarkers()
-}, { deep: true })
+}, {deep: true})
 
 // Lifecycle
 onMounted(async () => {
