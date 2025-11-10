@@ -177,6 +177,7 @@
     <TimelineRegenerationModal
       v-model:visible="timelineRegenerationVisible"
       :type="timelineRegenerationType"
+      :job-id="currentJobId"
     />
     </PageContainer>
   </AppLayout>
@@ -205,6 +206,10 @@ import PlaceVisitsTable from '@/components/place/PlaceVisitsTable.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
+
+// Composables
+import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
+import {useTimelineJobCheck} from '@/composables/useTimelineJobCheck'
 
 // Store
 import { usePlaceStatisticsStore } from '@/stores/placeStatistics'
@@ -241,6 +246,10 @@ const newFavoriteName = ref('')
 const timelineRegenerationVisible = ref(false)
 const timelineRegenerationType = ref('general')
 const modalShowStartTime = ref(null)
+const currentJobId = ref(null)
+
+// Job progress tracking
+const { jobProgress, startPolling, stopPolling } = useTimelineJobProgress()
 
 // Computed
 const placeType = computed(() => route.params.type)
@@ -307,14 +316,38 @@ const submitCreateFavorite = async () => {
       throw new Error('Invalid coordinates')
     }
 
+    const activeJobCheck = await checkActiveJob()
+
+    if (activeJobCheck.hasActiveJob) {
+      confirm.require({
+        message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
+        header: 'Timeline Job In Progress',
+        icon: 'pi pi-info-circle',
+        rejectLabel: 'Cancel',
+        acceptLabel: 'View Progress',
+        accept: () => {
+          // Open the job details page in a new tab
+          const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
+          window.open(url, '_blank')
+        }
+      })
+      return
+    }
+
     // Show timeline regeneration modal
     showTimelineRegenerationModal('favorite')
 
-    await apiService.post('/favorites/point', {
+    const response = await apiService.post('/favorites/point', {
       name: newFavoriteName.value.trim(),
       lat: geometry.latitude,
       lon: geometry.longitude
     })
+
+    // Track job progress
+    const jobId = response.data?.jobId || response.data
+    if (jobId) {
+      currentJobId.value = jobId
+    }
 
     toast.add({
       severity: 'success',
@@ -326,8 +359,7 @@ const submitCreateFavorite = async () => {
     showCreateFavoriteDialog.value = false
     newFavoriteName.value = ''
 
-    // Close regeneration modal with minimum display time
-    closeTimelineRegenerationModal()
+    // Modal will close automatically when job completes
   } catch (err) {
     console.error('Error creating favorite:', err)
     const errorMessage = err.response?.data?.message || err.message || 'Failed to create favorite location'
@@ -341,6 +373,7 @@ const submitCreateFavorite = async () => {
 
     // Close regeneration modal immediately on error
     timelineRegenerationVisible.value = false
+    currentJobId.value = null
   }
 }
 
@@ -352,20 +385,41 @@ const showTimelineRegenerationModal = (type) => {
 }
 
 const closeTimelineRegenerationModal = () => {
-  if (!modalShowStartTime.value) {
-    timelineRegenerationVisible.value = false
-    return
-  }
-
-  const elapsed = Date.now() - modalShowStartTime.value
-  const minimumDisplayTime = 3000 // 3 seconds
-  const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
-
-  setTimeout(() => {
-    timelineRegenerationVisible.value = false
-    modalShowStartTime.value = null
-  }, remainingTime)
+  // Don't close immediately - let the job complete first
+  // The modal will close automatically when job status becomes COMPLETED
+  // This is handled by the watch below
 }
+
+// Watch for currentJobId changes to start polling
+watch(currentJobId, (newJobId) => {
+  if (newJobId) {
+    startPolling(newJobId)
+  } else {
+    stopPolling()
+  }
+})
+
+// Watch for job completion to auto-close modal
+watch(() => jobProgress.value?.status, (status) => {
+  if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
+    // Ensure minimum display time of 3 seconds for better UX
+    if (!modalShowStartTime.value) {
+      timelineRegenerationVisible.value = false
+      currentJobId.value = null
+      return
+    }
+
+    const elapsed = Date.now() - modalShowStartTime.value
+    const minimumDisplayTime = 3000 // 3 seconds
+    const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
+
+    setTimeout(() => {
+      timelineRegenerationVisible.value = false
+      modalShowStartTime.value = null
+      currentJobId.value = null
+    }, remainingTime)
+  }
+})
 const loadPlaceData = async () => {
   error.value = null
 
