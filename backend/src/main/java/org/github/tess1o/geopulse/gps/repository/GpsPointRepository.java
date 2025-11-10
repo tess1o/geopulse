@@ -103,33 +103,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
-     * Find GPS points by user, timestamp and coordinates for duplicate detection.
-     * Uses a small time window (5 seconds) and spatial tolerance for near-duplicates.
-     *
-     * @param user        The user entity
-     * @param timestamp   The timestamp to match
-     * @param coordinates The coordinates to match
-     * @return A list of potential duplicate GPS points
-     */
-    public List<GpsPointEntity> findByUserAndTimestampAndCoordinates(UserEntity user, Instant timestamp, Point coordinates) {
-        // Allow 5 second tolerance for timestamp and small spatial tolerance
-        Instant startTime = timestamp.minusSeconds(5);
-        Instant endTime = timestamp.plusSeconds(5);
-
-        // Use native SQL query for PostGIS spatial function
-        return getEntityManager().createNativeQuery(
-                        "SELECT g.* FROM gps_points g WHERE g.user_id = ?1 " +
-                                "AND g.timestamp >= ?2 AND g.timestamp <= ?3 " +
-                                "AND ST_DWithin(g.coordinates, ?4, 0.00001)",
-                        GpsPointEntity.class)
-                .setParameter(1, user.getId())
-                .setParameter(2, startTime)
-                .setParameter(3, endTime)
-                .setParameter(4, coordinates)
-                .getResultList();
-    }
-
-    /**
      * Get GPS point summary data in a single optimized query.
      * Returns: [totalCount, todayCount, firstTimestamp, lastTimestamp]
      */
@@ -159,34 +132,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public Optional<GpsPointEntity> findByUniqueKey(UUID userId, Instant timestamp, Point coordinates) {
         return find("user.id = ?1 AND timestamp = ?2 AND coordinates = ?3", userId, timestamp, coordinates)
                 .firstResultOptional();
-    }
-
-    // =================== LIGHTWEIGHT GPS POINT METHODS FOR PERFORMANCE ===================
-
-    /**
-     * Load essential GPS data for timeline processing using projection query.
-     * This method provides 80% memory reduction by loading only coordinates, timestamp,
-     * accuracy and velocity - avoiding full JPA entity overhead.
-     *
-     * @param userId        The user ID
-     * @param fromTimestamp Start timestamp for data range
-     * @return List of lightweight GPS points ordered by timestamp
-     */
-    public List<GPSPoint> findEssentialDataForTimeline(UUID userId, Instant fromTimestamp) {
-        // Use native SQL with PostGIS functions to extract coordinates
-        List<Object[]> results = getEntityManager().createNativeQuery(
-                        "SELECT gp.timestamp, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
-                                "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy " +
-                                "FROM gps_points gp " +
-                                "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
-                                "ORDER BY gp.timestamp ASC")
-                .setParameter("userId", userId)
-                .setParameter("fromTimestamp", fromTimestamp)
-                .getResultList();
-
-        return results.stream()
-                .map(this::mapToGPSPoint)
-                .toList();
     }
 
     /**
@@ -220,25 +165,24 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     }
 
     /**
-     * Load context points before timeline regeneration start time.
-     * Used to provide algorithm context while keeping memory usage minimal.
+     * Load essential GPS data in chunks for large datasets.
+     * Prevents query timeouts and provides better resource management.
      *
-     * @param userId          The user ID
-     * @param beforeTimestamp Get points before this timestamp
-     * @param limit           Maximum number of context points to fetch
-     * @return List of lightweight GPS points in reverse chronological order
+     * @param userId        The user ID
+     * @param fromTimestamp Start timestamp for data range
+     * @param offset        Offset for pagination
+     * @param limit         Number of points to fetch
+     * @return List of lightweight GPS points for this chunk
      */
-    public List<GPSPoint> findEssentialContextData(UUID userId, Instant beforeTimestamp, int limit) {
+    public List<GPSPoint> findEssentialPointsInInterval(UUID userId, Instant start, Instant end) {
         List<Object[]> results = getEntityManager().createNativeQuery(
                         "SELECT gp.timestamp, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
                                 "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy " +
                                 "FROM gps_points gp " +
-                                "WHERE gp.user_id = :userId AND gp.timestamp < :beforeTimestamp " +
-                                "ORDER BY gp.timestamp DESC " +
-                                "LIMIT :limit")
+                                "WHERE gp.user_id = :userId AND gp.timestamp >= :start AND gp.timestamp <= :end")
                 .setParameter("userId", userId)
-                .setParameter("beforeTimestamp", beforeTimestamp)
-                .setParameter("limit", limit)
+                .setParameter("start", start)
+                .setParameter("end", end)
                 .getResultList();
 
         return results.stream()
@@ -299,7 +243,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * @return A list of GPS point entities for the page
      */
     public List<GpsPointEntity> findByUserAndFilters(UUID userId, GpsPointFilterDTO filters,
-                                                      int page, int pageSize, String sortBy, String sortOrder) {
+                                                     int page, int pageSize, String sortBy, String sortOrder) {
         QueryBuilder queryBuilder = buildFilterQuery(userId, filters);
 
         // Add sorting
@@ -339,10 +283,10 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      * Stream GPS points for export in batches to avoid OOM.
      * Processes results in chunks and calls consumer for each batch.
      *
-     * @param userId       The ID of the user
-     * @param filters      Filter criteria
-     * @param batchSize    Number of records to process at a time
-     * @param consumer     Consumer to process each batch
+     * @param userId    The ID of the user
+     * @param filters   Filter criteria
+     * @param batchSize Number of records to process at a time
+     * @param consumer  Consumer to process each batch
      */
     public void streamByUserAndFilters(UUID userId, GpsPointFilterDTO filters,
                                        int batchSize, Consumer<List<GpsPointEntity>> consumer) {

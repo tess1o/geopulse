@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,7 +61,6 @@ class StreamingSingleTripAlgorithmTest {
                 .startTime(Instant.parse("2025-01-01T10:00:00Z"))
                 .duration(Duration.ofMinutes(10))
                 .distanceMeters(1000)
-                .path(new ArrayList<>())
                 .build();
 
         //data gap 50 minutes
@@ -73,13 +73,12 @@ class StreamingSingleTripAlgorithmTest {
                 .startTime(Instant.parse("2025-01-01T11:00:00Z"))
                 .duration(Duration.ofMinutes(15))
                 .distanceMeters(1500)
-                .path(new ArrayList<>())
                 .build();
 
         List<TimelineEvent> events = Arrays.asList(trip1, dataGap, trip2);
 
         // 2. Apply the algorithm
-        List<TimelineEvent> processedEvents = algorithm.apply(events, config);
+        List<TimelineEvent> processedEvents = algorithm.apply(UUID.randomUUID(), events, config);
 
         // 3. Assert the result
         assertEquals(3, processedEvents.size());

@@ -47,8 +47,8 @@ public class GpxExportService {
      * Converts a list of GPS points to a GPX track.
      * This is the core conversion logic used by all export methods.
      *
-     * @param gpsPoints List of GPS point entities
-     * @param trackName Name for the GPX track
+     * @param gpsPoints        List of GPS point entities
+     * @param trackName        Name for the GPX track
      * @param trackDescription Description for the GPX track
      * @return GPX track with all points, or null if no points
      */
@@ -88,9 +88,9 @@ public class GpxExportService {
     /**
      * Generates a GPX export, either as a single file or as a ZIP with per-trip files.
      *
-     * @param job         the export job
-     * @param zipPerTrip  if true, creates a ZIP with separate GPX files per trip/stay
-     * @param zipGroupBy  grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
+     * @param job        the export job
+     * @param zipPerTrip if true, creates a ZIP with separate GPX files per trip/stay
+     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
      * @return the GPX file content or ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
@@ -137,10 +137,10 @@ public class GpxExportService {
      * Streams a complete GPX file to the output stream without loading all data into memory.
      * Uses XMLStreamWriter for memory-efficient export of millions of GPS points.
      *
-     * @param job the export job
+     * @param job          the export job
      * @param outputStream the output stream to write to
      * @throws XMLStreamException if XML writing fails
-     * @throws IOException if data collection fails
+     * @throws IOException        if data collection fails
      */
     private void streamGpxFileToOutput(ExportJob job, ByteArrayOutputStream outputStream)
             throws XMLStreamException, IOException {
@@ -349,8 +349,7 @@ public class GpxExportService {
             xml.writeEndElement(); // trkseg
             xml.writeEndElement(); // trk
 
-            log.debug("Streamed trip track with {} raw GPS points (was {} simplified path points)",
-                    tripGpsPoints.size(), trip.getPath() != null ? trip.getPath().getNumPoints() : 0);
+            log.debug("Streamed trip track with {} raw GPS points", tripGpsPoints.size());
         }
 
         log.info("Streamed {} timeline trip tracks with raw GPS data", trips.size());
@@ -580,9 +579,9 @@ public class GpxExportService {
      * Builds a GPX file for a single day with ALL raw GPS points organized by trips/stays.
      * IMPORTANT: Each trip gets its own track with ALL GPS points (not simplified path)!
      *
-     * @param day    the date
-     * @param trips  the trips for that day
-     * @param stays  the stays for that day
+     * @param day   the date
+     * @param trips the trips for that day
+     * @param stays the stays for that day
      * @return the GPX file model
      */
     private GpxFile buildGpxFileForDay(java.time.LocalDate day, List<TimelineTripEntity> trips,
@@ -673,8 +672,8 @@ public class GpxExportService {
         log.info("Exported day {} with {} trip tracks, {} stay tracks, {} stay waypoints",
                 day, trips.size(), stays.stream().filter(s -> {
                     var pts = dataCollectorService.collectGpsPointsInTimeRange(
-                        s.getUser().getId(), s.getTimestamp(),
-                        s.getTimestamp().plusSeconds(s.getStayDuration()));
+                            s.getUser().getId(), s.getTimestamp(),
+                            s.getTimestamp().plusSeconds(s.getStayDuration()));
                     return !pts.isEmpty();
                 }).count(), stays.size());
 
@@ -785,8 +784,7 @@ public class GpxExportService {
 
         if (track != null) {
             gpxFile.setTracks(List.of(track));
-            log.info("Exported {} raw GPS points for trip (was {} simplified path points)",
-                    gpsPoints.size(), trip.getPath() != null ? trip.getPath().getNumPoints() : 0);
+            log.info("Exported {} raw GPS points for trip",gpsPoints.size());
         } else {
             gpxFile.setTracks(List.of());
         }

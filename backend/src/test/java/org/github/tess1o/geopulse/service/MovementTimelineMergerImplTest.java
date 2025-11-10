@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.service;
 
-import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
@@ -354,19 +353,10 @@ public class MovementTimelineMergerImplTest {
 
     private Trip createTrip(Instant timestamp, long duration, long distanceMeters,
                            double lat, double lon) {
-        GPSPoint gpsPoint = GPSPoint.builder()
-                .timestamp(timestamp)
-                .accuracy(0)
-                .speed(5)
-                .longitude(lon)
-                .latitude(lat)
-                .build();
         return Trip.builder()
-                .path(new ArrayList<>())
                 .duration(Duration.ofSeconds(duration))
                 .startTime(timestamp)
                 .distanceMeters(distanceMeters)
-                .path(List.of(gpsPoint))
                 .build();
     }
 }

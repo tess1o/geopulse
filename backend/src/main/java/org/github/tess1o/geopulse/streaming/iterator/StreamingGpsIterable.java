@@ -33,6 +33,9 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
     // Keep reference to track progress
     private StreamingGpsIterator currentIterator;
 
+    // Cached total count (lazy-loaded on first access)
+    private Long cachedTotalCount;
+
     private static final int DEFAULT_BUFFER_SIZE = 10_000;
 
     public StreamingGpsIterable(
@@ -56,15 +59,22 @@ public class StreamingGpsIterable implements Iterable<GPSPoint> {
     @Override
     public Iterator<GPSPoint> iterator() {
         currentIterator = new StreamingGpsIterator(
-            repository, userId, fromTimestamp, bufferSize);
+                repository, userId, fromTimestamp, bufferSize);
         return currentIterator;
     }
 
     /**
-     * Get count of points processed (for progress tracking).
-     * Only valid while iteration is in progress.
+     * Get the total count of GPS points that will be iterated over.
+     * This method performs a count query on the database.
+     * The result is cached after the first call.
+     *
+     * @return total number of GPS points for this user from the specified timestamp
      */
-    public int getProcessedCount() {
-        return currentIterator != null ? currentIterator.getProcessedCount() : 0;
+    public Long getTotalCount() {
+        if (cachedTotalCount == null) {
+            cachedTotalCount = repository.estimatePointCount(userId, fromTimestamp);
+        }
+        return cachedTotalCount;
     }
+
 }

@@ -9,8 +9,9 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Slf4j
 @ApplicationScoped
@@ -42,7 +43,7 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
      * Merge multiple trip segments into a single trip.
      * Used by single algorithm to combine fragmented trips.
      */
-    protected Trip mergeTripSegments(List<Trip> trips, TimelineConfig config) {
+    protected Trip mergeTripSegments(UUID userId, List<Trip> trips, TimelineConfig config) {
         if (trips.isEmpty()) {
             return null;
         }
@@ -55,10 +56,9 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
         Trip firstTrip = trips.getFirst();
         Trip lastTrip = trips.getLast();
 
-        // Merge all GPS points from all trips
-        List<GPSPoint> combinedPath = trips.stream()
-                .flatMap(trip -> trip.getPath().stream())
-                .collect(Collectors.toList());
+        Instant startTime = firstTrip.getStartTime();
+        Instant endTime = lastTrip.getEndTime();
+
 
         // Calculate total distance and duration
         double totalDistance = trips.stream()
@@ -71,14 +71,15 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
         );
 
         // Classify the overall trip mode
-        TripGpsStatistics tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(combinedPath);
+        TripGpsStatistics tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(userId, startTime, endTime);
         TripType overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
 
         Trip mergedTrip = Trip.builder()
                 .startTime(firstTrip.getStartTime())
                 .duration(totalDuration)
-                .path(combinedPath)
                 .distanceMeters(totalDistance)
+                .startPoint(firstTrip.getStartLocation())
+                .endPoint(lastTrip.getEndLocation())
                 .statistics(tripGpsStatistics)
                 .tripType(overallTripType)
                 .build();

@@ -133,6 +133,19 @@
                         GPS Points: {{ jobProgress.details.gpsPointsLoaded.toLocaleString() }} / {{ jobProgress.details.totalGpsPoints?.toLocaleString() || '?' }}
                       </div>
 
+                      <!-- GPS Processing Details (State Machine) -->
+                      <div v-if="jobProgress.details.processedPoints !== undefined" class="detail-section">
+                        <div class="detail-item detail-header">
+                          <i class="pi pi-cog"></i>
+                          <strong>Processing GPS Points: {{ jobProgress.details.processedPoints?.toLocaleString() || 0 }} / {{ jobProgress.details.totalPoints?.toLocaleString() || '?' }}</strong>
+                        </div>
+
+                        <div v-if="jobProgress.details.pointsRemaining !== undefined && jobProgress.details.pointsRemaining > 0" class="detail-item detail-sub">
+                          <i class="pi pi-clock"></i>
+                          Remaining: {{ jobProgress.details.pointsRemaining.toLocaleString() }} points
+                        </div>
+                      </div>
+
                       <!-- Geocoding Details -->
                       <div v-if="jobProgress.details.totalLocations" class="detail-section">
                         <div class="detail-item detail-header">
@@ -211,19 +224,19 @@ const router = useRouter()
 
 const jobId = computed(() => route.params.jobId)
 
-const { jobProgress, isPolling, error, startPolling, fetchProgress } = useTimelineJobProgress()
+const { jobProgress, error, startPolling, fetchProgress } = useTimelineJobProgress()
 
 // Timeline processing steps
 const steps = [
   { index: 1, title: 'Acquiring Lock', description: 'Ensuring exclusive access to timeline data' },
   { index: 2, title: 'Cleaning Up', description: 'Removing old timeline events' },
-  { index: 3, title: 'Loading GPS Data', description: 'Loading GPS points from database' },
-  { index: 4, title: 'Processing & Geocoding', description: 'Running state machine algorithm and resolving location names' },
+  { index: 3, title: 'Preparing GPS Processing', description: 'Counting GPS points and preparing streaming iterator' },
+  { index: 4, title: 'Processing & Geocoding', description: 'Streaming and processing GPS points through state machine, then resolving location names' },
   { index: 5, title: 'Post-Processing Trips', description: 'Validating and refining trip detection' },
   { index: 6, title: 'Merging & Simplifying', description: 'Applying timeline optimizations' },
   { index: 7, title: 'Persisting Timeline', description: 'Saving timeline events to database' },
   { index: 8, title: 'Data Gap Detection', description: 'Identifying gaps in GPS coverage' },
-  { index: 9, title: 'Finalizing', description: 'Releasing lock and completing generation' }
+  { index: 9, title: 'Finalizing', description: 'Calculating milestones and completing generation' }
 ]
 
 // Computed properties

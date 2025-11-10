@@ -344,7 +344,6 @@ public class LocationPointResolver {
             details.put("externalCompleted", Math.max(0, externalCompleted));
             details.put("totalResolved", totalResolved);
 
-            // Geocoding happens during step 4 (processing points), not step 7!
             jobProgressService.updateProgress(jobId, message, 4, progress, details);
         }
     }

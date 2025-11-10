@@ -64,7 +64,9 @@ public class TimelineTripEntity {
     /**
      * Spatial path of the trip as a LineString geometry
      * Stores the actual GPS path taken during the trip
+     * Since 1.3.0 we don't store path in DB so once we ensure all functionality works we'll delete this column
      */
+    @Deprecated(forRemoval = true)
     @Column(name = "path", columnDefinition = "geometry(LineString,4326)")
     private LineString path;
 

@@ -44,7 +44,7 @@ public class TimelineEventFinalizationService {
      * Used by both main processing and data gap detection.
      *
      * @param userState current user state with active stay points
-     * @param config timeline configuration for accuracy validation
+     * @param config    timeline configuration for accuracy validation
      * @return finalized stay event without location data, or null if validation fails
      */
     public Stay finalizeStayWithoutLocation(UserState userState, TimelineConfig config) {
@@ -95,7 +95,7 @@ public class TimelineEventFinalizationService {
      *
      * @param events list of timeline events (will modify Stay events in place)
      * @param userId user identifier for location resolution
-     * @param jobId optional job ID for progress tracking
+     * @param jobId  optional job ID for progress tracking
      */
     public void populateStayLocations(List<TimelineEvent> events, UUID userId, UUID jobId) {
         // Extract all stays that need location resolution
@@ -177,8 +177,9 @@ public class TimelineEventFinalizationService {
         Trip trip = Trip.builder()
                 .startTime(firstPoint.getTimestamp())
                 .duration(tripDuration)
-                .path(tripPath)
                 .statistics(gpsStatistics)
+                .startPoint(firstPoint)
+                .endPoint(lastPoint)
                 .distanceMeters(totalDistance)
                 .tripType(tripType)
                 .build();
@@ -216,7 +217,8 @@ public class TimelineEventFinalizationService {
         return Trip.builder()
                 .startTime(firstPoint.getTimestamp())
                 .duration(tripDuration)
-                .path(tripPath)
+                .startPoint(firstPoint)
+                .endPoint(lastPoint)
                 .statistics(gpsStatistics)
                 .distanceMeters(totalDistance)
                 .tripType(tripType)
@@ -264,7 +266,7 @@ public class TimelineEventFinalizationService {
         Double minAccuracyRatio = config.getStaypointMinAccuracyRatio();
 
         if (maxAccuracyThreshold == null || maxAccuracyThreshold <= 0 ||
-            minAccuracyRatio == null || minAccuracyRatio <= 0) {
+                minAccuracyRatio == null || minAccuracyRatio <= 0) {
             return true; // Skip validation if thresholds are not properly configured
         }
 

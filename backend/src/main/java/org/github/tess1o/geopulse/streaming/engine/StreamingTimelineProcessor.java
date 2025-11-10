@@ -3,11 +3,14 @@ package org.github.tess1o.geopulse.streaming.engine;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.iterator.StreamingGpsIterable;
 import org.github.tess1o.geopulse.streaming.model.domain.*;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
+import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Duration;
 import java.util.*;
@@ -38,6 +41,13 @@ public class StreamingTimelineProcessor {
 
     @Inject
     FavoriteLocationService favoriteLocationService;
+
+    @Inject
+    TimelineJobProgressService jobProgressService;
+
+    @Inject
+    GpsPointRepository gpsPointRepository;
+
 
     /**
      * Process GPS points to generate timeline events (stays, trips, data gaps).
@@ -75,12 +85,33 @@ public class StreamingTimelineProcessor {
         // Pre-load user's favorite areas for stay detection enhancement
         List<FavoriteAreaDto> userFavoriteAreas = loadUserFavoriteAreas(userId);
 
+        // Determine total point count for progress tracking
+        Long totalPoints = null;
+        if (jobId != null && newPoints instanceof StreamingGpsIterable) {
+            StreamingGpsIterable streamingIterable = (StreamingGpsIterable) newPoints;
+            totalPoints = streamingIterable.getTotalCount();
+        }
+
+        final int progressUpdateThreshold = 5000;
+        int processedCount = 0;
+
         // Process points with inline accuracy filtering (streaming-friendly)
         for (GPSPoint point : newPoints) {
+            processedCount++;
             // Apply accuracy filter inline to support streaming without loading all points
             if (shouldIncludePoint(point, config)) {
                 processPoint(point, userState, config, finalizedEvents, userFavoriteAreas);
             }
+
+            // Update progress periodically
+            if (jobId != null && processedCount % progressUpdateThreshold == 0) {
+                updateProcessingProgress(jobId, processedCount, totalPoints);
+            }
+        }
+
+        // Final progress update to ensure we capture the last batch
+        if (jobId != null && totalPoints != null) {
+            updateProcessingProgress(jobId, processedCount, totalPoints);
         }
 
         // 3. Finalize any remaining active event
@@ -93,6 +124,42 @@ public class StreamingTimelineProcessor {
         finalizationService.populateStayLocations(finalizedEvents, userId, jobId);
 
         return finalizedEvents;
+    }
+
+    /**
+     * Update processing progress with detailed point counts.
+     *
+     * @param jobId          the job ID
+     * @param processedCount number of points processed so far
+     * @param totalPoints    total number of points to process (null if unknown)
+     */
+    private void updateProcessingProgress(UUID jobId, int processedCount, Long totalPoints) {
+        // Calculate percentage in the 40-70% range
+        int percentage;
+        Map<String, Object> details = new HashMap<>();
+
+        if (totalPoints != null && totalPoints > 0) {
+            // Calculate proportional progress from 40% to 70%
+            double progressRatio = (double) processedCount / totalPoints;
+            percentage = 40 + (int) (progressRatio * 30); // Maps 0-100% progress to 40-70%
+            percentage = Math.min(70, percentage); // Cap at 70%
+
+            details.put("processedPoints", processedCount);
+            details.put("totalPoints", totalPoints);
+            details.put("pointsRemaining", totalPoints - processedCount);
+        } else {
+            // Fallback when total is unknown
+            percentage = 40;
+            details.put("processedPoints", processedCount);
+        }
+
+        jobProgressService.updateProgress(
+            jobId,
+            "Processing GPS points through state machine",
+            4,
+            percentage,
+            details
+        );
     }
 
     /**
