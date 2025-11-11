@@ -420,6 +420,8 @@ public class UserService {
                 update.getPathMaxPoints() != null ||
                 update.getPathAdaptiveSimplification() != null ||
                 update.getDataGapThresholdSeconds() != null ||
-                update.getDataGapMinDurationSeconds() != null;
+                update.getDataGapMinDurationSeconds() != null ||
+                update.getTripSustainedStopMinDurationSeconds() != null ||
+                update.getTripArrivalDetectionMinDurationSeconds() != null;
     }
 }
