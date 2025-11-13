@@ -80,6 +80,10 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     int stateTokenExpiryMinutes;
 
+    @ConfigProperty(name = "geopulse.oidc.auto-link-accounts", defaultValue = "false")
+    @StaticInitSafe
+    boolean autoLinkAccounts;
+
     private final Client httpClient = ClientBuilder.newClient();
     private final Map<String, JWKSet> jwksCache = new ConcurrentHashMap<>();
 
@@ -203,9 +207,48 @@ public class OidcAuthenticationService {
         Optional<UserEntity> existingUser = userService.findByEmail(userInfo.getEmail());
 
         if (existingUser.isPresent()) {
-            // Email exists but no OIDC connection - require account linking verification
             UserEntity user = existingUser.get();
 
+            // If auto-link is enabled, automatically link the OIDC account
+            if (autoLinkAccounts) {
+                log.warn("Auto-linking OIDC account - Provider: {}, Email: {}, User ID: {}. " +
+                        "This bypasses verification. Ensure you trust your OIDC provider.",
+                        sessionState.getProviderName(), userInfo.getEmail(), user.getId());
+
+                // Check if this OIDC account is already linked to a different user
+                Optional<UserOidcConnectionEntity> existingProviderConnection =
+                        connectionRepository.findByProviderNameAndExternalUserId(
+                                sessionState.getProviderName(), userInfo.getSubject());
+
+                if (existingProviderConnection.isPresent()) {
+                    if (!existingProviderConnection.get().getUserId().equals(user.getId())) {
+                        throw new IllegalArgumentException(
+                                "This OIDC account is already linked to a different user");
+                    }
+                    // Already linked to this user - just update last login
+                    existingProviderConnection.get().setLastLoginAt(Instant.now());
+                    return user;
+                }
+
+                // Create new OIDC connection for existing user
+                UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
+                        .userId(user.getId())
+                        .providerName(sessionState.getProviderName())
+                        .externalUserId(userInfo.getSubject())
+                        .displayName(userInfo.getName())
+                        .avatarUrl(userInfo.getPicture())
+                        .lastLoginAt(Instant.now())
+                        .build();
+
+                connectionRepository.persist(connection);
+
+                log.info("Auto-linked {} provider to user {} successfully",
+                        sessionState.getProviderName(), user.getEmail());
+
+                return user;
+            }
+
+            // Auto-link disabled - require account linking verification
             // Get existing OIDC connections for this user
             List<String> linkedProviders = connectionRepository.findByUserId(user.getId())
                     .stream()

@@ -177,6 +177,13 @@ GEOPULSE_OIDC_METADATA_CACHE_MAX_SIZE=10
 
 # Cleanup settings
 GEOPULSE_OIDC_CLEANUP_ENABLED=true
+
+# Account Linking Security
+# ⚠️ WARNING: Only enable this if you fully trust your OIDC providers to verify email ownership
+# When enabled, automatically links OIDC accounts to existing users with matching emails
+# Default: false (requires manual verification via password or existing OIDC provider)
+# Recommended for self-hosted environments with centralized SSO (Keycloak, Authentik, etc.)
+GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS=false
 ```
 
 ## Multiple Providers
@@ -225,6 +232,45 @@ GEOPULSE_OIDC_PROVIDER_COMPANY_ICON: "pi pi-building"
 - Icons use PrimeIcons CSS classes
 - Provider configuration is validated at startup
 
+## Account Linking Behavior
+
+When a user tries to login via OIDC with an email that already exists in GeoPulse, the system behavior depends on the `GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS` setting:
+
+### Default Behavior (Auto-Link Disabled)
+
+By default (`GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS=false`), GeoPulse requires manual verification before linking a new OIDC provider to an existing account. The user must verify their identity through:
+
+- **Password verification**: If the account has a password set
+- **OIDC verification**: Login via an already-linked OIDC provider
+
+This is the **recommended security setting for public-facing deployments** or when you don't fully control the OIDC providers.
+
+**Example scenario:**
+1. User has account with email `user@example.com` created via password registration
+2. User tries to login via Google OIDC with the same email `user@example.com`
+3. System prompts user to verify identity (enter password OR login via another linked OIDC provider)
+4. After verification, Google is linked to the account
+
+### Auto-Link Enabled
+
+When `GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS=true`, the system automatically links OIDC accounts to existing users with matching emails **without requiring verification**.
+
+**⚠️ Security Implications:**
+- Only enable this if you **fully trust your OIDC providers** to verify email ownership
+- Recommended **only for self-hosted environments** with centralized SSO (Keycloak, Authentik, etc.)
+- If an attacker can control an OIDC provider or compromise one, they could gain access to any account by claiming the email
+
+**Use cases for enabling auto-link:**
+- Self-hosted environments with enterprise SSO
+- Scenarios where all OIDC providers are managed by the same organization
+- When seamless user experience is prioritized over defense-in-depth
+
+**Example scenario:**
+1. User has account with email `user@company.com` created via password registration
+2. User tries to login via Company Keycloak OIDC with the same email
+3. System automatically links Keycloak to the account and logs the user in
+4. No verification required (trusting that Keycloak verified the email)
+
 ## Troubleshooting
 
 **OIDC providers not showing on login page:**
@@ -233,3 +279,9 @@ GEOPULSE_OIDC_PROVIDER_COMPANY_ICON: "pi pi-building"
 - Check that individual provider `_ENABLED=true` settings are configured
 - Ensure all required properties (client-id, client-secret, discovery-url) are provided
 - Check application logs for provider initialization errors
+
+**Account linking errors:**
+
+- If auto-link is disabled, users must verify identity before linking new OIDC providers
+- Check that the email from OIDC provider matches the existing account email exactly
+- Review application logs for security warnings related to account linking
