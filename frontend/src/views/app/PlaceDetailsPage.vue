@@ -228,6 +228,8 @@ const toast = useToast()
 const placeStore = usePlaceStatisticsStore()
 const geocodingStore = useGeocodingStore()
 
+const { checkActiveJob } = useTimelineJobCheck()
+
 // Store refs
 const { placeDetails, placeVisits, pagination, loading } = storeToRefs(placeStore)
 
