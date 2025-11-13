@@ -98,7 +98,7 @@
                         </div>
                         <div class="setting-item">
                           <span class="setting-label">Show History:</span>
-                          <span class="setting-value">{{ link.show_history ? 'Yes' : 'Current Location Only' }}</span>
+                          <span class="setting-value">{{ formatShowHistory(link) }}</span>
                         </div>
                       </div>
                     </div>
@@ -223,6 +223,12 @@
               </div>
             </div>
 
+            <div v-if="linkForm.show_history" class="form-group">
+              <label for="history-hours" class="form-label">History Duration (hours)</label>
+              <InputNumber id="history-hours" v-model="linkForm.history_hours" :min="1"  suffix=" hours" class="form-input" />
+              <small class="p-text-secondary">Specify how many hours of location history to share</small>
+            </div>
+
             <div class="form-group">
               <label for="expires_at" class="form-label">Expires At</label>
               <Calendar
@@ -338,6 +344,7 @@ const linkForm = reactive({
   name: '',
   expires_at: null,
   show_history: false,
+  history_hours: 24,
   has_password: false,
   password: ''
 })
@@ -350,6 +357,7 @@ const resetForm = () => {
   linkForm.name = ''
   linkForm.expires_at = null
   linkForm.show_history = false
+  linkForm.history_hours = 24
   linkForm.has_password = false
   linkForm.password = ''
 }
@@ -365,6 +373,7 @@ const editLink = (link) => {
   linkForm.name = link.name || ''
   linkForm.expires_at = link.expires_at ? timezone.fromUtc(link.expires_at).toDate() : null
   linkForm.show_history = link.show_history
+  linkForm.history_hours = link.history_hours || 24
   linkForm.has_password = link.has_password
   linkForm.password = '' // Don't pre-fill password for security
   showCreateDialog.value = true
@@ -377,6 +386,7 @@ const submitLinkForm = async () => {
       name: linkForm.name || 'Untitled Link',
       expires_at: linkForm.expires_at ? linkForm.expires_at.toISOString() : null,
       show_history: linkForm.show_history,
+      history_hours: linkForm.show_history ? linkForm.history_hours : null,
       password: linkForm.has_password ? linkForm.password : null
     }
 
@@ -487,6 +497,16 @@ const copyToClipboard = async (text) => {
 
 const formatDate = (dateString) => {
   return timezone.format(dateString, 'MMM D, YYYY h:mm A')
+}
+
+const formatShowHistory = (link) => {
+  if (!link.show_history) {
+    return 'Current Location Only';
+  }
+  if (link.history_hours) {
+    return `Yes (${link.history_hours}h)`;
+  }
+  return 'Yes';
 }
 
 // Lifecycle

@@ -29,6 +29,9 @@ public class CreateShareLinkResponse {
     @JsonProperty("show_history")
     private boolean showHistory;
 
+    @JsonProperty("history_hours")
+    private int historyHours;
+
     @JsonProperty("created_at")
     private Instant createdAt;
 

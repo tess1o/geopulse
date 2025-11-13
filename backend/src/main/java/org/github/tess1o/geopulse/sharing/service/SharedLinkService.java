@@ -116,7 +116,8 @@ public class SharedLinkService {
                 updateDto.getName(),
                 updateDto.getExpiresAt(),
                 updateDto.getPassword(),
-                updateDto.isShowHistory()
+                updateDto.isShowHistory(),
+                updateDto.getHistoryHours()
         );
 
         if (safeDto.getPassword() != null && !safeDto.getPassword().trim().isEmpty()) {
@@ -196,9 +197,9 @@ public class SharedLinkService {
         GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
 
         if (entity.isShowHistory()) {
-            Instant oneDayAgo = Instant.now().minus(1, ChronoUnit.DAYS);
+            Instant startDate = Instant.now().minus(entity.getHistoryHours(), ChronoUnit.HOURS);
             List<GpsPointEntity> history = gpsPointRepository.findByUserIdAndTimePeriod(
-                    entity.getUser().getId(), oneDayAgo, Instant.now());
+                    entity.getUser().getId(), startDate, Instant.now());
 
             return mapper.toLocationHistoryResponse(currentLocation, history);
         } else {

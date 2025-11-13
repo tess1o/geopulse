@@ -97,9 +97,7 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">Scope:</span>
-                  <span class="info-value">{{
-                      shareLinksStore.getSharedLocationInfo?.show_history ? 'Location History' : 'Current Location Only'
-                    }}</span>
+                  <span class="info-value">{{ scopeLabel }}</span>
                 </div>
               </div>
             </div>
@@ -235,6 +233,19 @@ const hasHistoryData = computed(() => {
       pathData.value &&
       pathData.value.length > 0
 })
+
+const scopeLabel = computed(() => {
+  const info = shareLinksStore.getSharedLocationInfo;
+  if (!info || !info.show_history) {
+    return 'Current Location Only';
+  }
+
+  if (info.history_hours && info.history_hours > 0) {
+    return `Location History (${info.history_hours}h)`;
+  }
+
+  return 'Location History';
+});
 
 // Check if we have a valid stored access token for this link
 const hasValidStoredToken = () => {

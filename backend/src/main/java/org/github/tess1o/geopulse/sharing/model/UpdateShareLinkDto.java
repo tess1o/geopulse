@@ -29,6 +29,9 @@ public class UpdateShareLinkDto {
     @JsonProperty("show_history")
     private boolean showHistory;
 
+    @JsonProperty("history_hours")
+    private int historyHours;
+
     public boolean isPasswordRemoval() {
         return password == null;
     }

@@ -30,4 +30,7 @@ public class CreateShareLinkRequest {
 
     @JsonProperty("show_history")
     private boolean showHistory;
+
+    @JsonProperty("history_hours")
+    private int historyHours;
 }

@@ -18,6 +18,7 @@ public class SharedLinkMapper {
         sharedLinkEntity.setExpiresAt(createShareLinkRequest.getExpiresAt());
         sharedLinkEntity.setPassword(createShareLinkRequest.getPassword());
         sharedLinkEntity.setShowHistory(createShareLinkRequest.isShowHistory());
+        sharedLinkEntity.setHistoryHours(createShareLinkRequest.getHistoryHours());
         sharedLinkEntity.setUser(user);
         return sharedLinkEntity;
     }
@@ -29,6 +30,7 @@ public class SharedLinkMapper {
         response.setExpiresAt(sharedLinkEntity.getExpiresAt());
         response.setHasPassword(sharedLinkEntity.getPassword() != null);
         response.setShowHistory(sharedLinkEntity.isShowHistory());
+        response.setHistoryHours(sharedLinkEntity.getHistoryHours());
         response.setCreatedAt(sharedLinkEntity.getCreatedAt());
         return response;
     }
@@ -40,6 +42,7 @@ public class SharedLinkMapper {
                 .expiresAt(entity.getExpiresAt())
                 .hasPassword(entity.getPassword() != null)
                 .showHistory(entity.isShowHistory())
+                .historyHours(entity.getHistoryHours())
                 .isActive(entity.getExpiresAt() == null || entity.getExpiresAt().isAfter(Instant.now()))
                 .createdAt(entity.getCreatedAt())
                 .viewCount(entity.getViewCount())
@@ -53,6 +56,7 @@ public class SharedLinkMapper {
                 .expiresAt(entity.getExpiresAt())
                 .hasPassword(entity.getPassword() != null)
                 .showHistory(entity.isShowHistory())
+                .historyHours(entity.getHistoryHours())
                 .isActive(entity.getExpiresAt() == null || entity.getExpiresAt().isAfter(Instant.now()))
                 .createdAt(entity.getCreatedAt())
                 .viewCount(entity.getViewCount())
@@ -112,5 +116,6 @@ public class SharedLinkMapper {
             entity.setPassword(null);
         }
         entity.setShowHistory(dto.isShowHistory());
+        entity.setHistoryHours(dto.getHistoryHours());
     }
 }

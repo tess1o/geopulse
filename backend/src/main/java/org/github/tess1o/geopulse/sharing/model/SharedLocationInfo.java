@@ -30,6 +30,9 @@ public class SharedLocationInfo {
     @JsonProperty("show_history")
     private boolean showHistory;
 
+    @JsonProperty("history_hours")
+    private int historyHours;
+
     @JsonProperty("is_active")
     private boolean isActive;
 

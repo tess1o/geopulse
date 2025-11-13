@@ -32,6 +32,9 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Column(name = "show_history")
     private boolean showHistory;
 
+    @Column(name = "history_hours")
+    private int historyHours;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private UserEntity user;
 
@@ -41,6 +44,7 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Column(name = "view_count")
     @Builder.Default
     private Integer viewCount = 0;
+
 
     @PrePersist
     protected void onCreate() {
