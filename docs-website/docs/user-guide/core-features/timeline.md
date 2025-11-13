@@ -104,6 +104,17 @@ A full timeline rebuild can also be triggered by certain user actions that chang
 *   **Changing Timeline Preferences:** If you adjust a setting like Stay Radius or Minimum Stay Duration.
 *   **Changing Favorite Locations:** Adding, deleting, or modifying a Favorite Location (especially a large Favorite Area) can change how past stays are detected, so a rebuild is necessary to apply the new context.
 
+### Monitoring Timeline Generation Jobs
+
+When you manually trigger a timeline rebuild (e.g., after changing preferences or managing favorites), a modal window will appear, showing the real-time status and progress of the timeline generation job.
+
+From this modal window, or directly by navigating to `/app/timeline/jobs`, you can access a detailed **Timeline Jobs** page. This page provides:
+
+*   **Current Job Status:** View the progress and details of any timeline generation job currently running.
+*   **Job History:** A list of recent jobs that you have manually triggered or that were initiated by your actions (e.g., adding/deleting a favorite).
+    *   **Note:** This history **does not** include the regular background jobs that run every few minutes.
+    *   Job history is stored in memory for approximately 24 hours. If the application is restarted, this history will be cleared.
+
 ---
 
 ## Fine-Tuning Your Timeline: Key Settings Explained

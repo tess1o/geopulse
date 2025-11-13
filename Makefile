@@ -141,7 +141,6 @@ openapi:
 
 .PHONY: publish-helm
 publish-helm:
-    export GI
 	@echo "📦 Packaging Helm chart..."
 	helm package helm/geopulse -d charts
 
@@ -153,7 +152,7 @@ publish-helm:
 	cp -r charts/* docs-website/static/charts/
 
 	@echo "🚀 Deploying documentation with Helm charts..."
-	cd docs-website && npm run deploy
+	cd docs-website && GIT_USER=tess1o npm run deploy
 
 	@echo "✅ Helm charts and documentation published successfully!"
 
