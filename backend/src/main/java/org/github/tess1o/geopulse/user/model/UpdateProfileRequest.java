@@ -28,5 +28,7 @@ public class UpdateProfileRequest {
     @Size(max = 1000, message = "Default redirect URL cannot exceed 1000 characters")
     private String defaultRedirectUrl;
 
+    private Boolean shareLocationWithFriends;
+
     private UUID userId;
 }

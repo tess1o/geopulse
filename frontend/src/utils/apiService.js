@@ -504,7 +504,8 @@ const apiService = {
                     timezone: responseData.timezone,
                     customMapTileUrl: responseData.customMapTileUrl || '',
                     measureUnit: responseData.measureUnit || 'METRIC',
-                    defaultRedirectUrl: responseData.defaultRedirectUrl || ''
+                    defaultRedirectUrl: responseData.defaultRedirectUrl || '',
+                    shareLocationWithFriends: responseData.shareLocationWithFriends ?? true
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 return responseData;

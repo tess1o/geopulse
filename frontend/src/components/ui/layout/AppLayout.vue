@@ -5,9 +5,12 @@
     <!-- Navbar Slot -->
     <header class="gp-app-navbar">
       <slot name="navbar">
-        <AppNavbar 
+        <AppNavbar
           :show-invite-friend-button="showInviteFriendButton"
+          :show-location-sharing-toggle="showLocationSharingToggle"
+          :location-sharing-enabled="locationSharingEnabled"
           @invite-friend="emit('invite-friend')"
+          @toggle-location-sharing="emit('toggle-location-sharing', $event)"
         />
       </slot>
     </header>
@@ -47,10 +50,18 @@ const props = defineProps({
   showInviteFriendButton: {
     type: Boolean,
     default: false
+  },
+  showLocationSharingToggle: {
+    type: Boolean,
+    default: false
+  },
+  locationSharingEnabled: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['invite-friend'])
+const emit = defineEmits(['invite-friend', 'toggle-location-sharing'])
 
 const layoutClasses = computed(() => ({
   [`gp-app-layout--${props.variant}`]: props.variant !== 'default',

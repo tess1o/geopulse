@@ -77,6 +77,13 @@ public class FriendService {
         if (!friendshipRepository.existsFriendship(userId, friendId)) {
             throw new NotAuthorizedUserException("Not authorized to view location of user: " + friendId);
         }
+
+        // Check if the friend has enabled location sharing
+        UserEntity friend = userRepository.findById(friendId);
+        if (friend == null || !friend.isShareLocationWithFriends()) {
+            throw new NotAuthorizedUserException("Friend has disabled location sharing");
+        }
+
         return gpsPointRepository.findByUserIdLatestGpsPoint(friendId);
     }
 

@@ -158,6 +158,22 @@
               </small>
             </div>
           </div>
+
+          <div class="form-field location-sharing-field">
+            <div class="location-sharing-row">
+              <label for="shareLocationWithFriends" class="form-label">
+                Share My Location with Friends
+                <i class="pi pi-info-circle" v-tooltip.right="'When disabled, your friends will not be able to see your location on the map. You will still see their locations if they have sharing enabled.'"></i>
+              </label>
+              <ToggleSwitch
+                id="shareLocationWithFriends"
+                v-model="form.shareLocationWithFriends"
+              />
+            </div>
+            <small class="help-text">
+              Toggle this off to temporarily stop sharing your location with all friends
+            </small>
+          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -213,6 +229,10 @@ const props = defineProps({
   userDefaultRedirectUrl: {
     type: String,
     default: ''
+  },
+  userShareLocationWithFriends: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -228,7 +248,8 @@ const form = ref({
   customMapTileUrl: '',
   measureUnit: 'METRIC', // Default value
   defaultRedirectUrl: '',
-  customRedirectUrl: ''
+  customRedirectUrl: '',
+  shareLocationWithFriends: true
 })
 const errors = ref({})
 
@@ -335,7 +356,8 @@ const hasChanges = computed(() => {
          form.value.timezone !== props.userTimezone ||
          form.value.customMapTileUrl !== props.userCustomMapTileUrl ||
          form.value.measureUnit !== props.userMeasureUnit ||
-         effectiveRedirectUrl !== props.userDefaultRedirectUrl
+         effectiveRedirectUrl !== props.userDefaultRedirectUrl ||
+         form.value.shareLocationWithFriends !== props.userShareLocationWithFriends
 })
 
 // Methods
@@ -398,7 +420,8 @@ const handleSubmit = async () => {
       timezone: form.value.timezone,
       customMapTileUrl: form.value.customMapTileUrl?.trim() || '',
       measureUnit: form.value.measureUnit,
-      defaultRedirectUrl: effectiveRedirectUrl
+      defaultRedirectUrl: effectiveRedirectUrl,
+      shareLocationWithFriends: form.value.shareLocationWithFriends
     })
   } finally {
     loading.value = false
@@ -410,6 +433,7 @@ const handleReset = () => {
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.customMapTileUrl = props.userCustomMapTileUrl || ''
   form.value.measureUnit = props.userMeasureUnit || 'METRIC'
+  form.value.shareLocationWithFriends = props.userShareLocationWithFriends ?? true
 
   // Check if the stored URL matches any predefined option
   const userRedirectUrl = props.userDefaultRedirectUrl || ''
@@ -445,7 +469,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit, props.userDefaultRedirectUrl, props.userShareLocationWithFriends], () => {
   handleReset()
 })
 </script>
@@ -571,6 +595,28 @@ watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCus
   font-size: 0.85rem;
 }
 
+/* Location Sharing Field */
+.location-sharing-field {
+  position: relative;
+}
+
+.location-sharing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+  border: 1px solid var(--gp-border-light);
+  margin-bottom: 0.5rem;
+}
+
+.location-sharing-row .form-label {
+  margin: 0;
+  flex: 1;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -674,6 +720,16 @@ watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCus
 
   .error-message {
     font-size: 0.8rem;
+  }
+
+  .location-sharing-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .location-sharing-row .form-label {
+    width: 100%;
   }
 }
 </style>

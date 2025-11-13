@@ -27,4 +27,5 @@ public class AuthResponse {
     private String customMapTileUrl;
     private MeasureUnit measureUnit;
     private String defaultRedirectUrl;
+    private boolean shareLocationWithFriends;
 }

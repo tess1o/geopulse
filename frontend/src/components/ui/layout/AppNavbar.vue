@@ -17,13 +17,28 @@
     
     <template #end>
       <div class="gp-navbar-end">
-        <Button 
+        <!-- Location Sharing Toggle -->
+        <div v-if="showLocationSharingToggle" class="location-sharing-navbar">
+          <i
+            :class="['sharing-icon-navbar', locationSharingEnabled ? 'pi pi-eye' : 'pi pi-eye-slash']"
+            v-tooltip.bottom="locationSharingEnabled ? 'Location sharing enabled' : 'Location sharing disabled'"
+          ></i>
+          <ToggleSwitch
+            :modelValue="locationSharingEnabled"
+            @update:modelValue="$emit('toggle-location-sharing', $event)"
+            class="sharing-toggle-navbar"
+          />
+          <span class="sharing-label-desktop">Share Location</span>
+        </div>
+
+        <!-- Invite Friend Button -->
+        <Button
           v-if="showInviteFriendButton"
           icon="pi pi-user-plus"
-          rounded
+          :label="inviteButtonLabel"
           @click="$emit('invite-friend')"
           aria-label="Invite Friend"
-          class="p-button-sm"
+          :class="inviteButtonClass"
         />
         <slot name="end" />
       </div>
@@ -53,10 +68,28 @@ const props = defineProps({
   showInviteFriendButton: {
     type: Boolean,
     default: false
+  },
+  showLocationSharingToggle: {
+    type: Boolean,
+    default: false
+  },
+  locationSharingEnabled: {
+    type: Boolean,
+    default: true
   }
 })
 
-const emit = defineEmits(['navigate', 'invite-friend'])
+const emit = defineEmits(['navigate', 'invite-friend', 'toggle-location-sharing'])
+
+const inviteButtonLabel = computed(() => {
+  // Show label on desktop, hide on mobile
+  return window.innerWidth > 768 ? 'Invite Friend' : ''
+})
+
+const inviteButtonClass = computed(() => {
+  // Rounded small button on mobile, regular button on desktop
+  return window.innerWidth > 768 ? '' : 'p-button-sm p-button-rounded'
+})
 
 const toolbarClasses = computed(() => ({
   [`gp-navbar--${props.variant}`]: props.variant !== 'default',
@@ -113,6 +146,33 @@ const handleNavigate = (item) => {
   padding-right: var(--gp-spacing-md);
 }
 
+/* Location Sharing in Navbar */
+.location-sharing-navbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+  border: 1px solid var(--gp-border-light);
+}
+
+.sharing-icon-navbar {
+  font-size: 1rem;
+  color: var(--gp-primary);
+}
+
+.sharing-icon-navbar.pi-eye-slash {
+  color: var(--gp-text-secondary);
+}
+
+.sharing-label-desktop {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gp-text-primary);
+  white-space: nowrap;
+}
+
 /* Navbar Variants */
 .gp-navbar--compact .gp-navbar-start {
   gap: var(--gp-spacing-md);
@@ -164,6 +224,21 @@ const handleNavigate = (item) => {
 
   .gp-navbar-end {
     gap: var(--gp-spacing-sm);
+  }
+
+  /* Compact location sharing on mobile */
+  .location-sharing-navbar {
+    padding: 0.25rem 0.5rem;
+    gap: 0.375rem;
+  }
+
+  .sharing-icon-navbar {
+    font-size: 0.875rem;
+  }
+
+  /* Hide label text on mobile */
+  .sharing-label-desktop {
+    display: none;
   }
 }
 

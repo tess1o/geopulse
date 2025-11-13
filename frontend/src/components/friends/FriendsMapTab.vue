@@ -29,8 +29,8 @@
       </div>
       <h3 class="empty-title">No Location Data Available</h3>
       <p class="empty-description">
-        Your friends haven't shared their location data yet. Location sharing happens automatically when they
-        use location tracking apps.
+        Your friends haven't shared their location yet. This could be because they've disabled location sharing
+        or haven't used location tracking apps.
       </p>
       <div class="empty-actions">
         <Button

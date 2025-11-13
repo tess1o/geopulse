@@ -293,6 +293,11 @@ public class UserService {
             user.setDefaultRedirectUrl(request.getDefaultRedirectUrl().trim().isEmpty() ? null : request.getDefaultRedirectUrl().trim());
             log.debug("Updated default redirect URL for user {}", user.getId());
         }
+
+        if (request.getShareLocationWithFriends() != null) {
+            user.setShareLocationWithFriends(request.getShareLocationWithFriends());
+            log.debug("Updated share location with friends for user {} to {}", user.getId(), request.getShareLocationWithFriends());
+        }
     }
 
     @Transactional

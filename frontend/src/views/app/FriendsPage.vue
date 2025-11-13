@@ -1,11 +1,14 @@
 x
 <template>
-  <AppLayout :showInviteFriendButton="true" @invite-friend="showInviteDialog = true">
+  <AppLayout
+    :showInviteFriendButton="true"
+    :showLocationSharingToggle="true"
+    :locationSharingEnabled="shareLocationWithFriends"
+    @invite-friend="showInviteDialog = true"
+    @toggle-location-sharing="handleLocationSharingToggle"
+  >
     <PageContainer padding="none" maxWidth="xlarge">
       <div class="friends-page">
-        <!-- Page Header Removed -->
-        <!-- Status Overview Removed -->
-
         <!-- Main Content Tabs -->
         <TabContainer
             :tabs="tabItems"
@@ -120,9 +123,11 @@ const router = useRouter()
 
 // Store refs
 const {friends, receivedInvites, sentInvitations: sentInvites} = storeToRefs(friendsStore)
+const {shareLocationWithFriends} = storeToRefs(authStore)
 
 // State
 const activeTab = ref()
+const localShareLocationWithFriends = ref(true)
 const showInviteDialog = ref(false)
 
 // Tab configuration
@@ -577,9 +582,53 @@ const searchUsers = async (event) => {
   }
 }
 
+const handleLocationSharingToggle = async (newValue) => {
+  try {
+    const user = authStore.user
+    await authStore.updateProfile(
+      user.fullName,
+      user.avatar,
+      user.timezone,
+      user.customMapTileUrl || '',
+      user.measureUnit || 'METRIC',
+      user.defaultRedirectUrl || '',
+      newValue,
+      user.userId
+    )
+
+    toast.add({
+      severity: 'success',
+      summary: newValue ? 'Location Sharing Enabled' : 'Location Sharing Disabled',
+      detail: newValue
+        ? 'Your friends can now see your location'
+        : 'Your friends can no longer see your location',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Error updating location sharing:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: 'Failed to update location sharing setting',
+      life: 5000
+    })
+  }
+}
+
+// Initialize local sharing state
+watch(shareLocationWithFriends, (newValue) => {
+  localShareLocationWithFriends.value = newValue
+}, { immediate: true })
+
 // Lifecycle
 onMounted(async () => {
   try {
+    // Fetch fresh user profile from server to get current location sharing status
+    await authStore.fetchCurrentUserProfile()
+
+    // Initialize local state from store (now updated with server data)
+    localShareLocationWithFriends.value = shareLocationWithFriends.value
+
     // Execute both async calls in parallel
     const [_, lastPosition] = await Promise.all([
       friendsStore.refreshAllFriendsData(),
