@@ -591,12 +591,24 @@ const startImport = async () => {
     }
   } catch (error) {
     console.error('Import error:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Import Failed',
-      detail: error.message || 'Failed to start import job',
-      life: 5000
-    })
+
+    const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to start import job'
+
+    if (error.response?.data?.error?.code === 'ACTIVE_JOB_EXISTS') {
+      toast.add({
+        severity: 'warn',
+        summary: 'Import in Progress',
+        detail: errorMessage,
+        life: 5000
+      })
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Import Failed',
+        detail: errorMessage,
+        life: 5000
+      })
+    }
   }
 }
 

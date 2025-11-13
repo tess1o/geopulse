@@ -36,20 +36,15 @@ public class ImportService {
     private final ConcurrentHashMap<UUID, ImportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
 
-    private static final int MAX_JOBS_PER_USER = 3;
     private static final long JOB_EXPIRY_HOURS = 24;
 
+    public boolean hasActiveImportJob(UUID userId) {
+        return activeJobs.values().stream()
+                .anyMatch(job -> job.getUserId().equals(userId) &&
+                        (job.getStatus() == ImportStatus.VALIDATING || job.getStatus() == ImportStatus.PROCESSING));
+    }
+
     public ImportJob createImportJob(UUID userId, ImportOptions options, String fileName, byte[] zipData) {
-        // Check if user has too many active jobs
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
-                .count();
-
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
-            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
-        }
-
         ImportJob job = new ImportJob(userId, options, fileName, zipData);
         activeJobs.put(job.getJobId(), job);
         
@@ -60,16 +55,6 @@ public class ImportService {
     }
 
     public ImportJob createOwnTracksImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
-        // Check if user has too many active jobs
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
-                .count();
-
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
-            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
-        }
-
         // Force format to be owntracks for clarity
         options.setImportFormat("owntracks");
         
@@ -88,16 +73,6 @@ public class ImportService {
     }
 
     public ImportJob createGoogleTimelineImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
-        // Check if user has too many active jobs
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
-                .count();
-
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
-            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
-        }
-
         // Force format to be google-timeline for clarity
         options.setImportFormat("google-timeline");
         
@@ -116,16 +91,6 @@ public class ImportService {
     }
 
     public ImportJob createGpxImportJob(UUID userId, ImportOptions options, String fileName, byte[] gpxData) {
-        // Check if user has too many active jobs
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
-                .count();
-
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
-            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
-        }
-
         // Force format to be gpx for clarity
         options.setImportFormat("gpx");
 
@@ -144,16 +109,6 @@ public class ImportService {
     }
 
     public ImportJob createGeoJsonImportJob(UUID userId, ImportOptions options, String fileName, byte[] geoJsonData) {
-        // Check if user has too many active jobs
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ImportStatus.FAILED && job.getStatus() != ImportStatus.COMPLETED)
-                .count();
-
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
-            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
-        }
-
         // Force format to be geojson for clarity
         options.setImportFormat("geojson");
 
@@ -175,16 +130,6 @@ public class ImportService {
      * Register an already-created import job (for temp file scenarios)
      */
     public void registerJob(ImportJob job) {
-        // Check if user has too many active jobs
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(j -> j.getUserId().equals(job.getUserId()))
-                .filter(j -> j.getStatus() != ImportStatus.FAILED && j.getStatus() != ImportStatus.COMPLETED)
-                .count();
-
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
-            throw new IllegalStateException("Too many active import jobs. Please wait for existing jobs to complete.");
-        }
-
         // Pre-populate detected data types for streaming formats (only GPS data)
         String format = job.getOptions().getImportFormat();
         if ("geojson".equals(format) || "google-timeline".equals(format)) {

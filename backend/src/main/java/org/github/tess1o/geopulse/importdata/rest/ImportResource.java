@@ -50,6 +50,13 @@ public class ImportResource {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received OwnTracks import request for user: {}", userId);
 
+            // Check for existing active jobs
+            if (importService.hasActiveImportJob(userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(createErrorResponse("ACTIVE_JOB_EXISTS", "An import job is already in progress. Please wait for it to complete."))
+                        .build();
+            }
+
             // Validate file
             if (file == null || file.size() == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -173,6 +180,13 @@ public class ImportResource {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received GeoPulse import request for user: {}", userId);
 
+            // Check for existing active jobs
+            if (importService.hasActiveImportJob(userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(createErrorResponse("ACTIVE_JOB_EXISTS", "An import job is already in progress. Please wait for it to complete."))
+                        .build();
+            }
+
             // Validate file
             if (file == null || file.size() == 0) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -256,6 +270,13 @@ public class ImportResource {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received Google Timeline import request for user: {}", userId);
+
+            // Check for existing active jobs
+            if (importService.hasActiveImportJob(userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(createErrorResponse("ACTIVE_JOB_EXISTS", "An import job is already in progress. Please wait for it to complete."))
+                        .build();
+            }
 
             // Validate file
             if (file == null || file.size() == 0) {
@@ -366,6 +387,13 @@ public class ImportResource {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received GPX import request for user: {}", userId);
+
+            // Check for existing active jobs
+            if (importService.hasActiveImportJob(userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(createErrorResponse("ACTIVE_JOB_EXISTS", "An import job is already in progress. Please wait for it to complete."))
+                        .build();
+            }
 
             // Validate file
             if (file == null || file.size() == 0) {
@@ -495,6 +523,13 @@ public class ImportResource {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("Received GeoJSON import request for user: {}", userId);
+
+            // Check for existing active jobs
+            if (importService.hasActiveImportJob(userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(createErrorResponse("ACTIVE_JOB_EXISTS", "An import job is already in progress. Please wait for it to complete."))
+                        .build();
+            }
 
             // Debug logging
             log.debug("File parameter: {}", file != null ? "present" : "null");
