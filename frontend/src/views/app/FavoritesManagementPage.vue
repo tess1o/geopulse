@@ -19,7 +19,16 @@
           <span class="map-subtitle">{{ totalRecords }} favorite{{ totalRecords !== 1 ? 's' : '' }} on map</span>
         </div>
         <div class="map-container">
-          <div ref="mapElement" class="map-element"></div>
+          <BaseMap
+              mapId="favorites-map"
+              :center="mapCenter"
+              :zoom="mapZoom"
+              height="100%"
+              width="100%"
+              @map-ready="handleMapReady"
+              @map-contextmenu="handleMapContextMenu"
+              ref="baseMapRef"
+          />
         </div>
       </BaseCard>
 
@@ -198,6 +207,7 @@
           v-model:visible="timelineRegenerationVisible"
           :type="timelineRegenerationType"
           :job-id="currentJobId"
+          :job-progress="jobProgress"
       />
 
       <!-- Context Menus -->
@@ -223,12 +233,8 @@ import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useFavoritesStore} from '@/stores/favorites'
 import {useRectangleDrawing} from '@/composables/useRectangleDrawing'
-import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
-import {useTimelineJobCheck} from '@/composables/useTimelineJobCheck'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import BaseMap from '@/components/maps/BaseMap.vue'
 
-// Components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
@@ -246,11 +252,22 @@ import InputText from 'primevue/inputtext'
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 
+import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
+
 // Store and utils
 const favoritesStore = useFavoritesStore()
 const toast = useToast()
 const router = useRouter()
 const confirm = useConfirm()
+
+// Timeline regeneration composable
+const {
+  timelineRegenerationVisible,
+  timelineRegenerationType,
+  currentJobId,
+  jobProgress,
+  withTimelineRegeneration
+} = useTimelineRegeneration()
 
 // Reactive state
 const isMobile = ref(false)
@@ -271,15 +288,7 @@ const addDialogHeader = ref('Add Point to Favorites')
 const pendingAddCoordinates = ref(null)
 const pendingAddBounds = ref(null)
 
-// Timeline regeneration modal state
-const timelineRegenerationVisible = ref(false)
-const timelineRegenerationType = ref('general')
-const modalShowStartTime = ref(null)
-const currentJobId = ref(null)
 
-// Job progress tracking
-const {jobProgress, startPolling, stopPolling} = useTimelineJobProgress()
-const {checkActiveJob} = useTimelineJobCheck()
 
 // Context menu refs
 const mapContextMenuRef = ref(null)
@@ -288,10 +297,12 @@ const favoriteContextMenuActive = ref(false)
 const contextMenuLatLng = ref(null)
 
 // Map state
-const mapElement = ref(null)
+const baseMapRef = ref(null)
 const mapInstance = ref(null)
 const favoritesLayerRef = ref(null)
 const tempMarker = ref(null)
+const mapCenter = ref([51.505, -0.09])
+const mapZoom = ref(13)
 
 // Rectangle drawing composable
 const {
@@ -466,81 +477,28 @@ const editFavorite = (favorite) => {
   showEditDialog.value = true
 }
 
-const deleteFavorite = async (favorite) => {
-  // Check if there's already an active job
-  const activeJobCheck = await checkActiveJob()
-
-  console.log(activeJobCheck);
-
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        // Open the job details page in a new tab
-        const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
-        window.open(url, '_blank')
-      }
-    })
-    return
-  }
-
-  // Confirm deletion with message about timeline regeneration
+const deleteFavorite = (favorite) => {
   confirm.require({
     message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
     header: 'Delete Favorite',
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
-      confirmDelete(favorite)
+      // Capture values to avoid closure issues
+      const favoriteId = favorite.id
+      const favoriteName = favorite.name
+
+      const action = () => favoritesStore.deleteFavorite(favoriteId)
+      withTimelineRegeneration(action, {
+        modalType: 'favorite-delete',
+        successMessage: `Favorite "${favoriteName}" deleted successfully. Timeline is regenerating.`,
+        errorMessage: 'Failed to delete favorite location.',
+        onSuccess: () => {
+          // Refresh favorites list from the store
+          loadFavorites()
+        }
+      })
     }
   })
-}
-
-const confirmDelete = async (favorite) => {
-  if (!favorite) return
-
-  // Store the name before clearing the reference
-  const favoriteName = favorite.name
-  const favoriteId = favorite.id
-
-  try {
-    // Show timeline regeneration modal
-    showTimelineRegenerationModal('favorite-delete')
-
-    const jobId = await favoritesStore.deleteFavorite(favoriteId)
-
-    // Track job progress
-    if (jobId) {
-      currentJobId.value = jobId
-    }
-
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: `Favorite "${favoriteName}" deleted successfully`,
-      life: 3000
-    })
-
-    // Update map
-    await loadFavorites()
-
-    // Modal will close automatically when job completes
-  } catch (error) {
-    console.error('Error deleting favorite:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Delete Failed',
-      detail: error.message || 'Failed to delete favorite location',
-      life: 5000
-    })
-
-    // Close regeneration modal immediately on error
-    timelineRegenerationVisible.value = false
-    currentJobId.value = null
-  }
 }
 
 const handleEditSave = async (updatedData) => {
@@ -586,8 +544,8 @@ const handleAddPointFromContextMenu = () => {
     mapInstance.value.removeLayer(tempMarker.value)
   }
 
-  tempMarker.value = L.marker([contextMenuLatLng.value.lat, contextMenuLatLng.value.lng], {
-    icon: L.divIcon({
+  tempMarker.value = baseMapRef.value.L.marker([contextMenuLatLng.value.lat, contextMenuLatLng.value.lng], {
+    icon: baseMapRef.value.L.divIcon({
       className: 'temp-favorite-marker',
       html: '<div class="temp-marker-icon"><i class="pi pi-map-marker"></i></div>',
       iconSize: [40, 40],
@@ -614,101 +572,59 @@ const handleAddAreaFromContextMenu = () => {
   })
 }
 
-const handleAddFavorite = async (name) => {
+const handleAddFavorite = (name) => {
   if (!name || !name.trim()) return
 
-  // Check if there's already an active job
-  const activeJobCheck = await checkActiveJob()
+  let action
+  let successMessage
 
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before adding favorites.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        // Open the job details page in a new tab
-        const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
-        window.open(url, '_blank')
-      }
-    })
-    return
+  // Capture the values immediately to avoid closure issues
+  if (pendingAddCoordinates.value) {
+    const lat = pendingAddCoordinates.value.lat
+    const lng = pendingAddCoordinates.value.lng
+    action = () => favoritesStore.addPointToFavorites(
+        name.trim(),
+        lat,
+        lng
+    )
+    successMessage = `Favorite "${name}" added. Timeline is regenerating.`
+  } else if (pendingAddBounds.value) {
+    const northEastLat = pendingAddBounds.value.northEastLat
+    const northEastLon = pendingAddBounds.value.northEastLon
+    const southWestLat = pendingAddBounds.value.southWestLat
+    const southWestLon = pendingAddBounds.value.southWestLon
+    action = () => favoritesStore.addAreaToFavorites(
+        name.trim(),
+        northEastLat,
+        northEastLon,
+        southWestLat,
+        southWestLon
+    )
+    successMessage = `Area favorite "${name}" added. Timeline is regenerating.`
+  } else {
+    return // Should not happen
   }
 
-  try {
-    // Show timeline regeneration modal
-    showTimelineRegenerationModal('favorite')
+  // Close dialog and clean up immediately
+  showAddDialog.value = false
+  pendingAddCoordinates.value = null
+  pendingAddBounds.value = null
 
-    let jobId = null
-
-    if (pendingAddCoordinates.value) {
-      // Add point favorite
-      jobId = await favoritesStore.addPointToFavorites(
-          name.trim(),
-          pendingAddCoordinates.value.lat,
-          pendingAddCoordinates.value.lng
-      )
-
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: `Favorite "${name}" added successfully`,
-        life: 3000
-      })
-    } else if (pendingAddBounds.value) {
-      // Add area favorite
-      jobId = await favoritesStore.addAreaToFavorites(
-          name.trim(),
-          pendingAddBounds.value.northEastLat,
-          pendingAddBounds.value.northEastLon,
-          pendingAddBounds.value.southWestLat,
-          pendingAddBounds.value.southWestLon
-      )
-
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: `Area favorite "${name}" added successfully`,
-        life: 3000
-      })
-
-      // Clean up the temp layer
-      cleanupTempLayer()
-    }
-
-    // Track job progress
-    if (jobId) {
-      currentJobId.value = jobId
-    }
-
-    showAddDialog.value = false
-    pendingAddCoordinates.value = null
-    pendingAddBounds.value = null
-
-    // Clean up temp marker
-    if (tempMarker.value && mapInstance.value) {
-      mapInstance.value.removeLayer(tempMarker.value)
-      tempMarker.value = null
-    }
-
-    // Update map
-    await loadFavorites()
-
-    // Modal will close automatically when job completes
-  } catch (error) {
-    console.error('Error adding favorite:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Add Failed',
-      detail: error.message || 'Failed to add favorite location',
-      life: 5000
-    })
-
-    // Close regeneration modal immediately on error
-    timelineRegenerationVisible.value = false
-    currentJobId.value = null
+  if (tempMarker.value && mapInstance.value) {
+    mapInstance.value.removeLayer(tempMarker.value)
+    tempMarker.value = null
   }
+  cleanupTempLayer()
+
+  withTimelineRegeneration(action, {
+    modalType: 'favorite',
+    successMessage: successMessage,
+    errorMessage: 'Failed to add favorite location.',
+    onSuccess: () => {
+      // Refresh data after successful addition
+      loadFavorites()
+    }
+  })
 }
 
 const handleCloseAddDialog = () => {
@@ -734,64 +650,21 @@ const handleCloseAddDialog = () => {
   }
 }
 
-// Timeline regeneration modal helpers
-const showTimelineRegenerationModal = (type) => {
-  timelineRegenerationType.value = type
-  modalShowStartTime.value = Date.now()
-  timelineRegenerationVisible.value = true
-}
 
-const closeTimelineRegenerationModal = () => {
-  // Don't close immediately - let the job complete first
-  // The modal will close automatically when job status becomes COMPLETED
-  // This is handled by the watch below
-}
 
-// Watch for currentJobId changes to start polling
-watch(currentJobId, (newJobId) => {
-  if (newJobId) {
-    startPolling(newJobId)
-  } else {
-    stopPolling()
-  }
-})
 
-// Watch for job completion to auto-close modal
-watch(() => jobProgress.value?.status, (status) => {
-  if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
-    // Ensure minimum display time of 3 seconds for better UX
-    if (!modalShowStartTime.value) {
-      timelineRegenerationVisible.value = false
-      currentJobId.value = null
-      return
-    }
-
-    const elapsed = Date.now() - modalShowStartTime.value
-    const minimumDisplayTime = 3000 // 3 seconds
-    const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
-
-    setTimeout(() => {
-      timelineRegenerationVisible.value = false
-      modalShowStartTime.value = null
-      currentJobId.value = null
-    }, remainingTime)
-  }
-})
 
 const focusOnMap = (favorite) => {
-  if (!mapInstance.value) return
+  if (!baseMapRef.value) return
 
   if (favorite.type === 'POINT') {
-    mapInstance.value.setView([favorite.latitude, favorite.longitude], 15, {
-      animate: true,
-      duration: 0.5
-    })
+    baseMapRef.value.setView([favorite.latitude, favorite.longitude], 15)
   } else if (favorite.type === 'AREA') {
-    const bounds = L.latLngBounds(
+    const bounds = baseMapRef.value.L.latLngBounds(
         [favorite.southWestLat, favorite.southWestLon],
         [favorite.northEastLat, favorite.northEastLon]
     )
-    mapInstance.value.fitBounds(bounds, {padding: [50, 50], animate: true})
+    baseMapRef.value.fitBounds(bounds, {padding: [50, 50], animate: true})
   }
 }
 
@@ -820,46 +693,15 @@ const loadFavorites = async () => {
 }
 
 // Map initialization
-const initMap = () => {
-  if (!mapElement.value) return
-
-  // Clean up any existing map instance on this element
-  if (mapInstance.value) {
-    try {
-      mapInstance.value.remove()
-      mapInstance.value = null
-    } catch (error) {
-      console.warn('Error removing existing map:', error)
-    }
-  }
-
-  // Check if the element already has a Leaflet map instance
-  if (mapElement.value._leaflet_id) {
-    delete mapElement.value._leaflet_id
-  }
-
-  // Create map
-  mapInstance.value = L.map(mapElement.value, {
-    center: [51.505, -0.09],
-    zoom: 13,
-    zoomControl: true
-  })
-
-  // Add tile layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 19
-  }).addTo(mapInstance.value)
+const handleMapReady = (map) => {
+  mapInstance.value = map
 
   // Add favorites layer
-  const favoritesLayer = L.layerGroup().addTo(mapInstance.value)
+  const favoritesLayer = baseMapRef.value.L.layerGroup().addTo(mapInstance.value)
   favoritesLayerRef.value = favoritesLayer
 
   // Initialize rectangle drawing
   initializeDrawing(mapInstance.value)
-
-  // Add context menu listener
-  mapInstance.value.on('contextmenu', handleMapContextMenu)
 
   // Initial update
   updateMapMarkers()
@@ -896,7 +738,9 @@ const handleFavoriteContextMenu = (e, favorite) => {
     e.originalEvent.stopPropagation()
   }
 
-  L.DomEvent.stopPropagation(e)
+  if (baseMapRef.value && baseMapRef.value.L) {
+    baseMapRef.value.L.DomEvent.stopPropagation(e)
+  }
 
   // Store the selected favorite
   selectedFavorite.value = favorite
@@ -923,8 +767,8 @@ const updateMapMarkers = () => {
   // Add point markers
   displayedFavorites.value.forEach(favorite => {
     if (favorite.type === 'POINT') {
-      const marker = L.marker([favorite.latitude, favorite.longitude], {
-        icon: L.divIcon({
+      const marker = baseMapRef.value.L.marker([favorite.latitude, favorite.longitude], {
+        icon: baseMapRef.value.L.divIcon({
           className: 'favorite-point-marker',
           html: '<div class="favorite-marker-icon"><i class="pi pi-map-marker"></i></div>',
           iconSize: [40, 40],
@@ -947,7 +791,7 @@ const updateMapMarkers = () => {
         [favorite.northEastLat, favorite.northEastLon]
       ]
 
-      const rectangle = L.rectangle(bounds, {
+      const rectangle = baseMapRef.value.L.rectangle(bounds, {
         color: '#ef4444',
         fillColor: '#ef4444',
         fillOpacity: 0.2,
@@ -995,11 +839,6 @@ onMounted(async () => {
   window.addEventListener('resize', handleResize)
 
   await loadFavorites()
-
-  // Initialize map after DOM is ready
-  setTimeout(() => {
-    initMap()
-  }, 100)
 })
 
 onUnmounted(() => {
@@ -1038,22 +877,6 @@ onUnmounted(() => {
       console.warn('Error clearing favorites layer:', error)
     }
     favoritesLayerRef.value = null
-  }
-
-  // Clean up map
-  if (mapInstance.value) {
-    try {
-      mapInstance.value.off() // Remove all event listeners
-      mapInstance.value.remove()
-    } catch (error) {
-      console.warn('Error removing map:', error)
-    }
-    mapInstance.value = null
-  }
-
-  // Clean up the map element reference
-  if (mapElement.value && mapElement.value._leaflet_id) {
-    delete mapElement.value._leaflet_id
   }
 })
 </script>

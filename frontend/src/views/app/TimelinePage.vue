@@ -17,10 +17,7 @@
           :showCurrentLocation="isToday"
           @timeline-marker-click="handleTimelineMarkerClick"
           @highlighted-path-click="handleHighlightedPathClick"
-          @add-point-with-regeneration="handleAddPointWithRegeneration"
-          @add-area-with-regeneration="handleAddAreaWithRegeneration"
           @edit-favorite="handleEditFavorite"
-          @delete-favorite-with-regeneration="handleDeleteFavoriteWithRegeneration"
       />
     </div>
 
@@ -44,7 +41,6 @@ import { useToast } from 'primevue/usetoast'
 import { TimelineContainer } from '@/components/timeline'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import { useTimezone } from '@/composables/useTimezone'
-import {useTimelineJobCheck} from '@/composables/useTimelineJobCheck'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -52,8 +48,6 @@ import { useFavoritesStore } from '@/stores/favorites'
 import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
-
-const { checkActiveJob } = useTimelineJobCheck()
 
 const toast = useToast()
 
@@ -137,196 +131,6 @@ const handleEditFavorite = async (favorite) => {
       detail: 'Could not rename the favorite location',
       life: 3000
     })
-  }
-}
-
-// New handlers for favorites with timeline regeneration modal
-const handleAddPointWithRegeneration = async ({ favorite, onComplete, onError, onJobCreated }) => {
-  try {
-
-    const activeJobCheck = await checkActiveJob()
-
-    if (activeJobCheck.hasActiveJob) {
-      confirm.require({
-        message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
-        header: 'Timeline Job In Progress',
-        icon: 'pi pi-info-circle',
-        rejectLabel: 'Cancel',
-        acceptLabel: 'View Progress',
-        accept: () => {
-          // Open the job details page in a new tab
-          const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
-          window.open(url, '_blank')
-        }
-      })
-      return
-    }
-
-    // Add the favorite point (this triggers timeline regeneration on backend and returns job ID)
-    const jobId = await favoritesStore.addPointToFavorites(
-      favorite.name,
-      favorite.lat,
-      favorite.lon
-    )
-
-    // Pass job ID to TimelineMap for progress tracking
-    if (jobId && onJobCreated) {
-      onJobCreated(jobId)
-    }
-
-    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-      await fetchTimelineData(dateRange.value[0], dateRange.value[1])
-    }
-
-    // Show success message
-    toast.add({
-      severity: 'success',
-      summary: 'Favorite Added',
-      detail: 'Your favorite point has been added and timeline regeneration has been initiated.',
-      life: 5000
-    })
-
-    // Close the modal
-    onComplete()
-  } catch (error) {
-    console.error('Error adding point to favorites:', error)
-
-    const errorMessage = error.response?.data?.message || error.message || 'Could not add the point to your favorites'
-    toast.add({
-      severity: 'error',
-      summary: 'Failed to Add Favorite',
-      detail: errorMessage,
-      life: 5000
-    })
-
-    // Close the modal
-    onError()
-  }
-}
-
-const handleAddAreaWithRegeneration = async ({ favorite, onComplete, onError, onJobCreated }) => {
-  try {
-
-    // Check if there's already an active job
-    const activeJobCheck = await checkActiveJob()
-
-    if (activeJobCheck.hasActiveJob) {
-      confirm.require({
-        message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before adding favorites.`,
-        header: 'Timeline Job In Progress',
-        icon: 'pi pi-info-circle',
-        rejectLabel: 'Cancel',
-        acceptLabel: 'View Progress',
-        accept: () => {
-          // Open the job details page in a new tab
-          const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
-          window.open(url, '_blank')
-        }
-      })
-      return
-    }
-
-    // Add the favorite area (this triggers timeline regeneration on backend and returns job ID)
-    const jobId = await favoritesStore.addAreaToFavorites(
-      favorite.name,
-      favorite.northEastLat,
-      favorite.northEastLon,
-      favorite.southWestLat,
-      favorite.southWestLon
-    )
-
-    // Pass job ID to TimelineMap for progress tracking
-    if (jobId && onJobCreated) {
-      onJobCreated(jobId)
-    }
-
-    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-      await fetchTimelineData(dateRange.value[0], dateRange.value[1])
-    }
-
-    // Show success message
-    toast.add({
-      severity: 'success',
-      summary: 'Favorite Area Added',
-      detail: 'Your favorite area has been added and timeline has been regenerated with the latest data.',
-      life: 5000
-    })
-
-    // Close the modal
-    onComplete()
-  } catch (error) {
-    console.error('Error adding area to favorites:', error)
-
-    const errorMessage = error.response?.data?.message || error.message || 'Could not add the area to your favorites'
-    toast.add({
-      severity: 'error',
-      summary: 'Failed to Add Favorite Area',
-      detail: errorMessage,
-      life: 5000
-    })
-
-    // Close the modal
-    onError()
-  }
-}
-
-const handleDeleteFavoriteWithRegeneration = async ({ favorite, onComplete, onError, onJobCreated }) => {
-  try {
-
-    const activeJobCheck = await checkActiveJob()
-
-    if (activeJobCheck.hasActiveJob) {
-      confirm.require({
-        message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
-        header: 'Timeline Job In Progress',
-        icon: 'pi pi-info-circle',
-        rejectLabel: 'Cancel',
-        acceptLabel: 'View Progress',
-        accept: () => {
-          // Open the job details page in a new tab
-          const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
-          window.open(url, '_blank')
-        }
-      })
-      return
-    }
-
-    // Delete the favorite (this triggers timeline regeneration on backend and returns job ID)
-    const jobId = await favoritesStore.deleteFavorite(favorite.id)
-
-    // Pass job ID to TimelineMap for progress tracking
-    if (jobId && onJobCreated) {
-      onJobCreated(jobId)
-    }
-
-    // Refresh timeline data using existing function with proper error handling
-    if (dateRange.value && dateRange.value[0] && dateRange.value[1]) {
-      await fetchTimelineData(dateRange.value[0], dateRange.value[1])
-    }
-
-    // Show success message
-    toast.add({
-      severity: 'success',
-      summary: 'Favorite Deleted',
-      detail: 'Your favorite location has been deleted and timeline regeneration has been initiated.',
-      life: 5000
-    })
-
-    // Close the modal
-    onComplete()
-  } catch (error) {
-    console.error('Error deleting favorite:', error)
-
-    const errorMessage = error.response?.data?.message || error.message || 'Could not delete the favorite location'
-    toast.add({
-      severity: 'error',
-      summary: 'Failed to Delete Favorite',
-      detail: errorMessage,
-      life: 5000
-    })
-
-    // Close the modal
-    onError()
   }
 }
 

@@ -147,6 +147,7 @@
           v-model:visible="timelineRegenerationVisible"
           :type="timelineRegenerationType"
           :job-id="currentJobId"
+          :job-progress="jobProgress"
         />
       </template>
     </MapContainer>
@@ -170,10 +171,8 @@ import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
-// Composables
 import {useMapHighlights, useMapInteractions, useMapLayers, useRectangleDrawing} from '@/composables'
-import {useTimelineJobProgress} from '@/composables/useTimelineJobProgress'
-import {useTimelineJobCheck} from '@/composables/useTimelineJobCheck'
+import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 
 // Store imports
 import {useHighlightStore} from '@/stores/highlight'
@@ -181,7 +180,6 @@ import {useFavoritesStore} from '@/stores/favorites'
 import {useLocationStore} from '@/stores/location'
 import {useTimelineStore} from '@/stores/timeline'
 import {useImmichStore} from '@/stores/immich'
-
 
 // Props
 const props = defineProps({
@@ -231,6 +229,15 @@ const {
   togglePath,
   toggleImmich
 } = useMapLayers()
+
+// Timeline regeneration composable
+const {
+  timelineRegenerationVisible,
+  timelineRegenerationType,
+  currentJobId,
+  jobProgress,
+  withTimelineRegeneration
+} = useTimelineRegeneration()
 
 // Store instances
 const favoritesStore = useFavoritesStore()
@@ -306,16 +313,6 @@ const {
 const photoViewerVisible = ref(false)
 const photoViewerPhotos = ref([])
 const photoViewerIndex = ref(0)
-
-// Timeline regeneration modal state
-const timelineRegenerationVisible = ref(false)
-const timelineRegenerationType = ref('general')
-const modalShowStartTime = ref(null)
-const currentJobId = ref(null)
-
-// Job progress tracking
-const { jobProgress, startPolling, stopPolling } = useTimelineJobProgress()
-const { checkActiveJob } = useTimelineJobCheck()
 
 // Computed getters for dialog state (for template compatibility)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
@@ -532,27 +529,8 @@ const handleFavoriteEdit = (event) => {
   dialogState.value.editFavoriteVisible = true
 }
 
-const handleFavoriteDelete = async (event) => {
+const handleFavoriteDelete = (event) => {
   const favorite = event.favorite || event
-
-  // Check if there's already an active job
-  const activeJobCheck = await checkActiveJob()
-
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        // Open the job details page in a new tab
-        const url = `/app/timeline/jobs/${activeJobCheck.jobId}`
-        window.open(url, '_blank')
-      }
-    })
-    return
-  }
 
   // Confirm deletion
   confirm.require({
@@ -560,21 +538,14 @@ const handleFavoriteDelete = async (event) => {
     header: 'Delete Favorite',
     icon: 'pi pi-exclamation-triangle',
     accept: () => {
-      // Show timeline regeneration modal with timing
-      showTimelineRegenerationModal('favorite-delete')
+      const action = () => favoritesStore.deleteFavorite(favorite.id)
 
-      // Emit the event with modal context
-      emit('delete-favorite-with-regeneration', {
-        favorite,
-        onComplete: () => {
-          closeTimelineRegenerationModal()
+      withTimelineRegeneration(action, {
+        modalType: 'favorite-delete',
+        successMessage: 'Favorite deleted. Timeline is regenerating.',
+        errorMessage: 'Failed to delete favorite.',
+        onSuccess: () => {
           toggleFavorites(true)
-        },
-        onError: () => {
-          closeTimelineRegenerationModal()
-        },
-        onJobCreated: (jobId) => {
-          currentJobId.value = jobId
         }
       })
     }
@@ -655,26 +626,8 @@ const initAreaDrawControl = () => {
 }
 
 // Dialog handlers
-const onFavoritePointSubmit = async (favoriteData) => {
+const onFavoritePointSubmit = (favoriteData) => {
   const pointLatLng = dialogState.value.addToFavoritesLatLng
-  // Check if there's already an active job
-  const activeJobCheck = await checkActiveJob()
-
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before adding favorites.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        // Open the job details page in a new tab
-        const url = `/app/timeline/jobs/${activeJobCheck.jobId}`
-        window.open(url, '_blank')
-      }
-    })
-    return
-  }
 
   if (!pointLatLng) {
     toast.add({
@@ -697,46 +650,25 @@ const onFavoritePointSubmit = async (favoriteData) => {
   // Close the add favorite dialog
   closeAddFavoritePoint()
 
-  // Show timeline regeneration modal with timing
-  showTimelineRegenerationModal('favorite')
+  // Use the composable to handle the timeline regeneration
+  const action = () => favoritesStore.addPointToFavorites(
+    newFavorite.name,
+    newFavorite.lat,
+    newFavorite.lon
+  )
 
-  // Emit the event with modal context
-  emit('add-point-with-regeneration', {
-    favorite: newFavorite,
-    onComplete: () => {
-      closeTimelineRegenerationModal()
+  withTimelineRegeneration(action, {
+    modalType: 'favorite',
+    successMessage: 'Favorite point added. Timeline is regenerating.',
+    errorMessage: 'Failed to add favorite point.',
+    onSuccess: () => {
       toggleFavorites(true)
-    },
-    onError: () => {
-      closeTimelineRegenerationModal()
-    },
-    onJobCreated: (jobId) => {
-      currentJobId.value = jobId
     }
   })
 }
 
-const onFavoriteAreaSubmit = async (favoriteData) => {
+const onFavoriteAreaSubmit = (favoriteData) => {
   if (!drawingState.value.tempAreaLayer) return
-
-  // Check if there's already an active job
-  const activeJobCheck = await checkActiveJob()
-
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before adding favorites.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        // Open the job details page in a new tab
-        const url = `/app/timeline/jobs/${activeJobCheck.jobId}`
-        window.open(url, '_blank')
-      }
-    })
-    return
-  }
 
   // Extract bounds from drawn rectangle
   const bounds = drawingState.value.tempAreaLayer.getBounds()
@@ -752,21 +684,21 @@ const onFavoriteAreaSubmit = async (favoriteData) => {
   // Close the add favorite dialog
   closeAddFavoriteArea()
 
-  // Show timeline regeneration modal with timing
-  showTimelineRegenerationModal('favorite')
+  // Use the composable to handle the timeline regeneration
+  const action = () => favoritesStore.addAreaToFavorites(
+    newFavorite.name,
+    newFavorite.northEastLat,
+    newFavorite.northEastLon,
+    newFavorite.southWestLat,
+    newFavorite.southWestLon
+  )
 
-  // Emit the event with modal context
-  emit('add-area-with-regeneration', {
-    favorite: newFavorite,
-    onComplete: () => {
-      closeTimelineRegenerationModal()
+  withTimelineRegeneration(action, {
+    modalType: 'favorite',
+    successMessage: 'Favorite area added. Timeline is regenerating.',
+    errorMessage: 'Failed to add favorite area.',
+    onSuccess: () => {
       toggleFavorites(true)
-    },
-    onError: () => {
-      closeTimelineRegenerationModal()
-    },
-    onJobCreated: (jobId) => {
-      currentJobId.value = jobId
     }
   })
 }
@@ -812,49 +744,7 @@ const closePhotoViewer = () => {
   photoViewerIndex.value = 0
 }
 
-// Timeline regeneration modal timing helpers
-const showTimelineRegenerationModal = (type) => {
-  timelineRegenerationType.value = type
-  modalShowStartTime.value = Date.now()
-  timelineRegenerationVisible.value = true
-}
 
-const closeTimelineRegenerationModal = () => {
-  // Don't close immediately - let the job complete first
-  // The modal will close automatically when job status becomes COMPLETED
-  // This is handled by the watch below
-}
-
-// Watch for currentJobId changes to start polling
-watch(currentJobId, (newJobId) => {
-  if (newJobId) {
-    startPolling(newJobId)
-  } else {
-    stopPolling()
-  }
-})
-
-// Watch for job completion to auto-close modal
-watch(() => jobProgress.value?.status, (status) => {
-  if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
-    // Ensure minimum display time of 3 seconds for better UX
-    if (!modalShowStartTime.value) {
-      timelineRegenerationVisible.value = false
-      currentJobId.value = null
-      return
-    }
-
-    const elapsed = Date.now() - modalShowStartTime.value
-    const minimumDisplayTime = 3000 // 3 seconds
-    const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
-
-    setTimeout(() => {
-      timelineRegenerationVisible.value = false
-      modalShowStartTime.value = null
-      currentJobId.value = null
-    }, remainingTime)
-  }
-})
 
 // Computed data from stores and props
 const processedPathData = computed(() => {

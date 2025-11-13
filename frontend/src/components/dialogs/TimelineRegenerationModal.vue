@@ -114,13 +114,12 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onUnmounted } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import ProgressSpinner from 'primevue/progressspinner'
 import ProgressBar from 'primevue/progressbar'
 import Button from 'primevue/button'
-import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
 
 // Props
 const props = defineProps({
@@ -136,6 +135,10 @@ const props = defineProps({
   jobId: {
     type: String,
     default: null
+  },
+  jobProgress: {
+    type: Object,
+    default: null
   }
 })
 
@@ -147,32 +150,6 @@ const router = useRouter()
 
 // Local state
 const internalVisible = ref(props.visible)
-
-// Job progress tracking
-const { jobProgress, startPolling, stopPolling } = useTimelineJobProgress()
-
-// Watch for jobId changes to start/stop polling
-watch(() => props.jobId, (newJobId) => {
-  if (newJobId && props.visible) {
-    startPolling(newJobId)
-  } else {
-    stopPolling()
-  }
-}, { immediate: true })
-
-// Watch for visibility changes
-watch(() => props.visible, (newValue) => {
-  if (newValue && props.jobId) {
-    startPolling(props.jobId)
-  } else if (!newValue) {
-    stopPolling()
-  }
-})
-
-// Cleanup on unmount
-onUnmounted(() => {
-  stopPolling()
-})
 
 // Computed properties for dynamic content based on type
 const title = computed(() => {

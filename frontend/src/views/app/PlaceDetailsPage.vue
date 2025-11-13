@@ -178,6 +178,7 @@
       v-model:visible="timelineRegenerationVisible"
       :type="timelineRegenerationType"
       :job-id="currentJobId"
+      :job-progress="jobProgress"
     />
     </PageContainer>
   </AppLayout>
@@ -207,9 +208,7 @@ import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
-// Composables
-import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
-import {useTimelineJobCheck} from '@/composables/useTimelineJobCheck'
+import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 
 // Store
 import { usePlaceStatisticsStore } from '@/stores/placeStatistics'
@@ -228,7 +227,14 @@ const toast = useToast()
 const placeStore = usePlaceStatisticsStore()
 const geocodingStore = useGeocodingStore()
 
-const { checkActiveJob } = useTimelineJobCheck()
+// Composables
+const {
+  timelineRegenerationVisible,
+  timelineRegenerationType,
+  currentJobId,
+  jobProgress,
+  withTimelineRegeneration
+} = useTimelineRegeneration()
 
 // Store refs
 const { placeDetails, placeVisits, pagination, loading } = storeToRefs(placeStore)
@@ -243,15 +249,6 @@ const editFavoriteData = ref(null)
 const editGeocodingData = ref(null)
 const showCreateFavoriteDialog = ref(false)
 const newFavoriteName = ref('')
-
-// Timeline regeneration modal state
-const timelineRegenerationVisible = ref(false)
-const timelineRegenerationType = ref('general')
-const modalShowStartTime = ref(null)
-const currentJobId = ref(null)
-
-// Job progress tracking
-const { jobProgress, startPolling, stopPolling } = useTimelineJobProgress()
 
 // Computed
 const placeType = computed(() => route.params.type)
@@ -307,121 +304,42 @@ const handleCreateFavorite = () => {
   showCreateFavoriteDialog.value = true
 }
 
-const submitCreateFavorite = async () => {
+const submitCreateFavorite = () => {
   if (!newFavoriteName.value.trim()) {
     return
   }
 
-  try {
-    const geometry = placeDetails.value?.geometry
-    if (!geometry || !geometry.latitude || !geometry.longitude) {
-      throw new Error('Invalid coordinates')
-    }
-
-    const activeJobCheck = await checkActiveJob()
-
-    if (activeJobCheck.hasActiveJob) {
-      confirm.require({
-        message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before deleting favorites.`,
-        header: 'Timeline Job In Progress',
-        icon: 'pi pi-info-circle',
-        rejectLabel: 'Cancel',
-        acceptLabel: 'View Progress',
-        accept: () => {
-          // Open the job details page in a new tab
-          const url = router.resolve(`/app/timeline/jobs/${activeJobCheck.jobId}`).href
-          window.open(url, '_blank')
-        }
-      })
-      return
-    }
-
-    // Show timeline regeneration modal
-    showTimelineRegenerationModal('favorite')
-
-    const response = await apiService.post('/favorites/point', {
-      name: newFavoriteName.value.trim(),
-      lat: geometry.latitude,
-      lon: geometry.longitude
-    })
-
-    // Track job progress
-    const jobId = response.data?.jobId || response.data
-    if (jobId) {
-      currentJobId.value = jobId
-    }
-
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Favorite location created successfully',
-      life: 3000
-    })
-
-    showCreateFavoriteDialog.value = false
-    newFavoriteName.value = ''
-
-    // Modal will close automatically when job completes
-  } catch (err) {
-    console.error('Error creating favorite:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'Failed to create favorite location'
-
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: errorMessage,
-      life: 5000
-    })
-
-    // Close regeneration modal immediately on error
-    timelineRegenerationVisible.value = false
-    currentJobId.value = null
+  const geometry = placeDetails.value?.geometry
+  if (!geometry || !geometry.latitude || !geometry.longitude) {
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Invalid coordinates for favorite.', life: 5000 })
+    return
   }
-}
 
-// Timeline regeneration modal helpers
-const showTimelineRegenerationModal = (type) => {
-  timelineRegenerationType.value = type
-  modalShowStartTime.value = Date.now()
-  timelineRegenerationVisible.value = true
-}
+  // Capture values immediately to avoid closure issues
+  const favoriteName = newFavoriteName.value.trim()
+  const lat = geometry.latitude
+  const lon = geometry.longitude
 
-const closeTimelineRegenerationModal = () => {
-  // Don't close immediately - let the job complete first
-  // The modal will close automatically when job status becomes COMPLETED
-  // This is handled by the watch below
-}
+  const action = () => apiService.post('/favorites/point', {
+    name: favoriteName,
+    lat: lat,
+    lon: lon
+  }).then(response => response.data?.jobId || response.data)
 
-// Watch for currentJobId changes to start polling
-watch(currentJobId, (newJobId) => {
-  if (newJobId) {
-    startPolling(newJobId)
-  } else {
-    stopPolling()
-  }
-})
+  // Close dialog and clean up immediately
+  showCreateFavoriteDialog.value = false
+  newFavoriteName.value = ''
 
-// Watch for job completion to auto-close modal
-watch(() => jobProgress.value?.status, (status) => {
-  if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
-    // Ensure minimum display time of 3 seconds for better UX
-    if (!modalShowStartTime.value) {
-      timelineRegenerationVisible.value = false
-      currentJobId.value = null
-      return
+  withTimelineRegeneration(action, {
+    modalType: 'favorite',
+    successMessage: 'Favorite location created successfully.',
+    errorMessage: 'Failed to create favorite location.',
+    onSuccess: () => {
+      // Optionally, reload place details to show the updated related favorite
+      loadPlaceData()
     }
-
-    const elapsed = Date.now() - modalShowStartTime.value
-    const minimumDisplayTime = 3000 // 3 seconds
-    const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
-
-    setTimeout(() => {
-      timelineRegenerationVisible.value = false
-      modalShowStartTime.value = null
-      currentJobId.value = null
-    }, remainingTime)
-  }
-})
+  })
+}
 const loadPlaceData = async () => {
   error.value = null
 

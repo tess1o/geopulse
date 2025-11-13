@@ -287,7 +287,8 @@ defineExpose({
   isReady,
   invalidateSize,
   setView,
-  fitBounds
+  fitBounds,
+  L // Expose L object
 })
 
 // ResizeObserver to handle container size changes

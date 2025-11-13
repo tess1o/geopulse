@@ -671,6 +671,7 @@
           v-model:visible="timelineRegenerationVisible"
           :type="timelineRegenerationType"
           :job-id="currentJobId"
+          :job-progress="jobProgress"
         />
       </div>
     </PageContainer>
@@ -694,13 +695,9 @@ import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
-// Store
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
 import { useTimelineStore } from '@/stores/timeline'
-
-// Composables
-import { useTimelineJobProgress } from '@/composables/useTimelineJobProgress'
-import { useTimelineJobCheck } from '@/composables/useTimelineJobCheck'
+import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
 
 // Store
 const router = useRouter()
@@ -708,8 +705,15 @@ const toast = useToast()
 const confirm = useConfirm()
 const timelinePreferencesStore = useTimelinePreferencesStore()
 const timelineStore = useTimelineStore()
-const { checkActiveJob } = useTimelineJobCheck()
-const { jobProgress, startPolling, stopPolling } = useTimelineJobProgress()
+
+// Composables
+const {
+  timelineRegenerationVisible,
+  timelineRegenerationType,
+  currentJobId,
+  jobProgress,
+  withTimelineRegeneration
+} = useTimelineRegeneration()
 
 // Store refs
 const { timelinePreferences: originalPrefs } = storeToRefs(timelinePreferencesStore)
@@ -751,12 +755,6 @@ const activeTabIndex = computed(() => {
 })
 const loading = ref(false)
 const regenerateLoading = ref(false)
-
-// Timeline regeneration modal state
-const timelineRegenerationVisible = ref(false)
-const timelineRegenerationType = ref('general')
-const currentJobId = ref(null)
-const modalShowStartTime = ref(null)
 
 const prefs = ref({})
 
@@ -823,25 +821,9 @@ const loadPreferences = async () => {
   }
 }
 
-const confirmSavePreferences = async () => {
+const confirmSavePreferences = () => {
   if (!isFormValid.value) {
     return;
-  }
-
-  const activeJobCheck = await checkActiveJob()
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before saving new preferences.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        const url = `/app/timeline/jobs/${activeJobCheck.jobId}`
-        window.open(url, '_blank')
-      }
-    })
-    return
   }
 
   const changes = getChangedPrefs()
@@ -919,50 +901,28 @@ const hasStructuralParameters = (changes) => {
   return structuralFields.some(field => field in changes)
 }
 
-const savePreferences = async (saveType = 'full') => {
+const savePreferences = (saveType = 'full') => {
   if (!isFormValid.value) return
 
-  timelineRegenerationType.value = saveType === 'classification' ? 'classification' : 'preferences'
-  timelineRegenerationVisible.value = true
-  currentJobId.value = null
+  // Capture changes immediately to avoid closure issues
+  const changes = getChangedPrefs()
 
-  try {
-    const changes = getChangedPrefs()
-    const jobId = await timelinePreferencesStore.updateTimelinePreferences(changes)
-    if (jobId) {
-      currentJobId.value = jobId
-    } else {
-      timelineRegenerationVisible.value = false
-    }
-  } catch (error) {
-    console.error('Error saving preferences:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Save Failed',
-      detail: 'Failed to save timeline preferences',
-      life: 5000
-    })
-    timelineRegenerationVisible.value = false
+  const action = () => {
+    return timelinePreferencesStore.updateTimelinePreferences(changes)
   }
+
+  withTimelineRegeneration(
+    action,
+    {
+      modalType: saveType === 'classification' ? 'classification' : 'preferences',
+      successMessage: 'Preferences saved and timeline regeneration started.',
+      errorMessage: 'Failed to save preferences.',
+      onSuccess: loadPreferences
+    }
+  )
 }
 
-const confirmResetDefaults = async () => {
-  const activeJobCheck = await checkActiveJob()
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before resetting preferences.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        const url = `/app/timeline/jobs/${activeJobCheck.jobId}`
-        window.open(url, '_blank')
-      }
-    })
-    return
-  }
-
+const confirmResetDefaults = () => {
   confirm.require({
     message: 'This will reset all settings to their default values. Are you sure?',
     header: 'Reset to Defaults',
@@ -980,28 +940,16 @@ const confirmResetDefaults = async () => {
   })
 }
 
-const resetDefaults = async () => {
-  timelineRegenerationType.value = 'preferences'
-  timelineRegenerationVisible.value = true
-  currentJobId.value = null
-
-  try {
-    const jobId = await timelinePreferencesStore.resetTimelinePreferencesToDefaults()
-    if (jobId) {
-      currentJobId.value = jobId
-    } else {
-      timelineRegenerationVisible.value = false
+const resetDefaults = () => {
+  withTimelineRegeneration(
+    () => timelinePreferencesStore.resetTimelinePreferencesToDefaults(),
+    {
+      modalType: 'preferences',
+      successMessage: 'Preferences reset and timeline regeneration started.',
+      errorMessage: 'Failed to reset preferences.',
+      onSuccess: loadPreferences
     }
-  } catch (error) {
-    console.error('Error resetting preferences:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Reset Failed',
-      detail: 'Failed to reset preferences to defaults',
-      life: 5000
-    })
-    timelineRegenerationVisible.value = false
-  }
+  )
 }
 
 const discardChanges = () => {
@@ -1016,23 +964,7 @@ const discardChanges = () => {
   }
 }
 
-const confirmRegenerateTimeline = async () => {
-  const activeJobCheck = await checkActiveJob()
-  if (activeJobCheck.hasActiveJob) {
-    confirm.require({
-      message: `A timeline generation job is already running (${activeJobCheck.progress || 0}% complete). Please wait for it to finish before starting a new regeneration.`,
-      header: 'Timeline Job In Progress',
-      icon: 'pi pi-info-circle',
-      rejectLabel: 'Cancel',
-      acceptLabel: 'View Progress',
-      accept: () => {
-        const url = `/app/timeline/jobs/${activeJobCheck.jobId}`
-        window.open(url, '_blank')
-      }
-    })
-    return
-  }
-
+const confirmRegenerateTimeline = () => {
   confirm.require({
     message: 'This will completely delete your current timeline data and regenerate it from scratch.\n\nThis operation may take several minutes depending on your GPS data volume.\n\nDo you want to proceed?',
     header: 'Regenerate Complete Timeline',
@@ -1050,96 +982,26 @@ const confirmRegenerateTimeline = async () => {
   })
 }
 
-const regenerateTimeline = async () => {
-  timelineRegenerationType.value = 'general'
-  timelineRegenerationVisible.value = true
-  currentJobId.value = null
-
-  try {
-    const jobId = await timelineStore.regenerateAllTimeline()
-    if (jobId) {
-      currentJobId.value = jobId
-    } else {
-      timelineRegenerationVisible.value = false
+const regenerateTimeline = () => {
+  withTimelineRegeneration(
+    () => timelineStore.regenerateAllTimeline(),
+    {
+      modalType: 'general',
+      successMessage: 'Timeline regeneration started.',
+      errorMessage: 'Failed to start timeline regeneration.'
     }
-  } catch (error) {
-    console.error('Error regenerating timeline:', error)
-    const errorMessage = error.response?.data?.message || error.message || 'Unknown error occurred'
-    toast.add({
-      severity: 'error',
-      summary: 'Regeneration Failed',
-      detail: `Failed to regenerate timeline: ${errorMessage}`,
-      life: 8000
-    })
-    timelineRegenerationVisible.value = false
-    currentJobId.value = null
-  }
+  )
 }
 
 const goToActiveJob = () => {
   router.push('/app/timeline/jobs')
 }
 
-// Watchers
 watch(originalPrefs, (newVal) => {
   if (newVal) {
     prefs.value = { ...newVal }
   }
 }, { immediate: true })
-
-watch(currentJobId, (newJobId) => {
-  if (newJobId) {
-    modalShowStartTime.value = Date.now()
-    startPolling(newJobId)
-  } else {
-    stopPolling()
-  }
-})
-
-watch(() => jobProgress.value?.status, (status) => {
-  if (status === 'COMPLETED' && timelineRegenerationVisible.value) {
-    const elapsed = Date.now() - (modalShowStartTime.value || 0)
-    const minimumDisplayTime = 3000 // 3 seconds
-    const remainingTime = Math.max(0, minimumDisplayTime - elapsed)
-
-    setTimeout(() => {
-      timelineRegenerationVisible.value = false
-      currentJobId.value = null
-      modalShowStartTime.value = null
-
-      // Determine toast message based on job type
-      let toastDetails = {
-        severity: 'success',
-        life: 5000
-      }
-      if (timelineRegenerationType.value === 'classification') {
-        toastDetails.summary = 'Trip Classifications Updated'
-        toastDetails.detail = 'Movement types have been recalculated.'
-      } else if (timelineRegenerationType.value === 'preferences') {
-        toastDetails.summary = 'Timeline Regenerated'
-        toastDetails.detail = 'Timeline regenerated with new preferences.'
-      } else if (timelineRegenerationType.value === 'general') {
-        toastDetails.summary = 'Timeline Regenerated'
-        toastDetails.detail = 'Your timeline has been completely regenerated.'
-        toastDetails.life = 8000
-      }
-      
-      toast.add(toastDetails)
-      loadPreferences()
-
-    }, remainingTime)
-  } else if (status === 'FAILED' && timelineRegenerationVisible.value) {
-    timelineRegenerationVisible.value = false
-    currentJobId.value = null
-    modalShowStartTime.value = null
-    toast.add({
-      severity: 'error',
-      summary: 'Regeneration Failed',
-      detail: jobProgress.value?.errorMessage || 'An unknown error occurred.',
-      life: 8000
-    })
-  }
-})
 
 // Lifecycle
 onMounted(() => {
