@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Favorites and Geocoding | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Favorites and Geocoding | GeoPulse documentation"><meta data-rh="true" name="description" content="Learn how to manage place names using Favorite Locations and understand the reverse geocoding process."><meta data-rh="true" property="og:description" content="Learn how to manage place names using Favorite Locations and understand the reverse geocoding process."><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Favorites and Geocoding","item":"https://tess1o.github.io/geopulse/docs/user-guide/core-features/managing-places"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
-<script src="/geopulse/assets/js/runtime~main.66435444.js" defer="defer"></script>
+<script src="/geopulse/assets/js/runtime~main.039f254a.js" defer="defer"></script>
 <script src="/geopulse/assets/js/main.b42f8748.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -15,68 +15,94 @@
 <p>GeoPulse gives you powerful tools to manage how locations are named in your timeline. You can set custom names for places you visit often using <strong>Favorite Locations</strong>, and for all other places, GeoPulse uses a process called <strong>Reverse Geocoding</strong> to provide meaningful names.</p>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="favorite-locations">Favorite Locations<a href="#favorite-locations" class="hash-link" aria-label="Direct link to Favorite Locations" title="Direct link to Favorite Locations" translate="no">​</a></h2>
-<p>Favorite Locations let you assign custom names to specific places on your <strong>Timeline Map</strong>. They are the easiest way to keep your Timeline organized and meaningful, as they always override any automatic results.</p>
-<p>There are two types of favorites:</p>
-<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="favorite-point">Favorite Point<a href="#favorite-point" class="hash-link" aria-label="Direct link to Favorite Point" title="Direct link to Favorite Point" translate="no">​</a></h3>
-<p>A single location on the map. All GPS points within <strong>75 meters</strong> of this point will use the custom name you assign. Use this to label frequently visited places like <strong>Home</strong>, <strong>Office</strong>, or <strong>Gym</strong>.</p>
-<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="favorite-area">Favorite Area<a href="#favorite-area" class="hash-link" aria-label="Direct link to Favorite Area" title="Direct link to Favorite Area" translate="no">​</a></h3>
-<p>A rectangular zone you draw on the map. All GPS points <strong>inside that rectangle</strong>, and within <strong>15 meters outside its border</strong>, will use the same custom name. Use this for larger areas such as <strong>parks</strong>, <strong>malls</strong>, or <strong>city squares</strong>.</p>
-<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="add-a-favorite-point-or-area">Add a Favorite Point or Area<a href="#add-a-favorite-point-or-area" class="hash-link" aria-label="Direct link to Add a Favorite Point or Area" title="Direct link to Add a Favorite Point or Area" translate="no">​</a></h3>
-<ol>
-<li class="">Open your <strong>Timeline Map</strong>.</li>
-<li class="">Right-click anywhere on the map.</li>
-<li class="">Choose one of the following options:<!-- -->
+<p>Favorite Locations are the best way to keep your timeline organized and easy to read. By assigning a custom name to a location (e.g., &quot;Home&quot;, &quot;Office&quot;, &quot;Gym&quot;), you ensure that any visit to that place is always labeled correctly, overriding any automatic naming.</p>
+<p>There are two types of favorites you can create:</p>
 <ul>
-<li class=""><strong>Add to Favorites</strong> – to create a Favorite Point.</li>
-<li class=""><strong>Add an Area to Favorites</strong> – to create a Favorite Area.</li>
+<li class=""><strong>Favorite Point:</strong> A single, specific location on the map. All your GPS points within <strong>75 meters</strong> of this point will be associated with this favorite. This is perfect for smaller, well-defined places.</li>
+<li class=""><strong>Favorite Area:</strong> A rectangular zone that you draw on the map. Any GPS points that fall <strong>inside this rectangle</strong> will be associated with this favorite. This is ideal for larger areas where you might move around, such as a university campus, a large park, or a shopping mall.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-favorites-management-page">The Favorites Management Page<a href="#the-favorites-management-page" class="hash-link" aria-label="Direct link to The Favorites Management Page" title="Direct link to The Favorites Management Page" translate="no">​</a></h3>
+<p>The central hub for managing your favorites is the <strong>Favorites Management</strong> page, accessible from the main application menu. This page provides a comprehensive set of tools:</p>
+<ul>
+<li class=""><strong>Interactive Map:</strong> A full-screen map that visually displays all your Favorite Points and Areas.</li>
+<li class=""><strong>Filter and Search:</strong> Quickly find favorites by filtering by type (Point or Area) or searching by name, city, or country.</li>
+<li class=""><strong>Detailed Table:</strong> A sortable list of all your favorites with key details, along with actions to manage them.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="how-to-create-a-favorite">How to Create a Favorite<a href="#how-to-create-a-favorite" class="hash-link" aria-label="Direct link to How to Create a Favorite" title="Direct link to How to Create a Favorite" translate="no">​</a></h3>
+<p>There are three primary ways to create a new Favorite Location:</p>
+<p><strong>1. From the Timeline Page Map</strong></p>
+<p>You can quickly add a favorite directly from the interactive map on your Timeline page.</p>
+<ol>
+<li class="">Open your <strong>Timeline</strong> page.</li>
+<li class=""><strong>Right-click</strong> anywhere on the map where you want to add a favorite.</li>
+<li class="">A context menu will appear. Choose one of the following:<!-- -->
+<ul>
+<li class=""><strong>Add point to favorites:</strong> To create a Favorite Point at the clicked location.</li>
+<li class=""><strong>Add area to favorites:</strong> To begin drawing a Favorite Area. Click and drag on the map to define the rectangular area.</li>
 </ul>
 </li>
-<li class="">(For areas only) Draw a rectangle covering the desired region.</li>
-<li class="">Enter a <strong>custom name</strong> and click <strong>Save</strong>.</li>
+<li class="">A dialog box will appear. Enter a descriptive <strong>name</strong> for your new favorite and click <strong>Save</strong>.</li>
 </ol>
-<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="edit-or-delete-a-favorite-location">Edit or Delete a Favorite Location<a href="#edit-or-delete-a-favorite-location" class="hash-link" aria-label="Direct link to Edit or Delete a Favorite Location" title="Direct link to Edit or Delete a Favorite Location" translate="no">​</a></h3>
+<p><strong>2. From the Favorites Management Page</strong></p>
+<p>This is the most direct way to add a new favorite from scratch.</p>
 <ol>
-<li class="">Open your <strong>Timeline Map</strong>.</li>
-<li class="">Click the <strong>bookmark icon</strong> in the top-right corner to show all your Favorite Locations.</li>
-<li class="">Find the Favorite you want to change.</li>
-<li class="">Right-click on it and choose:<!-- -->
+<li class="">Navigate to the <strong>Favorites Management</strong> page.</li>
+<li class="">On the map, <strong>right-click</strong> where you want to add your favorite.</li>
+<li class="">A context menu will appear. Choose one of the following:<!-- -->
 <ul>
-<li class=""><strong>Edit</strong> – to update its name or area.</li>
-<li class=""><strong>Delete</strong> – to remove it.</li>
+<li class=""><strong>Add to Favorites:</strong> To create a Favorite Point at the location you clicked.</li>
+<li class=""><strong>Add an area to Favorites:</strong> To begin drawing a Favorite Area. Click and drag on the map to draw the rectangle that defines your area.</li>
+</ul>
+</li>
+<li class="">A dialog box will appear. Enter a descriptive <strong>name</strong> for your new favorite and click <strong>Save</strong>.</li>
+</ol>
+<p><strong>3. From a Place&#x27;s Detail Page</strong></p>
+<p>You can easily &quot;promote&quot; any location you&#x27;ve visited to a Favorite.</p>
+<ol>
+<li class="">From your Timeline or another page, click on a location to navigate to its <strong>Place Details</strong> page.</li>
+<li class="">If the location is not already a favorite, you will see an <strong>&quot;Add to Favorites&quot;</strong> button in the header.</li>
+<li class="">Click the button, give the location a custom name, and save it. This creates a new Favorite Point at that location&#x27;s coordinates.</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="editing-and-deleting-favorites">Editing and Deleting Favorites<a href="#editing-and-deleting-favorites" class="hash-link" aria-label="Direct link to Editing and Deleting Favorites" title="Direct link to Editing and Deleting Favorites" translate="no">​</a></h3>
+<p>All editing and deleting is done from the <strong>Favorites Management</strong> page.</p>
+<ol>
+<li class="">Find the favorite you wish to modify in the table.</li>
+<li class="">In the <strong>Actions</strong> column, click the appropriate button:<!-- -->
+<ul>
+<li class=""><strong>Edit (pencil icon):</strong> Allows you to change the name of the favorite.</li>
+<li class=""><strong>Delete (trash icon):</strong> Permanently removes the favorite.</li>
 </ul>
 </li>
 </ol>
+<blockquote>
+<p><strong>Important:</strong> Creating or deleting a favorite will automatically trigger a <strong>timeline regeneration</strong>. This is necessary because changing a favorite can affect how past stays and trips are named and organized. The process is automatic and runs in the background.</p>
+</blockquote>
 <hr>
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="understanding-reverse-geocoding">Understanding Reverse Geocoding<a href="#understanding-reverse-geocoding" class="hash-link" aria-label="Direct link to Understanding Reverse Geocoding" title="Direct link to Understanding Reverse Geocoding" translate="no">​</a></h2>
-<p>For any location that is not marked as a favorite, GeoPulse uses <strong>reverse geocoding</strong> to convert GPS coordinates into human-readable location names (e.g., “Kyiv City Center” or “Berlin Hauptbahnhof”). This information is displayed throughout the application.</p>
+<p>For any location that is not covered by one of your favorites, GeoPulse uses a process called <strong>reverse geocoding</strong> to convert raw GPS coordinates into a human-readable address (e.g., “Kyiv City Center” or “Berlin Hauptbahnhof”).</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="how-geopulse-resolves-location-names">How GeoPulse Resolves Location Names<a href="#how-geopulse-resolves-location-names" class="hash-link" aria-label="Direct link to How GeoPulse Resolves Location Names" title="Direct link to How GeoPulse Resolves Location Names" translate="no">​</a></h3>
-<p>When the Timeline detects a <strong>stay</strong> (visit) at a specific location, GeoPulse tries to determine the best name for that place. The resolution order is:</p>
+<p>When your timeline identifies a <strong>stay</strong> at a location, the system follows a clear priority order to name that place:</p>
 <ol>
 <li class="">
-<p><strong>Favorite Locations</strong>
-If the coordinate falls within a <strong>Favorite Point</strong> or <strong>Favorite Area</strong>, the favorite name is used immediately. <em>(Highest priority)</em></p>
+<p><strong>Favorite Locations (Highest Priority):</strong> If the stay&#x27;s coordinates fall within one of your Favorite Points or Areas, the custom favorite name is always used.</p>
 </li>
 <li class="">
-<p><strong>Cached Reverse Geocoding Results</strong>
-GeoPulse stores all reverse geocoding results in the database. If a matching entry already exists, it is reused to improve performance and avoid unnecessary requests to external providers.</p>
+<p><strong>Cached Reverse Geocoding Results:</strong> GeoPulse saves all successful geocoding results. If the location has been identified before, the system reuses the stored name for speed and efficiency.</p>
 </li>
 <li class="">
-<p><strong>Primary Reverse Geocoding Provider</strong>
-If the database contains no result, GeoPulse queries the <strong>primary</strong> configured provider. If successful, the result is saved for future use.</p>
+<p><strong>Primary Reverse Geocoding Provider:</strong> If the location is new, GeoPulse queries the primary provider you have configured in the system settings.</p>
 </li>
 <li class="">
-<p><strong>Failover Provider</strong>
-If the primary provider fails, GeoPulse automatically tries the <strong>failover</strong> provider.</p>
+<p><strong>Failover Provider:</strong> If the primary provider fails or returns no result, the system automatically tries the configured failover provider.</p>
 </li>
 <li class="">
-<p><strong>Fallback: Unknown Location</strong>
-If all providers fail, GeoPulse assigns the default label <strong>“Unknown location”</strong>.</p>
+<p><strong>Fallback: Unknown Location:</strong> If all other methods fail, the stay is labeled <strong>“Unknown location”</strong>.</p>
 </li>
 </ol>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="managing-cached-geocoding-data">Managing Cached Geocoding Data<a href="#managing-cached-geocoding-data" class="hash-link" aria-label="Direct link to Managing Cached Geocoding Data" title="Direct link to Managing Cached Geocoding Data" translate="no">​</a></h3>
 <p>Advanced users can view and maintain the cached reverse geocoding results from the <strong>Reverse Geocoding Management page</strong> (<code>/app/geocoding-management</code>). This page allows you to search, refresh (reconcile), and manually edit stored geocoding results.</p>
 <blockquote>
-<p><strong>Important:</strong> Currently, all changes on this page affect <strong>all users</strong>.</p>
+<p><strong>Important:</strong> Currently, all changes on this page affect <strong>all users</strong> of the GeoPulse instance.</p>
 </blockquote>
 <p>Key features of this page include:</p>
 <ul>
@@ -84,6 +110,6 @@ If all providers fail, GeoPulse assigns the default label <strong>“Unknown loc
 <li class=""><strong>Reconcile Selected Records:</strong> Refresh one or more entries using a specific provider. This is useful if you change providers and want to update existing data.</li>
 <li class=""><strong>Reconcile All:</strong> Refresh <strong>every</strong> stored entry. Use with caution, as this can be a long-running process.</li>
 <li class=""><strong>Manual Editing:</strong> Manually update the display name, city, or country for any record.</li>
-</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/user-guide/core-features/journey-insights"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Journey Insights</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/user-guide/interacting-with-data/import-export"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Importing &amp; Exporting Data</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#favorite-locations" class="table-of-contents__link toc-highlight">Favorite Locations</a><ul><li><a href="#favorite-point" class="table-of-contents__link toc-highlight">Favorite Point</a></li><li><a href="#favorite-area" class="table-of-contents__link toc-highlight">Favorite Area</a></li><li><a href="#add-a-favorite-point-or-area" class="table-of-contents__link toc-highlight">Add a Favorite Point or Area</a></li><li><a href="#edit-or-delete-a-favorite-location" class="table-of-contents__link toc-highlight">Edit or Delete a Favorite Location</a></li></ul></li><li><a href="#understanding-reverse-geocoding" class="table-of-contents__link toc-highlight">Understanding Reverse Geocoding</a><ul><li><a href="#how-geopulse-resolves-location-names" class="table-of-contents__link toc-highlight">How GeoPulse Resolves Location Names</a></li><li><a href="#managing-cached-geocoding-data" class="table-of-contents__link toc-highlight">Managing Cached Geocoding Data</a></li></ul></li></ul></div></div></div></div></main></div></div></div></div>
+</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/user-guide/core-features/journey-insights"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Journey Insights</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/user-guide/interacting-with-data/import-export"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Importing &amp; Exporting Data</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#favorite-locations" class="table-of-contents__link toc-highlight">Favorite Locations</a><ul><li><a href="#the-favorites-management-page" class="table-of-contents__link toc-highlight">The Favorites Management Page</a></li><li><a href="#how-to-create-a-favorite" class="table-of-contents__link toc-highlight">How to Create a Favorite</a></li><li><a href="#editing-and-deleting-favorites" class="table-of-contents__link toc-highlight">Editing and Deleting Favorites</a></li></ul></li><li><a href="#understanding-reverse-geocoding" class="table-of-contents__link toc-highlight">Understanding Reverse Geocoding</a><ul><li><a href="#how-geopulse-resolves-location-names" class="table-of-contents__link toc-highlight">How GeoPulse Resolves Location Names</a></li><li><a href="#managing-cached-geocoding-data" class="table-of-contents__link toc-highlight">Managing Cached Geocoding Data</a></li></ul></li></ul></div></div></div></div></main></div></div></div></div>
 </body>
 </html>
