@@ -99,6 +99,8 @@ A background job runs automatically every few minutes (typically 5 by default, b
 
 This "rewind and rebuild" approach is crucial for accuracy. It ensures that if you are in the middle of a long stay or a data gap, the duration of that event is always kept up-to-date. It also allows new GPS points to be correctly incorporated into the most recent activity.
 
+See [Global Timeline Settiings](/docs/system-administration/configuration/timeline-global-config#real-time-timeline-processing) to understand how to adjust the frequency of this job.
+
 ### Other Triggers for Rebuilding
 A full timeline rebuild can also be triggered by certain user actions that change how the algorithm interprets your data. This includes:
 *   **Changing Timeline Preferences:** If you adjust a setting like Stay Radius or Minimum Stay Duration.

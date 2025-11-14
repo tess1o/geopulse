@@ -1,5 +1,21 @@
 # Timeline Global Configuration
 
+## Real-time Timeline Processing
+
+:::danger Global Settings
+The following settings are for system administrators and control the global behavior of the real-time timeline processing job. They affect all users and **cannot** be overridden on a per-user basis.
+:::
+
+Controls the background job that processes real-time timeline updates for all users.
+
+| Property                               | Default | Description                                                                                             |
+|----------------------------------------|---------|---------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_PROCESSING_THREADS` | `2`     | The number of concurrent threads used to process timeline updates for different users.                  |
+| `GEOPULSE_TIMELINE_JOB_INTERVAL`       | `5m`    | The interval at which the system checks for and processes pending real-time timeline updates for users. |
+| `GEOPULSE_TIMELINE_JOB_DELAY`          | `1m`    | The delay after application startup before the first timeline processing job is executed.               |
+
+To understand better how Timeline Processing works, please refer to the [Timeline Processing](/docs/user-guide/core-features/timeline) section.
+
 :::info
 These settings can be overridden per-user through the web interface. Environment variables set the default values for
 new users.
