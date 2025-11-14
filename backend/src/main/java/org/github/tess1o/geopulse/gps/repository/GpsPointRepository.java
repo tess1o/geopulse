@@ -53,6 +53,12 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 .firstResultOptional();
     }
 
+
+    public Optional<GpsPointEntity> findLatest() {
+        return find("ORDER BY timestamp DESC")
+                .firstResultOptional();
+    }
+
     public Optional<GpsPointEntity> findLatest(UUID userId) {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId)
                 .firstResultOptional();
@@ -258,6 +264,13 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         query.setMaxResults(pageSize);
 
         return query.getResultList();
+    }
+
+    public long countByUser(UUID userId) {
+        Query query = getEntityManager().createQuery(
+                "SELECT COUNT(gp) FROM GpsPointEntity gp WHERE gp.user.id = :userId");
+        query.setParameter("userId", userId);
+        return (Long) query.getSingleResult();
     }
 
     /**

@@ -21,10 +21,10 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
     public UserRepository(EntityManager entityManager) {
         this.entityManager = entityManager;
     }
+
     /**
      * Find a single user by email
      */
-
     public Optional<UserEntity> findByEmail(String email) {
         return find("email = ?1", email).firstResultOptional();
     }
