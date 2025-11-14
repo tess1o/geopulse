@@ -7,9 +7,9 @@ import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.domain.RawTimeline;
-import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
+import java.time.Instant;
 import java.util.*;
 
 @ApplicationScoped
@@ -121,7 +121,9 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
     
     /**
      * Find a group of consecutive stays that can be merged together.
-     * Uses the analysis service to determine merge eligibility.
+     * Uses two merge strategies:
+     * 1. INTEGRITY MERGE (always applied): Same location + NO trips = force merge (timeline integrity)
+     * 2. USER PREFERENCE MERGE (conditional): Same location + short trip = respect config settings
      */
     private List<Integer> findMergeGroup(TimelineConfig timelineConfig,
                                          List<Stay> stays,
@@ -130,31 +132,63 @@ public class MovementTimelineMergerImpl implements MovementTimelineMerger {
                                          int startIndex) {
         List<Integer> mergeGroup = new ArrayList<>();
         mergeGroup.add(startIndex);
-        
+
         if (startIndex >= stays.size()) {
             return mergeGroup;
         }
-        
+
         Stay currentStay = stays.get(startIndex);
 
         // Look for consecutive stays with same location that can be merged
         int j = startIndex + 1;
         while (j < stays.size() && isSameLocation(currentStay, stays.get(j))) {
-            // Check if the trip(s) between the last merged stay and current candidate allow merging
             Stay lastMergedStay = stays.get(mergeGroup.getLast());
             Stay candidateStay = stays.get(j);
-            
-            if (analysisService.canMergeStays(timelineConfig, lastMergedStay, candidateStay, trips, dataGaps)) {
+
+            // INTEGRITY CHECK: If there are NO trips between these same-location stays,
+            // this is a timeline integrity issue and must ALWAYS be merged
+            boolean hasNoTripsBetween = !hasAnyTripBetweenStays(lastMergedStay, candidateStay, trips);
+            boolean hasNoDataGapBetween = !analysisService.hasDataGapBetweenStays(lastMergedStay, candidateStay, dataGaps);
+
+            if (hasNoTripsBetween && hasNoDataGapBetween) {
+                // FORCE MERGE for timeline integrity (regardless of config)
                 mergeGroup.add(j);
-                log.debug("Added stay {} to merge group (location: '{}')", j, currentStay.getLocationName());
+                log.debug("INTEGRITY MERGE: Consecutive stays at '{}' with NO trips/gaps between them - " +
+                        "forcing merge to maintain timeline integrity (stay {} and {})",
+                        currentStay.getLocationName(), mergeGroup.getLast(), j);
+            } else if (timelineConfig.getIsMergeEnabled() &&
+                       analysisService.canMergeStays(timelineConfig, lastMergedStay, candidateStay, trips, dataGaps)) {
+                // USER PREFERENCE MERGE: Short trip between stays, respect config
+                mergeGroup.add(j);
+                log.debug("Added stay {} to merge group based on user config (location: '{}')",
+                         j, currentStay.getLocationName());
             } else {
-                log.debug("Cannot merge stay {} due to analysis criteria", j);
+                log.debug("Cannot merge stay {} - has trips/gaps between or merge disabled", j);
                 break; // Can't merge this stay
             }
             j++;
         }
-        
+
         return mergeGroup;
+    }
+
+    /**
+     * Check if there are ANY trips between two stays (used for integrity checks).
+     */
+    private boolean hasAnyTripBetweenStays(Stay firstStay, Stay secondStay, List<Trip> trips) {
+        if (firstStay == null || secondStay == null || trips == null) {
+            return false;
+        }
+
+        Instant firstStayTime = firstStay.getStartTime();
+        Instant secondStayTime = secondStay.getStartTime();
+
+        for (Trip trip : trips) {
+            if (analysisService.isTripBetweenStays(trip, firstStayTime, secondStayTime)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

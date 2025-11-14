@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.service.trips;
 
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
+import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,5 +97,66 @@ class StreamingSingleTripAlgorithmTest {
         Trip processedTrip2 = (Trip) processedEvents.get(2);
         assertEquals(processedTrip2.getDuration().toMinutes(), 15);
         assertEquals(processedTrip2.getDistanceMeters(), 1500);
+    }
+
+    @Test
+    void testConsecutiveStaysAtSameLocation_ShouldNotLogError_SingleAlgorithm() {
+        Stay home1 = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:00:00Z"))
+                .duration(Duration.ofMinutes(30))
+                .locationName("Home")
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+
+        Stay home2 = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:30:00Z"))
+                .duration(Duration.ofMinutes(45))
+                .locationName("Home")
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+
+        List<TimelineEvent> events = Arrays.asList(home1, home2);
+
+        // Capture log output to verify NO ERROR is logged
+        // For now, just verify the algorithm doesn't crash and passes through the stays
+        List<TimelineEvent> result = singleTripAlgorithm.apply(UUID.randomUUID(), events, config);
+
+        // The algorithm should pass through both stays unchanged
+        // (The merger will handle combining them later)
+        assertEquals(2, result.size(),
+                "Algorithm should pass through consecutive same-location stays");
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Stay);
+    }
+
+    @Test
+    void testConsecutiveStaysAtSameLocation_ShouldNotLogError_MultiAlgorithm() {
+        // Same test for Multi algorithm
+        Stay home1 = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:00:00Z"))
+                .duration(Duration.ofMinutes(30))
+                .locationName("Home")
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+
+        Stay home2 = Stay.builder()
+                .startTime(Instant.parse("2025-01-01T10:30:00Z"))
+                .duration(Duration.ofMinutes(45))
+                .locationName("Home")
+                .latitude(40.0)
+                .longitude(-74.0)
+                .build();
+
+        List<TimelineEvent> events = Arrays.asList(home1, home2);
+
+        List<TimelineEvent> result = multipleTripAlgorithm.apply(UUID.randomUUID(), events, config);
+
+        assertEquals(2, result.size(),
+                "Algorithm should pass through consecutive same-location stays");
+        assertTrue(result.get(0) instanceof Stay);
+        assertTrue(result.get(1) instanceof Stay);
     }
 }

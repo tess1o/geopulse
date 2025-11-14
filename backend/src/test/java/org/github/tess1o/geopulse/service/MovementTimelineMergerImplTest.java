@@ -339,6 +339,55 @@ public class MovementTimelineMergerImplTest {
         assertEquals(4, result.getTrips().size());
     }
 
+    @Test
+    void testConsecutiveStaysAtSameLocationWithNoTrips_ShouldBeMerged() {
+        // Arrange: Home -> Work -> Home (first) -> Home (second - NO trip between) -> Work
+        List<Stay> stays = Arrays.asList(
+                createStay(baseTime, "Home", 60, 40.0, -74.0),
+                createStay(baseTime.plusSeconds(900), "Work", 120, 40.2, -74.2),
+                createStay(baseTime.plusSeconds(3000), "Home", 30, 40.0, -74.0),  // First Home stay
+                createStay(baseTime.plusSeconds(3900), "Home", 45, 40.0, -74.0),  // Second Home stay - NO TRIP!
+                createStay(baseTime.plusSeconds(5400), "Work", 60, 40.2, -74.2)
+        );
+
+        // NOTE: NO trip between the two Home stays at indices 2 and 3
+        List<Trip> trips = Arrays.asList(
+                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.1, -74.1),    // Home -> Work
+                createTrip(baseTime.plusSeconds(2880), 10, 2000, 40.1, -74.1),   // Work -> Home (first)
+                // MISSING: No trip between Home stays!
+                createTrip(baseTime.plusSeconds(5280), 10, 2000, 40.1, -74.1)    // Home (second) -> Work
+        );
+
+        RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
+
+        // Act
+        RawTimeline result = service.mergeSameNamedLocations(timelineConfig, timeline);
+
+        // Assert: The two consecutive Home stays MUST be merged into one
+        assertEquals(4, result.getStays().size(),
+            "Two consecutive stays at same location with no trips should be merged into one");
+        assertEquals(3, result.getTrips().size(),
+            "All trips should remain");
+
+        // Verify the merged Home stay has correct duration (30 + 45 = 75 seconds)
+        long homeStayCount = result.getStays().stream()
+                .filter(s -> "Home".equals(s.getLocationName()))
+                .count();
+        assertEquals(2, homeStayCount,
+            "Should have exactly 2 Home stays total (first one, and merged consecutive ones)");
+
+        // Find the second Home stay (the merged one)
+        Stay mergedHome = result.getStays().stream()
+                .filter(s -> "Home".equals(s.getLocationName()))
+                .skip(1)  // Skip first Home
+                .findFirst()
+                .orElse(null);
+
+        assertNotNull(mergedHome, "Merged Home stay should exist");
+        assertEquals(75, mergedHome.getDuration().toSeconds(),
+            "Merged Home stay should have combined duration: 30 + 45 = 75 seconds");
+    }
+
     // Helper methods
     private Stay createStay(Instant timestamp, String location, long duration,
                                                double lat, double lon) {
