@@ -40,6 +40,9 @@ public class ExportDataGenerator {
     OwnTracksExportService ownTracksExportService;
 
     @Inject
+    CsvExportService csvExportService;
+
+    @Inject
     ExportDataMapper exportDataMapper;
 
     @Inject
@@ -158,6 +161,18 @@ public class ExportDataGenerator {
      */
     public byte[] generateGeoJsonExport(ExportJob job) throws IOException {
         return geoJsonExportService.generateGeoJsonExport(job);
+    }
+
+    /**
+     * Generates a CSV format export.
+     * Uses streaming approach to handle large datasets efficiently.
+     *
+     * @param job the export job
+     * @return the CSV export as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] generateCsvExport(ExportJob job) throws IOException {
+        return csvExportService.generateCsvExport(job);
     }
 
     /**

@@ -124,6 +124,29 @@ public class ExportJobManager {
         return job;
     }
 
+    public ExportJob createCsvExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
+
+        // Check if user has too many active jobs
+        long userActiveJobs = activeJobs.values().stream()
+                .filter(job -> job.getUserId().equals(userId))
+                .filter(job -> job.getStatus() != ExportStatus.FAILED)
+                .count();
+
+        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
+        }
+
+        // Create export job for CSV format with GPS data
+        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
+        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "csv");
+        activeJobs.put(job.getJobId(), job);
+
+        log.info("Created CSV export job {} for user {} with date range: {} to {}",
+                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
+
+        return job;
+    }
+
     public byte[] exportSingleTrip(UUID userId, Long tripId) throws Exception {
         return exportDataGenerator.generateSingleTripGpx(userId, tripId);
     }
@@ -223,6 +246,12 @@ public class ExportJobManager {
                     job.setFileSizeBytes(gpxData.length);
                     log.info("Completed GPX export job {} - {} bytes, zipPerTrip={}, zipGroupBy={}",
                             job.getJobId(), gpxData.length, zipPerTrip, zipGroupBy);
+                } else if ("csv".equals(job.getFormat())) {
+                    // Generate CSV data
+                    byte[] csvData = exportDataGenerator.generateCsvExport(job);
+                    job.setJsonData(csvData); // Store CSV in jsonData field
+                    job.setFileSizeBytes(csvData.length);
+                    log.info("Completed CSV export job {} - {} bytes", job.getJobId(), csvData.length);
                 } else {
                     // Generate ZIP data for GeoPulse format
                     byte[] zipData = exportDataGenerator.generateExportZip(job);

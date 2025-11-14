@@ -165,6 +165,40 @@
             </div>
           </div>
 
+          <!-- CSV Format Documentation (shown when CSV is selected) -->
+          <div v-if="exportFormat === 'csv'" class="csv-format-docs">
+            <h4 class="csv-docs-title">CSV Export Format</h4>
+
+            <div class="csv-docs-section">
+              <p class="csv-info-text">
+                <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
+                CSV export will include all GPS points in the selected date range with the following fields:
+              </p>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">Export Fields</h5>
+              <ul class="csv-field-list">
+                <li><strong>timestamp</strong>: ISO-8601 format (UTC)</li>
+                <li><strong>latitude</strong>: Decimal degrees</li>
+                <li><strong>longitude</strong>: Decimal degrees</li>
+                <li><strong>accuracy</strong>: GPS accuracy in meters (if available)</li>
+                <li><strong>velocity</strong>: Speed in km/h (if available)</li>
+                <li><strong>altitude</strong>: Altitude in meters (if available)</li>
+                <li><strong>battery</strong>: Battery percentage (if available)</li>
+                <li><strong>device_id</strong>: Device identifier (if available)</li>
+                <li><strong>source_type</strong>: Data source type</li>
+              </ul>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">Example Output</h5>
+              <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
+2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV</pre>
+            </div>
+          </div>
+
           <!-- Date Range Selection -->
           <div class="form-section">
             <h3 class="form-section-title">Date Range</h3>
@@ -440,7 +474,8 @@ const exportFormatOptions = ref([
   {label: 'GeoPulse', value: 'geopulse', description: 'Native GeoPulse format with all data types'},
   {label: 'OwnTracks', value: 'owntracks', description: 'Compatible with OwnTracks format (GPS data only)'},
   {label: 'GeoJSON', value: 'geojson', description: 'Standard GeoJSON format compatible with GIS tools (GPS data only)'},
-  {label: 'GPX', value: 'gpx', description: 'GPS Exchange Format with tracks and waypoints (compatible with GPXSee, QGIS, Garmin)'}
+  {label: 'GPX', value: 'gpx', description: 'GPS Exchange Format with tracks and waypoints (compatible with GPXSee, QGIS, Garmin)'},
+  {label: 'CSV', value: 'csv', description: 'Comma-Separated Values format compatible with Excel and data analysis tools (GPS data only)'}
 ])
 
 // Computed
@@ -449,8 +484,8 @@ const canStartExport = computed(() => {
       exportEndDate.value &&
       exportStartDate.value <= exportEndDate.value
 
-  // For OwnTracks, GeoJSON, and GPX, we don't need data type selection
-  if (exportFormat.value === 'owntracks' || exportFormat.value === 'geojson' || exportFormat.value === 'gpx') {
+  // For OwnTracks, GeoJSON, GPX, and CSV, we don't need data type selection
+  if (exportFormat.value === 'owntracks' || exportFormat.value === 'geojson' || exportFormat.value === 'gpx' || exportFormat.value === 'csv') {
     return hasValidDates
   }
 
@@ -490,6 +525,9 @@ const startExport = async () => {
       const zipPerTrip = gpxExportMode.value === 'zip'
       const zipGroupBy = gpxZipGroupBy.value
       await exportImportStore.createGpxExportJob(dateRange, zipPerTrip, zipGroupBy)
+    } else if (exportFormat.value === 'csv') {
+      // For CSV, use CSV export endpoint
+      await exportImportStore.createCsvExportJob(dateRange)
     } else {
       // For GeoPulse, use selected data types
       await exportImportStore.createExportJob(
@@ -878,6 +916,103 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
+  }
+}
+
+/* CSV Format Documentation Styles */
+.csv-format-docs {
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+}
+
+.csv-docs-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.csv-info-text {
+  display: flex;
+  align-items: center;
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.csv-info-text i {
+  color: var(--gp-primary-500);
+}
+
+.csv-docs-section {
+  margin-bottom: 1.5rem;
+}
+
+.csv-docs-section:last-child {
+  margin-bottom: 0;
+}
+
+.csv-docs-subtitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 0.75rem 0;
+}
+
+.csv-field-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.csv-field-list li {
+  padding: 0.5rem 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.csv-field-list li strong {
+  color: var(--gp-text-primary);
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.csv-example-code {
+  background: var(--gp-surface-0);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+  padding: 1rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gp-text-primary);
+  overflow-x: auto;
+  margin: 0;
+}
+
+/* Dark Mode */
+:root[class*="dark"] .csv-format-docs {
+  background: var(--surface-ground);
+  border-color: var(--gp-border-dark);
+}
+
+:root[class*="dark"] .csv-example-code {
+  background: var(--surface-800);
+  border-color: var(--gp-border-dark);
+}
+
+@media (max-width: 768px) {
+  .csv-format-docs {
+    padding: 1rem;
+  }
+
+  .csv-example-code {
+    font-size: 0.7rem;
   }
 }
 </style>

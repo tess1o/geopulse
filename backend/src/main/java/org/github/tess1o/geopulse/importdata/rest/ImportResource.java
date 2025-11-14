@@ -661,6 +661,128 @@ public class ImportResource {
         }
     }
 
+    @POST
+    @Path("/csv/upload")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    public Response uploadCsvImportFile(
+            @RestForm("file") FileUpload file,
+            @RestForm("options") @PartType(MediaType.TEXT_PLAIN) String options) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            log.info("Received CSV import request for user: {}", userId);
+
+            // Check for existing active jobs
+            if (importService.hasActiveImportJob(userId)) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(createErrorResponse("ACTIVE_JOB_EXISTS", "An import job is already in progress. Please wait for it to complete."))
+                        .build();
+            }
+
+            // Validate file
+            if (file == null || file.size() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE", "No file provided"))
+                        .build();
+            }
+
+            if (file.size() > MAX_FILE_SIZE_BYTES) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("FILE_TOO_LARGE",
+                                String.format("File size (%d MB) exceeds %d MB limit",
+                                        file.size() / (1024 * 1024),
+                                        MAX_FILE_SIZE_BYTES / (1024 * 1024))))
+                        .build();
+            }
+
+            // Validate file extension (should be .csv)
+            String fileName = file.fileName() != null ? file.fileName() : "csv-import.csv";
+            if (!fileName.toLowerCase(Locale.ENGLISH).endsWith(".csv")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_FILE_TYPE", "Only CSV files are supported for CSV import"))
+                        .build();
+            }
+
+            // Parse options
+            ImportOptions importOptions;
+            try {
+                importOptions = objectMapper.readValue(options, ImportOptions.class);
+                importOptions.setImportFormat("csv");
+            } catch (Exception e) {
+                log.error("Failed to parse import options", e);
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_OPTIONS",
+                                "Invalid import options format: " + e.getMessage()))
+                        .build();
+            }
+
+            // Handle file based on size
+            ImportJob job;
+            long fileSize = file.size();
+
+            if (tempFileService.shouldUseTempFile(fileSize)) {
+                // Large file: move to temp storage
+                log.info("Large file detected ({} MB), using temp file storage",
+                        fileSize / (1024 * 1024));
+                try {
+                    String tempFilePath = tempFileService.moveUploadedFileToTemp(
+                            file.uploadedFile(), java.util.UUID.randomUUID(), fileName);
+
+                    job = new ImportJob(userId, importOptions, fileName, new byte[0]);
+                    job.setTempFilePath(tempFilePath);
+                    job.setFileSizeBytes(fileSize);
+
+                    importService.registerJob(job);
+
+                    log.info("Created CSV import job with temp file: file={}, size={} MB, path={}",
+                            fileName, fileSize / (1024 * 1024), tempFilePath);
+                } catch (IOException e) {
+                    log.error("Failed to move uploaded file to temp storage", e);
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(createErrorResponse("FILE_MOVE_ERROR",
+                                    "Failed to process uploaded file"))
+                            .build();
+                }
+            } else {
+                // Small file: keep in memory
+                log.info("Small file ({} KB), processing in memory", fileSize / 1024);
+                try {
+                    byte[] csvData = Files.readAllBytes(file.uploadedFile());
+                    job = importService.createCsvImportJob(userId, importOptions, fileName, csvData);
+                    job.setFileSizeBytes(fileSize);
+                } catch (IOException e) {
+                    log.error("Failed to read uploaded file", e);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(createErrorResponse("FILE_READ_ERROR", "Failed to read uploaded file"))
+                            .build();
+                }
+            }
+
+            // Create response
+            log.info("CSV import job created successfully: jobId={}", job.getJobId());
+            ImportJobResponse response = new ImportJobResponse();
+            response.setSuccess(true);
+            response.setImportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase(Locale.ENGLISH));
+            response.setUploadedFileName(job.getUploadedFileName());
+            response.setFileSizeBytes(job.getFileSizeBytes());
+            response.setDetectedDataTypes(job.getDetectedDataTypes());
+            response.setEstimatedProcessingTime(job.getEstimatedProcessingTime());
+            response.setMessage("CSV import job created successfully");
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create CSV import job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create CSV import job"))
+                    .build();
+        }
+    }
+
     @GET
     @Path("/jobs")
     public Response getImportJobs(@QueryParam("limit") @DefaultValue("10") int limit,
