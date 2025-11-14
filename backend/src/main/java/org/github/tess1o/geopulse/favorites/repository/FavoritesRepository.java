@@ -29,6 +29,10 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         return list("user.id", userId);
     }
 
+    public long countByUserId(UUID userId) {
+        return count("user.id", userId);
+    }
+
     public Optional<FavoritesEntity> findByIdAndUserId(Long id, UUID userId) {
         return find("id = ?1 and user.id = ?2", id, userId).firstResultOptional();
     }

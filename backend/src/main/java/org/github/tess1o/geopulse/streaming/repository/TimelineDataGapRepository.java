@@ -71,4 +71,8 @@ public class TimelineDataGapRepository implements PanacheRepositoryBase<Timeline
                         ")",
                 userId, startTime, endTime);
     }
+
+    public long countByUser(UUID userId) {
+        return count("user.id = ?1", userId);
+    }
 }

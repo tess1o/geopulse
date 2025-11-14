@@ -54,6 +54,13 @@ const sidebars = {
                 },
                 {
                     type: 'category',
+                    label: 'Monitoring',
+                    items: [
+                        'system-administration/monitoring/prometheus',
+                    ],
+                },
+                {
+                    type: 'category',
                     label: 'Maintenance',
                     items: [
                         'system-administration/maintenance/updating',
