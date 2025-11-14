@@ -40,10 +40,8 @@
       v-if="!loading && filteredStaysData.length > 0"
       :value="filteredStaysData"
       :loading="loading"
-      :paginator="true"
-      :rows="50"
-      :rowsPerPageOptions="[25, 50, 100, 200]"
-      sortMode="multiple"
+      :paginator="false"
+      sortMode="single"
       removableSort
       selectionMode="single"
       v-model:selection="selectedStay"
@@ -52,6 +50,9 @@
       responsiveLayout="scroll"
       :scrollable="true"
       scrollHeight="600px"
+      :virtualScrollerOptions="{
+        itemSize: 73
+      }"
       :pt="{
         root: 'bg-surface-0 dark:bg-surface-950',
         header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
@@ -190,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -198,10 +199,15 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
-import StayDetailsDialog from '@/components/dialogs/StayDetailsDialog.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTableFilters } from '@/composables/useTableFilters'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
+import { memoizedDateTimeFormat, memoizedDurationFormat, memoizedEndTimeFormat } from '@/utils/formatMemoizer'
+
+// Lazy load the dialog component
+const StayDetailsDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/StayDetailsDialog.vue')
+)
 
 const timezone = useTimezone()
 const router = useRouter()
@@ -240,50 +246,67 @@ const selectedStayForDetails = ref(null)
 // Use shared filter logic
 const filteredStaysData = useStaysFilter(computed(() => props.stays))
 
-// Methods
+// Methods - Using memoized formatters for better performance
 const formatDate = (timestamp) => {
-  return timezone.format(timestamp, 'YYYY-MM-DD')
+  return memoizedDateTimeFormat(timestamp, 'YYYY-MM-DD', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const formatTime = (timestamp) => {
-  return timezone.format(timestamp, 'HH:mm')
+  return memoizedDateTimeFormat(timestamp, 'HH:mm', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const formatDuration = (seconds) => {
-  return formatDurationSmart(seconds || 0)
+  return memoizedDurationFormat(seconds || 0, formatDurationSmart)
 }
 
 const formatDateTime = (timestamp) => {
   if (!timestamp) return 'N/A'
-  return timezone.format(timestamp, 'YYYY-MM-DD HH:mm:ss')
+  return memoizedDateTimeFormat(timestamp, 'YYYY-MM-DD HH:mm:ss', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const getEndDateTime = (stay) => {
   if (!stay?.timestamp || !stay?.stayDuration) return 'N/A'
-  
-  // Create a moment object from the timestamp and add the duration in seconds
-  const startTime = timezone.fromUtc(stay.timestamp)
-  const endTime = startTime.clone().add(stay.stayDuration, 'seconds')
-  
-  return timezone.format(endTime.toISOString(), 'YYYY-MM-DD HH:mm:ss')
+
+  return memoizedEndTimeFormat(
+    stay.timestamp,
+    stay.stayDuration,
+    'YYYY-MM-DD HH:mm:ss',
+    (startTime, duration, format) => {
+      const start = timezone.fromUtc(startTime)
+      const end = start.clone().add(duration, 'seconds')
+      return timezone.format(end.toISOString(), format)
+    }
+  )
 }
 
 const getEndDate = (stay) => {
   if (!stay?.timestamp || !stay?.stayDuration) return 'N/A'
-  
-  const startTime = timezone.fromUtc(stay.timestamp)
-  const endTime = startTime.clone().add(stay.stayDuration, 'seconds')
-  
-  return timezone.format(endTime.toISOString(), 'YYYY-MM-DD')
+
+  return memoizedEndTimeFormat(
+    stay.timestamp,
+    stay.stayDuration,
+    'YYYY-MM-DD',
+    (startTime, duration, format) => {
+      const start = timezone.fromUtc(startTime)
+      const end = start.clone().add(duration, 'seconds')
+      return timezone.format(end.toISOString(), format)
+    }
+  )
 }
 
 const getEndTime = (stay) => {
   if (!stay?.timestamp || !stay?.stayDuration) return 'N/A'
-  
-  const startTime = timezone.fromUtc(stay.timestamp)
-  const endTime = startTime.clone().add(stay.stayDuration, 'seconds')
-  
-  return timezone.format(endTime.toISOString(), 'HH:mm')
+
+  return memoizedEndTimeFormat(
+    stay.timestamp,
+    stay.stayDuration,
+    'HH:mm',
+    (startTime, duration, format) => {
+      const start = timezone.fromUtc(startTime)
+      const end = start.clone().add(duration, 'seconds')
+      return timezone.format(end.toISOString(), format)
+    }
+  )
 }
 
 const handleRowSelect = (event) => {

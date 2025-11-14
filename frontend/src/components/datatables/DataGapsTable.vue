@@ -34,10 +34,8 @@
     <DataTable
         :value="filteredDataGapsData"
         :loading="loading"
-        :paginator="true"
-        :rows="50"
-        :rowsPerPageOptions="[25, 50, 100, 200]"
-        sortMode="multiple"
+        :paginator="false"
+        sortMode="single"
         removableSort
         selectionMode="single"
         @row-select="handleRowSelect"
@@ -45,6 +43,9 @@
         responsiveLayout="scroll"
         :scrollable="true"
         scrollHeight="600px"
+        :virtualScrollerOptions="{
+          itemSize: 73
+        }"
         :pt="{
         root: 'bg-surface-0 dark:bg-surface-950',
         header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
@@ -58,14 +59,12 @@
           field="startTime"
           header="Start Time"
           :sortable="true"
-          :style="{ 'min-width': '100px' }"
+          :style="{ 'min-width': '150px' }"
       >
         <template #body="slotProps">
-          <div class="end-time-info">
-            <div class="end-date" v-if="!isSameDay(slotProps.data.startTime, slotProps.data.endTime)">
-              {{ formatDate(slotProps.data.startTime) }}
-            </div>
-            <div class="end-time">{{ formatTime(slotProps.data.startTime) }}</div>
+          <div class="datetime-display">
+            <div class="date-part">{{ formatDate(slotProps.data.startTime) }}</div>
+            <div class="time-part">{{ formatTime(slotProps.data.startTime) }}</div>
           </div>
         </template>
       </Column>
@@ -74,14 +73,14 @@
           field="endTime"
           header="End Time"
           :sortable="true"
-          :style="{ 'min-width': '100px' }"
+          :style="{ 'min-width': '150px' }"
       >
         <template #body="slotProps">
-          <div class="end-time-info">
-            <div class="end-date" v-if="!isSameDay(slotProps.data.startTime, slotProps.data.endTime)">
+          <div class="datetime-display">
+            <div class="date-part" v-if="!isSameDay(slotProps.data.startTime, slotProps.data.endTime)">
               {{ formatDate(slotProps.data.endTime) }}
             </div>
-            <div class="end-time">{{ formatTime(slotProps.data.endTime) }}</div>
+            <div class="time-part">{{ formatTime(slotProps.data.endTime) }}</div>
           </div>
         </template>
       </Column>
@@ -122,7 +121,8 @@ import Button from 'primevue/button'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import {useTimezone} from '@/composables/useTimezone'
 import {useTableFilters} from '@/composables/useTableFilters'
-import {formatDurationSmart} from "@/utils/calculationsHelpers";
+import {formatDurationSmart} from "@/utils/calculationsHelpers"
+import { memoizedDateTimeFormat, memoizedDurationFormat } from '@/utils/formatMemoizer'
 
 const timezone = useTimezone()
 
@@ -154,13 +154,13 @@ const {
 // Use shared filter logic
 const filteredDataGapsData = useDataGapsFilter(computed(() => props.dataGaps))
 
-// Methods
+// Methods - Using memoized formatters for better performance
 const formatDate = (timestamp) => {
-  return timezone.format(timestamp, 'YYYY-MM-DD')
+  return memoizedDateTimeFormat(timestamp, 'YYYY-MM-DD', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const formatTime = (timestamp) => {
-  return timezone.format(timestamp, 'HH:mm')
+  return memoizedDateTimeFormat(timestamp, 'HH:mm', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const isSameDay = (startTime, endTime) => {
@@ -177,7 +177,7 @@ const calculateGapDurationSeconds = (gap) => {
 
 const formatGapDuration = (gap) => {
   const seconds = calculateGapDurationSeconds(gap)
-  return formatDurationSmart(seconds);
+  return memoizedDurationFormat(seconds, formatDurationSmart)
 }
 
 const handleRowSelect = (event) => {
@@ -236,21 +236,25 @@ const handleRowSelect = (event) => {
   width: 150px;
 }
 
-.end-time-info {
+.datetime-display {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  align-items: flex-start;
 }
 
-.end-date {
-  font-size: 0.75rem;
-  color: var(--gp-text-muted);
+.date-part {
+  font-size: 0.85rem;
+  color: var(--gp-text-secondary);
   font-weight: 500;
+  font-family: monospace;
 }
 
-.end-time {
-  font-weight: 500;
+.time-part {
+  font-size: 0.9rem;
   color: var(--gp-text-primary);
+  font-weight: 600;
+  font-family: monospace;
 }
 
 .duration-badge {
