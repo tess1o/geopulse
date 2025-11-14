@@ -12,6 +12,20 @@
       No timeline for the given date range.
     </div>
 
+    <!-- Warning for large datasets -->
+    <div v-if="!timelineNoData && !timelineDataLoading && timelineData && timelineData.length > displayLimit && displayLimit < timelineData.length" class="timeline-warning">
+      <i class="pi pi-info-circle"></i>
+      <span>Showing {{ displayLimit }} of {{ timelineData.length }} items.</span>
+      <Button
+        label="Load More"
+        icon="pi pi-plus"
+        @click="loadMore"
+        size="small"
+        class="load-more-button"
+      />
+      <router-link to="/app/timeline-reports" class="reports-link">Or view all in Timeline Reports</router-link>
+    </div>
+
     <div v-show="!timelineNoData && !timelineDataLoading" class="timeline-content">
       <div v-for="dateGroup in groupedTimelineData" :key="dateGroup.date" class="date-group">
         <!-- Date Header Separator -->
@@ -20,7 +34,7 @@
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
           <div class="date-separator-line"></div>
         </div>
-        
+
         <!-- Timeline for this date -->
         <Timeline
           :value="dateGroup.items"
@@ -73,7 +87,7 @@
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
             />
-            
+
             <DataGapCard
               v-else-if="slotProps.item.type === 'dataGap'"
               :data-gap-item="slotProps.item"
@@ -87,7 +101,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import Timeline from 'primevue/timeline'
+import ProgressSpinner from 'primevue/progressspinner'
+import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useExportImportStore } from '@/stores/exportImport'
 import StayCard from './StayCard.vue'
@@ -100,6 +117,9 @@ import { useTimezone } from '@/composables/useTimezone'
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
+
+// Display limit for progressive loading
+const displayLimit = ref(50)
 
 // Props
 const props = defineProps({
@@ -172,13 +192,22 @@ const groupedTimelineData = computed(() => {
     return []
   }
 
+  // For large datasets, progressively load items based on displayLimit
+  const itemsToProcess = props.timelineData.length > displayLimit.value
+    ? props.timelineData.slice(0, displayLimit.value)
+    : props.timelineData
+
+  if (props.timelineData.length > displayLimit.value) {
+    console.log(`Timeline: Showing ${displayLimit.value} of ${props.timelineData.length} items`)
+  }
+
   const allDates = new Set();
   if (props.dateRange && props.dateRange.length === 2) {
     // Generate date range using timezone composable
     const dateArray = timezone.getDateRangeArray(props.dateRange[0], props.dateRange[1])
     dateArray.forEach(date => allDates.add(date))
   } else {
-    props.timelineData.forEach(item => {
+    itemsToProcess.forEach(item => {
       const itemStartTime = item.timestamp || item.startTime
       const itemDate = timezone.fromUtc(itemStartTime)
       allDates.add(itemDate.format('YYYY-MM-DD'));
@@ -203,7 +232,7 @@ const groupedTimelineData = computed(() => {
     });
   });
 
-  props.timelineData.forEach(item => {
+  itemsToProcess.forEach(item => {
     allDates.forEach(dateKey => {
       if (timezone.shouldItemAppearOnDate(item, dateKey)) {
         dateGroups.get(dateKey)?.items.push(item);
@@ -217,6 +246,12 @@ const groupedTimelineData = computed(() => {
 })
 
 // Methods
+const loadMore = () => {
+  // Load 100 more items each time
+  displayLimit.value = Math.min(displayLimit.value + 100, props.timelineData.length)
+  console.log(`Timeline: Loading more items. Now showing ${displayLimit.value} of ${props.timelineData.length}`)
+}
+
 const handleTimelineItemClick = (item) => {
   emit('timeline-item-click', item)
 }
@@ -265,6 +300,17 @@ const handleExportStayAsGpx = async (stayItem) => {
 <style scoped>
 .timeline-container {
   width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.timeline-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 var(--gp-spacing-md);
 }
 
 .timeline-header {
@@ -298,6 +344,41 @@ const handleExportStayAsGpx = async (stayItem) => {
   border-radius: var(--gp-radius-medium);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.timeline-warning {
+  padding: var(--gp-spacing-md);
+  margin: 0 var(--gp-spacing-lg) var(--gp-spacing-lg);
+  color: var(--gp-warning-dark);
+  background: var(--gp-warning-light);
+  border: 1px solid var(--gp-warning);
+  border-radius: var(--gp-radius-medium);
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gp-spacing-sm);
+}
+
+.timeline-warning i {
+  font-size: 1rem;
+}
+
+.load-more-button {
+  font-weight: 600;
+}
+
+.reports-link {
+  color: var(--gp-primary);
+  font-weight: 500;
+  text-decoration: none;
+  font-size: 0.8125rem;
+}
+
+.reports-link:hover {
+  text-decoration: underline;
 }
 
 .timeline-marker {

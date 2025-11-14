@@ -413,7 +413,9 @@ export function createHighlightedPathStartMarker(latitude, longitude, instant = 
             customStyle: {
                 background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_START}, #27AE60)`
             }
-        })
+        }),
+        zoomAnimation: false, // Disable zoom animation to prevent marker jumping with clusters
+        markerZoomAnimation: false
     })
 }
 
@@ -435,7 +437,9 @@ export function createHighlightedPathEndMarker(latitude, longitude, instant = fa
             customStyle: {
                 background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_END}, #C0392B)`
             }
-        })
+        }),
+        zoomAnimation: false, // Disable zoom animation to prevent marker jumping with clusters
+        markerZoomAnimation: false
     })
 }
 

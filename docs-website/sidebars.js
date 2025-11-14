@@ -33,6 +33,37 @@ const sidebars = {
         },
         {
             type: 'category',
+            label: 'Configuration & Administration',
+            items: [
+                'system-administration/initial-setup',
+                {
+                    type: 'category',
+                    label: 'Configuration Reference',
+                    items: [
+                        'system-administration/configuration/authentication',
+                        'system-administration/configuration/user-registration',
+                        'system-administration/configuration/oidc-sso',
+                        'system-administration/configuration/reverse-geocoding',
+                        'system-administration/configuration/ai-assistant',
+                        'system-administration/configuration/timeline-global-config',
+                        'system-administration/configuration/location-sharing',
+                        'system-administration/configuration/frontend',
+                        'system-administration/configuration/gps-data-filtering',
+                        'system-administration/configuration/owntracks-additional-config',
+                    ],
+                },
+                {
+                    type: 'category',
+                    label: 'Maintenance',
+                    items: [
+                        'system-administration/maintenance/updating',
+                        'system-administration/maintenance/backup-restore',
+                    ],
+                },
+            ],
+        },
+        {
+            type: 'category',
             label: 'User Guide',
             items: [
                 {
@@ -54,6 +85,7 @@ const sidebars = {
                         'user-guide/core-features/timeline',
                         'user-guide/core-features/dashboard',
                         'user-guide/core-features/journey-insights',
+                        'user-guide/core-features/rewind',
                         'user-guide/core-features/managing-places',
                     ],
                 },
@@ -82,37 +114,6 @@ const sidebars = {
                         'user-guide/personalization/immich-integration',
                         'user-guide/personalization/measurement-units',
                         'user-guide/personalization/ai-assistant-settings',
-                    ],
-                },
-            ],
-        },
-        {
-            type: 'category',
-            label: 'System Administration',
-            items: [
-                'system-administration/initial-setup',
-                {
-                    type: 'category',
-                    label: 'Configuration Reference',
-                    items: [
-                        'system-administration/configuration/authentication',
-                        'system-administration/configuration/user-registration',
-                        'system-administration/configuration/oidc-sso',
-                        'system-administration/configuration/reverse-geocoding',
-                        'system-administration/configuration/ai-assistant',
-                        'system-administration/configuration/timeline-global-config',
-                        'system-administration/configuration/location-sharing',
-                        'system-administration/configuration/frontend',
-                        'system-administration/configuration/gps-data-filtering',
-                        'system-administration/configuration/owntracks-additional-config',
-                    ],
-                },
-                {
-                    type: 'category',
-                    label: 'Maintenance',
-                    items: [
-                        'system-administration/maintenance/updating',
-                        'system-administration/maintenance/backup-restore',
                     ],
                 },
             ],

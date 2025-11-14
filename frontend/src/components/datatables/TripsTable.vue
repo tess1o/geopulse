@@ -48,10 +48,8 @@
     <DataTable
       :value="filteredTripsData"
       :loading="loading"
-      :paginator="true"
-      :rows="50"
-      :rowsPerPageOptions="[25, 50, 100, 200]"
-      sortMode="multiple"
+      :paginator="false"
+      sortMode="single"
       removableSort
       selectionMode="single"
       v-model:selection="selectedTrip"
@@ -60,6 +58,9 @@
       responsiveLayout="scroll"
       :scrollable="true"
       scrollHeight="600px"
+      :virtualScrollerOptions="{
+        itemSize: 73
+      }"
       :pt="{
         root: 'bg-surface-0 dark:bg-surface-950',
         header: 'bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700',
@@ -221,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import InputText from 'primevue/inputtext'
@@ -229,12 +230,17 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
-import TripDetailsDialog from '@/components/dialogs/TripDetailsDialog.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useTableFilters } from '@/composables/useTableFilters'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
+import { memoizedDateTimeFormat, memoizedDurationFormat, memoizedEndTimeFormat, memoizedDistanceFormat } from '@/utils/formatMemoizer'
+
+// Lazy load the dialog component
+const TripDetailsDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripDetailsDialog.vue')
+)
 
 const timezone = useTimezone()
 
@@ -296,35 +302,47 @@ const filteredTripsData = useTripsFilter(
 )
 
 
-// Methods
+// Methods - Using memoized formatters for better performance
 const formatDate = (timestamp) => {
-  return timezone.format(timestamp, 'YYYY-MM-DD')
+  return memoizedDateTimeFormat(timestamp, 'YYYY-MM-DD', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const formatTime = (timestamp) => {
-  return timezone.format(timestamp, 'HH:mm')
+  return memoizedDateTimeFormat(timestamp, 'HH:mm', (ts, fmt) => timezone.format(ts, fmt))
 }
 
 const getEndDate = (trip) => {
   if (!trip?.timestamp || !trip?.tripDuration) return 'N/A'
-  
-  const startTime = timezone.fromUtc(trip.timestamp)
-  const endTime = startTime.clone().add(trip.tripDuration, 'seconds')
-  
-  return timezone.format(endTime.toISOString(), 'YYYY-MM-DD')
+
+  return memoizedEndTimeFormat(
+    trip.timestamp,
+    trip.tripDuration,
+    'YYYY-MM-DD',
+    (startTime, duration, format) => {
+      const start = timezone.fromUtc(startTime)
+      const end = start.clone().add(duration, 'seconds')
+      return timezone.format(end.toISOString(), format)
+    }
+  )
 }
 
 const getEndTime = (trip) => {
   if (!trip?.timestamp || !trip?.tripDuration) return 'N/A'
-  
-  const startTime = timezone.fromUtc(trip.timestamp)
-  const endTime = startTime.clone().add(trip.tripDuration, 'seconds')
-  
-  return timezone.format(endTime.toISOString(), 'HH:mm')
+
+  return memoizedEndTimeFormat(
+    trip.timestamp,
+    trip.tripDuration,
+    'HH:mm',
+    (startTime, duration, format) => {
+      const start = timezone.fromUtc(startTime)
+      const end = start.clone().add(duration, 'seconds')
+      return timezone.format(end.toISOString(), format)
+    }
+  )
 }
 
 const formatDuration = (seconds) => {
-  return formatDurationSmart(seconds || 0)
+  return memoizedDurationFormat(seconds || 0, formatDurationSmart)
 }
 
 const getTransportSeverity = (transportMode) => {

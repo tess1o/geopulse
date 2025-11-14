@@ -110,4 +110,9 @@ public class TimelineConfigurationProperties {
     @ConfigProperty(name = "geopulse.timeline.trip.sustained_stop.min_duration_seconds", defaultValue = "60")
     @StaticInitSafe
     String tripSustainedStopMinDurationSeconds;
+
+    // Timeline View Item Limit - maximum number of items to load on Timeline page
+    @ConfigProperty(name = "geopulse.timeline.view.item-limit", defaultValue = "150")
+    @StaticInitSafe
+    Integer viewItemLimit;
 }

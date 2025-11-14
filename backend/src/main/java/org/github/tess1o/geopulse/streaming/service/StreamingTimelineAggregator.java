@@ -39,6 +39,35 @@ public class StreamingTimelineAggregator {
     }
 
     /**
+     * Get timeline item counts for a given time range without fetching full data.
+     * Used for checking if dataset is too large for Timeline page.
+     *
+     * @param userId user ID
+     * @param startTime start of time range
+     * @param endTime end of time range
+     * @return Map with counts for stays, trips, dataGaps, and totalItems
+     */
+    public Map<String, Long> getTimelineItemCounts(UUID userId, Instant startTime, Instant endTime) {
+        log.debug("Getting timeline item counts for user {} from {} to {}", userId, startTime, endTime);
+
+        long staysCount = timelineStayRepository.countByUserIdAndTimeRange(userId, startTime, endTime);
+        long tripsCount = timelineTripRepository.countByUserIdAndTimeRange(userId, startTime, endTime);
+        long dataGapsCount = timelineDataGapRepository.countByUserIdAndTimeRange(userId, startTime, endTime);
+        long totalItems = staysCount + tripsCount + dataGapsCount;
+
+        Map<String, Long> counts = new HashMap<>();
+        counts.put("stays", staysCount);
+        counts.put("trips", tripsCount);
+        counts.put("dataGaps", dataGapsCount);
+        counts.put("totalItems", totalItems);
+
+        log.debug("Timeline counts for user {}: {} stays, {} trips, {} gaps (total: {})",
+                userId, staysCount, tripsCount, dataGapsCount, totalItems);
+
+        return counts;
+    }
+
+    /**
      * Get AI-optimized timeline data with enriched location information.
      * Includes city/country data from joins and trip origin/destination names.
      * 

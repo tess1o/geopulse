@@ -53,14 +53,13 @@
       <!-- Tab Container for Different Table Views -->
       <TabContainer
         v-if="!timelineDataLoading"
-        :key="`tabs-${timelineData?.length || 0}-${activeTab}`"
         :tabs="tableTabs"
         :activeIndex="activeTabIndex"
         @tab-change="handleTabChange"
         class="data-tables-tabs"
       >
         <!-- Stays Table Tab -->
-        <div v-if="activeTab === 'stays'" class="table-tab-content">
+        <div v-if="activeTab === 'stays' && tabsVisited.stays" class="table-tab-content">
           <StaysTable
             :stays="filteredStays"
             :dateRange="dateRange"
@@ -71,7 +70,7 @@
         </div>
 
         <!-- Trips Table Tab -->
-        <div v-if="activeTab === 'trips'" class="table-tab-content">
+        <div v-if="activeTab === 'trips' && tabsVisited.trips" class="table-tab-content">
           <TripsTable
             :trips="filteredTrips"
             :stays="filteredStays"
@@ -83,7 +82,7 @@
         </div>
 
         <!-- Data Gaps Table Tab -->
-        <div v-if="activeTab === 'data-gaps'" class="table-tab-content">
+        <div v-if="activeTab === 'data-gaps' && tabsVisited['data-gaps']" class="table-tab-content">
           <DataGapsTable
             :dataGaps="filteredDataGaps"
             :dateRange="dateRange"
@@ -154,6 +153,13 @@ const dataGapsLoading = ref(false)
 const timelineDataLoading = ref(false)
 const timelineNoData = ref(false)
 
+// Track which tabs have been visited to enable lazy mounting
+const tabsVisited = ref({
+  'stays': true, // Always mount the default tab
+  'trips': false,
+  'data-gaps': false
+})
+
 // Computed
 const tableTabs = computed(() => [
   { label: 'Stays', icon: 'pi pi-map-marker', key: 'stays' },
@@ -197,6 +203,8 @@ const handleTabChange = async (event) => {
     const selectedTab = tableTabs.value[event.index]
     if (selectedTab) {
       activeTab.value = selectedTab.key
+      // Mark this tab as visited for lazy mounting
+      tabsVisited.value[selectedTab.key] = true
       await nextTick()
     }
   } catch (error) {

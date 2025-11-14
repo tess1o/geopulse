@@ -21,6 +21,7 @@ import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -49,6 +50,9 @@ public class StreamingTimelineResource {
 
     @Inject
     AsyncTimelineGenerationService asyncTimelineGenerationService;
+
+    @Inject
+    org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
 
     @GET
     @RolesAllowed("USER")
@@ -85,6 +89,58 @@ public class StreamingTimelineResource {
             log.error("Failed to generate streaming timeline for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to generate timeline: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get timeline item counts for a given time range without fetching full data.
+     * This endpoint is used by the frontend to check if the dataset is too large for Timeline page
+     * and guide users to Timeline Reports for large datasets.
+     *
+     * @param startTime Start time in ISO-8601 format
+     * @param endTime End time in ISO-8601 format
+     * @return Count of stays, trips, data gaps, total items, and the configured limit
+     */
+    @GET
+    @Path("/count")
+    @RolesAllowed("USER")
+    public Response getTimelineCount(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.debug("Timeline count request from user {} for period {} to {}", userId, startTime, endTime);
+
+        try {
+            // Parse the time parameters
+            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
+            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
+
+            // Validate time range
+            if (start.isAfter(end)) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Start time must be before end time"))
+                        .build();
+            }
+
+            // Get counts from aggregator
+            Map<String, Long> counts = streamingTimelineAggregator.getTimelineItemCounts(userId, start, end);
+
+            // Add the configured limit to the response
+            counts.put("limit", timelineConfigurationProperties.getViewItemLimit().longValue());
+
+            log.debug("Timeline counts for user {}: {}", userId, counts);
+
+            return Response.ok(ApiResponse.success(counts)).build();
+
+        } catch (DateTimeParseException e) {
+            log.warn("Invalid time format in count request from user {}: {}", userId, e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to get timeline counts for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get timeline counts: " + e.getMessage()))
                     .build();
         }
     }

@@ -1,4 +1,4 @@
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onBeforeUnmount, watch } from 'vue'
 import { useTimezone } from './useTimezone'
 import { findOriginStay, findDestinationStay } from '@/utils/tripHelpers'
 
@@ -9,15 +9,32 @@ const timezone = useTimezone()
  * Used across StaysTable, TripsTable, and DataGapsTable components
  * @param {Object} options - Configuration options for the filters
  * @param {Array} options.durationOptions - Custom duration filter options
- * @param {Array} options.transportModeOptions - Custom transport mode filter options  
+ * @param {Array} options.transportModeOptions - Custom transport mode filter options
  * @param {Array} options.distanceOptions - Custom distance filter options
+ * @param {Number} options.searchDebounce - Debounce delay for search in milliseconds (default: 300)
  */
 export function useTableFilters(options = {}) {
   // Common filter states
   const searchTerm = ref('')
+  const debouncedSearchTerm = ref('')
   const durationFilter = ref(null)
   const selectedTransportMode = ref(null)
   const distanceFilter = ref(null)
+
+  // Debounce configuration
+  const searchDebounceDelay = options.searchDebounce || 300
+  let searchDebounceTimer = null
+
+  // Watch searchTerm and debounce updates to debouncedSearchTerm
+  watch(searchTerm, (newValue) => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer)
+    }
+
+    searchDebounceTimer = setTimeout(() => {
+      debouncedSearchTerm.value = newValue
+    }, searchDebounceDelay)
+  })
 
   // Default filter options (can be overridden by parameters)
   const defaultDurationOptions = [
@@ -45,9 +62,9 @@ export function useTableFilters(options = {}) {
 
   // Helper functions for filtering
   const applySearchFilter = (items, searchFields) => {
-    if (!searchTerm.value || !searchTerm.value.trim()) return items
+    if (!debouncedSearchTerm.value || !debouncedSearchTerm.value.trim()) return items
 
-    const search = searchTerm.value.toLowerCase().trim()
+    const search = debouncedSearchTerm.value.toLowerCase().trim()
     return items.filter(item => {
       return searchFields.some(field => {
         const value = getNestedProperty(item, field)
@@ -117,16 +134,65 @@ export function useTableFilters(options = {}) {
   }
 
   const processTripsData = (trips, stays) => {
+    // Pre-compute and cache stay timestamps and end times for efficient lookup
+    const staysWithTimes = stays.map(stay => {
+      if (!stay.timestamp) return null
+      const startTime = timezone.fromUtc(stay.timestamp).valueOf()
+      const endTime = startTime + ((stay.stayDuration || 0) * 1000)
+      return {
+        stay,
+        startTime,
+        endTime
+      }
+    }).filter(Boolean).sort((a, b) => a.startTime - b.startTime)
+
+    // Optimized origin lookup: find latest stay ending before trip start
+    const findOriginStayOptimized = (tripTimeValue) => {
+      let closestStay = null
+      let closestEndTime = -Infinity
+      const tolerance = 10 * 60 * 1000
+
+      for (let i = staysWithTimes.length - 1; i >= 0; i--) {
+        const { stay, endTime } = staysWithTimes[i]
+
+        if (endTime <= tripTimeValue + tolerance) {
+          if (endTime > closestEndTime) {
+            closestStay = stay
+            closestEndTime = endTime
+          }
+          // Early exit if we're beyond tolerance window
+          if (endTime < tripTimeValue - tolerance) break
+        }
+      }
+
+      return closestStay
+    }
+
+    // Optimized destination lookup: find first stay starting after trip end
+    const findDestinationStayOptimized = (tripEndTimeValue) => {
+      const tolerance = 10 * 60 * 1000
+
+      for (let i = 0; i < staysWithTimes.length; i++) {
+        const { stay, startTime } = staysWithTimes[i]
+
+        if (startTime >= tripEndTimeValue - tolerance) {
+          return stay
+        }
+      }
+
+      return null
+    }
+
     return trips.map(trip => {
       const startTime = timezone.fromUtc(trip.timestamp)
+      const tripStartValue = startTime.valueOf()
       const endTime = startTime.clone().add(trip.tripDuration || 0, 'seconds')
-      
-      // Find origin stay (latest stay before trip start)
-      const origin = findOriginStay(stays, trip.timestamp)
-      
-      // Find destination stay (earliest stay after trip end)
-      const destination = findDestinationStay(stays, endTime.toISOString())
-      
+      const tripEndValue = endTime.valueOf()
+
+      // Use optimized lookup functions with pre-computed values
+      const origin = findOriginStayOptimized(tripStartValue)
+      const destination = findDestinationStayOptimized(tripEndValue)
+
       return {
         ...trip,
         endTime: endTime.toISOString(),
@@ -218,7 +284,14 @@ export function useTableFilters(options = {}) {
 
   // Cleanup function to dispose of computed refs and clear reactive state
   const cleanup = () => {
+    // Clear debounce timer
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer)
+      searchDebounceTimer = null
+    }
+
     searchTerm.value = ''
+    debouncedSearchTerm.value = ''
     durationFilter.value = null
     selectedTransportMode.value = null
     distanceFilter.value = null
