@@ -179,18 +179,33 @@ public class CacheGeocodingService {
             return Map.of();
         }
 
+        long startTime = System.currentTimeMillis();
         try {
-            Map<String, ReverseGeocodingLocationEntity> cachedResults = 
+            log.debug("Starting batch geocoding ID lookup for {} coordinates", coordinates.size());
+
+            Map<String, ReverseGeocodingLocationEntity> cachedResults =
                 repository.findByCoordinatesBatchReal(coordinates, spatialToleranceMeters);
-            
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Batch geocoding ID lookup completed in {}ms for {} coordinates ({} cached hits)",
+                    duration, coordinates.size(), cachedResults.size());
+
             return cachedResults.entrySet().stream()
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
                             entry -> entry.getValue().getId()
                     ));
 
+        } catch (jakarta.persistence.QueryTimeoutException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.warn("Batch geocoding ID lookup timed out after {}ms for {} coordinates. " +
+                    "Returning empty result - locations will need individual geocoding.",
+                    duration, coordinates.size());
+            return Map.of();
         } catch (Exception e) {
-            log.error("Error retrieving batch cached entity IDs for {} coordinates", coordinates.size(), e);
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Error retrieving batch cached entity IDs for {} coordinates after {}ms",
+                    coordinates.size(), duration, e);
             return Map.of();
         }
     }
@@ -208,18 +223,33 @@ public class CacheGeocodingService {
             return Map.of();
         }
 
+        long startTime = System.currentTimeMillis();
         try {
-            Map<String, ReverseGeocodingLocationEntity> cachedResults = 
+            log.debug("Starting batch geocoding results lookup for {} coordinates", coordinates.size());
+
+            Map<String, ReverseGeocodingLocationEntity> cachedResults =
                 repository.findByCoordinatesBatchReal(coordinates, spatialToleranceMeters);
-            
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Batch geocoding results lookup completed in {}ms for {} coordinates ({} cached hits)",
+                    duration, coordinates.size(), cachedResults.size());
+
             return cachedResults.entrySet().stream()
                     .collect(Collectors.toMap(
                             Map.Entry::getKey,
                             entry -> convertFromEntity(entry.getValue())
                     ));
 
+        } catch (jakarta.persistence.QueryTimeoutException e) {
+            long duration = System.currentTimeMillis() - startTime;
+            log.warn("Batch geocoding results lookup timed out after {}ms for {} coordinates. " +
+                    "Returning empty result - locations will need individual geocoding.",
+                    duration, coordinates.size());
+            return Map.of();
         } catch (Exception e) {
-            log.error("Error retrieving batch cached results for {} coordinates", coordinates.size(), e);
+            long duration = System.currentTimeMillis() - startTime;
+            log.error("Error retrieving batch cached results for {} coordinates after {}ms",
+                    coordinates.size(), duration, e);
             return Map.of();
         }
     }

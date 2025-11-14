@@ -107,7 +107,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
 
     /**
      * True batch find cached locations for multiple coordinates.
-     * Replaces the fake batch processing with a single spatial query.
+     * Processes in smaller chunks to avoid transaction timeouts on large batches.
      *
      * @param coordinates List of coordinates to search for
      * @param toleranceMeters Tolerance in meters for spatial matching
@@ -120,15 +120,31 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             return Map.of();
         }
 
-        final int BATCH_SIZE = 10000;
+        // Reduced batch size to prevent transaction timeouts
+        // For large imports (20K+ points), this splits into manageable chunks
+        final int BATCH_SIZE = 1000;
         Map<String, ReverseGeocodingLocationEntity> finalResultMap = new HashMap<>();
         int totalPoints = coordinates.size();
+
+        log.debug("Starting batch geocoding lookup for {} coordinates in batches of {}",
+                totalPoints, BATCH_SIZE);
 
         for (int i = 0; i < totalPoints; i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, totalPoints);
             List<Point> batchPoints = coordinates.subList(i, end);
-            finalResultMap.putAll(findForBatch(batchPoints, toleranceMeters));
+
+            log.debug("Processing geocoding batch {}/{} ({} coordinates)",
+                    (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchPoints.size());
+
+            Map<String, ReverseGeocodingLocationEntity> batchResults = findForBatch(batchPoints, toleranceMeters);
+            finalResultMap.putAll(batchResults);
+
+            log.debug("Batch {}/{} complete: found {} cached results",
+                    (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchResults.size());
         }
+
+        log.info("Batch geocoding complete: found {} cached results for {} total coordinates",
+                finalResultMap.size(), totalPoints);
 
         return finalResultMap;
     }
@@ -146,26 +162,36 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         }
 
         // Step 1: Get matching geocoding IDs and their corresponding input coordinates
-        // This query matches the exact logic from findByRequestCoordinates individual method
+        // Optimized query with LATERAL JOIN instead of CROSS JOIN for better performance
+        // The LATERAL JOIN allows PostgreSQL to use indexes more efficiently
         String matchingQuery = """
                 WITH input_coords AS (
                     SELECT input_point, input_lon, input_lat
                     FROM (VALUES %s) AS coords(input_point, input_lon, input_lat)
                 )
-                SELECT DISTINCT ON (ic.input_lon, ic.input_lat) 
+                SELECT DISTINCT ON (ic.input_lon, ic.input_lat)
                        r.id, ic.input_lon, ic.input_lat
-                FROM reverse_geocoding_location r
-                CROSS JOIN input_coords ic
-                WHERE (
-                    ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
-                    OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
-                    OR ST_Contains(r.bounding_box, ic.input_point)
-                )
-                ORDER BY ic.input_lon, ic.input_lat, r.last_accessed_at DESC
+                FROM input_coords ic
+                CROSS JOIN LATERAL (
+                    SELECT id
+                    FROM reverse_geocoding_location r
+                    WHERE (
+                        ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
+                        OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
+                        OR ST_Contains(r.bounding_box, ic.input_point)
+                    )
+                    ORDER BY r.last_accessed_at DESC
+                    LIMIT 1
+                ) r
+                ORDER BY ic.input_lon, ic.input_lat
                 """.formatted(valuesClause.toString());
 
         var matchingQueryExec = getEntityManager().createNativeQuery(matchingQuery)
                 .setParameter("tolerance", toleranceMeters);
+
+        // Set query timeout to 60 seconds (instead of default 7 minute transaction timeout)
+        // This allows faster failure and retry if needed
+        matchingQueryExec.setHint("jakarta.persistence.query.timeout", 60000);
 
         // Set coordinate parameters
         for (int i = 0; i < batchPoints.size(); i++) {

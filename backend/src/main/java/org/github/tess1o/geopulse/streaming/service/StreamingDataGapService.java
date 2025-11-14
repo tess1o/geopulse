@@ -47,6 +47,8 @@ public class StreamingDataGapService {
         boolean exceedsThreshold = exceedsGapThreshold(config, gapDuration);
 
         if (!exceedsThreshold) {
+            log.trace("Gap from {} to {} ({} seconds = {}min) does not exceed threshold",
+                    startTime, endTime, gapDuration.getSeconds(), gapDuration.toMinutes());
             return false;
         }
 
@@ -54,10 +56,12 @@ public class StreamingDataGapService {
         boolean meetsMinDuration = meetsMinimumDuration(config, gapDuration);
 
         if (!meetsMinDuration) {
+            log.trace("Gap from {} to {} ({} seconds = {}min) does not meet minimum duration",
+                    startTime, endTime, gapDuration.getSeconds(), gapDuration.toMinutes());
             return false;
         }
 
-        log.info("Gap from {} to {} ({} seconds = {}min) should be created",
+        log.debug("Gap from {} to {} ({} seconds = {}min) meets criteria for creation/extension",
                 startTime, endTime, gapDuration.getSeconds(), gapDuration.toMinutes());
         return true;
     }
@@ -71,7 +75,7 @@ public class StreamingDataGapService {
      */
     @Transactional
     public void checkAndCreateOngoingDataGap(UUID userId, TimelineConfig config) {
-        log.debug("Checking for ongoing data gap for user {}", userId);
+        log.trace("Checking for ongoing data gap for user {}", userId);
 
         // Get the latest GPS point for this user
         Optional<GpsPointEntity> lastGpsPoint = gpsPointRepository.find("user.id = :userId order by timestamp desc",
@@ -93,10 +97,19 @@ public class StreamingDataGapService {
             if (existingGap.isPresent() && existingGap.get().getStartTime().equals(lastGpsTime)) {
                 // Extend existing gap
                 TimelineDataGapEntity gap = existingGap.get();
+                long oldDuration = gap.getDurationSeconds();
                 gap.setEndTime(now);
                 gap.setDurationSeconds(Duration.between(gap.getStartTime(), gap.getEndTime()).getSeconds());
-                log.debug("Extended ongoing data gap for user {} - duration: {}min",
-                        userId, Duration.between(gap.getStartTime(), gap.getEndTime()).toMinutes());
+                long newDuration = gap.getDurationSeconds();
+
+                // Only log if duration changed significantly (more than 1 minute)
+                if (Math.abs(newDuration - oldDuration) > 60) {
+                    log.info("Extended data gap for user {} from {}min to {}min (start: {})",
+                            userId, oldDuration / 60, newDuration / 60, gap.getStartTime());
+                } else {
+                    log.debug("Data gap for user {} remains at ~{}min (no significant change)",
+                            userId, newDuration / 60);
+                }
             } else {
                 // Create new gap
                 TimelineDataGapEntity newGap = new TimelineDataGapEntity();
@@ -106,7 +119,7 @@ public class StreamingDataGapService {
                 newGap.setEndTime(now);
                 newGap.setDurationSeconds(Duration.between(newGap.getStartTime(), newGap.getEndTime()).getSeconds());
                 timelineDataGapRepository.persist(newGap);
-                log.info("Created ongoing data gap for user {} - start: {}, duration: {}min",
+                log.info("Created new data gap for user {} - start: {}, duration: {}min",
                         userId, lastGpsTime, Duration.between(lastGpsTime, now).toMinutes());
             }
         } else {
