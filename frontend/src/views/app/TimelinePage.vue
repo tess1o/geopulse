@@ -1,36 +1,49 @@
 <template>
   <div class="timeline-page">
-    <div class="left-pane">
-      <div v-if="mapNoData" class="loading-messages">
-        No data to show on the map. Try to select different date range.
-      </div>
-      <div v-if="mapDataLoading" class="loading-messages">
-        <ProgressSpinner />
-      </div>
-      <TimelineMap
-          v-show="!mapNoData && !mapDataLoading"
-          ref="mapViewRef"
-          :pathData="pathData"
-          :timelineData="timelineData"
-          :favoritePlaces="favoritePlaces"
-          :currentLocation="currentLocation"
-          :showCurrentLocation="isToday"
-          @timeline-marker-click="handleTimelineMarkerClick"
-          @highlighted-path-click="handleHighlightedPathClick"
-          @edit-favorite="handleEditFavorite"
-      />
-    </div>
+    <!-- Large Dataset Warning -->
+    <TimelineLargeDatasetWarning
+      v-if="showLargeDatasetWarning"
+      :totalItems="datasetCounts.totalItems"
+      :stays="datasetCounts.stays"
+      :trips="datasetCounts.trips"
+      :dataGaps="datasetCounts.dataGaps"
+      @force-load="handleForceLoad"
+    />
 
-    <div class="right-pane">
-      <TimelineContainer
-          ref="timelineRef"
-          :timelineData="timelineData"
-          :timelineNoData="timelineNoData"
-          :timelineDataLoading="timelineDataLoading"
-          :dateRange="dateRange"
-          @timeline-item-click="handleTimelineItemClick"
-      />
-    </div>
+    <!-- Normal Timeline View -->
+    <template v-else>
+      <div class="left-pane">
+        <div v-if="mapNoData" class="loading-messages">
+          No data to show on the map. Try to select different date range.
+        </div>
+        <div v-if="mapDataLoading" class="loading-messages">
+          <ProgressSpinner />
+        </div>
+        <TimelineMap
+            v-show="!mapNoData && !mapDataLoading"
+            ref="mapViewRef"
+            :pathData="pathData"
+            :timelineData="timelineData"
+            :favoritePlaces="favoritePlaces"
+            :currentLocation="currentLocation"
+            :showCurrentLocation="isToday"
+            @timeline-marker-click="handleTimelineMarkerClick"
+            @highlighted-path-click="handleHighlightedPathClick"
+            @edit-favorite="handleEditFavorite"
+        />
+      </div>
+
+      <div class="right-pane">
+        <TimelineContainer
+            ref="timelineRef"
+            :timelineData="timelineData"
+            :timelineNoData="timelineNoData"
+            :timelineDataLoading="timelineDataLoading"
+            :dateRange="dateRange"
+            @timeline-item-click="handleTimelineItemClick"
+        />
+      </div>
+    </template>
   </div>
 </template>
 
@@ -40,7 +53,10 @@ import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { TimelineContainer } from '@/components/timeline'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
+import TimelineLargeDatasetWarning from '@/components/timeline/TimelineLargeDatasetWarning.vue'
+import ProgressSpinner from 'primevue/progressspinner'
 import { useTimezone } from '@/composables/useTimezone'
+import apiService from '@/utils/apiService'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -75,6 +91,11 @@ const lastHighlightedPath = ref(null)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
 const geolocationError = ref(null)
+
+// Large dataset warning state
+const showLargeDatasetWarning = ref(false)
+const datasetCounts = ref({ totalItems: 0, stays: 0, trips: 0, dataGaps: 0, limit: 150 })
+const forceLoadLargeDataset = ref(false)
 
 // Methods
 const triggerMapResize = () => {
@@ -165,6 +186,37 @@ const fetchLocationData = async (startDate, endDate) => {
   }
 }
 
+const checkDatasetSize = async (startDate, endDate) => {
+  try {
+    const response = await apiService.get('/streaming-timeline/count', {
+      startTime: startDate,
+      endTime: endDate
+    })
+
+    const counts = response.data
+    datasetCounts.value = {
+      totalItems: counts.totalItems || 0,
+      stays: counts.stays || 0,
+      trips: counts.trips || 0,
+      dataGaps: counts.dataGaps || 0,
+      limit: counts.limit || 150
+    }
+
+    // Check if dataset exceeds limit
+    if (datasetCounts.value.totalItems > datasetCounts.value.limit && !forceLoadLargeDataset.value) {
+      showLargeDatasetWarning.value = true
+      return false // Don't proceed with loading
+    }
+
+    showLargeDatasetWarning.value = false
+    return true // Proceed with loading
+  } catch (error) {
+    console.error('Error checking dataset size:', error)
+    // On error, proceed with loading (fail open)
+    return true
+  }
+}
+
 const fetchTimelineData = async (startDate, endDate) => {
   timelineDataLoading.value = true
   timelineNoData.value = false
@@ -215,6 +267,17 @@ const getCurrentLocation = () => {
   } else {
     currentLocation.value = null
     geolocationError.value = 'Invalid location data'
+  }
+}
+
+const handleForceLoad = () => {
+  forceLoadLargeDataset.value = true
+  showLargeDatasetWarning.value = false
+  // Trigger the watcher to run again with force load flag set
+  const currentRange = dateRange.value
+  if (currentRange && currentRange.length === 2) {
+    lastFetchedRange.value = null // Reset to allow refetch
+    dateRangeStore.setDateRange([...currentRange]) // Trigger watcher
   }
 }
 
@@ -273,11 +336,23 @@ watch(dateRange, async (newValue) => {
     const rangeKey = `${startDate}-${endDate}`
 
     // Skip if we've already fetched this exact range
-    if (lastFetchedRange.value === rangeKey) {
+    if (lastFetchedRange.value === rangeKey && !forceLoadLargeDataset.value) {
+      return
+    }
+
+    // Check dataset size before fetching
+    const shouldProceed = await checkDatasetSize(startDate, endDate)
+
+    if (!shouldProceed) {
+      // Dataset is too large, warning is shown
+      // Reset loading states since we're not proceeding
+      mapDataLoading.value = false
+      timelineDataLoading.value = false
       return
     }
 
     lastFetchedRange.value = rangeKey
+    forceLoadLargeDataset.value = false // Reset force load flag
 
     await Promise.all([
       fetchLocationData(startDate, endDate),
@@ -307,6 +382,12 @@ watch(pathData, () => {
   display: flex;
   height: calc(100vh - 160px); /* Account for navbar (60px) + tabs (40px) + padding (60px) */
   overflow: hidden;
+}
+
+/* Center the warning when shown */
+.timeline-page:has(.large-dataset-warning) {
+  justify-content: center;
+  align-items: center;
 }
 
 .left-pane {

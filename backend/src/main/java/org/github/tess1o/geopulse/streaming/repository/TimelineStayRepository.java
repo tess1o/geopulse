@@ -766,4 +766,21 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 newName, geocodingId, userId);
     }
 
+    /**
+     * Count timeline stays for a user within a time range (including boundary expansion).
+     * Used for checking dataset size before loading full data.
+     *
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @return count of stays that overlap with the time range
+     */
+    public long countByUserIdAndTimeRange(UUID userId, Instant startTime, Instant endTime) {
+        return count("user.id = ?1 AND (" +
+                        "(timestamp >= ?2 AND timestamp <= ?3) OR " +
+                        "(timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, stayDuration, timestamp) > ?2)" +
+                        ")",
+                userId, startTime, endTime);
+    }
+
 }
