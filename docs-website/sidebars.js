@@ -54,6 +54,7 @@ const sidebars = {
                         'user-guide/core-features/timeline',
                         'user-guide/core-features/dashboard',
                         'user-guide/core-features/journey-insights',
+                        'user-guide/core-features/rewind',
                         'user-guide/core-features/managing-places',
                     ],
                 },
