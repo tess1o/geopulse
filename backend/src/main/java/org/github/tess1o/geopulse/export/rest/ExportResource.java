@@ -201,6 +201,56 @@ public class ExportResource {
         }
     }
 
+    @POST
+    @Path("/csv/create")
+    public Response createCsvExport(CreateExportRequest request) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+
+            // Validate request
+            if (request.getDateRange() == null ||
+                    request.getDateRange().getStartDate() == null ||
+                    request.getDateRange().getEndDate() == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Date range is required"))
+                        .build();
+            }
+
+            if (request.getDateRange().getStartDate().isAfter(Instant.now())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date cannot be in the future"))
+                        .build();
+            }
+
+            if (request.getDateRange().getStartDate().isAfter(request.getDateRange().getEndDate())) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(createErrorResponse("INVALID_REQUEST", "Start date must be before end date"))
+                        .build();
+            }
+
+            ExportJob job = exportJobManager.createCsvExportJob(userId, request.getDateRange());
+
+            ExportJobResponse response = new ExportJobResponse();
+            response.setSuccess(true);
+            response.setExportJobId(job.getJobId());
+            response.setStatus(job.getStatus().name().toLowerCase());
+            response.setMessage("CSV export job created successfully");
+            response.setEstimatedCompletionTime(Instant.now().plus(5, ChronoUnit.MINUTES));
+
+            return Response.ok(response).build();
+
+        } catch (IllegalStateException e) {
+            return Response.status(Response.Status.TOO_MANY_REQUESTS)
+                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to create CSV export job", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create CSV export job"))
+                    .build();
+        }
+    }
+
     @GET
     @Path("/gpx/trip/{tripId}")
     @Produces("application/gpx+xml")
@@ -356,8 +406,37 @@ public class ExportResource {
     }
 
     @GET
+    @Path("/csv/template")
+    @Produces("text/csv")
+    public Response downloadCsvTemplate() {
+        try {
+            // Generate sample CSV with proper format
+            StringBuilder csvTemplate = new StringBuilder();
+            csvTemplate.append("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type\n");
+            csvTemplate.append("2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV\n");
+            csvTemplate.append("2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV\n");
+            csvTemplate.append("2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX\n");
+
+            byte[] csvData = csvTemplate.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            String filename = "geopulse-gps-import-template.csv";
+
+            return Response.ok(csvData)
+                    .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                    .header("Content-Type", "text/csv; charset=utf-8")
+                    .header("Content-Length", csvData.length)
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to generate CSV template", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to generate CSV template"))
+                    .build();
+        }
+    }
+
+    @GET
     @Path("/download/{exportJobId}")
-    @Produces({"application/zip", "application/json", "application/gpx+xml"})
+    @Produces({"application/zip", "application/json", "application/gpx+xml", "text/csv"})
     public Response downloadExport(@PathParam("exportJobId") UUID exportJobId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -435,6 +514,17 @@ public class ExportResource {
                             .entity("GPX export data not available")
                             .build();
                 }
+            } else if ("csv".equals(job.getFormat()) && job.getJsonData() != null) {
+                // Return CSV format
+                String filename = String.format("geopulse-export-%s-%d.csv",
+                        userId.toString().substring(0, 8),
+                        job.getCreatedAt().getEpochSecond());
+
+                return Response.ok(job.getJsonData())
+                        .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                        .header("Content-Type", "text/csv; charset=utf-8")
+                        .header("Content-Length", job.getJsonData().length)
+                        .build();
             } else if (job.getZipData() != null) {
                 // Return ZIP for GeoPulse format
                 String filename = String.format("geopulse-export-%s-%d.zip",

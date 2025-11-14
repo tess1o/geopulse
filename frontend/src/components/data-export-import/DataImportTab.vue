@@ -50,6 +50,62 @@
             </small>
           </div>
 
+          <!-- CSV Format Documentation (shown when CSV is selected, before file upload) -->
+          <div v-if="importFormat === 'csv'" class="csv-format-docs">
+            <h4 class="csv-docs-title">CSV Format Specification</h4>
+
+            <div class="csv-download-template">
+              <Button
+                label="Download CSV Template"
+                icon="pi pi-download"
+                size="small"
+                outlined
+                @click="downloadCsvTemplate"
+                class="template-button"
+              />
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">Required Fields</h5>
+              <ul class="csv-field-list">
+                <li><strong>timestamp</strong>: ISO-8601 format (e.g., 2024-01-15T10:30:00Z)</li>
+                <li><strong>latitude</strong>: Decimal degrees, -90 to 90</li>
+                <li><strong>longitude</strong>: Decimal degrees, -180 to 180</li>
+              </ul>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">Optional Fields</h5>
+              <ul class="csv-field-list">
+                <li><strong>accuracy</strong>: GPS accuracy in meters</li>
+                <li><strong>velocity</strong>: Speed in km/h</li>
+                <li><strong>altitude</strong>: Altitude in meters</li>
+                <li><strong>battery</strong>: Battery percentage (0-100)</li>
+                <li><strong>device_id</strong>: Device identifier (text)</li>
+                <li><strong>source_type</strong>: Data source (CSV, OWNTRACKS, GPX, GEOJSON, etc.)</li>
+              </ul>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">Example CSV</h5>
+              <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
+2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV
+2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX</pre>
+            </div>
+
+            <div class="csv-docs-section">
+              <h5 class="csv-docs-subtitle">Format Rules</h5>
+              <ul class="csv-field-list">
+                <li>UTF-8 encoding required</li>
+                <li>Header row required (case-sensitive)</li>
+                <li>Empty optional fields: leave blank (e.g., ,,)</li>
+                <li>Decimal separator: period (.)</li>
+                <li>Timestamps must be UTC (ending with Z)</li>
+              </ul>
+            </div>
+          </div>
+
           <!-- Import Options -->
           <div v-if="selectedFile" class="form-section">
             <h3 class="form-section-title">Import Options</h3>
@@ -101,6 +157,62 @@
                 <div class="format-info">
                   <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
                   <span> {{ getFormatInfoMessage() }}</span>
+                </div>
+              </div>
+
+              <!-- CSV Format Documentation -->
+              <div v-if="importFormat === 'csv'" class="csv-format-docs">
+                <h4 class="csv-docs-title">CSV Format Specification</h4>
+
+                <div class="csv-download-template">
+                  <Button
+                    label="Download CSV Template"
+                    icon="pi pi-download"
+                    size="small"
+                    outlined
+                    @click="downloadCsvTemplate"
+                    class="template-button"
+                  />
+                </div>
+
+                <div class="csv-docs-section">
+                  <h5 class="csv-docs-subtitle">Required Fields</h5>
+                  <ul class="csv-field-list">
+                    <li><strong>timestamp</strong>: ISO-8601 format (e.g., 2024-01-15T10:30:00Z)</li>
+                    <li><strong>latitude</strong>: Decimal degrees, -90 to 90</li>
+                    <li><strong>longitude</strong>: Decimal degrees, -180 to 180</li>
+                  </ul>
+                </div>
+
+                <div class="csv-docs-section">
+                  <h5 class="csv-docs-subtitle">Optional Fields</h5>
+                  <ul class="csv-field-list">
+                    <li><strong>accuracy</strong>: GPS accuracy in meters</li>
+                    <li><strong>velocity</strong>: Speed in km/h</li>
+                    <li><strong>altitude</strong>: Altitude in meters</li>
+                    <li><strong>battery</strong>: Battery percentage (0-100)</li>
+                    <li><strong>device_id</strong>: Device identifier (text)</li>
+                    <li><strong>source_type</strong>: Data source (CSV, OWNTRACKS, GPX, GEOJSON, etc.)</li>
+                  </ul>
+                </div>
+
+                <div class="csv-docs-section">
+                  <h5 class="csv-docs-subtitle">Example CSV</h5>
+                  <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
+2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV
+2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX</pre>
+                </div>
+
+                <div class="csv-docs-section">
+                  <h5 class="csv-docs-subtitle">Format Rules</h5>
+                  <ul class="csv-field-list">
+                    <li>UTF-8 encoding required</li>
+                    <li>Header row required (case-sensitive)</li>
+                    <li>Empty optional fields: leave blank (e.g., ,,)</li>
+                    <li>Decimal separator: period (.)</li>
+                    <li>Timestamps must be UTC (ending with Z)</li>
+                  </ul>
                 </div>
               </div>
 
@@ -517,6 +629,15 @@ const importFormatOptions = ref([
     acceptedFormats: '.json,.geojson',
     uploadFunction: 'uploadGeoJsonImportFile',
     supportsDataTypeSelection: false
+  },
+  {
+    label: 'CSV',
+    value: 'csv',
+    description: 'Import GPS data from CSV file',
+    fileExtensions: ['.csv'],
+    acceptedFormats: '.csv',
+    uploadFunction: 'uploadCsvImportFile',
+    supportsDataTypeSelection: false
   }
 ])
 
@@ -630,6 +751,26 @@ const formatDate = (dateString) => {
   return timezone.format(dateString, 'YYYY-MM-DD HH:mm:ss')
 }
 
+const downloadCsvTemplate = async () => {
+  try {
+    await exportImportStore.downloadCsvTemplate()
+    toast.add({
+      severity: 'success',
+      summary: 'Template Downloaded',
+      detail: 'CSV template has been downloaded successfully',
+      life: 3000
+    })
+  } catch (error) {
+    console.error('Error downloading CSV template:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Download Failed',
+      detail: 'Failed to download CSV template',
+      life: 3000
+    })
+  }
+}
+
 // Store utility methods
 const {getDataTypeDisplayName, getFileSizeDisplay, getStatusDisplayInfo} = exportImportStore
 
@@ -660,7 +801,8 @@ const getFormatInfoMessage = () => {
     'owntracks': 'OwnTracks import will add GPS location data to your GeoPulse timeline.',
     'google-timeline': 'Google Timeline import will add GPS location data and activities from your Google Takeout data.',
     'gpx': 'GPX import will add GPS track and route data to your GeoPulse timeline. You can import a single GPX file or a ZIP archive containing multiple GPX files.',
-    'geojson': 'GeoJSON import will add GPS location data from GeoJSON Point and LineString features to your GeoPulse timeline.'
+    'geojson': 'GeoJSON import will add GPS location data from GeoJSON Point and LineString features to your GeoPulse timeline.',
+    'csv': 'CSV import will add GPS location data from a structured CSV file to your GeoPulse timeline. Use the CSV template below to prepare your data.'
   }
   return messages[importFormat.value] || `${getCurrentFormatConfig().label} import will add location data to your GeoPulse timeline.`
 }
@@ -1163,6 +1305,104 @@ onMounted(async () => {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
+  }
+}
+
+/* CSV Format Documentation Styles */
+.csv-format-docs {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+}
+
+.csv-docs-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.csv-download-template {
+  margin-bottom: 1.5rem;
+}
+
+.template-button {
+  width: 100%;
+  max-width: 250px;
+}
+
+.csv-docs-section {
+  margin-bottom: 1.5rem;
+}
+
+.csv-docs-section:last-child {
+  margin-bottom: 0;
+}
+
+.csv-docs-subtitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0 0 0.75rem 0;
+}
+
+.csv-field-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.csv-field-list li {
+  padding: 0.5rem 0;
+  color: var(--gp-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.csv-field-list li strong {
+  color: var(--gp-text-primary);
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+.csv-example-code {
+  background: var(--gp-surface-0);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+  padding: 1rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gp-text-primary);
+  overflow-x: auto;
+  margin: 0;
+}
+
+/* Dark Mode */
+:root[class*="dark"] .csv-format-docs {
+  background: var(--surface-ground);
+  border-color: var(--gp-border-dark);
+}
+
+:root[class*="dark"] .csv-example-code {
+  background: var(--surface-800);
+  border-color: var(--gp-border-dark);
+}
+
+@media (max-width: 768px) {
+  .csv-format-docs {
+    padding: 1rem;
+  }
+
+  .template-button {
+    width: 100%;
+    max-width: none;
+  }
+
+  .csv-example-code {
+    font-size: 0.7rem;
   }
 }
 </style>

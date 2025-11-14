@@ -319,6 +319,44 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
+        // API Actions - Export (CSV)
+        async createCsvExportJob(dateRange) {
+            this.isExporting = true
+            try {
+                const response = await apiService.post('/export/csv/create', {
+                    dateRange
+                })
+
+                // Handle successful response
+                if (response.success) {
+                    this.setCurrentExportJob(response)
+                    this.addExportJob(response)
+                    return response
+                } else {
+                    throw new Error(response.error?.message || 'CSV export creation failed')
+                }
+            } catch (error) {
+                // Handle API error responses
+                if (error.response?.data?.error) {
+                    const apiError = error.response.data.error
+                    throw new Error(apiError.message || 'CSV export creation failed')
+                }
+                throw error
+            } finally {
+                this.isExporting = false
+            }
+        },
+
+        // Download CSV template
+        async downloadCsvTemplate() {
+            try {
+                await apiService.download('/export/csv/template')
+                return true
+            } catch (error) {
+                throw error
+            }
+        },
+
         // API Actions - Export single trip as GPX
         async exportTripAsGpx(tripId) {
             try {
@@ -499,6 +537,42 @@ export const useExportImportStore = defineStore('exportImport', {
                 formData.append('options', JSON.stringify(options))
 
                 const response = await apiService.post('/import/geojson/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: (progressEvent) => {
+                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
+                        this.uploadProgress = Math.min(progress, 99)
+                    }
+                })
+
+                this.uploadProgress = 100
+                await new Promise(resolve => setTimeout(resolve, 500))
+
+                this.setCurrentImportJob(response)
+                this.addImportJob(response)
+
+                return response
+            } catch (error) {
+                throw error
+            } finally {
+                this.isImporting = false
+                this.isUploading = false
+                this.uploadProgress = 0
+            }
+        },
+
+        // API Actions - Import (CSV)
+        async uploadCsvImportFile(file, options = {}) {
+            this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+                formData.append('options', JSON.stringify(options))
+
+                const response = await apiService.post('/import/csv/upload', formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     },

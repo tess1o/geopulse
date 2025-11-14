@@ -126,6 +126,24 @@ public class ImportService {
         return job;
     }
 
+    public ImportJob createCsvImportJob(UUID userId, ImportOptions options, String fileName, byte[] csvData) {
+        // Force format to be csv for clarity
+        options.setImportFormat("csv");
+
+        // Create CSV import job - we'll store CSV data in zipData field for simplicity
+        ImportJob job = new ImportJob(userId, options, fileName, csvData);
+
+        // Pre-populate detected data types for CSV (only GPS data)
+        job.setDetectedDataTypes(List.of("rawgps"));
+
+        activeJobs.put(job.getJobId(), job);
+
+        log.info("Created CSV import job {} for user {} with file: {}",
+                job.getJobId(), userId, fileName);
+
+        return job;
+    }
+
     /**
      * Register an already-created import job (for temp file scenarios)
      */

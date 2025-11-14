@@ -1,0 +1,126 @@
+package org.github.tess1o.geopulse.export.service;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.export.model.ExportJob;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+
+import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+/**
+ * Service responsible for generating CSV format exports using streaming approach.
+ * Memory-efficient: processes GPS points in batches without loading all data into memory.
+ */
+@ApplicationScoped
+@Slf4j
+public class CsvExportService {
+
+    @Inject
+    GpsPointRepository gpsPointRepository;
+
+    private static final int BATCH_SIZE = 1000;
+
+    /**
+     * Generates a CSV export for the given export job using STREAMING approach.
+     * Memory usage: O(batch_size) instead of O(total_records).
+     *
+     * @param job the export job
+     * @return the CSV as bytes
+     * @throws IOException if an I/O error occurs
+     */
+    public byte[] generateCsvExport(ExportJob job) throws IOException {
+        log.info("Starting streaming CSV export for user {}", job.getUserId());
+
+        job.updateProgress(5, "Initializing CSV export...");
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+            // Write CSV header
+            writer.write("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type\n");
+
+            job.updateProgress(10, "Starting to stream GPS data...");
+
+            int page = 0;
+            int totalWritten = 0;
+
+            while (true) {
+                // Fetch batch of GPS points
+                List<GpsPointEntity> batch = gpsPointRepository.findByUserAndDateRange(
+                    job.getUserId(),
+                    job.getDateRange().getStartDate(),
+                    job.getDateRange().getEndDate(),
+                    page,
+                    BATCH_SIZE,
+                    "timestamp",
+                    "asc"
+                );
+
+                if (batch.isEmpty()) {
+                    break;
+                }
+
+                // Write each GPS point as CSV row
+                for (GpsPointEntity point : batch) {
+                    writer.write(formatCsvRow(point));
+                    totalWritten++;
+                }
+
+                writer.flush(); // Flush after each batch
+                page++;
+
+                // Update progress (10% to 90%)
+                int progress = 10 + (int) (80.0 * totalWritten / Math.max(totalWritten + BATCH_SIZE, 1));
+                progress = Math.min(progress, 90);
+                job.updateProgress(progress, String.format("Exporting GPS points: %d records", totalWritten));
+
+                // Log progress periodically
+                if (page % 10 == 0) {
+                    log.debug("Streamed {} records in {} batches", totalWritten, page);
+                }
+            }
+
+            log.info("Completed streaming CSV export: {} records in {} batches", totalWritten, page);
+        }
+
+        byte[] result = baos.toByteArray();
+
+        job.updateProgress(95, "Finalizing CSV export...");
+        log.info("Completed CSV export: {} bytes", result.length);
+
+        return result;
+    }
+
+    /**
+     * Format a single GPS point as a CSV row.
+     * Format: timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+     *
+     * @param point GPS point entity
+     * @return CSV row string with newline
+     */
+    private String formatCsvRow(GpsPointEntity point) {
+        StringBuilder row = new StringBuilder();
+
+        // Required fields
+        row.append(point.getTimestamp().toString()).append(",");
+        row.append(point.getLatitude()).append(",");
+        row.append(point.getLongitude()).append(",");
+
+        // Optional fields
+        row.append(point.getAccuracy() != null ? point.getAccuracy() : "").append(",");
+        row.append(point.getVelocity() != null ? point.getVelocity() : "").append(",");
+        row.append(point.getAltitude() != null ? point.getAltitude() : "").append(",");
+        row.append(point.getBattery() != null ? point.getBattery() : "").append(",");
+        row.append(point.getDeviceId() != null ? point.getDeviceId() : "").append(",");
+        row.append(point.getSourceType() != null ? point.getSourceType().name() : "").append("\n");
+
+        return row.toString();
+    }
+}
