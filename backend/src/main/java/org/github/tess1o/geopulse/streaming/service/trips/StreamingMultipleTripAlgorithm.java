@@ -19,10 +19,10 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
 
     /**
      * Minimum contribution ratio for a travel mode to be considered significant.
-     * Each mode must account for at least this percentage of total distance to justify keeping trips separate.
-     * Example: 0.20 means walking must be at least 20% of total distance to be considered legitimate.
+     * Each mode must account for at least this percentage of total distance OR time to justify keeping trips separate.
+     * Example: 0.15 means walking must be at least 15% of total distance OR 15% of total time to be considered legitimate.
      */
-    private static final double MIN_MODE_CONTRIBUTION_RATIO = 0.20;
+    private static final double MIN_MODE_CONTRIBUTION_RATIO = 0.15;
 
     /**
      * Apply multi trip algorithm: allow multiple trips between stays if confident about mode changes.
@@ -220,16 +220,40 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
                 .mapToDouble(Trip::getDistanceMeters)
                 .sum();
 
-        // Both modes should contribute meaningfully (at least MIN_MODE_CONTRIBUTION_RATIO of total distance each)
+
+        // Calculate total time for each mode
+        double totalWalkingTime = trips.stream()
+                .filter(t -> t.getTripType() == TripType.WALK)
+                .mapToDouble(t -> t.getDuration().getSeconds())
+                .sum();
+
+        double totalDriveTime = trips.stream()
+                .filter(t -> t.getTripType() == TripType.CAR)
+                .mapToDouble(t -> t.getDuration().getSeconds())
+                .sum();
+
+        // Calculate distance-based ratios
         double totalDistance = totalWalkDistance + totalDriveDistance;
-        double walkRatio = totalDistance > 0 ? totalWalkDistance / totalDistance : 0;
-        double driveRatio = totalDistance > 0 ? totalDriveDistance / totalDistance : 0;
+        double walkDistanceRatio = totalDistance > 0 ? totalWalkDistance / totalDistance : 0;
+        double driveDistanceRatio = totalDistance > 0 ? totalDriveDistance / totalDistance : 0;
 
-        boolean legitimate = walkRatio >= MIN_MODE_CONTRIBUTION_RATIO && driveRatio >= MIN_MODE_CONTRIBUTION_RATIO;
+        // Calculate time-based ratios
+        double totalTime = totalWalkingTime + totalDriveTime;
+        double walkTimeRatio = totalTime > 0 ? totalWalkingTime / totalTime : 0;
+        double driveTimeRatio = totalTime > 0 ? totalDriveTime / totalTime : 0;
 
-        log.debug("Mode change analysis: walking={} ({}m, {:.1f}%), driving={} ({}m, {:.1f}%), legitimate={}",
-                walkingTrips, (long) totalWalkDistance, walkRatio * 100,
-                drivingTrips, (long) totalDriveDistance, driveRatio * 100, legitimate);
+        // Hybrid approach: legitimate if EITHER distance-based OR time-based thresholds are met
+        boolean distanceBasedLegit = walkDistanceRatio >= MIN_MODE_CONTRIBUTION_RATIO &&
+                                     driveDistanceRatio >= MIN_MODE_CONTRIBUTION_RATIO;
+        boolean timeBasedLegit = walkTimeRatio >= MIN_MODE_CONTRIBUTION_RATIO &&
+                                driveTimeRatio >= MIN_MODE_CONTRIBUTION_RATIO;
+        boolean legitimate = distanceBasedLegit || timeBasedLegit;
+
+        log.debug("Mode change analysis: walking={} ({}m, {}%, {}s, {}%), driving={} ({}m, {}%, {}s, {}%), " +
+                "distanceLegit={}, timeLegit={}, legitimate={}",
+                walkingTrips, (long) totalWalkDistance, walkDistanceRatio * 100, (long) totalWalkingTime, walkTimeRatio * 100,
+                drivingTrips, (long) totalDriveDistance, driveDistanceRatio * 100, (long) totalDriveTime, driveTimeRatio * 100,
+                distanceBasedLegit, timeBasedLegit, legitimate);
 
         return legitimate;
     }
