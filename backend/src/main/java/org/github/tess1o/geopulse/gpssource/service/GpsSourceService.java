@@ -127,12 +127,18 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         GpsSourceConfigEntity dbConfig = configOpt.get();
         if (dbConfig.getSourceType() == GpsSourceType.OWNTRACKS) {
             dbConfig.setUsername(config.getUsername());
-            dbConfig.setPasswordHash(passwordUtils.hashPassword(config.getPassword()));
+            // Only update password if a new one is provided
+            if (config.getPassword() != null && !config.getPassword().isEmpty()) {
+                dbConfig.setPasswordHash(passwordUtils.hashPassword(config.getPassword()));
+            }
         }
         if (dbConfig.getSourceType() == GpsSourceType.OVERLAND ||
                 dbConfig.getSourceType() == GpsSourceType.DAWARICH ||
                 dbConfig.getSourceType() == GpsSourceType.HOME_ASSISTANT) {
-            dbConfig.setToken(config.getToken());
+            // Only update token if a new one is provided
+            if (config.getToken() != null && !config.getToken().isEmpty()) {
+                dbConfig.setToken(config.getToken());
+            }
         }
         if (dbConfig.getConnectionType() != null) {
             dbConfig.setConnectionType(config.getConnectionType());
