@@ -11,6 +11,10 @@ env:
   GHCR_BACKEND_IMAGE: ghcr.io/tess1o/geopulse-backend
   GHCR_FRONTEND_IMAGE: ghcr.io/tess1o/geopulse-ui
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   # Extract version from tag (remove 'v' prefix)
   prepare:
