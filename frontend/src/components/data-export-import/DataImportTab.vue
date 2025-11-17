@@ -160,62 +160,6 @@
                 </div>
               </div>
 
-              <!-- CSV Format Documentation -->
-              <div v-if="importFormat === 'csv'" class="csv-format-docs">
-                <h4 class="csv-docs-title">CSV Format Specification</h4>
-
-                <div class="csv-download-template">
-                  <Button
-                    label="Download CSV Template"
-                    icon="pi pi-download"
-                    size="small"
-                    outlined
-                    @click="downloadCsvTemplate"
-                    class="template-button"
-                  />
-                </div>
-
-                <div class="csv-docs-section">
-                  <h5 class="csv-docs-subtitle">Required Fields</h5>
-                  <ul class="csv-field-list">
-                    <li><strong>timestamp</strong>: ISO-8601 format (e.g., 2024-01-15T10:30:00Z)</li>
-                    <li><strong>latitude</strong>: Decimal degrees, -90 to 90</li>
-                    <li><strong>longitude</strong>: Decimal degrees, -180 to 180</li>
-                  </ul>
-                </div>
-
-                <div class="csv-docs-section">
-                  <h5 class="csv-docs-subtitle">Optional Fields</h5>
-                  <ul class="csv-field-list">
-                    <li><strong>accuracy</strong>: GPS accuracy in meters</li>
-                    <li><strong>velocity</strong>: Speed in km/h</li>
-                    <li><strong>altitude</strong>: Altitude in meters</li>
-                    <li><strong>battery</strong>: Battery percentage (0-100)</li>
-                    <li><strong>device_id</strong>: Device identifier (text)</li>
-                    <li><strong>source_type</strong>: Data source (CSV, OWNTRACKS, GPX, GEOJSON, etc.)</li>
-                  </ul>
-                </div>
-
-                <div class="csv-docs-section">
-                  <h5 class="csv-docs-subtitle">Example CSV</h5>
-                  <pre class="csv-example-code">timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
-2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV
-2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV
-2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX</pre>
-                </div>
-
-                <div class="csv-docs-section">
-                  <h5 class="csv-docs-subtitle">Format Rules</h5>
-                  <ul class="csv-field-list">
-                    <li>UTF-8 encoding required</li>
-                    <li>Header row required (case-sensitive)</li>
-                    <li>Empty optional fields: leave blank (e.g., ,,)</li>
-                    <li>Decimal separator: period (.)</li>
-                    <li>Timestamps must be UTC (ending with Z)</li>
-                  </ul>
-                </div>
-              </div>
-
               <div class="option-group">
                 <div class="checkbox-option">
                   <Checkbox

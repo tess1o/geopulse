@@ -77,6 +77,7 @@ const layoutClasses = computed(() => ({
   flex-direction: column;
   min-height: 100vh;
   background: var(--gp-surface-light);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .gp-app-layout--full-height {
@@ -91,6 +92,8 @@ const layoutClasses = computed(() => ({
   background: var(--gp-surface-white);
   border-bottom: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
+  padding-top: env(safe-area-inset-top);
+  height: calc(60px + env(safe-area-inset-top));
 }
 
 /* Main Content */
@@ -98,6 +101,16 @@ const layoutClasses = computed(() => ({
   flex: 1;
   display: flex;
   flex-direction: column;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.gp-app-main > * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Default padding */
@@ -162,11 +175,11 @@ const layoutClasses = computed(() => ({
 /* Responsive */
 @media (max-width: 768px) {
   .gp-app-layout .gp-app-main {
-    padding: var(--gp-spacing-md);
+    padding: var(--gp-spacing-sm);
   }
 
   .gp-app-layout--padding-large .gp-app-main {
-    padding: var(--gp-spacing-lg);
+    padding: var(--gp-spacing-md);
   }
 
   .gp-app-footer {
@@ -176,7 +189,7 @@ const layoutClasses = computed(() => ({
 
 @media (max-width: 480px) {
   .gp-app-layout .gp-app-main {
-    padding: var(--gp-spacing-sm);
+    padding: var(--gp-spacing-xs);
   }
 
   .gp-app-layout--padding-small .gp-app-main {

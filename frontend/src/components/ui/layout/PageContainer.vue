@@ -89,6 +89,13 @@ const contentClasses = computed(() => ({
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--gp-spacing-lg);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.gp-page-container > * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Container Variants */
@@ -214,6 +221,14 @@ const contentClasses = computed(() => ({
   flex: 1;
   display: flex;
   flex-direction: column;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.gp-page-content > * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .gp-page-content--scrollable {

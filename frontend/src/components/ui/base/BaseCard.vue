@@ -54,6 +54,8 @@ const cardClasses = computed(() => ({
   box-shadow: var(--gp-shadow-card);
   overflow: hidden;
   transition: all 0.2s ease;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .gp-card:hover {
@@ -69,6 +71,8 @@ const cardClasses = computed(() => ({
   padding: var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-md);
   border-bottom: 1px solid var(--gp-border-light);
   background: var(--gp-surface-light);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .gp-card-title {
@@ -97,6 +101,14 @@ const cardClasses = computed(() => ({
   flex: 1;
   display: flex;
   flex-direction: column;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.gp-card-content > * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Footer */

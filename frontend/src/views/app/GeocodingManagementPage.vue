@@ -80,6 +80,7 @@
         class="geocoding-table"
         v-model:selection="selectedRows"
         selection-mode="multiple"
+        style="max-width: 100%; box-sizing: border-box;"
       >
         <template #header>
           <div class="table-header">
@@ -118,7 +119,7 @@
           </template>
         </Column>
 
-        <Column field="providerName" header="Provider" sortable class="provider-col">
+        <Column field="providerName" header="Provider" sortable class="provider-col" v-if="!isMobile">
           <template #body="slotProps">
             <Tag
               :value="slotProps.data.providerName"
@@ -501,9 +502,16 @@ watch(pageSize, async () => {
 </script>
 
 <style scoped>
+/* Ensure all elements respect parent width */
+* {
+  box-sizing: border-box;
+}
+
 /* Filter Section */
 .filter-section {
   margin-bottom: var(--gp-spacing-lg);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .filter-controls {
@@ -511,6 +519,7 @@ watch(pageSize, async () => {
   align-items: center;
   gap: var(--gp-spacing-lg);
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .filter-group {
@@ -540,6 +549,7 @@ watch(pageSize, async () => {
 /* Table Section */
 .table-section {
   overflow: hidden;
+  max-width: 100%;
 }
 
 .table-header {
@@ -555,9 +565,25 @@ watch(pageSize, async () => {
 }
 
 /* Table Layout - Fixed */
+.geocoding-table {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .geocoding-table :deep(.p-datatable-table) {
   table-layout: fixed;
   width: 100%;
+}
+
+.geocoding-table :deep(.p-datatable-wrapper) {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.geocoding-table :deep(.p-datatable) {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Table Columns - Fixed Widths */
@@ -705,9 +731,14 @@ watch(pageSize, async () => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .filter-section {
+    margin-bottom: var(--gp-spacing-md);
+  }
+
   .filter-controls {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--gp-spacing-sm);
   }
 
   .filter-group {
@@ -716,18 +747,125 @@ watch(pageSize, async () => {
     min-width: unset;
   }
 
+  .filter-label {
+    font-size: 0.875rem;
+  }
+
   .provider-select,
   .search-input {
     max-width: 100%;
     width: 100%;
   }
 
+  .header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .header-actions .p-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .table-section {
+    overflow-x: auto;
+  }
+
+  .table-title {
+    font-size: 1rem;
+  }
+
+  /* Adjust table column widths for mobile */
+  .geocoding-table :deep(.selection-col) {
+    width: 2.5rem;
+    max-width: 2.5rem;
+  }
+
   .geocoding-table :deep(.name-col) {
-    width: 30%;
+    width: 50%;
   }
 
   .geocoding-table :deep(.city-col) {
+    width: 30%;
+  }
+
+  .geocoding-table :deep(.actions-col) {
     width: 20%;
+  }
+
+  /* Reduce table padding and font sizes */
+  .geocoding-table :deep(.p-datatable-thead th) {
+    font-size: 0.85rem;
+    padding: var(--gp-spacing-xs);
+  }
+
+  .geocoding-table :deep(.p-datatable-tbody td) {
+    padding: var(--gp-spacing-xs);
+    font-size: 0.875rem;
+  }
+
+  .name-cell {
+    font-size: 0.875rem;
+  }
+
+  .provider-tag {
+    font-size: 0.7rem;
+  }
+
+  .action-button {
+    min-width: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .actions-buttons {
+    gap: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-section {
+    padding: var(--gp-spacing-sm);
+  }
+
+  .table-section {
+    padding: var(--gp-spacing-sm);
+  }
+
+  .geocoding-table :deep(.name-col) {
+    width: 55%;
+  }
+
+  .geocoding-table :deep(.city-col) {
+    width: 25%;
+  }
+
+  .geocoding-table :deep(.actions-col) {
+    width: 20%;
+  }
+
+  .geocoding-table :deep(.p-datatable-thead th) {
+    font-size: 0.75rem;
+    padding: var(--gp-spacing-xs) 4px;
+  }
+
+  .geocoding-table :deep(.p-datatable-tbody td) {
+    padding: var(--gp-spacing-xs) 4px;
+    font-size: 0.8rem;
+  }
+
+  .name-cell {
+    font-size: 0.8rem;
+  }
+
+  .action-button {
+    min-width: 24px !important;
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  .actions-buttons {
+    gap: 1px;
   }
 }
 

@@ -261,6 +261,8 @@ const handleNavigate = (item) => {
   border-bottom: 1px solid var(--gp-border-light) !important;
   border-radius: 0 !important;
   padding: 0 var(--gp-spacing-lg) !important;
+  padding-left: calc(var(--gp-spacing-lg) + env(safe-area-inset-left)) !important;
+  padding-right: calc(var(--gp-spacing-lg) + env(safe-area-inset-right)) !important;
   height: 60px !important;
   box-shadow: var(--gp-shadow-light) !important;
 }
@@ -305,12 +307,16 @@ const handleNavigate = (item) => {
 @media (max-width: 768px) {
   .gp-app-navbar-toolbar {
     padding: 0 var(--gp-spacing-md) !important;
+    padding-left: calc(var(--gp-spacing-md) + env(safe-area-inset-left)) !important;
+    padding-right: calc(var(--gp-spacing-md) + env(safe-area-inset-right)) !important;
   }
 }
 
 @media (max-width: 480px) {
   .gp-app-navbar-toolbar {
     padding: 0 var(--gp-spacing-sm) !important;
+    padding-left: calc(var(--gp-spacing-sm) + env(safe-area-inset-left)) !important;
+    padding-right: calc(var(--gp-spacing-sm) + env(safe-area-inset-right)) !important;
   }
 }
 
