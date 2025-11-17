@@ -8,6 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.persistence.EntityManager;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -17,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Singleton
+@Slf4j
 public class FavoriteLocationsMetrics {
 
     private final AtomicLong favoriteLocationsTotal = new AtomicLong();
@@ -36,14 +38,18 @@ public class FavoriteLocationsMetrics {
     EntityManager entityManager;
 
     void onStart(@Observes StartupEvent ev) {
-        setMetricValues();
+        try {
+            setMetricValues();
 
-        Gauge.builder("favorite_locations_total", favoriteLocationsTotal, AtomicLong::get)
-                .description("Total number of Favorite Locations")
-                .register(registry);
-        Gauge.builder("favorite_locations_avg_per_user", avgFavoritesPerUser, AtomicLong::get)
-                .description("Average number of Favorite Locations per user (among users with favorites)")
-                .register(registry);
+            Gauge.builder("favorite_locations_total", favoriteLocationsTotal, AtomicLong::get)
+                    .description("Total number of Favorite Locations")
+                    .register(registry);
+            Gauge.builder("favorite_locations_avg_per_user", avgFavoritesPerUser, AtomicLong::get)
+                    .description("Average number of Favorite Locations per user (among users with favorites)")
+                    .register(registry);
+        } catch (Exception e) {
+            log.error("Failed to initialize Favorite Locations metrics", e);
+        }
     }
 
     @Scheduled(every = "10m")
@@ -57,7 +63,7 @@ public class FavoriteLocationsMetrics {
 
         // Calculate average favorites per user (among users with favorites)
         Long usersWithFavorites = (Long) entityManager.createNativeQuery(
-                "SELECT COUNT(DISTINCT user_id) FROM favorites")
+                "SELECT COUNT(DISTINCT user_id) FROM favorite_locations")
                 .getSingleResult();
         if (usersWithFavorites > 0) {
             avgFavoritesPerUser.set(total / usersWithFavorites);

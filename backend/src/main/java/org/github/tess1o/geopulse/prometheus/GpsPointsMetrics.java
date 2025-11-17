@@ -8,6 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.persistence.EntityManager;
+import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Singleton
+@Slf4j
 public class GpsPointsMetrics {
 
     private final AtomicLong totalGpsPoints = new AtomicLong();
@@ -42,22 +44,27 @@ public class GpsPointsMetrics {
     EntityManager entityManager;
 
     void onStart(@Observes StartupEvent ev) {
-        // Set all metric values before registering gauges
-        setMetricValues();
+        try {
+            // Set all metric values before registering gauges
+            setMetricValues();
 
-        // Register overall metrics (without user tags)
-        Gauge.builder("gps_points_total", totalGpsPoints, AtomicLong::get)
-                .description("Total number of GPS points for all users")
-                .register(registry);
-        Gauge.builder("gps_last_timestamp", lastGpsTimestamp, AtomicLong::get)
-                .description("Unix timestamp of the last GPS point received")
-                .register(registry);
-        Gauge.builder("gps_points_last_24h", gpsPointsLast24h, AtomicLong::get)
-                .description("Number of GPS points added in the last 24 hours")
-                .register(registry);
-        Gauge.builder("gps_avg_points_per_user", avgGpsPointsPerUser, AtomicLong::get)
-                .description("Average number of GPS points per user (among users with GPS data)")
-                .register(registry);
+            // Register overall metrics (without user tags)
+            Gauge.builder("gps_points_total", totalGpsPoints, AtomicLong::get)
+                    .description("Total number of GPS points for all users")
+                    .register(registry);
+            Gauge.builder("gps_last_timestamp", lastGpsTimestamp, AtomicLong::get)
+                    .description("Unix timestamp of the last GPS point received")
+                    .register(registry);
+            Gauge.builder("gps_points_last_24h", gpsPointsLast24h, AtomicLong::get)
+                    .description("Number of GPS points added in the last 24 hours")
+                    .register(registry);
+            Gauge.builder("gps_avg_points_per_user", avgGpsPointsPerUser, AtomicLong::get)
+                    .description("Average number of GPS points per user (among users with GPS data)")
+                    .register(registry);
+        } catch (Exception e) {
+            log.error("Failed to initialize GPS points metrics", e);
+        }
+
     }
 
     @Scheduled(every = "10m")

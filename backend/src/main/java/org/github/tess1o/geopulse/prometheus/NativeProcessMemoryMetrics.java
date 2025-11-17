@@ -21,9 +21,13 @@ public class NativeProcessMemoryMetrics {
     }
 
     void onStart(@Observes StartupEvent ev) {
-        log.info("Registering native process memory metrics");
-        registry.gauge("process_resident_memory_bytes", this, p -> p.getRss());
-        registry.gauge("process_virtual_memory_bytes", this, p -> p.getVsize());
+        try {
+            log.info("Registering native process memory metrics");
+            registry.gauge("process_resident_memory_bytes", this, p -> p.getRss());
+            registry.gauge("process_virtual_memory_bytes", this, p -> p.getVsize());
+        } catch (Exception e) {
+            log.error("Failed to initialize native process memory metrics", e);
+        }
     }
 
     private long getRss() {
