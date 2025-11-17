@@ -245,5 +245,12 @@ GeoPulse keeps your data under your control:
 
 ## License
 
-AGPL-3.0 with Non-Commercial Use Restriction  
-See [LICENSE](./LICENSE) for details.
+GeoPulse is licensed under the **Business Source License 1.1 (BSL 1.1)**.
+
+- Source code is available publicly.  
+- Free for **personal, educational, and non-commercial use**.  
+- **Commercial use is strictly prohibited** without a separate commercial license.
+
+See the [LICENSE](./LICENSE) file for full details.  
+
+For commercial licensing, please contact: kerriden1@gmail.com

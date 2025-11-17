@@ -1,42 +1,73 @@
-GNU AFFERO GENERAL PUBLIC LICENSE
-Version 3, 19 November 2007
+Business Source License 1.1
 
-Copyright (C) 2007 Free Software Foundation, Inc.
-<https://fsf.org/>
+Licensor: Oleksandr Chalyi
+Licensed Work: The GeoPulse software and associated source code files.
+(c) 2025 Oleksandr Chalyi
 
-Everyone is permitted to copy and distribute verbatim copies
-of this license document, but changing it is not allowed.
+Change Date: 2075-01-01
+Change License: GNU Affero General Public License v3.0 only
 
-            GNU AFFERO GENERAL PUBLIC LICENSE
-   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+_____________________________________________________________________________
 
-(Full AGPL-3.0 text omitted here for brevity — include the full license from: https://www.gnu.org/licenses/agpl-3.0.txt)
+Terms
 
-You must include the full AGPL text above this line if distributing the source.
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make use of the Licensed Work for any use, subject
+to the following conditions:
 
-------------------------------------------------------------------------
+1. Additional Use Grant:
+   You may use the Licensed Work for "Personal Use" only.
 
-ADDITIONAL TERMS: NON-COMMERCIAL USE ONLY
+   "Personal Use" is defined as use by an individual for non-profit,
+   private, or educational purposes.
 
-This software is licensed under the GNU Affero General Public License v3.0
-with the following additional restriction:
+   You may NOT use the Licensed Work for any "Commercial Purpose" without
+   a separate commercial license agreement with the Licensor.
 
-**Commercial use is strictly prohibited without a separate commercial license.**
+   "Commercial Purpose" includes, but is not limited to:
+   (a) Using the Licensed Work to provide a service to third parties
+       (including SaaS, PaaS, or Application Service Provider models);
+   (b) Using the Licensed Work in a production environment for any business
+       enterprise or commercial entity;
+   (c) Selling, reselling, or monetizing the Licensed Work or any derivative
+       works.
 
-This includes, but is not limited to:
-- Selling or reselling the software.
-- Using the software to provide paid services (including SaaS).
-- Including the software in a commercial product or system.
-- Using the software in any commercial environment or for business purposes.
+   If you are unsure whether your use qualifies as Personal Use, please
+   contact the Licensor at: kerriden1@gmail.com
 
-The software is free to use, modify, and share **only for personal, educational, research, or other non-commercial purposes**.
+2. Change Date:
+   On the Change Date specified above, the Licensor hereby grants you rights
+   under the terms of the Change License specified above, and this License
+   shall terminate.
 
-For commercial licensing, please contact:
+3. Offer of Commercial License:
+   If you wish to use the Licensed Work for any purpose not granted in the
+   Additional Use Grant above (such as Commercial Use), you must purchase
+   a Commercial License. Please contact the Licensor at: kerriden1@gmail.com
 
-Email: kerriden1@gmail.com
+_____________________________________________________________________________
 
-By using this software, you agree to the above additional terms.
+GENERAL TERMS
 
-------------------------------------------------------------------------
+4. Redistribution
+   If you redistribute the Licensed Work or any derivative works, you must
+   include this License in full.
 
-SPDX-License-Identifier: AGPL-3.0-only WITH Non-Commercial-Terms
+5. Disclaimer of Warranty
+   THE LICENSED WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE LICENSED WORK OR THE USE OR OTHER
+   DEALINGS IN THE LICENSED WORK.
+
+6. Limitation of Liability
+   Except to the extent required by applicable law, in no event will the
+   Licensor be liable to you on any legal theory for any special, incidental,
+   consequential, punitive, or exemplary damages arising out of this License
+   or the use of the Licensed Work.
+
+7. Termination
+   This License and the rights granted hereunder will terminate automatically
+   if you breach any of its terms.
