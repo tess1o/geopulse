@@ -5,6 +5,9 @@ FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:25.0-java25 AS build
 ARG VERSION
 ARG QUARKUS_NATIVE_BUILD_ARGS=""
 
+# Convert ARG to ENV so Maven can access it via ${env.QUARKUS_NATIVE_BUILD_ARGS}
+ENV QUARKUS_NATIVE_BUILD_ARGS=${QUARKUS_NATIVE_BUILD_ARGS}
+
 # Set working directory
 WORKDIR /app
 
@@ -25,6 +28,8 @@ RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.9.0:go-offline 
 COPY --chown=quarkus:quarkus backend/src backend/src
 
 # Build the native executable
+# Note: quarkus.native.march defaults to 'compatibility' in pom.xml for portability
+# Can be overridden via QUARKUS_NATIVE_BUILD_ARGS (e.g., ",-march=armv8-a" for Raspberry Pi)
 RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
 
 # ==========================

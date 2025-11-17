@@ -15,9 +15,9 @@ PLATFORMS := linux/amd64,linux/arm64
 
 # Build both backend and frontend images for multiple architectures
 .PHONY: all
-all: build-backend-jvm build-backend-native build-backend-native-raspi build-frontend openapi publish-helm
+all: build-backend-jvm build-backend-native build-frontend openapi publish-helm
 .PHONY: build-all
-build-all: build-backend-jvm build-backend-native build-backend-native-raspi build-frontend
+build-all: build-backend-jvm build-backend-native build-frontend
 
 # ==========================
 # Create or reuse builder
@@ -42,21 +42,6 @@ build-backend-native-arm64: ensure-builder
 		--push \
 		.
 	@echo "✅ ARM64 native backend image pushed successfully."
-
-.PHONY: build-backend-native-raspi
-build-backend-native-raspi: ensure-builder
-	@echo "🏗️  Building native backend Docker image for Raspberry Pi (ARM64)..."
-	docker buildx build --platform linux/arm64 \
-		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-raspi \
-		-t $(BACKEND_IMAGE):native-latest-raspi \
-		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-raspi \
-		-t $(GHCR_BACKEND_IMAGE):native-latest-raspi \
-		--build-arg VERSION=$(VERSION_NATIVE) \
-		--build-arg QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a" \
-		-f backend/Dockerfile.native \
-		--push \
-		.
-	@echo "✅ Raspberry Pi native backend image pushed successfully."
 
 .PHONY: build-backend-native-amd64
 build-backend-native-amd64: ensure-builder

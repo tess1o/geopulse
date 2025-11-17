@@ -160,48 +160,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Build Backend Native Raspberry Pi
-  build-backend-native-raspi:
-    needs: prepare
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push Backend Native Raspberry Pi
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: backend/Dockerfile.native
-          platforms: linux/arm64
-          push: true
-          build-args: |
-            VERSION=${{ needs.prepare.outputs.version }}-native
-            QUARKUS_NATIVE_BUILD_ARGS=,-march=armv8-a
-          tags: |
-            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-raspi
-            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-raspi
-            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-raspi
-            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-raspi
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # Build Frontend (multi-arch)
   build-frontend:
     needs: prepare
@@ -296,7 +254,7 @@ jobs:
 
   # Publish Helm charts to GitHub Pages
   publish-helm:
-    needs: [prepare, build-backend-jvm, build-frontend, create-native-manifests, build-backend-native-raspi]
+    needs: [prepare, build-backend-jvm, build-frontend, create-native-manifests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -351,8 +309,7 @@ jobs:
           echo ""
           echo "📦 Published Docker images:"
           echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm"
-          echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native"
-          echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-raspi"
+          echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native (multi-arch: amd64, arm64)"
           echo "  - ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}"
           echo ""
           echo "🎯 Published to:"

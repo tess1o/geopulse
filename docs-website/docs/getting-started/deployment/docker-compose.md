@@ -100,16 +100,9 @@ chmod +x mosquitto_entrypoint.sh
 >     # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
 >     image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
 > ```
-
-> #### A note on Rasberry Pi support
-> If you are deploying on a Raspberry Pi, you can use the `tess1o/geopulse-backend:1.4.1-native-raspi` image.
-> 
-> Change `docker-compose.yml` to use this image.
 >
-> ```yaml
->    geopulse-backend:
->      image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-raspi
-> ```
+> #### Multi-Architecture Support
+> The native backend images support both AMD64 and ARM64 architectures, including Raspberry Pi. Docker will automatically pull the correct image for your platform.
 
 ### 2. Configure Environment (`.env`)
 
