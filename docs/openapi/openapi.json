@@ -256,6 +256,10 @@
           },
           "show_history" : {
             "type" : "boolean"
+          },
+          "history_hours" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -465,7 +469,7 @@
         }
       },
       "GpsSourceType" : {
-        "enum" : [ "OWNTRACKS", "OVERLAND", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON" ],
+        "enum" : [ "OWNTRACKS", "OVERLAND", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON", "CSV" ],
         "type" : "string"
       },
       "HomeAssistantBattery" : {
@@ -889,6 +893,9 @@
             "maxLength" : 1000,
             "type" : "string"
           },
+          "shareLocationWithFriends" : {
+            "type" : "boolean"
+          },
           "userId" : {
             "$ref" : "#/components/schemas/UUID"
           }
@@ -911,6 +918,10 @@
           },
           "show_history" : {
             "type" : "boolean"
+          },
+          "history_hours" : {
+            "format" : "int32",
+            "type" : "integer"
           },
           "passwordRemoval" : {
             "type" : "boolean"
@@ -1663,6 +1674,59 @@
           }
         },
         "summary" : "Create Export",
+        "tags" : [ "Export Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/export/csv/create" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateExportRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Csv Export",
+        "tags" : [ "Export Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/export/csv/template" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Download Csv Template",
         "tags" : [ "Export Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -3226,6 +3290,50 @@
         "tags" : [ "Home Assistant Resource" ]
       }
     },
+    "/api/import/csv/upload" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  },
+                  "options" : {
+                    "type" : "string"
+                  }
+                }
+              },
+              "encoding" : {
+                "options" : {
+                  "contentType" : "text/plain"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Upload Csv Import File",
+        "tags" : [ "Import Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/import/geojson/upload" : {
       "post" : {
         "requestBody" : {
@@ -4115,6 +4223,39 @@
         } ]
       }
     },
+    "/api/streaming-timeline/count" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Timeline Count",
+        "tags" : [ "Streaming Timeline Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/streaming-timeline/jobs/active" : {
       "get" : {
         "responses" : {
@@ -4775,7 +4916,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.4.0",
+    "version" : "1.4.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",

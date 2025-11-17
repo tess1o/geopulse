@@ -187,7 +187,7 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | Parameter | Description | Default                   |
 |-----------|-------------|---------------------------|
 | `backend.image.repository` | Backend image repository | `tess1o/geopulse-backend` |
-| `backend.image.tag` | Backend image tag | `1.4.0-native`            |
+| `backend.image.tag` | Backend image tag | `1.4.1-native`            |
 | `backend.replicaCount` | Number of backend replicas | `1`                       |
 | `backend.service.type` | Backend service type | `ClusterIP`               |
 | `backend.service.port` | Backend service port | `8080`                    |
@@ -199,7 +199,7 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | Parameter | Description | Default              |
 |-----------|-------------|----------------------|
 | `frontend.image.repository` | Frontend image repository | `tess1o/geopulse-ui` |
-| `frontend.image.tag` | Frontend image tag | `1.4.0`              |
+| `frontend.image.tag` | Frontend image tag | `1.4.1`              |
 | `frontend.replicaCount` | Number of frontend replicas | `1`                  |
 | `frontend.service.type` | Frontend service type | `ClusterIP`          |
 | `frontend.service.port` | Frontend service port | `80`                 |
