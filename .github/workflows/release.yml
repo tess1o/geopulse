@@ -1,0 +1,365 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  DOCKERHUB_BACKEND_IMAGE: tess1o/geopulse-backend
+  DOCKERHUB_FRONTEND_IMAGE: tess1o/geopulse-ui
+  GHCR_BACKEND_IMAGE: ghcr.io/tess1o/geopulse-backend
+  GHCR_FRONTEND_IMAGE: ghcr.io/tess1o/geopulse-ui
+
+jobs:
+  # Extract version from tag (remove 'v' prefix)
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version from tag
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+  # Build Backend JVM (multi-arch)
+  build-backend-jvm:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend JVM
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}-jvm
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
+            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Build Backend Native AMD64
+  build-backend-native-amd64:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend Native AMD64
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile.native
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}-native
+            QUARKUS_NATIVE_BUILD_ARGS=
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Build Backend Native ARM64
+  build-backend-native-arm64:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend Native ARM64
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile.native
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}-native
+            QUARKUS_NATIVE_BUILD_ARGS=
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Build Backend Native Raspberry Pi
+  build-backend-native-raspi:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend Native Raspberry Pi
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile.native
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}-native
+            QUARKUS_NATIVE_BUILD_ARGS=,-march=armv8-a
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-raspi
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-raspi
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-raspi
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-raspi
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Build Frontend (multi-arch)
+  build-frontend:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}
+          tags: |
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:latest
+            ${{ env.GHCR_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}
+            ${{ env.GHCR_FRONTEND_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Create multi-arch manifests for native backend
+  create-native-manifests:
+    needs: [prepare, build-backend-native-amd64, build-backend-native-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push Docker Hub manifests
+        run: |
+          # Create versioned manifest
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
+
+          # Create latest manifests
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest \
+            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:latest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
+
+      - name: Create and push GHCR manifests
+        run: |
+          # Create versioned manifest
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
+
+          # Create latest manifests
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_BACKEND_IMAGE }}:native-latest \
+            -t ${{ env.GHCR_BACKEND_IMAGE }}:latest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
+
+  # Publish Helm charts to GitHub Pages
+  publish-helm:
+    needs: [prepare, build-backend-jvm, build-frontend, create-native-manifests, build-backend-native-raspi]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install docs-website dependencies
+        run: |
+          cd docs-website
+          npm ci
+
+      - name: Package Helm chart
+        run: |
+          helm package helm/geopulse -d charts
+
+      - name: Update Helm repo index
+        run: |
+          helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
+
+      - name: Copy charts to docs-website
+        run: |
+          mkdir -p docs-website/static/charts
+          cp -r charts/* docs-website/static/charts/
+
+      - name: Deploy documentation with Helm charts
+        env:
+          GIT_USER: ${{ github.actor }}
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd docs-website
+          npm run deploy
+
+      - name: Summary
+        run: |
+          echo "✅ Release ${{ needs.prepare.outputs.version }} completed successfully!"
+          echo ""
+          echo "📦 Published Docker images:"
+          echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm"
+          echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native"
+          echo "  - ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-raspi"
+          echo "  - ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}"
+          echo ""
+          echo "🎯 Published to:"
+          echo "  - Docker Hub"
+          echo "  - GitHub Container Registry"
+          echo "  - Helm repository (GitHub Pages)"
+          echo ""
+          echo "📝 Next: Create GitHub Release at https://github.com/${{ github.repository }}/releases/new?tag=v${{ needs.prepare.outputs.version }}"
