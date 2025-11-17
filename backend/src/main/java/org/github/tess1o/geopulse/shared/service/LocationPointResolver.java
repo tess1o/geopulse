@@ -285,7 +285,7 @@ public class LocationPointResolver {
                 int remaining = coordinates.size() - i;
                 int currentExternalCompleted = results.size() - favoritesResolved - cachedResolved;
                 updateGeocodingProgress(jobId,
-                    String.format("Geocoding location %d/%d (rate limited: 1/sec)", i + 1, coordinates.size()),
+                    String.format("Geocoding location %d/%d", i + 1, coordinates.size()),
                     totalLocations, favoritesResolved, cachedResolved, remaining, currentExternalCompleted, results.size());
 
                 FormattableGeocodingResult geocodingResult;
