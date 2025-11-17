@@ -7,6 +7,7 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -19,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class FavoriteLocationsMetrics {
 
     private final AtomicLong favoriteLocationsTotal = new AtomicLong();
+    private final AtomicLong avgFavoritesPerUser = new AtomicLong();
     private final Map<String, AtomicLong> favoritePerUser = new ConcurrentHashMap<>();
 
     @Inject
@@ -30,22 +32,44 @@ public class FavoriteLocationsMetrics {
     @Inject
     UserRepository userRepository;
 
+    @Inject
+    EntityManager entityManager;
+
     void onStart(@Observes StartupEvent ev) {
-        favoriteLocationsTotal.set(repository.count());
+        setMetricValues();
+
         Gauge.builder("favorite_locations_total", favoriteLocationsTotal, AtomicLong::get)
                 .description("Total number of Favorite Locations")
+                .register(registry);
+        Gauge.builder("favorite_locations_avg_per_user", avgFavoritesPerUser, AtomicLong::get)
+                .description("Average number of Favorite Locations per user (among users with favorites)")
                 .register(registry);
     }
 
     @Scheduled(every = "10m")
     void refreshTotals() {
-        favoriteLocationsTotal.set(repository.count());
+        setMetricValues();
+    }
+
+    private void setMetricValues() {
+        long total = repository.count();
+        favoriteLocationsTotal.set(total);
+
+        // Calculate average favorites per user (among users with favorites)
+        Long usersWithFavorites = (Long) entityManager.createNativeQuery(
+                "SELECT COUNT(DISTINCT user_id) FROM favorites")
+                .getSingleResult();
+        if (usersWithFavorites > 0) {
+            avgFavoritesPerUser.set(total / usersWithFavorites);
+        } else {
+            avgFavoritesPerUser.set(0);
+        }
 
         for (UserEntity user : userRepository.findAll().stream().toList()) {
-            // GPS points per user
+            // Favorite locations per user
             AtomicLong countHolder = favoritePerUser.computeIfAbsent(user.getEmail(), e -> {
                 AtomicLong h = new AtomicLong();
-                Gauge.builder("favorite_locations_total", h, AtomicLong::get)
+                Gauge.builder("favorite_locations_per_user_total", h, AtomicLong::get)
                         .tag("user", e)
                         .description("Total number of Favorite Locations for this user")
                         .register(registry);
