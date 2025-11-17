@@ -36,14 +36,9 @@ public class GeocodingServiceImpl implements GeocodingService {
         double longitude = point.getX();
         double latitude = point.getY();
 
-        Optional<FormattableGeocodingResult> cachedResult = cacheService.getCachedGeocodingResult(point);
-        if (cachedResult.isPresent()) {
-            log.debug("Using cached result for coordinates: lon={}, lat={}", longitude, latitude);
-            return cachedResult.get();
-        }
-
-        // If not in cache, fetch from external provider
-        log.info("No cached location found, fetching from external service: lon={}, lat={}", longitude, latitude);
+        // NOTE: Cache lookup is handled by LocationPointResolver with userId context.
+        // This service just fetches from external provider and caches as original.
+        log.info("Fetching from external geocoding service: lon={}, lat={}", longitude, latitude);
         return fetchAndCacheLocationName(point);
     }
 

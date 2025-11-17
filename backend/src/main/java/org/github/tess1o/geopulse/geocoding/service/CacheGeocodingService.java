@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -42,24 +43,27 @@ public class CacheGeocodingService {
 
     /**
      * Get cached result for the given coordinates as a FormattableGeocodingResult.
+     * Prioritizes user-specific copies over originals.
      *
+     * @param userId The user ID to filter by
      * @param requestCoordinates The coordinates to look up
      * @return Full geocoding result if found
      */
     @Transactional(TxType.REQUIRES_NEW)
-    public Optional<FormattableGeocodingResult> getCachedGeocodingResult(Point requestCoordinates) {
+    public Optional<FormattableGeocodingResult> getCachedGeocodingResult(UUID userId, Point requestCoordinates) {
         if (requestCoordinates == null) {
             return Optional.empty();
         }
 
         try {
             ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    requestCoordinates, spatialToleranceMeters
+                    userId, requestCoordinates, spatialToleranceMeters
             );
 
             if (match != null) {
-                log.debug("Cache hit for coordinates: lon={}, lat={} (tolerance: {}m), provider: {}",
-                        requestCoordinates.getX(), requestCoordinates.getY(), spatialToleranceMeters, match.getProviderName());
+                log.debug("Cache hit for user {} at coordinates: lon={}, lat={} (tolerance: {}m), provider: {}, isUserSpecific: {}",
+                        userId, requestCoordinates.getX(), requestCoordinates.getY(), spatialToleranceMeters,
+                        match.getProviderName(), match.getUser() != null);
                 
                 // Convert entity back to FormattableGeocodingResult
                 FormattableGeocodingResult result = SimpleFormattableResult.builder()
@@ -75,51 +79,55 @@ public class CacheGeocodingService {
                 return Optional.of(result);
             }
 
-            log.debug("Cache miss for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY());
+            log.debug("Cache miss for user {} at coordinates: lon={}, lat={}",
+                    userId, requestCoordinates.getX(), requestCoordinates.getY());
             return Optional.empty();
 
         } catch (Exception e) {
-            log.error("Error retrieving cached result for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY(), e);
+            log.error("Error retrieving cached result for user {} at coordinates: lon={}, lat={}",
+                    userId, requestCoordinates.getX(), requestCoordinates.getY(), e);
             throw new GeocodingCacheException("Failed to retrieve cached result", e);
         }
     }
 
     /**
      * Get the entity ID for a cached geocoding result.
+     * Prioritizes user-specific copies over originals.
      *
+     * @param userId The user ID to filter by
      * @param requestCoordinates The coordinates to look up
      * @return Entity ID if found in cache
      */
     @Transactional(TxType.REQUIRES_NEW)
-    public Optional<Long> getCachedGeocodingResultId(Point requestCoordinates) {
+    public Optional<Long> getCachedGeocodingResultId(UUID userId, Point requestCoordinates) {
         if (requestCoordinates == null) {
             return Optional.empty();
         }
 
         try {
             ReverseGeocodingLocationEntity match = repository.findByRequestCoordinates(
-                    requestCoordinates, spatialToleranceMeters
+                    userId, requestCoordinates, spatialToleranceMeters
             );
 
             if (match != null) {
-                log.debug("Found cached entity ID {} for coordinates: lon={}, lat={}",
-                        match.getId(), requestCoordinates.getX(), requestCoordinates.getY());
+                log.debug("Found cached entity ID {} for user {} at coordinates: lon={}, lat={}, isUserSpecific: {}",
+                        match.getId(), userId, requestCoordinates.getX(), requestCoordinates.getY(),
+                        match.getUser() != null);
                 return Optional.of(match.getId());
             }
 
             return Optional.empty();
 
         } catch (Exception e) {
-            log.error("Error retrieving cached entity ID for coordinates: lon={}, lat={}",
-                    requestCoordinates.getX(), requestCoordinates.getY(), e);
+            log.error("Error retrieving cached entity ID for user {} at coordinates: lon={}, lat={}",
+                    userId, requestCoordinates.getX(), requestCoordinates.getY(), e);
             return Optional.empty();
         }
     }
 
     /**
      * Cache a structured geocoding result.
+     * CRITICAL: Always saves as original (user_id = NULL) for shared cache.
      * Uses REQUIRES_NEW to ensure cache writes commit independently and survive outer transaction rollbacks.
      * This prevents the "going in circles" problem where successful geocoding results are lost on rollback.
      *
@@ -136,11 +144,13 @@ public class CacheGeocodingService {
         try {
             // Convert to entity and save
             ReverseGeocodingLocationEntity entity = convertToEntity(geocodingResult);
+            // CRITICAL: Always save as original (user_id = NULL) for shared cache
+            entity.setUser(null);
 
-            // Check if we already have this exact location
+            // Check if we already have this exact location (original only)
             ReverseGeocodingLocationEntity existing = repository.findByExactCoordinates(requestCoordinates);
-            if (existing != null) {
-                // Update existing entry
+            if (existing != null && existing.getUser() == null) {
+                // Update existing original entry
                 existing.setResultCoordinates(entity.getResultCoordinates());
                 existing.setBoundingBox(entity.getBoundingBox());
                 existing.setDisplayName(entity.getDisplayName());
@@ -150,12 +160,12 @@ public class CacheGeocodingService {
                 existing.setLastAccessedAt(Instant.now());
 
                 repository.persist(existing);
-                log.debug("Updated cached result for coordinates: lon={}, lat={}",
+                log.debug("Updated cached original for coordinates: lon={}, lat={}",
                         requestCoordinates.getX(), requestCoordinates.getY());
             } else {
-                // Create new entry
+                // Create new original entry
                 repository.persist(entity);
-                log.debug("Cached new result for coordinates: lon={}, lat={}",
+                log.debug("Cached new original for coordinates: lon={}, lat={}",
                         requestCoordinates.getX(), requestCoordinates.getY());
             }
 
@@ -169,26 +179,28 @@ public class CacheGeocodingService {
     /**
      * Batch get cached geocoding result IDs for multiple coordinates.
      * Optimized for timeline assembly to reduce database round-trips.
+     * Prioritizes user-specific copies over originals.
      *
+     * @param userId The user ID to filter by
      * @param coordinates List of coordinates to look up
      * @return Map of coordinate string (lon,lat) to entity ID
      */
     @Transactional(TxType.REQUIRES_NEW)
-    public Map<String, Long> getCachedGeocodingResultIdsBatch(List<Point> coordinates) {
+    public Map<String, Long> getCachedGeocodingResultIdsBatch(UUID userId, List<Point> coordinates) {
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
         }
 
         long startTime = System.currentTimeMillis();
         try {
-            log.debug("Starting batch geocoding ID lookup for {} coordinates", coordinates.size());
+            log.debug("Starting batch geocoding ID lookup for user {} with {} coordinates", userId, coordinates.size());
 
             Map<String, ReverseGeocodingLocationEntity> cachedResults =
-                repository.findByCoordinatesBatchReal(coordinates, spatialToleranceMeters);
+                repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Batch geocoding ID lookup completed in {}ms for {} coordinates ({} cached hits)",
-                    duration, coordinates.size(), cachedResults.size());
+            log.info("Batch geocoding ID lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
+                    duration, userId, coordinates.size(), cachedResults.size());
 
             return cachedResults.entrySet().stream()
                     .collect(Collectors.toMap(
@@ -198,14 +210,14 @@ public class CacheGeocodingService {
 
         } catch (jakarta.persistence.QueryTimeoutException e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.warn("Batch geocoding ID lookup timed out after {}ms for {} coordinates. " +
+            log.warn("Batch geocoding ID lookup timed out after {}ms for user {} with {} coordinates. " +
                     "Returning empty result - locations will need individual geocoding.",
-                    duration, coordinates.size());
+                    duration, userId, coordinates.size());
             return Map.of();
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("Error retrieving batch cached entity IDs for {} coordinates after {}ms",
-                    coordinates.size(), duration, e);
+            log.error("Error retrieving batch cached entity IDs for user {} with {} coordinates after {}ms",
+                    userId, coordinates.size(), duration, e);
             return Map.of();
         }
     }
@@ -213,26 +225,28 @@ public class CacheGeocodingService {
     /**
      * Batch get cached geocoding results for multiple coordinates.
      * Optimized for timeline assembly to reduce database round-trips.
+     * Prioritizes user-specific copies over originals.
      *
+     * @param userId The user ID to filter by
      * @param coordinates List of coordinates to look up
      * @return Map of coordinate string (lon,lat) to FormattableGeocodingResult
      */
     @Transactional(TxType.REQUIRES_NEW)
-    public Map<String, FormattableGeocodingResult> getCachedGeocodingResultsBatch(List<Point> coordinates) {
+    public Map<String, FormattableGeocodingResult> getCachedGeocodingResultsBatch(UUID userId, List<Point> coordinates) {
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
         }
 
         long startTime = System.currentTimeMillis();
         try {
-            log.debug("Starting batch geocoding results lookup for {} coordinates", coordinates.size());
+            log.debug("Starting batch geocoding results lookup for user {} with {} coordinates", userId, coordinates.size());
 
             Map<String, ReverseGeocodingLocationEntity> cachedResults =
-                repository.findByCoordinatesBatchReal(coordinates, spatialToleranceMeters);
+                repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Batch geocoding results lookup completed in {}ms for {} coordinates ({} cached hits)",
-                    duration, coordinates.size(), cachedResults.size());
+            log.info("Batch geocoding results lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
+                    duration, userId, coordinates.size(), cachedResults.size());
 
             return cachedResults.entrySet().stream()
                     .collect(Collectors.toMap(
@@ -242,14 +256,14 @@ public class CacheGeocodingService {
 
         } catch (jakarta.persistence.QueryTimeoutException e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.warn("Batch geocoding results lookup timed out after {}ms for {} coordinates. " +
+            log.warn("Batch geocoding results lookup timed out after {}ms for user {} with {} coordinates. " +
                     "Returning empty result - locations will need individual geocoding.",
-                    duration, coordinates.size());
+                    duration, userId, coordinates.size());
             return Map.of();
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("Error retrieving batch cached results for {} coordinates after {}ms",
-                    coordinates.size(), duration, e);
+            log.error("Error retrieving batch cached results for user {} with {} coordinates after {}ms",
+                    userId, coordinates.size(), duration, e);
             return Map.of();
         }
     }

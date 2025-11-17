@@ -6,12 +6,14 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.hibernate.proxy.HibernateProxy;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Ultra-simplified reverse geocoding location entity.
@@ -29,6 +31,16 @@ public class ReverseGeocodingLocationEntity extends PanacheEntityBase {
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(nullable = false)
     private Long id;
+
+    /**
+     * User relationship for per-user customizations.
+     * NULL = original/shared data from provider (unmodified by any user)
+     * UUID = user-specific copy (modified by that user)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    @ToString.Exclude
+    private UserEntity user;
 
     /**
      * The original request coordinates (what was asked for)
@@ -84,6 +96,23 @@ public class ReverseGeocodingLocationEntity extends PanacheEntityBase {
      */
     @Column(name = "country", length = 100)
     private String country;
+
+    /**
+     * Check if this is an original (shared) geocoding entity.
+     * @return true if user_id is NULL (original/shared data)
+     */
+    public boolean isOriginal() {
+        return user == null;
+    }
+
+    /**
+     * Check if this entity is owned by the specified user.
+     * @param userId The user ID to check ownership against
+     * @return true if this entity belongs to the specified user
+     */
+    public boolean isOwnedBy(UUID userId) {
+        return user != null && user.getId().equals(userId);
+    }
 
     @PrePersist
     protected void onCreate() {
