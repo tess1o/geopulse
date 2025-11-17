@@ -20,12 +20,12 @@
                     :value="format.value"
                     class="format-radio"
                 />
-                <div class="format-info">
-                  <label :for="format.value" class="format-label">
+                <label :for="format.value" class="format-info">
+                  <div class="format-label">
                     {{ format.label }}
-                  </label>
+                  </div>
                   <p class="format-description">{{ format.description }}</p>
-                </div>
+                </label>
               </div>
             </div>
           </div>

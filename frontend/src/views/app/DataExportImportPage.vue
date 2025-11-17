@@ -450,9 +450,9 @@ const handleTabChange = (event) => {
 
 :deep(.format-option) {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 1rem;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-medium);
   background: var(--gp-surface-light);
@@ -471,11 +471,16 @@ const handleTabChange = (event) => {
 }
 
 :deep(.format-radio) {
-  margin-top: 0.25rem;
+  margin: 1.25rem 0 0 1rem;
+  flex-shrink: 0;
 }
 
 :deep(.format-info) {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1rem 1rem 0.75rem;
+  cursor: pointer;
 }
 
 :deep(.format-label) {
