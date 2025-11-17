@@ -2,11 +2,11 @@ apiVersion: v1
 entries:
   geopulse:
   - apiVersion: v2
-    appVersion: 1.4.1
-    created: "2025-11-17T12:48:47.365906366Z"
+    appVersion: 1.4.2
+    created: "2025-11-17T16:56:49.620308644Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
-    digest: cb2fcd19e0dc67af70938f25422ec0613ed0eaeeed267942049ce199a21d8760
+    digest: 092f55732721289944cb00c9f9ef6ec648d46a2636eeda7472ca2c41f42e09ee
     home: https://github.com/tess1o/geopulse
     icon: https://raw.githubusercontent.com/tess1o/geopulse/main/frontend/public/geopulse-logo.svg
     keywords:
@@ -24,11 +24,11 @@ entries:
     - https://github.com/tess1o/geopulse
     type: application
     urls:
-    - https://tess1o.github.io/geopulse/charts/geopulse-1.4.1.tgz
-    version: 1.4.1
+    - https://tess1o.github.io/geopulse/charts/geopulse-1.4.2.tgz
+    version: 1.4.2
   - apiVersion: v2
     appVersion: 1.4.0
-    created: "2025-11-17T12:48:47.364754993Z"
+    created: "2025-11-17T16:56:49.619219406Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 3c3371894d512fab97db87c3e397b874a9942c613a169a248774927141e90857
@@ -53,7 +53,7 @@ entries:
     version: 1.4.0
   - apiVersion: v2
     appVersion: 1.3.0
-    created: "2025-11-17T12:48:47.36312282Z"
+    created: "2025-11-17T16:56:49.61702538Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 00ac187ca9f870a35265a90d90ef10132485bbf35a8a8e64f658c9be73ad618b
@@ -78,7 +78,7 @@ entries:
     version: 1.3.0
   - apiVersion: v2
     appVersion: 1.2.3
-    created: "2025-11-17T12:48:47.361817591Z"
+    created: "2025-11-17T16:56:49.615966067Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: f105f38163321c6b091d7e7b0c8c3f4d1946f3015977fe45906d1a9756b5f3a7
@@ -103,7 +103,7 @@ entries:
     version: 1.2.3
   - apiVersion: v2
     appVersion: 1.2.2
-    created: "2025-11-17T12:48:47.360710221Z"
+    created: "2025-11-17T16:56:49.614890023Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 2c456af48060807a34112e91e6e512ba329b76b0b849e48ce020cf741a31d1a4
@@ -128,7 +128,7 @@ entries:
     version: 1.2.2
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2025-11-17T12:48:47.359600847Z"
+    created: "2025-11-17T16:56:49.613704705Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: b8acab499d64209062049ca03f10a2ccb177e3e1610f8ffcb18f5c31c3e4eea9
@@ -153,7 +153,7 @@ entries:
     version: 1.2.1
   - apiVersion: v2
     appVersion: 1.2.0
-    created: "2025-11-17T12:48:47.358456868Z"
+    created: "2025-11-17T16:56:49.612539704Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 9163b40a24bcbcf3749e4d8a71691abee673fb8774426d5f06903a1d386063f1
@@ -178,7 +178,7 @@ entries:
     version: 1.2.0
   - apiVersion: v2
     appVersion: 1.1.3
-    created: "2025-11-17T12:48:47.357282853Z"
+    created: "2025-11-17T16:56:49.611343155Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: e0c9971a43d5ee8d3527927e8d00fd701ce93054c1b7287b9ae0f7380b95cc97
@@ -203,7 +203,7 @@ entries:
     version: 1.1.3
   - apiVersion: v2
     appVersion: 1.1.2
-    created: "2025-11-17T12:48:47.355256637Z"
+    created: "2025-11-17T16:56:49.609015634Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: fba5326acfcf8362f4d929cfcd7e4828e506a611b6248345f39a22e9ecb241f0
@@ -226,4 +226,4 @@ entries:
     urls:
     - https://tess1o.github.io/geopulse/charts/geopulse-1.1.2.tgz
     version: 1.1.2
-generated: "2025-11-17T12:48:47.35395316Z"
+generated: "2025-11-17T16:56:49.60700487Z"
