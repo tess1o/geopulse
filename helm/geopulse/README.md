@@ -187,7 +187,7 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 | Parameter | Description | Default                   |
 |-----------|-------------|---------------------------|
 | `backend.image.repository` | Backend image repository | `tess1o/geopulse-backend` |
-| `backend.image.tag` | Backend image tag | `1.4.1-native`            |
+| `backend.image.tag` | Backend image tag | `1.4.2-native`            |
 | `backend.replicaCount` | Number of backend replicas | `1`                       |
 | `backend.service.type` | Backend service type | `ClusterIP`               |
 | `backend.service.port` | Backend service port | `8080`                    |

@@ -12,7 +12,7 @@ COPY backend/src backend/src
 
 # Build the application
 WORKDIR /app/backend
-RUN mvn package -DskipTests -Dquarkus.profile=prod
+RUN mvn package -DskipTests -Dquarkus.profile=prod -Dquarkus.native.march=compatibility
 
 # Stage 2: Create a minimal runtime image
 FROM eclipse-temurin:25-jdk-alpine

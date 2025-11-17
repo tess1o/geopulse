@@ -13,7 +13,7 @@ global:
 backend:
   image:
     repository: tess1o/geopulse-backend
-    tag: 1.4.1-native
+    tag: 1.4.2-native
     pullPolicy: IfNotPresent
 
   replicaCount: 1
