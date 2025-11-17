@@ -336,7 +336,7 @@
 
         <Column field="velocity" sortable header="Speed" class="numeric-col">
           <template #body="slotProps">
-            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity > 0">{{ formatSpeed(slotProps.data.velocity.toFixed(1)) }}</span>
+            <span v-if="slotProps.data.velocity !== null && slotProps.data.velocity >= 0">{{ formatSpeed(slotProps.data.velocity.toFixed(1)) }}</span>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
