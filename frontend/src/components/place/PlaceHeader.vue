@@ -163,12 +163,17 @@ const createFavorite = () => {
   background: var(--gp-surface-light);
   border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-large);
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .place-header-content {
   display: flex;
   align-items: flex-start;
   gap: var(--gp-spacing-lg);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .place-icon {
@@ -239,6 +244,13 @@ const createFavorite = () => {
   display: flex;
   gap: var(--gp-spacing-sm);
   flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.action-buttons .p-button {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .edit-button {
@@ -288,6 +300,10 @@ const createFavorite = () => {
 
 /* Responsive design */
 @media (max-width: 768px) {
+  .place-header {
+    padding: var(--gp-spacing-md);
+  }
+
   .place-header-content {
     flex-direction: column;
     align-items: center;
@@ -307,11 +323,38 @@ const createFavorite = () => {
   .place-name-section {
     flex-direction: column;
     align-items: center;
+    width: 100%;
+  }
+
+  .name-with-edit {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 
   .place-name-input {
     font-size: 1.25rem;
     max-width: 100%;
+  }
+
+  /* Stack action buttons vertically on mobile */
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: var(--gp-spacing-xs);
+  }
+
+  .action-buttons .p-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .edit-actions {
+    width: 100%;
+  }
+
+  .edit-actions .p-button {
+    flex: 1;
   }
 }
 </style>

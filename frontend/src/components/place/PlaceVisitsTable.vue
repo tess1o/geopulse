@@ -37,6 +37,7 @@
       responsiveLayout="scroll"
       :scrollable="true"
       scrollHeight="600px"
+      style="max-width: 100%; box-sizing: border-box;"
     >
       <!-- Start Time Column -->
       <Column
@@ -84,6 +85,9 @@
       <Column
         header="Day of Week"
         :style="{ 'min-width': '120px' }"
+        class="day-of-week-column"
+        headerClass="day-of-week-column"
+        bodyClass="day-of-week-column"
       >
         <template #body="slotProps">
           <div class="day-of-week">
@@ -337,15 +341,68 @@ const handleSort = (event) => {
   border-color: var(--gp-border-dark) !important;
 }
 
+/* Ensure DataTable wrapper respects parent width */
+.visits-data-table :deep(.p-datatable-wrapper) {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.visits-data-table :deep(.p-datatable) {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .table-header {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--gp-spacing-sm);
+  }
+
+  .table-title {
+    font-size: 1rem;
+  }
+
+  .table-count {
+    font-size: 0.8rem;
   }
 
   .export-button {
     width: 100%;
+  }
+
+  /* Hide Day of Week column on mobile */
+  :deep(.day-of-week-column) {
+    display: none !important;
+  }
+
+  /* Reduce column widths on mobile */
+  :deep(.p-datatable-thead th) {
+    font-size: 0.85rem;
+    padding: var(--gp-spacing-xs);
+  }
+
+  :deep(.p-datatable-tbody td) {
+    padding: var(--gp-spacing-xs);
+  }
+
+  .datetime-display {
+    gap: 1px;
+  }
+
+  .date-part {
+    font-size: 0.75rem;
+  }
+
+  .time-part {
+    font-size: 0.85rem;
+  }
+
+  .duration-badge {
+    font-size: 0.8rem;
+    padding: 3px 6px;
   }
 }
 </style>

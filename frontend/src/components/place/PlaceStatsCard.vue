@@ -127,6 +127,8 @@ const formatDate = (timestamp) => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--gp-spacing-xl);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .stat-section {
@@ -215,6 +217,27 @@ const formatDate = (timestamp) => {
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: var(--gp-spacing-md);
+  }
+
+  .stat-section {
+    gap: var(--gp-spacing-sm);
+  }
+
+  .section-title {
+    font-size: 0.9rem;
+  }
+
+  .stat-item-full {
+    padding: var(--gp-spacing-sm);
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+  }
+
+  .stat-value {
+    font-size: 0.9rem;
   }
 }
 </style>
