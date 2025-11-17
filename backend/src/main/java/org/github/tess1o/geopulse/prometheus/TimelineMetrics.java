@@ -7,10 +7,10 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -43,13 +43,22 @@ public class TimelineMetrics {
     @Inject
     UserRepository userRepository;
 
+    @Inject
+    EntityManager entityManager;
+
     void onStart(@Observes StartupEvent ev) {
+        // Set all metric values before registering gauges
         setMetrics();
+
+        // Register overall metrics (without user tags)
         Gauge.builder("timeline_stays_total", staysTotal, AtomicLong::get)
+                .description("Total number of Timeline stays for all users")
                 .register(registry);
         Gauge.builder("timeline_trips_total", tripsTotal, AtomicLong::get)
+                .description("Total number of Timeline trips for all users")
                 .register(registry);
         Gauge.builder("timeline_data_gaps_total", dataGapsTotal, AtomicLong::get)
+                .description("Total number of Timeline data gaps for all users")
                 .register(registry);
     }
 
@@ -66,7 +75,7 @@ public class TimelineMetrics {
         for (UserEntity user : userRepository.findAll().stream().toList()) {
             AtomicLong stayCountHolder = staysPerUser.computeIfAbsent(user.getEmail(), e -> {
                 AtomicLong h = new AtomicLong();
-                Gauge.builder("timeline_stays_total", h, AtomicLong::get)
+                Gauge.builder("timeline_stays_per_user_total", h, AtomicLong::get)
                         .tag("user", e)
                         .description("Total number of Timeline stays for this user")
                         .register(registry);
@@ -76,7 +85,7 @@ public class TimelineMetrics {
 
             AtomicLong tripCountHolder = tripsPerUser.computeIfAbsent(user.getEmail(), e -> {
                 AtomicLong h = new AtomicLong();
-                Gauge.builder("timeline_trips_total", h, AtomicLong::get)
+                Gauge.builder("timeline_trips_per_user_total", h, AtomicLong::get)
                         .tag("user", e)
                         .description("Total number of Timeline trips for this user")
                         .register(registry);
@@ -86,7 +95,7 @@ public class TimelineMetrics {
 
             AtomicLong dataGapsCountHolder = dataGapsPerUser.computeIfAbsent(user.getEmail(), e -> {
                 AtomicLong h = new AtomicLong();
-                Gauge.builder("timeline_data_gaps_total", h, AtomicLong::get)
+                Gauge.builder("timeline_data_gaps_per_user_total", h, AtomicLong::get)
                         .tag("user", e)
                         .description("Total number of Timeline data gaps for this user")
                         .register(registry);
