@@ -6,7 +6,7 @@
 
     <groupId>com.github.tess1o</groupId>
     <artifactId>GeoPulse</artifactId>
-    <version>1.4.1</version>
+    <version>1.4.2</version>
     <packaging>pom</packaging>
 
     <modules>
