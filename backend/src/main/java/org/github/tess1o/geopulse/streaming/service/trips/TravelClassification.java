@@ -11,6 +11,20 @@ import java.time.Duration;
 
 import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 
+/**
+ * Service for classifying trip types based on GPS movement patterns.
+ *
+ * Supports both mandatory types (WALK, CAR) and optional types (BICYCLE, TRAIN, FLIGHT).
+ * Classification is based on speed analysis and movement characteristics.
+ *
+ * CRITICAL CLASSIFICATION ORDER:
+ * 1. FLIGHT - highest priority (400+ km/h avg OR 500+ km/h peak)
+ * 2. TRAIN - high speed with low variance (30-150 km/h, variance < 15)
+ * 3. BICYCLE - medium speeds (8-25 km/h) - MUST be before CAR!
+ * 4. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
+ * 5. WALK - low speeds (<= 6 km/h avg, <= 8 km/h peak)
+ * 6. UNKNOWN - fallback
+ */
 @ApplicationScoped
 @Slf4j
 public class TravelClassification {
@@ -25,112 +39,144 @@ public class TravelClassification {
      */
     public TripType classifyTravelType(TimelineTripEntity trip, TimelineConfig config) {
         TripType initialClassification;
+
         // If GPS statistics are available, use enhanced classification
         if (trip.getAvgGpsSpeed() != null && trip.getMaxGpsSpeed() != null) {
-            TripGpsStatistics statistics = new TripGpsStatistics(trip.getAvgGpsSpeed(), trip.getMaxGpsSpeed(), trip.getSpeedVariance(), trip.getLowAccuracyPointsCount());
-            initialClassification = classifyWithGpsStatistics(statistics, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters(), config);
+            TripGpsStatistics statistics = new TripGpsStatistics(
+                    trip.getAvgGpsSpeed(),
+                    trip.getMaxGpsSpeed(),
+                    trip.getSpeedVariance(),
+                    trip.getLowAccuracyPointsCount()
+            );
+            initialClassification = classifyWithGpsStatistics(statistics,
+                    Duration.ofSeconds(trip.getTripDuration()),
+                    trip.getDistanceMeters(),
+                    config);
         } else {
             // Fallback to path-based classification for legacy trips
-            log.debug("GPS statistics not available for trip {}, falling back to path-based classification", trip.getId());
-            initialClassification = classifyWithoutSpeed(config, Duration.ofSeconds(trip.getTripDuration()), trip.getDistanceMeters());
+            log.debug("GPS statistics not available for trip {}, falling back to path-based classification",
+                    trip.getId());
+            initialClassification = classifyWithoutGpsStatistics(config,
+                    Duration.ofSeconds(trip.getTripDuration()),
+                    trip.getDistanceMeters());
         }
 
         // Final verification to correct unrealistic classifications
-        return verifyAndCorrectClassification(initialClassification, trip.getDistanceMeters(), trip.getTripDuration(), config);
-    }
-
-    public TripType classifyTravelType(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
-        TripType initialClassification = classifyWithGpsStatistics(statistics, tripDuration, distanceMeters, config);
-        return verifyAndCorrectClassification(initialClassification, distanceMeters, tripDuration.getSeconds(), config);
+        return verifyAndCorrectClassification(initialClassification,
+                trip.getDistanceMeters(),
+                trip.getTripDuration(),
+                config);
     }
 
     /**
-     * Enhanced classification using pre-calculated GPS statistics.
-     * Provides more accurate results by using real GPS speed data and variance analysis.
+     * Classify travel type using provided GPS statistics.
+     *
+     * @param statistics  GPS statistics (avg speed, max speed, variance)
+     * @param tripDuration duration of the trip
+     * @param distanceMeters total distance in meters
+     * @param config timeline configuration
+     * @return classified trip type
      */
-    private TripType classifyWithGpsStatistics(TripGpsStatistics statistics, Duration tripDuration, long distanceMeters, TimelineConfig config) {
+    public TripType classifyTravelType(TripGpsStatistics statistics,
+                                      Duration tripDuration,
+                                      long distanceMeters,
+                                      TimelineConfig config) {
+        TripType initialClassification = classifyWithGpsStatistics(statistics,
+                tripDuration,
+                distanceMeters,
+                config);
+        return verifyAndCorrectClassification(initialClassification,
+                distanceMeters,
+                tripDuration.getSeconds(),
+                config);
+    }
+
+    /**
+     * Classification using GPS statistics.
+     * Converts speeds to km/h and delegates to the main classification algorithm.
+     */
+    private TripType classifyWithGpsStatistics(TripGpsStatistics statistics,
+                                              Duration tripDuration,
+                                              long distanceMeters,
+                                              TimelineConfig config) {
         if (statistics == null || !statistics.hasValidData()) {
             log.warn("Trip statistics is null or has no valid data, falling back to calculate based on distance and duration");
-            return classifyWithoutSpeed(config, tripDuration, distanceMeters);
+            return classifyWithoutGpsStatistics(config, tripDuration, distanceMeters);
         }
+
         // Convert speeds from m/s to km/h
         double avgSpeedKmh = statistics.avgGpsSpeed() * 3.6;
         double maxSpeedKmh = statistics.maxGpsSpeed() * 3.6;
-        double distanceKm = distanceMeters / 1000.0;
 
-        // Enhanced classification using speed variance
-        Double speedVariance = statistics.speedVariance();
-        Integer lowAccuracyCount = statistics.lowAccuracyPointsCount();
-
-        return classifyEnhanced(avgSpeedKmh, maxSpeedKmh, distanceKm, speedVariance, lowAccuracyCount, config);
+        return classifyBySpeed(avgSpeedKmh, maxSpeedKmh, statistics.speedVariance(), config);
     }
 
-    private TripType classifyWithoutSpeed(TimelineConfig config, Duration tripDuration, long distanceMeters) {
+    /**
+     * Fallback classification when GPS statistics are not available.
+     * Calculates average speed from distance and duration.
+     */
+    private TripType classifyWithoutGpsStatistics(TimelineConfig config,
+                                                 Duration tripDuration,
+                                                 long distanceMeters) {
         double distanceKm = distanceMeters / 1000.0;
         double hours = tripDuration.getSeconds() / 3600.0;
         double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+
         if (hours > 0 && distanceKm > 0) {
-            return classify(avgSpeedKmh, avgSpeedKmh, distanceKm, config);
+            // When no max speed available, use avg speed for both
+            return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, config);
         } else {
             return UNKNOWN;
         }
     }
 
     /**
-     * Enhanced classification algorithm using GPS statistics and speed variance analysis.
-     * Now supports optional trip types: BICYCLE, TRAIN, FLIGHT.
-     */
-    private TripType classifyEnhanced(double avgSpeedKmh, double maxSpeedKmh, double distanceKm,
-                                      Double speedVariance, Integer lowAccuracyCount, TimelineConfig config) {
-
-        // Use new classification method with optional types
-        return classifyWithOptionalTypes(avgSpeedKmh, maxSpeedKmh, speedVariance, config);
-    }
-
-    /**
-     * Classification with optional trip types (BICYCLE, TRAIN, FLIGHT).
+     * Main classification algorithm supporting optional trip types.
      *
      * CRITICAL PRIORITY ORDER:
-     * 1. FLIGHT - highest priority (unambiguous speeds 400+ km/h avg OR 500+ km/h peak)
-     * 2. TRAIN - high speed with low variance (30-150 km/h avg, variance < 15, peak >= 80 km/h)
-     * 3. BICYCLE - medium speeds (8-25 km/h avg, peak <= 35 km/h) - MUST be before CAR!
-     * 4. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
-     * 5. WALK - low speeds (<= 6 km/h avg, <= 8 km/h peak)
+     * 1. FLIGHT - highest priority (unambiguous speeds)
+     * 2. TRAIN - before CAR (uses variance discriminator)
+     * 3. BICYCLE - BEFORE CAR (overlapping speeds)
+     * 4. CAR - mandatory type
+     * 5. WALK - mandatory type
      * 6. UNKNOWN - fallback
      *
-     * @param avgSpeedKmh   Average speed in km/h
-     * @param maxSpeedKmh   Maximum speed in km/h
-     * @param speedVariance Speed variance (null if not available)
-     * @param config        Timeline configuration
-     * @return Classified trip type
+     * @param avgSpeedKmh   average speed in km/h
+     * @param maxSpeedKmh   maximum speed in km/h
+     * @param speedVariance speed variance (null if not available)
+     * @param config        timeline configuration
+     * @return classified trip type
      */
-    private TripType classifyWithOptionalTypes(double avgSpeedKmh, double maxSpeedKmh,
-                                               Double speedVariance, TimelineConfig config) {
+    private TripType classifyBySpeed(double avgSpeedKmh,
+                                    double maxSpeedKmh,
+                                    Double speedVariance,
+                                    TimelineConfig config) {
 
         // 1. FLIGHT - highest priority (unambiguous speeds)
-        //    Uses OR logic to handle long taxi/ground time
+        //    Uses OR logic: avg >= 400 OR max >= 500
+        //    Handles flights with long taxi/ground time
         if (Boolean.TRUE.equals(config.getFlightEnabled()) &&
                 (avgSpeedKmh >= config.getFlightMinAvgSpeed() ||
-                        maxSpeedKmh >= config.getFlightMinMaxSpeed())) {
+                 maxSpeedKmh >= config.getFlightMinMaxSpeed())) {
             return FLIGHT;
         }
 
-        // 2. TRAIN - high speed with low variance and minimum peak speed
-        //    Must be checked BEFORE CAR to distinguish based on variance
-        //    trainMinMaxSpeed filters out station-only trips
+        // 2. TRAIN - high speed with low variance
+        //    MUST be checked BEFORE CAR to use variance as discriminator
+        //    Requires: speed in range + low variance + high peak (filters station stops)
         if (Boolean.TRUE.equals(config.getTrainEnabled()) &&
                 avgSpeedKmh >= config.getTrainMinAvgSpeed() &&
                 avgSpeedKmh <= config.getTrainMaxAvgSpeed() &&
-                maxSpeedKmh >= config.getTrainMinMaxSpeed() &&
+                maxSpeedKmh >= config.getTrainMinMaxSpeed() &&  // Filters station-only trips
                 maxSpeedKmh <= config.getTrainMaxMaxSpeed() &&
                 speedVariance != null &&
                 speedVariance < config.getTrainMaxSpeedVariance()) {
             return TRAIN;
         }
 
-        // 3. BICYCLE - medium speeds (only if enabled)
-        //    CRITICAL: Must be checked BEFORE CAR due to overlapping speed ranges
-        //    Also captures running/jogging (consider displaying as "Cycling/Running")
+        // 3. BICYCLE - medium speeds
+        //    CRITICAL: MUST be checked BEFORE CAR due to overlapping speeds (8-25 km/h)
+        //    Also captures running/jogging (8-15 km/h)
         if (Boolean.TRUE.equals(config.getBicycleEnabled()) &&
                 avgSpeedKmh >= config.getBicycleMinAvgSpeed() &&
                 avgSpeedKmh <= config.getBicycleMaxAvgSpeed() &&
@@ -139,53 +185,23 @@ public class TravelClassification {
         }
 
         // 4. CAR - motorized transport (mandatory)
-        //    CRITICAL: Must be checked AFTER BICYCLE to avoid capturing bicycle trips
+        //    CRITICAL: Checked AFTER BICYCLE to avoid capturing bicycle trips
+        //    Uses OR logic: avg >= 10 OR max >= 15
         if (avgSpeedKmh >= config.getCarMinAvgSpeed() ||
                 maxSpeedKmh >= config.getCarMinMaxSpeed()) {
             return CAR;
         }
 
         // 5. WALK - low speeds (mandatory)
+        //    Both avg AND max must be within walking range
         if (avgSpeedKmh <= config.getWalkingMaxAvgSpeed() &&
                 maxSpeedKmh <= config.getWalkingMaxMaxSpeed()) {
             return WALK;
         }
 
         // 6. UNKNOWN - fallback for edge cases
+        //    Example: 7 km/h avg (above walk, below bicycle if disabled, below car min)
         return UNKNOWN;
-    }
-
-    /**
-     * Classify trip type based on speed and distance metrics.
-     *
-     * @param avgSpeedKmh     average speed in km/h
-     * @param maxSpeedKmh     maximum speed in km/h
-     * @param totalDistanceKm total distance in km
-     * @param config          timeline configuration containing classification thresholds
-     * @return classified trip type
-     */
-    private TripType classify(double avgSpeedKmh, double maxSpeedKmh, double totalDistanceKm, TimelineConfig config) {
-        // Get thresholds from config
-        double walkingMaxAvg = config.getWalkingMaxAvgSpeed();
-        double walkingMaxMax = config.getWalkingMaxMaxSpeed();
-        double carMinAvg = config.getCarMinAvgSpeed();
-        double carMinMax = config.getCarMinMaxSpeed();
-        double shortDistanceKm = config.getShortDistanceKm();
-
-        // Short trip walking tolerance
-        boolean shortTrip = totalDistanceKm <= shortDistanceKm;
-        boolean avgSpeedWithinWalking = avgSpeedKmh < walkingMaxAvg;
-        boolean maxSpeedWithinWalking = maxSpeedKmh < walkingMaxMax;
-        boolean avgSpeedSlightlyAboveWalking = avgSpeedKmh < (walkingMaxAvg + 1.0); // 1 km/h delta
-
-        if ((avgSpeedWithinWalking && maxSpeedWithinWalking) ||
-                (shortTrip && avgSpeedSlightlyAboveWalking && maxSpeedWithinWalking)) {
-            return WALK;
-        } else if (avgSpeedKmh > carMinAvg || maxSpeedKmh > carMinMax) {
-            return CAR;
-        } else {
-            return UNKNOWN;
-        }
     }
 
     /**
@@ -198,7 +214,10 @@ public class TravelClassification {
      * @param config         the timeline configuration
      * @return the corrected trip type
      */
-    private TripType verifyAndCorrectClassification(TripType tripType, long distanceMeters, long tripDuration, TimelineConfig config) {
+    private TripType verifyAndCorrectClassification(TripType tripType,
+                                                   long distanceMeters,
+                                                   long tripDuration,
+                                                   TimelineConfig config) {
         if (tripType == WALK) {
             final double distanceKm = distanceMeters / 1000.0;
             final double hours = tripDuration / 3600.0;
