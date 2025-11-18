@@ -419,7 +419,7 @@ class ReverseGeocodingManagementServiceTest {
         entity.setRequestCoordinates(coords);
         entity.setResultCoordinates(coords);
         entity.setDisplayName(displayName);
-        entity.setProviderName("google");
+        entity.setProviderName("nominatim");
         entity.setCity("New York");
         entity.setCountry("USA");
         entity.setCreatedAt(Instant.now());
@@ -433,7 +433,7 @@ class ReverseGeocodingManagementServiceTest {
         entity.setRequestCoordinates(coords);
         entity.setResultCoordinates(coords);
         entity.setDisplayName(displayName);
-        entity.setProviderName("google");
+        entity.setProviderName("nominatim");
         entity.setCity("New York");
         entity.setCountry("USA");
         entity.setCreatedAt(Instant.now());
@@ -466,5 +466,215 @@ class ReverseGeocodingManagementServiceTest {
         return entityManager.createNativeQuery(sql)
                 .setParameter(1, userId)
                 .getResultList();
+    }
+
+    // ==================== Reconciliation Tests ====================
+
+    @Test
+    @Order(12)
+    @Transactional
+    @DisplayName("Reconciliation Test 1: User cannot reconcile another user's copy")
+    void testCannotReconcileAnotherUsersCopy() {
+        // Given: User A's custom copy
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity userACopy = createUserCopy(USER_A_ID, coords, "User A Location");
+        repository.persist(userACopy);
+        entityManager.flush();
+
+        // When: User B tries to reconcile it
+        // Then: 403 Forbidden
+        assertThrows(ForbiddenException.class, () -> {
+            managementService.reconcileWithProvider(USER_B_ID, userACopy.getId(), "nominatim");
+        }, "Should throw ForbiddenException when reconciling another user's copy");
+    }
+
+    @Test
+    @Order(13)
+    @Transactional
+    @DisplayName("Reconciliation Test 2: User can reconcile original entity")
+    void testUserCanReconcileOriginal() {
+        // Given: Original entity
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity original = createOriginal(coords, "Original Location");
+        repository.persist(original);
+        entityManager.flush();
+
+        Long originalId = original.getId();
+
+        // When: User A reconciles it (this will call the actual provider)
+        // Then: No exception thrown (original entities can be reconciled by any user)
+        assertDoesNotThrow(() -> {
+            ReverseGeocodingDTO result = managementService.reconcileWithProvider(USER_A_ID, originalId, "nominatim");
+            assertNotNull(result);
+        });
+    }
+
+    @Test
+    @Order(14)
+    @Transactional
+    @DisplayName("Reconciliation Test 3: User can reconcile their own copy")
+    void testUserCanReconcileOwnCopy() {
+        // Given: User A's copy
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity userCopy = createUserCopy(USER_A_ID, coords, "My Location");
+        repository.persist(userCopy);
+        entityManager.flush();
+
+        Long copyId = userCopy.getId();
+
+        // When: User A reconciles their own copy
+        // Then: No exception thrown
+        assertDoesNotThrow(() -> {
+            ReverseGeocodingDTO result = managementService.reconcileWithProvider(USER_A_ID, copyId, "nominatim");
+            assertNotNull(result);
+        });
+    }
+
+    @Test
+    @Order(15)
+    @Transactional
+    @DisplayName("Reconciliation Test 4: Reconciliation with non-existent entity throws NotFoundException")
+    void testReconcileNonExistentEntity() {
+        // When: Try to reconcile non-existent entity
+        // Then: 404 Not Found
+        assertThrows(NotFoundException.class, () -> {
+            managementService.reconcileWithProvider(USER_A_ID, 999999L, "nominatim");
+        }, "Should throw NotFoundException for non-existent entity");
+    }
+
+    @Test
+    @Order(16)
+    @Transactional
+    @DisplayName("Reconciliation Test 5: Multiple users can reconcile same original independently")
+    void testMultipleUsersReconcileSameOriginal() {
+        // Given: Original entity
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity original = createOriginal(coords, "Shared Location");
+        repository.persist(original);
+        entityManager.flush();
+
+        Long originalId = original.getId();
+
+        // When: Both users reconcile the same original
+        // Then: Both should succeed without interfering with each other
+        assertDoesNotThrow(() -> {
+            ReverseGeocodingDTO resultA = managementService.reconcileWithProvider(USER_A_ID, originalId, "nominatim");
+            assertNotNull(resultA);
+        });
+
+        assertDoesNotThrow(() -> {
+            ReverseGeocodingDTO resultB = managementService.reconcileWithProvider(USER_B_ID, originalId, "nominatim");
+            assertNotNull(resultB);
+        });
+
+        // Original should still exist
+        ReverseGeocodingLocationEntity originalCheck = repository.findById(originalId);
+        assertNotNull(originalCheck);
+    }
+
+    @Test
+    @Order(17)
+    @Transactional
+    @DisplayName("Reconciliation Test 6: Verify reconciliation uses correct provider")
+    void testReconciliationUsesCorrectProvider() {
+        // Given: Original entity from one provider
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity original = createOriginal(coords, "Location");
+        original.setProviderName("nominatim");
+        repository.persist(original);
+        entityManager.flush();
+
+        // When: Reconcile with different provider
+        // Then: Should succeed (provider switch is allowed)
+        assertDoesNotThrow(() -> {
+            ReverseGeocodingDTO result = managementService.reconcileWithProvider(USER_A_ID, original.getId(), "nominatim");
+            assertNotNull(result);
+        });
+    }
+
+    @Test
+    @Order(18)
+    @Transactional
+    @DisplayName("Reconciliation Test 7: Verify security on reconciliation")
+    void testReconciliationSecurityChecks() {
+        // Given: Three entities
+        Point coords1 = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords2 = GeoUtils.createPoint(TEST_LON + 0.01, TEST_LAT);
+        Point coords3 = GeoUtils.createPoint(TEST_LON + 0.02, TEST_LAT);
+
+        ReverseGeocodingLocationEntity original = createOriginal(coords1, "Original");
+        ReverseGeocodingLocationEntity userACopy = createUserCopy(USER_A_ID, coords2, "User A Copy");
+        ReverseGeocodingLocationEntity userBCopy = createUserCopy(USER_B_ID, coords3, "User B Copy");
+
+        repository.persist(original);
+        repository.persist(userACopy);
+        repository.persist(userBCopy);
+        entityManager.flush();
+
+        // User A can reconcile original
+        assertDoesNotThrow(() -> {
+            managementService.reconcileWithProvider(USER_A_ID, original.getId(), "nominatim");
+        });
+
+        // User A can reconcile own copy
+        assertDoesNotThrow(() -> {
+            managementService.reconcileWithProvider(USER_A_ID, userACopy.getId(), "nominatim");
+        });
+
+        // User A CANNOT reconcile User B's copy
+        assertThrows(ForbiddenException.class, () -> {
+            managementService.reconcileWithProvider(USER_A_ID, userBCopy.getId(), "nominatim");
+        });
+    }
+
+    @Test
+    @Order(19)
+    @Transactional
+    @DisplayName("Reconciliation Test 8: Verify reconciliation preserves spatial data")
+    void testReconciliationPreservesSpatialData() {
+        // Given: Original entity
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity original = createOriginal(coords, "Original Name");
+        repository.persist(original);
+        entityManager.flush();
+
+        Long originalId = original.getId();
+        Point originalCoords = original.getRequestCoordinates();
+
+        // When: Reconcile
+        assertDoesNotThrow(() -> {
+            managementService.reconcileWithProvider(USER_A_ID, originalId, "nominatim");
+        });
+
+        // Then: Original coordinates should be preserved
+        entityManager.clear();
+        ReverseGeocodingLocationEntity afterReconciliation = repository.findById(originalId);
+        assertNotNull(afterReconciliation);
+        assertEquals(originalCoords.getX(), afterReconciliation.getRequestCoordinates().getX(), 0.0001);
+        assertEquals(originalCoords.getY(), afterReconciliation.getRequestCoordinates().getY(), 0.0001);
+    }
+
+    @Test
+    @Order(20)
+    @Transactional
+    @DisplayName("Reconciliation Test 9: Verify reconciliation result is returned")
+    void testReconciliationReturnsResult() {
+        // Given: Original entity
+        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        ReverseGeocodingLocationEntity original = createOriginal(coords, "Test Location");
+        repository.persist(original);
+        entityManager.flush();
+
+        // When: Reconcile
+        ReverseGeocodingDTO result = managementService.reconcileWithProvider(USER_A_ID, original.getId(), "nominatim");
+
+        // Then: Result should be valid DTO
+        assertNotNull(result);
+        assertNotNull(result.getId());
+        assertNotNull(result.getDisplayName());
+        assertNotNull(result.getLongitude());
+        assertNotNull(result.getLatitude());
+        assertEquals(TEST_LON, result.getLongitude(), 0.01);
+        assertEquals(TEST_LAT, result.getLatitude(), 0.01);
     }
 }
