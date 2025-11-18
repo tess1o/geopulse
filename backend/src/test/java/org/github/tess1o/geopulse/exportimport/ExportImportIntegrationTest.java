@@ -118,8 +118,9 @@ class ExportImportIntegrationTest {
         testUser.setCreatedAt(Instant.now());
         userRepository.persist(testUser);
 
-        // Create test reverse geocoding location (no dependencies)
+        // Create test reverse geocoding location (user-specific for testing export/import)
         testGeocodingLocation = new ReverseGeocodingLocationEntity();
+        testGeocodingLocation.setUser(testUser); // Set user to make it user-specific (not original)
         testGeocodingLocation.setRequestCoordinates(GeoUtils.createPoint(-122.4194, 37.7749)); // San Francisco
         testGeocodingLocation.setResultCoordinates(GeoUtils.createPoint(-122.4194, 37.7749));
         testGeocodingLocation.setDisplayName("San Francisco, CA, USA");
@@ -357,13 +358,17 @@ class ExportImportIntegrationTest {
         // Step 6: Verify imported data matches original data
         log.info("Step 6: Verifying imported data matches original");
 
-        // Verify reverse geocoding location (ID should be preserved exactly)
-        var importedGeocodingLocation = reverseGeocodingLocationRepository.findById(originalGeocodingId);
+        // Verify reverse geocoding location (search by coordinates since IDs are regenerated on import)
+        var importedGeocodingLocation = reverseGeocodingLocationRepository.findByRequestCoordinates(
+            testUser.getId(),
+            originalGeocodingLocation.getRequestCoordinates(),
+            25.0  // tolerance in meters
+        );
         assertNotNull(importedGeocodingLocation, "Reverse geocoding location should be imported");
-        assertEquals(originalGeocodingId, importedGeocodingLocation.getId(), "Reverse geocoding location ID should be preserved exactly");
         assertEquals(originalGeocodingLocation.getDisplayName(), importedGeocodingLocation.getDisplayName(), "Display name should match");
         assertEquals(originalGeocodingLocation.getCity(), importedGeocodingLocation.getCity(), "City should match");
         assertEquals(originalGeocodingLocation.getCountry(), importedGeocodingLocation.getCountry(), "Country should match");
+        assertEquals(testUser.getId(), importedGeocodingLocation.getUser().getId(), "Should be assigned to importing user");
 
         // Verify GPS point (GPS points don't preserve IDs since export format doesn't include them)
         var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(

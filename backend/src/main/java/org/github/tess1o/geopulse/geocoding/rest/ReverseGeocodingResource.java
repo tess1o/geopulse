@@ -7,12 +7,14 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * REST API for managing reverse geocoding results.
@@ -25,14 +27,24 @@ import java.util.Map;
 public class ReverseGeocodingResource {
 
     private final ReverseGeocodingManagementService managementService;
+    private final CurrentUserService currentUserService;
 
     @Inject
-    public ReverseGeocodingResource(ReverseGeocodingManagementService managementService) {
+    public ReverseGeocodingResource(ReverseGeocodingManagementService managementService, CurrentUserService currentUserService) {
         this.managementService = managementService;
+        this.currentUserService = currentUserService;
+    }
+
+    /**
+     * Extract current user ID from security context.
+     */
+    private UUID getCurrentUserId() {
+       return currentUserService.getCurrentUserId();
     }
 
     /**
      * Get paginated list of geocoding results with optional filters.
+     * Shows only entities relevant to current user (user-specific + originals they reference).
      *
      * @param providerName Filter by provider (optional)
      * @param searchText Search text for displayName, city, or country (optional)
@@ -51,13 +63,15 @@ public class ReverseGeocodingResource {
             @QueryParam("sortField") @DefaultValue("lastAccessedAt") String sortField,
             @QueryParam("sortOrder") @DefaultValue("desc") String sortOrder) {
 
-        log.debug("Fetching geocoding results: page={}, limit={}, provider={}, search={}",
-                page, limit, providerName, searchText);
+        UUID currentUserId = getCurrentUserId();
+
+        log.debug("Fetching geocoding results for user {}: page={}, limit={}, provider={}, search={}",
+                currentUserId, page, limit, providerName, searchText);
 
         List<ReverseGeocodingDTO> results = managementService.getGeocodingResults(
-                providerName, searchText, page, limit, sortField, sortOrder);
+                currentUserId, providerName, searchText, page, limit, sortField, sortOrder);
 
-        long totalRecords = managementService.countGeocodingResults(providerName, searchText);
+        long totalRecords = managementService.countGeocodingResults(currentUserId, providerName, searchText);
 
         Map<String, Object> response = new HashMap<>();
         response.put("data", results);
@@ -74,6 +88,7 @@ public class ReverseGeocodingResource {
 
     /**
      * Get a single geocoding result by ID.
+     * User can only access originals or their own copies.
      *
      * @param id Geocoding result ID
      * @return Geocoding result details
@@ -81,24 +96,32 @@ public class ReverseGeocodingResource {
     @GET
     @Path("/{id}")
     public Response getGeocodingResult(@PathParam("id") Long id) {
-        log.debug("Fetching geocoding result: {}", id);
+        UUID currentUserId = getCurrentUserId();
+        log.debug("Fetching geocoding result {} for user {}", id, currentUserId);
 
         try {
-            ReverseGeocodingDTO result = managementService.getGeocodingResult(id);
+            ReverseGeocodingDTO result = managementService.getGeocodingResult(currentUserId, id);
             return Response.ok(result).build();
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
                     .entity(Map.of("error", e.getMessage()))
                     .build();
         }
     }
 
     /**
-     * Update a geocoding result.
+     * Update a geocoding result with copy-on-write semantics.
+     * - Modifying original (user_id=NULL): Creates user-specific copy
+     * - Modifying own copy: Updates in-place
+     * - Modifying other's copy: Returns 403 Forbidden
      *
      * @param id Geocoding result ID
      * @param updateDTO Update data
-     * @return Updated geocoding result
+     * @return Updated geocoding result (or newly created user copy)
      */
     @PUT
     @Path("/{id}")
@@ -106,17 +129,22 @@ public class ReverseGeocodingResource {
             @PathParam("id") Long id,
             @Valid ReverseGeocodingUpdateDTO updateDTO) {
 
-        log.info("Updating geocoding result: {}", id);
+        UUID currentUserId = getCurrentUserId();
+        log.info("User {} updating geocoding result: {}", currentUserId, id);
 
         try {
-            ReverseGeocodingDTO updated = managementService.updateGeocodingResult(id, updateDTO);
+            ReverseGeocodingDTO updated = managementService.updateGeocodingResult(currentUserId, id, updateDTO);
             return Response.ok(updated).build();
-        } catch (IllegalArgumentException e) {
+        } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
                     .entity(Map.of("error", e.getMessage()))
                     .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(Map.of("error", e.getMessage()))
+                    .build();
         } catch (Exception e) {
-            log.error("Error updating geocoding result {}: {}", id, e.getMessage(), e);
+            log.error("Error updating geocoding result {} for user {}: {}", id, currentUserId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Map.of("error", "Failed to update geocoding result"))
                     .build();
@@ -125,6 +153,7 @@ public class ReverseGeocodingResource {
 
     /**
      * Reconcile geocoding results with a specific provider.
+     * Applies copy-on-write if data changed for originals.
      *
      * @param request Reconciliation request
      * @return Reconciliation results
@@ -132,13 +161,14 @@ public class ReverseGeocodingResource {
     @POST
     @Path("/reconcile")
     public Response reconcileWithProvider(@Valid ReverseGeocodingReconcileRequest request) {
-        log.info("Reconciling geocoding results with provider: {}", request.getProviderName());
+        UUID currentUserId = getCurrentUserId();
+        log.info("User {} reconciling geocoding results with provider: {}", currentUserId, request.getProviderName());
 
         try {
-            ReverseGeocodingReconcileResult result = managementService.reconcileWithProvider(request);
+            ReverseGeocodingReconcileResult result = managementService.reconcileWithProvider(currentUserId, request);
             return Response.ok(result).build();
         } catch (Exception e) {
-            log.error("Error reconciling geocoding results: {}", e.getMessage(), e);
+            log.error("Error reconciling geocoding results for user {}: {}", currentUserId, e.getMessage(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(Map.of("error", "Reconciliation failed: " + e.getMessage()))
                     .build();

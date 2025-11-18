@@ -23,9 +23,7 @@ import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.LineString;
+import org.locationtech.jts.geom.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -616,26 +614,34 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     @Transactional
     public void importReverseGeocodingData(byte[] content, ImportJob job) throws IOException {
         ReverseGeocodingDataDto geocodingData = objectMapper.readValue(content, ReverseGeocodingDataDto.class);
-        log.info("Importing {} reverse geocoding locations for user {} using native SQL",
+        log.info("Importing {} reverse geocoding locations for user {} with user assignment logic",
                 geocodingData.getLocations().size(), job.getUserId());
 
+        // Get user entity
+        UserEntity importingUser = userRepository.findById(job.getUserId());
+        if (importingUser == null) {
+            throw new IllegalStateException("User not found: " + job.getUserId());
+        }
+
         int imported = 0;
+        int skipped = 0;
+
         for (ReverseGeocodingDataDto.ReverseGeocodingLocationDto locationDto : geocodingData.getLocations()) {
             try {
                 // Create geometry objects for coordinates and bounding box
-                org.locationtech.jts.geom.Point requestCoordinates = null;
+                Point requestCoordinates = null;
                 if (locationDto.getRequestLatitude() != null && locationDto.getRequestLongitude() != null) {
                     requestCoordinates = GeoUtils.createPoint(
                             locationDto.getRequestLongitude(), locationDto.getRequestLatitude());
                 }
 
-                org.locationtech.jts.geom.Point resultCoordinates = null;
+                Point resultCoordinates = null;
                 if (locationDto.getResultLatitude() != null && locationDto.getResultLongitude() != null) {
                     resultCoordinates = GeoUtils.createPoint(
                             locationDto.getResultLongitude(), locationDto.getResultLatitude());
                 }
 
-                org.locationtech.jts.geom.Polygon boundingBox = null;
+                Polygon boundingBox = null;
                 if (locationDto.getBoundingBoxNorthEastLatitude() != null &&
                         locationDto.getBoundingBoxNorthEastLongitude() != null &&
                         locationDto.getBoundingBoxSouthWestLatitude() != null &&
@@ -648,25 +654,89 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                     );
                 }
 
-                entityManager.createNativeQuery(NativeSqlImportTemplates.REVERSE_GEOCODING_LOCATION_UPSERT)
-                        .setParameter(1, locationDto.getId())
-                        .setParameter(2, requestCoordinates)
-                        .setParameter(3, resultCoordinates)
-                        .setParameter(4, boundingBox)
-                        .setParameter(5, locationDto.getDisplayName())
-                        .setParameter(6, locationDto.getProviderName())
-                        .setParameter(7, locationDto.getCreatedAt())
-                        .setParameter(8, locationDto.getLastAccessedAt())
-                        .setParameter(9, locationDto.getCity())
-                        .setParameter(10, locationDto.getCountry())
-                        .executeUpdate();
-                imported++;
+                // Determine if this was a user-specific entity in the export
+                boolean wasUserSpecific = true;
+
+                if (wasUserSpecific) {
+                    // User-specific entity from export - assign to importing user (not original user!)
+                    // Use native query to insert with user_id and auto-generated ID
+                    String insertSql = """
+                        INSERT INTO reverse_geocoding_location
+                        (id, request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
+                         created_at, last_accessed_at, city, country, user_id)
+                        VALUES (nextval('reverse_geocoding_location_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """;
+
+                    entityManager.createNativeQuery(insertSql)
+                            .setParameter(1, requestCoordinates)
+                            .setParameter(2, resultCoordinates)
+                            .setParameter(3, boundingBox)
+                            .setParameter(4, locationDto.getDisplayName())
+                            .setParameter(5, locationDto.getProviderName())
+                            .setParameter(6, locationDto.getCreatedAt())
+                            .setParameter(7, locationDto.getLastAccessedAt())
+                            .setParameter(8, locationDto.getCity())
+                            .setParameter(9, locationDto.getCountry())
+                            .setParameter(10, job.getUserId())  // Assign to importing user
+                            .executeUpdate();
+
+                    imported++;
+                    log.debug("Imported user-specific geocoding entity (assigned to user {})", job.getUserId());
+
+                } else {
+                    // Original entity from export (user_id was NULL)
+                    // Check if already exists in database
+                    org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity existing =
+                            entityManager.createQuery(
+                                "SELECT r FROM ReverseGeocodingLocationEntity r " +
+                                "WHERE r.user IS NULL " +
+                                "AND r.requestCoordinates = :coords",
+                                org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity.class)
+                            .setParameter("coords", requestCoordinates)
+                            .getResultStream()
+                            .findFirst()
+                            .orElse(null);
+
+                    if (existing != null) {
+                        // Original already exists - skip (reuse existing)
+                        skipped++;
+                        log.debug("Skipped importing original geocoding entity at ({}, {}) - already exists as {}",
+                                locationDto.getRequestLatitude(), locationDto.getRequestLongitude(), existing.getId());
+                    } else {
+                        // Original doesn't exist - create it with auto-generated ID
+                        String insertSql = """
+                            INSERT INTO reverse_geocoding_location
+                            (id, request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
+                             created_at, last_accessed_at, city, country, user_id)
+                            VALUES (nextval('reverse_geocoding_location_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                            """;
+
+                        entityManager.createNativeQuery(insertSql)
+                                .setParameter(1, requestCoordinates)
+                                .setParameter(2, resultCoordinates)
+                                .setParameter(3, boundingBox)
+                                .setParameter(4, locationDto.getDisplayName())
+                                .setParameter(5, locationDto.getProviderName())
+                                .setParameter(6, locationDto.getCreatedAt())
+                                .setParameter(7, locationDto.getLastAccessedAt())
+                                .setParameter(8, locationDto.getCity())
+                                .setParameter(9, locationDto.getCountry())
+                                .executeUpdate();
+
+                        imported++;
+                        log.debug("Imported original geocoding entity at ({}, {})",
+                                locationDto.getRequestLatitude(), locationDto.getRequestLongitude());
+                    }
+                }
+
             } catch (Exception e) {
-                log.warn("Failed to import reverse geocoding location with ID {}: {}", locationDto.getId(), e.getMessage());
+                log.warn("Failed to import reverse geocoding location at ({}, {}): {}",
+                        locationDto.getRequestLatitude(), locationDto.getRequestLongitude(), e.getMessage());
             }
         }
 
-        log.info("Successfully imported {} reverse geocoding locations using native SQL", imported);
+        log.info("Successfully imported {} reverse geocoding locations (skipped {} existing originals)",
+                imported, skipped);
     }
 
     /**

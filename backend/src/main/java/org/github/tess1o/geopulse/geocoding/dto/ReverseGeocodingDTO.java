@@ -24,4 +24,5 @@ public class ReverseGeocodingDTO {
     private String providerName;
     private Instant createdAt;
     private Instant lastAccessedAt;
+    private boolean isUserSpecific;
 }

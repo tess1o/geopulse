@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
@@ -12,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Repository for reverse geocoding locations using ultra-simplified schema.
@@ -22,27 +25,41 @@ import java.util.HashMap;
 public class ReverseGeocodingLocationRepository implements PanacheRepository<ReverseGeocodingLocationEntity> {
 
     /**
-     * Find cached location using comprehensive spatial query.
+     * Find cached location using comprehensive spatial query with user filtering.
+     * Prioritizes user-specific copies over originals.
      * Checks: 1) Request coordinates proximity, 2) Result coordinates proximity, 3) Bounding box containment
      *
+     * @param userId The user ID to filter by (returns user-specific and originals)
      * @param requestCoordinates The coordinates to search for
      * @param toleranceMeters Tolerance in meters for spatial matching
      * @return Best matching cached location or null
      */
-    public ReverseGeocodingLocationEntity findByRequestCoordinates(Point requestCoordinates, double toleranceMeters) {
+    public ReverseGeocodingLocationEntity findByRequestCoordinates(UUID userId, Point requestCoordinates, double toleranceMeters) {
+        // Handle null coordinates gracefully
+        if (requestCoordinates == null) {
+            log.debug("Received null coordinates for user {}, returning null", userId);
+            return null;
+        }
+
         String searchQuery = """
                 SELECT *
                 FROM reverse_geocoding_location
-                WHERE ST_DWithin(result_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
+                WHERE (user_id = :userId OR user_id IS NULL)
+                  AND (
+                    ST_DWithin(result_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
                     OR ST_DWithin(request_coordinates::geography, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography, :tolerance)
                     OR ST_Contains(bounding_box, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
-                ORDER BY last_accessed_at DESC
+                  )
+                ORDER BY
+                  CASE WHEN user_id = :userId THEN 0 ELSE 1 END,
+                  last_accessed_at DESC
                 LIMIT 1
                 """;
 
         @SuppressWarnings("unchecked")
         List<ReverseGeocodingLocationEntity> results = getEntityManager()
                 .createNativeQuery(searchQuery, ReverseGeocodingLocationEntity.class)
+                .setParameter("userId", userId)
                 .setParameter("lon", requestCoordinates.getX())
                 .setParameter("lat", requestCoordinates.getY())
                 .setParameter("tolerance", toleranceMeters)
@@ -53,24 +70,50 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             // Update last accessed time asynchronously to prevent deadlocks
             updateAccessTimestampAsync(result.getId());
 
-            log.debug("Found cached location for coordinates: lon={}, lat={}, provider={}",
-                    requestCoordinates.getX(), requestCoordinates.getY(), result.getProviderName());
+            log.debug("Found cached location for user {} at coordinates: lon={}, lat={}, provider={}, isUserSpecific={}",
+                    userId, requestCoordinates.getX(), requestCoordinates.getY(), result.getProviderName(),
+                    result.getUser() != null);
             return result;
         }
 
-        log.debug("No cached location found for coordinates: lon={}, lat={} within {}m",
-                requestCoordinates.getX(), requestCoordinates.getY(), toleranceMeters);
+        log.debug("No cached location found for user {} at coordinates: lon={}, lat={} within {}m",
+                userId, requestCoordinates.getX(), requestCoordinates.getY(), toleranceMeters);
         return null;
     }
 
     /**
-     * Find cached location by exact request coordinates.
+     * Find ORIGINAL cached location by exact request coordinates.
+     * CRITICAL: Only returns originals (user_id IS NULL), never user-specific copies.
+     * Used by cacheGeocodingResult() to update existing originals without creating duplicates.
+     *
+     * Uses ST_Equals for proper PostGIS geometry comparison (JPA equality doesn't work for geometry types).
      *
      * @param requestCoordinates The exact coordinates to search for
-     * @return Cached location or null
+     * @return Original cached location or null (never returns user-specific copies)
      */
-    public ReverseGeocodingLocationEntity findByExactCoordinates(Point requestCoordinates) {
-        return find("requestCoordinates", requestCoordinates).firstResult();
+    public ReverseGeocodingLocationEntity findOriginalByExactCoordinates(Point requestCoordinates) {
+        if (requestCoordinates == null) {
+            return null;
+        }
+
+        // CRITICAL: Must use ST_Equals for PostGIS geometry comparison
+        // JPA equality (find("requestCoordinates = ?1")) doesn't work for geometry types
+        String query = """
+                SELECT *
+                FROM reverse_geocoding_location
+                WHERE ST_Equals(request_coordinates, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
+                  AND user_id IS NULL
+                LIMIT 1
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<ReverseGeocodingLocationEntity> results = getEntityManager()
+                .createNativeQuery(query, ReverseGeocodingLocationEntity.class)
+                .setParameter("lon", requestCoordinates.getX())
+                .setParameter("lat", requestCoordinates.getY())
+                .getResultList();
+
+        return results.isEmpty() ? null : results.get(0);
     }
 
     /**
@@ -106,15 +149,17 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
     }
 
     /**
-     * True batch find cached locations for multiple coordinates.
+     * True batch find cached locations for multiple coordinates with user filtering.
      * Processes in smaller chunks to avoid transaction timeouts on large batches.
+     * Prioritizes user-specific copies over originals.
      *
+     * @param userId The user ID to filter by
      * @param coordinates List of coordinates to search for
      * @param toleranceMeters Tolerance in meters for spatial matching
      * @return Map of coordinate string (lon,lat) to cached location entity
      */
     public Map<String, ReverseGeocodingLocationEntity> findByCoordinatesBatchReal(
-            List<Point> coordinates, double toleranceMeters) {
+            UUID userId, List<Point> coordinates, double toleranceMeters) {
 
         if (coordinates == null || coordinates.isEmpty()) {
             return Map.of();
@@ -126,31 +171,31 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         Map<String, ReverseGeocodingLocationEntity> finalResultMap = new HashMap<>();
         int totalPoints = coordinates.size();
 
-        log.debug("Starting batch geocoding lookup for {} coordinates in batches of {}",
-                totalPoints, BATCH_SIZE);
+        log.debug("Starting batch geocoding lookup for user {} with {} coordinates in batches of {}",
+                userId, totalPoints, BATCH_SIZE);
 
         for (int i = 0; i < totalPoints; i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, totalPoints);
             List<Point> batchPoints = coordinates.subList(i, end);
 
-            log.debug("Processing geocoding batch {}/{} ({} coordinates)",
-                    (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchPoints.size());
+            log.debug("Processing geocoding batch {}/{} ({} coordinates) for user {}",
+                    (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchPoints.size(), userId);
 
-            Map<String, ReverseGeocodingLocationEntity> batchResults = findForBatch(batchPoints, toleranceMeters);
+            Map<String, ReverseGeocodingLocationEntity> batchResults = findForBatch(userId, batchPoints, toleranceMeters);
             finalResultMap.putAll(batchResults);
 
-            log.debug("Batch {}/{} complete: found {} cached results",
-                    (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchResults.size());
+            log.debug("Batch {}/{} complete: found {} cached results for user {}",
+                    (i / BATCH_SIZE) + 1, (totalPoints + BATCH_SIZE - 1) / BATCH_SIZE, batchResults.size(), userId);
         }
 
-        log.info("Batch geocoding complete: found {} cached results for {} total coordinates",
-                finalResultMap.size(), totalPoints);
+        log.info("Batch geocoding complete for user {}: found {} cached results for {} total coordinates",
+                userId, finalResultMap.size(), totalPoints);
 
         return finalResultMap;
     }
 
     private Map<String, ReverseGeocodingLocationEntity> findForBatch(
-            List<Point> batchPoints, double toleranceMeters) {
+            UUID userId, List<Point> batchPoints, double toleranceMeters) {
 
         // Build VALUES clause for input coordinates
         StringBuilder valuesClause = new StringBuilder();
@@ -164,6 +209,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         // Step 1: Get matching geocoding IDs and their corresponding input coordinates
         // Optimized query with LATERAL JOIN instead of CROSS JOIN for better performance
         // The LATERAL JOIN allows PostgreSQL to use indexes more efficiently
+        // Prioritizes user-specific copies over originals
         String matchingQuery = """
                 WITH input_coords AS (
                     SELECT input_point, input_lon, input_lat
@@ -175,18 +221,22 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                 CROSS JOIN LATERAL (
                     SELECT id
                     FROM reverse_geocoding_location r
-                    WHERE (
+                    WHERE (r.user_id = :userId OR r.user_id IS NULL)
+                      AND (
                         ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
                         OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
                         OR ST_Contains(r.bounding_box, ic.input_point)
-                    )
-                    ORDER BY r.last_accessed_at DESC
+                      )
+                    ORDER BY
+                      CASE WHEN r.user_id = :userId THEN 0 ELSE 1 END,
+                      r.last_accessed_at DESC
                     LIMIT 1
                 ) r
                 ORDER BY ic.input_lon, ic.input_lat
                 """.formatted(valuesClause.toString());
 
         var matchingQueryExec = getEntityManager().createNativeQuery(matchingQuery)
+                .setParameter("userId", userId)
                 .setParameter("tolerance", toleranceMeters);
 
         // Set query timeout to 60 seconds (instead of default 7 minute transaction timeout)
@@ -385,6 +435,170 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
         List<String> results = getEntityManager().createQuery(queryStr, String.class).getResultList();
 
         return results;
+    }
+
+    /**
+     * Find geocoding entities for user management page.
+     * Shows only entities relevant to the user:
+     * - Entities referenced by user's timeline stays (originals or user-specific)
+     * - Entities belonging to user (orphaned customizations)
+     *
+     * @param userId User ID
+     * @param providerName Filter by provider (optional)
+     * @param city Filter by city (optional)
+     * @param country Filter by country (optional)
+     * @param searchTerm Search in display name (optional)
+     * @param page Page number (1-based)
+     * @param limit Page size
+     * @return List of geocoding entities relevant to user
+     */
+    public List<ReverseGeocodingLocationEntity> findForUserManagementPage(
+            UUID userId, String providerName, String city, String country,
+            String searchTerm, int page, int limit) {
+
+        // Get geocoding IDs used in user's timeline stays
+        String timelineGeocodingIdsSql = """
+            SELECT DISTINCT ts.geocoding_id
+            FROM timeline_stays ts
+            WHERE ts.user_id = :userId
+              AND ts.geocoding_id IS NOT NULL
+            """;
+
+        Query timelineQuery = getEntityManager().createNativeQuery(timelineGeocodingIdsSql);
+        timelineQuery.setParameter("userId", userId);
+
+        @SuppressWarnings("unchecked")
+        List<Object> rawResults = timelineQuery.getResultList();
+        List<Long> timelineGeocodingIds = rawResults.stream()
+            .map(id -> ((Number) id).longValue())
+            .collect(Collectors.toList());
+
+        // Build HQL query: (used in timeline) OR (belongs to user)
+        StringBuilder hql = new StringBuilder("""
+            FROM ReverseGeocodingLocationEntity r
+            WHERE (
+                (r.id IN :timelineIds) OR
+                (r.user.id = :userId)
+            )
+            """);
+
+        // Apply filters
+        if (providerName != null && !providerName.isBlank()) {
+            hql.append(" AND r.providerName = :providerName");
+        }
+        if (city != null && !city.isBlank()) {
+            hql.append(" AND r.city = :city");
+        }
+        if (country != null && !country.isBlank()) {
+            hql.append(" AND r.country = :country");
+        }
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            hql.append(" AND LOWER(r.displayName) LIKE LOWER(:searchTerm)");
+        }
+
+        // Add ordering
+        hql.append(" ORDER BY r.lastAccessedAt DESC");
+
+        // Build query
+        Query dataQuery = getEntityManager().createQuery("SELECT r " + hql.toString(), ReverseGeocodingLocationEntity.class);
+        dataQuery.setParameter("userId", userId);
+        dataQuery.setParameter("timelineIds", timelineGeocodingIds.isEmpty() ? List.of(-1L) : timelineGeocodingIds);
+
+        if (providerName != null && !providerName.isBlank()) {
+            dataQuery.setParameter("providerName", providerName);
+        }
+        if (city != null && !city.isBlank()) {
+            dataQuery.setParameter("city", city);
+        }
+        if (country != null && !country.isBlank()) {
+            dataQuery.setParameter("country", country);
+        }
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            dataQuery.setParameter("searchTerm", "%" + searchTerm + "%");
+        }
+
+        // Apply pagination
+        dataQuery.setFirstResult((page - 1) * limit);
+        dataQuery.setMaxResults(limit);
+
+        @SuppressWarnings("unchecked")
+        List<ReverseGeocodingLocationEntity> results = dataQuery.getResultList();
+
+        return results;
+    }
+
+    /**
+     * Count geocoding entities for user management page.
+     *
+     * @param userId User ID
+     * @param providerName Filter by provider (optional)
+     * @param city Filter by city (optional)
+     * @param country Filter by country (optional)
+     * @param searchTerm Search in display name (optional)
+     * @return Count of geocoding entities relevant to user
+     */
+    public long countForUserManagementPage(
+            UUID userId, String providerName, String city, String country, String searchTerm) {
+
+        // Get geocoding IDs used in user's timeline stays
+        String timelineGeocodingIdsSql = """
+            SELECT DISTINCT ts.geocoding_id
+            FROM timeline_stays ts
+            WHERE ts.user_id = :userId
+              AND ts.geocoding_id IS NOT NULL
+            """;
+
+        Query timelineQuery = getEntityManager().createNativeQuery(timelineGeocodingIdsSql);
+        timelineQuery.setParameter("userId", userId);
+
+        @SuppressWarnings("unchecked")
+        List<Object> rawResults = timelineQuery.getResultList();
+        List<Long> timelineGeocodingIds = rawResults.stream()
+            .map(id -> ((Number) id).longValue())
+            .collect(Collectors.toList());
+
+        // Build HQL count query
+        StringBuilder hql = new StringBuilder("""
+            SELECT COUNT(r) FROM ReverseGeocodingLocationEntity r
+            WHERE (
+                (r.id IN :timelineIds) OR
+                (r.user.id = :userId)
+            )
+            """);
+
+        // Apply filters
+        if (providerName != null && !providerName.isBlank()) {
+            hql.append(" AND r.providerName = :providerName");
+        }
+        if (city != null && !city.isBlank()) {
+            hql.append(" AND r.city = :city");
+        }
+        if (country != null && !country.isBlank()) {
+            hql.append(" AND r.country = :country");
+        }
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            hql.append(" AND LOWER(r.displayName) LIKE LOWER(:searchTerm)");
+        }
+
+        // Build query
+        Query countQuery = getEntityManager().createQuery(hql.toString());
+        countQuery.setParameter("userId", userId);
+        countQuery.setParameter("timelineIds", timelineGeocodingIds.isEmpty() ? List.of(-1L) : timelineGeocodingIds);
+
+        if (providerName != null && !providerName.isBlank()) {
+            countQuery.setParameter("providerName", providerName);
+        }
+        if (city != null && !city.isBlank()) {
+            countQuery.setParameter("city", city);
+        }
+        if (country != null && !country.isBlank()) {
+            countQuery.setParameter("country", country);
+        }
+        if (searchTerm != null && !searchTerm.isBlank()) {
+            countQuery.setParameter("searchTerm", "%" + searchTerm + "%");
+        }
+
+        return (Long) countQuery.getSingleResult();
     }
 
     /**

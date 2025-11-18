@@ -1,4 +1,4 @@
-package org.github.tess1o.geopulse.geocoding.service;
+package org.github.tess1o.geopulse.geocoding.service.external;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;

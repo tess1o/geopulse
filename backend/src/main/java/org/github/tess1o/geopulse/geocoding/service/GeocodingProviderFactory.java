@@ -1,16 +1,19 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
-import io.quarkus.runtime.StartupEvent;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.geocoding.service.external.GoogleMapsGeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.external.MapboxGeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.external.PhotonGeocodingService;
 import org.locationtech.jts.geom.Point;
+
+import java.util.Optional;
 
 /**
  * Factory service to handle multiple geocoding providers with failover.
@@ -54,7 +57,7 @@ public class GeocodingProviderFactory {
 
         // If fallback is configured, try it on primary failure
         // Treat empty/blank strings as "no fallback configured"
-        java.util.Optional<String> fallbackProvider = geocodingConfig.provider().fallback()
+        Optional<String> fallbackProvider = geocodingConfig.provider().fallback()
                 .filter(s -> !s.isBlank())
                 .filter(s -> !s.equalsIgnoreCase(geocodingConfig.provider().primary()));
 
@@ -65,7 +68,6 @@ public class GeocodingProviderFactory {
                 return callProvider(fallbackProvider.get(), requestCoordinates);
             });
         } else {
-            // No fallback configured, just return primary result (success or failure)
             log.debug("No valid fallback provider configured, returning primary result");
             return primaryResult;
         }
