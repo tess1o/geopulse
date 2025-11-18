@@ -8,6 +8,8 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.persistence.EntityManager;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -17,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Singleton
+@Slf4j
 public class FavoriteLocationsMetrics {
 
     private final AtomicLong favoriteLocationsTotal = new AtomicLong();
@@ -35,19 +38,37 @@ public class FavoriteLocationsMetrics {
     @Inject
     EntityManager entityManager;
 
-    void onStart(@Observes StartupEvent ev) {
-        setMetricValues();
+    @ConfigProperty(name = "geopulse.prometheus.enabled", defaultValue = "true")
+    boolean prometheusEnabled;
 
-        Gauge.builder("favorite_locations_total", favoriteLocationsTotal, AtomicLong::get)
-                .description("Total number of Favorite Locations")
-                .register(registry);
-        Gauge.builder("favorite_locations_avg_per_user", avgFavoritesPerUser, AtomicLong::get)
-                .description("Average number of Favorite Locations per user (among users with favorites)")
-                .register(registry);
+    @ConfigProperty(name = "geopulse.prometheus.favorites.enabled", defaultValue = "true")
+    boolean favoritesMetricsEnabled;
+
+    void onStart(@Observes StartupEvent ev) {
+        if (!prometheusEnabled || !favoritesMetricsEnabled) {
+            log.info("Favorite Locations metrics disabled");
+            return;
+        }
+
+        try {
+            setMetricValues();
+
+            Gauge.builder("favorite_locations_total", favoriteLocationsTotal, AtomicLong::get)
+                    .description("Total number of Favorite Locations")
+                    .register(registry);
+            Gauge.builder("favorite_locations_avg_per_user", avgFavoritesPerUser, AtomicLong::get)
+                    .description("Average number of Favorite Locations per user (among users with favorites)")
+                    .register(registry);
+        } catch (Exception e) {
+            log.error("Failed to initialize Favorite Locations metrics", e);
+        }
     }
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "${geopulse.prometheus.refresh-interval:10m}")
     void refreshTotals() {
+        if (!prometheusEnabled || !favoritesMetricsEnabled) {
+            return;
+        }
         setMetricValues();
     }
 

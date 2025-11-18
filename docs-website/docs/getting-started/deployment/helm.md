@@ -187,22 +187,22 @@ helm install geopulse ./helm/geopulse -f oidc-values.yaml
 
 ### Backend Parameters
 
-| Parameter                         | Description                | Default                   |
-|-----------------------------------|----------------------------|---------------------------|
-| `backend.image.repository`        | Backend image repository   | `tess1o/geopulse-backend` |
-| `backend.image.tag`               | Backend image tag          | `1.4.2-native`            |
-| `backend.replicaCount`            | Number of backend replicas | `1`                       |
-| `backend.service.type`            | Backend service type       | `ClusterIP`               |
-| `backend.service.port`            | Backend service port       | `8080`                    |
-| `backend.resources.limits.memory` | Backend memory limit       | `1Gi`                     |
-| `backend.resources.limits.cpu`    | Backend CPU limit          | `1000m`                   |
+| Parameter                         | Description                                                                                                                                                                                                    | Default                   |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|
+| `backend.image.repository`        | Backend image repository                                                                                                                                                                                       | `tess1o/geopulse-backend` |
+| `backend.image.tag`               | Backend image tag. Use `1.4.3-native` for optimized builds (modern CPUs). Use `1.4.3-native-compat` for older CPUs (x86-64-v2) or Raspberry Pi 3/4. See CPU Compatibility section below for troubleshooting. | `1.4.3-native`            |
+| `backend.replicaCount`            | Number of backend replicas                                                                                                                                                                                     | `1`                       |
+| `backend.service.type`            | Backend service type                                                                                                                                                                                           | `ClusterIP`               |
+| `backend.service.port`            | Backend service port                                                                                                                                                                                           | `8080`                    |
+| `backend.resources.limits.memory` | Backend memory limit                                                                                                                                                                                           | `1Gi`                     |
+| `backend.resources.limits.cpu`    | Backend CPU limit                                                                                                                                                                                              | `1000m`                   |
 
 ### Frontend Parameters
 
 | Parameter                   | Description                 | Default              |
 |-----------------------------|-----------------------------|----------------------|
 | `frontend.image.repository` | Frontend image repository   | `tess1o/geopulse-ui` |
-| `frontend.image.tag`        | Frontend image tag          | `1.4.2`              |
+| `frontend.image.tag`        | Frontend image tag          | `1.4.3`              |
 | `frontend.replicaCount`     | Number of frontend replicas | `1`                  |
 | `frontend.service.type`     | Frontend service type       | `ClusterIP`          |
 | `frontend.service.port`     | Frontend service port       | `80`                 |
@@ -346,6 +346,49 @@ kubectl logs -l app.kubernetes.io/component=database -f
 ```
 
 ## Troubleshooting
+
+### CPU Compatibility Issues
+
+If your backend pods are crashing immediately with errors about missing CPU features, you have an older CPU that needs the compatible image.
+
+**Check pod logs:**
+```bash
+kubectl logs -l app.kubernetes.io/component=backend
+```
+
+**Look for errors like:**
+- `[AVX2, BMI1, BMI2, FMA, F16C, LZCNT]` (AMD64 CPUs)
+- `[FP, ASIMD, CRC32, LSE]` (ARM64/Raspberry Pi)
+
+**Solution:** Override the image tag in your values file:
+
+```yaml
+# values-compat.yaml
+backend:
+  image:
+    tag: "1.4.3-native-compat"  # Use compatible image for old CPUs
+```
+
+Then upgrade your deployment:
+```bash
+helm upgrade geopulse ./helm/geopulse -f values-compat.yaml
+```
+
+**Who needs the compatible image?**
+- **Old x86 CPUs**: Intel pre-Haswell (before 2013), AMD pre-Excavator (before 2015)
+  - Examples: Intel Core i5-3470T (Ivy Bridge), Intel Xeon E5-2670 (Sandy Bridge)
+- **Raspberry Pi 3/4**: ARM Cortex-A53/A72 processors
+
+**Check node CPU features:**
+```bash
+# For x86/AMD64 nodes:
+kubectl debug node/YOUR-NODE-NAME -it --image=ubuntu -- lscpu | grep -i flags
+# Look for: avx2, bmi1, bmi2, fma, f16c
+
+# For ARM64 nodes:
+kubectl debug node/YOUR-NODE-NAME -it --image=ubuntu -- cat /proc/cpuinfo | grep Features
+# Look for: asimd, crc32, atomics
+```
 
 ### Pods not starting
 

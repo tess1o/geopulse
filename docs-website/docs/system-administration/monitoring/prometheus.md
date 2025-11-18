@@ -16,6 +16,76 @@ The Prometheus metrics are available via the following endpoint:
 
 You can use this endpoint to scrape metrics with a Prometheus server or any other compatible monitoring tool.
 
+## Configuration
+
+GeoPulse allows you to configure custom Prometheus metrics collection through environment variables at runtime. This is useful for controlling resource usage, especially in environments with many users or limited resources.
+
+:::note
+The Prometheus endpoint `/api/prometheus/metrics` is always available (configured at build time). You can control **custom GeoPulse metrics** at runtime, but default Micrometer metrics (HTTP requests, JVM, datasource, etc.) will always be collected and exposed.
+:::
+
+### Global Configuration
+
+| Environment Variable                      | Default | Description                                                   |
+| ----------------------------------------- | ------- | ------------------------------------------------------------- |
+| `GEOPULSE_PROMETHEUS_ENABLED`             | `false` | Enable/disable all **custom GeoPulse metrics** (users, GPS points, timeline, favorites, etc.). Does not affect the Prometheus endpoint or default Micrometer metrics. |
+| `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL`    | `10m`   | Interval for refreshing custom metric values (e.g., `5m`, `30m`, `1h`). Only applies when custom metrics are enabled. |
+
+### Per-Metric Configuration
+
+You can selectively enable or disable specific metric categories:
+
+| Environment Variable                         | Default | Description                                   |
+| -------------------------------------------- | ------- | --------------------------------------------- |
+| `GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED`     | `true`  | Enable/disable GPS points metrics.            |
+| `GEOPULSE_PROMETHEUS_USER_METRICS_ENABLED`   | `true`  | Enable/disable user activity metrics.         |
+| `GEOPULSE_PROMETHEUS_TIMELINE_ENABLED`       | `true`  | Enable/disable timeline metrics.              |
+| `GEOPULSE_PROMETHEUS_FAVORITES_ENABLED`      | `true`  | Enable/disable favorite locations metrics.    |
+| `GEOPULSE_PROMETHEUS_GEOCODING_ENABLED`      | `true`  | Enable/disable reverse geocoding metrics.     |
+| `GEOPULSE_PROMETHEUS_MEMORY_ENABLED`         | `true`  | Enable/disable process memory metrics.        |
+
+### Configuration Examples
+
+**Enable custom GeoPulse metrics (in addition to default Micrometer metrics):**
+```bash
+GEOPULSE_PROMETHEUS_ENABLED=true
+```
+
+**Disable custom GeoPulse metrics (keep only default Micrometer metrics):**
+```bash
+GEOPULSE_PROMETHEUS_ENABLED=false
+```
+This is the **default behavior** - only HTTP requests, JVM, and datasource metrics are exposed.
+
+**Change refresh interval to 30 minutes:**
+```bash
+GEOPULSE_PROMETHEUS_ENABLED=true
+GEOPULSE_PROMETHEUS_REFRESH_INTERVAL=30m
+```
+
+**Disable expensive per-user metrics while keeping aggregate metrics:**
+```bash
+GEOPULSE_PROMETHEUS_ENABLED=true
+GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED=false
+GEOPULSE_PROMETHEUS_TIMELINE_ENABLED=false
+GEOPULSE_PROMETHEUS_FAVORITES_ENABLED=false
+```
+
+**Enable only lightweight custom metrics:**
+```bash
+GEOPULSE_PROMETHEUS_ENABLED=true
+GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED=false
+GEOPULSE_PROMETHEUS_TIMELINE_ENABLED=false
+GEOPULSE_PROMETHEUS_FAVORITES_ENABLED=false
+GEOPULSE_PROMETHEUS_USER_METRICS_ENABLED=true
+GEOPULSE_PROMETHEUS_GEOCODING_ENABLED=true
+GEOPULSE_PROMETHEUS_MEMORY_ENABLED=true
+```
+
+:::note
+All configuration changes require an application restart to take effect. These settings are compatible with native images and work at runtime.
+:::
+
 ## Available Metrics
 
 Below is a list of all the metrics exposed by GeoPulse.
@@ -84,4 +154,48 @@ The following custom metrics provide insights into specific features and compone
 
 - Metrics without tags represent overall/aggregate values across all users.
 - Metrics with `_per_user_` in the name are tagged with `user` and provide per-user breakdowns.
-- All metrics are updated every 10 minutes via a scheduled job.
+- All metrics are refreshed at regular intervals (default: 10 minutes, configurable via `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL`).
+
+## Performance Considerations
+
+### Resource Usage
+
+Custom metrics collection involves periodic database queries. Consider the following when configuring metrics:
+
+- **Per-user metrics** (`gps_points_per_user_total`, `timeline_stays_per_user_total`, etc.) iterate over all users and can be resource-intensive with many users.
+- **Aggregate metrics** (`gps_points_total`, `users_total`, etc.) are lightweight single queries.
+- **Memory metrics** (`process_resident_memory_bytes`, `process_virtual_memory_bytes`) are very lightweight and don't query the database.
+
+### Optimization Strategies
+
+For high-user-count deployments:
+
+1. **Disable per-user metrics** if you only need aggregate statistics:
+   ```bash
+   GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED=false
+   GEOPULSE_PROMETHEUS_TIMELINE_ENABLED=false
+   GEOPULSE_PROMETHEUS_FAVORITES_ENABLED=false
+   ```
+
+2. **Increase refresh interval** to reduce database load:
+   ```bash
+   GEOPULSE_PROMETHEUS_REFRESH_INTERVAL=30m
+   ```
+
+3. **Disable all custom metrics** (keep only default Micrometer metrics):
+   ```bash
+   GEOPULSE_PROMETHEUS_ENABLED=false
+   ```
+   This is the default configuration. The endpoint will still be available with HTTP, JVM, and datasource metrics.
+
+## Configuration Hierarchy
+
+The configuration works in a hierarchical manner:
+
+1. **Prometheus Endpoint** - Always enabled at build time. The `/api/prometheus/metrics` endpoint is always available and will always expose default Micrometer metrics (HTTP requests, JVM, datasource).
+
+2. **`GEOPULSE_PROMETHEUS_ENABLED=false`** (default) - Disables all custom GeoPulse metrics. Only default Micrometer metrics are exposed.
+
+3. **`GEOPULSE_PROMETHEUS_ENABLED=true`** - Enables custom GeoPulse metrics in addition to default Micrometer metrics.
+
+4. **Per-metric flags** (e.g., `GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED=false`) - Fine-grained control over specific custom metric categories. Only effective when `GEOPULSE_PROMETHEUS_ENABLED=true`.

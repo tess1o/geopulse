@@ -83,6 +83,62 @@ build-backend-native: build-backend-native-arm64 build-backend-native-amd64
 		$(GHCR_BACKEND_IMAGE):native-latest-arm64
 	@echo "✅ Multi-arch native images built and pushed successfully (Docker Hub + GHCR)."
 
+# Build Compatible Native Images (x86-64-v2 for old CPUs, armv8-a+nolse for Raspberry Pi)
+.PHONY: build-backend-native-amd64-compat
+build-backend-native-amd64-compat: ensure-builder
+	@echo "🏗️  Building compatible native backend Docker image for AMD64 (x86-64-v2)..."
+	docker buildx build --platform linux/amd64 \
+		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat \
+		-t $(BACKEND_IMAGE):native-compat-amd64 \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat \
+		-t $(GHCR_BACKEND_IMAGE):native-compat-amd64 \
+		--build-arg VERSION=$(VERSION_NATIVE) \
+		--build-arg QUARKUS_NATIVE_BUILD_ARGS=",-march=x86-64-v2" \
+		-f backend/Dockerfile.native \
+		--push \
+		.
+	@echo "✅ AMD64 compatible native backend image pushed successfully."
+
+.PHONY: build-backend-native-arm64-compat
+build-backend-native-arm64-compat: ensure-builder
+	@echo "🏗️  Building compatible native backend Docker image for ARM64 (Raspberry Pi)..."
+	docker buildx build --platform linux/arm64 \
+		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat \
+		-t $(BACKEND_IMAGE):native-compat-arm64 \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat \
+		-t $(GHCR_BACKEND_IMAGE):native-compat-arm64 \
+		--build-arg VERSION=$(VERSION_NATIVE) \
+		--build-arg QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a+nolse" \
+		-f backend/Dockerfile.native \
+		--push \
+		.
+	@echo "✅ ARM64 compatible native backend image pushed successfully."
+
+.PHONY: build-backend-native-compat
+build-backend-native-compat: build-backend-native-amd64-compat build-backend-native-arm64-compat
+	@echo "🧩 Creating multi-arch compatible manifest for Docker Hub..."
+	docker buildx imagetools create \
+		-t $(BACKEND_IMAGE):$(VERSION_NATIVE)-compat \
+		$(BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat \
+		$(BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat
+	docker buildx imagetools create \
+		-t $(BACKEND_IMAGE):native-compat-latest \
+		-t $(BACKEND_IMAGE):compat-latest \
+		$(BACKEND_IMAGE):native-compat-amd64 \
+		$(BACKEND_IMAGE):native-compat-arm64
+
+	@echo "🧩 Creating multi-arch compatible manifest for GHCR..."
+	docker buildx imagetools create \
+		-t $(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-compat \
+		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-amd64-compat \
+		$(GHCR_BACKEND_IMAGE):$(VERSION_NATIVE)-arm64-compat
+	docker buildx imagetools create \
+		-t $(GHCR_BACKEND_IMAGE):native-compat-latest \
+		-t $(GHCR_BACKEND_IMAGE):compat-latest \
+		$(GHCR_BACKEND_IMAGE):native-compat-amd64 \
+		$(GHCR_BACKEND_IMAGE):native-compat-arm64
+	@echo "✅ Multi-arch compatible native images built and pushed successfully (Docker Hub + GHCR)."
+
 # Build multi-architecture backend image
 .PHONY: build-backend-jvm
 build-backend-jvm: ensure-builder

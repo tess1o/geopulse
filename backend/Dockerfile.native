@@ -28,8 +28,10 @@ RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.9.0:go-offline 
 COPY --chown=quarkus:quarkus backend/src backend/src
 
 # Build the native executable
-# Note: quarkus.native.march defaults to 'compatibility' in pom.xml for portability
-# Can be overridden via QUARKUS_NATIVE_BUILD_ARGS (e.g., ",-march=armv8-a" for Raspberry Pi)
+# Uses GraalVM defaults: x86-64-v3 for AMD64, armv8-a for ARM64 (optimal performance)
+# For old CPUs/Raspberry Pi, override via QUARKUS_NATIVE_BUILD_ARGS:
+#   AMD64 compatible (x86-64-v2): QUARKUS_NATIVE_BUILD_ARGS=",-march=x86-64-v2"
+#   ARM64 compatible (Raspberry Pi): QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a+nolse"
 RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
 
 # ==========================

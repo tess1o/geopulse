@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
-        <version>1.4.2</version>
+        <version>1.4.3</version>
     </parent>
     <artifactId>backend</artifactId>
 
@@ -411,7 +411,6 @@
             </activation>
             <properties>
                 <quarkus.native.auto-service-loader-registration>true</quarkus.native.auto-service-loader-registration>
-                <quarkus.native.march>compatibility</quarkus.native.march>
                 <quarkus.native.additional-build-args>
                     --initialize-at-run-time=dev.langchain4j.internal.RetryUtils,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,

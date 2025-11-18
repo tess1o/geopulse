@@ -103,6 +103,33 @@ chmod +x mosquitto_entrypoint.sh
 >
 > #### Multi-Architecture Support
 > The native backend images support both AMD64 and ARM64 architectures, including Raspberry Pi. Docker will automatically pull the correct image for your platform.
+>
+> #### CPU Compatibility Issues
+> If your backend container fails to start with an error about missing CPU features like:
+> ```
+> The current machine does not support all of the following CPU features that are required by the image:
+> [AVX2, BMI1, BMI2, FMA, F16C, LZCNT] (AMD64) or [FP, ASIMD, CRC32, LSE] (ARM64)
+> ```
+>
+> **This means you have an older CPU** that doesn't support the optimized instructions used by the default image.
+>
+> **Solution**: Use the compatible image variant instead:
+>
+> Edit your `docker-compose.yml` and replace the backend image:
+> ```yaml
+>   geopulse-backend:
+>     # Comment out the default optimized image:
+>     # image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+>     # Use the compatible image instead:
+>     image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
+> ```
+>
+> **Who needs the compatible image?**
+> - **Old x86 CPUs**: Intel pre-Haswell (before 2013), AMD pre-Excavator (before 2015)
+>   - Examples: Intel Core i5-3470T (Ivy Bridge), Core i7-2600 (Sandy Bridge)
+> - **Raspberry Pi 3/4**: ARM Cortex-A53/A72 processors
+>
+> **Performance Note**: The compatible image uses x86-64-v2 (AMD64) or armv8-a+nolse (ARM64) instruction sets, which sacrifice some performance for broader compatibility. Modern CPUs (2015+) should use the default optimized image for best performance.
 
 ### 2. Configure Environment (`.env`)
 
@@ -143,7 +170,7 @@ These variables control how users access the GeoPulse frontend and how authentic
 **When to keep GEOPULSE_COOKIE_DOMAIN empty (recommended):**
 - ✅ All standard Docker deployments using docker-compose
 - ✅ Localhost access: `http://localhost:5555`
-- ✅ Homelab IP access: `http://1.4.268.1.100:5555`
+- ✅ Homelab IP access: `http://1.4.368.1.100:5555`
 - ✅ Single domain production: `https://geopulse.yourdomain.com`
 - ✅ Any deployment where nginx proxies both frontend and backend (standard GeoPulse setup)
 
@@ -170,7 +197,7 @@ These variables control how users access the GeoPulse frontend and how authentic
 - **Homelab access (via IP address and/or local domain):**
   ```env
   # Allows access via localhost, a local network IP, and a local domain
-  GEOPULSE_UI_URL=http://localhost:5555,http://1.4.268.1.100:5555,http://geopulse.local
+  GEOPULSE_UI_URL=http://localhost:5555,http://1.4.368.1.100:5555,http://geopulse.local
   GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
   GEOPULSE_AUTH_SECURE_COOKIES=false
   ```
@@ -397,3 +424,28 @@ curl http://localhost:8080/api/health
   `docker compose logs geopulse-keygen`
 - Keys are persistent - they won't be regenerated if they already exist
 - To regenerate keys: remove the `keys/` directory and restart with `docker compose up -d`
+
+**CPU compatibility issues:**
+
+If the backend container crashes immediately with errors about missing CPU features:
+
+```bash
+docker compose logs geopulse-backend
+```
+
+Look for errors like:
+- `[AVX2, BMI1, BMI2, FMA, F16C, LZCNT]` (AMD64 CPUs)
+- `[FP, ASIMD, CRC32, LSE]` (ARM64/Raspberry Pi)
+
+**Solution**: Switch to the compatible image tag as described in the "CPU Compatibility Issues" section above. Edit your `docker-compose.yml` to use `${GEOPULSE_VERSION}-native-compat` instead of `${GEOPULSE_VERSION}-native`.
+
+**Check your CPU capabilities:**
+```bash
+# For x86/AMD64:
+lscpu | grep -i "flags"
+# Look for: avx2, bmi1, bmi2, fma
+
+# For ARM64:
+cat /proc/cpuinfo | grep "Features"
+# Look for: asimd, crc32, atomics
+```
