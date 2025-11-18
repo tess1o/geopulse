@@ -95,4 +95,53 @@ public class UpdateTimelinePreferencesRequest {
     @Min(value = 10, message = "Trip sustained stop min duration must be at least 10 seconds")
     @Max(value = 600, message = "Trip sustained stop min duration must be at most 600 seconds (10 minutes)")
     private Integer tripSustainedStopMinDurationSeconds;
+
+    // Optional Trip Types - Bicycle
+    private Boolean bicycleEnabled;
+
+    @DecimalMin(value = "5.0", message = "Bicycle min avg speed must be at least 5.0 km/h")
+    @DecimalMax(value = "15.0", message = "Bicycle min avg speed must be at most 15.0 km/h")
+    private Double bicycleMinAvgSpeed;
+
+    @DecimalMin(value = "15.0", message = "Bicycle max avg speed must be at least 15.0 km/h")
+    @DecimalMax(value = "35.0", message = "Bicycle max avg speed must be at most 35.0 km/h")
+    private Double bicycleMaxAvgSpeed;
+
+    @DecimalMin(value = "20.0", message = "Bicycle max max speed must be at least 20.0 km/h")
+    @DecimalMax(value = "50.0", message = "Bicycle max max speed must be at most 50.0 km/h")
+    private Double bicycleMaxMaxSpeed;
+
+    // Optional Trip Types - Train
+    private Boolean trainEnabled;
+
+    @DecimalMin(value = "20.0", message = "Train min avg speed must be at least 20.0 km/h")
+    @DecimalMax(value = "50.0", message = "Train min avg speed must be at most 50.0 km/h")
+    private Double trainMinAvgSpeed;
+
+    @DecimalMin(value = "80.0", message = "Train max avg speed must be at least 80.0 km/h")
+    @DecimalMax(value = "200.0", message = "Train max avg speed must be at most 200.0 km/h")
+    private Double trainMaxAvgSpeed;
+
+    @DecimalMin(value = "60.0", message = "Train min max speed must be at least 60.0 km/h")
+    @DecimalMax(value = "120.0", message = "Train min max speed must be at most 120.0 km/h")
+    private Double trainMinMaxSpeed;
+
+    @DecimalMin(value = "100.0", message = "Train max max speed must be at least 100.0 km/h")
+    @DecimalMax(value = "250.0", message = "Train max max speed must be at most 250.0 km/h")
+    private Double trainMaxMaxSpeed;
+
+    @DecimalMin(value = "5.0", message = "Train max speed variance must be at least 5.0")
+    @DecimalMax(value = "30.0", message = "Train max speed variance must be at most 30.0")
+    private Double trainMaxSpeedVariance;
+
+    // Optional Trip Types - Flight
+    private Boolean flightEnabled;
+
+    @DecimalMin(value = "250.0", message = "Flight min avg speed must be at least 250.0 km/h")
+    @DecimalMax(value = "600.0", message = "Flight min avg speed must be at most 600.0 km/h")
+    private Double flightMinAvgSpeed;
+
+    @DecimalMin(value = "400.0", message = "Flight min max speed must be at least 400.0 km/h")
+    @DecimalMax(value = "900.0", message = "Flight min max speed must be at most 900.0 km/h")
+    private Double flightMinMaxSpeed;
 }

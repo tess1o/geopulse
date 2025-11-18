@@ -78,56 +78,81 @@ public class TravelClassification {
 
     /**
      * Enhanced classification algorithm using GPS statistics and speed variance analysis.
+     * Now supports optional trip types: BICYCLE, TRAIN, FLIGHT.
      */
     private TripType classifyEnhanced(double avgSpeedKmh, double maxSpeedKmh, double distanceKm,
                                       Double speedVariance, Integer lowAccuracyCount, TimelineConfig config) {
 
-        // Get thresholds from config
-        double walkingMaxAvg = config.getWalkingMaxAvgSpeed();
-        double walkingMaxMax = config.getWalkingMaxMaxSpeed();
-        double carMinAvg = config.getCarMinAvgSpeed();
-        double carMinMax = config.getCarMinMaxSpeed();
-        double shortDistanceKm = config.getShortDistanceKm();
+        // Use new classification method with optional types
+        return classifyWithOptionalTypes(avgSpeedKmh, maxSpeedKmh, speedVariance, config);
+    }
 
-        // Data quality assessment
-        boolean hasReliableData = lowAccuracyCount == null || lowAccuracyCount < 5; // Fewer than 5 low-accuracy points
+    /**
+     * Classification with optional trip types (BICYCLE, TRAIN, FLIGHT).
+     *
+     * CRITICAL PRIORITY ORDER:
+     * 1. FLIGHT - highest priority (unambiguous speeds 400+ km/h avg OR 500+ km/h peak)
+     * 2. TRAIN - high speed with low variance (30-150 km/h avg, variance < 15, peak >= 80 km/h)
+     * 3. BICYCLE - medium speeds (8-25 km/h avg, peak <= 35 km/h) - MUST be before CAR!
+     * 4. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
+     * 5. WALK - low speeds (<= 6 km/h avg, <= 8 km/h peak)
+     * 6. UNKNOWN - fallback
+     *
+     * @param avgSpeedKmh   Average speed in km/h
+     * @param maxSpeedKmh   Maximum speed in km/h
+     * @param speedVariance Speed variance (null if not available)
+     * @param config        Timeline configuration
+     * @return Classified trip type
+     */
+    private TripType classifyWithOptionalTypes(double avgSpeedKmh, double maxSpeedKmh,
+                                               Double speedVariance, TimelineConfig config) {
 
-        // Speed variance analysis (if available)
-        boolean steadyMovement = speedVariance != null && speedVariance < 10.0; // Low variance = steady movement
-        boolean variableMovement = speedVariance != null && speedVariance > 25.0; // High variance = stop-and-go
-
-        // Short trip handling with enhanced logic
-        boolean shortTrip = distanceKm <= shortDistanceKm;
-
-        // Enhanced walking detection
-        boolean avgSpeedWithinWalking = avgSpeedKmh <= walkingMaxAvg;
-        boolean maxSpeedWithinWalking = maxSpeedKmh <= walkingMaxMax;
-        boolean avgSpeedSlightlyAboveWalking = avgSpeedKmh <= (walkingMaxAvg + (shortTrip ? 2.0 : 1.0));
-
-        // Enhanced car detection
-        boolean avgSpeedIndicatesCar = avgSpeedKmh >= carMinAvg;
-        boolean maxSpeedIndicatesCar = maxSpeedKmh >= carMinMax;
-
-        // Classification logic with variance analysis
-        if (avgSpeedWithinWalking && maxSpeedWithinWalking) {
-            // Clear walking case
-            return WALK;
-        } else if (avgSpeedIndicatesCar || maxSpeedIndicatesCar) {
-            // Clear driving case
-            return CAR;
-        } else if (shortTrip && avgSpeedSlightlyAboveWalking && maxSpeedWithinWalking) {
-            // Short trip with slightly elevated speed - likely walking
-            return WALK;
-        } else if (hasReliableData && steadyMovement && avgSpeedKmh < (walkingMaxAvg + 2.0)) {
-            // Steady movement at moderate speed with good data quality - likely walking
-            return WALK;
-        } else if (variableMovement && avgSpeedKmh > (walkingMaxAvg - 1.0)) {
-            // Variable speed (stop-and-go) suggests driving
-            return CAR;
-        } else {
-            // Fallback to original classification logic
-            return classify(avgSpeedKmh, maxSpeedKmh, distanceKm, config);
+        // 1. FLIGHT - highest priority (unambiguous speeds)
+        //    Uses OR logic to handle long taxi/ground time
+        if (Boolean.TRUE.equals(config.getFlightEnabled()) &&
+                (avgSpeedKmh >= config.getFlightMinAvgSpeed() ||
+                        maxSpeedKmh >= config.getFlightMinMaxSpeed())) {
+            return FLIGHT;
         }
+
+        // 2. TRAIN - high speed with low variance and minimum peak speed
+        //    Must be checked BEFORE CAR to distinguish based on variance
+        //    trainMinMaxSpeed filters out station-only trips
+        if (Boolean.TRUE.equals(config.getTrainEnabled()) &&
+                avgSpeedKmh >= config.getTrainMinAvgSpeed() &&
+                avgSpeedKmh <= config.getTrainMaxAvgSpeed() &&
+                maxSpeedKmh >= config.getTrainMinMaxSpeed() &&
+                maxSpeedKmh <= config.getTrainMaxMaxSpeed() &&
+                speedVariance != null &&
+                speedVariance < config.getTrainMaxSpeedVariance()) {
+            return TRAIN;
+        }
+
+        // 3. BICYCLE - medium speeds (only if enabled)
+        //    CRITICAL: Must be checked BEFORE CAR due to overlapping speed ranges
+        //    Also captures running/jogging (consider displaying as "Cycling/Running")
+        if (Boolean.TRUE.equals(config.getBicycleEnabled()) &&
+                avgSpeedKmh >= config.getBicycleMinAvgSpeed() &&
+                avgSpeedKmh <= config.getBicycleMaxAvgSpeed() &&
+                maxSpeedKmh <= config.getBicycleMaxMaxSpeed()) {
+            return BICYCLE;
+        }
+
+        // 4. CAR - motorized transport (mandatory)
+        //    CRITICAL: Must be checked AFTER BICYCLE to avoid capturing bicycle trips
+        if (avgSpeedKmh >= config.getCarMinAvgSpeed() ||
+                maxSpeedKmh >= config.getCarMinMaxSpeed()) {
+            return CAR;
+        }
+
+        // 5. WALK - low speeds (mandatory)
+        if (avgSpeedKmh <= config.getWalkingMaxAvgSpeed() &&
+                maxSpeedKmh <= config.getWalkingMaxMaxSpeed()) {
+            return WALK;
+        }
+
+        // 6. UNKNOWN - fallback for edge cases
+        return UNKNOWN;
     }
 
     /**

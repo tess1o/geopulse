@@ -89,6 +89,35 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "tripSustainedStopMinDurationSeconds",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Optional Trip Types - Bicycle
+    @org.mapstruct.Mapping(target = "bicycleEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "bicycleMinAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "bicycleMaxAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "bicycleMaxMaxSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Optional Trip Types - Train
+    @org.mapstruct.Mapping(target = "trainEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "trainMinAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "trainMaxAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "trainMinMaxSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "trainMaxMaxSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "trainMaxSpeedVariance",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Optional Trip Types - Flight
+    @org.mapstruct.Mapping(target = "flightEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "flightMinAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "flightMinMaxSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     void mergeImportIntoExisting(TimelinePreferences fromImport, @MappingTarget TimelinePreferences existing);
 
     /**
@@ -127,6 +156,20 @@ public interface TimelinePreferencesMapper {
                     .shortDistanceKm(fromImport.getShortDistanceKm())
                     .tripArrivalDetectionMinDurationSeconds(fromImport.getTripArrivalDetectionMinDurationSeconds())
                     .tripSustainedStopMinDurationSeconds(fromImport.getTripSustainedStopMinDurationSeconds())
+                    // Optional Trip Types
+                    .bicycleEnabled(fromImport.getBicycleEnabled())
+                    .bicycleMinAvgSpeed(fromImport.getBicycleMinAvgSpeed())
+                    .bicycleMaxAvgSpeed(fromImport.getBicycleMaxAvgSpeed())
+                    .bicycleMaxMaxSpeed(fromImport.getBicycleMaxMaxSpeed())
+                    .trainEnabled(fromImport.getTrainEnabled())
+                    .trainMinAvgSpeed(fromImport.getTrainMinAvgSpeed())
+                    .trainMaxAvgSpeed(fromImport.getTrainMaxAvgSpeed())
+                    .trainMinMaxSpeed(fromImport.getTrainMinMaxSpeed())
+                    .trainMaxMaxSpeed(fromImport.getTrainMaxMaxSpeed())
+                    .trainMaxSpeedVariance(fromImport.getTrainMaxSpeedVariance())
+                    .flightEnabled(fromImport.getFlightEnabled())
+                    .flightMinAvgSpeed(fromImport.getFlightMinAvgSpeed())
+                    .flightMinMaxSpeed(fromImport.getFlightMinMaxSpeed())
                     .build();
         }
         
@@ -155,6 +198,20 @@ public interface TimelinePreferencesMapper {
                 .shortDistanceKm(existing.getShortDistanceKm())
                 .tripArrivalDetectionMinDurationSeconds(existing.getTripArrivalDetectionMinDurationSeconds())
                 .tripSustainedStopMinDurationSeconds(existing.getTripSustainedStopMinDurationSeconds())
+                // Optional Trip Types
+                .bicycleEnabled(existing.getBicycleEnabled())
+                .bicycleMinAvgSpeed(existing.getBicycleMinAvgSpeed())
+                .bicycleMaxAvgSpeed(existing.getBicycleMaxAvgSpeed())
+                .bicycleMaxMaxSpeed(existing.getBicycleMaxMaxSpeed())
+                .trainEnabled(existing.getTrainEnabled())
+                .trainMinAvgSpeed(existing.getTrainMinAvgSpeed())
+                .trainMaxAvgSpeed(existing.getTrainMaxAvgSpeed())
+                .trainMinMaxSpeed(existing.getTrainMinMaxSpeed())
+                .trainMaxMaxSpeed(existing.getTrainMaxMaxSpeed())
+                .trainMaxSpeedVariance(existing.getTrainMaxSpeedVariance())
+                .flightEnabled(existing.getFlightEnabled())
+                .flightMinAvgSpeed(existing.getFlightMinAvgSpeed())
+                .flightMinMaxSpeed(existing.getFlightMinMaxSpeed())
                 .build();
         
         // Use MapStruct to merge non-null import values into the result

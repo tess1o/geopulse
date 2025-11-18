@@ -194,4 +194,101 @@ public class TimelineConfig {
      * This helps filter out brief stops while detecting real arrivals.
      */
     private Integer tripSustainedStopMinDurationSeconds;
+
+    // Optional Trip Types Configuration - Bicycle
+    /**
+     * Enable or disable bicycle trip type detection.
+     * When disabled, trips in bicycle speed range (8-25 km/h) fall back to CAR or WALK classification.
+     * Default: false (disabled)
+     */
+    private Boolean bicycleEnabled;
+
+    /**
+     * Minimum average speed in km/h to classify movement as bicycle.
+     * Separates cycling from fast walking/jogging.
+     * Default: 8.0 km/h
+     */
+    private Double bicycleMinAvgSpeed;
+
+    /**
+     * Maximum average speed in km/h to classify movement as bicycle.
+     * Above this speed, trips are classified as CAR.
+     * Default: 25.0 km/h (typical comfortable cycling speed)
+     */
+    private Double bicycleMaxAvgSpeed;
+
+    /**
+     * Maximum peak speed in km/h for bicycle classification.
+     * Allows for downhill segments or e-bikes while staying below car speeds.
+     * Default: 35.0 km/h
+     */
+    private Double bicycleMaxMaxSpeed;
+
+    // Optional Trip Types Configuration - Train
+    /**
+     * Enable or disable train trip type detection.
+     * When disabled, trips matching train criteria fall back to CAR classification.
+     * Default: false (disabled)
+     */
+    private Boolean trainEnabled;
+
+    /**
+     * Minimum average speed in km/h to classify movement as train.
+     * Separates train from cars in heavy traffic.
+     * Default: 30.0 km/h
+     */
+    private Double trainMinAvgSpeed;
+
+    /**
+     * Maximum average speed in km/h to classify movement as train.
+     * Covers regional and intercity trains.
+     * Default: 150.0 km/h
+     */
+    private Double trainMaxAvgSpeed;
+
+    /**
+     * Minimum peak speed in km/h for train classification.
+     * CRITICAL: Filters out trips with only station waiting time.
+     * Ensures actual high-speed train movement was captured.
+     * Default: 80.0 km/h
+     */
+    private Double trainMinMaxSpeed;
+
+    /**
+     * Maximum peak speed in km/h for train classification.
+     * Upper limit for train speeds.
+     * Default: 180.0 km/h
+     */
+    private Double trainMaxMaxSpeed;
+
+    /**
+     * Maximum speed variance for train classification.
+     * KEY DISCRIMINATOR: Trains maintain steady speed, cars have stop-and-go patterns.
+     * Low variance (< 15) indicates train, high variance (> 25) indicates car.
+     * Default: 15.0
+     */
+    private Double trainMaxSpeedVariance;
+
+    // Optional Trip Types Configuration - Flight
+    /**
+     * Enable or disable flight trip type detection.
+     * When disabled, flights may be misclassified as CAR or UNKNOWN.
+     * Default: false (disabled)
+     */
+    private Boolean flightEnabled;
+
+    /**
+     * Minimum average speed in km/h to classify movement as flight.
+     * Average includes taxi, takeoff, landing, and cruise.
+     * Default: 400.0 km/h
+     */
+    private Double flightMinAvgSpeed;
+
+    /**
+     * Minimum peak speed in km/h for flight classification.
+     * CRITICAL: Catches flights with long taxi/ground time using OR logic.
+     * Nothing else on earth reaches this speed.
+     * Default: 500.0 km/h
+     */
+    private Double flightMinMaxSpeed;
 }
