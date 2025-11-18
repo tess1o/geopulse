@@ -87,7 +87,7 @@ class GeocodingCacheTransactionRollbackTest {
      * - When outer transaction rolls back, cache writes survive
      * - Test PASSES because cached data persists
      */
-    /*
+
     @Test
     void testCacheWritesSurviveOuterTransactionRollback() throws Exception {
         log.info("=== Testing cache persistence during transaction rollback ===");
@@ -149,9 +149,9 @@ class GeocodingCacheTransactionRollbackTest {
         // Start new transaction to read cache
         userTransaction.begin();
         try {
-            Optional<FormattableGeocodingResult> cached1 = cacheGeocodingService.getCachedGeocodingResult(testPoint1);
-            Optional<FormattableGeocodingResult> cached2 = cacheGeocodingService.getCachedGeocodingResult(testPoint2);
-            Optional<FormattableGeocodingResult> cached3 = cacheGeocodingService.getCachedGeocodingResult(testPoint3);
+            Optional<FormattableGeocodingResult> cached1 = cacheGeocodingService.getCachedGeocodingResult(null, testPoint1);
+            Optional<FormattableGeocodingResult> cached2 = cacheGeocodingService.getCachedGeocodingResult(null, testPoint2);
+            Optional<FormattableGeocodingResult> cached3 = cacheGeocodingService.getCachedGeocodingResult(null, testPoint3);
 
             userTransaction.commit();
 
@@ -204,12 +204,10 @@ class GeocodingCacheTransactionRollbackTest {
         }
     }
 
-     */
 
     /**
      * Complementary test: Verify that cache reads work correctly with independent transactions.
      */
-    /*
     @Test
     void testCacheReadsWorkIndependentOfTransaction() throws Exception {
         log.info("=== Testing cache reads with transaction independence ===");
@@ -226,12 +224,12 @@ class GeocodingCacheTransactionRollbackTest {
         userTransaction.commit();
 
         // Now read without an active transaction (simulates background job scenario)
-        Optional<FormattableGeocodingResult> cached = cacheGeocodingService.getCachedGeocodingResult(testPoint1);
+        Optional<FormattableGeocodingResult> cached = cacheGeocodingService.getCachedGeocodingResult(null, testPoint1);
 
         assertTrue(cached.isPresent(), "Cache read should work without active transaction (with REQUIRES_NEW)");
         assertEquals("Test Location", cached.get().getFormattedDisplayName());
 
         log.info("=== TEST PASSED: Cache reads work independently of transactions! ===");
     }
-    */
+
 }

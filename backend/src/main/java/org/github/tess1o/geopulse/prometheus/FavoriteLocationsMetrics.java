@@ -57,7 +57,7 @@ public class FavoriteLocationsMetrics {
 
         // Calculate average favorites per user (among users with favorites)
         Long usersWithFavorites = (Long) entityManager.createNativeQuery(
-                "SELECT COUNT(DISTINCT user_id) FROM favorites")
+                "SELECT COUNT(DISTINCT user_id) FROM favorite_locations")
                 .getSingleResult();
         if (usersWithFavorites > 0) {
             avgFavoritesPerUser.set(total / usersWithFavorites);

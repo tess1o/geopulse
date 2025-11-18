@@ -131,6 +131,12 @@ public class CacheGeocodingService {
      * Uses REQUIRES_NEW to ensure cache writes commit independently and survive outer transaction rollbacks.
      * This prevents the "going in circles" problem where successful geocoding results are lost on rollback.
      *
+     * RACE CONDITION HANDLING:
+     * Due to REQUIRES_NEW transaction isolation, this method cannot see uncommitted data from parent transaction.
+     * This can cause findOriginalByExactCoordinates() to return null even when an original exists (but uncommitted).
+     * The database unique constraint (idx_reverse_geocoding_unique_original_coords) will catch duplicate inserts.
+     * We handle the constraint violation by querying again and updating the existing entry.
+     *
      * @param geocodingResult The structured geocoding result to cache
      */
     @Transactional(TxType.REQUIRES_NEW)
@@ -148,32 +154,93 @@ public class CacheGeocodingService {
             entity.setUser(null);
 
             // Check if we already have this exact location (original only)
-            ReverseGeocodingLocationEntity existing = repository.findByExactCoordinates(requestCoordinates);
-            if (existing != null && existing.getUser() == null) {
-                // Update existing original entry
-                existing.setResultCoordinates(entity.getResultCoordinates());
-                existing.setBoundingBox(entity.getBoundingBox());
-                existing.setDisplayName(entity.getDisplayName());
-                existing.setProviderName(entity.getProviderName());
-                existing.setCity(entity.getCity());
-                existing.setCountry(entity.getCountry());
-                existing.setLastAccessedAt(Instant.now());
-
-                repository.persist(existing);
+            // CRITICAL: findOriginalByExactCoordinates() only returns originals (user_id IS NULL)
+            // This prevents duplicate originals when user copies exist at same coordinates
+            //
+            // NOTE: Due to REQUIRES_NEW isolation, this may return null even if original exists
+            // (but is uncommitted in parent transaction). The unique constraint will catch this.
+            ReverseGeocodingLocationEntity existing = repository.findOriginalByExactCoordinates(requestCoordinates);
+            if (existing != null) {
+                // Update existing original entry (we know existing.getUser() == null)
+                updateExistingOriginal(existing, entity);
                 log.debug("Updated cached original for coordinates: lon={}, lat={}",
                         requestCoordinates.getX(), requestCoordinates.getY());
             } else {
                 // Create new original entry
-                repository.persist(entity);
-                log.debug("Cached new original for coordinates: lon={}, lat={}",
-                        requestCoordinates.getX(), requestCoordinates.getY());
+                Instant now = Instant.now();
+                entity.setCreatedAt(now);
+                entity.setLastAccessedAt(now);
+
+                try {
+                    repository.persist(entity);
+                    log.debug("Cached new original for coordinates: lon={}, lat={}",
+                            requestCoordinates.getX(), requestCoordinates.getY());
+                } catch (jakarta.persistence.PersistenceException e) {
+                    // Check if this is a unique constraint violation
+                    if (isUniqueConstraintViolation(e)) {
+                        // Another transaction created the original while we were working
+                        // Query again to get the existing entry and update it
+                        log.debug("Unique constraint violation - original was created concurrently. " +
+                                "Querying again and updating for coordinates: lon={}, lat={}",
+                                requestCoordinates.getX(), requestCoordinates.getY());
+
+                        ReverseGeocodingLocationEntity existingAfterRetry =
+                            repository.findOriginalByExactCoordinates(requestCoordinates);
+
+                        if (existingAfterRetry != null) {
+                            updateExistingOriginal(existingAfterRetry, entity);
+                            log.debug("Updated existing original after constraint violation for coordinates: lon={}, lat={}",
+                                    requestCoordinates.getX(), requestCoordinates.getY());
+                        } else {
+                            // Should never happen - we got constraint violation but can't find the entry
+                            log.error("Unique constraint violation but cannot find existing original for coordinates: lon={}, lat={}",
+                                    requestCoordinates.getX(), requestCoordinates.getY());
+                            throw new GeocodingCacheException("Constraint violation but existing entry not found", e);
+                        }
+                    } else {
+                        // Some other persistence exception
+                        throw e;
+                    }
+                }
             }
 
+        } catch (GeocodingCacheException e) {
+            // Re-throw our own exceptions
+            throw e;
         } catch (Exception e) {
             log.error("Error caching geocoding result for coordinates: lon={}, lat={}",
                     requestCoordinates.getX(), requestCoordinates.getY(), e);
             throw new GeocodingCacheException("Failed to cache geocoding result", e);
         }
+    }
+
+    /**
+     * Update an existing original entry with new data.
+     */
+    private void updateExistingOriginal(ReverseGeocodingLocationEntity existing, ReverseGeocodingLocationEntity newData) {
+        existing.setResultCoordinates(newData.getResultCoordinates());
+        existing.setBoundingBox(newData.getBoundingBox());
+        existing.setDisplayName(newData.getDisplayName());
+        existing.setProviderName(newData.getProviderName());
+        existing.setCity(newData.getCity());
+        existing.setCountry(newData.getCountry());
+        existing.setLastAccessedAt(Instant.now());
+        repository.persist(existing);
+    }
+
+    /**
+     * Check if the exception is a unique constraint violation.
+     */
+    private boolean isUniqueConstraintViolation(Exception e) {
+        // Check for PostgreSQL unique violation error code 23505
+        String message = e.getMessage();
+        if (message == null) {
+            return false;
+        }
+
+        return message.contains("unique constraint")
+            || message.contains("idx_reverse_geocoding_unique_original_coords")
+            || message.contains("duplicate key value");
     }
 
     /**

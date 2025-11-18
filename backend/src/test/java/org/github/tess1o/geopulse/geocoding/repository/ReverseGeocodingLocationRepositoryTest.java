@@ -5,6 +5,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -35,6 +36,9 @@ class ReverseGeocodingLocationRepositoryTest {
 
     @Inject
     EntityManager entityManager;
+
+    @Inject
+    CleanupHelper cleanupHelper;
 
     private static UUID USER_A_ID;
     private static UUID USER_B_ID;
@@ -75,9 +79,7 @@ class ReverseGeocodingLocationRepositoryTest {
     @AfterEach
     @Transactional
     void cleanupGeocodingData() {
-        // Clean up geocoding data after each test
-        entityManager.createQuery("DELETE FROM ReverseGeocodingLocationEntity").executeUpdate();
-        entityManager.createQuery("DELETE FROM UserEntity WHERE email LIKE '%geocoding-test%'").executeUpdate();
+        cleanupHelper.cleanupAll();
     }
 
     // ==================== User Filtering Tests ====================

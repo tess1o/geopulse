@@ -35,6 +35,12 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
      * @return Best matching cached location or null
      */
     public ReverseGeocodingLocationEntity findByRequestCoordinates(UUID userId, Point requestCoordinates, double toleranceMeters) {
+        // Handle null coordinates gracefully
+        if (requestCoordinates == null) {
+            log.debug("Received null coordinates for user {}, returning null", userId);
+            return null;
+        }
+
         String searchQuery = """
                 SELECT *
                 FROM reverse_geocoding_location
@@ -76,13 +82,38 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
     }
 
     /**
-     * Find cached location by exact request coordinates.
+     * Find ORIGINAL cached location by exact request coordinates.
+     * CRITICAL: Only returns originals (user_id IS NULL), never user-specific copies.
+     * Used by cacheGeocodingResult() to update existing originals without creating duplicates.
+     *
+     * Uses ST_Equals for proper PostGIS geometry comparison (JPA equality doesn't work for geometry types).
      *
      * @param requestCoordinates The exact coordinates to search for
-     * @return Cached location or null
+     * @return Original cached location or null (never returns user-specific copies)
      */
-    public ReverseGeocodingLocationEntity findByExactCoordinates(Point requestCoordinates) {
-        return find("requestCoordinates", requestCoordinates).firstResult();
+    public ReverseGeocodingLocationEntity findOriginalByExactCoordinates(Point requestCoordinates) {
+        if (requestCoordinates == null) {
+            return null;
+        }
+
+        // CRITICAL: Must use ST_Equals for PostGIS geometry comparison
+        // JPA equality (find("requestCoordinates = ?1")) doesn't work for geometry types
+        String query = """
+                SELECT *
+                FROM reverse_geocoding_location
+                WHERE ST_Equals(request_coordinates, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))
+                  AND user_id IS NULL
+                LIMIT 1
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<ReverseGeocodingLocationEntity> results = getEntityManager()
+                .createNativeQuery(query, ReverseGeocodingLocationEntity.class)
+                .setParameter("lon", requestCoordinates.getX())
+                .setParameter("lat", requestCoordinates.getY())
+                .getResultList();
+
+        return results.isEmpty() ? null : results.get(0);
     }
 
     /**
