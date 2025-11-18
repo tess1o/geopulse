@@ -659,12 +659,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
 
                 if (wasUserSpecific) {
                     // User-specific entity from export - assign to importing user (not original user!)
-                    // Use native query to insert with user_id
+                    // Use native query to insert with user_id and auto-generated ID
                     String insertSql = """
                         INSERT INTO reverse_geocoding_location
-                        (request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
+                        (id, request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
                          created_at, last_accessed_at, city, country, user_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (nextval('reverse_geocoding_location_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """;
 
                     entityManager.createNativeQuery(insertSql)
@@ -703,12 +703,12 @@ public class GeoPulseImportStrategy implements ImportStrategy {
                         log.debug("Skipped importing original geocoding entity at ({}, {}) - already exists as {}",
                                 locationDto.getRequestLatitude(), locationDto.getRequestLongitude(), existing.getId());
                     } else {
-                        // Original doesn't exist - create it
+                        // Original doesn't exist - create it with auto-generated ID
                         String insertSql = """
                             INSERT INTO reverse_geocoding_location
-                            (request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
+                            (id, request_coordinates, result_coordinates, bounding_box, display_name, provider_name,
                              created_at, last_accessed_at, city, country, user_id)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                            VALUES (nextval('reverse_geocoding_location_seq'), ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                             """;
 
                         entityManager.createNativeQuery(insertSql)

@@ -54,6 +54,10 @@ class ReverseGeocodingLocationRepositoryTest {
     @BeforeEach
     @Transactional
     void setupUsers() {
+        // CRITICAL: Clean up first to prevent unique constraint violations
+        // when running multiple tests that use the same coordinates
+        cleanupHelper.cleanupAll();
+
         // Create test users
         userA = UserEntity.builder()
                 .email("user-a-geocoding-test@example.com")

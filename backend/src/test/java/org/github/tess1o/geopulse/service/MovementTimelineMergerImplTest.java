@@ -31,6 +31,7 @@ public class MovementTimelineMergerImplTest {
     private final TimelineConfig timelineConfig = TimelineConfig.builder()
             .mergeMaxDistanceMeters(mergeMaxDistanceMeters)
             .mergeMaxTimeGapMinutes(mergeMaxTimeGapMinutes)
+            .isMergeEnabled(true)
             .build();
 
     private MovementTimelineMergerImpl service;

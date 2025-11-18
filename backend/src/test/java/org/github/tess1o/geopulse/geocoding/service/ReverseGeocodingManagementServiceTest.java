@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
+import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
@@ -43,13 +44,16 @@ class ReverseGeocodingManagementServiceTest {
     @Inject
     EntityManager entityManager;
 
+    @Inject
+    CleanupHelper cleanupHelper;
+
     private static UUID USER_A_ID;
     private static UUID USER_B_ID;
 
     private static final double TEST_LAT = 40.7589;
     private static final double TEST_LON = -73.9851;
 
-    @BeforeAll
+    @BeforeEach
     @Transactional
     void setupUsers() {
         UserEntity userA = UserEntity.builder()
@@ -76,20 +80,7 @@ class ReverseGeocodingManagementServiceTest {
     @AfterEach
     @Transactional
     void cleanup() {
-        // Clean up timeline stays first (foreign key constraint)
-        entityManager.createNativeQuery("DELETE FROM timeline_stays WHERE user_id IN (?, ?)")
-                .setParameter(1, USER_A_ID)
-                .setParameter(2, USER_B_ID)
-                .executeUpdate();
-
-        // Clean up geocoding data
-        entityManager.createQuery("DELETE FROM ReverseGeocodingLocationEntity").executeUpdate();
-    }
-
-    @AfterAll
-    @Transactional
-    void cleanupUsers() {
-        entityManager.createQuery("DELETE FROM UserEntity WHERE email LIKE '%mgmt-test%'").executeUpdate();
+        cleanupHelper.cleanupAll();
     }
 
     // ==================== Copy-on-Write: User Modifying Original ====================

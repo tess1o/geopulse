@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingBatchService;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.locationtech.jts.geom.Point;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class LocationPointResolver {
     private final GeocodingService geocodingService;
     private final FavoriteLocationService favoriteLocationService;
     private final CacheGeocodingService cacheGeocodingService;
+    private final CacheGeocodingBatchService batchService;
 
     @Inject
     org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService jobProgressService;
@@ -32,10 +34,12 @@ public class LocationPointResolver {
     @Inject
     public LocationPointResolver(GeocodingService geocodingService,
                                  FavoriteLocationService favoriteLocationService,
-                                 CacheGeocodingService cacheGeocodingService) {
+                                 CacheGeocodingService cacheGeocodingService,
+                                 CacheGeocodingBatchService batchService) {
         this.geocodingService = geocodingService;
         this.favoriteLocationService = favoriteLocationService;
         this.cacheGeocodingService = cacheGeocodingService;
+        this.batchService = batchService;
     }
 
     /**
@@ -162,9 +166,9 @@ public class LocationPointResolver {
 
         // Step 2: Batch lookup cached geocoding results with user filtering
         Map<String, FormattableGeocodingResult> cachedResults =
-                cacheGeocodingService.getCachedGeocodingResultsBatch(userId, needGeocoding);
+                batchService.getCachedGeocodingResultsBatch(userId, needGeocoding);
         Map<String, Long> cachedIds =
-                cacheGeocodingService.getCachedGeocodingResultIdsBatch(userId, needGeocoding);
+                batchService.getCachedGeocodingResultIdsBatch(userId, needGeocoding);
 
         log.debug("Found {} cached geocoding results for user {} in {} s",
                 cachedResults.size(), userId, (System.currentTimeMillis() - step2StartTime) / 1000.0d);

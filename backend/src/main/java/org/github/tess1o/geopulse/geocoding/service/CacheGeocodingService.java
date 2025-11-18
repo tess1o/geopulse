@@ -8,18 +8,15 @@ import jakarta.transaction.Transactional.TxType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingCacheException;
+import org.github.tess1o.geopulse.geocoding.mapper.GeocodingEntityMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
-import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Ultra-simplified geocoding service that stores only formatted display names.
@@ -31,14 +28,18 @@ import java.util.stream.Collectors;
 public class CacheGeocodingService {
 
     private final ReverseGeocodingLocationRepository repository;
+    private final GeocodingEntityMapper entityMapper;
 
     @ConfigProperty(name = "geocoding.cache.spatial-tolerance-meters", defaultValue = "25")
     @StaticInitSafe
     double spatialToleranceMeters;
 
     @Inject
-    public CacheGeocodingService(ReverseGeocodingLocationRepository repository) {
+    public CacheGeocodingService(
+            ReverseGeocodingLocationRepository repository,
+            GeocodingEntityMapper entityMapper) {
         this.repository = repository;
+        this.entityMapper = entityMapper;
     }
 
     /**
@@ -64,19 +65,8 @@ public class CacheGeocodingService {
                 log.debug("Cache hit for user {} at coordinates: lon={}, lat={} (tolerance: {}m), provider: {}, isUserSpecific: {}",
                         userId, requestCoordinates.getX(), requestCoordinates.getY(), spatialToleranceMeters,
                         match.getProviderName(), match.getUser() != null);
-                
-                // Convert entity back to FormattableGeocodingResult
-                FormattableGeocodingResult result = SimpleFormattableResult.builder()
-                        .requestCoordinates(match.getRequestCoordinates())
-                        .resultCoordinates(match.getResultCoordinates())
-                        .boundingBox(match.getBoundingBox())
-                        .formattedDisplayName(match.getDisplayName())
-                        .providerName(match.getProviderName())
-                        .city(match.getCity())
-                        .country(match.getCountry())
-                        .build();
-                
-                return Optional.of(result);
+
+                return Optional.of(entityMapper.toResult(match));
             }
 
             log.debug("Cache miss for user {} at coordinates: lon={}, lat={}",
@@ -149,7 +139,7 @@ public class CacheGeocodingService {
 
         try {
             // Convert to entity and save
-            ReverseGeocodingLocationEntity entity = convertToEntity(geocodingResult);
+            ReverseGeocodingLocationEntity entity = entityMapper.toEntity(geocodingResult);
             // CRITICAL: Always save as original (user_id = NULL) for shared cache
             entity.setUser(null);
 
@@ -218,13 +208,7 @@ public class CacheGeocodingService {
      * Update an existing original entry with new data.
      */
     private void updateExistingOriginal(ReverseGeocodingLocationEntity existing, ReverseGeocodingLocationEntity newData) {
-        existing.setResultCoordinates(newData.getResultCoordinates());
-        existing.setBoundingBox(newData.getBoundingBox());
-        existing.setDisplayName(newData.getDisplayName());
-        existing.setProviderName(newData.getProviderName());
-        existing.setCity(newData.getCity());
-        existing.setCountry(newData.getCountry());
-        existing.setLastAccessedAt(Instant.now());
+        entityMapper.updateEntityFromResult(existing, entityMapper.toResult(newData));
         repository.persist(existing);
     }
 
@@ -241,127 +225,5 @@ public class CacheGeocodingService {
         return message.contains("unique constraint")
             || message.contains("idx_reverse_geocoding_unique_original_coords")
             || message.contains("duplicate key value");
-    }
-
-    /**
-     * Batch get cached geocoding result IDs for multiple coordinates.
-     * Optimized for timeline assembly to reduce database round-trips.
-     * Prioritizes user-specific copies over originals.
-     *
-     * @param userId The user ID to filter by
-     * @param coordinates List of coordinates to look up
-     * @return Map of coordinate string (lon,lat) to entity ID
-     */
-    @Transactional(TxType.REQUIRES_NEW)
-    public Map<String, Long> getCachedGeocodingResultIdsBatch(UUID userId, List<Point> coordinates) {
-        if (coordinates == null || coordinates.isEmpty()) {
-            return Map.of();
-        }
-
-        long startTime = System.currentTimeMillis();
-        try {
-            log.debug("Starting batch geocoding ID lookup for user {} with {} coordinates", userId, coordinates.size());
-
-            Map<String, ReverseGeocodingLocationEntity> cachedResults =
-                repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
-
-            long duration = System.currentTimeMillis() - startTime;
-            log.info("Batch geocoding ID lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
-                    duration, userId, coordinates.size(), cachedResults.size());
-
-            return cachedResults.entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> entry.getValue().getId()
-                    ));
-
-        } catch (jakarta.persistence.QueryTimeoutException e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.warn("Batch geocoding ID lookup timed out after {}ms for user {} with {} coordinates. " +
-                    "Returning empty result - locations will need individual geocoding.",
-                    duration, userId, coordinates.size());
-            return Map.of();
-        } catch (Exception e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.error("Error retrieving batch cached entity IDs for user {} with {} coordinates after {}ms",
-                    userId, coordinates.size(), duration, e);
-            return Map.of();
-        }
-    }
-
-    /**
-     * Batch get cached geocoding results for multiple coordinates.
-     * Optimized for timeline assembly to reduce database round-trips.
-     * Prioritizes user-specific copies over originals.
-     *
-     * @param userId The user ID to filter by
-     * @param coordinates List of coordinates to look up
-     * @return Map of coordinate string (lon,lat) to FormattableGeocodingResult
-     */
-    @Transactional(TxType.REQUIRES_NEW)
-    public Map<String, FormattableGeocodingResult> getCachedGeocodingResultsBatch(UUID userId, List<Point> coordinates) {
-        if (coordinates == null || coordinates.isEmpty()) {
-            return Map.of();
-        }
-
-        long startTime = System.currentTimeMillis();
-        try {
-            log.debug("Starting batch geocoding results lookup for user {} with {} coordinates", userId, coordinates.size());
-
-            Map<String, ReverseGeocodingLocationEntity> cachedResults =
-                repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
-
-            long duration = System.currentTimeMillis() - startTime;
-            log.info("Batch geocoding results lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
-                    duration, userId, coordinates.size(), cachedResults.size());
-
-            return cachedResults.entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> convertFromEntity(entry.getValue())
-                    ));
-
-        } catch (jakarta.persistence.QueryTimeoutException e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.warn("Batch geocoding results lookup timed out after {}ms for user {} with {} coordinates. " +
-                    "Returning empty result - locations will need individual geocoding.",
-                    duration, userId, coordinates.size());
-            return Map.of();
-        } catch (Exception e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.error("Error retrieving batch cached results for user {} with {} coordinates after {}ms",
-                    userId, coordinates.size(), duration, e);
-            return Map.of();
-        }
-    }
-
-    /**
-     * Convert entity to FormattableGeocodingResult.
-     */
-    private FormattableGeocodingResult convertFromEntity(ReverseGeocodingLocationEntity entity) {
-        return SimpleFormattableResult.builder()
-                .requestCoordinates(entity.getRequestCoordinates())
-                .resultCoordinates(entity.getResultCoordinates())
-                .boundingBox(entity.getBoundingBox())
-                .formattedDisplayName(entity.getDisplayName())
-                .providerName(entity.getProviderName())
-                .city(entity.getCity())
-                .country(entity.getCountry())
-                .build();
-    }
-
-    /**
-     * Convert FormattableGeocodingResult to entity.
-     */
-    private ReverseGeocodingLocationEntity convertToEntity(FormattableGeocodingResult result) {
-        ReverseGeocodingLocationEntity entity = new ReverseGeocodingLocationEntity();
-        entity.setRequestCoordinates(result.getRequestCoordinates());
-        entity.setResultCoordinates(result.getResultCoordinates());
-        entity.setBoundingBox(result.getBoundingBox());
-        entity.setDisplayName(result.getFormattedDisplayName());
-        entity.setProviderName(result.getProviderName());
-        entity.setCity(result.getCity());
-        entity.setCountry(result.getCountry());
-        return entity;
     }
 }
