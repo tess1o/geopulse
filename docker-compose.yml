@@ -11,6 +11,9 @@ services:
   geopulse-backend:
     image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
     #image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+    # For old CPUs (x86-64-v2) or Raspberry Pi 3/4, use compatible image:
+    #image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
+    #image: ghcr.io/tess1o/geopulse-backend:${GEOPULSE_VERSION}-native-compat
     container_name: geopulse-backend
     mem_limit: 512m
     mem_reservation: 128m

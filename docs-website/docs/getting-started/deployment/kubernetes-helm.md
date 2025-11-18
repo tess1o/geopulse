@@ -215,3 +215,56 @@ Access the UI from a network machine:
 ```
 http://<server-ip>:<node-port>
 ```
+
+---
+
+## 4. Error: Backend pod crashes with CPU feature errors
+
+**Symptom:**
+```
+The current machine does not support all of the following CPU features that are required by the image:
+[AVX2, BMI1, BMI2, FMA, F16C, LZCNT] (AMD64) or [FP, ASIMD, CRC32, LSE] (ARM64)
+```
+
+**Cause:** Your Kubernetes nodes have older CPUs that don't support the advanced instructions used by the default optimized native image.
+
+**Fix:**
+
+Create a values file with the compatible image tag:
+
+```bash
+cat > values-compat.yaml <<EOF
+backend:
+  image:
+    tag: "1.4.3-native-compat"
+EOF
+```
+
+Then upgrade your installation:
+
+```bash
+# If installed from source:
+helm upgrade geopulse ./helm/geopulse -f values-compat.yaml
+
+# If installed from Helm repository:
+helm upgrade geopulse geopulse/geopulse -f values-compat.yaml
+```
+
+**Who needs the compatible image?**
+- **Old x86 CPUs**: Intel pre-Haswell (before 2013), AMD pre-Excavator (before 2015)
+  - Examples: Intel Core i5-3470T (Ivy Bridge), Intel Xeon E5-2670 (Sandy Bridge)
+- **Raspberry Pi 3/4 clusters**: ARM Cortex-A53/A72 processors
+
+**Check your node's CPU capabilities:**
+
+```bash
+# For x86/AMD64 nodes:
+kubectl debug node/YOUR-NODE-NAME -it --image=ubuntu -- lscpu | grep -i flags
+# Look for: avx2, bmi1, bmi2, fma, f16c
+
+# For ARM64 nodes:
+kubectl debug node/YOUR-NODE-NAME -it --image=ubuntu -- cat /proc/cpuinfo | grep Features
+# Look for: asimd, crc32, atomics
+```
+
+**Performance note:** The compatible image uses x86-64-v2 (AMD64) or armv8-a+nolse (ARM64), which sacrifices some performance for broader compatibility. If your nodes have modern CPUs (2015+), use the default optimized image for best performance and lower memory usage.
