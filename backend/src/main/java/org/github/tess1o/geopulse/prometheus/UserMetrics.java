@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.time.Instant;
@@ -33,7 +34,18 @@ public class UserMetrics {
     @Inject
     EntityManager entityManager;
 
+    @ConfigProperty(name = "geopulse.prometheus.enabled", defaultValue = "true")
+    boolean prometheusEnabled;
+
+    @ConfigProperty(name = "geopulse.prometheus.user-metrics.enabled", defaultValue = "true")
+    boolean userMetricsEnabled;
+
     void onStart(@Observes StartupEvent ev) {
+        if (!prometheusEnabled || !userMetricsEnabled) {
+            log.info("User metrics disabled");
+            return;
+        }
+
         try {
 
             setMetricValues();
@@ -55,8 +67,11 @@ public class UserMetrics {
         }
     }
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "${geopulse.prometheus.refresh-interval:10m}")
     void refreshTotals() {
+        if (!prometheusEnabled || !userMetricsEnabled) {
+            return;
+        }
         setMetricValues();
     }
 

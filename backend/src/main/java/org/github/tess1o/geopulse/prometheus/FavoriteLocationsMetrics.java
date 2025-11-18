@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -37,7 +38,18 @@ public class FavoriteLocationsMetrics {
     @Inject
     EntityManager entityManager;
 
+    @ConfigProperty(name = "geopulse.prometheus.enabled", defaultValue = "true")
+    boolean prometheusEnabled;
+
+    @ConfigProperty(name = "geopulse.prometheus.favorites.enabled", defaultValue = "true")
+    boolean favoritesMetricsEnabled;
+
     void onStart(@Observes StartupEvent ev) {
+        if (!prometheusEnabled || !favoritesMetricsEnabled) {
+            log.info("Favorite Locations metrics disabled");
+            return;
+        }
+
         try {
             setMetricValues();
 
@@ -52,8 +64,11 @@ public class FavoriteLocationsMetrics {
         }
     }
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "${geopulse.prometheus.refresh-interval:10m}")
     void refreshTotals() {
+        if (!prometheusEnabled || !favoritesMetricsEnabled) {
+            return;
+        }
         setMetricValues();
     }
 

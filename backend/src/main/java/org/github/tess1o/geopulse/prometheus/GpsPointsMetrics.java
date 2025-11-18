@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -43,7 +44,18 @@ public class GpsPointsMetrics {
     @Inject
     EntityManager entityManager;
 
+    @ConfigProperty(name = "geopulse.prometheus.enabled", defaultValue = "true")
+    boolean prometheusEnabled;
+
+    @ConfigProperty(name = "geopulse.prometheus.gps-points.enabled", defaultValue = "true")
+    boolean gpsPointsMetricsEnabled;
+
     void onStart(@Observes StartupEvent ev) {
+        if (!prometheusEnabled || !gpsPointsMetricsEnabled) {
+            log.info("GPS Points metrics disabled");
+            return;
+        }
+
         try {
             // Set all metric values before registering gauges
             setMetricValues();
@@ -67,8 +79,11 @@ public class GpsPointsMetrics {
 
     }
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "${geopulse.prometheus.refresh-interval:10m}")
     void refreshTotalGps() {
+        if (!prometheusEnabled || !gpsPointsMetricsEnabled) {
+            return;
+        }
         setMetricValues();
     }
 

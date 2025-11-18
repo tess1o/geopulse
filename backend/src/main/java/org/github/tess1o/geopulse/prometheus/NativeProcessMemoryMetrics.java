@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.io.*;
 
@@ -15,12 +16,23 @@ public class NativeProcessMemoryMetrics {
 
     private final MeterRegistry registry;
 
+    @ConfigProperty(name = "geopulse.prometheus.enabled", defaultValue = "true")
+    boolean prometheusEnabled;
+
+    @ConfigProperty(name = "geopulse.prometheus.memory.enabled", defaultValue = "true")
+    boolean memoryMetricsEnabled;
+
     @Inject
     public NativeProcessMemoryMetrics(MeterRegistry registry) {
         this.registry = registry;
     }
 
     void onStart(@Observes StartupEvent ev) {
+        if (!prometheusEnabled || !memoryMetricsEnabled) {
+            log.info("Native process memory metrics disabled");
+            return;
+        }
+
         try {
             log.info("Registering native process memory metrics");
             registry.gauge("process_resident_memory_bytes", this, p -> p.getRss());

@@ -8,6 +8,7 @@ import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
@@ -44,7 +45,18 @@ public class TimelineMetrics {
     @Inject
     UserRepository userRepository;
 
+    @ConfigProperty(name = "geopulse.prometheus.enabled", defaultValue = "true")
+    boolean prometheusEnabled;
+
+    @ConfigProperty(name = "geopulse.prometheus.timeline.enabled", defaultValue = "true")
+    boolean timelineMetricsEnabled;
+
     void onStart(@Observes StartupEvent ev) {
+        if (!prometheusEnabled || !timelineMetricsEnabled) {
+            log.info("Timeline metrics disabled");
+            return;
+        }
+
         try {
             // Set all metric values before registering gauges
             setMetrics();
@@ -64,8 +76,11 @@ public class TimelineMetrics {
         }
     }
 
-    @Scheduled(every = "10m")
+    @Scheduled(every = "${geopulse.prometheus.refresh-interval:10m}")
     void refreshTotals() {
+        if (!prometheusEnabled || !timelineMetricsEnabled) {
+            return;
+        }
         setMetrics();
     }
 
