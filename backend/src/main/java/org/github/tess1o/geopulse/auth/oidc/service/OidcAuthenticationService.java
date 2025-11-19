@@ -29,6 +29,7 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
 import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionRepository;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
+import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.user.model.MeasureUnit;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
@@ -83,6 +84,10 @@ public class OidcAuthenticationService {
     @ConfigProperty(name = "geopulse.oidc.auto-link-accounts", defaultValue = "false")
     @StaticInitSafe
     boolean autoLinkAccounts;
+
+    @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
+    @StaticInitSafe
+    String adminEmail;
 
     private final Client httpClient = ClientBuilder.newClient();
     private final Map<String, JWKSet> jwksCache = new ConcurrentHashMap<>();
@@ -281,11 +286,18 @@ public class OidcAuthenticationService {
     }
 
     private UserEntity createNewUserWithOidcConnection(OidcUserInfo userInfo, String providerName) {
+        // Determine role - check if email matches admin email
+        Role role = Role.USER;
+        if (adminEmail != null && !adminEmail.isBlank() && adminEmail.equalsIgnoreCase(userInfo.getEmail())) {
+            role = Role.ADMIN;
+            log.info("Promoting OIDC user {} to ADMIN role (matches admin email)", userInfo.getEmail());
+        }
+
         // Create new user (NULL password for OIDC-only users)
         UserEntity user = UserEntity.builder()
                 .email(userInfo.getEmail())
                 .fullName(userInfo.getName())
-                .role("USER")
+                .role(role)
                 .isActive(true)
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users

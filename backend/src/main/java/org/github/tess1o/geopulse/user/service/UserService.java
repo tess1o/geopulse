@@ -5,6 +5,8 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
@@ -35,6 +37,9 @@ public class UserService {
     private final Event<TimelineStructureUpdatedEvent> structureUpdatedEvent;
     private final AuthConfigurationService authConfigurationService;
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
+
+    @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
+    String adminEmail;
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
@@ -86,11 +91,18 @@ public class UserService {
         // Validate and set timezone (defaults to UTC if null/invalid)
         String validatedTimezone = validateTimezone(timezone);
 
+        // Determine role - check if email matches admin email
+        Role role = Role.USER;
+        if (adminEmail != null && !adminEmail.isBlank() && adminEmail.equalsIgnoreCase(email)) {
+            role = Role.ADMIN;
+            log.info("Promoting user {} to ADMIN role (matches admin email)", email);
+        }
+
         // Create a new user entity
         UserEntity user = UserEntity.builder()
                 .email(email)
                 .fullName(fullName)
-                .role("USER")
+                .role(role)
                 .isActive(true)
                 .emailVerified(false)
                 .passwordHash(securePasswordUtils.hashPassword(password))

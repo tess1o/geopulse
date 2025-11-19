@@ -1,0 +1,284 @@
+package org.github.tess1o.geopulse.admin.service;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
+import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
+import org.github.tess1o.geopulse.admin.model.ValueType;
+import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
+
+import java.util.*;
+
+/**
+ * Service for managing system settings with environment variable fallback.
+ *
+ * Pattern: Check DB first, fall back to env var if not found.
+ * Similar to TimelineConfigurationProvider pattern.
+ */
+@ApplicationScoped
+@Slf4j
+public class SystemSettingsService {
+
+    private final SystemSettingsRepository repository;
+    private final Config config;
+
+    // Mapping from setting keys to their env var names and defaults
+    private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
+
+    static {
+        // Authentication settings
+        SETTING_DEFINITIONS.put("auth.registration.enabled",
+                new SettingDefinition("geopulse.auth.registration.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable all registration"));
+        SETTING_DEFINITIONS.put("auth.password-registration.enabled",
+                new SettingDefinition("geopulse.auth.password-registration.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable password registration"));
+        SETTING_DEFINITIONS.put("auth.oidc.registration.enabled",
+                new SettingDefinition("geopulse.auth.oidc.registration.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC registration"));
+        SETTING_DEFINITIONS.put("auth.oidc.auto-link-accounts",
+                new SettingDefinition("geopulse.oidc.auto-link-accounts", "false", ValueType.BOOLEAN, "auth", "Auto-link OIDC accounts by email"));
+
+        // Geocoding settings
+        SETTING_DEFINITIONS.put("geocoding.primary-provider",
+                new SettingDefinition("geocoding.provider.primary", "nominatim", ValueType.STRING, "geocoding", "Primary geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.fallback-provider",
+                new SettingDefinition("geocoding.provider.fallback", "", ValueType.STRING, "geocoding", "Fallback geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.delay-ms",
+                new SettingDefinition("geocoding.provider.delay.ms", "1000", ValueType.INTEGER, "geocoding", "Delay between geocoding requests (ms)"));
+        SETTING_DEFINITIONS.put("geocoding.nominatim.enabled",
+                new SettingDefinition("geocoding.provider.nominatim.enabled", "true", ValueType.BOOLEAN, "geocoding", "Enable Nominatim provider"));
+        SETTING_DEFINITIONS.put("geocoding.photon.enabled",
+                new SettingDefinition("geocoding.provider.photon.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Photon provider"));
+        SETTING_DEFINITIONS.put("geocoding.googlemaps.enabled",
+                new SettingDefinition("geocoding.provider.googlemaps.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Google Maps provider"));
+        SETTING_DEFINITIONS.put("geocoding.mapbox.enabled",
+                new SettingDefinition("geocoding.provider.mapbox.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Mapbox provider"));
+
+        // GPS processing defaults
+        SETTING_DEFINITIONS.put("gps.filter.inaccurate-data.enabled",
+                new SettingDefinition("geopulse.gps.filter.inaccurate-data.enabled", "false", ValueType.BOOLEAN, "gps", "Default: filter inaccurate GPS data"));
+        SETTING_DEFINITIONS.put("gps.max-allowed-accuracy",
+                new SettingDefinition("geopulse.gps.max-allowed-accuracy", "100", ValueType.INTEGER, "gps", "Max allowed accuracy (meters)"));
+        SETTING_DEFINITIONS.put("gps.max-allowed-speed",
+                new SettingDefinition("geopulse.gps.max-allowed-speed", "250", ValueType.INTEGER, "gps", "Max allowed speed (km/h)"));
+
+        // Import settings
+        SETTING_DEFINITIONS.put("import.bulk-insert-batch-size",
+                new SettingDefinition("geopulse.import.bulk-insert-batch-size", "500", ValueType.INTEGER, "import", "Bulk insert batch size"));
+        SETTING_DEFINITIONS.put("import.merge-batch-size",
+                new SettingDefinition("geopulse.import.merge-batch-size", "250", ValueType.INTEGER, "import", "Merge batch size"));
+        SETTING_DEFINITIONS.put("import.large-file-threshold-mb",
+                new SettingDefinition("geopulse.import.large-file-threshold-mb", "100", ValueType.INTEGER, "import", "Large file threshold (MB)"));
+        SETTING_DEFINITIONS.put("import.temp-file-retention-hours",
+                new SettingDefinition("geopulse.import.temp-file-retention-hours", "24", ValueType.INTEGER, "import", "Temp file retention (hours)"));
+
+        // System performance
+        SETTING_DEFINITIONS.put("system.timeline.processing.thread-pool-size",
+                new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
+        SETTING_DEFINITIONS.put("system.timeline.view.item-limit",
+                new SettingDefinition("geopulse.timeline.view.item-limit", "150", ValueType.INTEGER, "system", "Max timeline items in view"));
+    }
+
+    @Inject
+    public SystemSettingsService(SystemSettingsRepository repository) {
+        this.repository = repository;
+        this.config = ConfigProvider.getConfig();
+    }
+
+    /**
+     * Get a setting value. Checks DB first, falls back to env var.
+     */
+    public String getString(String key) {
+        return getValue(key);
+    }
+
+    public boolean getBoolean(String key) {
+        String value = getValue(key);
+        return Boolean.parseBoolean(value);
+    }
+
+    public int getInteger(String key) {
+        String value = getValue(key);
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            log.warn("Invalid integer value for setting {}: {}", key, value);
+            SettingDefinition def = SETTING_DEFINITIONS.get(key);
+            return def != null ? Integer.parseInt(def.defaultValue) : 0;
+        }
+    }
+
+    /**
+     * Get value with DB-first, env-fallback pattern.
+     */
+    private String getValue(String key) {
+        // Check DB first
+        Optional<SystemSettingsEntity> dbSetting = repository.findByKey(key);
+        if (dbSetting.isPresent()) {
+            log.debug("Using DB value for setting: {}", key);
+            return dbSetting.get().getValue();
+        }
+
+        // Fall back to env var
+        SettingDefinition def = SETTING_DEFINITIONS.get(key);
+        if (def != null) {
+            String envValue = config.getOptionalValue(def.envVarName, String.class)
+                    .orElse(def.defaultValue);
+            log.debug("Using env/default value for setting {}: {}", key, envValue);
+            return envValue;
+        }
+
+        log.warn("Unknown setting key: {}", key);
+        return "";
+    }
+
+    /**
+     * Get the default value (from env var or hardcoded default).
+     */
+    public String getDefaultValue(String key) {
+        SettingDefinition def = SETTING_DEFINITIONS.get(key);
+        if (def != null) {
+            return config.getOptionalValue(def.envVarName, String.class)
+                    .orElse(def.defaultValue);
+        }
+        return "";
+    }
+
+    /**
+     * Check if a setting is using the default value (not overridden in DB).
+     */
+    public boolean isDefault(String key) {
+        return repository.findByKey(key).isEmpty();
+    }
+
+    /**
+     * Set a setting value in DB.
+     */
+    @Transactional
+    public void setValue(String key, String value, UUID updatedBy) {
+        SettingDefinition def = SETTING_DEFINITIONS.get(key);
+        if (def == null) {
+            throw new IllegalArgumentException("Unknown setting key: " + key);
+        }
+
+        // Validate value type
+        validateValue(value, def.valueType);
+
+        Optional<SystemSettingsEntity> existing = repository.findByKey(key);
+        if (existing.isPresent()) {
+            SystemSettingsEntity entity = existing.get();
+            entity.setValue(value);
+            entity.setUpdatedBy(updatedBy);
+        } else {
+            SystemSettingsEntity entity = SystemSettingsEntity.builder()
+                    .key(key)
+                    .value(value)
+                    .valueType(def.valueType)
+                    .category(def.category)
+                    .description(def.description)
+                    .updatedBy(updatedBy)
+                    .build();
+            repository.persist(entity);
+        }
+
+        log.info("Setting {} updated to: {}", key, value);
+    }
+
+    /**
+     * Reset a setting to default (delete from DB).
+     */
+    @Transactional
+    public void resetToDefault(String key) {
+        repository.deleteByKey(key);
+        log.info("Setting {} reset to default", key);
+    }
+
+    /**
+     * Get all settings for a category.
+     */
+    public List<SettingInfo> getSettingsByCategory(String category) {
+        List<SettingInfo> result = new ArrayList<>();
+
+        for (Map.Entry<String, SettingDefinition> entry : SETTING_DEFINITIONS.entrySet()) {
+            String key = entry.getKey();
+            SettingDefinition def = entry.getValue();
+
+            if (def.category.equals(category)) {
+                String currentValue = getValue(key);
+                String defaultValue = getDefaultValue(key);
+                boolean isDefault = isDefault(key);
+
+                result.add(new SettingInfo(
+                        key,
+                        currentValue,
+                        def.valueType,
+                        def.category,
+                        def.description,
+                        isDefault,
+                        defaultValue
+                ));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Get all settings grouped by category.
+     */
+    public Map<String, List<SettingInfo>> getAllSettings() {
+        Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
+
+        for (String category : List.of("auth", "geocoding", "gps", "import", "system")) {
+            result.put(category, getSettingsByCategory(category));
+        }
+
+        return result;
+    }
+
+    private void validateValue(String value, ValueType type) {
+        switch (type) {
+            case BOOLEAN:
+                if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+                    throw new IllegalArgumentException("Invalid boolean value: " + value);
+                }
+                break;
+            case INTEGER:
+                try {
+                    Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                    throw new IllegalArgumentException("Invalid integer value: " + value);
+                }
+                break;
+            case STRING:
+            case ENCRYPTED:
+                // Any string is valid
+                break;
+        }
+    }
+
+    /**
+     * Definition of a setting including its env var mapping.
+     */
+    private record SettingDefinition(
+            String envVarName,
+            String defaultValue,
+            ValueType valueType,
+            String category,
+            String description
+    ) {}
+
+    /**
+     * Full information about a setting for API responses.
+     */
+    public record SettingInfo(
+            String key,
+            String value,
+            ValueType valueType,
+            String category,
+            String description,
+            boolean isDefault,
+            String defaultValue
+    ) {}
+}

@@ -17,7 +17,7 @@ import java.util.UUID;
 @Path("/api/gps/source")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 @RequestScoped
 @Slf4j
 public class GpsSourceConfigResource {

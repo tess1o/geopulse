@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 import lombok.Getter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
@@ -25,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
+@Slf4j
 public class AuthenticationService {
 
     @Inject
@@ -34,6 +37,11 @@ public class AuthenticationService {
     @ConfigProperty(name = "smallrye.jwt.new-token.issuer")
     @StaticInitSafe
     String issuer;
+
+    @Inject
+    @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
+    @StaticInitSafe
+    String adminEmail;
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.lifespan", defaultValue = "1800")
@@ -61,7 +69,7 @@ public class AuthenticationService {
         return Jwt.issuer(issuer)
                 .upn(user.getEmail()) // UserPrincipalName, often email
                 .subject(user.getId().toString()) // Subject, typically user ID
-                .groups(Set.of(user.getRole()))
+                .groups(Set.of(user.getRole().name()))
                 .claim("type", "access")
                 .claim("userId", user.getId().toString())
                 .claim("createdAt", user.getCreatedAt().toString() + "Z")
@@ -73,7 +81,7 @@ public class AuthenticationService {
         return Jwt.issuer(issuer)
                 .upn(user.getEmail()) // UserPrincipalName, often email
                 .subject(user.getId().toString()) // Subject, typically user ID
-                .groups(Set.of(user.getRole()))
+                .groups(Set.of(user.getRole().name()))
                 .claim("type", "refresh")
                 .claim("userId", user.getId().toString())
                 .expiresIn(Duration.ofSeconds(refreshTokenLifespan))
@@ -88,12 +96,29 @@ public class AuthenticationService {
 
         UserEntity user = userOpt.get();
 
-        // Authenticate user 
+        // Authenticate user
         if (!securePasswordUtils.isPasswordValid(password, user.getPasswordHash())) {
             throw new InvalidPasswordException("Invalid password");
         }
+
+        // Check if user should be promoted to ADMIN based on admin email
+        checkAndPromoteToAdmin(user);
+
         // Generate JWT tokens
         return getAuthResponse(user);
+    }
+
+    /**
+     * Check if user's email matches admin email and promote to ADMIN role if needed.
+     */
+    private void checkAndPromoteToAdmin(UserEntity user) {
+        if (adminEmail != null && !adminEmail.isBlank() &&
+            adminEmail.equalsIgnoreCase(user.getEmail()) &&
+            user.getRole() != Role.ADMIN) {
+            user.setRole(Role.ADMIN);
+            userService.persist(user);
+            log.info("Promoted existing user {} to ADMIN role (matches admin email)", user.getEmail());
+        }
     }
 
     /**
@@ -101,6 +126,9 @@ public class AuthenticationService {
      * This bypasses password validation since the user has already been authenticated by external provider.
      */
     public AuthResponse createAuthResponse(UserEntity user) {
+        // Check if user should be promoted to ADMIN based on admin email
+        checkAndPromoteToAdmin(user);
+
         // Generate JWT tokens
         return getAuthResponse(user);
     }
@@ -114,6 +142,7 @@ public class AuthenticationService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .email(user.getEmail())
+                .role(user.getRole().name())
                 .avatar(user.getAvatar())
                 .fullName(user.getFullName())
                 .timezone(user.getTimezone())

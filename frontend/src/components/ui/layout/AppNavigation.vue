@@ -27,9 +27,17 @@
             />
 
             <!-- Account & Settings -->
-            <NavigationSection 
-              title="Account & Settings" 
+            <NavigationSection
+              title="Account & Settings"
               :items="accountItems"
+              @item-click="handleItemClick"
+            />
+
+            <!-- Administration (Admin only) -->
+            <NavigationSection
+              v-if="isAdmin"
+              title="Administration"
+              :items="adminItems"
               @item-click="handleItemClick"
             />
 
@@ -114,7 +122,7 @@ const friendsStore = useFriendsStore()
 const { handleError } = useErrorHandler()
 
 // Store refs
-const { userName } = storeToRefs(authStore)
+const { userName, isAdmin } = storeToRefs(authStore)
 const { receivedInvitesCount } = storeToRefs(friendsStore)
 
 // Local state
@@ -226,6 +234,27 @@ const accountItems = computed(() => [
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',
     key: 'preferences'
+  }
+])
+
+const adminItems = computed(() => [
+  {
+    label: 'Admin Dashboard',
+    icon: 'pi pi-th-large',
+    to: '/app/admin',
+    key: 'admin-dashboard'
+  },
+  {
+    label: 'Manage Users',
+    icon: 'pi pi-users',
+    to: '/app/admin/users',
+    key: 'admin-users'
+  },
+  {
+    label: 'System Settings',
+    icon: 'pi pi-cog',
+    to: '/app/admin/settings',
+    key: 'admin-settings'
   }
 ])
 

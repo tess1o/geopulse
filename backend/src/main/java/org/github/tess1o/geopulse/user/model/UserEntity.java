@@ -5,6 +5,7 @@ import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.*;
+import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.friends.invitation.model.FriendInvitationEntity;
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -54,7 +55,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "is_active")
     private boolean isActive;
 
-    private String role;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role")
+    @Builder.Default
+    private Role role = Role.USER;
 
     @Size(max = 500, message = "Avatar URL cannot exceed 500 characters")
     private String avatar;

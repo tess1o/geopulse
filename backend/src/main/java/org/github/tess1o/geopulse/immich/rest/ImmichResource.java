@@ -34,7 +34,7 @@ public class ImmichResource {
 
     @GET
     @Path("/{userId}/immich-config")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public Response getImmichConfig(@PathParam("userId") String userIdStr) {
         UUID userId = parseUserId(userIdStr);
@@ -50,7 +50,7 @@ public class ImmichResource {
 
     @PUT
     @Path("/{userId}/immich-config")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public Response updateImmichConfig(
             @PathParam("userId") String userIdStr,
@@ -72,7 +72,7 @@ public class ImmichResource {
 
     @GET
     @Path("/{userId}/immich/photos/search")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public CompletableFuture<Response> searchPhotos(
             @PathParam("userId") String userIdStr,
@@ -114,7 +114,7 @@ public class ImmichResource {
     @GET
     @Path("/{userId}/immich/photos/{photoId}/thumbnail")
     @Produces("image/jpeg")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public CompletableFuture<Response> getPhotoThumbnail(
             @PathParam("userId") String userIdStr,
@@ -138,7 +138,7 @@ public class ImmichResource {
     @GET
     @Path("/{userId}/immich/photos/{photoId}/download")
     @Produces("image/jpeg")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public CompletableFuture<Response> downloadPhoto(
             @PathParam("userId") String userIdStr,
@@ -161,7 +161,7 @@ public class ImmichResource {
 
     @GET
     @Path("/me/immich-config")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public Response getCurrentUserImmichConfig() {
         UUID userId = currentUserService.getCurrentUserId();
@@ -170,7 +170,7 @@ public class ImmichResource {
 
     @PUT
     @Path("/me/immich-config")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public Response updateCurrentUserImmichConfig(@Valid UpdateImmichConfigRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -179,7 +179,7 @@ public class ImmichResource {
 
     @GET
     @Path("/me/immich/photos/search")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public CompletableFuture<Response> searchCurrentUserPhotos(
             @QueryParam("startDate") String startDateStr,
@@ -195,7 +195,7 @@ public class ImmichResource {
     @GET
     @Path("/me/immich/photos/{photoId}/thumbnail")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public CompletableFuture<Response> getCurrentUserPhotoThumbnail(@PathParam("photoId") String photoId) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -205,7 +205,7 @@ public class ImmichResource {
     @GET
     @Path("/me/immich/photos/{photoId}/download")
     @Produces(MediaType.APPLICATION_OCTET_STREAM)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Blocking
     public CompletableFuture<Response> downloadCurrentUserPhoto(@PathParam("photoId") String photoId) {
         UUID userId = currentUserService.getCurrentUserId();

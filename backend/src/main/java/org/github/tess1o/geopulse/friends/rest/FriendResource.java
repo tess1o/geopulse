@@ -27,7 +27,7 @@ import java.util.UUID;
 @ApplicationScoped
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 @Slf4j
 public class FriendResource {
 

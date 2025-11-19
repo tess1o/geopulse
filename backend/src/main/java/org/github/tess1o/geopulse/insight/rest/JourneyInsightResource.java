@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Path("/api/journey-insights")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 public class JourneyInsightResource {
 
     @Inject

@@ -4,6 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.service.BatchProcessor;
@@ -78,7 +79,7 @@ class ImportDataPersistenceAcrossTimelineFailureTest {
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);
-        testUser.setRole("USER");
+        testUser.setRole(Role.USER);
         testUser.setCreatedAt(Instant.now());
         testUser.setUpdatedAt(Instant.now());
         userRepository.persist(testUser);
