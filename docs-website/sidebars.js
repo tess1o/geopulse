@@ -98,6 +98,16 @@ const sidebars = {
                 },
                 {
                     type: 'category',
+                    label: 'Timeline Deep Dive',
+                    items: [
+                        'user-guide/timeline/stay_detection',
+                        'user-guide/timeline/trip_detection',
+                        'user-guide/timeline/travel_classification',
+                        'user-guide/timeline/data_gaps',
+                    ],
+                },
+                {
+                    type: 'category',
                     label: 'Interacting with Your Data',
                     items: [
                         'user-guide/interacting-with-data/import-export',

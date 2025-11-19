@@ -32,7 +32,11 @@ public class TimelinePreferences {
     // Data Gap Detection Settings
     private Integer dataGapThresholdSeconds;
     private Integer dataGapMinDurationSeconds;
-    
+
+    // Gap Stay Inference Settings
+    private Boolean gapStayInferenceEnabled;
+    private Integer gapStayInferenceMaxGapHours;
+
     // Travel Classification Settings
     private Double walkingMaxAvgSpeed;
     private Double walkingMaxMaxSpeed;

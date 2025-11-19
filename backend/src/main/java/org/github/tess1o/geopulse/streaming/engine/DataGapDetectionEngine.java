@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
+import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;
 import org.github.tess1o.geopulse.streaming.service.StreamingDataGapService;
@@ -55,6 +56,17 @@ public class DataGapDetectionEngine {
             log.info("Data gap detected: {} duration between {} and {}",
                     timeDelta, lastPoint.getTimestamp(), currentPoint.getTimestamp());
 
+            // Check if we should infer a stay instead of creating a gap
+            boolean shouldInfer = shouldInferStayDuringGap(currentPoint, userState, config, timeDelta);
+            log.info("Gap stay inference check: shouldInfer={}, enabled={}",
+                    shouldInfer, config.getGapStayInferenceEnabled());
+            if (shouldInfer) {
+                log.info("Gap stay inference applied - skipping gap creation, points are at same location");
+                // Don't create gap, don't reset state - let state machine process the point normally
+                // The point will be added to activePoints and duration calculation will span the gap
+                return gapEvents;
+            }
+
             // Finalize any active event before creating the gap
             TimelineEvent activeEvent = finalizeActiveEvent(userState, lastPoint, config);
             if (activeEvent != null) {
@@ -74,6 +86,74 @@ public class DataGapDetectionEngine {
         }
 
         return gapEvents;
+    }
+
+    /**
+     * Determines whether to infer a stay during a data gap instead of creating a gap.
+     * This feature helps capture overnight stays at home or extended stays where
+     * the app doesn't send GPS data but the user remains at the same location.
+     *
+     * @param currentPoint the GPS point after the gap
+     * @param userState    current user processing state
+     * @param config       timeline configuration
+     * @param gapDuration  duration of the gap
+     * @return true if a stay should be inferred instead of creating a gap
+     */
+    private boolean shouldInferStayDuringGap(GPSPoint currentPoint, UserState userState,
+                                              TimelineConfig config, Duration gapDuration) {
+        // Check if feature is enabled
+        Boolean enabled = config.getGapStayInferenceEnabled();
+        if (enabled == null || !enabled) {
+            log.debug("Gap stay inference is disabled (enabled={})", enabled);
+            return false;
+        }
+
+        // Check if we have active points to compare against
+        if (!userState.hasActivePoints()) {
+            log.debug("No active points for gap stay inference comparison");
+            return false;
+        }
+
+        // Check if current mode is POTENTIAL_STAY or CONFIRMED_STAY (not IN_TRIP)
+        ProcessorMode mode = userState.getCurrentMode();
+        if (mode == ProcessorMode.IN_TRIP || mode == ProcessorMode.UNKNOWN) {
+            log.debug("Gap stay inference not applicable for mode: {}", mode);
+            return false;
+        }
+
+        // Check if gap is within max duration
+        Integer maxGapHours = config.getGapStayInferenceMaxGapHours();
+        if (maxGapHours != null && maxGapHours > 0) {
+            long gapHours = gapDuration.toHours();
+            if (gapHours > maxGapHours) {
+                log.debug("Gap duration {}h exceeds max allowed {}h for stay inference",
+                        gapHours, maxGapHours);
+                return false;
+            }
+        }
+
+        // Calculate distance between centroid and current point
+        GPSPoint centroid = userState.calculateCentroid();
+        if (centroid == null) {
+            log.debug("Could not calculate centroid for gap stay inference");
+            return false;
+        }
+
+        double distance = centroid.distanceTo(currentPoint);
+        Integer radiusMeters = config.getStaypointRadiusMeters();
+        if (radiusMeters == null) {
+            radiusMeters = 50; // default
+        }
+
+        if (distance > radiusMeters) {
+            log.debug("Distance {}m from centroid exceeds stay radius {}m - creating gap instead",
+                    String.format("%.1f", distance), radiusMeters);
+            return false;
+        }
+
+        log.info("Gap stay inference conditions met: mode={}, gap={}h, distance={}m (radius={}m)",
+                mode, gapDuration.toHours(), String.format("%.1f", distance), radiusMeters);
+        return true;
     }
 
     /**

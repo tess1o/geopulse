@@ -443,6 +443,8 @@ public class UserService {
                 update.getPathAdaptiveSimplification() != null ||
                 update.getDataGapThresholdSeconds() != null ||
                 update.getDataGapMinDurationSeconds() != null ||
+                update.getGapStayInferenceEnabled() != null ||
+                update.getGapStayInferenceMaxGapHours() != null ||
                 update.getTripSustainedStopMinDurationSeconds() != null ||
                 update.getTripArrivalDetectionMinDurationSeconds() != null;
     }
