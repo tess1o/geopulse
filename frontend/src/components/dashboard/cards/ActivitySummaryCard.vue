@@ -108,14 +108,7 @@ const props = defineProps({
       averageSpeed: 0,
       uniqueLocationsCount: 0,
       mostActiveDay: null,
-      distanceCarChart: {
-        labels: [],
-        data: []
-      },
-      distanceWalkChart: {
-        labels: [],
-        data: []
-      },
+      distanceChartsByTripType: {}
     })
   },
   variant: {
@@ -129,35 +122,51 @@ const props = defineProps({
   }
 })
 
+// Trip type display configuration
+const tripTypeConfig = {
+  WALK: { label: 'Walk', color: 'success' },
+  BICYCLE: { label: 'Bicycle', color: 'warning' },
+  CAR: { label: 'Car', color: 'primary' },
+  TRAIN: { label: 'Train', color: 'secondary' },
+  FLIGHT: { label: 'Flight', color: 'danger' }
+}
+
 const hasChartData = computed(() => {
-  return props.stats?.distanceCarChart?.data?.length > 0 || props.stats?.distanceWalkChart?.data?.length > 0
+  const chartsByType = props.stats?.distanceChartsByTripType || {}
+  return Object.values(chartsByType).some(chart =>
+    chart?.data?.length > 0 && chart.data.some(value => value > 0)
+  )
 })
 
 const chartLabels = computed(() => {
-  const carLabels = props.stats?.distanceCarChart?.labels || []
-  const walkLabels = props.stats?.distanceWalkChart?.labels || []
+  const chartsByType = props.stats?.distanceChartsByTripType || {}
 
-  // Merge unique labels from both charts
-  const allLabels = [...new Set([...carLabels, ...walkLabels])]
+  // Collect all labels from trip types that have data (filter out empty ones)
+  const allLabels = Object.values(chartsByType)
+    .filter(chart => chart?.labels?.length > 0 && chart?.data?.length > 0)
+    .flatMap(chart => chart.labels)
 
-  if (allLabels.length === 0) return []
+  // Merge unique labels
+  const uniqueLabels = [...new Set(allLabels)]
+
+  if (uniqueLabels.length === 0) return []
 
   // Define day order for sorting
   const dayOrder = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
 
   // Check if labels are day abbreviations or date strings (MM/DD format)
-  const isDateFormat = allLabels.some(label => /^\d{2}\/\d{2}$/.test(label))
+  const isDateFormat = uniqueLabels.some(label => /^\d{2}\/\d{2}$/.test(label))
 
   if (isDateFormat) {
     // Sort by date (MM/DD format)
-    return allLabels.sort((a, b) => {
+    return uniqueLabels.sort((a, b) => {
       const [aMonth, aDay] = a.split('/').map(Number)
       const [bMonth, bDay] = b.split('/').map(Number)
       return aMonth !== bMonth ? aMonth - bMonth : aDay - bDay
     })
   } else {
     // Sort by day of week
-    return allLabels.sort((a, b) => {
+    return uniqueLabels.sort((a, b) => {
       const aIndex = dayOrder.indexOf(a.toUpperCase())
       const bIndex = dayOrder.indexOf(b.toUpperCase())
       // Handle unknown day names by putting them at the end
@@ -171,33 +180,27 @@ const chartLabels = computed(() => {
 const chartDatasets = computed(() => {
   const datasets = []
   const mergedLabels = chartLabels.value
+  const chartsByType = props.stats?.distanceChartsByTripType || {}
 
-  const carLabels = props.stats?.distanceCarChart?.labels || []
-  const carData = props.stats?.distanceCarChart?.data || []
-  const walkLabels = props.stats?.distanceWalkChart?.labels || []
-  const walkData = props.stats?.distanceWalkChart?.data || []
+  // Process each trip type
+  Object.entries(chartsByType).forEach(([tripType, chartData]) => {
+    if (!chartData || !chartData.data || chartData.data.length === 0) return
 
-  // Create label-to-value maps for easy lookup
-  const carMap = new Map(carLabels.map((label, i) => [label, carData[i] || 0]))
-  const walkMap = new Map(walkLabels.map((label, i) => [label, walkData[i] || 0]))
+    const labels = chartData.labels || []
+    const data = chartData.data || []
 
-  // Add car distance data if available
-  if (carData.length > 0) {
+    // Create label-to-value map for this trip type
+    const dataMap = new Map(labels.map((label, i) => [label, data[i] || 0]))
+
+    // Get configuration for this trip type
+    const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
+
     datasets.push({
-      label: 'Car Distance',
-      data: mergedLabels.map(label => carMap.get(label) || 0),
-      color: 'primary'
+      label: `${config.label}`,
+      data: mergedLabels.map(label => dataMap.get(label) || 0),
+      color: config.color
     })
-  }
-
-  // Add walk distance data if available
-  if (walkData.length > 0) {
-    datasets.push({
-      label: 'Walk Distance',
-      data: mergedLabels.map(label => walkMap.get(label) || 0),
-      color: 'success'
-    })
-  }
+  })
 
   return datasets
 })

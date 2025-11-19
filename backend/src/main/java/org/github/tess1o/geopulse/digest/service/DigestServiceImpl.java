@@ -78,7 +78,7 @@ public class DigestServiceImpl implements DigestService {
                 .comparison(comparisonCalculator.buildComparison(currentStats, previousStats))
                 .highlights(highlightsAnalyzer.buildHighlights(currentStats, timeline, start, end, zoneId))
                 .topPlaces(currentStats.getPlaces() != null ? currentStats.getPlaces() : List.of())
-                .activityChart(chartBuilder.buildActivityChartData(currentStats.getDistanceCarChart(), currentStats.getDistanceWalkChart()))
+                .activityChart(chartBuilder.buildActivityChartData(currentStats.getDistanceChartsByTripType()))
                 .milestones(milestoneEvaluator.buildMilestones(userId, currentStats, timeline, "monthly", start, end, zoneId))
                 .build();
     }

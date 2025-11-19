@@ -9,8 +9,12 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Main statistics service implementation using SQL-based aggregations.
@@ -45,8 +49,16 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         // Get chart data based on grouping mode
         boolean useWeeks = Duration.between(from, to).toDays() >= 10 || chartGroupMode == ChartGroupMode.WEEKS;
-        BarChartData carChart = getBarChartData(userId, from, to, TripType.CAR.name(), useWeeks);
-        BarChartData walkChart = getBarChartData(userId, from, to, TripType.WALK.name(), useWeeks);
+
+        // Get chart data for all trip types (excluding UNKNOWN)
+        Map<String, BarChartData> chartsByTripType = Arrays.stream(TripType.values())
+                .filter(tripType -> tripType != TripType.UNKNOWN) // Exclude UNKNOWN type
+                .collect(Collectors.toMap(
+                        TripType::name,
+                        tripType -> getBarChartData(userId, from, to, tripType.name(), useWeeks),
+                        (existing, replacement) -> existing, // In case of duplicates, keep existing
+                        HashMap::new
+                ));
 
         // Build complete statistics
         return UserStatistics.builder()
@@ -58,8 +70,7 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .places(statisticsRepository.getTopPlaces(userId, from, to, 5))
                 .mostActiveDay(statisticsRepository.getMostActiveDay(userId, from, to))
                 .averageSpeed(averageSpeed)
-                .distanceCarChart(carChart)
-                .distanceWalkChart(walkChart)
+                .distanceChartsByTripType(chartsByTripType)
                 .build();
     }
 

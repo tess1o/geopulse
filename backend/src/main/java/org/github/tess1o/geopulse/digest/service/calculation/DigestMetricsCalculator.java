@@ -46,12 +46,16 @@ public class DigestMetricsCalculator {
         double carDistance = 0;
         double walkDistance = 0;
 
-        if (stats.getDistanceCarChart() != null && stats.getDistanceCarChart().getData() != null) {
-            carDistance = java.util.Arrays.stream(stats.getDistanceCarChart().getData()).sum();
-        }
+        if (stats.getDistanceChartsByTripType() != null) {
+            if (stats.getDistanceChartsByTripType().get("CAR") != null &&
+                stats.getDistanceChartsByTripType().get("CAR").getData() != null) {
+                carDistance = java.util.Arrays.stream(stats.getDistanceChartsByTripType().get("CAR").getData()).sum();
+            }
 
-        if (stats.getDistanceWalkChart() != null && stats.getDistanceWalkChart().getData() != null) {
-            walkDistance = java.util.Arrays.stream(stats.getDistanceWalkChart().getData()).sum();
+            if (stats.getDistanceChartsByTripType().get("WALK") != null &&
+                stats.getDistanceChartsByTripType().get("WALK").getData() != null) {
+                walkDistance = java.util.Arrays.stream(stats.getDistanceChartsByTripType().get("WALK").getData()).sum();
+            }
         }
 
         return DigestMetrics.builder()

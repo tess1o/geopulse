@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,6 +21,6 @@ public class UserStatistics {
     private MostActiveDayDto mostActiveDay;
     private List<TopPlace> places;
     private RoutesStatistics routes;
-    private BarChartData distanceCarChart;
-    private BarChartData distanceWalkChart;
+    // Map of trip type to chart data for all trip types
+    private Map<String, BarChartData> distanceChartsByTripType;
 }

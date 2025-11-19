@@ -13,7 +13,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -416,10 +418,24 @@ class StatisticsResourceTest {
                         .longestTripDistanceMeters(25.0)
                         .mostCommonRoute(new MostCommonRoute("Home -> Work", 4))
                         .build())
-                .distanceCarChart(new BarChartData(
-                        new String[]{"MON", "TUE", "WED", "THU", "FRI"},
-                        new double[]{5.2, 8.1, 3.4, 6.7, 2.1}
-                ))
+                .distanceChartsByTripType(createSampleChartsByTripType())
                 .build();
+    }
+
+    private Map<String, BarChartData> createSampleChartsByTripType() {
+        Map<String, BarChartData> charts = new HashMap<>();
+        charts.put("CAR", new BarChartData(
+                new String[]{"MON", "TUE", "WED", "THU", "FRI"},
+                new double[]{5.2, 8.1, 3.4, 6.7, 2.1}
+        ));
+        charts.put("WALK", new BarChartData(
+                new String[]{"MON", "TUE", "WED", "THU", "FRI"},
+                new double[]{1.2, 1.5, 1.1, 1.8, 0.9}
+        ));
+        charts.put("BICYCLE", new BarChartData(
+                new String[]{"SAT", "SUN"},
+                new double[]{3.5, 4.2}
+        ));
+        return charts;
     }
 }
