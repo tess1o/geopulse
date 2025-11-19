@@ -15,20 +15,27 @@ import { computed } from 'vue'
 export function useClassificationValidation(prefs) {
 
   /**
-   * Check for bicycle-car speed overlap (CRITICAL)
-   * Bicycle must be checked before car, but overlapping ranges cause issues
+   * Check for bicycle completely exceeding car threshold (PROBLEMATIC)
+   * Overlap is OK due to priority order (bicycle checked first), but bicycle EXCEEDING car is wrong
+   *
+   * CORRECT: bicycle 8-25 km/h, car 10+ km/h → 10-25 km/h range goes to BICYCLE (priority order)
+   * WRONG: bicycle 8-30 km/h, car 10+ km/h → car trips at 28 km/h would be classified as BICYCLE
    */
   const bicycleCarOverlapWarning = computed(() => {
     if (!prefs.value?.bicycleEnabled) return null
 
     const bicycleMaxAvg = prefs.value?.bicycleMaxAvgSpeed ?? 25.0
+    const bicycleMaxMax = prefs.value?.bicycleMaxMaxSpeed ?? 35.0
     const carMinAvg = prefs.value?.carMinAvgSpeed ?? 10.0
+    const carMinMax = prefs.value?.carMinMaxSpeed ?? 15.0
 
-    if (bicycleMaxAvg >= carMinAvg) {
+    // Only warn if bicycle EXCEEDS car thresholds (not just overlaps)
+    // This means bicycle would catch trips that should be car
+    if (bicycleMaxAvg > carMinMax * 2) {
       return {
         type: 'bicycle',
-        severity: 'error',
-        message: `Bicycle max avg speed (${bicycleMaxAvg} km/h) overlaps with car min avg speed (${carMinAvg} km/h). Trips in this range may be misclassified.`
+        severity: 'warn',
+        message: `Bicycle max avg speed (${bicycleMaxAvg} km/h) is very high. Car trips may be misclassified as bicycle. Consider lowering to ~25 km/h.`
       }
     }
 
@@ -37,6 +44,8 @@ export function useClassificationValidation(prefs) {
 
   /**
    * Check for insufficient gap between bicycle and car
+   * NOTE: This is less critical due to priority order (bicycle checked before car)
+   * Only warn if car min is HIGHER than bicycle max (creating a gap where trips become UNKNOWN)
    */
   const bicycleCarGapWarning = computed(() => {
     if (!prefs.value?.bicycleEnabled) return null
@@ -45,11 +54,12 @@ export function useClassificationValidation(prefs) {
     const carMinAvg = prefs.value?.carMinAvgSpeed ?? 10.0
     const gap = carMinAvg - bicycleMaxAvg
 
-    if (gap > 0 && gap < 2.0) {
+    // Only warn if there's a POSITIVE gap (car min > bicycle max) creating UNKNOWN zone
+    if (gap > 5.0) {
       return {
         type: 'bicycle',
         severity: 'warn',
-        message: `Only ${gap.toFixed(1)} km/h gap between bicycle and car thresholds. Consider widening to at least 2 km/h.`
+        message: `Large ${gap.toFixed(1)} km/h gap between bicycle max (${bicycleMaxAvg} km/h) and car min (${carMinAvg} km/h). Trips in this range will be UNKNOWN.`
       }
     }
 

@@ -102,6 +102,19 @@ public class TravelClassification {
     private static final double WALK_VERIFICATION_COEFFICIENT = 1.2;
 
     // ============================================
+    // HELPER RECORD
+    // ============================================
+
+    /**
+     * Result of GPS reliability validation.
+     * Contains the final speeds to use for classification after validation.
+     *
+     * @param finalAvgSpeed The average speed to use (either GPS or calculated)
+     * @param finalMaxSpeed The max speed to use (either GPS, calculated, or estimated)
+     */
+    private record GpsReliabilityResult(double finalAvgSpeed, double finalMaxSpeed) {}
+
+    // ============================================
     // CLASSIFICATION METHODS
     // ============================================
 
@@ -170,7 +183,7 @@ public class TravelClassification {
     /**
      * Classification using GPS statistics.
      * Converts speeds to km/h and delegates to the main classification algorithm.
-     * Includes sanity check to detect unreliable GPS speeds.
+     * Includes comprehensive GPS noise detection and reliability validation.
      */
     private TripType classifyWithGpsStatistics(TripGpsStatistics statistics,
                                                Duration tripDuration,
@@ -185,110 +198,24 @@ public class TravelClassification {
         double avgSpeedKmh = statistics.avgGpsSpeed() * 3.6;
         double maxSpeedKmh = statistics.maxGpsSpeed() * 3.6;
 
-        // Sanity check: Compare GPS-based speed with distance/duration-based speed
-        // GPS speeds can be unreliable due to noise, especially for short trips
-        double distanceKm = distanceMeters / 1000.0;
-        double hours = tripDuration.getSeconds() / 3600.0;
-        double calculatedAvgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
+        // Calculate speed from distance and duration for comparison
+        double calculatedAvgSpeedKmh = calculateAverageSpeed(distanceMeters, tripDuration);
 
-        // CRITICAL: Detect GPS noise where calculated speed is impossibly high AND GPS disagrees
-        // Example: 1068 km in 270 seconds = 14,238 km/h (supersonic!) but GPS shows 1.2 km/h (walking)
-        // This is GPS noise with two inaccurate points far apart
-        if (calculatedAvgSpeedKmh > MAX_REALISTIC_SPEED_KMH) {
-            // If calculated is impossible BUT GPS speeds are reasonable (within realistic range),
-            // trust GPS - this happens when distance calculation is wrong but GPS sampling is good
-            // Example: Flight with good GPS (750 km/h) but bad distance calc (1500 km/h) due to route vs straight-line
-            if (avgSpeedKmh <= MAX_REALISTIC_SPEED_KMH && maxSpeedKmh <= MAX_REALISTIC_SPEED_KMH) {
-                // GPS is realistic - use it instead of calculated
-                log.debug("Calculated speed ({} km/h) is unrealistic, but GPS speeds are reasonable ({} km/h avg, {} km/h max). Using GPS.",
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh));
-                // Continue with GPS speeds (don't return UNKNOWN)
-            } else {
-                // Both calculated AND GPS are unrealistic - this is noise
-                log.warn("Impossible calculated speed ({} km/h) detected. GPS shows {} km/h avg, {} km/h max. " +
-                                "Distance: {} m, Duration: {} s. This is GPS noise - using UNKNOWN.",
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh),
-                        distanceMeters,
-                        tripDuration.getSeconds());
-                // Don't try to classify this - it's pure noise
-                return UNKNOWN;
-            }
+        // Step 1: Check for impossible supersonic speeds (GPS noise)
+        TripType supersonicCheck = detectSupersonicNoise(avgSpeedKmh, maxSpeedKmh, calculatedAvgSpeedKmh,
+                                                         distanceMeters, tripDuration);
+        if (supersonicCheck != null) {
+            return supersonicCheck;
         }
 
-        // Adaptive GPS reliability check based on speed range
-        boolean isUnreliable = false;
-        if (calculatedAvgSpeedKmh > 0) {
-            if (calculatedAvgSpeedKmh < LOW_SPEED_THRESHOLD_KMH) {
-                // Low speed trips: Use strict ratio-based validation
-                // GPS should not exceed calculated by more than 2x
-                isUnreliable = avgSpeedKmh > calculatedAvgSpeedKmh * LOW_SPEED_GPS_RELIABILITY_RATIO;
-            } else if (avgSpeedKmh > HIGH_SPEED_GPS_TRUST_THRESHOLD_KMH) {
-                // Very high GPS speed (likely flight/high-speed train): Always trust GPS
-                // Calculated speed from distance/duration is unreliable due to route vs straight-line distance
-                // If GPS shows flight speeds (200+ km/h), it's very likely correct
-                isUnreliable = false;  // Trust GPS
-            } else {
-                // Medium-high speed trips: Use percentage-based validation
-                // GPS should not differ from calculated by more than 50%
-                double difference = Math.abs(avgSpeedKmh - calculatedAvgSpeedKmh);
-                double percentDiff = difference / calculatedAvgSpeedKmh;
-                isUnreliable = percentDiff > HIGH_SPEED_GPS_RELIABILITY_PERCENT;
-            }
-        }
+        // Step 2: Validate GPS reliability against calculated speed
+        GpsReliabilityResult reliabilityResult = validateGpsReliability(
+                avgSpeedKmh, maxSpeedKmh, calculatedAvgSpeedKmh,
+                distanceMeters, tripDuration, statistics, config
+        );
 
-        if (isUnreliable) {
-            // GPS seems unreliable compared to calculated speed
-            // BUT: If calculated speed is unrealistically LOW, it means distance calculation is wrong
-            // Example: Test data with imprecise coordinates showing 3m distance but GPS shows 63 km/h
-            // In this case, trust GPS instead
-            if (calculatedAvgSpeedKmh < MIN_REALISTIC_CALCULATED_SPEED_KMH && avgSpeedKmh > MIN_GPS_MOVEMENT_SPEED_KMH) {
-                log.debug("Calculated speed is unrealistically low ({} km/h) but GPS shows movement ({} km/h). " +
-                                "Distance calculation likely wrong ({}m in {}s). Trusting GPS.",
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        String.format("%f", avgSpeedKmh),
-                        distanceMeters,
-                        tripDuration.getSeconds());
-                // Trust GPS - calculated distance is clearly wrong
-                return classifyBySpeed(avgSpeedKmh, maxSpeedKmh, statistics.speedVariance(), config);
-            }
-
-            // Check if GPS max speed is also unreliable (noise spike detection)
-            // If max speed exceeds calculated avg by a large ratio, it's likely a GPS noise spike
-            double estimatedReasonableMax = calculatedAvgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
-            double adjustedMaxSpeed;
-
-            if (maxSpeedKmh > calculatedAvgSpeedKmh * GPS_MAX_SPEED_NOISE_RATIO) {
-                // GPS max is too high - likely noise (e.g., 29 km/h for a 3.6 km/h walking trip)
-                // Use a reasonable estimate instead
-                adjustedMaxSpeed = estimatedReasonableMax;
-                log.warn("GPS avg speed ({} km/h) and max speed ({} km/h) are unreliable (calculated: {} km/h). " +
-                                "Distance: {} m, Duration: {} s. Using calculated speeds.",
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh),
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        distanceMeters,
-                        tripDuration.getSeconds());
-            } else {
-                // GPS max seems reasonable relative to calculated avg - keep it
-                // This handles: car trip with traffic stops (10 km/h avg, 49 km/h max - realistic)
-                adjustedMaxSpeed = maxSpeedKmh;
-                log.warn("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) seems reasonable (calculated avg: {} km/h). " +
-                                "Distance: {} m, Duration: {} s. Using calculated avg but keeping GPS max.",
-                        String.format("%f", avgSpeedKmh),
-                        String.format("%f", maxSpeedKmh),
-                        String.format("%f", calculatedAvgSpeedKmh),
-                        distanceMeters,
-                        tripDuration.getSeconds());
-            }
-
-            return classifyBySpeed(calculatedAvgSpeedKmh, adjustedMaxSpeed, statistics.speedVariance(), config);
-        }
-
-        return classifyBySpeed(avgSpeedKmh, maxSpeedKmh, statistics.speedVariance(), config);
+        return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
+                statistics.speedVariance(), config);
     }
 
     /**
@@ -424,5 +351,176 @@ public class TravelClassification {
             }
         }
         return tripType;
+    }
+
+    // ============================================
+    // GPS NOISE DETECTION & VALIDATION HELPERS
+    // ============================================
+
+    /**
+     * Calculate average speed from distance and duration.
+     *
+     * @param distanceMeters total distance in meters
+     * @param tripDuration   trip duration
+     * @return average speed in km/h
+     */
+    private double calculateAverageSpeed(long distanceMeters, Duration tripDuration) {
+        double distanceKm = distanceMeters / 1000.0;
+        double hours = tripDuration.getSeconds() / 3600.0;
+        return hours > 0 ? distanceKm / hours : 0.0;
+    }
+
+    /**
+     * Detects impossible supersonic speeds indicating GPS noise.
+     * Returns UNKNOWN if both calculated and GPS speeds are unrealistic.
+     * Returns null if speeds are reasonable and classification should continue.
+     *
+     * @param avgSpeedKmh        GPS average speed
+     * @param maxSpeedKmh        GPS max speed
+     * @param calculatedAvgSpeedKmh Calculated average speed from distance/duration
+     * @param distanceMeters     trip distance
+     * @param tripDuration       trip duration
+     * @return UNKNOWN if GPS noise detected, null otherwise
+     */
+    private TripType detectSupersonicNoise(double avgSpeedKmh, double maxSpeedKmh,
+                                          double calculatedAvgSpeedKmh,
+                                          long distanceMeters, Duration tripDuration) {
+        if (calculatedAvgSpeedKmh > MAX_REALISTIC_SPEED_KMH) {
+            // If calculated is impossible BUT GPS speeds are reasonable, trust GPS
+            // Example: Flight with good GPS (750 km/h) but bad distance calc (1500 km/h)
+            if (avgSpeedKmh <= MAX_REALISTIC_SPEED_KMH && maxSpeedKmh <= MAX_REALISTIC_SPEED_KMH) {
+                log.debug("Calculated speed ({} km/h) is unrealistic, but GPS speeds are reasonable ({} km/h avg, {} km/h max). Using GPS.",
+                        String.format("%f", calculatedAvgSpeedKmh),
+                        String.format("%f", avgSpeedKmh),
+                        String.format("%f", maxSpeedKmh));
+                return null; // Continue with GPS speeds
+            } else {
+                // Both calculated AND GPS are unrealistic - this is pure noise
+                log.warn("Impossible calculated speed ({} km/h) detected. GPS shows {} km/h avg, {} km/h max. " +
+                                "Distance: {} m, Duration: {} s. This is GPS noise - using UNKNOWN.",
+                        String.format("%f", calculatedAvgSpeedKmh),
+                        String.format("%f", avgSpeedKmh),
+                        String.format("%f", maxSpeedKmh),
+                        distanceMeters,
+                        tripDuration.getSeconds());
+                return UNKNOWN;
+            }
+        }
+        return null; // No supersonic noise detected
+    }
+
+    /**
+     * Validates GPS reliability by comparing GPS speeds against calculated speeds.
+     * Determines which speeds to use for final classification.
+     *
+     * @param avgSpeedKmh        GPS average speed
+     * @param maxSpeedKmh        GPS max speed
+     * @param calculatedAvgSpeedKmh Calculated average speed
+     * @param distanceMeters     trip distance
+     * @param tripDuration       trip duration
+     * @param statistics         GPS statistics
+     * @param config            timeline configuration
+     * @return GpsReliabilityResult containing final speeds to use
+     */
+    private GpsReliabilityResult validateGpsReliability(double avgSpeedKmh, double maxSpeedKmh,
+                                                        double calculatedAvgSpeedKmh,
+                                                        long distanceMeters, Duration tripDuration,
+                                                        TripGpsStatistics statistics, TimelineConfig config) {
+        // Check if GPS is unreliable compared to calculated
+        boolean isUnreliable = isGpsUnreliable(avgSpeedKmh, calculatedAvgSpeedKmh);
+
+        if (!isUnreliable) {
+            // GPS is reliable - use it
+            return new GpsReliabilityResult(avgSpeedKmh, maxSpeedKmh);
+        }
+
+        // GPS seems unreliable - but check for special cases
+
+        // Special case 1: Calculated speed is unrealistically LOW
+        // If calculated < 1 km/h but GPS shows movement > 3 km/h, trust GPS
+        if (calculatedAvgSpeedKmh < MIN_REALISTIC_CALCULATED_SPEED_KMH && avgSpeedKmh > MIN_GPS_MOVEMENT_SPEED_KMH) {
+            log.debug("Calculated speed is unrealistically low ({} km/h) but GPS shows movement ({} km/h). " +
+                            "Distance calculation likely wrong ({}m in {}s). Trusting GPS.",
+                    String.format("%f", calculatedAvgSpeedKmh),
+                    String.format("%f", avgSpeedKmh),
+                    distanceMeters,
+                    tripDuration.getSeconds());
+            return new GpsReliabilityResult(avgSpeedKmh, maxSpeedKmh);
+        }
+
+        // GPS avg is unreliable - use calculated avg, but decide about max speed
+        double adjustedMaxSpeed = adjustMaxSpeed(maxSpeedKmh, calculatedAvgSpeedKmh,
+                avgSpeedKmh, distanceMeters, tripDuration);
+
+        return new GpsReliabilityResult(calculatedAvgSpeedKmh, adjustedMaxSpeed);
+    }
+
+    /**
+     * Checks if GPS speed is unreliable compared to calculated speed.
+     * Uses adaptive thresholds based on speed range.
+     *
+     * @param avgSpeedKmh        GPS average speed
+     * @param calculatedAvgSpeedKmh Calculated average speed
+     * @return true if GPS is unreliable, false otherwise
+     */
+    private boolean isGpsUnreliable(double avgSpeedKmh, double calculatedAvgSpeedKmh) {
+        if (calculatedAvgSpeedKmh <= 0) {
+            return false; // Can't validate if calculated is zero
+        }
+
+        if (calculatedAvgSpeedKmh < LOW_SPEED_THRESHOLD_KMH) {
+            // Low speed trips: Use strict ratio-based validation
+            // GPS should not exceed calculated by more than 2x
+            return avgSpeedKmh > calculatedAvgSpeedKmh * LOW_SPEED_GPS_RELIABILITY_RATIO;
+        } else if (avgSpeedKmh > HIGH_SPEED_GPS_TRUST_THRESHOLD_KMH) {
+            // Very high GPS speed (likely flight/high-speed train): Always trust GPS
+            // Calculated speed from distance/duration is unreliable due to route vs straight-line
+            return false;
+        } else {
+            // Medium-high speed trips: Use percentage-based validation
+            // GPS should not differ from calculated by more than 50%
+            double difference = Math.abs(avgSpeedKmh - calculatedAvgSpeedKmh);
+            double percentDiff = difference / calculatedAvgSpeedKmh;
+            return percentDiff > HIGH_SPEED_GPS_RELIABILITY_PERCENT;
+        }
+    }
+
+    /**
+     * Adjusts GPS max speed based on reliability checks.
+     * If GPS max is too high compared to calculated, estimates a reasonable max.
+     *
+     * @param maxSpeedKmh        GPS max speed
+     * @param calculatedAvgSpeedKmh Calculated average speed
+     * @param avgSpeedKmh        GPS average speed
+     * @param distanceMeters     trip distance
+     * @param tripDuration       trip duration
+     * @return adjusted max speed
+     */
+    private double adjustMaxSpeed(double maxSpeedKmh, double calculatedAvgSpeedKmh,
+                                  double avgSpeedKmh, long distanceMeters, Duration tripDuration) {
+        if (maxSpeedKmh > calculatedAvgSpeedKmh * GPS_MAX_SPEED_NOISE_RATIO) {
+            // GPS max is too high - likely noise spike
+            // Use reasonable estimate instead
+            double estimatedMax = calculatedAvgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
+            log.warn("GPS avg speed ({} km/h) and max speed ({} km/h) are unreliable (calculated: {} km/h). " +
+                            "Distance: {} m, Duration: {} s. Using calculated speeds.",
+                    String.format("%f", avgSpeedKmh),
+                    String.format("%f", maxSpeedKmh),
+                    String.format("%f", calculatedAvgSpeedKmh),
+                    distanceMeters,
+                    tripDuration.getSeconds());
+            return estimatedMax;
+        } else {
+            // GPS max seems reasonable - keep it
+            // This handles: car trip with traffic stops (10 km/h avg, 49 km/h max)
+            log.warn("GPS avg speed ({} km/h) is unreliable but max speed ({} km/h) seems reasonable (calculated avg: {} km/h). " +
+                            "Distance: {} m, Duration: {} s. Using calculated avg but keeping GPS max.",
+                    String.format("%f", avgSpeedKmh),
+                    String.format("%f", maxSpeedKmh),
+                    String.format("%f", calculatedAvgSpeedKmh),
+                    distanceMeters,
+                    tripDuration.getSeconds());
+            return maxSpeedKmh;
+        }
     }
 }

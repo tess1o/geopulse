@@ -41,16 +41,108 @@ Controls how GeoPulse identifies when you're stationary at a location.
 
 Controls how movement is classified into different transportation modes based on speed analysis.
 
+### Trip Detection Settings
+
 | Property                                                     | Default  | Description                                                                                                                 |
 |--------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|
 | `GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM`                 | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                 |
 | `GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_DURATION_SECONDS`        | `90`     | Minimum duration (seconds) for arrival detection. GPS points must be clustered and slow for this duration to detect arrival |
 | `GEOPULSE_TIMELINE_TRIP_SUSTAINED_STOP_MIN_DURATION_SECONDS` | `60`     | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                        |
-| `GEOPULSE_TIMELINE_WALKING_MAX_AVG_SPEED`                    | `6.0`    | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking                   |
-| `GEOPULSE_TIMELINE_WALKING_MAX_MAX_SPEED`                    | `8.0`    | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip                    |
-| `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED`                        | `8.0`    | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving             |
-| `GEOPULSE_TIMELINE_CAR_MIN_MAX_SPEED`                        | `15.0`   | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving   |
 | `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM`                        | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips         |
+
+### Walking Classification (Mandatory)
+
+Walking is a mandatory trip type that cannot be disabled.
+
+| Property                              | Default | Description                                                                                               |
+|---------------------------------------|---------|-----------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_WALKING_MAX_AVG_SPEED` | `6.0`   | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking |
+| `GEOPULSE_TIMELINE_WALKING_MAX_MAX_SPEED` | `8.0`   | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip  |
+
+### Car Classification (Mandatory)
+
+Car is a mandatory trip type that cannot be disabled. Covers all motorized transport including cars, buses, and motorcycles.
+
+| Property                          | Default | Description                                                                                             |
+|-----------------------------------|---------|---------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED` | `8.0`   | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving |
+| `GEOPULSE_TIMELINE_CAR_MIN_MAX_SPEED` | `15.0`  | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving |
+
+:::info
+Car classification uses **OR logic**: a trip is classified as CAR if **either** average speed ≥ `CAR_MIN_AVG_SPEED` **or** maximum speed ≥ `CAR_MIN_MAX_SPEED`.
+:::
+
+### Bicycle Classification (Optional)
+
+Bicycle is an optional trip type for detecting cycling and running. **Disabled by default.**
+
+:::warning Classification Priority
+Bicycle must be checked **before** Car in the classification algorithm because their speed ranges overlap (8-25 km/h). If disabled, trips in this range will be classified as CAR instead.
+:::
+
+| Property                              | Default | Description                                                                       |
+|---------------------------------------|---------|-----------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_BICYCLE_ENABLED`       | `false` | Whether bicycle classification is enabled                                         |
+| `GEOPULSE_TIMELINE_BICYCLE_MIN_AVG_SPEED` | `8.0`   | Minimum average speed (km/h) for bicycle trips. Slower trips classify as walking  |
+| `GEOPULSE_TIMELINE_BICYCLE_MAX_AVG_SPEED` | `25.0`  | Maximum average speed (km/h) for bicycle trips. Faster trips classify as car      |
+| `GEOPULSE_TIMELINE_BICYCLE_MAX_MAX_SPEED` | `35.0`  | Maximum peak speed (km/h) for bicycle trips. Allows for downhill segments/e-bikes |
+
+### Train Classification (Optional)
+
+Train is an optional trip type for detecting rail travel. Uses speed variance to distinguish from cars. **Disabled by default.**
+
+:::tip Speed Variance
+Trains maintain consistent speeds (low variance < 15), while cars have variable speeds due to traffic and stops (high variance > 25). This is the key discriminator between train and car trips at similar speeds.
+:::
+
+| Property                              | Default  | Description                                                                 |
+|---------------------------------------|----------|-----------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_TRAIN_ENABLED`         | `false`  | Whether train classification is enabled                                     |
+| `GEOPULSE_TIMELINE_TRAIN_MIN_AVG_SPEED`   | `30.0`   | Minimum average speed (km/h) for train trips. Separates from cars in traffic |
+| `GEOPULSE_TIMELINE_TRAIN_MAX_AVG_SPEED`   | `150.0`  | Maximum average speed (km/h) for train trips. Covers regional and intercity trains |
+| `GEOPULSE_TIMELINE_TRAIN_MIN_MAX_SPEED`   | `80.0`   | Minimum peak speed (km/h) required. Filters out trips with only station waiting time |
+| `GEOPULSE_TIMELINE_TRAIN_MAX_MAX_SPEED`   | `180.0`  | Maximum peak speed (km/h) for train trips. Upper limit for rail speeds     |
+| `GEOPULSE_TIMELINE_TRAIN_MAX_SPEED_VARIANCE` | `15.0`   | Maximum speed variance allowed. Lower values require more consistent speeds |
+
+### Flight Classification (Optional)
+
+Flight is an optional trip type for detecting air travel. **Disabled by default.**
+
+:::info OR Logic for Flights
+Flight classification uses **OR logic**: a trip is classified as FLIGHT if **either** average speed ≥ `FLIGHT_MIN_AVG_SPEED` **or** maximum speed ≥ `FLIGHT_MIN_MAX_SPEED`. This handles flights with long taxi/boarding times that lower the overall average.
+:::
+
+| Property                              | Default  | Description                                                                   |
+|---------------------------------------|----------|-------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_FLIGHT_ENABLED`        | `false`  | Whether flight classification is enabled                                      |
+| `GEOPULSE_TIMELINE_FLIGHT_MIN_AVG_SPEED`  | `400.0`  | Minimum average speed (km/h) for flight trips. Conservative default includes ground time |
+| `GEOPULSE_TIMELINE_FLIGHT_MIN_MAX_SPEED`  | `500.0`  | Minimum peak speed (km/h) for flight trips. Catches flights with long taxi time |
+
+### Classification Priority Order
+
+The system evaluates trip types in this specific order:
+
+1. **FLIGHT** - Highest priority (400+ km/h avg OR 500+ km/h peak)
+2. **TRAIN** - High speed with low variance (30-150 km/h, variance < 15)
+3. **BICYCLE** - Medium speeds (8-25 km/h) - **Must be before CAR!**
+4. **CAR** - Motorized transport (8+ km/h avg OR 15+ km/h peak)
+5. **WALK** - Low speeds (≤6 km/h avg, ≤8 km/h peak)
+6. **UNKNOWN** - Fallback for edge cases
+
+:::danger Important
+The order is critical! BICYCLE must be checked before CAR because their speed ranges overlap. Changing the order will cause misclassification.
+:::
+
+### GPS Noise Detection
+
+The classification system includes automatic GPS noise detection:
+
+- **Supersonic Speed Rejection**: Speeds above 1,200 km/h are rejected as GPS noise
+- **Reliability Validation**: GPS speeds are compared against calculated speeds from distance/duration
+- **Adaptive Thresholds**: Different validation rules for low-speed vs. high-speed trips
+- **Smart Fallbacks**: Automatically switches to calculated speeds when GPS data is unreliable
+
+For more details on how travel classification works, see the [Travel Classification Guide](/docs/user-guide/timeline/travel_classification).
 
 ## Staypoint Merging
 

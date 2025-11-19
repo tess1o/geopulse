@@ -289,8 +289,8 @@
                           <span class="priority-step priority-unknown">❓ UNKNOWN</span>
                         </div>
                         <p class="priority-description">
-                          Trips are classified in this order. Once a match is found, classification stops.
-                          Order matters: BICYCLE must be checked before CAR to avoid misclassification.
+                          Trips are classified in priority order from top to bottom. Once a match is found, classification stops.
+                          This order handles overlapping speed ranges correctly - e.g., a 20 km/h trip matches BICYCLE before reaching CAR.
                         </p>
                       </div>
                     </div>
@@ -369,7 +369,7 @@
                     title="Bicycle"
                     subtitle="Optional transport type"
                     icon="pi pi-circle"
-                    description="Detects cycling and running trips (8-25 km/h range). Also captures jogging. Consider displaying as 'Cycling/Running' in UI."
+                    description="Detects cycling trips (8-25 km/h typical range). Also captures running/jogging. Priority order ensures correct classification even with speed overlap with cars."
                     v-model:enabled="prefs.bicycleEnabled"
                     :collapsible="true"
                     :validation-messages="getWarningMessagesForType('bicycle').value"
@@ -560,7 +560,7 @@
                     title="Flight"
                     subtitle="Optional transport type"
                     icon="pi pi-send"
-                    description="Detects air travel by very high speeds (400+ km/h). Uses OR logic: avg ≥ 400 OR peak ≥ 500 to handle taxi/ground time."
+                    description="Detects air travel by very high speeds (400+ km/h avg OR 500+ km/h peak). OR logic handles extended taxi/ground time. GPS noise above 1200 km/h is automatically rejected."
                     v-model:enabled="prefs.flightEnabled"
                     :collapsible="true"
                     :validation-messages="getWarningMessagesForType('flight').value"
@@ -1157,25 +1157,48 @@ const hasStructuralParameters = (changes) => {
   return structuralFields.some(field => field in changes)
 }
 
-const savePreferences = (saveType = 'full') => {
+const savePreferences = async (saveType = 'full') => {
   if (!isFormValid.value) return
 
   // Capture changes immediately to avoid closure issues
   const changes = getChangedPrefs()
 
-  const action = () => {
-    return timelinePreferencesStore.updateTimelinePreferences(changes)
-  }
-
-  withTimelineRegeneration(
-    action,
-    {
-      modalType: saveType === 'classification' ? 'classification' : 'preferences',
-      successMessage: 'Preferences saved and timeline regeneration started.',
-      errorMessage: 'Failed to save preferences.',
-      onSuccess: loadPreferences
+  if (saveType === 'classification') {
+    // Fast path: classification-only updates don't need job tracking
+    try {
+      await timelinePreferencesStore.updateTimelinePreferences(changes)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Trip classifications updated successfully.',
+        life: 3000
+      })
+      await loadPreferences()
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: error.message || 'Failed to save preferences.',
+        life: 5000
+      })
     }
-  )
+  } else {
+    // Full regeneration path: requires job tracking
+    const action = () => {
+      return timelinePreferencesStore.updateTimelinePreferences(changes)
+    }
+
+    withTimelineRegeneration(
+      action,
+      {
+        modalType: 'preferences',
+        successMessage: 'Preferences saved and timeline regeneration started.',
+        errorMessage: 'Failed to save preferences.',
+        onSuccess: loadPreferences
+      }
+    )
+  }
 }
 
 const confirmResetDefaults = () => {
