@@ -65,7 +65,14 @@ public class UpdateTimelinePreferencesRequest {
 
     @Min(value = 1, message = "Data Gap minimum duration (seconds) must be positive")
     private Integer dataGapMinDurationSeconds;
-    
+
+    // Gap Stay Inference Settings
+    private Boolean gapStayInferenceEnabled;
+
+    @Min(value = 1, message = "Gap stay inference max gap hours must be at least 1 hour")
+    @Max(value = 168, message = "Gap stay inference max gap hours must be at most 168 hours (1 week)")
+    private Integer gapStayInferenceMaxGapHours;
+
     // Travel Classification Settings
     @DecimalMin(value = "3.0", message = "Walking max average speed must be at least 3.0 km/h")
     @DecimalMax(value = "10.0", message = "Walking max average speed must be at most 10.0 km/h")

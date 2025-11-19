@@ -252,6 +252,7 @@
                       />
                     </template>
                   </SettingCard>
+
                 </div>
               </div>
           </div>
@@ -717,6 +718,51 @@
                       />
                     </template>
                   </SettingCard>
+
+                  <!-- Gap Stay Inference -->
+                  <SettingCard
+                    title="Gap Stay Inference"
+                    description="Infer stays when GPS data gaps occur but locations before and after are the same"
+                    :details="{
+                      'When enabled': 'If you were at a location and GPS data stops, then resumes at the same location, the system infers you stayed there',
+                      'Use case': 'Overnight gaps at home will show as a stay instead of a data gap'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.gapStayInferenceEnabled ? 'Enabled' : 'Disabled' }}</div>
+                      <ToggleSwitch
+                        v-model="prefs.gapStayInferenceEnabled"
+                        class="toggle-control"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Gap Stay Inference Max Gap Hours -->
+                  <SettingCard
+                    v-if="prefs.gapStayInferenceEnabled"
+                    title="Maximum Gap Duration for Inference"
+                    description="Maximum duration of GPS data gap to infer a stay"
+                    :details="{
+                      'Lower values': 'Only infer stays for shorter gaps (e.g., brief phone downtime)',
+                      'Higher values': 'Infer stays for longer gaps (e.g., overnight, full day)'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.gapStayInferenceMaxGapHours }} hours</div>
+                      <SliderControl
+                        v-if="prefs.gapStayInferenceMaxGapHours !== undefined"
+                        v-model="prefs.gapStayInferenceMaxGapHours"
+                        :min="1"
+                        :max="72"
+                        :step="1"
+                        :labels="['1 hour (Strict)', '24 hours (Default)', '72 hours (Lenient)']"
+                        suffix=" hours"
+                        :input-min="1"
+                        :input-max="168"
+                        :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
                 </div>
               </div>
           </div>
@@ -1152,6 +1198,7 @@ const hasStructuralParameters = (changes) => {
     'pathSimplificationEnabled', 'pathSimplificationTolerance',
     'pathMaxPoints', 'pathAdaptiveSimplification',
     'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
+    'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
     'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds'
   ]
   return structuralFields.some(field => field in changes)

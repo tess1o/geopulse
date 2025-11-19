@@ -81,6 +81,15 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String dataGapMinDurationSeconds;
 
+    // Gap Stay Inference - infer stay when gap occurs but points before/after are at same location
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String gapStayInferenceEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_stay_inference.max_gap_hours", defaultValue = "24")
+    @StaticInitSafe
+    String gapStayInferenceMaxGapHours;
+
     // Travel Classification
     @ConfigProperty(name = "geopulse.timeline.travel.classification.walking.max_avg_speed", defaultValue = "6.0")
     @StaticInitSafe

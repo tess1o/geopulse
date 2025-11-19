@@ -145,7 +145,27 @@ public class TimelineConfig {
      * This prevents very short connectivity issues from creating unnecessary gap records.
      */
     private Integer dataGapMinDurationSeconds;
-    
+
+    // Gap Stay Inference Configuration
+    /**
+     * Enable or disable gap stay inference feature.
+     * When enabled, if a data gap occurs but the GPS points before and after the gap
+     * are at the same location (within stay radius), the system will infer a stay
+     * instead of creating a data gap. This addresses overnight stays at home where
+     * the app doesn't send GPS data but the user actually stayed there.
+     * Default: false (disabled)
+     */
+    private Boolean gapStayInferenceEnabled;
+
+    /**
+     * Maximum gap duration in hours for stay inference to apply.
+     * Gaps longer than this will create a data gap regardless of location similarity.
+     * This prevents very long gaps (e.g., week-long periods without data) from being
+     * automatically filled as stays.
+     * Default: 24 hours
+     */
+    private Integer gapStayInferenceMaxGapHours;
+
     // Travel Classification Configuration
     /**
      * Maximum average speed in km/h to classify movement as walking.

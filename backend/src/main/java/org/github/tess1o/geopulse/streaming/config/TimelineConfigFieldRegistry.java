@@ -136,6 +136,21 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setDataGapMinDurationSeconds,
                         Integer::valueOf
                 ))
+                // Gap Stay Inference
+                .register(new ConfigField<>(
+                        "geopulse.timeline.gap_stay_inference.enabled",
+                        properties.getGapStayInferenceEnabled(),
+                        TimelineConfig::getGapStayInferenceEnabled,
+                        TimelineConfig::setGapStayInferenceEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.gap_stay_inference.max_gap_hours",
+                        properties.getGapStayInferenceMaxGapHours(),
+                        TimelineConfig::getGapStayInferenceMaxGapHours,
+                        TimelineConfig::setGapStayInferenceMaxGapHours,
+                        Integer::valueOf
+                ))
                 // Travel Classification
                 .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.walking.max_avg_speed",
