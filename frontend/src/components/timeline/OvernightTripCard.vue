@@ -82,14 +82,13 @@ const getTimestampText = () => {
 
 const getMovementIcon = () => {
   switch (props.tripItem.movementType) {
-    case 'WALK': return '🚶‍♂️'
-    case 'RUN': return '🏃‍♂️'
-    case 'BIKE': return '🚴‍♂️'
+    case 'WALK': return '🚶'
+    case 'BICYCLE': return '🚴'
     case 'CAR': return '🚗'
-    case 'BUS': return '🚌'
     case 'TRAIN': return '🚊'
-    case 'PLANE': return '✈️'
-    default: return '🚗'
+    case 'FLIGHT': return '✈️'
+    case 'UNKNOWN': return '❓'
+    default: return '❓'
   }
 }
 
@@ -100,7 +99,10 @@ const getOnThisDayText = () => {
 const formatMovementType = (type) => {
   const movementTypeMap = {
     WALK: 'Walk',
+    BICYCLE: 'Bicycle',
     CAR: 'Car',
+    TRAIN: 'Train',
+    FLIGHT: 'Flight',
     UNKNOWN: 'Unknown'
   }
   return movementTypeMap[type] || type

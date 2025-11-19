@@ -449,6 +449,198 @@ public class TimelineTripClassificationTest {
         assertEquals(TripType.FLIGHT, result);
     }
 
+    // ====================
+    // GPS SANITY CHECK TESTS (Bug Fix for Issue #492146)
+    // ====================
+
+    @Test
+    void testUnreliableGpsSpeed_ShouldFallbackToCalculated() {
+        // Real-world bug: Trip ID 492146 / 493646
+        // Distance: 999m, Duration: 718s (calculated avg: 5.0 km/h)
+        // But GPS reported: avgSpeed 11.4 km/h, maxSpeed 29.0 km/h
+        // Was incorrectly classified as BICYCLE, then as CAR, should be WALK
+
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // GPS reports unreliable high speeds
+        TripGpsStatistics unreliableStats = new TripGpsStatistics(
+                3.1667,  // 11.4 km/h GPS avg (unreliable - 2.3x calculated!)
+                8.0556,  // 29.0 km/h GPS max (unreliable - 5.8x calculated! GPS noise)
+                12.086,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                unreliableStats,
+                Duration.ofSeconds(718),
+                999,
+                bicycleConfig
+        );
+
+        // Sanity check detects unreliable GPS avg (11.4 > 5.0 * 2)
+        // GPS max also unreliable (29.0 > 5.0 * 5) - likely GPS noise
+        // Uses calculated avg (5.0 km/h) and estimated max (7.5 km/h)
+        // Result: WALK (avg 5.0 <= 6.0, max 7.5 <= 8.0)
+        assertEquals(TripType.WALK, result,
+                "Walking trip with GPS noise should be WALK, not BICYCLE or CAR");
+    }
+
+    @Test
+    void testCarTripWithTrafficStops_ShouldBeCarNotBicycle() {
+        // Real-world bug: Trip ID 492862
+        // Distance: 2282m, Duration: 687s (calculated avg: 10.8 km/h - slow due to traffic)
+        // GPS: avgSpeed 32.6 km/h, maxSpeed 49.0 km/h (shows actual driving speed)
+        // Was incorrectly classified as BICYCLE, should be CAR
+
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Car trip with heavy traffic/stops
+        TripGpsStatistics trafficStats = new TripGpsStatistics(
+                9.047,   // 32.6 km/h GPS avg (unreliable - 3x calculated)
+                13.611,  // 49.0 km/h GPS max (reliable - shows actual car speed!)
+                11.618,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                trafficStats,
+                Duration.ofSeconds(687),
+                2282,
+                bicycleConfig
+        );
+
+        // GPS avg unreliable (32.6 vs calculated 10.8) - use calculated avg
+        // Keep GPS max speed (49.0 km/h) - reliable indicator of car
+        // Result: CAR (maxSpeed 49.0 >= carMinMaxSpeed 15.0)
+        assertEquals(TripType.CAR, result,
+                "Car trip with traffic stops should be CAR (max speed 49 km/h), not BICYCLE");
+    }
+
+    @Test
+    void testReliableGpsSpeed_ShouldUsGpsSpeed() {
+        // GPS and calculated speeds match closely - GPS is reliable
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Calculated: 2500m / 600s = 4.17 m/s = 15.0 km/h
+        // GPS: 4.2 m/s = 15.12 km/h (very close!)
+        TripGpsStatistics reliableStats = new TripGpsStatistics(
+                4.2,   // 15.12 km/h (reliable - matches calculated)
+                6.0,   // 21.6 km/h
+                8.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                reliableStats,
+                Duration.ofSeconds(600),
+                2500,
+                bicycleConfig
+        );
+
+        // GPS is reliable, should use it → BICYCLE
+        assertEquals(TripType.BICYCLE, result,
+                "Trip with reliable GPS 15 km/h should be BICYCLE");
+    }
+
+    @Test
+    void testBoundary_GpsExactly2xCalculated_ShouldStillUseGps() {
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Calculated: 1000m / 600s = 1.67 m/s = 6.0 km/h
+        // GPS: 3.33 m/s = 12.0 km/h (exactly 2x)
+        TripGpsStatistics boundaryStats = new TripGpsStatistics(
+                3.33,  // 12.0 km/h (exactly 2x calculated)
+                5.0,   // 18.0 km/h
+                8.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                boundaryStats,
+                Duration.ofSeconds(600),
+                1000,
+                bicycleConfig
+        );
+
+        // At exactly 2x, sanity check should NOT trigger (threshold is > 2.0)
+        // Should use GPS speed (12 km/h) → BICYCLE
+        assertEquals(TripType.BICYCLE, result,
+                "GPS at exactly 2x calculated should still be trusted");
+    }
+
+    @Test
+    void testJustOver2x_ShouldTriggerSanityCheck() {
+        TimelineConfig bicycleConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Calculated: 1000m / 600s = 1.67 m/s = 6.0 km/h
+        // GPS: 3.4 m/s = 12.24 km/h (2.04x calculated)
+        TripGpsStatistics overThresholdStats = new TripGpsStatistics(
+                3.4,   // 12.24 km/h (2.04x calculated - triggers sanity check for speeds < 20 km/h)
+                5.0,   // 18.0 km/h max (3x calculated - keep this, not > 5x)
+                8.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                overThresholdStats,
+                Duration.ofSeconds(600),
+                1000,
+                bicycleConfig
+        );
+
+        // Over 2x threshold for low speeds (< 20 km/h), sanity check triggers
+        // GPS max (18.0) is 3x calculated but < 5x threshold, so keep it
+        // Uses calculated avg (6.0 km/h) but keeps GPS max (18.0 km/h)
+        // Result: CAR (maxSpeed 18.0 >= carMinMaxSpeed 15.0)
+        assertEquals(TripType.CAR, result,
+                "GPS over 2x calculated should use calculated avg but keep GPS max if < 5x");
+    }
+
     @Test
     void testCompleteClassificationChain() {
         // Test with all types enabled
@@ -501,5 +693,137 @@ public class TimelineTripClassificationTest {
                 classification.classifyTravelType(
                         new TripGpsStatistics(500.0/3.6, 850.0/3.6, 150.0, 0),
                         Duration.ofHours(2), 1000000, allEnabledConfig));
+    }
+
+    // ====================
+    // GPS NOISE DETECTION TESTS (Critical Fix for Trip ID 494443)
+    // ====================
+
+    @Test
+    void testSupersonicGpsNoise_ShouldBeUnknown() {
+        // Real-world bug: Trip ID 494443
+        // Distance: 1,068,059m, Duration: 270s → Calculated: 14,238 km/h (11.6x speed of sound!)
+        // GPS: avgSpeed 0.35 m/s (1.25 km/h), maxSpeed 1.04 m/s (3.74 km/h) → walking speeds
+        // This is clearly GPS noise with two inaccurate points far apart
+        // Was incorrectly classified as FLIGHT, should be UNKNOWN
+
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // GPS shows walking speeds but calculated is supersonic
+        TripGpsStatistics noiseStats = new TripGpsStatistics(
+                0.346737787037037,  // 1.25 km/h GPS avg (walking speed!)
+                1.040213361111111,  // 3.74 km/h GPS max (walking speed!)
+                0.2404541859186833,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                noiseStats,
+                Duration.ofSeconds(270),  // 4.5 minutes
+                1068059,  // 1,068 km - impossible in 4.5 minutes!
+                flightConfig
+        );
+
+        // Calculated speed: 1068 km / (270s / 3600) = 14,238 km/h (supersonic!)
+        // MAX_REALISTIC_SPEED check (1200 km/h) should catch this
+        // Result: UNKNOWN (GPS noise detected)
+        assertEquals(TripType.UNKNOWN, result,
+                "GPS noise creating impossible 14,238 km/h trip should be UNKNOWN, not FLIGHT");
+    }
+
+    @Test
+    void testLegitimateFlightNotFiltered() {
+        // Verify legitimate flights are NOT filtered by the supersonic check
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .build();
+
+        // Real flight: 900 km in 1 hour = 900 km/h (below 1200 threshold)
+        TripGpsStatistics flightStats = new TripGpsStatistics(
+                250.0,  // 900 km/h GPS avg
+                260.0,  // 936 km/h GPS max
+                120.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                flightStats,
+                Duration.ofHours(1),
+                900000,
+                flightConfig
+        );
+
+        // Should pass supersonic check (900 < 1200) and be classified as FLIGHT
+        assertEquals(TripType.FLIGHT, result,
+                "Legitimate 900 km/h flight should be FLIGHT, not filtered as noise");
+    }
+
+    @Test
+    void testEdgeOfRealistic_JustUnder1200kmh() {
+        // Test boundary at MAX_REALISTIC_SPEED (1200 km/h)
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .build();
+
+        // Right at the edge: 1199 km/h
+        TripGpsStatistics edgeStats = new TripGpsStatistics(
+                332.5,  // 1197 km/h
+                333.0,  // 1198.8 km/h (just under 1200)
+                50.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                edgeStats,
+                Duration.ofHours(1),
+                1199000,
+                flightConfig
+        );
+
+        // Should pass (1199 < 1200) → FLIGHT
+        assertEquals(TripType.FLIGHT, result,
+                "Speed of 1199 km/h should pass as FLIGHT");
+    }
+
+    @Test
+    void testSupersonic_JustOver1200kmh() {
+        // Test just over MAX_REALISTIC_SPEED threshold
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .build();
+
+        // Just over the edge: 1201 km/h
+        TripGpsStatistics supersonicStats = new TripGpsStatistics(
+                333.6,  // 1200.96 km/h (just over)
+                334.0,  // 1202.4 km/h
+                50.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                supersonicStats,
+                Duration.ofHours(1),
+                1201000,
+                flightConfig
+        );
+
+        // Should fail (1201 > 1200) → UNKNOWN
+        assertEquals(TripType.UNKNOWN, result,
+                "Speed of 1201 km/h should be filtered as GPS noise → UNKNOWN");
     }
 }
