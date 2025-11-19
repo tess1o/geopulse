@@ -1052,6 +1052,75 @@
             "maximum" : 600,
             "minimum" : 10,
             "type" : "integer"
+          },
+          "bicycleEnabled" : {
+            "type" : "boolean"
+          },
+          "bicycleMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 15.0,
+            "minimum" : 5.0,
+            "type" : "number"
+          },
+          "bicycleMaxAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 35.0,
+            "minimum" : 15.0,
+            "type" : "number"
+          },
+          "bicycleMaxMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 50.0,
+            "minimum" : 20.0,
+            "type" : "number"
+          },
+          "trainEnabled" : {
+            "type" : "boolean"
+          },
+          "trainMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 50.0,
+            "minimum" : 20.0,
+            "type" : "number"
+          },
+          "trainMaxAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 200.0,
+            "minimum" : 80.0,
+            "type" : "number"
+          },
+          "trainMinMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 120.0,
+            "minimum" : 60.0,
+            "type" : "number"
+          },
+          "trainMaxMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 250.0,
+            "minimum" : 100.0,
+            "type" : "number"
+          },
+          "trainMaxSpeedVariance" : {
+            "format" : "double",
+            "maximum" : 30.0,
+            "minimum" : 5.0,
+            "type" : "number"
+          },
+          "flightEnabled" : {
+            "type" : "boolean"
+          },
+          "flightMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 600.0,
+            "minimum" : 250.0,
+            "type" : "number"
+          },
+          "flightMinMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 900.0,
+            "minimum" : 400.0,
+            "type" : "number"
           }
         }
       },
@@ -4916,7 +4985,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.4.3",
+    "version" : "1.5.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
