@@ -59,6 +59,9 @@
                   Your GPS data is processed to identify meaningful stays and trips.
                   These settings control the sensitivity of this detection and apply only to your account.
                   Some changes (like speed thresholds) will quickly update trip classifications, while others may require full timeline re-generation depending on your GPS data volume.
+                  <a href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/timeline" target="_blank" rel="noopener noreferrer" class="documentation-link">
+                    Learn more in the documentation <i class="pi pi-external-link"></i>
+                  </a>
                 </p>
               </div>
             </div>
@@ -1440,6 +1443,24 @@ onMounted(() => {
   color: var(--gp-text-secondary);
   margin: 0;
   line-height: 1.4;
+}
+
+.documentation-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.5rem;
+  color: var(--gp-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.documentation-link:hover {
+  text-decoration: underline;
+}
+
+.documentation-link i {
+  font-size: 0.75rem;
 }
 
 /* Unsaved Changes Warning */
