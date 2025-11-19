@@ -105,6 +105,36 @@
                   {{ getWalkPercentage(distanceTraveled) }} - {{ getWalkPhrase(distanceTraveled?.byWalk || 0) }}
                 </div>
               </div>
+
+              <!-- Distance Cycling -->
+              <div class="insight-stat-large travel-card" v-if="distanceTraveled?.byBicycle > 0">
+                <div class="travel-icon">🚴</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byBicycle * 1000 || 0) }}</div>
+                <div class="stat-label">Distance Cycling</div>
+                <div class="stat-detail">
+                  {{ getBicyclePercentage(distanceTraveled) }} - {{ getBicyclePhrase(distanceTraveled?.byBicycle || 0) }}
+                </div>
+              </div>
+
+              <!-- Distance by Train -->
+              <div class="insight-stat-large travel-card" v-if="distanceTraveled?.byTrain > 0">
+                <div class="travel-icon">🚆</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byTrain * 1000 || 0) }}</div>
+                <div class="stat-label">Distance by Train</div>
+                <div class="stat-detail">
+                  {{ getTrainPercentage(distanceTraveled) }} - {{ getTrainPhrase(distanceTraveled?.byTrain || 0) }}
+                </div>
+              </div>
+
+              <!-- Distance by Flight -->
+              <div class="insight-stat-large travel-card" v-if="distanceTraveled?.byFlight > 0">
+                <div class="travel-icon">✈️</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byFlight * 1000 || 0) }}</div>
+                <div class="stat-label">Distance by Flight</div>
+                <div class="stat-detail">
+                  {{ getFlightPercentage(distanceTraveled) }} - {{ getFlightPhrase(distanceTraveled?.byFlight || 0) }}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -411,6 +441,24 @@ const getWalkPercentage = (distanceData) => {
   return `(${percentage}%)`
 }
 
+const getBicyclePercentage = (distanceData) => {
+  if (!distanceData?.total || distanceData.total === 0) return '(0%)'
+  const percentage = Math.round((distanceData.byBicycle / distanceData.total) * 100)
+  return `(${percentage}%)`
+}
+
+const getTrainPercentage = (distanceData) => {
+  if (!distanceData?.total || distanceData.total === 0) return '(0%)'
+  const percentage = Math.round((distanceData.byTrain / distanceData.total) * 100)
+  return `(${percentage}%)`
+}
+
+const getFlightPercentage = (distanceData) => {
+  if (!distanceData?.total || distanceData.total === 0) return '(0%)'
+  const percentage = Math.round((distanceData.byFlight / distanceData.total) * 100)
+  return `(${percentage}%)`
+}
+
 // Motivational phrase collections
 const totalDistancePhrases = [
   { min: 0, max: 50, phrases: [
@@ -491,6 +539,75 @@ const walkPhrases = [
     ]}
 ]
 
+const bicyclePhrases = [
+  { min: 0, max: 50, phrases: [
+      "Great start on two wheels!",
+      "Pedaling your way to adventure!",
+      "Every ride is an adventure!"
+    ]},
+  { min: 50, max: 200, phrases: [
+      "You're a cycling enthusiast!",
+      "Wind in your hair, freedom on wheels!",
+      "Two wheels, endless possibilities!"
+    ]},
+  { min: 200, max: 1000, phrases: [
+      "Tour de Force cyclist!",
+      "You could have cycled across countries!",
+      "Professional cyclist in the making!"
+    ]},
+  { min: 1000, max: Infinity, phrases: [
+      "Legendary cycling achievements!",
+      "You've cycled around the world!",
+      "Ultimate cycling champion!"
+    ]}
+]
+
+const trainPhrases = [
+  { min: 0, max: 100, phrases: [
+      "All aboard the adventure train!",
+      "Scenic rail journeys await!",
+      "Train travel beginner!"
+    ]},
+  { min: 100, max: 500, phrases: [
+      "You enjoy the rails!",
+      "Comfortable train traveler!",
+      "Scenic route enthusiast!"
+    ]},
+  { min: 500, max: 2000, phrases: [
+      "Railway exploration expert!",
+      "You've seen the world from trains!",
+      "Cross-country rail traveler!"
+    ]},
+  { min: 2000, max: Infinity, phrases: [
+      "Transcontinental rail legend!",
+      "You could write a train travel guide!",
+      "Ultimate rail journey master!"
+    ]}
+]
+
+const flightPhrases = [
+  { min: 0, max: 500, phrases: [
+      "Taking to the skies!",
+      "First flights are always special!",
+      "Sky explorer in training!"
+    ]},
+  { min: 500, max: 5000, phrases: [
+      "Frequent flyer status!",
+      "You're seeing the world from above!",
+      "Jet-setter in the making!"
+    ]},
+  { min: 5000, max: 20000, phrases: [
+      "Global explorer by air!",
+      "You've crossed continents by plane!",
+      "International traveler extraordinaire!"
+    ]},
+  { min: 20000, max: Infinity, phrases: [
+      "Around the world multiple times!",
+      "Professional globe-trotter!",
+      "You practically live in the sky!"
+    ]}
+]
+
 const getTotalDistancePhrase = (distance) => {
   const range = totalDistancePhrases.find(r => distance >= r.min && distance < r.max)
   if (!range) return "Keep exploring!"
@@ -506,6 +623,24 @@ const getCarPhrase = (distance) => {
 const getWalkPhrase = (distance) => {
   const range = walkPhrases.find(r => distance >= r.min && distance < r.max)
   if (!range) return "Keep walking!"
+  return range.phrases[Math.floor(Math.random() * range.phrases.length)]
+}
+
+const getBicyclePhrase = (distance) => {
+  const range = bicyclePhrases.find(r => distance >= r.min && distance < r.max)
+  if (!range) return "Keep cycling!"
+  return range.phrases[Math.floor(Math.random() * range.phrases.length)]
+}
+
+const getTrainPhrase = (distance) => {
+  const range = trainPhrases.find(r => distance >= r.min && distance < r.max)
+  if (!range) return "Keep riding the rails!"
+  return range.phrases[Math.floor(Math.random() * range.phrases.length)]
+}
+
+const getFlightPhrase = (distance) => {
+  const range = flightPhrases.find(r => distance >= r.min && distance < r.max)
+  if (!range) return "Keep flying!"
   return range.phrases[Math.floor(Math.random() * range.phrases.length)]
 }
 

@@ -10,8 +10,12 @@ import lombok.NoArgsConstructor;
 public class DistanceTraveled {
     private int byCar;
     private int byWalk;
+    private int byBicycle;
+    private int byTrain;
+    private int byFlight;
+    private int byUnknown;
 
     public int getTotal() {
-        return byCar + byWalk;
+        return byCar + byWalk + byBicycle + byTrain + byFlight + byUnknown;
     }
 }

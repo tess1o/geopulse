@@ -19,7 +19,7 @@
       </div>
 
       <!-- Car Distance -->
-      <div class="metric-card" v-if="metrics.carDistance">
+      <div class="metric-card" v-if="metrics.carDistance > 0">
         <div class="metric-icon">🚗</div>
         <div class="metric-value">{{ formatDistanceRounded(metrics.carDistance) }}</div>
         <div class="metric-label">Distance by Car</div>
@@ -29,12 +29,52 @@
       </div>
 
       <!-- Walk Distance -->
-      <div class="metric-card" v-if="metrics.walkDistance">
+      <div class="metric-card" v-if="metrics.walkDistance > 0">
         <div class="metric-icon">🚶</div>
         <div class="metric-value">{{ formatDistanceRounded(metrics.walkDistance) }}</div>
         <div class="metric-label">Distance Walking</div>
         <div class="metric-percentage" v-if="metrics.totalDistance > 0">
           {{ getPercentage(metrics.walkDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
+      <!-- Bicycle Distance -->
+      <div class="metric-card" v-if="metrics.bicycleDistance > 0">
+        <div class="metric-icon">🚴</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.bicycleDistance) }}</div>
+        <div class="metric-label">Distance Cycling</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.bicycleDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
+      <!-- Train Distance -->
+      <div class="metric-card" v-if="metrics.trainDistance > 0">
+        <div class="metric-icon">🚆</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.trainDistance) }}</div>
+        <div class="metric-label">Distance by Train</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.trainDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
+      <!-- Flight Distance -->
+      <div class="metric-card" v-if="metrics.flightDistance > 0">
+        <div class="metric-icon">✈️</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.flightDistance) }}</div>
+        <div class="metric-label">Distance by Flight</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.flightDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
+      <!-- Unknown Distance -->
+      <div class="metric-card" v-if="metrics.unknownDistance > 0">
+        <div class="metric-icon">❓</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.unknownDistance) }}</div>
+        <div class="metric-label">Distance Unknown</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.unknownDistance, metrics.totalDistance) }}% of total
         </div>
       </div>
 

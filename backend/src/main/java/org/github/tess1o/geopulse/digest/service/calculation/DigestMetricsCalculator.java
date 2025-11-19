@@ -42,21 +42,13 @@ public class DigestMetricsCalculator {
         // Calculate unique cities from database (proper city field, not location names)
         int citiesCount = dataRepository.getUniqueCitiesCount(userId, start, end);
 
-        // Calculate car and walk distances from charts
-        double carDistance = 0;
-        double walkDistance = 0;
-
-        if (stats.getDistanceChartsByTripType() != null) {
-            if (stats.getDistanceChartsByTripType().get("CAR") != null &&
-                stats.getDistanceChartsByTripType().get("CAR").getData() != null) {
-                carDistance = java.util.Arrays.stream(stats.getDistanceChartsByTripType().get("CAR").getData()).sum();
-            }
-
-            if (stats.getDistanceChartsByTripType().get("WALK") != null &&
-                stats.getDistanceChartsByTripType().get("WALK").getData() != null) {
-                walkDistance = java.util.Arrays.stream(stats.getDistanceChartsByTripType().get("WALK").getData()).sum();
-            }
-        }
+        // Calculate distances by trip type from charts
+        double carDistance = calculateDistanceForTripType(stats, "CAR");
+        double walkDistance = calculateDistanceForTripType(stats, "WALK");
+        double bicycleDistance = calculateDistanceForTripType(stats, "BICYCLE");
+        double trainDistance = calculateDistanceForTripType(stats, "TRAIN");
+        double flightDistance = calculateDistanceForTripType(stats, "FLIGHT");
+        double unknownDistance = calculateDistanceForTripType(stats, "UNKNOWN");
 
         return DigestMetrics.builder()
                 .totalDistance(stats.getTotalDistanceMeters())
@@ -64,11 +56,34 @@ public class DigestMetricsCalculator {
                 .citiesVisited(citiesCount)
                 .tripCount(timeline.getTripsCount())
                 .stayCount(timeline.getStaysCount())
-                // Enhanced metrics
-                .carDistance(carDistance * 1000) // charts are in km, convert to meters
-                .walkDistance(walkDistance * 1000) // charts are in km, convert to meters
+                // Distance by trip type (charts are in km, convert to meters)
+                .carDistance(carDistance * 1000)
+                .walkDistance(walkDistance * 1000)
+                .bicycleDistance(bicycleDistance * 1000)
+                .trainDistance(trainDistance * 1000)
+                .flightDistance(flightDistance * 1000)
+                .unknownDistance(unknownDistance * 1000)
+                // Other enhanced metrics
                 .timeMoving(stats.getTimeMoving())
                 .dailyAverageDistance(stats.getDailyAverageDistanceMeters())
                 .build();
+    }
+
+    /**
+     * Calculate distance for a specific trip type from statistics charts.
+     *
+     * @param stats    User statistics containing distance charts
+     * @param tripType Trip type name (e.g., "CAR", "WALK", "BICYCLE")
+     * @return Distance in kilometers (0 if no data)
+     */
+    private double calculateDistanceForTripType(UserStatistics stats, String tripType) {
+        if (stats.getDistanceChartsByTripType() == null) {
+            return 0;
+        }
+        var chartData = stats.getDistanceChartsByTripType().get(tripType);
+        if (chartData == null || chartData.getData() == null) {
+            return 0;
+        }
+        return java.util.Arrays.stream(chartData.getData()).sum();
     }
 }
