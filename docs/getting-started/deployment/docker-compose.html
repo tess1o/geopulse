@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Docker Deployment | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Docker Deployment | GeoPulse documentation"><meta data-rh="true" name="description" content="Prerequisites"><meta data-rh="true" property="og:description" content="Prerequisites"><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Docker Deployment","item":"https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
-<script src="/geopulse/assets/js/runtime~main.a8a7b079.js" defer="defer"></script>
+<script src="/geopulse/assets/js/runtime~main.a8c9ea96.js" defer="defer"></script>
 <script src="/geopulse/assets/js/main.ff4da167.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -111,7 +111,7 @@ and stops automatically, no manual steps are required.</p>
 <ul>
 <li class="">✅ All standard Docker deployments using docker-compose</li>
 <li class="">✅ Localhost access: <code>http://localhost:5555</code></li>
-<li class="">✅ Homelab IP access: <code>http://1.5.068.1.100:5555</code></li>
+<li class="">✅ Homelab IP access: <code>http://1.5.168.1.100:5555</code></li>
 <li class="">✅ Single domain production: <code>https://geopulse.yourdomain.com</code></li>
 <li class="">✅ Any deployment where nginx proxies both frontend and backend (standard GeoPulse setup)</li>
 </ul>
@@ -136,7 +136,7 @@ and stops automatically, no manual steps are required.</p>
 </li>
 <li class="">
 <p><strong>Homelab access (via IP address and/or local domain):</strong></p>
-<div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain"># Allows access via localhost, a local network IP, and a local domain</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_UI_URL=http://localhost:5555,http://1.5.068.1.100:5555,http://geopulse.local</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_SECURE_COOKIES=false</span><br></span></code></pre></div></div>
+<div class="language-env codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-env codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain"># Allows access via localhost, a local network IP, and a local domain</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_UI_URL=http://localhost:5555,http://1.5.168.1.100:5555,http://geopulse.local</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GEOPULSE_AUTH_SECURE_COOKIES=false</span><br></span></code></pre></div></div>
 </li>
 <li class="">
 <p><strong>Production access (with a domain and HTTPS):</strong></p>
