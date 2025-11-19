@@ -355,8 +355,9 @@ config:
 ingress:
   enabled: false
   className: "nginx"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  annotations: {}
+    # Example annotations (uncomment and modify as needed):
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
     # nginx.ingress.kubernetes.io/ssl-redirect: "true"
 
   # Hostname for the ingress
