@@ -186,6 +186,100 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::getTripSustainedStopMinDurationSeconds,
                         TimelineConfig::setTripSustainedStopMinDurationSeconds,
                         Integer::valueOf
+                ))
+                // Optional Trip Types - Bicycle
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.bicycle.enabled",
+                        properties.getBicycleEnabled(),
+                        TimelineConfig::getBicycleEnabled,
+                        TimelineConfig::setBicycleEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.bicycle.min_avg_speed",
+                        properties.getBicycleMinAvgSpeed(),
+                        TimelineConfig::getBicycleMinAvgSpeed,
+                        TimelineConfig::setBicycleMinAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.bicycle.max_avg_speed",
+                        properties.getBicycleMaxAvgSpeed(),
+                        TimelineConfig::getBicycleMaxAvgSpeed,
+                        TimelineConfig::setBicycleMaxAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.bicycle.max_max_speed",
+                        properties.getBicycleMaxMaxSpeed(),
+                        TimelineConfig::getBicycleMaxMaxSpeed,
+                        TimelineConfig::setBicycleMaxMaxSpeed,
+                        Double::valueOf
+                ))
+                // Optional Trip Types - Train
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.train.enabled",
+                        properties.getTrainEnabled(),
+                        TimelineConfig::getTrainEnabled,
+                        TimelineConfig::setTrainEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.train.min_avg_speed",
+                        properties.getTrainMinAvgSpeed(),
+                        TimelineConfig::getTrainMinAvgSpeed,
+                        TimelineConfig::setTrainMinAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.train.max_avg_speed",
+                        properties.getTrainMaxAvgSpeed(),
+                        TimelineConfig::getTrainMaxAvgSpeed,
+                        TimelineConfig::setTrainMaxAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.train.min_max_speed",
+                        properties.getTrainMinMaxSpeed(),
+                        TimelineConfig::getTrainMinMaxSpeed,
+                        TimelineConfig::setTrainMinMaxSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.train.max_max_speed",
+                        properties.getTrainMaxMaxSpeed(),
+                        TimelineConfig::getTrainMaxMaxSpeed,
+                        TimelineConfig::setTrainMaxMaxSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.train.max_speed_variance",
+                        properties.getTrainMaxSpeedVariance(),
+                        TimelineConfig::getTrainMaxSpeedVariance,
+                        TimelineConfig::setTrainMaxSpeedVariance,
+                        Double::valueOf
+                ))
+                // Optional Trip Types - Flight
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.enabled",
+                        properties.getFlightEnabled(),
+                        TimelineConfig::getFlightEnabled,
+                        TimelineConfig::setFlightEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.min_avg_speed",
+                        properties.getFlightMinAvgSpeed(),
+                        TimelineConfig::getFlightMinAvgSpeed,
+                        TimelineConfig::setFlightMinAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.flight.min_max_speed",
+                        properties.getFlightMinMaxSpeed(),
+                        TimelineConfig::getFlightMinMaxSpeed,
+                        TimelineConfig::setFlightMinMaxSpeed,
+                        Double::valueOf
                 ));
     }
 }

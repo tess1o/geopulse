@@ -397,13 +397,30 @@ public class UserService {
 
     /**
      * Check if the update contains travel classification parameters.
+     * Must match frontend implementation in TimelinePreferencesPage.vue:hasClassificationParameters
      */
     private boolean hasClassificationParameters(UpdateTimelinePreferencesRequest update) {
         return update.getWalkingMaxAvgSpeed() != null ||
                 update.getWalkingMaxMaxSpeed() != null ||
                 update.getCarMinAvgSpeed() != null ||
                 update.getCarMinMaxSpeed() != null ||
-                update.getShortDistanceKm() != null;
+                update.getShortDistanceKm() != null ||
+                // Bicycle
+                update.getBicycleEnabled() != null ||
+                update.getBicycleMinAvgSpeed() != null ||
+                update.getBicycleMaxAvgSpeed() != null ||
+                update.getBicycleMaxMaxSpeed() != null ||
+                // Train
+                update.getTrainEnabled() != null ||
+                update.getTrainMinAvgSpeed() != null ||
+                update.getTrainMaxAvgSpeed() != null ||
+                update.getTrainMinMaxSpeed() != null ||
+                update.getTrainMaxMaxSpeed() != null ||
+                update.getTrainMaxSpeedVariance() != null ||
+                // Flight
+                update.getFlightEnabled() != null ||
+                update.getFlightMinAvgSpeed() != null ||
+                update.getFlightMinMaxSpeed() != null;
     }
 
     /**

@@ -52,15 +52,40 @@ Only when these stricter conditions are met will the algorithm conclude the trip
 
 ## How We Determine Trip Type (e.g., Car vs. Walking)
 
-Once a trip has been identified, the system analyzes its characteristics to classify the mode of transport. This is primarily based on the trip's **average speed** and **maximum speed**.
+Once a trip has been identified, the system analyzes its characteristics to classify the mode of transport. This is primarily based on the trip's **average speed**, **maximum speed**, and **speed variance** (consistency).
 
-The system compares these speeds against configurable thresholds:
+### Basic Classification Types
 
-*   **Walking:** If the trip's average and maximum speeds are below the defined "walking" thresholds, it's classified as a `WALK`. The algorithm is slightly more lenient for very short trips, allowing for slightly higher speeds that might occur during a brisk walk.
-*   **Car:** If the trip's average or maximum speed is above the defined "car" thresholds, it's classified as a `CAR`.
-*   **Unknown:** If the speeds fall into a gray area between walking and driving, the trip may be classified as `UNKNOWN`.
+The system supports several trip types:
+
+*   **Walking (WALK):** Low-speed movement where both average and maximum speeds are below the defined walking thresholds (default: ≤6 km/h average, ≤8 km/h maximum).
+*   **Car (CAR):** Motorized transport including cars, buses, and motorcycles. Classified when average speed is ≥10 km/h OR maximum speed is ≥15 km/h.
+*   **Bicycle (BICYCLE):** Optional type for cycling and running (8-25 km/h). Must be explicitly enabled in Timeline Preferences.
+*   **Train (TRAIN):** Optional type for rail travel (30-150 km/h with low speed variance). Must be explicitly enabled.
+*   **Flight (FLIGHT):** Optional type for air travel (400+ km/h average OR 500+ km/h peak). Must be explicitly enabled.
+*   **Unknown (UNKNOWN):** Trips that don't clearly match any category, often due to GPS noise or speeds falling between thresholds.
+
+### GPS Data Quality
+
+The classification system includes sophisticated GPS noise detection:
+- Rejects impossible supersonic speeds (>1,200 km/h)
+- Validates GPS reliability by comparing against calculated speeds
+- Uses smart fallbacks when GPS data is unreliable
+- Accounts for GPS drift and signal quality issues
+
+### Post-Classification Verification
+
+After initial classification, the system performs verification to catch edge cases. For example, if a trip is classified as WALK but the calculated speed significantly exceeds walking thresholds (accounting for GPS inaccuracies), it will be automatically corrected to CAR.
 
 This classification happens after the trip is complete and helps provide more context to your travel patterns in dashboards and reports.
+
+---
+
+:::tip Learn More
+For detailed information about how travel classification works, including customization options, speed thresholds, and troubleshooting, see the **[Travel Classification Guide](/docs/user-guide/timeline/travel_classification)**.
+:::
+
+---
 
 ---
 

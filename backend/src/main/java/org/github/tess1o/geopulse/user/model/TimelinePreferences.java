@@ -43,4 +43,23 @@ public class TimelinePreferences {
     // Trip Stop Detection Settings
     private Integer tripArrivalDetectionMinDurationSeconds;
     private Integer tripSustainedStopMinDurationSeconds;
+
+    // Optional Trip Types - Bicycle
+    private Boolean bicycleEnabled;
+    private Double bicycleMinAvgSpeed;
+    private Double bicycleMaxAvgSpeed;
+    private Double bicycleMaxMaxSpeed;
+
+    // Optional Trip Types - Train
+    private Boolean trainEnabled;
+    private Double trainMinAvgSpeed;
+    private Double trainMaxAvgSpeed;
+    private Double trainMinMaxSpeed;
+    private Double trainMaxMaxSpeed;
+    private Double trainMaxSpeedVariance;
+
+    // Optional Trip Types - Flight
+    private Boolean flightEnabled;
+    private Double flightMinAvgSpeed;
+    private Double flightMinMaxSpeed;
 }

@@ -90,7 +90,7 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String walkingMaxMaxSpeed;
 
-    @ConfigProperty(name = "geopulse.timeline.travel.classification.car.min_avg_speed", defaultValue = "8.0")
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.car.min_avg_speed", defaultValue = "10.0")
     @StaticInitSafe
     String carMinAvgSpeed;
 
@@ -110,6 +110,61 @@ public class TimelineConfigurationProperties {
     @ConfigProperty(name = "geopulse.timeline.trip.sustained_stop.min_duration_seconds", defaultValue = "60")
     @StaticInitSafe
     String tripSustainedStopMinDurationSeconds;
+
+    // Optional Trip Types - Bicycle
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.bicycle.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String bicycleEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.bicycle.min_avg_speed", defaultValue = "8.0")
+    @StaticInitSafe
+    String bicycleMinAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.bicycle.max_avg_speed", defaultValue = "25.0")
+    @StaticInitSafe
+    String bicycleMaxAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.bicycle.max_max_speed", defaultValue = "35.0")
+    @StaticInitSafe
+    String bicycleMaxMaxSpeed;
+
+    // Optional Trip Types - Train
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.train.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String trainEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.train.min_avg_speed", defaultValue = "30.0")
+    @StaticInitSafe
+    String trainMinAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.train.max_avg_speed", defaultValue = "150.0")
+    @StaticInitSafe
+    String trainMaxAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.train.min_max_speed", defaultValue = "80.0")
+    @StaticInitSafe
+    String trainMinMaxSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.train.max_max_speed", defaultValue = "180.0")
+    @StaticInitSafe
+    String trainMaxMaxSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.train.max_speed_variance", defaultValue = "15.0")
+    @StaticInitSafe
+    String trainMaxSpeedVariance;
+
+    // Optional Trip Types - Flight
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String flightEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.min_avg_speed", defaultValue = "400.0")
+    @StaticInitSafe
+    String flightMinAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.flight.min_max_speed", defaultValue = "500.0")
+    @StaticInitSafe
+    String flightMinMaxSpeed;
 
     // Timeline View Item Limit - maximum number of items to load on Timeline page
     @ConfigProperty(name = "geopulse.timeline.view.item-limit", defaultValue = "150")

@@ -71,8 +71,11 @@ const timezone = useTimezone()
 
 // Movement type mapping
 const movementTypeMap = {
-  WALK: { label: 'Walk', icon: '🚶‍♂️' },
+  WALK: { label: 'Walk', icon: '🚶' },
+  BICYCLE: { label: 'Bicycle', icon: '🚴' },
   CAR: { label: 'Car', icon: '🚗' },
+  TRAIN: { label: 'Train', icon: '🚊' },
+  FLIGHT: { label: 'Flight', icon: '✈️' },
   UNKNOWN: { label: 'Unknown', icon: '❓' }
 }
 

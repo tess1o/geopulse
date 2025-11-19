@@ -266,6 +266,37 @@
                   </p>
                 </div>
 
+                <!-- Classification Priority Info Banner -->
+                <Card class="priority-info-banner">
+                  <template #content>
+                    <div class="priority-content">
+                      <div class="priority-icon">
+                        <i class="pi pi-sort-amount-down"></i>
+                      </div>
+                      <div class="priority-text">
+                        <h3 class="priority-title">Classification Priority Order</h3>
+                        <div class="priority-flow">
+                          <span class="priority-step">✈️ FLIGHT</span>
+                          <i class="pi pi-arrow-right"></i>
+                          <span class="priority-step">🚊 TRAIN</span>
+                          <i class="pi pi-arrow-right"></i>
+                          <span class="priority-step">🚴 BICYCLE</span>
+                          <i class="pi pi-arrow-right"></i>
+                          <span class="priority-step">🚗 CAR</span>
+                          <i class="pi pi-arrow-right"></i>
+                          <span class="priority-step">🚶 WALK</span>
+                          <i class="pi pi-arrow-right"></i>
+                          <span class="priority-step priority-unknown">❓ UNKNOWN</span>
+                        </div>
+                        <p class="priority-description">
+                          Trips are classified in priority order from top to bottom. Once a match is found, classification stops.
+                          This order handles overlapping speed ranges correctly - e.g., a 20 km/h trip matches BICYCLE before reaching CAR.
+                        </p>
+                      </div>
+                    </div>
+                  </template>
+                </Card>
+
                 <div class="settings-grid">
                   <!-- Trip Detection Algorithm -->
                   <SettingCard
@@ -289,75 +320,283 @@
                     </template>
                   </SettingCard>
                   
-                  <!-- Walking Speed Settings -->
-                  <SettingCard
-                    title="Walking Speed Thresholds"
-                    description="Speed limits that determine when movement is classified as walking vs other transportation modes"
-                    :details="{
-                      'Average Speed': 'Maximum sustained speed for walking classification. Trips with average speeds above this threshold will be classified as non-walking',
-                      'Maximum Speed': 'Maximum instantaneous speed allowed within walking trips. Brief speed bursts above this (like running to catch a bus) will reclassify the entire trip as non-walking'
-                    }"
+                  <!-- Walking Classification -->
+                  <TransportTypeCard
+                    type="walk"
+                    title="Walking"
+                    subtitle="Mandatory transport type"
+                    icon="pi pi-user"
+                    description="Detects slow-speed movement on foot (0-8 km/h typical)"
+                    :mandatory="true"
+                    :validation-messages="getWarningMessagesForType('walk').value"
                   >
-                    <template #control>
-                      <div class="speed-setting-group">
-                        <div class="speed-setting">
-                          <div class="control-value">{{ prefs.walkingMaxAvgSpeed }} km/h (avg)</div>
-                          <SliderControl
-                            v-if="prefs.walkingMaxAvgSpeed !== undefined"
-                            v-model="prefs.walkingMaxAvgSpeed"
-                            :min="3.0" :max="10.0" :step="0.5"
-                            :labels="['3.0 km/h (Slow)', '5.5 km/h (Normal)', '10.0 km/h (Fast)']"
-                            suffix=" km/h" :decimal-places="1"
-                          />
-                        </div>
-                        <div class="speed-setting">
-                          <div class="control-value">{{ prefs.walkingMaxMaxSpeed }} km/h (max)</div>
-                          <SliderControl
-                            v-if="prefs.walkingMaxMaxSpeed !== undefined"
-                            v-model="prefs.walkingMaxMaxSpeed"
-                            :min="5.0" :max="15.0" :step="0.5"
-                            :labels="['5.0 km/h (Conservative)', '8.0 km/h (Normal)', '15.0 km/h (Generous)']"
-                            suffix=" km/h" :decimal-places="1"
-                          />
-                        </div>
+                    <template #parameters>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Average Speed</label>
+                        <p class="parameter-description">
+                          Trips with average speeds above this will be classified as non-walking
+                        </p>
+                        <div class="control-value">{{ prefs.walkingMaxAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.walkingMaxAvgSpeed !== undefined"
+                          v-model="prefs.walkingMaxAvgSpeed"
+                          :min="3.0" :max="10.0" :step="0.5"
+                          :labels="['3.0 km/h (Slow)', '5.5 km/h (Normal)', '10.0 km/h (Fast)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
                       </div>
-                    </template>
-                  </SettingCard>
 
-                  <!-- Car Speed Settings -->
-                  <SettingCard
-                    title="Car Speed Thresholds"  
-                    description="Speed requirements that determine when movement is classified as driving vs other transportation modes"
-                    :details="{
-                      'Average Speed': 'Minimum sustained speed required for car classification. Trips with average speeds below this threshold will be classified as walking',
-                      'Maximum Speed': 'Minimum peak speed required for car classification. Trips that never reach this speed will not be classified as driving, even if average speed is high'
-                    }"
-                  >
-                    <template #control>
-                      <div class="speed-setting-group">
-                        <div class="speed-setting">
-                          <div class="control-value">{{ prefs.carMinAvgSpeed }} km/h (min avg)</div>
-                          <SliderControl
-                            v-if="prefs.carMinAvgSpeed !== undefined"
-                            v-model="prefs.carMinAvgSpeed"
-                            :min="5.0" :max="25.0" :step="0.5"
-                            :labels="['5.0 km/h (Sensitive)', '12.0 km/h (Normal)', '25.0 km/h (Conservative)']"
-                            suffix=" km/h" :decimal-places="1"
-                          />
-                        </div>
-                        <div class="speed-setting">
-                          <div class="control-value">{{ prefs.carMinMaxSpeed }} km/h (min max)</div>
-                          <SliderControl
-                            v-if="prefs.carMinMaxSpeed !== undefined"
-                            v-model="prefs.carMinMaxSpeed"
-                            :min="10.0" :max="50.0" :step="5.0"
-                            :labels="['10.0 km/h (City)', '25.0 km/h (Normal)', '50.0 km/h (Highway)']"
-                            suffix=" km/h" :decimal-places="1"
-                          />
-                        </div>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Peak Speed</label>
+                        <p class="parameter-description">
+                          Brief speed bursts above this will reclassify the trip
+                        </p>
+                        <div class="control-value">{{ prefs.walkingMaxMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.walkingMaxMaxSpeed !== undefined"
+                          v-model="prefs.walkingMaxMaxSpeed"
+                          :min="5.0" :max="15.0" :step="0.5"
+                          :labels="['5.0 km/h (Conservative)', '8.0 km/h (Normal)', '15.0 km/h (Generous)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
                       </div>
                     </template>
-                  </SettingCard>
+                  </TransportTypeCard>
+
+                  <!-- Bicycle Classification -->
+                  <TransportTypeCard
+                    type="bicycle"
+                    title="Bicycle"
+                    subtitle="Optional transport type"
+                    icon="pi pi-circle"
+                    description="Detects cycling trips (8-25 km/h typical range). Also captures running/jogging. Priority order ensures correct classification even with speed overlap with cars."
+                    v-model:enabled="prefs.bicycleEnabled"
+                    :collapsible="true"
+                    :validation-messages="getWarningMessagesForType('bicycle').value"
+                  >
+                    <template #parameters>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Average Speed</label>
+                        <p class="parameter-description">
+                          Trips slower than this will be classified as walking
+                        </p>
+                        <div class="control-value">{{ prefs.bicycleMinAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.bicycleMinAvgSpeed !== undefined"
+                          v-model="prefs.bicycleMinAvgSpeed"
+                          :min="5.0" :max="15.0" :step="0.5"
+                          :labels="['5.0 km/h (Slow)', '8.0 km/h (Default)', '15.0 km/h (Fast)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Average Speed</label>
+                        <p class="parameter-description">
+                          Trips faster than this will be classified as motorized transport
+                        </p>
+                        <div class="control-value">{{ prefs.bicycleMaxAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.bicycleMaxAvgSpeed !== undefined"
+                          v-model="prefs.bicycleMaxAvgSpeed"
+                          :min="15.0" :max="35.0" :step="1.0"
+                          :labels="['15.0 km/h (Slow)', '25.0 km/h (Default)', '35.0 km/h (E-bike)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Peak Speed</label>
+                        <p class="parameter-description">
+                          Allows for downhill segments or e-bikes, but below car speeds
+                        </p>
+                        <div class="control-value">{{ prefs.bicycleMaxMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.bicycleMaxMaxSpeed !== undefined"
+                          v-model="prefs.bicycleMaxMaxSpeed"
+                          :min="20.0" :max="50.0" :step="5.0"
+                          :labels="['20.0 km/h (City)', '35.0 km/h (Default)', '50.0 km/h (E-bike)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+                    </template>
+                  </TransportTypeCard>
+
+                  <!-- Car Classification -->
+                  <TransportTypeCard
+                    type="car"
+                    title="Car"
+                    subtitle="Mandatory transport type"
+                    icon="pi pi-car"
+                    description="Detects motorized vehicle transport (10+ km/h). High speed variance indicates stop-and-go traffic."
+                    :mandatory="true"
+                    :validation-messages="getWarningMessagesForType('car').value"
+                  >
+                    <template #parameters>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Average Speed</label>
+                        <p class="parameter-description">
+                          Trips with average speeds below this will be classified as walking or bicycle (if enabled)
+                        </p>
+                        <div class="control-value">{{ prefs.carMinAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.carMinAvgSpeed !== undefined"
+                          v-model="prefs.carMinAvgSpeed"
+                          :min="5.0" :max="25.0" :step="0.5"
+                          :labels="['5.0 km/h (Sensitive)', '10.0 km/h (Default)', '25.0 km/h (Conservative)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Peak Speed</label>
+                        <p class="parameter-description">
+                          Trips that never reach this speed will not be classified as driving
+                        </p>
+                        <div class="control-value">{{ prefs.carMinMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.carMinMaxSpeed !== undefined"
+                          v-model="prefs.carMinMaxSpeed"
+                          :min="10.0" :max="50.0" :step="5.0"
+                          :labels="['10.0 km/h (City)', '15.0 km/h (Default)', '50.0 km/h (Highway)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+                    </template>
+                  </TransportTypeCard>
+
+                  <!-- Train Classification -->
+                  <TransportTypeCard
+                    type="train"
+                    title="Train"
+                    subtitle="Optional transport type"
+                    icon="pi pi-building"
+                    description="Detects train travel by high speed with low variance (30-150 km/h, steady movement). Uses speed variance to distinguish from cars."
+                    v-model:enabled="prefs.trainEnabled"
+                    :collapsible="true"
+                    :validation-messages="getWarningMessagesForType('train').value"
+                  >
+                    <template #parameters>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Average Speed</label>
+                        <p class="parameter-description">
+                          Separates from cars in heavy traffic
+                        </p>
+                        <div class="control-value">{{ prefs.trainMinAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.trainMinAvgSpeed !== undefined"
+                          v-model="prefs.trainMinAvgSpeed"
+                          :min="20.0" :max="50.0" :step="5.0"
+                          :labels="['20.0 km/h (City)', '30.0 km/h (Default)', '50.0 km/h (Fast)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Average Speed</label>
+                        <p class="parameter-description">
+                          Covers regional and intercity trains
+                        </p>
+                        <div class="control-value">{{ prefs.trainMaxAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.trainMaxAvgSpeed !== undefined"
+                          v-model="prefs.trainMaxAvgSpeed"
+                          :min="80.0" :max="200.0" :step="10.0"
+                          :labels="['80.0 km/h (Regional)', '150.0 km/h (Default)', '200.0 km/h (High-speed)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Peak Speed (Station Filter)</label>
+                        <p class="parameter-description">
+                          Filters out trips with only station waiting time (critical!)
+                        </p>
+                        <div class="control-value">{{ prefs.trainMinMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.trainMinMaxSpeed !== undefined"
+                          v-model="prefs.trainMinMaxSpeed"
+                          :min="60.0" :max="120.0" :step="10.0"
+                          :labels="['60.0 km/h (Lenient)', '80.0 km/h (Default)', '120.0 km/h (Strict)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Peak Speed</label>
+                        <p class="parameter-description">
+                          Upper limit for train speeds
+                        </p>
+                        <div class="control-value">{{ prefs.trainMaxMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.trainMaxMaxSpeed !== undefined"
+                          v-model="prefs.trainMaxMaxSpeed"
+                          :min="100.0" :max="250.0" :step="10.0"
+                          :labels="['100.0 km/h (Regional)', '180.0 km/h (Default)', '250.0 km/h (High-speed)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Speed Variance (Key Discriminator)</label>
+                        <p class="parameter-description">
+                          Trains have low variance (&lt; 15), cars have high variance (&gt; 25). This is the key to distinguishing trains from cars!
+                        </p>
+                        <div class="control-value">{{ prefs.trainMaxSpeedVariance }}</div>
+                        <SliderControl
+                          v-if="prefs.trainMaxSpeedVariance !== undefined"
+                          v-model="prefs.trainMaxSpeedVariance"
+                          :min="5.0" :max="30.0" :step="1.0"
+                          :labels="['5.0 (Strict)', '15.0 (Default)', '30.0 (Lenient)']"
+                          :decimal-places="1"
+                        />
+                      </div>
+                    </template>
+                  </TransportTypeCard>
+
+                  <!-- Flight Classification -->
+                  <TransportTypeCard
+                    type="flight"
+                    title="Flight"
+                    subtitle="Optional transport type"
+                    icon="pi pi-send"
+                    description="Detects air travel by very high speeds (400+ km/h avg OR 500+ km/h peak). OR logic handles extended taxi/ground time. GPS noise above 1200 km/h is automatically rejected."
+                    v-model:enabled="prefs.flightEnabled"
+                    :collapsible="true"
+                    :validation-messages="getWarningMessagesForType('flight').value"
+                  >
+                    <template #parameters>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Average Speed</label>
+                        <p class="parameter-description">
+                          Conservative default for typical flights (including taxi/takeoff/landing time)
+                        </p>
+                        <div class="control-value">{{ prefs.flightMinAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.flightMinAvgSpeed !== undefined"
+                          v-model="prefs.flightMinAvgSpeed"
+                          :min="250.0" :max="600.0" :step="50.0"
+                          :labels="['250.0 km/h (Regional)', '400.0 km/h (Default)', '600.0 km/h (Long-haul)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Peak Speed</label>
+                        <p class="parameter-description">
+                          Catches flights with long taxi/wait time (OR logic with avg speed)
+                        </p>
+                        <div class="control-value">{{ prefs.flightMinMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.flightMinMaxSpeed !== undefined"
+                          v-model="prefs.flightMinMaxSpeed"
+                          :min="400.0" :max="900.0" :step="50.0"
+                          :labels="['400.0 km/h (Turboprop)', '500.0 km/h (Default)', '900.0 km/h (Jet)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+                    </template>
+                  </TransportTypeCard>
 
                   <!-- Short Distance Threshold -->
                   <SettingCard
@@ -693,11 +932,13 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 // Custom components
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
+import TransportTypeCard from '@/components/ui/forms/TransportTypeCard.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
 import { useTimelinePreferencesStore } from '@/stores/timelinePreferences'
 import { useTimelineStore } from '@/stores/timeline'
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
+import { useClassificationValidation } from '@/composables/useClassificationValidation'
 
 // Store
 const router = useRouter()
@@ -714,6 +955,14 @@ const {
   jobProgress,
   withTimelineRegeneration
 } = useTimelineRegeneration()
+
+// Validation
+const {
+  validationWarnings,
+  hasWarnings,
+  hasErrors,
+  getWarningMessagesForType
+} = useClassificationValidation(computed(() => prefs.value))
 
 // Store refs
 const { timelinePreferences: originalPrefs } = storeToRefs(timelinePreferencesStore)
@@ -881,8 +1130,15 @@ const confirmSavePreferences = () => {
 // Parameter categorization functions
 const hasClassificationParameters = (changes) => {
   const classificationFields = [
-    'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed', 
-    'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm'
+    'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
+    'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
+    // Bicycle
+    'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',
+    // Train
+    'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
+    'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
+    // Flight
+    'flightEnabled', 'flightMinAvgSpeed', 'flightMinMaxSpeed'
   ]
   return classificationFields.some(field => field in changes)
 }
@@ -901,25 +1157,48 @@ const hasStructuralParameters = (changes) => {
   return structuralFields.some(field => field in changes)
 }
 
-const savePreferences = (saveType = 'full') => {
+const savePreferences = async (saveType = 'full') => {
   if (!isFormValid.value) return
 
   // Capture changes immediately to avoid closure issues
   const changes = getChangedPrefs()
 
-  const action = () => {
-    return timelinePreferencesStore.updateTimelinePreferences(changes)
-  }
-
-  withTimelineRegeneration(
-    action,
-    {
-      modalType: saveType === 'classification' ? 'classification' : 'preferences',
-      successMessage: 'Preferences saved and timeline regeneration started.',
-      errorMessage: 'Failed to save preferences.',
-      onSuccess: loadPreferences
+  if (saveType === 'classification') {
+    // Fast path: classification-only updates don't need job tracking
+    try {
+      await timelinePreferencesStore.updateTimelinePreferences(changes)
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Trip classifications updated successfully.',
+        life: 3000
+      })
+      await loadPreferences()
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: error.message || 'Failed to save preferences.',
+        life: 5000
+      })
     }
-  )
+  } else {
+    // Full regeneration path: requires job tracking
+    const action = () => {
+      return timelinePreferencesStore.updateTimelinePreferences(changes)
+    }
+
+    withTimelineRegeneration(
+      action,
+      {
+        modalType: 'preferences',
+        successMessage: 'Preferences saved and timeline regeneration started.',
+        errorMessage: 'Failed to save preferences.',
+        onSuccess: loadPreferences
+      }
+    )
+  }
 }
 
 const confirmResetDefaults = () => {
@@ -1493,8 +1772,156 @@ onMounted(() => {
   .speed-setting-group {
     gap: 1rem;
   }
-  
+
   .speed-setting .control-value {
+    font-size: 0.8rem;
+  }
+}
+
+/* Priority Info Banner */
+.priority-info-banner {
+  margin-bottom: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: var(--gp-radius-large);
+  color: white;
+}
+
+.priority-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.priority-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.priority-icon i {
+  font-size: 1.5rem;
+  color: white;
+}
+
+.priority-text {
+  flex: 1;
+}
+
+.priority-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
+  margin: 0 0 1rem 0;
+}
+
+.priority-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.priority-step {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: var(--gp-radius-medium);
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.priority-step.priority-unknown {
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0.8;
+}
+
+.priority-flow i {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.priority-description {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Parameter Groups (within TransportTypeCard) */
+.parameter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.parameter-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0;
+}
+
+.parameter-description {
+  font-size: 0.85rem;
+  color: var(--gp-text-secondary);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+/* Responsive: Priority Banner */
+@media (max-width: 768px) {
+  .priority-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .priority-icon {
+    margin: 0 auto;
+  }
+
+  .priority-flow {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .priority-info-banner {
+    margin-bottom: 1.5rem;
+  }
+
+  .priority-title {
+    font-size: 1rem;
+  }
+
+  .priority-flow {
+    gap: 0.5rem;
+  }
+
+  .priority-step {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .priority-flow i {
+    font-size: 0.7rem;
+  }
+
+  .priority-description {
+    font-size: 0.85rem;
+  }
+
+  .parameter-label {
+    font-size: 0.9rem;
+  }
+
+  .parameter-description {
     font-size: 0.8rem;
   }
 }
