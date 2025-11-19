@@ -191,7 +191,10 @@ const formatDuration = (seconds) => {
 const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
-    'WALK': 'success', 
+    'WALK': 'success',
+    'BICYCLE': 'info',
+    'TRAIN': 'info',
+    'FLIGHT': 'danger',
     'UNKNOWN': 'secondary'
   }
   return severityMap[transportMode?.toUpperCase()] || 'secondary'
@@ -201,6 +204,9 @@ const getTransportIcon = (transportMode) => {
   const iconMap = {
     'CAR': 'pi pi-car',
     'WALK': 'fas fa-walking',
+    'BICYCLE': 'fas fa-bicycle',
+    'TRAIN': 'fas fa-train',
+    'FLIGHT': 'fas fa-plane',
     'UNKNOWN': 'pi pi-question-circle'
   }
   return iconMap[transportMode?.toUpperCase()] || 'pi pi-question-circle'
@@ -325,10 +331,9 @@ const getPathColor = (movementType) => {
   const colorMap = {
     'CAR': '#ef4444',
     'WALK': '#22c55e', 
-    'BIKE': '#3b82f6',
-    'PUBLIC_TRANSPORT': '#f59e0b',
+    'BICYCLE': '#3b82f6',
     'TRAIN': '#8b5cf6',
-    'PLANE': '#ef4444',
+    'FLIGHT': '#ef4444',
     'UNKNOWN': '#6b7280'
   }
   return colorMap[movementType?.toUpperCase()] || '#6b7280'
