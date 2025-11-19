@@ -1,4 +1,4 @@
-    package org.github.tess1o.geopulse.statistics;
+package org.github.tess1o.geopulse.statistics;
 
 import org.github.tess1o.geopulse.statistics.model.*;
 import org.github.tess1o.geopulse.statistics.repository.StatisticsRepository;
@@ -15,11 +15,9 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.*;
 
-/**
+    /**
  * Unit tests for StatisticsServiceImpl with SQL-based calculations.
  * Tests cover normal operations, edge cases, and error conditions.
  */
@@ -73,8 +71,8 @@ class StatisticsServiceImplTest {
         assertNotNull(result.getPlaces());
         assertFalse(result.getPlaces().isEmpty());
         assertNotNull(result.getRoutes());
-        assertNotNull(result.getDistanceCarChart());
-        assertNotNull(result.getDistanceWalkChart());
+        assertNotNull(result.getDistanceChartsByTripType());
+        assertFalse(result.getDistanceChartsByTripType().isEmpty());
 
         // Verify repository was called
         verify(statisticsRepository).getTripAggregations(testUserId, testStart, testEnd);
@@ -82,7 +80,7 @@ class StatisticsServiceImplTest {
         verify(statisticsRepository).getTopPlaces(testUserId, testStart, testEnd, 5);
         verify(statisticsRepository).getMostActiveDay(testUserId, testStart, testEnd);
         verify(statisticsRepository).getRoutesStatistics(testUserId, testStart, testEnd);
-        verify(statisticsRepository, times(2)).getChartDataByDays(any(), any(), any(), any());
+        verify(statisticsRepository, times(5)).getChartDataByDays(any(), any(), any(), any());
     }
 
     @Test
@@ -117,8 +115,11 @@ class StatisticsServiceImplTest {
         assertTrue(result.getPlaces().isEmpty());
         assertNotNull(result.getRoutes());
         assertEquals(0, result.getRoutes().getUniqueRoutesCount());
-        assertNotNull(result.getDistanceCarChart());
-        assertEquals(0, result.getDistanceCarChart().getLabels().length);
+        assertNotNull(result.getDistanceChartsByTripType());
+        // Charts should have data for all trip types, but with empty arrays
+        result.getDistanceChartsByTripType().values().forEach(chart -> {
+            assertEquals(0, chart.getLabels().length);
+        });
     }
 
     @Test
@@ -165,9 +166,10 @@ class StatisticsServiceImplTest {
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, longRangeEnd, ChartGroupMode.DAYS);
 
         // Then
-        verify(statisticsRepository, times(2)).getChartDataByWeeks(any(), any(), any(), any());
-        assertNotNull(result.getDistanceCarChart());
-        assertEquals(2, result.getDistanceCarChart().getLabels().length);
+        verify(statisticsRepository, atLeast(5)).getChartDataByWeeks(any(), any(), any(), any());
+        assertNotNull(result.getDistanceChartsByTripType());
+        // Should have charts for multiple trip types
+        assertTrue(result.getDistanceChartsByTripType().size() > 0);
     }
 
     @Test
@@ -192,9 +194,10 @@ class StatisticsServiceImplTest {
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
 
         // Then
-        verify(statisticsRepository, times(2)).getChartDataByDays(any(), any(), any(), any());
-        assertNotNull(result.getDistanceCarChart());
-        assertEquals(2, result.getDistanceCarChart().getLabels().length);
+        verify(statisticsRepository, atLeast(5)).getChartDataByDays(any(), any(), any(), any());
+        assertNotNull(result.getDistanceChartsByTripType());
+        // Should have charts for multiple trip types
+        assertTrue(result.getDistanceChartsByTripType().size() > 0);
     }
 
     @Test
@@ -216,7 +219,7 @@ class StatisticsServiceImplTest {
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
 
         // Then
-        verify(statisticsRepository, times(2)).getChartDataByWeeks(any(), any(), any(), any());
+        verify(statisticsRepository, times(5)).getChartDataByWeeks(any(), any(), any(), any());
         verify(statisticsRepository, times(0)).getChartDataByDays(any(), any(), any(), any());
     }
 

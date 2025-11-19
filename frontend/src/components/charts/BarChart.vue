@@ -190,6 +190,13 @@ const chartOptions = computed(() => {
           family: 'Inter, system-ui, sans-serif',
           size: 13,
           weight: '400'
+        },
+        callbacks: {
+          label: function (context) {
+            const label = context.dataset.label || '';
+            const value = context.parsed.y; // for bar charts
+            return `${label}: ${value} km`;
+          }
         }
       }
     },

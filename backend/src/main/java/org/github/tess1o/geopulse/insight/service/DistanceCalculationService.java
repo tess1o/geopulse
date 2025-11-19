@@ -33,11 +33,15 @@ public class DistanceCalculationService {
         List<Object[]> results = query.getResultList();
 
         if (results.isEmpty()) {
-            return new DistanceTraveled(0, 0);
+            return new DistanceTraveled(0, 0, 0, 0, 0, 0);
         }
 
         int car = 0;
         int walk = 0;
+        int bicycle = 0;
+        int train = 0;
+        int flight = 0;
+        int unknown = 0;
 
         for (Object[] result : results) {
             TripType movementType = TripType.valueOf((String) result[0]);
@@ -47,13 +51,15 @@ public class DistanceCalculationService {
             }
             // Convert meters to kilometers for display
             int distanceKm = (int) (distanceMeters / 1000);
-            if (movementType == TripType.CAR || movementType == TripType.UNKNOWN) {
-                car = car + distanceKm;
-            }
-            if (movementType == TripType.WALK) {
-                walk = walk + distanceKm;
+            switch (movementType) {
+                case CAR -> car += distanceKm;
+                case WALK -> walk += distanceKm;
+                case BICYCLE -> bicycle += distanceKm;
+                case TRAIN -> train += distanceKm;
+                case FLIGHT -> flight += distanceKm;
+                case UNKNOWN -> unknown += distanceKm;
             }
         }
-        return new DistanceTraveled(car, walk);
+        return new DistanceTraveled(car, walk, bicycle, train, flight, unknown);
     }
 }

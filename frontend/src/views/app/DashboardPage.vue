@@ -145,15 +145,24 @@ const hasAnyStats = computed(() => {
 })
 
 const hasSelectedChartData = computed(() => {
-  return statsUserRange.value?.distanceCarChart?.data?.length > 0 || statsUserRange.value?.distanceWalkChart?.data?.length > 0
+  const chartsByType = statsUserRange.value?.distanceChartsByTripType || {}
+  return Object.values(chartsByType).some(chart =>
+      chart?.data?.length > 0 && chart.data.some(value => value > 0)
+  )
 })
 
 const hasSevenDaysChartData = computed(() => {
-  return statsSevenDays.value?.distanceCarChart?.data?.length > 0 || statsSevenDays.value?.distanceWalkChart?.data?.length > 0
+  const chartsByType = statsSevenDays.value?.distanceChartsByTripType || {}
+  return Object.values(chartsByType).some(chart =>
+      chart?.data?.length > 0 && chart.data.some(value => value > 0)
+  )
 })
 
 const hasThirtyDaysChartData = computed(() => {
-  return statsThirtyDays.value?.distanceCarChart?.data?.length > 0 || statsThirtyDays.value?.distanceWalkChart?.data?.length > 0
+  const chartsByType = statsThirtyDays.value?.distanceChartsByTripType || {}
+  return Object.values(chartsByType).some(chart =>
+      chart?.data?.length > 0 && chart.data.some(value => value > 0)
+  )
 })
 
 const formattedSelectedPeriodRange = computed(() => {

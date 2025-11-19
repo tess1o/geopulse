@@ -12,6 +12,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -24,16 +27,14 @@ public class DigestChartBuilder {
     StatisticsService statisticsService;
 
     /**
-     * Build activity chart data from existing car and walk charts.
+     * Build activity chart data from trip type charts.
      *
-     * @param carChart  Car distance chart
-     * @param walkChart Walk distance chart
-     * @return ActivityChartData with separate car and walk datasets
+     * @param chartsByTripType Map of trip type to chart data
+     * @return ActivityChartData with all trip types
      */
-    public ActivityChartData buildActivityChartData(BarChartData carChart, BarChartData walkChart) {
+    public ActivityChartData buildActivityChartData(Map<String, BarChartData> chartsByTripType) {
         return ActivityChartData.builder()
-                .carChart(carChart)
-                .walkChart(walkChart)
+                .chartsByTripType(chartsByTripType != null ? chartsByTripType : new HashMap<>())
                 .build();
     }
 
@@ -44,12 +45,11 @@ public class DigestChartBuilder {
      * @param userId User ID
      * @param year   Year to analyze
      * @param zoneId User's timezone
-     * @return ActivityChartData with monthly aggregated data
+     * @return ActivityChartData with monthly aggregated data for all trip types
      */
     public ActivityChartData buildMonthlyChartForYear(UUID userId, int year, ZoneId zoneId) {
         String[] monthLabels = new String[12];
-        double[] carDistances = new double[12];
-        double[] walkDistances = new double[12];
+        Map<String, double[]> tripTypeDistances = new HashMap<>();
 
         // Month names for labels
         String[] monthNames = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -70,21 +70,30 @@ public class DigestChartBuilder {
             // Store label
             monthLabels[month - 1] = monthNames[month - 1];
 
-            // Extract car and walk distances from the month's charts
-            if (monthStats.getDistanceCarChart() != null && monthStats.getDistanceCarChart().getData() != null) {
-                // Sum up all car distances for this month (charts are in km)
-                carDistances[month - 1] = java.util.Arrays.stream(monthStats.getDistanceCarChart().getData()).sum();
-            }
+            // Extract distances from all trip types
+            if (monthStats.getDistanceChartsByTripType() != null) {
+                final int monthIndex = month - 1; // Make it effectively final for lambda
+                monthStats.getDistanceChartsByTripType().forEach((tripType, chartData) -> {
+                    if (chartData != null && chartData.getData() != null) {
+                        // Initialize array for this trip type if not exists
+                        tripTypeDistances.putIfAbsent(tripType, new double[12]);
 
-            if (monthStats.getDistanceWalkChart() != null && monthStats.getDistanceWalkChart().getData() != null) {
-                // Sum up all walk distances for this month (charts are in km)
-                walkDistances[month - 1] = java.util.Arrays.stream(monthStats.getDistanceWalkChart().getData()).sum();
+                        // Sum up all distances for this month (charts are in km)
+                        tripTypeDistances.get(tripType)[monthIndex] =
+                            Arrays.stream(chartData.getData()).sum();
+                    }
+                });
             }
         }
 
+        // Build map of trip type to BarChartData
+        Map<String, BarChartData> chartsByTripType = new HashMap<>();
+        tripTypeDistances.forEach((tripType, distances) -> {
+            chartsByTripType.put(tripType, new BarChartData(monthLabels, distances));
+        });
+
         return ActivityChartData.builder()
-                .carChart(new BarChartData(monthLabels, carDistances))
-                .walkChart(new BarChartData(monthLabels, walkDistances))
+                .chartsByTripType(chartsByTripType)
                 .build();
     }
 }

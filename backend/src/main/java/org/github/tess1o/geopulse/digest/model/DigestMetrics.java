@@ -16,9 +16,15 @@ public class DigestMetrics {
     private int tripCount;
     private int stayCount;
 
-    // Enhanced metrics
-    private double carDistance; // in meters
-    private double walkDistance; // in meters
+    // Distance by trip type (in meters)
+    private double carDistance;
+    private double walkDistance;
+    private double bicycleDistance;
+    private double trainDistance;
+    private double flightDistance;
+    private double unknownDistance;
+
+    // Other enhanced metrics
     private long timeMoving; // in seconds
     private double dailyAverageDistance; // in meters
 }

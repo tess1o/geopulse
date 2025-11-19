@@ -24,6 +24,15 @@
 import { computed } from 'vue'
 import BarChart from '@/components/charts/BarChart.vue'
 
+// Trip type display configuration
+const tripTypeConfig = {
+  WALK: { label: 'Walk', color: 'success' },
+  BICYCLE: { label: 'Bicycle', color: 'warning' },
+  CAR: { label: 'Car', color: 'primary' },
+  TRAIN: { label: 'Train', color: 'secondary' },
+  FLIGHT: { label: 'Flight', color: 'danger' }
+}
+
 const props = defineProps({
   chartData: {
     type: Object,
@@ -36,26 +45,26 @@ const props = defineProps({
 })
 
 const hasChartData = computed(() => {
-  // First check if chartData exists and has the required structure
   if (!props.chartData) return false
 
-  const carChart = props.chartData.carChart
-  const walkChart = props.chartData.walkChart
+  const chartsByType = props.chartData.chartsByTripType || {}
 
   // Check if at least one chart exists with valid data
-  const hasCarData = carChart?.data?.length > 0 && carChart.data.some(value => value > 0)
-  const hasWalkData = walkChart?.data?.length > 0 && walkChart.data.some(value => value > 0)
-
-  return hasCarData || hasWalkData
+  return Object.values(chartsByType).some(chart =>
+    chart?.data?.length > 0 && chart.data.some(value => value > 0)
+  )
 })
 
 const chartLabels = computed(() => {
-  // Merge labels from both car and walk charts to get all unique labels
-  const carLabels = props.chartData?.carChart?.labels || []
-  const walkLabels = props.chartData?.walkChart?.labels || []
+  const chartsByType = props.chartData?.chartsByTripType || {}
+
+  // Collect all labels from trip types that have data (filter out empty ones)
+  const allLabels = Object.values(chartsByType)
+    .filter(chart => chart?.labels?.length > 0 && chart?.data?.length > 0)
+    .flatMap(chart => chart.labels)
 
   // Combine and deduplicate labels
-  const allLabels = [...new Set([...carLabels, ...walkLabels])]
+  const uniqueLabels = [...new Set(allLabels)]
 
   // Sort chronologically based on view mode
   if (props.viewMode === 'yearly') {
@@ -75,22 +84,23 @@ const chartLabels = computed(() => {
       'November': 10, 'Nov': 10,
       'December': 11, 'Dec': 11
     }
-    allLabels.sort((a, b) => {
+    uniqueLabels.sort((a, b) => {
       const orderA = monthOrder[a] ?? 999
       const orderB = monthOrder[b] ?? 999
       return orderA - orderB
     })
   } else {
     // For monthly view (weeks), sort naturally
-    allLabels.sort()
+    uniqueLabels.sort()
   }
 
-  return allLabels
+  return uniqueLabels
 })
 
 const chartDatasets = computed(() => {
   const datasets = []
   const allLabels = chartLabels.value
+  const chartsByType = props.chartData?.chartsByTripType || {}
 
   // Helper function to align data with merged labels - use 0 instead of null
   const alignDataWithLabels = (sourceLabels, sourceData) => {
@@ -103,31 +113,21 @@ const chartDatasets = computed(() => {
     return allLabels.map(label => labelDataMap.get(label) || 0)
   }
 
-  // Add car distance data if available
-  if (props.chartData?.carChart?.labels?.length > 0 && props.chartData?.carChart?.data?.length > 0) {
-    const alignedData = alignDataWithLabels(
-      props.chartData.carChart.labels,
-      props.chartData.carChart.data
-    )
-    datasets.push({
-      label: 'Car Distance',
-      data: alignedData,
-      color: 'primary'
-    })
-  }
+  // Process each trip type
+  Object.entries(chartsByType).forEach(([tripType, chartData]) => {
+    if (!chartData || !chartData.labels?.length || !chartData.data?.length) return
 
-  // Add walk distance data if available
-  if (props.chartData?.walkChart?.labels?.length > 0 && props.chartData?.walkChart?.data?.length > 0) {
-    const alignedData = alignDataWithLabels(
-      props.chartData.walkChart.labels,
-      props.chartData.walkChart.data
-    )
+    const alignedData = alignDataWithLabels(chartData.labels, chartData.data)
+
+    // Get configuration for this trip type
+    const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
+
     datasets.push({
-      label: 'Walk Distance',
+      label: `${config.label}`,
       data: alignedData,
-      color: 'success'
+      color: config.color
     })
-  }
+  })
 
   return datasets
 })

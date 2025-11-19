@@ -349,10 +349,9 @@ const getTransportSeverity = (transportMode) => {
   const severityMap = {
     'CAR': 'info',
     'WALK': 'success', 
-    'BIKE': 'info',
-    'PUBLIC_TRANSPORT': 'warning',
+    'BICYCLE': 'info',
     'TRAIN': 'info',
-    'PLANE': 'danger',
+    'FLIGHT': 'danger',
     'UNKNOWN': 'secondary'
   }
   return severityMap[transportMode?.toUpperCase()] || 'secondary'
@@ -362,10 +361,9 @@ const getTransportIcon = (transportMode) => {
   const iconMap = {
     'CAR': 'pi pi-car',
     'WALK': 'fas fa-walking',
-    'BIKE': 'fas fa-bicycle',
-    'PUBLIC_TRANSPORT': 'pi pi-truck',
+    'BICYCLE': 'fas fa-bicycle',
     'TRAIN': 'fas fa-train',
-    'PLANE': 'fas fa-plane',
+    'FLIGHT': 'fas fa-plane',
     'UNKNOWN': 'pi pi-question-circle'
   }
   return iconMap[transportMode?.toUpperCase()] || 'pi pi-question-circle'
