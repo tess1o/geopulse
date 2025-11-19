@@ -389,6 +389,22 @@
             "format" : "int32",
             "type" : "integer"
           },
+          "byBicycle" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byTrain" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byFlight" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byUnknown" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
           "total" : {
             "format" : "int32",
             "type" : "integer"
@@ -4985,7 +5001,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.5.0",
+    "version" : "1.5.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
