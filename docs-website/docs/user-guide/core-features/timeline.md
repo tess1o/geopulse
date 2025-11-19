@@ -25,6 +25,10 @@ For example, if your settings are a 100-meter radius and a 10-minute duration, t
 
 A special rule applies to **Favorite Areas**. If you have defined a Favorite Area (like "University Campus"), all GPS points within that entire area are treated as being at the same location, making it easier to register a single, continuous stay even if you are walking around a large area.
 
+:::tip Learn More
+For detailed information about the stay detection algorithm, GPS quality filtering, and configuration options, see the **[Stay Detection Guide](/docs/user-guide/timeline/stay_detection)**.
+:::
+
 ---
 
 ## From Stay to Trip: Detecting Movement
@@ -47,6 +51,10 @@ Instead of just one or two points, the system generally needs to see **at least 
 3.  **Sustained in Time:** These clustered, slow points must span a minimum duration. This is controlled by separate, more sensitive time-based settings specifically for trip-ending detection.
 
 Only when these stricter conditions are met will the algorithm conclude the trip has ended and transition back to "stay mode," beginning a new "Potential Stay."
+
+:::tip Learn More
+For detailed information about trip start/end detection, arrival algorithms, and configuration options, see the **[Trip Detection Guide](/docs/user-guide/timeline/trip_detection)**.
+:::
 
 ---
 
@@ -94,6 +102,16 @@ For detailed information about how travel classification works, including custom
 A data gap occurs when the system detects a large and unrealistic "jump" between two consecutive GPS points. For example, if one point is at your home at 2:00 PM and the very next point is 50 miles away at 4:00 PM, it's clear that data is missing in between.
 
 The algorithm identifies a gap when the time elapsed between two points exceeds a configured threshold. Instead of drawing an incorrect straight line between these two distant points, it creates a "Data Gap" event on your timeline to signify that your location was not tracked during that period.
+
+### Gap Stay Inference
+
+GeoPulse can intelligently infer that you stayed at a location during a data gap. If you were at a location before the gap and the GPS resumes at the same location, the system can recognize you likely stayed there the whole time (e.g., overnight at home) instead of creating a gap.
+
+This feature is optional and can be enabled in Timeline Preferences under the GPS Gaps Detection tab.
+
+:::tip Learn More
+For detailed information about data gap detection, gap stay inference, and configuration options, see the **[Data Gaps Guide](/docs/user-guide/timeline/data_gaps)**.
+:::
 
 ---
 
@@ -175,3 +193,11 @@ You can customize the timeline generation algorithm by adjusting several key par
 *   **Travel Classification Speeds (km/h)**
     *   **What they are:** A set of four advanced speed settings (Walking Max Average, Walking Max Peak, Car Min Average, Car Min Peak).
     *   **How they affect your timeline:** These values determine the speed thresholds used to classify trips as `WALK` or `CAR`. Adjusting them can help correctly classify your activities if your personal walking or driving speeds differ from the defaults.
+
+*   **Gap Stay Inference**
+    *   **What it is:** A toggle to enable intelligent stay inference during data gaps.
+    *   **How it affects your timeline:** When enabled, if you were at a location before a gap and the GPS resumes at the same location, the system infers you stayed there instead of creating a data gap. Perfect for capturing overnight stays at home.
+
+*   **Maximum Gap Duration for Inference (Hours)**
+    *   **What it is:** The maximum duration of a data gap that can be inferred as a stay.
+    *   **How it affects your timeline:** Gaps longer than this will create data gap events even if you return to the same location. Default is 24 hours, which covers overnight gaps while remaining conservative for longer periods.
