@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,12 +19,12 @@ import java.util.Optional;
 public class GeocodingProviderValidation {
 
     private final GeocodingProviderFactory providerFactory;
-    private final GeocodingConfig config;
+    private final GeocodingConfigurationService configService;
 
     @Inject
-    public GeocodingProviderValidation(GeocodingProviderFactory providerFactory, GeocodingConfig config) {
+    public GeocodingProviderValidation(GeocodingProviderFactory providerFactory, GeocodingConfigurationService configService) {
         this.providerFactory = providerFactory;
-        this.config = config;
+        this.configService = configService;
     }
 
     /**
@@ -46,7 +46,7 @@ public class GeocodingProviderValidation {
         }
 
         // Check if primary provider is actually enabled
-        String primaryProvider = config.provider().primary();
+        String primaryProvider = configService.getPrimaryProvider();
         boolean primaryProviderEnabled = enabledProviders.stream()
                 .anyMatch(provider -> provider.equalsIgnoreCase(primaryProvider));
 
@@ -57,10 +57,9 @@ public class GeocodingProviderValidation {
         }
 
         // Check fallback provider if configured
-        Optional<String> fallbackProviderOpt = config.provider().fallback();
+        String fallbackProvider = configService.getFallbackProvider();
         boolean fallbackProviderEnabled = true;
-        if (fallbackProviderOpt.isPresent()) {
-            String fallbackProvider = fallbackProviderOpt.get();
+        if (!fallbackProvider.isEmpty()) {
             fallbackProviderEnabled = enabledProviders.stream()
                     .anyMatch(provider -> provider.equalsIgnoreCase(fallbackProvider));
 
@@ -73,34 +72,36 @@ public class GeocodingProviderValidation {
         // Log configuration status
         log.info("Geocoding provider configuration:");
         log.info("Primary provider: {} (ENABLED)", primaryProvider);
-        if (fallbackProviderOpt.isPresent()) {
-            log.info("Fallback provider: {} ({})", fallbackProviderOpt.get(), fallbackProviderEnabled ? "ENABLED" : "DISABLED/MISCONFIGURED");
+        if (!fallbackProvider.isEmpty()) {
+            log.info("Fallback provider: {} ({})", fallbackProvider, fallbackProviderEnabled ? "ENABLED" : "DISABLED/MISCONFIGURED");
         } else {
             log.info("Fallback provider: none configured");
         }
 
         // Provider-specific warnings
-        if (config.provider().nominatim().enabled()) {
+        if (configService.isNominatimEnabled()) {
             log.info("Nominatim: enabled");
         }
 
-        if (config.provider().googlemaps().enabled()) {
-            if (config.googlemaps().apiKey().isEmpty()) {
+        if (configService.isGoogleMapsEnabled()) {
+            String apiKey = configService.getGoogleMapsApiKey();
+            if (apiKey.isEmpty()) {
                 log.warn("Google Maps: enabled but API key not configured - provider will be unavailable");
             } else {
                 log.info("Google Maps: enabled with API key");
             }
         }
 
-        if (config.provider().mapbox().enabled()) {
-            if (config.mapbox().accessToken().isEmpty()) {
+        if (configService.isMapboxEnabled()) {
+            String accessToken = configService.getMapboxAccessToken();
+            if (accessToken.isEmpty()) {
                 log.warn("Mapbox: enabled but access token not configured - provider will be unavailable");
             } else {
                 log.info("Mapbox: enabled with access token");
             }
         }
 
-        if (config.provider().photon().enabled()) {
+        if (configService.isPhotonEnabled()) {
             log.info("Photon: enabled");
         }
 

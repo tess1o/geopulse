@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.client.MapboxRestClient;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.eclipse.microprofile.faulttolerance.Bulkhead;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -27,15 +27,15 @@ public class MapboxGeocodingService {
 
     private final MapboxRestClient mapboxClient;
     private final MapboxResponseAdapter adapter;
-    private final GeocodingConfig config;
+    private final GeocodingConfigurationService configService;
 
     @Inject
     public MapboxGeocodingService(@RestClient MapboxRestClient mapboxClient,
                                 MapboxResponseAdapter adapter,
-                                GeocodingConfig config) {
+                                GeocodingConfigurationService configService) {
         this.mapboxClient = mapboxClient;
         this.adapter = adapter;
-        this.config = config;
+        this.configService = configService;
     }
 
     /**
@@ -55,7 +55,7 @@ public class MapboxGeocodingService {
             return Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled"));
         }
 
-        String accessToken = config.mapbox().accessToken();
+        String accessToken = configService.getMapboxAccessToken();
         if (accessToken.isEmpty()) {
             return Uni.createFrom().failure(new GeocodingException("Mapbox access token not configured"));
         }
@@ -84,11 +84,12 @@ public class MapboxGeocodingService {
 
     /**
      * Check if this provider is enabled and properly configured.
-     * 
+     *
      * @return true if enabled and has access token
      */
     public boolean isEnabled() {
-        return config.provider().mapbox().enabled() && !config.mapbox().accessToken().isEmpty();
+        String accessToken = configService.getMapboxAccessToken();
+        return configService.isMapboxEnabled() && accessToken != null && !accessToken.isBlank();
     }
 
     /**

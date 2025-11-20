@@ -9,7 +9,9 @@ import org.eclipse.microprofile.config.ConfigProvider;
 import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
+import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
 
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -24,6 +26,7 @@ public class SystemSettingsService {
 
     private final SystemSettingsRepository repository;
     private final Config config;
+    private final AIEncryptionService encryptionService;
 
     // Mapping from setting keys to their env var names and defaults
     private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
@@ -39,21 +42,34 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("auth.oidc.auto-link-accounts",
                 new SettingDefinition("geopulse.oidc.auto-link-accounts", "false", ValueType.BOOLEAN, "auth", "Auto-link OIDC accounts by email"));
 
-        // Geocoding settings
+        // Geocoding settings - General
         SETTING_DEFINITIONS.put("geocoding.primary-provider",
                 new SettingDefinition("geocoding.provider.primary", "nominatim", ValueType.STRING, "geocoding", "Primary geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.fallback-provider",
-                new SettingDefinition("geocoding.provider.fallback", "", ValueType.STRING, "geocoding", "Fallback geocoding provider"));
+                new SettingDefinition("geocoding.provider.fallback", "", ValueType.STRING, "geocoding", "Fallback geocoding provider (optional)"));
         SETTING_DEFINITIONS.put("geocoding.delay-ms",
-                new SettingDefinition("geocoding.provider.delay.ms", "1000", ValueType.INTEGER, "geocoding", "Delay between geocoding requests (ms)"));
+                new SettingDefinition("geocoding.provider.delay.ms", "1000", ValueType.INTEGER, "geocoding", "Delay between geocoding requests (milliseconds)"));
+
+        // Geocoding settings - Provider Availability
         SETTING_DEFINITIONS.put("geocoding.nominatim.enabled",
-                new SettingDefinition("geocoding.provider.nominatim.enabled", "true", ValueType.BOOLEAN, "geocoding", "Enable Nominatim provider"));
+                new SettingDefinition("geocoding.provider.nominatim.enabled", "true", ValueType.BOOLEAN, "geocoding", "Enable Nominatim geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.nominatim.url",
+                new SettingDefinition("quarkus.rest-client.nominatim-api.url", "", ValueType.STRING, "geocoding", "Custom Nominatim server URL (optional)"));
+
         SETTING_DEFINITIONS.put("geocoding.photon.enabled",
-                new SettingDefinition("geocoding.provider.photon.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Photon provider"));
+                new SettingDefinition("geocoding.provider.photon.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Photon geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.photon.url",
+                new SettingDefinition("quarkus.rest-client.photon-api.url", "", ValueType.STRING, "geocoding", "Custom Photon server URL (optional)"));
+
         SETTING_DEFINITIONS.put("geocoding.googlemaps.enabled",
-                new SettingDefinition("geocoding.provider.googlemaps.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Google Maps provider"));
+                new SettingDefinition("geocoding.provider.googlemaps.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Google Maps geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.googlemaps.api-key",
+                new SettingDefinition("geocoding.provider.googlemaps.api-key", "", ValueType.ENCRYPTED, "geocoding", "Google Maps API key (encrypted)"));
+
         SETTING_DEFINITIONS.put("geocoding.mapbox.enabled",
-                new SettingDefinition("geocoding.provider.mapbox.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Mapbox provider"));
+                new SettingDefinition("geocoding.provider.mapbox.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Mapbox geocoding provider"));
+        SETTING_DEFINITIONS.put("geocoding.mapbox.access-token",
+                new SettingDefinition("geocoding.provider.mapbox.access-token", "", ValueType.ENCRYPTED, "geocoding", "Mapbox access token (encrypted)"));
 
         // GPS processing defaults
         SETTING_DEFINITIONS.put("gps.filter.inaccurate-data.enabled",
@@ -81,8 +97,11 @@ public class SystemSettingsService {
     }
 
     @Inject
-    public SystemSettingsService(SystemSettingsRepository repository) {
+    public SystemSettingsService(
+            SystemSettingsRepository repository,
+            AIEncryptionService encryptionService) {
         this.repository = repository;
+        this.encryptionService = encryptionService;
         this.config = ConfigProvider.getConfig();
     }
 
@@ -116,8 +135,25 @@ public class SystemSettingsService {
         // Check DB first
         Optional<SystemSettingsEntity> dbSetting = repository.findByKey(key);
         if (dbSetting.isPresent()) {
+            SystemSettingsEntity entity = dbSetting.get();
+
+            // Decrypt if type is ENCRYPTED
+            if (entity.getValueType() == ValueType.ENCRYPTED) {
+                try {
+                    String decrypted = encryptionService.decrypt(
+                        entity.getValue(),
+                        entity.getEncryptionKeyId()
+                    );
+                    log.debug("Using decrypted DB value for setting: {}", key);
+                    return decrypted;
+                } catch (Exception e) {
+                    log.error("Failed to decrypt setting {}: {}", key, e.getMessage());
+                    throw new RuntimeException("Decryption failed for setting: " + key, e);
+                }
+            }
+
             log.debug("Using DB value for setting: {}", key);
-            return dbSetting.get().getValue();
+            return entity.getValue();
         }
 
         // Fall back to env var
@@ -165,24 +201,36 @@ public class SystemSettingsService {
         // Validate value type
         validateValue(value, def.valueType);
 
+        // Encrypt if type is ENCRYPTED
+        String storedValue = value;
+        String keyId = null;
+        if (def.valueType == ValueType.ENCRYPTED) {
+            storedValue = encryptionService.encrypt(value);
+            keyId = encryptionService.getCurrentKeyId();
+        }
+
         Optional<SystemSettingsEntity> existing = repository.findByKey(key);
         if (existing.isPresent()) {
             SystemSettingsEntity entity = existing.get();
-            entity.setValue(value);
+            entity.setValue(storedValue);
             entity.setUpdatedBy(updatedBy);
+            entity.setUpdatedAt(Instant.now());
+            entity.setEncryptionKeyId(keyId);
         } else {
             SystemSettingsEntity entity = SystemSettingsEntity.builder()
                     .key(key)
-                    .value(value)
+                    .value(storedValue)
                     .valueType(def.valueType)
                     .category(def.category)
                     .description(def.description)
                     .updatedBy(updatedBy)
+                    .updatedAt(Instant.now())
+                    .encryptionKeyId(keyId)
                     .build();
             repository.persist(entity);
         }
 
-        log.info("Setting {} updated to: {}", key, value);
+        log.info("Setting {} updated by user {}", key, updatedBy);
     }
 
     /**
@@ -209,14 +257,23 @@ public class SystemSettingsService {
                 String defaultValue = getDefaultValue(key);
                 boolean isDefault = isDefault(key);
 
+                // Mask encrypted values in API responses
+                String displayValue = currentValue;
+                String displayDefault = defaultValue;
+
+                if (def.valueType == ValueType.ENCRYPTED) {
+                    displayValue = currentValue.isEmpty() ? "" : "********";
+                    displayDefault = defaultValue.isEmpty() ? "" : "********";
+                }
+
                 result.add(new SettingInfo(
                         key,
-                        currentValue,
+                        displayValue,
                         def.valueType,
                         def.category,
                         def.description,
                         isDefault,
-                        defaultValue
+                        displayDefault
                 ));
             }
         }

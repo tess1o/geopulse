@@ -43,6 +43,9 @@ public class SystemSettingsEntity extends PanacheEntityBase {
     @Column(name = "updated_by")
     private UUID updatedBy;
 
+    @Column(name = "encryption_key_id", length = 20)
+    private String encryptionKeyId;
+
     @PrePersist
     @PreUpdate
     protected void onUpdate() {

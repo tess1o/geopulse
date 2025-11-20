@@ -5,7 +5,7 @@ import org.github.tess1o.geopulse.geocoding.client.GoogleMapsRestClient;
 import org.github.tess1o.geopulse.geocoding.client.MapboxRestClient;
 import org.github.tess1o.geopulse.geocoding.client.NominatimRestClient;
 import org.github.tess1o.geopulse.geocoding.client.PhotonRestClient;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
@@ -39,7 +39,7 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
         NominatimAddress.class,
         NominatimResponse.class,
 
-        GeocodingConfig.class,
+        GeocodingConfigurationService.class,
         MapboxRestClient.class,
         GoogleMapsRestClient.class,
         NominatimRestClient.class,

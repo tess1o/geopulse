@@ -4,18 +4,21 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.geocoding.client.NominatimRestClient;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.eclipse.microprofile.faulttolerance.Bulkhead;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.github.tess1o.geopulse.geocoding.adapter.NominatimResponseAdapter;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.locationtech.jts.geom.Point;
 
+import java.net.URI;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Nominatim geocoding service that handles API calls and response transformation.
@@ -25,17 +28,40 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 public class NominatimGeocodingService {
 
-    private final NominatimRestClient nominatimClient;
     private final NominatimResponseAdapter adapter;
-    private final GeocodingConfig config;
+    private final GeocodingConfigurationService configService;
+    private final String defaultUrl;
+    private final String userAgent;
 
     @Inject
-    public NominatimGeocodingService(@RestClient NominatimRestClient nominatimClient,
-                                     NominatimResponseAdapter adapter,
-                                     GeocodingConfig config) {
-        this.nominatimClient = nominatimClient;
+    public NominatimGeocodingService(NominatimResponseAdapter adapter,
+                                     GeocodingConfigurationService configService,
+                                     @ConfigProperty(name = "quarkus.rest-client.nominatim-api.url") String defaultUrl,
+                                     @ConfigProperty(name = "quarkus.rest-client.nominatim-api.user-agent", defaultValue = "GeoPulse/1.0") String userAgent) {
         this.adapter = adapter;
-        this.config = config;
+        this.configService = configService;
+        this.defaultUrl = defaultUrl;
+        this.userAgent = userAgent;
+    }
+
+    /**
+     * Get the Nominatim REST client with the current configured URL.
+     * Builds client dynamically to support runtime URL changes.
+     */
+    private NominatimRestClient getClient() {
+        String url = configService.getNominatimUrl().orElse(defaultUrl);
+        try {
+            return RestClientBuilder.newBuilder()
+                    .baseUri(URI.create(url))
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .property("microprofile.rest.client.disable.default.mapper", true)
+                    .property("User-Agent", userAgent)
+                    .build(NominatimRestClient.class);
+        } catch (Exception e) {
+            log.error("Failed to build Nominatim REST client with URL: {}", url, e);
+            throw new RuntimeException("Failed to build Nominatim REST client", e);
+        }
     }
 
     /**
@@ -60,7 +86,8 @@ public class NominatimGeocodingService {
 
         log.debug("Calling Nominatim for coordinates: lon={}, lat={}", longitude, latitude);
 
-        return nominatimClient.getAddress("json", longitude, latitude)
+        NominatimRestClient client = getClient();
+        return client.getAddress("json", longitude, latitude)
                 .map(response -> {
                     log.debug("Nominatim response received: {}", response.getDisplayName());
                     return adapter.adapt(response, requestCoordinates, getProviderName());
@@ -77,11 +104,11 @@ public class NominatimGeocodingService {
 
     /**
      * Check if this provider is enabled.
-     * 
+     *
      * @return true if enabled
      */
     public boolean isEnabled() {
-        return config.provider().nominatim().enabled();
+        return configService.isNominatimEnabled();
     }
 
     /**
