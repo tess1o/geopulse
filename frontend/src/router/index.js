@@ -293,6 +293,12 @@ const routes = [
         beforeEnter: requireAdmin
     },
     {
+        path: '/app/admin/oidc-providers',
+        name: 'Admin OIDC Providers',
+        component: () => import('@/views/app/admin/AdminOidcProvidersPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: NotFoundPage

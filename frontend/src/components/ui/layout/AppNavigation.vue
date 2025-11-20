@@ -251,6 +251,12 @@ const adminItems = computed(() => [
     key: 'admin-users'
   },
   {
+    label: 'OIDC Providers',
+    icon: 'pi pi-key',
+    to: '/app/admin/oidc-providers',
+    key: 'admin-oidc-providers'
+  },
+  {
     label: 'System Settings',
     icon: 'pi pi-cog',
     to: '/app/admin/settings',
