@@ -81,10 +81,6 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     int stateTokenExpiryMinutes;
 
-    @ConfigProperty(name = "geopulse.oidc.auto-link-accounts", defaultValue = "false")
-    @StaticInitSafe
-    boolean autoLinkAccounts;
-
     @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
     @StaticInitSafe
     String adminEmail;
@@ -215,7 +211,7 @@ public class OidcAuthenticationService {
             UserEntity user = existingUser.get();
 
             // If auto-link is enabled, automatically link the OIDC account
-            if (autoLinkAccounts) {
+            if (authConfigurationService.isAutoLinkAccountsEnabled()) {
                 log.warn("Auto-linking OIDC account - Provider: {}, Email: {}, User ID: {}. " +
                         "This bypasses verification. Ensure you trust your OIDC provider.",
                         sessionState.getProviderName(), userInfo.getEmail(), user.getId());
