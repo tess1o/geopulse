@@ -163,6 +163,69 @@ const adminService = {
      */
     async deleteUser(userId) {
         return apiService.delete(`/admin/users/${userId}`);
+    },
+
+    // ==================== Dashboard Stats ====================
+
+    /**
+     * Get dashboard statistics (tries dedicated endpoint, falls back to Prometheus)
+     * @returns {Promise<Object>} Dashboard statistics
+     */
+    async getDashboardStats() {
+        try {
+            // Try the dedicated admin dashboard endpoint first
+            return await apiService.get('/admin/dashboard/stats');
+        } catch (error) {
+            console.warn('Admin dashboard endpoint unavailable, falling back to Prometheus:', error);
+
+            try {
+                // Fallback to Prometheus metrics
+                const response = await fetch('/api/prometheus/metrics');
+                const text = await response.text();
+                return this.parsePrometheusMetrics(text);
+            } catch (prometheusError) {
+                console.error('Failed to fetch Prometheus metrics:', prometheusError);
+                // Return default values if both methods fail
+                return {
+                    totalUsers: 0,
+                    activeUsers24h: 0,
+                    totalGpsPoints: 0,
+                    memoryUsageMB: 0
+                };
+            }
+        }
+    },
+
+    /**
+     * Parse Prometheus text format metrics
+     * @param {string} text - Prometheus metrics text
+     * @returns {Object} Parsed metrics object
+     */
+    parsePrometheusMetrics(text) {
+        const lines = text.split('\n');
+        const metrics = {};
+
+        lines.forEach(line => {
+            // Skip comments and empty lines
+            if (line.startsWith('#') || line.trim() === '') return;
+
+            // Parse metric line: metric_name{labels} value
+            const match = line.match(/^([a-z_]+)(?:\{[^}]*\})?\s+(.+)$/);
+            if (match) {
+                const [, name, value] = match;
+                metrics[name] = parseFloat(value);
+            }
+        });
+
+        // Extract relevant metrics for dashboard
+        return {
+            totalUsers: metrics['users_total'] || 0,
+            activeUsers24h: metrics['users_active_last_24h'] || 0,
+            totalGpsPoints: metrics['gps_points_total'] || 0,
+            memoryUsageMB: metrics['process_resident_memory_bytes']
+                ? Math.round(metrics['process_resident_memory_bytes'] / (1024 * 1024))
+                : 0
+        };
     }
 };
 

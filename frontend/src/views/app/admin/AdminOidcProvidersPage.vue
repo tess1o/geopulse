@@ -1,6 +1,8 @@
 <template>
   <AppLayout>
     <div class="admin-oidc-providers">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+
       <div class="page-header">
         <h1>OIDC Providers</h1>
         <p class="text-muted">Manage OAuth/OIDC authentication providers</p>
@@ -14,12 +16,13 @@
           responsiveLayout="scroll"
         >
           <template #header>
-            <div class="flex justify-content-between align-items-center">
+            <div class="table-header">
               <span class="text-xl font-semibold">Configured Providers</span>
               <Button
                 label="Add Provider"
                 icon="pi pi-plus"
                 @click="openCreateDialog"
+                class="add-provider-button"
               />
             </div>
           </template>
@@ -205,18 +208,33 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Toast from 'primevue/toast'
+import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import OidcProviderDialog from '@/components/admin/OidcProviderDialog.vue'
 import adminService from '@/utils/adminService'
 
+const router = useRouter()
 const toast = useToast()
+
+const breadcrumbHome = ref({
+  icon: 'pi pi-home',
+  command: () => router.push('/')
+})
+const breadcrumbItems = ref([
+  {
+    label: 'Administration',
+    command: () => router.push('/app/admin')
+  },
+  { label: 'OIDC Providers' }
+])
 
 // State
 const providers = ref([])
@@ -423,7 +441,11 @@ onMounted(() => {
 
 <style scoped>
 .admin-oidc-providers {
-  padding: 1rem;
+  padding: 1.5rem;
+}
+
+.admin-breadcrumb {
+  margin-bottom: 1.5rem;
 }
 
 .page-header {
@@ -452,5 +474,17 @@ code {
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-family: 'Courier New', monospace;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 1rem;
+}
+
+.add-provider-button {
+  margin-left: auto;
 }
 </style>

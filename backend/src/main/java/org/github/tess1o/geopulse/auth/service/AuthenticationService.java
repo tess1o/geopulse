@@ -96,6 +96,11 @@ public class AuthenticationService {
 
         UserEntity user = userOpt.get();
 
+        // Check if user account is active
+        if (!user.isActive()) {
+            throw new IllegalArgumentException("User account is disabled");
+        }
+
         // Authenticate user
         if (!securePasswordUtils.isPasswordValid(password, user.getPasswordHash())) {
             throw new InvalidPasswordException("Invalid password");
@@ -126,6 +131,11 @@ public class AuthenticationService {
      * This bypasses password validation since the user has already been authenticated by external provider.
      */
     public AuthResponse createAuthResponse(UserEntity user) {
+        // Check if user account is active
+        if (!user.isActive()) {
+            throw new IllegalArgumentException("User account is disabled");
+        }
+
         // Check if user should be promoted to ADMIN based on admin email
         checkAndPromoteToAdmin(user);
 

@@ -34,12 +34,25 @@
             />
 
             <!-- Administration (Admin only) -->
-            <NavigationSection
-              v-if="isAdmin"
-              title="Administration"
-              :items="adminItems"
-              @item-click="handleItemClick"
-            />
+            <template v-if="isAdmin">
+              <div class="gp-nav-admin-header">
+                <span class="gp-nav-section-title">Administration</span>
+              </div>
+
+              <!-- User Management -->
+              <NavigationSection
+                title="User Management"
+                :items="adminUserManagementItems"
+                @item-click="handleItemClick"
+              />
+
+              <!-- System Configuration -->
+              <NavigationSection
+                title="System Configuration"
+                :items="adminSystemItems"
+                @item-click="handleItemClick"
+              />
+            </template>
 
             <!-- Theme & Settings -->
             <div class="gp-nav-theme">
@@ -237,13 +250,7 @@ const accountItems = computed(() => [
   }
 ])
 
-const adminItems = computed(() => [
-  {
-    label: 'Admin Dashboard',
-    icon: 'pi pi-th-large',
-    to: '/app/admin',
-    key: 'admin-dashboard'
-  },
+const adminUserManagementItems = computed(() => [
   {
     label: 'Manage Users',
     icon: 'pi pi-users',
@@ -255,12 +262,21 @@ const adminItems = computed(() => [
     icon: 'pi pi-key',
     to: '/app/admin/oidc-providers',
     key: 'admin-oidc-providers'
-  },
+  }
+])
+
+const adminSystemItems = computed(() => [
   {
     label: 'System Settings',
     icon: 'pi pi-cog',
     to: '/app/admin/settings',
     key: 'admin-settings'
+  },
+  {
+    label: 'Admin Dashboard',
+    icon: 'pi pi-th-large',
+    to: '/app/admin',
+    key: 'admin-dashboard'
   }
 ])
 
@@ -382,6 +398,27 @@ onMounted(async () => {
   flex-direction: column;
   padding: var(--gp-spacing-md) 0;
   overflow-y: auto;
+}
+
+/* Admin Section Header */
+.gp-nav-admin-header {
+  padding: var(--gp-spacing-lg) var(--gp-spacing-lg) var(--gp-spacing-sm);
+  margin-top: var(--gp-spacing-md);
+  border-top: 2px solid var(--gp-primary);
+}
+
+.gp-nav-admin-header .gp-nav-section-title {
+  color: var(--gp-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.p-dark .gp-nav-admin-header {
+  border-top-color: var(--gp-primary-light);
+}
+
+.p-dark .gp-nav-admin-header .gp-nav-section-title {
+  color: var(--gp-primary-light);
 }
 
 /* Theme Section */

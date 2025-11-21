@@ -67,4 +67,29 @@ public class NativeProcessMemoryMetrics {
             return 0;
         }
     }
+
+    /**
+     * Check if metrics are enabled
+     * @return true if metrics are enabled
+     */
+    public boolean isEnabled() {
+        return prometheusEnabled && memoryMetricsEnabled;
+    }
+
+    /**
+     * Get resident memory size in bytes (public API for admin dashboard)
+     * Note: This always queries /proc/self/status directly regardless of metrics being enabled
+     * @return RSS memory in bytes
+     */
+    public long getResidentMemoryBytes() {
+        return getRss();
+    }
+
+    /**
+     * Get virtual memory size in bytes (public API)
+     * @return virtual memory in bytes
+     */
+    public long getVirtualMemoryBytes() {
+        return getVsize();
+    }
 }

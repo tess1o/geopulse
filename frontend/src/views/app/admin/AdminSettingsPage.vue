@@ -1,14 +1,21 @@
 <template>
   <AppLayout>
     <div class="admin-settings">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+
       <div class="page-header">
         <h1>System Settings</h1>
         <p class="text-muted">Configure system-wide settings</p>
       </div>
 
-    <TabView>
-      <!-- Authentication Tab -->
-      <TabPanel header="Authentication">
+      <TabContainer
+        :tabs="tabItems"
+        :activeIndex="activeTabIndex"
+        @tab-change="handleTabChange"
+        class="settings-tabs"
+      >
+        <!-- Authentication Tab -->
+        <div v-if="activeTab === 'authentication'">
         <div class="settings-section">
           <h3>Registration Settings</h3>
 
@@ -37,10 +44,10 @@
             </div>
           </div>
         </div>
-      </TabPanel>
+        </div>
 
-      <!-- Geocoding Tab -->
-      <TabPanel header="Geocoding">
+        <!-- Geocoding Tab -->
+        <div v-if="activeTab === 'geocoding'">
         <div class="settings-section">
           <h3>General Settings</h3>
 
@@ -160,42 +167,84 @@
             </div>
           </div>
         </div>
-      </TabPanel>
-
-      <!-- GPS Tab -->
-      <TabPanel header="GPS Processing">
-        <div class="settings-section">
-          <h3>GPS Processing Defaults</h3>
-          <p class="text-muted">Default GPS filtering settings (coming soon)</p>
         </div>
-      </TabPanel>
 
-      <!-- Import Tab -->
-      <TabPanel header="Import">
-        <div class="settings-section">
-          <h3>Import Settings</h3>
-          <p class="text-muted">Import batch and file settings (coming soon)</p>
+        <!-- GPS Tab -->
+        <div v-if="activeTab === 'gps'">
+        <div class="settings-section empty-state">
+          <div class="empty-state-icon">
+            <i class="pi pi-map-marker" style="font-size: 3rem; color: var(--blue-500);"></i>
+          </div>
+          <h3>GPS Processing Settings</h3>
+          <p class="text-muted">Configure default GPS data processing behavior</p>
+          <div class="planned-features">
+            <h4>Planned Features:</h4>
+            <ul>
+              <li><strong>Stay Detection Algorithm:</strong> Default algorithm for detecting stays from GPS points</li>
+              <li><strong>Accuracy Filtering:</strong> Minimum GPS accuracy threshold for processing</li>
+              <li><strong>Batch Size:</strong> Number of GPS points to process in each batch</li>
+              <li><strong>Distance Thresholds:</strong> Configure stay/trip distance parameters</li>
+              <li><strong>Time Windows:</strong> Minimum/maximum time for stay detection</li>
+            </ul>
+          </div>
+          <div class="coming-soon-badge">
+            <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+          </div>
         </div>
-      </TabPanel>
-
-      <!-- System Tab -->
-      <TabPanel header="System">
-        <div class="settings-section">
-          <h3>System Performance</h3>
-          <p class="text-muted">Timeline processing settings (coming soon)</p>
         </div>
-      </TabPanel>
-    </TabView>
 
-    <Toast />
+        <!-- Import Tab -->
+        <div v-if="activeTab === 'import'">
+        <div class="settings-section empty-state">
+          <div class="empty-state-icon">
+            <i class="pi pi-upload" style="font-size: 3rem; color: var(--green-500);"></i>
+          </div>
+          <h3>Import Configuration</h3>
+          <p class="text-muted">Manage GPS data import settings and limits</p>
+          <div class="planned-features">
+            <h4>Planned Features:</h4>
+            <ul>
+              <li><strong>Batch Processing:</strong> Configure concurrent import job limits</li>
+            </ul>
+          </div>
+          <div class="coming-soon-badge">
+            <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+          </div>
+        </div>
+        </div>
+
+        <!-- System Tab -->
+        <div v-if="activeTab === 'system'">
+        <div class="settings-section empty-state">
+          <div class="empty-state-icon">
+            <i class="pi pi-server" style="font-size: 3rem; color: var(--orange-500);"></i>
+          </div>
+          <h3>System Performance & Monitoring</h3>
+          <p class="text-muted">Configure system-wide performance and monitoring settings</p>
+          <div class="planned-features">
+            <h4>Planned Features:</h4>
+            <ul>
+              <li><strong>Timeline Processing:</strong> Background job concurrency and queue settings</li>
+              <li><strong>Database Maintenance:</strong> Auto-vacuum and cleanup schedules</li>
+              <li><strong>Prometheus Metrics:</strong> Enable/disable metrics collection and refresh intervals</li>
+              <li><strong>Logging Levels:</strong> Configure application and SQL logging verbosity</li>
+            </ul>
+          </div>
+          <div class="coming-soon-badge">
+            <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+          </div>
+        </div>
+        </div>
+      </TabContainer>
+
+      <Toast />
     </div>
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import TabView from 'primevue/tabview'
-import TabPanel from 'primevue/tabpanel'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import InputSwitch from 'primevue/inputswitch'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
@@ -204,12 +253,67 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Toast from 'primevue/toast'
+import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
-import { computed } from 'vue'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
+import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import apiService from '@/utils/apiService'
 
+const router = useRouter()
 const toast = useToast()
+
+const breadcrumbHome = ref({
+  icon: 'pi pi-home',
+  command: () => router.push('/')
+})
+const breadcrumbItems = ref([
+  {
+    label: 'Administration',
+    command: () => router.push('/app/admin')
+  },
+  { label: 'Settings' }
+])
+
+// Tab configuration
+const activeTab = ref('authentication')
+const tabItems = ref([
+  {
+    label: 'Authentication',
+    icon: 'pi pi-shield',
+    key: 'authentication'
+  },
+  {
+    label: 'Geocoding',
+    icon: 'pi pi-map-marker',
+    key: 'geocoding'
+  },
+  {
+    label: 'GPS Processing',
+    icon: 'pi pi-compass',
+    key: 'gps'
+  },
+  {
+    label: 'Import',
+    icon: 'pi pi-upload',
+    key: 'import'
+  },
+  {
+    label: 'System',
+    icon: 'pi pi-server',
+    key: 'system'
+  }
+])
+
+const activeTabIndex = computed(() => {
+  return tabItems.value.findIndex(tab => tab.key === activeTab.value)
+})
+
+const handleTabChange = (event) => {
+  const selectedTab = tabItems.value[event.index]
+  if (selectedTab) {
+    activeTab.value = selectedTab.key
+  }
+}
 
 const authSettings = ref([])
 const geocodingSettings = ref([])
@@ -477,6 +581,10 @@ onMounted(() => {
   padding: 1.5rem;
 }
 
+.admin-breadcrumb {
+  margin-bottom: 1.5rem;
+}
+
 .page-header {
   margin-bottom: 1.5rem;
 }
@@ -487,12 +595,21 @@ onMounted(() => {
 }
 
 .settings-section {
-  padding: 1rem 0;
+  padding: 1.5rem 0;
+}
+
+.settings-section:first-child {
+  padding-top: 0;
 }
 
 .settings-section h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
+  margin: 0 0 1.25rem 0;
+  padding: 0 1rem 0.75rem 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gp-primary);
+  border-bottom: 2px solid var(--gp-border-light);
+  letter-spacing: 0.025em;
 }
 
 .setting-item {
@@ -534,5 +651,71 @@ onMounted(() => {
 
 .text-muted {
   color: var(--text-color-secondary);
+}
+
+/* Empty State Styling */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.empty-state-icon {
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.empty-state > .text-muted {
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.planned-features {
+  text-align: left;
+  background: var(--surface-ground);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.planned-features h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  color: var(--gp-text-primary);
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--gp-border-light);
+}
+
+.planned-features ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.planned-features li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  color: var(--text-color-secondary);
+}
+
+.planned-features li:last-child {
+  margin-bottom: 0;
+}
+
+.planned-features strong {
+  color: var(--text-color);
+}
+
+.coming-soon-badge {
+  display: inline-block;
 }
 </style>

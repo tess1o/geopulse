@@ -21,6 +21,7 @@ public class UserDetailsResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private long gpsPointsCount;
+    private Instant lastGpsPointAt;
     private List<String> linkedOidcProviders;
     private boolean hasPassword;
 }

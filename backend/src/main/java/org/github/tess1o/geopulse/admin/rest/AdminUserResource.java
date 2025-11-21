@@ -234,6 +234,7 @@ public class AdminUserResource {
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .gpsPointsCount(adminUserService.getGpsPointsCount(user.getId()))
+                .lastGpsPointAt(adminUserService.getLastGpsPointTimestamp(user.getId()))
                 .linkedOidcProviders(adminUserService.getLinkedOidcProviders(user.getId()))
                 .hasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isBlank())
                 .build();

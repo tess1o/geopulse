@@ -44,9 +44,12 @@ public class AdminUserService {
      * Get paginated list of users with optional search.
      */
     public List<UserEntity> getUsers(String search, int page, int size, String sortBy, String sortDir) {
+        // Map frontend field names to entity field names
+        String mappedSortBy = mapSortField(sortBy);
+
         Sort sort = sortDir.equalsIgnoreCase("desc")
-                ? Sort.descending(sortBy)
-                : Sort.ascending(sortBy);
+                ? Sort.descending(mappedSortBy)
+                : Sort.ascending(mappedSortBy);
 
         if (search != null && !search.isBlank()) {
             String searchPattern = "%" + search.toLowerCase() + "%";
@@ -60,6 +63,17 @@ public class AdminUserService {
         return userRepository.findAll(sort)
                 .page(Page.of(page, size))
                 .list();
+    }
+
+    /**
+     * Map frontend field names to entity field names.
+     * This handles cases where the frontend uses different naming conventions.
+     */
+    private String mapSortField(String field) {
+        return switch (field) {
+            case "active" -> "isActive";  // Frontend sends "active", entity uses "isActive"
+            default -> field;
+        };
     }
 
     /**
@@ -90,6 +104,19 @@ public class AdminUserService {
         return (Long) entityManager.createQuery(
                 "SELECT COUNT(g) FROM GpsPointEntity g WHERE g.user.id = :userId"
         ).setParameter("userId", userId).getSingleResult();
+    }
+
+    /**
+     * Get the timestamp of the last GPS point for a user.
+     */
+    public java.time.Instant getLastGpsPointTimestamp(UUID userId) {
+        try {
+            return (java.time.Instant) entityManager.createQuery(
+                    "SELECT MAX(g.timestamp) FROM GpsPointEntity g WHERE g.user.id = :userId"
+            ).setParameter("userId", userId).getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /**
@@ -188,15 +215,15 @@ public class AdminUserService {
         // For now, we'll keep audit logs but they'll reference a deleted user
 
         // Delete timeline data
-        entityManager.createQuery("DELETE FROM TimelineTripEntity t WHERE t.userId = :userId")
+        entityManager.createQuery("DELETE FROM TimelineTripEntity t WHERE t.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
 
-        entityManager.createQuery("DELETE FROM TimelineStayEntity s WHERE s.userId = :userId")
+        entityManager.createQuery("DELETE FROM TimelineStayEntity s WHERE s.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
 
-        entityManager.createQuery("DELETE FROM TimelineDataGapEntity g WHERE g.userId = :userId")
+        entityManager.createQuery("DELETE FROM TimelineDataGapEntity g WHERE g.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
 
@@ -211,7 +238,7 @@ public class AdminUserService {
                 .executeUpdate();
 
         // Delete favorite locations
-        entityManager.createQuery("DELETE FROM FavoriteLocationEntity f WHERE f.userId = :userId")
+        entityManager.createQuery("DELETE FROM FavoritesEntity f WHERE f.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
 
@@ -231,7 +258,7 @@ public class AdminUserService {
                 .executeUpdate();
 
         // Delete badges
-        entityManager.createQuery("DELETE FROM UserBadgeEntity b WHERE b.userId = :userId")
+        entityManager.createQuery("DELETE FROM UserBadgeEntity b WHERE b.user.id = :userId")
                 .setParameter("userId", userId)
                 .executeUpdate();
 

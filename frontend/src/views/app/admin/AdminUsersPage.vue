@@ -1,6 +1,8 @@
 <template>
   <AppLayout>
     <div class="admin-users">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+
       <div class="page-header">
         <h1>User Management</h1>
         <p class="text-muted">Manage user accounts</p>
@@ -24,8 +26,7 @@
       >
         <template #header>
           <div class="flex justify-content-between align-items-center">
-            <span class="p-input-icon-left">
-              <i class="pi pi-search" />
+            <span class="p-input">
               <InputText v-model="searchQuery" placeholder="Search users..." @input="onSearch" />
             </span>
           </div>
@@ -142,6 +143,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import Toast from 'primevue/toast'
+import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -150,6 +152,18 @@ import apiService from '@/utils/apiService'
 const router = useRouter()
 const toast = useToast()
 const authStore = useAuthStore()
+
+const breadcrumbHome = ref({
+  icon: 'pi pi-home',
+  command: () => router.push('/')
+})
+const breadcrumbItems = ref([
+  {
+    label: 'Administration',
+    command: () => router.push('/app/admin')
+  },
+  { label: 'Users' }
+])
 
 const users = ref([])
 const loading = ref(false)
@@ -306,6 +320,10 @@ onMounted(() => {
 <style scoped>
 .admin-users {
   padding: 1.5rem;
+}
+
+.admin-breadcrumb {
+  margin-bottom: 1.5rem;
 }
 
 .page-header {

@@ -1,9 +1,23 @@
 <template>
   <AppLayout>
     <div class="admin-dashboard">
+      <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
+
       <div class="page-header">
         <h1>Admin Dashboard</h1>
         <p class="text-muted">System overview and quick actions</p>
+      </div>
+
+      <div class="stats-header">
+        <h2 class="stats-title">System Overview</h2>
+        <Button
+          icon="pi pi-refresh"
+          label="Refresh"
+          size="small"
+          text
+          @click="loadStats"
+          :loading="loading"
+        />
       </div>
 
       <div class="stats-grid">
@@ -13,7 +27,10 @@
             <div class="stat-card-content">
               <div>
                 <p class="stat-label">Total Users</p>
-                <h3 class="stat-value">{{ stats.totalUsers }}</h3>
+                <h3 class="stat-value">
+                  <Skeleton v-if="loading" width="3rem" height="2rem" />
+                  <template v-else>{{ stats.totalUsers }}</template>
+                </h3>
               </div>
               <i class="pi pi-users stat-icon stat-icon-primary"></i>
             </div>
@@ -24,20 +41,11 @@
           <template #content>
             <div class="stat-card-content">
               <div>
-                <p class="stat-label">Admin Users</p>
-                <h3 class="stat-value">{{ stats.adminUsers }}</h3>
-              </div>
-              <i class="pi pi-shield stat-icon stat-icon-orange"></i>
-            </div>
-          </template>
-        </Card>
-
-        <Card class="stat-card">
-          <template #content>
-            <div class="stat-card-content">
-              <div>
-                <p class="stat-label">Active Users</p>
-                <h3 class="stat-value">{{ stats.activeUsers }}</h3>
+                <p class="stat-label">Active Users (24h)</p>
+                <h3 class="stat-value">
+                  <Skeleton v-if="loading" width="3rem" height="2rem" />
+                  <template v-else>{{ stats.activeUsers24h }}</template>
+                </h3>
               </div>
               <i class="pi pi-check-circle stat-icon stat-icon-green"></i>
             </div>
@@ -49,45 +57,102 @@
             <div class="stat-card-content">
               <div>
                 <p class="stat-label">Total GPS Points</p>
-                <h3 class="stat-value">{{ formatNumber(stats.totalGpsPoints) }}</h3>
+                <h3 class="stat-value">
+                  <Skeleton v-if="loading" width="4rem" height="2rem" />
+                  <template v-else>{{ formatNumber(stats.totalGpsPoints) }}</template>
+                </h3>
               </div>
               <i class="pi pi-map-marker stat-icon stat-icon-blue"></i>
+            </div>
+          </template>
+        </Card>
+
+        <Card class="stat-card">
+          <template #content>
+            <div class="stat-card-content">
+              <div>
+                <p class="stat-label">Memory Usage</p>
+                <h3 class="stat-value">
+                  <Skeleton v-if="loading" width="4rem" height="2rem" />
+                  <template v-else>{{ stats.memoryUsageMB }} MB</template>
+                </h3>
+              </div>
+              <i class="pi pi-server stat-icon stat-icon-orange"></i>
             </div>
           </template>
         </Card>
       </div>
 
     <!-- Quick Actions -->
-    <Card class="actions-card">
-      <template #content>
-        <h3 class="actions-title">Quick Actions</h3>
-        <div class="actions-buttons">
-          <router-link to="/app/admin/settings" class="no-underline">
-            <Button label="System Settings" icon="pi pi-cog" />
-          </router-link>
-          <router-link to="/app/admin/users" class="no-underline">
-            <Button label="Manage Users" icon="pi pi-users" severity="secondary" />
-          </router-link>
-        </div>
-      </template>
-    </Card>
+    <div class="quick-actions-grid">
+      <!-- User Management -->
+      <Card class="actions-card">
+        <template #content>
+          <h3 class="actions-title">
+            <i class="pi pi-users actions-icon"></i>
+            User Management
+          </h3>
+          <div class="actions-buttons">
+            <router-link to="/app/admin/users" class="no-underline">
+              <Button label="Manage Users" icon="pi pi-users" class="action-button" />
+            </router-link>
+            <router-link to="/app/admin/oidc-providers" class="no-underline">
+              <Button label="OIDC Providers" icon="pi pi-key" severity="secondary" class="action-button" />
+            </router-link>
+          </div>
+        </template>
+      </Card>
+
+      <!-- System Configuration -->
+      <Card class="actions-card">
+        <template #content>
+          <h3 class="actions-title">
+            <i class="pi pi-cog actions-icon"></i>
+            System Configuration
+          </h3>
+          <div class="actions-buttons">
+            <router-link to="/app/admin/settings" class="no-underline">
+              <Button label="System Settings" icon="pi pi-cog" class="action-button" />
+            </router-link>
+          </div>
+        </template>
+      </Card>
+    </div>
     </div>
   </AppLayout>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
+import Skeleton from 'primevue/skeleton'
+import Breadcrumb from 'primevue/breadcrumb'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
-import apiService from '@/utils/apiService'
+import adminService from '@/utils/adminService'
+
+const router = useRouter()
+
+const breadcrumbHome = ref({
+  icon: 'pi pi-home',
+  command: () => router.push('/')
+})
+const breadcrumbItems = ref([
+  {
+    label: 'Administration',
+    command: () => router.push('/app/admin')
+  }
+])
 
 const stats = ref({
   totalUsers: 0,
-  adminUsers: 0,
-  activeUsers: 0,
-  totalGpsPoints: 0
+  activeUsers24h: 0,
+  totalGpsPoints: 0,
+  memoryUsageMB: 0
 })
+
+const loading = ref(false)
 
 const formatNumber = (num) => {
   if (num >= 1000000) {
@@ -98,22 +163,31 @@ const formatNumber = (num) => {
   return num.toString()
 }
 
-onMounted(async () => {
+const loadStats = async () => {
+  loading.value = true
   try {
-    // For now, we'll get basic stats from the users endpoint
-    const response = await apiService.get('/admin/users?size=1')
-    stats.value.totalUsers = response.totalElements || 0
-
-    // TODO: Add dedicated stats endpoint
+    const dashboardStats = await adminService.getDashboardStats()
+    stats.value = dashboardStats
   } catch (error) {
     console.error('Failed to load admin stats:', error)
+    // Keep existing values on error
+  } finally {
+    loading.value = false
   }
+}
+
+onMounted(() => {
+  loadStats()
 })
 </script>
 
 <style scoped>
 .admin-dashboard {
   padding: 1.5rem;
+}
+
+.admin-breadcrumb {
+  margin-bottom: 1.5rem;
 }
 
 .page-header {
@@ -129,6 +203,21 @@ onMounted(async () => {
 .text-muted {
   color: var(--text-color-secondary);
   margin: 0;
+}
+
+/* Stats Header */
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.stats-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 /* Stats Grid */
@@ -203,9 +292,23 @@ onMounted(async () => {
   color: var(--blue-500);
 }
 
+/* Quick Actions Grid */
+.quick-actions-grid {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 768px) {
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Actions Card */
 .actions-card {
-  margin-top: 1.5rem;
+  height: 100%;
 }
 
 .actions-card :deep(.p-card-body) {
@@ -218,14 +321,28 @@ onMounted(async () => {
 
 .actions-title {
   margin: 0 0 1rem 0;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
   color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actions-icon {
+  color: var(--primary-color);
+  font-size: 1.25rem;
 }
 
 .actions-buttons {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.75rem;
+}
+
+.action-button {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .no-underline {

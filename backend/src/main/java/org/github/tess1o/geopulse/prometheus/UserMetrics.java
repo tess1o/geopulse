@@ -100,4 +100,54 @@ public class UserMetrics {
                 .getSingleResult();
         usersWithGpsData.set(usersWithData);
     }
+
+    /**
+     * Check if metrics are enabled
+     * @return true if metrics are enabled
+     */
+    public boolean isEnabled() {
+        return prometheusEnabled && userMetricsEnabled;
+    }
+
+    /**
+     * Get total number of users (queries DB directly if metrics disabled)
+     * @return total users count
+     */
+    public long getTotalUsersCount() {
+        if (!isEnabled()) {
+            return userRepository.count();
+        }
+        return usersTotal.get();
+    }
+
+    /**
+     * Get number of users active in last 24 hours (queries DB directly if metrics disabled)
+     * @return active users count
+     */
+    public long getActiveUsersLast24h() {
+        if (!isEnabled()) {
+            Instant last24h = Instant.now().minus(24, ChronoUnit.HOURS);
+            return (Long) entityManager.createNativeQuery(
+                            "SELECT COUNT(DISTINCT user_id) FROM gps_points WHERE timestamp >= :threshold")
+                    .setParameter("threshold", last24h)
+                    .getSingleResult();
+        }
+        return usersActiveLast24h.get();
+    }
+
+    /**
+     * Get number of users active in last 7 days
+     * @return active users count
+     */
+    public long getActiveUsersLast7d() {
+        return usersActiveLast7d.get();
+    }
+
+    /**
+     * Get number of users with GPS data
+     * @return users with GPS data count
+     */
+    public long getUsersWithGpsData() {
+        return usersWithGpsData.get();
+    }
 }

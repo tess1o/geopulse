@@ -323,6 +323,7 @@ body {
     }
     
     .p-dark .p-tabs-tab {
+        background: transparent !important;
         color: var(--gp-text-secondary) !important;
     }
     
@@ -1188,4 +1189,160 @@ html body .p-dark .p-tooltip .p-tooltip-arrow::before {
   100% {
     box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
   }
+}
+
+/* ================================
+   DATATABLE GLOBAL DARK MODE STYLING
+   ================================ */
+
+/* DataTable Container */
+.p-dark .p-datatable {
+  background: var(--gp-surface-dark) !important;
+  color: var(--gp-text-primary) !important;
+}
+
+.p-dark .p-datatable-wrapper {
+  border-radius: var(--gp-radius-medium) !important;
+  overflow: hidden !important;
+  background: var(--gp-surface-dark) !important;
+}
+
+/* DataTable Header */
+.p-dark .p-datatable-header {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+/* DataTable Table Head */
+.p-dark .p-datatable-thead > tr > th {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+/* DataTable Table Body */
+.p-dark .p-datatable-tbody > tr {
+  background: var(--gp-surface-dark) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+.p-dark .p-datatable-tbody > tr:hover {
+  background: var(--gp-surface-light) !important;
+}
+
+.p-dark .p-datatable-tbody > tr > td {
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+/* DataTable Footer */
+.p-dark .p-datatable-footer {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-dark) !important;
+}
+
+/* DataTable Paginator */
+.p-dark .p-datatable-paginator-bottom,
+.p-dark .p-paginator.p-component {
+  background: var(--gp-surface-darker) !important;
+  color: var(--gp-text-primary) !important;
+  border: 1px solid var(--gp-border-dark) !important;
+  border-top: 1px solid var(--gp-border-dark) !important;
+}
+
+.p-dark .p-paginator .p-paginator-page,
+.p-dark .p-paginator .p-paginator-next,
+.p-dark .p-paginator .p-paginator-prev,
+.p-dark .p-paginator .p-paginator-first,
+.p-dark .p-paginator .p-paginator-last {
+  color: var(--gp-text-primary) !important;
+  background: transparent !important;
+  border: 1px solid var(--gp-border-dark) !important;
+  margin: 0 2px !important;
+}
+
+.p-dark .p-paginator .p-paginator-page:hover,
+.p-dark .p-paginator .p-paginator-next:hover,
+.p-dark .p-paginator .p-paginator-prev:hover,
+.p-dark .p-paginator .p-paginator-first:hover,
+.p-dark .p-paginator .p-paginator-last:hover {
+  background: var(--gp-surface-light) !important;
+  color: var(--gp-text-primary) !important;
+  border-color: var(--gp-border-medium) !important;
+}
+
+.p-dark .p-paginator .p-paginator-page.p-highlight,
+.p-dark .p-paginator .p-paginator-page-selected {
+  background: var(--gp-primary) !important;
+  color: white !important;
+  border-color: var(--gp-primary) !important;
+}
+
+.p-dark .p-paginator .p-paginator-current {
+  color: var(--gp-text-secondary) !important;
+}
+
+/* DataTable Empty Message */
+.p-dark .p-datatable-emptymessage td {
+  color: var(--gp-text-secondary) !important;
+}
+
+/* DataTable Loading Overlay */
+.p-dark .p-datatable-loading-icon {
+  color: var(--gp-primary) !important;
+}
+
+/* ================================
+   BREADCRUMB GLOBAL DARK MODE STYLING
+   ================================ */
+
+/* Breadcrumb Container */
+.p-dark .p-breadcrumb {
+  --p-breadcrumb-background: var(--gp-surface-dark) !important;
+  background: var(--gp-surface-dark) !important;
+  border-color: var(--gp-border-dark) !important;
+  color: var(--gp-text-primary) !important;
+}
+
+/* Breadcrumb List */
+.p-dark .p-breadcrumb-list {
+  background: var(--gp-surface-dark) !important;
+}
+
+/* Breadcrumb Items */
+.p-dark .p-breadcrumb-item-link {
+  color: var(--gp-text-secondary) !important;
+  transition: color 0.2s ease;
+}
+
+.p-dark .p-breadcrumb-item-link:hover {
+  color: var(--gp-primary-light) !important;
+}
+
+/* Breadcrumb Home Icon */
+.p-dark .p-breadcrumb-home-icon {
+  color: var(--gp-text-secondary) !important;
+}
+
+.p-dark .p-breadcrumb-item-link:hover .p-breadcrumb-home-icon {
+  color: var(--gp-primary-light) !important;
+}
+
+/* Breadcrumb Separator */
+.p-dark .p-breadcrumb-separator {
+  color: var(--gp-text-muted) !important;
+}
+
+/* Active/Current Breadcrumb Item */
+.p-dark .p-breadcrumb-item:last-child .p-breadcrumb-item-link {
+  color: var(--gp-text-primary) !important;
+  font-weight: 500;
+}
+
+/* Breadcrumb Label */
+.p-dark .p-breadcrumb-item-label {
+  color: inherit !important;
 }
