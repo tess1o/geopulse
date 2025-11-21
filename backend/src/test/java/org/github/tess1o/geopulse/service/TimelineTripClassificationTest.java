@@ -696,6 +696,87 @@ public class TimelineTripClassificationTest {
     }
 
     // ====================
+    // GPS MAX SPEED SPIKE NOISE DETECTION (Bug Fix for Trip ID 2133574)
+    // ====================
+
+    @Test
+    void testMaxSpeedSpikeWithReliableAvg_ShouldFilterMaxSpike() {
+        // Real-world bug: Trip ID 2133574
+        // Distance: 1325m, Duration: 2346s (39 minutes)
+        // GPS avg: 0.98 m/s = 3.5 km/h (reliable - matches calculated 2.03 km/h within 2x)
+        // GPS max: 10.8 m/s = 39 km/h (noise spike - 11x the avg!)
+        // Was incorrectly classified as CAR due to max speed >= 15 km/h
+        // Should be WALK
+
+        TripGpsStatistics spikeStats = new TripGpsStatistics(
+                0.9841269841269843,  // 3.5 km/h avg
+                10.833333333333334,  // 39 km/h max (noise spike!)
+                2.933610481229529,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                spikeStats,
+                Duration.ofSeconds(2346),
+                1325,
+                config
+        );
+
+        // GPS avg (3.5 km/h) is reliable (calculated 2.03 km/h, ratio 1.7x < 2.0)
+        // But GPS max (39 km/h) is 11x avg - clearly noise spike
+        // Max should be adjusted to avg * 1.5 = 5.25 km/h
+        // Result: WALK (avg 3.5 <= 6.0, adjusted max 5.25 <= 8.0)
+        assertEquals(TripType.WALK, result,
+                "Walking trip with max speed noise spike should be WALK, not CAR");
+    }
+
+    @Test
+    void testMaxSpeedSpikeAtBoundary_5xAvg_ShouldNotFilter() {
+        // Test boundary: max speed exactly 5x avg should NOT be filtered
+        TripGpsStatistics boundaryStats = new TripGpsStatistics(
+                1.0,   // 3.6 km/h avg
+                5.0,   // 18.0 km/h max (exactly 5x avg)
+                3.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                boundaryStats,
+                Duration.ofSeconds(600),  // 10 minutes
+                600,  // 600m → calculated 3.6 km/h (matches GPS avg)
+                config
+        );
+
+        // GPS max (18.0 km/h) is exactly 5x avg - at boundary, should NOT filter
+        // Result: CAR (maxSpeed 18.0 >= carMinMaxSpeed 15.0)
+        assertEquals(TripType.CAR, result,
+                "Max speed at exactly 5x avg should NOT be filtered");
+    }
+
+    @Test
+    void testMaxSpeedSpikeJustOver5x_ShouldFilter() {
+        // Test just over 5x threshold - should filter
+        TripGpsStatistics overBoundaryStats = new TripGpsStatistics(
+                1.0,   // 3.6 km/h avg
+                5.1,   // 18.36 km/h max (5.1x avg - over threshold)
+                3.0,
+                0
+        );
+
+        TripType result = classification.classifyTravelType(
+                overBoundaryStats,
+                Duration.ofSeconds(600),
+                600,
+                config
+        );
+
+        // GPS max (18.36 km/h) is 5.1x avg - over 5x threshold, filter to 3.6 * 1.5 = 5.4 km/h
+        // Result: WALK (avg 3.6 <= 6.0, adjusted max 5.4 <= 8.0)
+        assertEquals(TripType.WALK, result,
+                "Max speed just over 5x avg should be filtered to estimated max");
+    }
+
+    // ====================
     // GPS NOISE DETECTION TESTS (Critical Fix for Trip ID 494443)
     // ====================
 

@@ -430,8 +430,18 @@ public class TravelClassification {
         boolean isUnreliable = isGpsUnreliable(avgSpeedKmh, calculatedAvgSpeedKmh);
 
         if (!isUnreliable) {
-            // GPS is reliable - use it
-            return new GpsReliabilityResult(avgSpeedKmh, maxSpeedKmh);
+            // GPS avg is reliable - but still check for max speed noise spikes
+            double adjustedMaxSpeed = maxSpeedKmh;
+            if (maxSpeedKmh > avgSpeedKmh * GPS_MAX_SPEED_NOISE_RATIO) {
+                // Max speed spike is unrealistic compared to avg (e.g., 39 km/h max with 3.5 km/h avg)
+                adjustedMaxSpeed = avgSpeedKmh * ESTIMATED_MAX_SPEED_MULTIPLIER;
+                log.debug("GPS max speed ({} km/h) is noise spike ({}x avg {} km/h). Using estimated max: {} km/h",
+                        String.format("%f", maxSpeedKmh),
+                        String.format("%f", maxSpeedKmh / avgSpeedKmh),
+                        String.format("%f", avgSpeedKmh),
+                        String.format("%f", adjustedMaxSpeed));
+            }
+            return new GpsReliabilityResult(avgSpeedKmh, adjustedMaxSpeed);
         }
 
         // GPS seems unreliable - but check for special cases
