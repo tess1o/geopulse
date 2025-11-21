@@ -1,1229 +1,683 @@
 {
   "openapi" : "3.0.4",
-  "components" : {
-    "schemas" : {
-      "Achievements" : {
-        "type" : "object",
-        "properties" : {
-          "badges" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Badge"
-            }
+  "paths" : {
+    "/api/admin/dashboard/stats" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
           }
-        }
-      },
-      "AddAreaToFavoritesDto" : {
-        "required" : [ "name" ],
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "maxLength" : 100,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "northEastLat" : {
-            "format" : "double",
-            "maximum" : 90.0,
-            "minimum" : -90.0,
-            "type" : "number"
-          },
-          "northEastLon" : {
-            "format" : "double",
-            "maximum" : 180.0,
-            "minimum" : -180.0,
-            "type" : "number"
-          },
-          "southWestLat" : {
-            "format" : "double",
-            "maximum" : 90.0,
-            "minimum" : -90.0,
-            "type" : "number"
-          },
-          "southWestLon" : {
-            "format" : "double",
-            "maximum" : 180.0,
-            "minimum" : -180.0,
-            "type" : "number"
-          }
-        }
-      },
-      "AddPointToFavoritesDto" : {
-        "required" : [ "name" ],
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "maxLength" : 100,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "lat" : {
-            "format" : "double",
-            "maximum" : 90.0,
-            "minimum" : -90.0,
-            "type" : "number"
-          },
-          "lon" : {
-            "format" : "double",
-            "maximum" : 180.0,
-            "minimum" : -180.0,
-            "type" : "number"
-          }
-        }
-      },
-      "ApiResponseObject" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "message" : {
-            "type" : "string"
-          },
-          "data" : { }
-        }
-      },
-      "Badge" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "title" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "icon" : {
-            "type" : "string"
-          },
-          "earned" : {
-            "type" : "boolean"
-          },
-          "earnedDate" : {
-            "type" : "string"
-          },
-          "progress" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "current" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "target" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "BulkDeleteGpsPointsDto" : {
-        "required" : [ "gpsPointIds" ],
-        "type" : "object",
-        "properties" : {
-          "gpsPointIds" : {
-            "minItems" : 1,
-            "type" : "array",
-            "items" : {
-              "format" : "int64",
-              "type" : "integer"
-            }
-          }
-        }
-      },
-      "ChatRequest" : {
-        "type" : "object",
-        "properties" : {
-          "message" : {
-            "type" : "string"
-          }
-        }
-      },
-      "City" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          },
-          "visits" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "ConnectionType" : {
-        "enum" : [ "HTTP", "MQTT" ],
-        "type" : "string"
-      },
-      "CoordinatesDto" : {
-        "required" : [ "lat", "lng" ],
-        "type" : "object",
-        "properties" : {
-          "lat" : {
-            "format" : "double",
-            "maximum" : 90.0,
-            "minimum" : -90.0,
-            "type" : "number"
-          },
-          "lng" : {
-            "format" : "double",
-            "maximum" : 180.0,
-            "minimum" : -180.0,
-            "type" : "number"
-          }
-        }
-      },
-      "Country" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          }
-        }
-      },
-      "CreateExportRequest" : {
-        "type" : "object",
-        "properties" : {
-          "dataTypes" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "dateRange" : {
-            "$ref" : "#/components/schemas/ExportDateRange"
-          },
-          "format" : {
-            "type" : "string"
-          },
-          "options" : {
-            "type" : "object",
-            "additionalProperties" : { }
-          }
-        }
-      },
-      "CreateGpsSourceConfigDto" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "$ref" : "#/components/schemas/GpsSourceType"
-          },
-          "username" : {
-            "type" : "string"
-          },
-          "password" : {
-            "type" : "string"
-          },
-          "token" : {
-            "type" : "string"
-          },
-          "userId" : {
-            "$ref" : "#/components/schemas/UUID"
-          },
-          "connectionType" : {
-            "$ref" : "#/components/schemas/ConnectionType"
-          },
-          "filterInaccurateData" : {
-            "type" : "boolean"
-          },
-          "maxAllowedAccuracy" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "maxAllowedSpeed" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "CreateShareLinkRequest" : {
-        "required" : [ "name" ],
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "maxLength" : 255,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "expires_at" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "password" : {
-            "maxLength" : 100,
-            "minLength" : 6,
-            "type" : "string"
-          },
-          "show_history" : {
-            "type" : "boolean"
-          },
-          "history_hours" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "DawarichGeometry" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string"
-          },
-          "coordinates" : {
-            "type" : "array",
-            "items" : {
-              "format" : "double",
-              "type" : "number"
-            }
-          },
-          "longitude" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "latitude" : {
-            "format" : "double",
-            "type" : "number"
-          }
-        }
-      },
-      "DawarichLocation" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string"
-          },
-          "geometry" : {
-            "$ref" : "#/components/schemas/DawarichGeometry"
-          },
-          "properties" : {
-            "$ref" : "#/components/schemas/DawarichProperties"
-          }
-        }
-      },
-      "DawarichPayload" : {
-        "type" : "object",
-        "properties" : {
-          "locations" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/DawarichLocation"
-            }
-          }
-        }
-      },
-      "DawarichProperties" : {
-        "type" : "object",
-        "properties" : {
-          "track_id" : {
-            "type" : "string"
-          },
-          "course_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "timestamp" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "altitude" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "speed" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "horizontal_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "vertical_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "device_id" : {
-            "type" : "string"
-          },
-          "speed_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "course" : {
-            "format" : "double",
-            "type" : "number"
-          }
-        }
-      },
-      "DebugExportRequest" : {
-        "type" : "object",
-        "properties" : {
-          "startDate" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "endDate" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "latitudeShift" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "longitudeShift" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "includeTimeline" : {
-            "type" : "boolean"
-          },
-          "includeConfiguration" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "DistanceTraveled" : {
-        "type" : "object",
-        "properties" : {
-          "byCar" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "byWalk" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "byBicycle" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "byTrain" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "byFlight" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "byUnknown" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "total" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "EditFavoriteDto" : {
-        "required" : [ "name" ],
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "maxLength" : 100,
-            "pattern" : "\\S",
-            "type" : "string"
-          }
-        }
-      },
-      "EditGpsPointDto" : {
-        "required" : [ "coordinates" ],
-        "type" : "object",
-        "properties" : {
-          "coordinates" : {
-            "$ref" : "#/components/schemas/CoordinatesDto"
-          },
-          "velocity" : {
-            "format" : "double",
-            "minimum" : 0,
-            "type" : "number"
-          },
-          "accuracy" : {
-            "format" : "double",
-            "minimum" : 0,
-            "type" : "number"
-          }
-        }
-      },
-      "ExportDateRange" : {
-        "type" : "object",
-        "properties" : {
-          "startDate" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "endDate" : {
-            "$ref" : "#/components/schemas/Instant"
-          }
-        }
-      },
-      "GeographicInsights" : {
-        "type" : "object",
-        "properties" : {
-          "countries" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/Country"
-            }
-          },
-          "cities" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/City"
-            }
-          }
-        }
-      },
-      "Geometry" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string"
-          },
-          "coordinates" : {
-            "type" : "array",
-            "items" : {
-              "format" : "double",
-              "type" : "number"
-            }
-          }
-        }
-      },
-      "GpsSourceType" : {
-        "enum" : [ "OWNTRACKS", "OVERLAND", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON", "CSV" ],
-        "type" : "string"
-      },
-      "HomeAssistantBattery" : {
-        "type" : "object",
-        "properties" : {
-          "level" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "HomeAssistantGpsData" : {
-        "type" : "object",
-        "properties" : {
-          "device_id" : {
-            "type" : "string"
-          },
-          "timestamp" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "location" : {
-            "$ref" : "#/components/schemas/HomeAssistantLocation"
-          },
-          "battery" : {
-            "$ref" : "#/components/schemas/HomeAssistantBattery"
-          }
-        }
-      },
-      "HomeAssistantLocation" : {
-        "type" : "object",
-        "properties" : {
-          "latitude" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "longitude" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "altitude" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "speed" : {
-            "format" : "double",
-            "type" : "number"
-          }
-        }
-      },
-      "InitiateOidcLinkingRequest" : {
-        "required" : [ "verificationProvider", "newProvider", "linkingToken" ],
-        "type" : "object",
-        "properties" : {
-          "verificationProvider" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "newProvider" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "linkingToken" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          }
-        }
-      },
-      "Instant" : {
-        "format" : "date-time",
-        "type" : "string",
-        "example" : "2022-03-10T16:15:50Z"
-      },
-      "JourneyInsights" : {
-        "type" : "object",
-        "properties" : {
-          "geographic" : {
-            "$ref" : "#/components/schemas/GeographicInsights"
-          },
-          "timePatterns" : {
-            "$ref" : "#/components/schemas/TimePatterns"
-          },
-          "achievements" : {
-            "$ref" : "#/components/schemas/Achievements"
-          },
-          "distanceTraveled" : {
-            "$ref" : "#/components/schemas/DistanceTraveled"
-          }
-        }
-      },
-      "LinkAccountWithPasswordRequest" : {
-        "required" : [ "email", "password", "provider", "linkingToken" ],
-        "type" : "object",
-        "properties" : {
-          "email" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "password" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "provider" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "linkingToken" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          }
-        }
-      },
-      "LoginRequest" : {
-        "type" : "object",
-        "properties" : {
-          "email" : {
-            "type" : "string"
-          },
-          "password" : {
-            "type" : "string"
-          }
-        }
-      },
-      "MeasureUnit" : {
-        "enum" : [ "METRIC", "IMPERIAL" ],
-        "type" : "string"
-      },
-      "OidcCallbackRequest" : {
-        "required" : [ "code", "state" ],
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "state" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          }
-        }
-      },
-      "OverlandLocationMessage" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "type" : "string"
-          },
-          "geometry" : {
-            "$ref" : "#/components/schemas/Geometry"
-          },
-          "properties" : {
-            "$ref" : "#/components/schemas/Properties"
-          }
-        }
-      },
-      "OverlandLocations" : {
-        "type" : "object",
-        "properties" : {
-          "locations" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/OverlandLocationMessage"
-            }
-          }
-        }
-      },
-      "Properties" : {
-        "type" : "object",
-        "properties" : {
-          "speed" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "battery_state" : {
-            "type" : "string"
-          },
-          "battery_level" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "motion" : {
-            "type" : "array",
-            "items" : { }
-          },
-          "timestamp" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "speed_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "horizontal_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "vertical_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "wifi" : {
-            "type" : "string"
-          },
-          "course" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "altitude" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "course_accuracy" : {
-            "format" : "double",
-            "type" : "number"
-          },
-          "device_id" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ReverseGeocodingReconcileRequest" : {
-        "required" : [ "providerName", "geocodingIds" ],
-        "type" : "object",
-        "properties" : {
-          "providerName" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "geocodingIds" : {
-            "type" : "array",
-            "items" : {
-              "format" : "int64",
-              "type" : "integer"
-            }
-          },
-          "reconcileAll" : {
-            "type" : "boolean"
-          },
-          "filterByProvider" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ReverseGeocodingUpdateDTO" : {
-        "required" : [ "displayName" ],
-        "type" : "object",
-        "properties" : {
-          "displayName" : {
-            "maxLength" : 1000,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "city" : {
-            "maxLength" : 200,
-            "type" : "string"
-          },
-          "country" : {
-            "maxLength" : 100,
-            "type" : "string"
-          }
-        }
-      },
-      "SendFriendInvitationDTO" : {
-        "required" : [ "receiverEmail" ],
-        "type" : "object",
-        "properties" : {
-          "receiverEmail" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          }
-        }
-      },
-      "TestConnectionRequest" : {
-        "type" : "object",
-        "properties" : {
-          "openaiApiUrl" : {
-            "type" : "string"
-          },
-          "openaiApiKey" : {
-            "type" : "string"
-          },
-          "isApiKeyNeeded" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "TimePatterns" : {
-        "type" : "object",
-        "properties" : {
-          "mostActiveMonth" : {
-            "type" : "string"
-          },
-          "monthlyComparison" : {
-            "type" : "string"
-          },
-          "busiestDayOfWeek" : {
-            "type" : "string"
-          },
-          "dayInsight" : {
-            "type" : "string"
-          },
-          "mostActiveTime" : {
-            "type" : "string"
-          },
-          "timeInsight" : {
-            "type" : "string"
-          }
-        }
-      },
-      "TokenRefreshRequest" : {
-        "required" : [ "refreshToken" ],
-        "type" : "object",
-        "properties" : {
-          "refreshToken" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          }
-        }
-      },
-      "UUID" : {
-        "format" : "uuid",
-        "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
-        "type" : "string"
-      },
-      "UpdateGpsSourceConfigDto" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string"
-          },
-          "type" : {
-            "type" : "string"
-          },
-          "username" : {
-            "type" : "string"
-          },
-          "password" : {
-            "type" : "string"
-          },
-          "token" : {
-            "type" : "string"
-          },
-          "userId" : {
-            "type" : "string"
-          },
-          "connectionType" : {
-            "$ref" : "#/components/schemas/ConnectionType"
-          },
-          "filterInaccurateData" : {
-            "type" : "boolean"
-          },
-          "maxAllowedAccuracy" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "maxAllowedSpeed" : {
-            "format" : "int32",
-            "type" : "integer"
-          }
-        }
-      },
-      "UpdateGpsSourceConfigStatusDto" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "UpdateImmichConfigRequest" : {
-        "required" : [ "serverUrl", "apiKey", "enabled" ],
-        "type" : "object",
-        "properties" : {
-          "serverUrl" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "apiKey" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "UpdatePlaceNameRequest" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          }
-        }
-      },
-      "UpdateProfileRequest" : {
-        "type" : "object",
-        "properties" : {
-          "fullName" : {
-            "maxLength" : 100,
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "avatar" : {
-            "maxLength" : 500,
-            "type" : "string"
-          },
-          "timezone" : {
-            "maxLength" : 255,
-            "type" : "string"
-          },
-          "customMapTileUrl" : {
-            "maxLength" : 1000,
-            "type" : "string"
-          },
-          "measureUnit" : {
-            "$ref" : "#/components/schemas/MeasureUnit"
-          },
-          "defaultRedirectUrl" : {
-            "maxLength" : 1000,
-            "type" : "string"
-          },
-          "shareLocationWithFriends" : {
-            "type" : "boolean"
-          },
-          "userId" : {
-            "$ref" : "#/components/schemas/UUID"
-          }
-        }
-      },
-      "UpdateShareLinkDto" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "maxLength" : 255,
-            "type" : "string"
-          },
-          "expires_at" : {
-            "$ref" : "#/components/schemas/Instant"
-          },
-          "password" : {
-            "maxLength" : 100,
-            "minLength" : 6,
-            "type" : "string"
-          },
-          "show_history" : {
-            "type" : "boolean"
-          },
-          "history_hours" : {
-            "format" : "int32",
-            "type" : "integer"
-          },
-          "passwordRemoval" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "UpdateTimelinePreferencesRequest" : {
-        "type" : "object",
-        "properties" : {
-          "useVelocityAccuracy" : {
-            "type" : "boolean"
-          },
-          "staypointVelocityThreshold" : {
-            "format" : "double",
-            "maximum" : 100.0,
-            "minimum" : 0.1,
-            "type" : "number"
-          },
-          "staypointMaxAccuracyThreshold" : {
-            "format" : "double",
-            "maximum" : 1000.0,
-            "minimum" : 1.0,
-            "type" : "number"
-          },
-          "staypointMinAccuracyRatio" : {
-            "format" : "double",
-            "maximum" : 1.0,
-            "minimum" : 0.1,
-            "type" : "number"
-          },
-          "tripDetectionAlgorithm" : {
-            "pattern" : "^(single|multiple)$",
-            "type" : "string"
-          },
-          "staypointRadiusMeters" : {
-            "format" : "int32",
-            "maximum" : 10000,
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "staypointMinDurationMinutes" : {
-            "format" : "int32",
-            "maximum" : 1440,
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "isMergeEnabled" : {
-            "type" : "boolean"
-          },
-          "mergeMaxDistanceMeters" : {
-            "format" : "int32",
-            "maximum" : 5000,
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "mergeMaxTimeGapMinutes" : {
-            "format" : "int32",
-            "maximum" : 720,
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "pathSimplificationEnabled" : {
-            "type" : "boolean"
-          },
-          "pathSimplificationTolerance" : {
-            "format" : "double",
-            "maximum" : 100.0,
-            "minimum" : 1.0,
-            "type" : "number"
-          },
-          "pathMaxPoints" : {
-            "format" : "int32",
-            "maximum" : 1000,
-            "minimum" : 10,
-            "type" : "integer"
-          },
-          "pathAdaptiveSimplification" : {
-            "type" : "boolean"
-          },
-          "dataGapThresholdSeconds" : {
-            "format" : "int32",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "dataGapMinDurationSeconds" : {
-            "format" : "int32",
-            "minimum" : 1,
-            "type" : "integer"
-          },
-          "walkingMaxAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 10.0,
-            "minimum" : 3.0,
-            "type" : "number"
-          },
-          "walkingMaxMaxSpeed" : {
-            "format" : "double",
-            "maximum" : 15.0,
-            "minimum" : 5.0,
-            "type" : "number"
-          },
-          "carMinAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 25.0,
-            "minimum" : 5.0,
-            "type" : "number"
-          },
-          "carMinMaxSpeed" : {
-            "format" : "double",
-            "maximum" : 50.0,
-            "minimum" : 10.0,
-            "type" : "number"
-          },
-          "shortDistanceKm" : {
-            "format" : "double",
-            "maximum" : 3.0,
-            "minimum" : 0.1,
-            "type" : "number"
-          },
-          "tripArrivalDetectionMinDurationSeconds" : {
-            "format" : "int32",
-            "maximum" : 300,
-            "minimum" : 10,
-            "type" : "integer"
-          },
-          "tripSustainedStopMinDurationSeconds" : {
-            "format" : "int32",
-            "maximum" : 600,
-            "minimum" : 10,
-            "type" : "integer"
-          },
-          "bicycleEnabled" : {
-            "type" : "boolean"
-          },
-          "bicycleMinAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 15.0,
-            "minimum" : 5.0,
-            "type" : "number"
-          },
-          "bicycleMaxAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 35.0,
-            "minimum" : 15.0,
-            "type" : "number"
-          },
-          "bicycleMaxMaxSpeed" : {
-            "format" : "double",
-            "maximum" : 50.0,
-            "minimum" : 20.0,
-            "type" : "number"
-          },
-          "trainEnabled" : {
-            "type" : "boolean"
-          },
-          "trainMinAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 50.0,
-            "minimum" : 20.0,
-            "type" : "number"
-          },
-          "trainMaxAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 200.0,
-            "minimum" : 80.0,
-            "type" : "number"
-          },
-          "trainMinMaxSpeed" : {
-            "format" : "double",
-            "maximum" : 120.0,
-            "minimum" : 60.0,
-            "type" : "number"
-          },
-          "trainMaxMaxSpeed" : {
-            "format" : "double",
-            "maximum" : 250.0,
-            "minimum" : 100.0,
-            "type" : "number"
-          },
-          "trainMaxSpeedVariance" : {
-            "format" : "double",
-            "maximum" : 30.0,
-            "minimum" : 5.0,
-            "type" : "number"
-          },
-          "flightEnabled" : {
-            "type" : "boolean"
-          },
-          "flightMinAvgSpeed" : {
-            "format" : "double",
-            "maximum" : 600.0,
-            "minimum" : 250.0,
-            "type" : "number"
-          },
-          "flightMinMaxSpeed" : {
-            "format" : "double",
-            "maximum" : 900.0,
-            "minimum" : 400.0,
-            "type" : "number"
-          }
-        }
-      },
-      "UpdateUserPasswordRequest" : {
-        "required" : [ "newPassword" ],
-        "type" : "object",
-        "properties" : {
-          "oldPassword" : {
-            "type" : "string"
-          },
-          "newPassword" : {
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "userId" : {
-            "$ref" : "#/components/schemas/UUID"
-          }
-        }
-      },
-      "UserAISettings" : {
-        "type" : "object",
-        "properties" : {
-          "enabled" : {
-            "type" : "boolean"
-          },
-          "openaiApiKey" : {
-            "type" : "string"
-          },
-          "openaiApiUrl" : {
-            "type" : "string"
-          },
-          "openaiModel" : {
-            "type" : "string"
-          },
-          "openaiApiKeyConfigured" : {
-            "type" : "boolean"
-          },
-          "apiKeyRequired" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "UserRegistrationRequest" : {
-        "required" : [ "email", "password" ],
-        "type" : "object",
-        "properties" : {
-          "email" : {
-            "maxLength" : 254,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "password" : {
-            "maxLength" : 128,
-            "minLength" : 3,
-            "pattern" : "\\S",
-            "type" : "string"
-          },
-          "fullName" : {
-            "maxLength" : 100,
-            "minLength" : 1,
-            "type" : "string"
-          },
-          "timezone" : {
-            "maxLength" : 255,
-            "type" : "string"
-          }
-        }
-      },
-      "VerifyPasswordRequest" : {
-        "type" : "object",
-        "properties" : {
-          "password" : {
-            "type" : "string"
-          }
-        }
+        },
+        "summary" : "Get Dashboard Stats",
+        "tags" : [ "Admin Dashboard Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
       }
     },
-    "securitySchemes" : {
-      "jwt" : {
-        "type" : "http",
-        "scheme" : "bearer",
-        "bearerFormat" : "JWT",
-        "description" : "Authentication"
+    "/api/admin/oidc/providers" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get All Providers",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateOidcProviderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Provider",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
       }
-    }
-  },
-  "paths" : {
+    },
+    "/api/admin/oidc/providers/{name}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateOidcProviderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Provider",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Provider",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Delete Provider",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/oidc/providers/{name}/reset" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Reset Provider",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/oidc/providers/{name}/test" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "name",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Test Provider",
+        "tags" : [ "Admin Oidc Provider Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/settings" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get All Settings",
+        "tags" : [ "Admin Settings Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/settings/{category}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "category",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Settings By Category",
+        "tags" : [ "Admin Settings Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/settings/{key}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateSettingRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Setting",
+        "tags" : [ "Admin Settings Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "key",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Reset Setting",
+        "tags" : [ "Admin Settings Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/users" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "search",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "size",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 10,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "sortBy",
+          "in" : "query",
+          "schema" : {
+            "default" : "createdAt",
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortDir",
+          "in" : "query",
+          "schema" : {
+            "default" : "desc",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Users",
+        "tags" : [ "Admin User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/users/{id}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get User By Id",
+        "tags" : [ "Admin User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Delete User",
+        "tags" : [ "Admin User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/users/{id}/reset-password" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Reset Password",
+        "tags" : [ "Admin User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/users/{id}/role" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateUserRoleRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update User Role",
+        "tags" : [ "Admin User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/users/{id}/status" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateUserStatusRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update User Status",
+        "tags" : [ "Admin User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/ai/chat" : {
       "post" : {
         "requestBody" : {
@@ -4999,9 +4453,1348 @@
       }
     }
   },
+  "components" : {
+    "schemas" : {
+      "Achievements" : {
+        "type" : "object",
+        "properties" : {
+          "badges" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Badge"
+            }
+          }
+        }
+      },
+      "AddAreaToFavoritesDto" : {
+        "required" : [ "name" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "northEastLat" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "northEastLon" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          },
+          "southWestLat" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "southWestLon" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          }
+        }
+      },
+      "AddPointToFavoritesDto" : {
+        "required" : [ "name" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "lat" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "lon" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          }
+        }
+      },
+      "ApiResponseObject" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "data" : { }
+        }
+      },
+      "Badge" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "icon" : {
+            "type" : "string"
+          },
+          "earned" : {
+            "type" : "boolean"
+          },
+          "earnedDate" : {
+            "type" : "string"
+          },
+          "progress" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "current" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "target" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "BulkDeleteGpsPointsDto" : {
+        "required" : [ "gpsPointIds" ],
+        "type" : "object",
+        "properties" : {
+          "gpsPointIds" : {
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          }
+        }
+      },
+      "ChatRequest" : {
+        "type" : "object",
+        "properties" : {
+          "message" : {
+            "type" : "string"
+          }
+        }
+      },
+      "City" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "visits" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "ConnectionType" : {
+        "enum" : [ "HTTP", "MQTT" ],
+        "type" : "string"
+      },
+      "CoordinatesDto" : {
+        "required" : [ "lat", "lng" ],
+        "type" : "object",
+        "properties" : {
+          "lat" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "lng" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          }
+        }
+      },
+      "Country" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "CreateExportRequest" : {
+        "type" : "object",
+        "properties" : {
+          "dataTypes" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "dateRange" : {
+            "$ref" : "#/components/schemas/ExportDateRange"
+          },
+          "format" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "object",
+            "additionalProperties" : { }
+          }
+        }
+      },
+      "CreateGpsSourceConfigDto" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "$ref" : "#/components/schemas/GpsSourceType"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "$ref" : "#/components/schemas/UUID"
+          },
+          "connectionType" : {
+            "$ref" : "#/components/schemas/ConnectionType"
+          },
+          "filterInaccurateData" : {
+            "type" : "boolean"
+          },
+          "maxAllowedAccuracy" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxAllowedSpeed" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "CreateOidcProviderRequest" : {
+        "required" : [ "name", "displayName", "clientId", "clientSecret", "discoveryUrl" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 50,
+            "minLength" : 2,
+            "pattern" : "^[a-z0-9-]+$",
+            "type" : "string"
+          },
+          "displayName" : {
+            "maxLength" : 100,
+            "minLength" : 2,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "clientId" : {
+            "maxLength" : 255,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "clientSecret" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "discoveryUrl" : {
+            "maxLength" : 500,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "icon" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "scopes" : {
+            "maxLength" : 255,
+            "type" : "string"
+          }
+        }
+      },
+      "CreateShareLinkRequest" : {
+        "required" : [ "name" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 255,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "expires_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 6,
+            "type" : "string"
+          },
+          "show_history" : {
+            "type" : "boolean"
+          },
+          "history_hours" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "DawarichGeometry" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "coordinates" : {
+            "type" : "array",
+            "items" : {
+              "format" : "double",
+              "type" : "number"
+            }
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
+      },
+      "DawarichLocation" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "geometry" : {
+            "$ref" : "#/components/schemas/DawarichGeometry"
+          },
+          "properties" : {
+            "$ref" : "#/components/schemas/DawarichProperties"
+          }
+        }
+      },
+      "DawarichPayload" : {
+        "type" : "object",
+        "properties" : {
+          "locations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DawarichLocation"
+            }
+          }
+        }
+      },
+      "DawarichProperties" : {
+        "type" : "object",
+        "properties" : {
+          "track_id" : {
+            "type" : "string"
+          },
+          "course_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "timestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "altitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "speed" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "horizontal_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "vertical_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "device_id" : {
+            "type" : "string"
+          },
+          "speed_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "course" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
+      },
+      "DebugExportRequest" : {
+        "type" : "object",
+        "properties" : {
+          "startDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "latitudeShift" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitudeShift" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "includeTimeline" : {
+            "type" : "boolean"
+          },
+          "includeConfiguration" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "DistanceTraveled" : {
+        "type" : "object",
+        "properties" : {
+          "byCar" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byWalk" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byBicycle" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byTrain" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byFlight" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "byUnknown" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "EditFavoriteDto" : {
+        "required" : [ "name" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "EditGpsPointDto" : {
+        "required" : [ "coordinates" ],
+        "type" : "object",
+        "properties" : {
+          "coordinates" : {
+            "$ref" : "#/components/schemas/CoordinatesDto"
+          },
+          "velocity" : {
+            "format" : "double",
+            "minimum" : 0,
+            "type" : "number"
+          },
+          "accuracy" : {
+            "format" : "double",
+            "minimum" : 0,
+            "type" : "number"
+          }
+        }
+      },
+      "ExportDateRange" : {
+        "type" : "object",
+        "properties" : {
+          "startDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endDate" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "GeographicInsights" : {
+        "type" : "object",
+        "properties" : {
+          "countries" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Country"
+            }
+          },
+          "cities" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/City"
+            }
+          }
+        }
+      },
+      "Geometry" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "coordinates" : {
+            "type" : "array",
+            "items" : {
+              "format" : "double",
+              "type" : "number"
+            }
+          }
+        }
+      },
+      "GpsSourceType" : {
+        "enum" : [ "OWNTRACKS", "OVERLAND", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON", "CSV" ],
+        "type" : "string"
+      },
+      "HomeAssistantBattery" : {
+        "type" : "object",
+        "properties" : {
+          "level" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "HomeAssistantGpsData" : {
+        "type" : "object",
+        "properties" : {
+          "device_id" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "location" : {
+            "$ref" : "#/components/schemas/HomeAssistantLocation"
+          },
+          "battery" : {
+            "$ref" : "#/components/schemas/HomeAssistantBattery"
+          }
+        }
+      },
+      "HomeAssistantLocation" : {
+        "type" : "object",
+        "properties" : {
+          "latitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "altitude" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "speed" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }
+      },
+      "InitiateOidcLinkingRequest" : {
+        "required" : [ "verificationProvider", "newProvider", "linkingToken" ],
+        "type" : "object",
+        "properties" : {
+          "verificationProvider" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "newProvider" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "linkingToken" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "Instant" : {
+        "format" : "date-time",
+        "type" : "string",
+        "example" : "2022-03-10T16:15:50Z"
+      },
+      "JourneyInsights" : {
+        "type" : "object",
+        "properties" : {
+          "geographic" : {
+            "$ref" : "#/components/schemas/GeographicInsights"
+          },
+          "timePatterns" : {
+            "$ref" : "#/components/schemas/TimePatterns"
+          },
+          "achievements" : {
+            "$ref" : "#/components/schemas/Achievements"
+          },
+          "distanceTraveled" : {
+            "$ref" : "#/components/schemas/DistanceTraveled"
+          }
+        }
+      },
+      "LinkAccountWithPasswordRequest" : {
+        "required" : [ "email", "password", "provider", "linkingToken" ],
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "password" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "provider" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "linkingToken" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "LoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MeasureUnit" : {
+        "enum" : [ "METRIC", "IMPERIAL" ],
+        "type" : "string"
+      },
+      "OidcCallbackRequest" : {
+        "required" : [ "code", "state" ],
+        "type" : "object",
+        "properties" : {
+          "code" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "state" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "OverlandLocationMessage" : {
+        "type" : "object",
+        "properties" : {
+          "type" : {
+            "type" : "string"
+          },
+          "geometry" : {
+            "$ref" : "#/components/schemas/Geometry"
+          },
+          "properties" : {
+            "$ref" : "#/components/schemas/Properties"
+          }
+        }
+      },
+      "OverlandLocations" : {
+        "type" : "object",
+        "properties" : {
+          "locations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OverlandLocationMessage"
+            }
+          }
+        }
+      },
+      "Properties" : {
+        "type" : "object",
+        "properties" : {
+          "speed" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "battery_state" : {
+            "type" : "string"
+          },
+          "battery_level" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "motion" : {
+            "type" : "array",
+            "items" : { }
+          },
+          "timestamp" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "speed_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "horizontal_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "vertical_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "wifi" : {
+            "type" : "string"
+          },
+          "course" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "altitude" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "course_accuracy" : {
+            "format" : "double",
+            "type" : "number"
+          },
+          "device_id" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ReverseGeocodingReconcileRequest" : {
+        "required" : [ "providerName", "geocodingIds" ],
+        "type" : "object",
+        "properties" : {
+          "providerName" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "geocodingIds" : {
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          "reconcileAll" : {
+            "type" : "boolean"
+          },
+          "filterByProvider" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ReverseGeocodingUpdateDTO" : {
+        "required" : [ "displayName" ],
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "maxLength" : 1000,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "city" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "country" : {
+            "maxLength" : 100,
+            "type" : "string"
+          }
+        }
+      },
+      "Role" : {
+        "enum" : [ "USER", "ADMIN" ],
+        "type" : "string"
+      },
+      "SendFriendInvitationDTO" : {
+        "required" : [ "receiverEmail" ],
+        "type" : "object",
+        "properties" : {
+          "receiverEmail" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "TestConnectionRequest" : {
+        "type" : "object",
+        "properties" : {
+          "openaiApiUrl" : {
+            "type" : "string"
+          },
+          "openaiApiKey" : {
+            "type" : "string"
+          },
+          "isApiKeyNeeded" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "TimePatterns" : {
+        "type" : "object",
+        "properties" : {
+          "mostActiveMonth" : {
+            "type" : "string"
+          },
+          "monthlyComparison" : {
+            "type" : "string"
+          },
+          "busiestDayOfWeek" : {
+            "type" : "string"
+          },
+          "dayInsight" : {
+            "type" : "string"
+          },
+          "mostActiveTime" : {
+            "type" : "string"
+          },
+          "timeInsight" : {
+            "type" : "string"
+          }
+        }
+      },
+      "TokenRefreshRequest" : {
+        "required" : [ "refreshToken" ],
+        "type" : "object",
+        "properties" : {
+          "refreshToken" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          }
+        }
+      },
+      "UUID" : {
+        "format" : "uuid",
+        "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
+        "type" : "string"
+      },
+      "UpdateGpsSourceConfigDto" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "username" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          },
+          "token" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "type" : "string"
+          },
+          "connectionType" : {
+            "$ref" : "#/components/schemas/ConnectionType"
+          },
+          "filterInaccurateData" : {
+            "type" : "boolean"
+          },
+          "maxAllowedAccuracy" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "maxAllowedSpeed" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }
+      },
+      "UpdateGpsSourceConfigStatusDto" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UpdateImmichConfigRequest" : {
+        "required" : [ "serverUrl", "apiKey", "enabled" ],
+        "type" : "object",
+        "properties" : {
+          "serverUrl" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "apiKey" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UpdateOidcProviderRequest" : {
+        "required" : [ "displayName", "clientId", "discoveryUrl" ],
+        "type" : "object",
+        "properties" : {
+          "displayName" : {
+            "maxLength" : 100,
+            "minLength" : 2,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "clientId" : {
+            "maxLength" : 255,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "clientSecret" : {
+            "type" : "string"
+          },
+          "discoveryUrl" : {
+            "maxLength" : 500,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "icon" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "scopes" : {
+            "maxLength" : 255,
+            "type" : "string"
+          }
+        }
+      },
+      "UpdatePlaceNameRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UpdateProfileRequest" : {
+        "type" : "object",
+        "properties" : {
+          "fullName" : {
+            "maxLength" : 100,
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "avatar" : {
+            "maxLength" : 500,
+            "type" : "string"
+          },
+          "timezone" : {
+            "maxLength" : 255,
+            "type" : "string"
+          },
+          "customMapTileUrl" : {
+            "maxLength" : 1000,
+            "type" : "string"
+          },
+          "measureUnit" : {
+            "$ref" : "#/components/schemas/MeasureUnit"
+          },
+          "defaultRedirectUrl" : {
+            "maxLength" : 1000,
+            "type" : "string"
+          },
+          "shareLocationWithFriends" : {
+            "type" : "boolean"
+          },
+          "userId" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
+      "UpdateSettingRequest" : {
+        "type" : "object",
+        "properties" : {
+          "value" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UpdateShareLinkDto" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 255,
+            "type" : "string"
+          },
+          "expires_at" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 6,
+            "type" : "string"
+          },
+          "show_history" : {
+            "type" : "boolean"
+          },
+          "history_hours" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "passwordRemoval" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UpdateTimelinePreferencesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "useVelocityAccuracy" : {
+            "type" : "boolean"
+          },
+          "staypointVelocityThreshold" : {
+            "format" : "double",
+            "maximum" : 100.0,
+            "minimum" : 0.1,
+            "type" : "number"
+          },
+          "staypointMaxAccuracyThreshold" : {
+            "format" : "double",
+            "maximum" : 1000.0,
+            "minimum" : 1.0,
+            "type" : "number"
+          },
+          "staypointMinAccuracyRatio" : {
+            "format" : "double",
+            "maximum" : 1.0,
+            "minimum" : 0.1,
+            "type" : "number"
+          },
+          "tripDetectionAlgorithm" : {
+            "pattern" : "^(single|multiple)$",
+            "type" : "string"
+          },
+          "staypointRadiusMeters" : {
+            "format" : "int32",
+            "maximum" : 10000,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "staypointMinDurationMinutes" : {
+            "format" : "int32",
+            "maximum" : 1440,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "isMergeEnabled" : {
+            "type" : "boolean"
+          },
+          "mergeMaxDistanceMeters" : {
+            "format" : "int32",
+            "maximum" : 5000,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "mergeMaxTimeGapMinutes" : {
+            "format" : "int32",
+            "maximum" : 720,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "pathSimplificationEnabled" : {
+            "type" : "boolean"
+          },
+          "pathSimplificationTolerance" : {
+            "format" : "double",
+            "maximum" : 100.0,
+            "minimum" : 1.0,
+            "type" : "number"
+          },
+          "pathMaxPoints" : {
+            "format" : "int32",
+            "maximum" : 1000,
+            "minimum" : 10,
+            "type" : "integer"
+          },
+          "pathAdaptiveSimplification" : {
+            "type" : "boolean"
+          },
+          "dataGapThresholdSeconds" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "dataGapMinDurationSeconds" : {
+            "format" : "int32",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "gapStayInferenceEnabled" : {
+            "type" : "boolean"
+          },
+          "gapStayInferenceMaxGapHours" : {
+            "format" : "int32",
+            "maximum" : 168,
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "walkingMaxAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 10.0,
+            "minimum" : 3.0,
+            "type" : "number"
+          },
+          "walkingMaxMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 15.0,
+            "minimum" : 5.0,
+            "type" : "number"
+          },
+          "carMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 25.0,
+            "minimum" : 5.0,
+            "type" : "number"
+          },
+          "carMinMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 50.0,
+            "minimum" : 10.0,
+            "type" : "number"
+          },
+          "shortDistanceKm" : {
+            "format" : "double",
+            "maximum" : 3.0,
+            "minimum" : 0.1,
+            "type" : "number"
+          },
+          "tripArrivalDetectionMinDurationSeconds" : {
+            "format" : "int32",
+            "maximum" : 300,
+            "minimum" : 10,
+            "type" : "integer"
+          },
+          "tripSustainedStopMinDurationSeconds" : {
+            "format" : "int32",
+            "maximum" : 600,
+            "minimum" : 10,
+            "type" : "integer"
+          },
+          "bicycleEnabled" : {
+            "type" : "boolean"
+          },
+          "bicycleMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 15.0,
+            "minimum" : 5.0,
+            "type" : "number"
+          },
+          "bicycleMaxAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 35.0,
+            "minimum" : 15.0,
+            "type" : "number"
+          },
+          "bicycleMaxMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 50.0,
+            "minimum" : 20.0,
+            "type" : "number"
+          },
+          "trainEnabled" : {
+            "type" : "boolean"
+          },
+          "trainMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 50.0,
+            "minimum" : 20.0,
+            "type" : "number"
+          },
+          "trainMaxAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 200.0,
+            "minimum" : 80.0,
+            "type" : "number"
+          },
+          "trainMinMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 120.0,
+            "minimum" : 60.0,
+            "type" : "number"
+          },
+          "trainMaxMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 250.0,
+            "minimum" : 100.0,
+            "type" : "number"
+          },
+          "trainMaxSpeedVariance" : {
+            "format" : "double",
+            "maximum" : 30.0,
+            "minimum" : 5.0,
+            "type" : "number"
+          },
+          "flightEnabled" : {
+            "type" : "boolean"
+          },
+          "flightMinAvgSpeed" : {
+            "format" : "double",
+            "maximum" : 600.0,
+            "minimum" : 250.0,
+            "type" : "number"
+          },
+          "flightMinMaxSpeed" : {
+            "format" : "double",
+            "maximum" : 900.0,
+            "minimum" : 400.0,
+            "type" : "number"
+          }
+        }
+      },
+      "UpdateUserPasswordRequest" : {
+        "required" : [ "newPassword" ],
+        "type" : "object",
+        "properties" : {
+          "oldPassword" : {
+            "type" : "string"
+          },
+          "newPassword" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "userId" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }
+      },
+      "UpdateUserRoleRequest" : {
+        "type" : "object",
+        "properties" : {
+          "role" : {
+            "$ref" : "#/components/schemas/Role"
+          }
+        }
+      },
+      "UpdateUserStatusRequest" : {
+        "type" : "object",
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UserAISettings" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "openaiApiKey" : {
+            "type" : "string"
+          },
+          "openaiApiUrl" : {
+            "type" : "string"
+          },
+          "openaiModel" : {
+            "type" : "string"
+          },
+          "openaiApiKeyConfigured" : {
+            "type" : "boolean"
+          },
+          "apiKeyRequired" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "UserRegistrationRequest" : {
+        "required" : [ "email", "password" ],
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "maxLength" : 254,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "password" : {
+            "maxLength" : 128,
+            "minLength" : 3,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "fullName" : {
+            "maxLength" : 100,
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "timezone" : {
+            "maxLength" : 255,
+            "type" : "string"
+          }
+        }
+      },
+      "VerifyPasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "password" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "jwt" : {
+        "type" : "http",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT",
+        "description" : "Authentication"
+      }
+    }
+  },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.5.1",
+    "version" : "1.6.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",

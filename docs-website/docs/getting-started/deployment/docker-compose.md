@@ -170,7 +170,7 @@ These variables control how users access the GeoPulse frontend and how authentic
 **When to keep GEOPULSE_COOKIE_DOMAIN empty (recommended):**
 - ✅ All standard Docker deployments using docker-compose
 - ✅ Localhost access: `http://localhost:5555`
-- ✅ Homelab IP access: `http://1.5.168.1.100:5555`
+- ✅ Homelab IP access: `http://1.6.068.1.100:5555`
 - ✅ Single domain production: `https://geopulse.yourdomain.com`
 - ✅ Any deployment where nginx proxies both frontend and backend (standard GeoPulse setup)
 
@@ -197,7 +197,7 @@ These variables control how users access the GeoPulse frontend and how authentic
 - **Homelab access (via IP address and/or local domain):**
   ```env
   # Allows access via localhost, a local network IP, and a local domain
-  GEOPULSE_UI_URL=http://localhost:5555,http://1.5.168.1.100:5555,http://geopulse.local
+  GEOPULSE_UI_URL=http://localhost:5555,http://1.6.068.1.100:5555,http://geopulse.local
   GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
   GEOPULSE_AUTH_SECURE_COOKIES=false
   ```
