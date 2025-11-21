@@ -16,7 +16,7 @@ const props = defineProps({
   },
   center: {
     type: Array,
-    default: () => [51.505, -0.09]
+    default: () => null
   },
   zoom: {
     type: Number,
@@ -97,7 +97,12 @@ const initializeMap = async () => {
             dragging: true,
             tap: true,
             touchExtend: false
-          }).setView(props.center, props.zoom)
+          })
+
+          // Only set view if center is provided, otherwise wait for data
+          if (props.center) {
+            map.value.setView(props.center, props.zoom)
+          }
 
           // Add tile layer with dynamic URL from user preferences
           const tileUrl = getTileUrl()
@@ -269,9 +274,11 @@ const fitBounds = (bounds, options = {}) => {
 }
 
 // Watch for prop changes
-watch(() => props.center, (newCenter) => {
+watch(() => props.center, (newCenter, oldCenter) => {
   if (map.value && newCenter) {
-    map.value.setView(newCenter, map.value.getZoom())
+    // If transitioning from null to valid center, use the zoom prop
+    const zoom = oldCenter ? map.value.getZoom() : props.zoom
+    map.value.setView(newCenter, zoom)
   }
 })
 

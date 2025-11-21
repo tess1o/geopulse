@@ -320,8 +320,14 @@ const addAreaShowDialog = computed(() => dialogState.value.addAreaVisible)
 const editFavoriteDialogVisible = computed(() => dialogState.value.editFavoriteVisible)
 const selectedFavoriteLocation = computed(() => dialogState.value.selectedFavorite)
 
-// Map configuration
-const mapCenter = ref([51.505, -0.09])
+// Map configuration - start with null to avoid showing default location before data loads
+const mapCenter = computed(() => {
+  // Return first available data point, or null if no data yet
+  if (dataBounds.value && dataBounds.value.length > 0) {
+    return dataBounds.value[0]
+  }
+  return null
+})
 const mapZoom = ref(13)
 
 // Controls configuration
