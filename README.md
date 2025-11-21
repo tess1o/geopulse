@@ -6,7 +6,7 @@
 
 **A self-hosted location tracking and analysis platform**
 
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![License: BSL 1.1](https://img.shields.io/badge/License-Business_Source_1.1-red)](LICENSE)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](docs/DEPLOYMENT_GUIDE.md)
 [![Self-Hosted](https://img.shields.io/badge/Self--Hosted-✓-green.svg)](#)
 [![Privacy First](https://img.shields.io/badge/Privacy-First-green.svg)](#)
