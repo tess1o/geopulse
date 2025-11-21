@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.streaming.jobs;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.quarkus.scheduler.Scheduled;
+import io.smallrye.common.annotation.Blocking;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -17,7 +19,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 
 @ApplicationScoped
 @Slf4j
@@ -26,33 +28,48 @@ public class RealTimeTimelineJob {
     @Inject
     StreamingTimelineGenerationService timelineGenerationService;
 
-    @ConfigProperty(name = "geopulse.timeline.processing.thread-pool-size", defaultValue = "2")
-    @StaticInitSafe
-    int threadPoolSize;
+    @Inject
+    @Identifier("timeline-processing")
+    ExecutorService executorService;
 
-    private ExecutorService executorService;
+    @ConfigProperty(name = "geopulse.timeline.processing.max-concurrent-tasks", defaultValue = "2")
+    @StaticInitSafe
+    int maxConcurrentTasks;
+
+    private Semaphore semaphore;
 
     @PostConstruct
-    void initThreadPool() {
-        executorService = Executors.newFixedThreadPool(threadPoolSize);
-        log.info("Initialized RealTimeTimelineJob thread pool with {} threads", threadPoolSize);
+    void init() {
+        semaphore = new Semaphore(maxConcurrentTasks);
+        log.info("Initialized RealTimeTimelineJob with max {} concurrent tasks", maxConcurrentTasks);
     }
 
     @PreDestroy
-    void shutdownThreadPool() {
+    void shutdown() {
         if (executorService != null) {
             executorService.shutdown();
-            log.info("Shutdown RealTimeTimelineJob thread pool");
+            log.info("Shutdown RealTimeTimelineJob executor service");
         }
     }
 
+    @Blocking
     @Scheduled(every = "${geopulse.timeline.job.interval:5m}", delayed = "${geopulse.timeline.job.delay:5m}")
     public void processRealTimeUpdates() {
         List<UserEntity> users = UserEntity.list("timelineStatus", TimelineStatus.IDLE);
         log.debug("Starting real-time timeline processing for {} users", users.size());
 
         for (UserEntity user : users) {
-            CompletableFuture.runAsync(() -> processUser(user), executorService)
+            CompletableFuture.runAsync(() -> {
+                try {
+                    semaphore.acquire();
+                    processUser(user);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("Interrupted while waiting for semaphore for user {}", user.getEmail());
+                } finally {
+                    semaphore.release();
+                }
+            }, executorService)
                     .exceptionally(throwable -> {
                         log.error("Failed to process user {}: {}", user.getEmail(), throwable.getMessage(), throwable);
                         return null;

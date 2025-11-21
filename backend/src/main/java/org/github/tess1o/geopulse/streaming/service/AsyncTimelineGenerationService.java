@@ -1,12 +1,14 @@
 package org.github.tess1o.geopulse.streaming.service;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.context.ManagedExecutor;
 
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 /**
  * Service for executing timeline generation asynchronously.
@@ -18,7 +20,8 @@ import java.util.UUID;
 public class AsyncTimelineGenerationService {
 
     @Inject
-    ManagedExecutor managedExecutorService;
+    @Identifier("timeline-processing")
+    ExecutorService executorService;
 
     @Inject
     StreamingTimelineGenerationService timelineGenerationService;
@@ -48,7 +51,7 @@ public class AsyncTimelineGenerationService {
 
         log.info("Created async timeline generation job {} for user {}", jobId, userId);
 
-        managedExecutorService.runAsync(() -> {
+        CompletableFuture.runAsync(() -> {
             try {
                 log.info("Starting async timeline generation for job {}", jobId);
                 executeRegenerationWithTransaction(userId, jobId);
@@ -62,7 +65,7 @@ public class AsyncTimelineGenerationService {
                     log.error("Failed to mark job {} as failed: {}", jobId, failError.getMessage());
                 }
             }
-        });
+        }, executorService);
 
         return jobId;
     }
