@@ -10,8 +10,10 @@ import jakarta.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.admin.dto.UpdateSettingRequest;
+import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 
 import java.util.List;
 import java.util.Map;
@@ -34,17 +36,14 @@ public class AdminSettingsResource {
     AuditLogService auditLogService;
 
     @Inject
-    JsonWebToken jwt;
-
-    @Context
-    SecurityContext securityContext;
+    CurrentUserService currentUserService;
 
     /**
      * Get all settings grouped by category.
      */
     @GET
     public Response getAllSettings() {
-        Map<String, List<SystemSettingsService.SettingInfo>> settings = settingsService.getAllSettings();
+        Map<String, List<SettingInfo>> settings = settingsService.getAllSettings();
         return Response.ok(settings).build();
     }
 
@@ -54,7 +53,7 @@ public class AdminSettingsResource {
     @GET
     @Path("/{category}")
     public Response getSettingsByCategory(@PathParam("category") String category) {
-        List<SystemSettingsService.SettingInfo> settings = settingsService.getSettingsByCategory(category);
+        List<SettingInfo> settings = settingsService.getSettingsByCategory(category);
         return Response.ok(settings).build();
     }
 
@@ -69,7 +68,7 @@ public class AdminSettingsResource {
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
 
-        UUID adminId = UUID.fromString(jwt.getSubject());
+        UUID adminId = currentUserService.getCurrentUserId();
         String oldValue = settingsService.getString(key);
 
         settingsService.setValue(key, request.getValue(), adminId);
@@ -91,7 +90,7 @@ public class AdminSettingsResource {
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
 
-        UUID adminId = UUID.fromString(jwt.getSubject());
+        UUID adminId = currentUserService.getCurrentUserId();
         String oldValue = settingsService.getString(key);
 
         settingsService.resetToDefault(key);

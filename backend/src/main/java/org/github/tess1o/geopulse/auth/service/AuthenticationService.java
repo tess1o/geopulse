@@ -39,9 +39,9 @@ public class AuthenticationService {
     String issuer;
 
     @Inject
-    @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
+    @ConfigProperty(name = "geopulse.admin.email")
     @StaticInitSafe
-    String adminEmail;
+    Optional<String> adminEmail;
 
     @Inject
     @ConfigProperty(name = "smallrye.jwt.new-token.lifespan", defaultValue = "1800")
@@ -117,8 +117,8 @@ public class AuthenticationService {
      * Check if user's email matches admin email and promote to ADMIN role if needed.
      */
     private void checkAndPromoteToAdmin(UserEntity user) {
-        if (adminEmail != null && !adminEmail.isBlank() &&
-            adminEmail.equalsIgnoreCase(user.getEmail()) &&
+        if (adminEmail.isPresent() && !adminEmail.get().isBlank() &&
+            adminEmail.get().equalsIgnoreCase(user.getEmail()) &&
             user.getRole() != Role.ADMIN) {
             userService.updateRole(user.getId(), Role.ADMIN);
             user.setRole(Role.ADMIN); // Update in-memory object for JWT generation

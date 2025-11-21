@@ -6,6 +6,8 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.ConfigProvider;
+import org.github.tess1o.geopulse.admin.model.SettingDefinition;
+import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
@@ -16,7 +18,7 @@ import java.util.*;
 
 /**
  * Service for managing system settings with environment variable fallback.
- *
+ * <p>
  * Pattern: Check DB first, fall back to env var if not found.
  * Similar to TimelineConfigurationProvider pattern.
  */
@@ -124,7 +126,7 @@ public class SystemSettingsService {
         } catch (NumberFormatException e) {
             log.warn("Invalid integer value for setting {}: {}", key, value);
             SettingDefinition def = SETTING_DEFINITIONS.get(key);
-            return def != null ? Integer.parseInt(def.defaultValue) : 0;
+            return def != null ? Integer.parseInt(def.defaultValue()) : 0;
         }
     }
 
@@ -141,8 +143,8 @@ public class SystemSettingsService {
             if (entity.getValueType() == ValueType.ENCRYPTED) {
                 try {
                     String decrypted = encryptionService.decrypt(
-                        entity.getValue(),
-                        entity.getEncryptionKeyId()
+                            entity.getValue(),
+                            entity.getEncryptionKeyId()
                     );
                     log.debug("Using decrypted DB value for setting: {}", key);
                     return decrypted;
@@ -159,8 +161,8 @@ public class SystemSettingsService {
         // Fall back to env var
         SettingDefinition def = SETTING_DEFINITIONS.get(key);
         if (def != null) {
-            String envValue = config.getOptionalValue(def.envVarName, String.class)
-                    .orElse(def.defaultValue);
+            String envValue = config.getOptionalValue(def.envVarName(), String.class)
+                    .orElse(def.defaultValue());
             log.debug("Using env/default value for setting {}: {}", key, envValue);
             return envValue;
         }
@@ -175,8 +177,8 @@ public class SystemSettingsService {
     public String getDefaultValue(String key) {
         SettingDefinition def = SETTING_DEFINITIONS.get(key);
         if (def != null) {
-            return config.getOptionalValue(def.envVarName, String.class)
-                    .orElse(def.defaultValue);
+            return config.getOptionalValue(def.envVarName(), String.class)
+                    .orElse(def.defaultValue());
         }
         return "";
     }
@@ -199,12 +201,12 @@ public class SystemSettingsService {
         }
 
         // Validate value type
-        validateValue(value, def.valueType);
+        validateValue(value, def.valueType());
 
         // Encrypt if type is ENCRYPTED
         String storedValue = value;
         String keyId = null;
-        if (def.valueType == ValueType.ENCRYPTED) {
+        if (def.valueType() == ValueType.ENCRYPTED) {
             storedValue = encryptionService.encrypt(value);
             keyId = encryptionService.getCurrentKeyId();
         }
@@ -220,9 +222,9 @@ public class SystemSettingsService {
             SystemSettingsEntity entity = SystemSettingsEntity.builder()
                     .key(key)
                     .value(storedValue)
-                    .valueType(def.valueType)
-                    .category(def.category)
-                    .description(def.description)
+                    .valueType(def.valueType())
+                    .category(def.category())
+                    .description(def.description())
                     .updatedBy(updatedBy)
                     .updatedAt(Instant.now())
                     .encryptionKeyId(keyId)
@@ -252,7 +254,7 @@ public class SystemSettingsService {
             String key = entry.getKey();
             SettingDefinition def = entry.getValue();
 
-            if (def.category.equals(category)) {
+            if (def.category().equals(category)) {
                 String currentValue = getValue(key);
                 String defaultValue = getDefaultValue(key);
                 boolean isDefault = isDefault(key);
@@ -261,7 +263,7 @@ public class SystemSettingsService {
                 String displayValue = currentValue;
                 String displayDefault = defaultValue;
 
-                if (def.valueType == ValueType.ENCRYPTED) {
+                if (def.valueType() == ValueType.ENCRYPTED) {
                     displayValue = currentValue.isEmpty() ? "" : "********";
                     displayDefault = defaultValue.isEmpty() ? "" : "********";
                 }
@@ -269,9 +271,9 @@ public class SystemSettingsService {
                 result.add(new SettingInfo(
                         key,
                         displayValue,
-                        def.valueType,
-                        def.category,
-                        def.description,
+                        def.valueType(),
+                        def.category(),
+                        def.description(),
                         isDefault,
                         displayDefault
                 ));
@@ -314,28 +316,4 @@ public class SystemSettingsService {
                 break;
         }
     }
-
-    /**
-     * Definition of a setting including its env var mapping.
-     */
-    private record SettingDefinition(
-            String envVarName,
-            String defaultValue,
-            ValueType valueType,
-            String category,
-            String description
-    ) {}
-
-    /**
-     * Full information about a setting for API responses.
-     */
-    public record SettingInfo(
-            String key,
-            String value,
-            ValueType valueType,
-            String category,
-            String description,
-            boolean isDefault,
-            String defaultValue
-    ) {}
 }

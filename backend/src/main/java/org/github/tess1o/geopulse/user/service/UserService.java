@@ -38,8 +38,8 @@ public class UserService {
     private final AuthConfigurationService authConfigurationService;
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
 
-    @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
-    String adminEmail;
+    @ConfigProperty(name = "geopulse.admin.email")
+    Optional<String> adminEmail;
 
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
@@ -93,7 +93,7 @@ public class UserService {
 
         // Determine role - check if email matches admin email
         Role role = Role.USER;
-        if (adminEmail != null && !adminEmail.isBlank() && adminEmail.equalsIgnoreCase(email)) {
+        if (adminEmail.isPresent() && !adminEmail.get().isBlank() && adminEmail.get().equalsIgnoreCase(email)) {
             role = Role.ADMIN;
             log.info("Promoting user {} to ADMIN role (matches admin email)", email);
         }

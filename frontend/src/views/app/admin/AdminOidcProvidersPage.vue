@@ -167,32 +167,53 @@
         :modal="true"
         :style="{ width: '600px' }"
       >
-        <div v-if="testResult" class="flex flex-column gap-3">
-          <div class="flex align-items-center gap-3">
+        <div v-if="testResult" class="test-result-content">
+          <div class="test-result-header">
             <i
-              :class="testResult.success ? 'pi pi-check-circle text-4xl text-green-500' : 'pi pi-times-circle text-4xl text-red-500'"
+              :class="testResult.success ? 'pi pi-check-circle text-3xl text-green-500' : 'pi pi-times-circle text-3xl text-red-500'"
             ></i>
-            <span class="text-xl font-semibold">
+            <span class="test-result-message">
               {{ testResult.message }}
             </span>
           </div>
 
-          <div v-if="testResult.success" class="mt-3">
-            <h4>Discovered Endpoints:</h4>
-            <div class="flex flex-column gap-2 mt-2">
-              <div><strong>Authorization:</strong> <code class="text-sm">{{ testResult.authorizationEndpoint }}</code></div>
-              <div><strong>Token:</strong> <code class="text-sm">{{ testResult.tokenEndpoint }}</code></div>
-              <div><strong>UserInfo:</strong> <code class="text-sm">{{ testResult.userinfoEndpoint }}</code></div>
-              <div><strong>JWKS:</strong> <code class="text-sm">{{ testResult.jwksUri }}</code></div>
-              <div><strong>Issuer:</strong> <code class="text-sm">{{ testResult.issuer }}</code></div>
+          <div v-if="testResult.success">
+            <h4 class="endpoints-title">Discovered Endpoints:</h4>
+            <div class="endpoint-list">
+              <div class="endpoint-item">
+                <span class="endpoint-label">Authorization:</span>
+                <code class="endpoint-value">{{ testResult.authorizationEndpoint }}</code>
+              </div>
+              <div class="endpoint-item">
+                <span class="endpoint-label">Token:</span>
+                <code class="endpoint-value">{{ testResult.tokenEndpoint }}</code>
+              </div>
+              <div class="endpoint-item">
+                <span class="endpoint-label">UserInfo:</span>
+                <code class="endpoint-value">{{ testResult.userinfoEndpoint }}</code>
+              </div>
+              <div class="endpoint-item">
+                <span class="endpoint-label">JWKS:</span>
+                <code class="endpoint-value">{{ testResult.jwksUri }}</code>
+              </div>
+              <div class="endpoint-item">
+                <span class="endpoint-label">Issuer:</span>
+                <code class="endpoint-value">{{ testResult.issuer }}</code>
+              </div>
             </div>
           </div>
 
-          <div v-else class="mt-3">
-            <h4>Error Details:</h4>
-            <div class="p-3 bg-red-50 border-round">
-              <strong>Type:</strong> {{ testResult.errorType }}<br>
-              <strong>Details:</strong> {{ testResult.errorDetails }}
+          <div v-else>
+            <h4 class="endpoints-title">Error Details:</h4>
+            <div class="error-details">
+              <div class="endpoint-item">
+                <span class="endpoint-label">Type:</span>
+                <code class="endpoint-value">{{ testResult.errorType }}</code>
+              </div>
+              <div class="endpoint-item">
+                <span class="endpoint-label">Details:</span>
+                <code class="endpoint-value error-value">{{ testResult.errorDetails }}</code>
+              </div>
             </div>
           </div>
         </div>
@@ -486,5 +507,67 @@ code {
 
 .add-provider-button {
   margin-left: auto;
+}
+
+/* Test Result Dialog */
+.test-result-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.test-result-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.test-result-message {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.endpoints-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+.endpoint-list,
+.error-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.endpoint-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.endpoint-label {
+  font-weight: 600;
+  color: var(--text-color);
+  font-size: 0.875rem;
+}
+
+.endpoint-value {
+  background-color: var(--surface-100);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  display: block;
+}
+
+.endpoint-value.error-value {
+  background-color: var(--red-50);
+  color: var(--red-700);
 }
 </style>

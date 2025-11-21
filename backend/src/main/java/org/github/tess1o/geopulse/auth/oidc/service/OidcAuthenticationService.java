@@ -81,9 +81,9 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     int stateTokenExpiryMinutes;
 
-    @ConfigProperty(name = "geopulse.admin.email", defaultValue = "")
+    @ConfigProperty(name = "geopulse.admin.email")
     @StaticInitSafe
-    String adminEmail;
+    Optional<String> adminEmail;
 
     private final Client httpClient = ClientBuilder.newClient();
     private final Map<String, JWKSet> jwksCache = new ConcurrentHashMap<>();
@@ -284,7 +284,7 @@ public class OidcAuthenticationService {
     private UserEntity createNewUserWithOidcConnection(OidcUserInfo userInfo, String providerName) {
         // Determine role - check if email matches admin email
         Role role = Role.USER;
-        if (adminEmail != null && !adminEmail.isBlank() && adminEmail.equalsIgnoreCase(userInfo.getEmail())) {
+        if (adminEmail.isPresent() && !adminEmail.get().isBlank() && adminEmail.get().equalsIgnoreCase(userInfo.getEmail())) {
             role = Role.ADMIN;
             log.info("Promoting OIDC user {} to ADMIN role (matches admin email)", userInfo.getEmail());
         }

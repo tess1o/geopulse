@@ -19,6 +19,8 @@ import org.github.tess1o.geopulse.admin.model.*;
                 UpdateUserStatusRequest.class,
                 UpdateUserRoleRequest.class,
                 UserListResponse.class,
+                SettingInfo.class,
+                SettingDefinition.class,
                 // Entities
                 OidcProviderEntity.class,
                 SystemSettingsEntity.class,

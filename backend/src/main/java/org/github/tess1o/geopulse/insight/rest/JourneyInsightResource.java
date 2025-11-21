@@ -7,6 +7,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.insight.model.JourneyInsights;
 import org.github.tess1o.geopulse.insight.service.JourneyInsightService;
 
@@ -18,14 +19,14 @@ import java.util.UUID;
 public class JourneyInsightResource {
 
     @Inject
-    JsonWebToken jwt;
+    CurrentUserService currentUserService;
 
     @Inject
     JourneyInsightService journeyInsightService;
 
     @GET
     public JourneyInsights getJourneyInsights() {
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = currentUserService.getCurrentUserId();
         return journeyInsightService.getJourneyInsights(userId);
     }
 }
