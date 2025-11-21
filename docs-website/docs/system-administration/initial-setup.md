@@ -1,10 +1,10 @@
 # Initial Setup
 
-After deploying GeoPulse, you may want to configure system-wide settings that affect all users.  
+After deploying GeoPulse, you may want to configure system-wide settings that affect all users.
 This section provides a guided overview of the most important configuration areas, including authentication, geocoding,
 data processing, AI integration, and UI behavior.
 
-In future releases, these settings may become manageable through a dedicated Admin UI.
+Many settings can be managed through the [Admin Panel](./configuration/admin-panel) web interface once you have an administrator account.
 
 ---
 
@@ -16,9 +16,14 @@ Depending on your environment and the features you want to enable, review the fo
 
 ## Authentication & Security
 
+### Admin Panel & First Administrator
+
+Promote your first user to administrator to access the Admin Panel for managing users, OIDC providers, and system settings.
+➡️ [Admin Panel](./configuration/admin-panel)
+
 ### Authentication Options
 
-Configure authentication cookies behavior.  
+Configure authentication cookies behavior.
 ➡️ [Authentication](./configuration/authentication)
 
 ### User Registration
@@ -85,6 +90,8 @@ Fine-tune how OwnTracks payloads are processed beyond the default supported sett
 ## Recommended Path for New Deployments
 
 1. Deploy GeoPulse (Docker Compose / Kubernetes / Helm).
-2. Configure Authentication cookies and optionally OIDC/SSO and User Registration settings.
-3. Configure Reverse Geocoding for place names.
-4. Create your first user and log in.
+2. Set `GEOPULSE_ADMIN_EMAIL` to your email address to become the first administrator.
+3. Configure Authentication cookies and optionally OIDC/SSO and User Registration settings.
+4. Configure Reverse Geocoding for place names.
+5. Create your first user and log in.
+6. Access the Admin Panel at `/app/admin` to manage users and settings via UI.

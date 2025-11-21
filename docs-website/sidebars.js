@@ -40,6 +40,7 @@ const sidebars = {
                     type: 'category',
                     label: 'Configuration Reference',
                     items: [
+                        'system-administration/configuration/admin-panel',
                         'system-administration/configuration/authentication',
                         'system-administration/configuration/user-registration',
                         'system-administration/configuration/oidc-sso',
