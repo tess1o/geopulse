@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-user-guide/timeline/stay_detection" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">Stay Detection | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/user-guide/timeline/stay_detection"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Stay Detection | GeoPulse documentation"><meta data-rh="true" name="description" content="How GeoPulse identifies when you&#x27;ve stayed at a location using GPS clustering and duration analysis."><meta data-rh="true" property="og:description" content="How GeoPulse identifies when you&#x27;ve stayed at a location using GPS clustering and duration analysis."><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/stay_detection"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/stay_detection" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/stay_detection" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Stay Detection","item":"https://tess1o.github.io/geopulse/docs/user-guide/timeline/stay_detection"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
+<script src="/geopulse/assets/js/runtime~main.119dc722.js" defer="defer"></script>
+<script src="/geopulse/assets/js/main.93a749a2.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/geopulse/"><div class="navbar__logo"><img src="/geopulse/img/geopulse-logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/geopulse/img/geopulse-logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">GeoPulse</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/geopulse/docs/getting-started/introduction">Documentation</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/tess1o/geopulse" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/getting-started/introduction"><span title="Getting Started" class="categoryLinkLabel_W154">Getting Started</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/system-administration/initial-setup"><span title="Configuration &amp; Administration" class="categoryLinkLabel_W154">Configuration &amp; Administration</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" href="/geopulse/docs/user-guide/gps-sources/overview"><span title="User Guide" class="categoryLinkLabel_W154">User Guide</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/gps-sources/overview"><span title="Connecting GPS Sources" class="categoryLinkLabel_W154">Connecting GPS Sources</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/core-features/timeline"><span title="Core Features" class="categoryLinkLabel_W154">Core Features</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" tabindex="0" href="/geopulse/docs/user-guide/timeline/stay_detection"><span title="Timeline Deep Dive" class="categoryLinkLabel_W154">Timeline Deep Dive</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/geopulse/docs/user-guide/timeline/stay_detection"><span title="Stay Detection" class="linkLabel_WmDU">Stay Detection</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/trip_detection"><span title="Trip Detection" class="linkLabel_WmDU">Trip Detection</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/travel_classification"><span title="Travel Classification" class="linkLabel_WmDU">Travel Classification</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/data_gaps"><span title="Data Gaps &amp; Gap Stay Inference" class="linkLabel_WmDU">Data Gaps &amp; Gap Stay Inference</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/interacting-with-data/import-export"><span title="Interacting with Your Data" class="categoryLinkLabel_W154">Interacting with Your Data</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/social-and-sharing/friends"><span title="Social &amp; Sharing" class="categoryLinkLabel_W154">Social &amp; Sharing</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/personalization/profile-settings"><span title="Personalization &amp; Settings" class="categoryLinkLabel_W154">Personalization &amp; Settings</span></a></div></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/developer-guide/contributing"><span title="Developer Guide" class="categoryLinkLabel_W154">Developer Guide</span></a></div></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/geopulse/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">User Guide</span></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">Timeline Deep Dive</span></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Stay Detection</span></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Stay Detection</h1></header>
+<p>GeoPulse uses a sophisticated algorithm to identify when you&#x27;ve stopped at a location. This document explains the complete process of how stays are detected, from initial clustering to confirmation.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="overview">Overview<a href="#overview" class="hash-link" aria-label="Direct link to Overview" title="Direct link to Overview" translate="no">​</a></h2>
+<p>Stay detection is the foundation of timeline generation. The system analyzes your GPS data to identify periods when you were stationary at a specific location. A stay is created when:</p>
+<ol>
+<li class=""><strong>GPS points cluster together</strong> within a defined radius</li>
+<li class=""><strong>You remain stationary</strong> for a minimum duration</li>
+<li class=""><strong>GPS data quality</strong> meets accuracy requirements</li>
+</ol>
+<p>The algorithm uses a <strong>state machine</strong> that transitions between states as it processes each GPS point, making decisions based on distance, time, and movement patterns.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-detection-state-machine">The Detection State Machine<a href="#the-detection-state-machine" class="hash-link" aria-label="Direct link to The Detection State Machine" title="Direct link to The Detection State Machine" translate="no">​</a></h2>
+<p>GeoPulse processes GPS points sequentially through a four-state machine:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">UNKNOWN → POTENTIAL_STAY → CONFIRMED_STAY</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">                ↓               ↓</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">              IN_TRIP ←─────────┘</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="state-descriptions">State Descriptions<a href="#state-descriptions" class="hash-link" aria-label="Direct link to State Descriptions" title="Direct link to State Descriptions" translate="no">​</a></h3>
+<table><thead><tr><th>State</th><th>Description</th><th>What Triggers Exit</th></tr></thead><tbody><tr><td><strong>UNKNOWN</strong></td><td>Initial state before any GPS data</td><td>First GPS point received</td></tr><tr><td><strong>POTENTIAL_STAY</strong></td><td>Clustering in progress, not yet confirmed</td><td>Duration threshold met OR movement detected</td></tr><tr><td><strong>CONFIRMED_STAY</strong></td><td>Valid stay identified</td><td>Movement beyond stay radius</td></tr><tr><td><strong>IN_TRIP</strong></td><td>Moving between locations</td><td>Sustained stop detected</td></tr></tbody></table>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="how-a-stay-is-detected">How a Stay is Detected<a href="#how-a-stay-is-detected" class="hash-link" aria-label="Direct link to How a Stay is Detected" title="Direct link to How a Stay is Detected" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-1-initial-clustering">Step 1: Initial Clustering<a href="#step-1-initial-clustering" class="hash-link" aria-label="Direct link to Step 1: Initial Clustering" title="Direct link to Step 1: Initial Clustering" translate="no">​</a></h3>
+<p>When the first GPS point arrives, the system enters <strong>POTENTIAL_STAY</strong> mode and begins building a cluster:</p>
+<ol>
+<li class="">The first point becomes the seed of the cluster</li>
+<li class="">Each subsequent point is compared to the cluster&#x27;s <strong>centroid</strong> (center point)</li>
+<li class="">The centroid is calculated as the mean latitude and longitude of all clustered points</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-2-distance-check">Step 2: Distance Check<a href="#step-2-distance-check" class="hash-link" aria-label="Direct link to Step 2: Distance Check" title="Direct link to Step 2: Distance Check" translate="no">​</a></h3>
+<p>For each new GPS point, the system calculates the distance from the current centroid:</p>
+<p><strong>If distance ≤ Stay Detection Radius:</strong></p>
+<ul>
+<li class="">Point is added to the cluster</li>
+<li class="">Centroid is recalculated</li>
+<li class="">Continue clustering</li>
+</ul>
+<p><strong>If distance &gt; Stay Detection Radius:</strong></p>
+<ul>
+<li class="">Check for <a href="#favorite-areas-special-handling" class="">Favorite Area</a> containment</li>
+<li class="">If not in same area: transition to <strong>IN_TRIP</strong></li>
+<li class="">Current cluster becomes a trip starting point</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-3-duration-confirmation">Step 3: Duration Confirmation<a href="#step-3-duration-confirmation" class="hash-link" aria-label="Direct link to Step 3: Duration Confirmation" title="Direct link to Step 3: Duration Confirmation" translate="no">​</a></h3>
+<p>While clustering continues (distance checks pass), the system tracks the total duration:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Duration = Last point timestamp - First point timestamp</span><br></span></code></pre></div></div>
+<p><strong>If duration ≥ Minimum Stay Duration:</strong></p>
+<ul>
+<li class="">Transition from POTENTIAL_STAY to <strong>CONFIRMED_STAY</strong></li>
+<li class="">Stay is now considered valid</li>
+</ul>
+<p><strong>If duration &lt; Minimum Stay Duration:</strong></p>
+<ul>
+<li class="">Remain in POTENTIAL_STAY</li>
+<li class="">Continue collecting points</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-4-stay-finalization">Step 4: Stay Finalization<a href="#step-4-stay-finalization" class="hash-link" aria-label="Direct link to Step 4: Stay Finalization" title="Direct link to Step 4: Stay Finalization" translate="no">​</a></h3>
+<p>A confirmed stay ends when movement is detected:</p>
+<ol>
+<li class="">New GPS point falls outside the stay radius</li>
+<li class="">Point is not within a shared Favorite Area</li>
+<li class="">System finalizes the stay with:<!-- -->
+<ul>
+<li class="">Start time (first clustered point)</li>
+<li class="">Duration (last - first timestamp)</li>
+<li class="">Location (centroid coordinates)</li>
+</ul>
+</li>
+<li class="">Transition to <strong>IN_TRIP</strong> mode</li>
+</ol>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="key-settings-explained">Key Settings Explained<a href="#key-settings-explained" class="hash-link" aria-label="Direct link to Key Settings Explained" title="Direct link to Key Settings Explained" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="stay-detection-radius">Stay Detection Radius<a href="#stay-detection-radius" class="hash-link" aria-label="Direct link to Stay Detection Radius" title="Direct link to Stay Detection Radius" translate="no">​</a></h3>
+<p><strong>Setting:</strong> <code>Stay Detection Radius</code>
+<strong>Default:</strong> 50 meters
+<strong>Range:</strong> 10-500 meters</p>
+<p>This defines the size of the &quot;bubble&quot; used for clustering GPS points.</p>
+<table><thead><tr><th>Value</th><th>Effect</th><th>Best For</th></tr></thead><tbody><tr><td><strong>10-30m</strong></td><td>Very sensitive, separate nearby locations</td><td>Dense urban areas, multiple stores in a mall</td></tr><tr><td><strong>50m</strong></td><td>Balanced detection</td><td>Most users, typical accuracy</td></tr><tr><td><strong>100-200m</strong></td><td>Merge nearby locations</td><td>Poor GPS areas, large venues</td></tr><tr><td><strong>300-500m</strong></td><td>Very conservative</td><td>Extremely poor GPS, general location tracking</td></tr></tbody></table>
+<p><strong>Trade-offs:</strong></p>
+<ul>
+<li class=""><strong>Smaller radius:</strong> More precise but may split single visits due to GPS drift</li>
+<li class=""><strong>Larger radius:</strong> More stable but may merge distinct nearby locations</li>
+</ul>
+<div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>GPS Drift Consideration</div><div class="admonitionContent_BuS1"><p>If your GPS device has accuracy issues (±30-50m), use a larger radius (75-100m) to prevent artificial stay splits from GPS wandering.</p></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="minimum-stay-duration">Minimum Stay Duration<a href="#minimum-stay-duration" class="hash-link" aria-label="Direct link to Minimum Stay Duration" title="Direct link to Minimum Stay Duration" translate="no">​</a></h3>
+<p><strong>Setting:</strong> <code>Minimum Stay Duration</code>
+<strong>Default:</strong> 7 minutes
+<strong>Range:</strong> 1-60 minutes</p>
+<p>The minimum time you must remain stationary for a stay to be confirmed.</p>
+<table><thead><tr><th>Value</th><th>Effect</th><th>Best For</th></tr></thead><tbody><tr><td><strong>1-3 min</strong></td><td>Detect very short stops</td><td>Delivery drivers, frequent short stops</td></tr><tr><td><strong>5-7 min</strong></td><td>Balanced detection</td><td>Most users</td></tr><tr><td><strong>10-15 min</strong></td><td>Filter out traffic delays</td><td>Commuters, road trips</td></tr><tr><td><strong>20-60 min</strong></td><td>Only significant stays</td><td>Business meetings, appointments only</td></tr></tbody></table>
+<p><strong>Trade-offs:</strong></p>
+<ul>
+<li class=""><strong>Shorter duration:</strong> More sensitive but may capture traffic stops as stays</li>
+<li class=""><strong>Longer duration:</strong> Cleaner timeline but may miss brief meaningful stops</li>
+</ul>
+<div class="theme-admonition theme-admonition-warning admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Traffic Light Problem</div><div class="admonitionContent_BuS1"><p>Setting duration too low (1-2 minutes) will cause extended traffic stops to appear as stays. The default 7 minutes filters most traffic delays while capturing genuine stops.</p></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="gps-quality-filtering">GPS Quality Filtering<a href="#gps-quality-filtering" class="hash-link" aria-label="Direct link to GPS Quality Filtering" title="Direct link to GPS Quality Filtering" translate="no">​</a></h2>
+<p>GeoPulse uses multiple layers of quality filtering to ensure accurate stay detection.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="accuracy-based-point-filtering">Accuracy-Based Point Filtering<a href="#accuracy-based-point-filtering" class="hash-link" aria-label="Direct link to Accuracy-Based Point Filtering" title="Direct link to Accuracy-Based Point Filtering" translate="no">​</a></h3>
+<p><strong>Setting:</strong> <code>GPS Accuracy Threshold</code>
+<strong>Default:</strong> 60 meters
+<strong>Range:</strong> 5-200 meters</p>
+<p>Points with accuracy worse than this threshold are <strong>excluded</strong> from processing entirely.</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">If GPS point accuracy &gt; threshold:</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  → Point is ignored (not processed)</span><br></span></code></pre></div></div>
+<p><strong>Why this matters:</strong></p>
+<ul>
+<li class="">Poor GPS accuracy (&gt;60m) indicates the device is uncertain about location</li>
+<li class="">Including these points would degrade cluster quality</li>
+<li class="">Filtered points don&#x27;t affect stay detection at all</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cluster-quality-validation">Cluster Quality Validation<a href="#cluster-quality-validation" class="hash-link" aria-label="Direct link to Cluster Quality Validation" title="Direct link to Cluster Quality Validation" translate="no">​</a></h3>
+<p><strong>Setting:</strong> <code>Minimum Accuracy Ratio</code>
+<strong>Default:</strong> 50% (0.5)
+<strong>Range:</strong> 10-100%</p>
+<p>After a stay cluster is formed, the system validates overall quality:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Accurate points = count(points with accuracy ≤ threshold)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Ratio = Accurate points / Total points</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">If ratio &lt; Minimum Accuracy Ratio:</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  → Stay is rejected</span><br></span></code></pre></div></div>
+<p><strong>Example:</strong></p>
+<ul>
+<li class="">10 points in a cluster</li>
+<li class="">4 points have accuracy ≤ 60m (good)</li>
+<li class="">6 points have accuracy &gt; 60m (poor)</li>
+<li class="">Ratio = 4/10 = 40%</li>
+<li class="">With default 50% threshold: <strong>Stay rejected</strong></li>
+</ul>
+<p>This ensures that stays are only created when sufficient high-quality GPS data exists.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="enhanced-filtering-toggle">Enhanced Filtering Toggle<a href="#enhanced-filtering-toggle" class="hash-link" aria-label="Direct link to Enhanced Filtering Toggle" title="Direct link to Enhanced Filtering Toggle" translate="no">​</a></h3>
+<p><strong>Setting:</strong> <code>Enhanced Filtering</code>
+<strong>Default:</strong> Enabled</p>
+<p>When enabled, the system uses both accuracy and velocity data for filtering. When disabled:</p>
+<ul>
+<li class="">All accuracy-based filtering is bypassed</li>
+<li class="">Useful for GPS sources that don&#x27;t report accuracy</li>
+<li class="">May result in lower quality stay detection</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="favorite-areas-special-handling">Favorite Areas: Special Handling<a href="#favorite-areas-special-handling" class="hash-link" aria-label="Direct link to Favorite Areas: Special Handling" title="Direct link to Favorite Areas: Special Handling" translate="no">​</a></h2>
+<p>Favorite Areas receive special treatment during stay detection to handle large venues where you might walk around but still be &quot;at&quot; the location.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-problem">The Problem<a href="#the-problem" class="hash-link" aria-label="Direct link to The Problem" title="Direct link to The Problem" translate="no">​</a></h3>
+<p>Consider a shopping mall:</p>
+<ul>
+<li class="">You enter and walk to different stores</li>
+<li class="">Movement between stores might exceed 50m</li>
+<li class="">Without special handling, this creates multiple separate stays</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="the-solution">The Solution<a href="#the-solution" class="hash-link" aria-label="Direct link to The Solution" title="Direct link to The Solution" translate="no">​</a></h3>
+<p>When movement exceeds the stay radius, the system checks if both points are within the same Favorite Area:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">1. Calculate distance from centroid to new point</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">2. If distance &gt; stay radius:</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   a. Find Favorite Area containing the centroid</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   b. Find Favorite Area containing the new point</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   c. If same area: Continue stay (point added to cluster)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">   d. If different areas: Transition to IN_TRIP</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="practical-examples">Practical Examples<a href="#practical-examples" class="hash-link" aria-label="Direct link to Practical Examples" title="Direct link to Practical Examples" translate="no">​</a></h3>
+<p><strong>University Campus (defined as Favorite Area):</strong></p>
+<ul>
+<li class="">You arrive at the library</li>
+<li class="">Walk to the cafeteria (500m away)</li>
+<li class="">Walk to your classroom (300m from cafeteria)</li>
+<li class=""><strong>Result:</strong> Single continuous stay at &quot;University Campus&quot;</li>
+</ul>
+<p><strong>Two Shops in Same Mall (no Favorite Area defined):</strong></p>
+<ul>
+<li class="">You visit Store A</li>
+<li class="">Walk to Store B (100m away)</li>
+<li class=""><strong>Result:</strong> Two separate stays (Store A, Store B)</li>
+</ul>
+<p><strong>Same Scenario with Mall as Favorite Area:</strong></p>
+<ul>
+<li class="">You visit Store A</li>
+<li class="">Walk to Store B</li>
+<li class=""><strong>Result:</strong> Single stay at &quot;Shopping Mall&quot;</li>
+</ul>
+<div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Creating Favorite Areas</div><div class="admonitionContent_BuS1"><p>Define Favorite Areas for large venues you visit regularly (campuses, malls, office complexes) to get cleaner timeline entries instead of multiple fragmented stays.</p></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="trip-detection-and-stay-endings">Trip Detection and Stay Endings<a href="#trip-detection-and-stay-endings" class="hash-link" aria-label="Direct link to Trip Detection and Stay Endings" title="Direct link to Trip Detection and Stay Endings" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="how-movement-is-detected">How Movement is Detected<a href="#how-movement-is-detected" class="hash-link" aria-label="Direct link to How Movement is Detected" title="Direct link to How Movement is Detected" translate="no">​</a></h3>
+<p>A confirmed stay ends when the system detects you&#x27;ve moved away:</p>
+<ol>
+<li class="">New GPS point is received</li>
+<li class="">Distance to centroid is calculated</li>
+<li class="">If distance &gt; stay radius AND not in same Favorite Area:<!-- -->
+<ul>
+<li class="">Stay is finalized</li>
+<li class="">Trip begins with the new point</li>
+</ul>
+</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="returning-to-in_trip-mode">Returning to IN_TRIP Mode<a href="#returning-to-in_trip-mode" class="hash-link" aria-label="Direct link to Returning to IN_TRIP Mode" title="Direct link to Returning to IN_TRIP Mode" translate="no">​</a></h3>
+<p>When movement is detected:</p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Current State: CONFIRMED_STAY</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Action: Receive point 120m from centroid (radius: 50m)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Result:</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  1. Finalize stay (startTime, duration, location)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  2. Clear active cluster</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  3. Start new trip with this point</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">  4. Transition to IN_TRIP</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="trip-ending-detection">Trip Ending Detection<a href="#trip-ending-detection" class="hash-link" aria-label="Direct link to Trip Ending Detection" title="Direct link to Trip Ending Detection" translate="no">​</a></h3>
+<p>For details on how trips end and new stays begin, see <a class="" href="/geopulse/docs/user-guide/timeline/trip_detection">Trip Detection</a>.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="location-resolution">Location Resolution<a href="#location-resolution" class="hash-link" aria-label="Direct link to Location Resolution" title="Direct link to Location Resolution" translate="no">​</a></h2>
+<p>After a stay is detected, the system determines <strong>where</strong> you were:</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="resolution-priority">Resolution Priority<a href="#resolution-priority" class="hash-link" aria-label="Direct link to Resolution Priority" title="Direct link to Resolution Priority" translate="no">​</a></h3>
+<ol>
+<li class=""><strong>Favorite Locations</strong> - Check if centroid matches a user-defined favorite</li>
+<li class=""><strong>Geocoding Results</strong> - Look up address/place name from coordinates</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="batch-processing">Batch Processing<a href="#batch-processing" class="hash-link" aria-label="Direct link to Batch Processing" title="Direct link to Batch Processing" translate="no">​</a></h3>
+<p>Location resolution is performed in batches after all stays are detected:</p>
+<ul>
+<li class="">Single database query for all stays</li>
+<li class="">Matches against favorites and geocoding cache</li>
+<li class="">Reduces processing time significantly</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-gets-assigned">What Gets Assigned<a href="#what-gets-assigned" class="hash-link" aria-label="Direct link to What Gets Assigned" title="Direct link to What Gets Assigned" translate="no">​</a></h3>
+<p>Each stay receives:</p>
+<ul>
+<li class=""><strong>locationName</strong> - Display name (e.g., &quot;Home&quot;, &quot;Work&quot;, or street address)</li>
+<li class=""><strong>favoriteId</strong> - Link to matching favorite location (if any)</li>
+<li class=""><strong>geocodingId</strong> - Link to geocoding result (if any)</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="configuration-recommendations">Configuration Recommendations<a href="#configuration-recommendations" class="hash-link" aria-label="Direct link to Configuration Recommendations" title="Direct link to Configuration Recommendations" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="for-different-use-cases">For Different Use Cases<a href="#for-different-use-cases" class="hash-link" aria-label="Direct link to For Different Use Cases" title="Direct link to For Different Use Cases" translate="no">​</a></h3>
+<p><strong>Personal Location Tracking:</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 50m (default)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Stay Duration: 7 minutes (default)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 60m (default)</span><br></span></code></pre></div></div>
+<p><strong>Delivery/Field Service:</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 30m (more precise)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Stay Duration: 2-3 minutes (catch quick stops)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 30m (stricter quality)</span><br></span></code></pre></div></div>
+<p><strong>Road Trip Tracking:</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 75-100m (account for parking lot size)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Stay Duration: 10-15 minutes (filter rest stops)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 60m (default)</span><br></span></code></pre></div></div>
+<p><strong>Urban High-Density:</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 30-40m (separate nearby venues)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Stay Duration: 5 minutes (default)</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 50m (stricter for cities)</span><br></span></code></pre></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="for-different-gps-quality">For Different GPS Quality<a href="#for-different-gps-quality" class="hash-link" aria-label="Direct link to For Different GPS Quality" title="Direct link to For Different GPS Quality" translate="no">​</a></h3>
+<p><strong>High-Quality GPS (modern phone):</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 30-50m</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 30m</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Accuracy Ratio: 70%</span><br></span></code></pre></div></div>
+<p><strong>Average GPS Quality:</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 50-75m</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 60m</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Accuracy Ratio: 50%</span><br></span></code></pre></div></div>
+<p><strong>Poor GPS Quality (indoor, urban canyons):</strong></p>
+<div class="language-text codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-text codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">Stay Detection Radius: 100m</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">GPS Accuracy Threshold: 100m</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">Minimum Accuracy Ratio: 30%</span><br></span></code></pre></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="troubleshooting">Troubleshooting<a href="#troubleshooting" class="hash-link" aria-label="Direct link to Troubleshooting" title="Direct link to Troubleshooting" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="problem-gps-points-at-one-location-create-multiple-stays">Problem: GPS points at one location create multiple stays<a href="#problem-gps-points-at-one-location-create-multiple-stays" class="hash-link" aria-label="Direct link to Problem: GPS points at one location create multiple stays" title="Direct link to Problem: GPS points at one location create multiple stays" translate="no">​</a></h3>
+<p><strong>Possible Causes:</strong></p>
+<ul>
+<li class="">Stay radius too small for GPS accuracy</li>
+<li class="">GPS drift exceeding radius threshold</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li class="">Increase <strong>Stay Detection Radius</strong> to 75-100m</li>
+<li class="">Check GPS source accuracy settings</li>
+<li class="">Consider defining a Favorite Area for the location</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="problem-nearby-distinct-locations-merge-into-one-stay">Problem: Nearby distinct locations merge into one stay<a href="#problem-nearby-distinct-locations-merge-into-one-stay" class="hash-link" aria-label="Direct link to Problem: Nearby distinct locations merge into one stay" title="Direct link to Problem: Nearby distinct locations merge into one stay" translate="no">​</a></h3>
+<p><strong>Possible Causes:</strong></p>
+<ul>
+<li class="">Stay radius too large</li>
+<li class="">Both locations fall within same radius</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li class="">Decrease <strong>Stay Detection Radius</strong> to 30-40m</li>
+<li class="">Ensure GPS accuracy is sufficient</li>
+<li class="">Define separate Favorite Locations for each place</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="problem-short-stops-arent-being-detected">Problem: Short stops aren&#x27;t being detected<a href="#problem-short-stops-arent-being-detected" class="hash-link" aria-label="Direct link to Problem: Short stops aren&#x27;t being detected" title="Direct link to Problem: Short stops aren&#x27;t being detected" translate="no">​</a></h3>
+<p><strong>Possible Causes:</strong></p>
+<ul>
+<li class="">Minimum stay duration too long</li>
+<li class="">Not enough GPS points during the stop</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li class="">Decrease <strong>Minimum Stay Duration</strong> to 3-5 minutes</li>
+<li class="">Check GPS tracking frequency (should be every 30-60 seconds)</li>
+<li class="">Verify GPS accuracy isn&#x27;t filtering out points</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="problem-traffic-delays-appear-as-stays">Problem: Traffic delays appear as stays<a href="#problem-traffic-delays-appear-as-stays" class="hash-link" aria-label="Direct link to Problem: Traffic delays appear as stays" title="Direct link to Problem: Traffic delays appear as stays" translate="no">​</a></h3>
+<p><strong>Possible Causes:</strong></p>
+<ul>
+<li class="">Minimum stay duration too short</li>
+<li class="">Extended traffic stopped in same location</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li class="">Increase <strong>Minimum Stay Duration</strong> to 10-15 minutes</li>
+<li class="">Use default 7-minute threshold for most cases</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="problem-stays-have-wrong-or-missing-location-names">Problem: Stays have wrong or missing location names<a href="#problem-stays-have-wrong-or-missing-location-names" class="hash-link" aria-label="Direct link to Problem: Stays have wrong or missing location names" title="Direct link to Problem: Stays have wrong or missing location names" translate="no">​</a></h3>
+<p><strong>Possible Causes:</strong></p>
+<ul>
+<li class="">No Favorite Location defined for the place</li>
+<li class="">Geocoding hasn&#x27;t processed the coordinates</li>
+<li class="">Stay centroid is slightly off from actual location</li>
+</ul>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li class="">Create a Favorite Location for frequently visited places</li>
+<li class="">Wait for reverse geocoding to complete</li>
+<li class="">Check if stay radius needs adjustment</li>
+</ol>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="impact-on-timeline-rebuild">Impact on Timeline Rebuild<a href="#impact-on-timeline-rebuild" class="hash-link" aria-label="Direct link to Impact on Timeline Rebuild" title="Direct link to Impact on Timeline Rebuild" translate="no">​</a></h2>
+<p>Changing stay detection settings triggers a <strong>full timeline rebuild</strong>:</p>
+<p><strong>What Changes:</strong></p>
+<ul>
+<li class="">All stays are re-detected with new parameters</li>
+<li class="">Stay boundaries and durations may change</li>
+<li class="">Some stays may split or merge</li>
+</ul>
+<p><strong>What Doesn&#x27;t Change:</strong></p>
+<ul>
+<li class="">Original GPS data remains intact</li>
+<li class="">Favorite locations are preserved</li>
+</ul>
+<div class="theme-admonition theme-admonition-info admonition_xJq3 alert alert--info"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Rebuild Time</div><div class="admonitionContent_BuS1"><p>After changing stay detection settings, the timeline will rebuild from your earliest GPS data. For large datasets, this may take several minutes. You&#x27;ll see a progress indicator showing the rebuild status.</p></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-settings">Related Settings<a href="#related-settings" class="hash-link" aria-label="Direct link to Related Settings" title="Direct link to Related Settings" translate="no">​</a></h2>
+<p>Stay detection works together with other timeline features:</p>
+<ul>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/timeline/trip_detection">Trip Detection</a></strong> - How movement between stays is detected</li>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/timeline/data_gaps">Data Gaps</a></strong> - How missing GPS data is handled</li>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/timeline/travel_classification">Travel Classification</a></strong> - How trip types are determined</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="summary">Summary<a href="#summary" class="hash-link" aria-label="Direct link to Summary" title="Direct link to Summary" translate="no">​</a></h2>
+<p>Stay detection identifies when you&#x27;ve stopped at a location using GPS clustering:</p>
+<ul>
+<li class=""><strong>Clustering algorithm</strong> groups nearby GPS points</li>
+<li class=""><strong>Distance threshold</strong> (Stay Detection Radius) defines cluster size</li>
+<li class=""><strong>Duration threshold</strong> (Minimum Stay Duration) confirms valid stays</li>
+<li class=""><strong>Quality filtering</strong> ensures reliable GPS data</li>
+<li class=""><strong>Favorite Areas</strong> handle large venues specially</li>
+</ul>
+<p>By understanding these settings and adjusting them for your GPS quality and use case, you can ensure GeoPulse accurately captures all your meaningful stays while filtering out noise and false positives.</p></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/user-guide/core-features/managing-places"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Favorites and Geocoding</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/user-guide/timeline/trip_detection"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Trip Detection</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#overview" class="table-of-contents__link toc-highlight">Overview</a></li><li><a href="#the-detection-state-machine" class="table-of-contents__link toc-highlight">The Detection State Machine</a><ul><li><a href="#state-descriptions" class="table-of-contents__link toc-highlight">State Descriptions</a></li></ul></li><li><a href="#how-a-stay-is-detected" class="table-of-contents__link toc-highlight">How a Stay is Detected</a><ul><li><a href="#step-1-initial-clustering" class="table-of-contents__link toc-highlight">Step 1: Initial Clustering</a></li><li><a href="#step-2-distance-check" class="table-of-contents__link toc-highlight">Step 2: Distance Check</a></li><li><a href="#step-3-duration-confirmation" class="table-of-contents__link toc-highlight">Step 3: Duration Confirmation</a></li><li><a href="#step-4-stay-finalization" class="table-of-contents__link toc-highlight">Step 4: Stay Finalization</a></li></ul></li><li><a href="#key-settings-explained" class="table-of-contents__link toc-highlight">Key Settings Explained</a><ul><li><a href="#stay-detection-radius" class="table-of-contents__link toc-highlight">Stay Detection Radius</a></li><li><a href="#minimum-stay-duration" class="table-of-contents__link toc-highlight">Minimum Stay Duration</a></li></ul></li><li><a href="#gps-quality-filtering" class="table-of-contents__link toc-highlight">GPS Quality Filtering</a><ul><li><a href="#accuracy-based-point-filtering" class="table-of-contents__link toc-highlight">Accuracy-Based Point Filtering</a></li><li><a href="#cluster-quality-validation" class="table-of-contents__link toc-highlight">Cluster Quality Validation</a></li><li><a href="#enhanced-filtering-toggle" class="table-of-contents__link toc-highlight">Enhanced Filtering Toggle</a></li></ul></li><li><a href="#favorite-areas-special-handling" class="table-of-contents__link toc-highlight">Favorite Areas: Special Handling</a><ul><li><a href="#the-problem" class="table-of-contents__link toc-highlight">The Problem</a></li><li><a href="#the-solution" class="table-of-contents__link toc-highlight">The Solution</a></li><li><a href="#practical-examples" class="table-of-contents__link toc-highlight">Practical Examples</a></li></ul></li><li><a href="#trip-detection-and-stay-endings" class="table-of-contents__link toc-highlight">Trip Detection and Stay Endings</a><ul><li><a href="#how-movement-is-detected" class="table-of-contents__link toc-highlight">How Movement is Detected</a></li><li><a href="#returning-to-in_trip-mode" class="table-of-contents__link toc-highlight">Returning to IN_TRIP Mode</a></li><li><a href="#trip-ending-detection" class="table-of-contents__link toc-highlight">Trip Ending Detection</a></li></ul></li><li><a href="#location-resolution" class="table-of-contents__link toc-highlight">Location Resolution</a><ul><li><a href="#resolution-priority" class="table-of-contents__link toc-highlight">Resolution Priority</a></li><li><a href="#batch-processing" class="table-of-contents__link toc-highlight">Batch Processing</a></li><li><a href="#what-gets-assigned" class="table-of-contents__link toc-highlight">What Gets Assigned</a></li></ul></li><li><a href="#configuration-recommendations" class="table-of-contents__link toc-highlight">Configuration Recommendations</a><ul><li><a href="#for-different-use-cases" class="table-of-contents__link toc-highlight">For Different Use Cases</a></li><li><a href="#for-different-gps-quality" class="table-of-contents__link toc-highlight">For Different GPS Quality</a></li></ul></li><li><a href="#troubleshooting" class="table-of-contents__link toc-highlight">Troubleshooting</a><ul><li><a href="#problem-gps-points-at-one-location-create-multiple-stays" class="table-of-contents__link toc-highlight">Problem: GPS points at one location create multiple stays</a></li><li><a href="#problem-nearby-distinct-locations-merge-into-one-stay" class="table-of-contents__link toc-highlight">Problem: Nearby distinct locations merge into one stay</a></li><li><a href="#problem-short-stops-arent-being-detected" class="table-of-contents__link toc-highlight">Problem: Short stops aren&#39;t being detected</a></li><li><a href="#problem-traffic-delays-appear-as-stays" class="table-of-contents__link toc-highlight">Problem: Traffic delays appear as stays</a></li><li><a href="#problem-stays-have-wrong-or-missing-location-names" class="table-of-contents__link toc-highlight">Problem: Stays have wrong or missing location names</a></li></ul></li><li><a href="#impact-on-timeline-rebuild" class="table-of-contents__link toc-highlight">Impact on Timeline Rebuild</a></li><li><a href="#related-settings" class="table-of-contents__link toc-highlight">Related Settings</a></li><li><a href="#summary" class="table-of-contents__link toc-highlight">Summary</a></li></ul></div></div></div></div></main></div></div></div></div>
+</body>
+</html>
