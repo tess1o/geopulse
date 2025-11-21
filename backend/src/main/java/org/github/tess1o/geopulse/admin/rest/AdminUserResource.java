@@ -3,15 +3,13 @@ package org.github.tess1o.geopulse.admin.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.service.AdminUserService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
+import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
@@ -36,10 +34,7 @@ public class AdminUserResource {
     AuditLogService auditLogService;
 
     @Inject
-    JsonWebToken jwt;
-
-    @Context
-    SecurityContext securityContext;
+    CurrentUserService currentUserService;
 
     /**
      * Get paginated list of users.
@@ -94,7 +89,7 @@ public class AdminUserResource {
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
 
-        UUID adminId = UUID.fromString(jwt.getSubject());
+        UUID adminId = currentUserService.getCurrentUserId();
 
         // Prevent admin from disabling themselves
         if (id.equals(adminId) && !request.isActive()) {
@@ -123,7 +118,7 @@ public class AdminUserResource {
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
 
-        UUID adminId = UUID.fromString(jwt.getSubject());
+        UUID adminId = currentUserService.getCurrentUserId();
 
         UserEntity user = adminUserService.getUserById(id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -155,7 +150,7 @@ public class AdminUserResource {
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
 
-        UUID adminId = UUID.fromString(jwt.getSubject());
+        UUID adminId = currentUserService.getCurrentUserId();
 
         String tempPassword = adminUserService.resetPassword(id);
 
@@ -178,7 +173,7 @@ public class AdminUserResource {
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp) {
 
-        UUID adminId = UUID.fromString(jwt.getSubject());
+        UUID adminId = currentUserService.getCurrentUserId();
 
         // Prevent admin from deleting themselves
         if (id.equals(adminId)) {

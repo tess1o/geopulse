@@ -127,6 +127,25 @@ public class UserService {
     }
 
     /**
+     * Updates the role of an existing user.
+     * Fetches the user within this transaction to ensure the entity is managed.
+     *
+     * @param userId the user ID
+     * @param role the new role
+     * @return the updated user entity, or empty if user not found
+     */
+    @Transactional
+    public Optional<UserEntity> updateRole(UUID userId, Role role) {
+        UserEntity user = userRepository.findById(userId);
+        if (user != null) {
+            user.setRole(role);
+            // No explicit persist needed - dirty checking handles it within transaction
+            return Optional.of(user);
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Validates timezone to ensure it's a valid IANA timezone identifier.
      * Returns UTC as default if timezone is null or invalid.
      * Also handles timezone name mapping (e.g., Europe/Kiev -> Europe/Kyiv).

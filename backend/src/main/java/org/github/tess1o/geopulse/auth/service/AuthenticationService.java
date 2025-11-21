@@ -120,8 +120,8 @@ public class AuthenticationService {
         if (adminEmail != null && !adminEmail.isBlank() &&
             adminEmail.equalsIgnoreCase(user.getEmail()) &&
             user.getRole() != Role.ADMIN) {
-            user.setRole(Role.ADMIN);
-            userService.persist(user);
+            userService.updateRole(user.getId(), Role.ADMIN);
+            user.setRole(Role.ADMIN); // Update in-memory object for JWT generation
             log.info("Promoted existing user {} to ADMIN role (matches admin email)", user.getEmail());
         }
     }
@@ -146,6 +146,8 @@ public class AuthenticationService {
     private AuthResponse getAuthResponse(UserEntity user) {
         String accessToken = createAccessToken(user);
         String refreshToken = createRefreshToken(user);
+
+        log.info("User role we send to frontend: {}", user.getRole().name());
 
         return AuthResponse.builder()
                 .id(user.getId().toString())
