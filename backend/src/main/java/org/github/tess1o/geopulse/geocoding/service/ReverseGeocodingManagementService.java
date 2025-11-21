@@ -6,7 +6,7 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
@@ -39,7 +39,7 @@ public class ReverseGeocodingManagementService {
 
     private final ReverseGeocodingLocationRepository geocodingRepository;
     private final GeocodingProviderFactory providerFactory;
-    private final GeocodingConfig geocodingConfig;
+    private final GeocodingConfigurationService configService;
     private final ReverseGeocodingDTOMapper dtoMapper;
     private final GeocodingCopyOnWriteHandler copyOnWriteHandler;
 
@@ -47,12 +47,12 @@ public class ReverseGeocodingManagementService {
     public ReverseGeocodingManagementService(
             ReverseGeocodingLocationRepository geocodingRepository,
             GeocodingProviderFactory providerFactory,
-            GeocodingConfig geocodingConfig,
+            GeocodingConfigurationService configService,
             ReverseGeocodingDTOMapper dtoMapper,
             GeocodingCopyOnWriteHandler copyOnWriteHandler) {
         this.geocodingRepository = geocodingRepository;
         this.providerFactory = providerFactory;
-        this.geocodingConfig = geocodingConfig;
+        this.configService = configService;
         this.dtoMapper = dtoMapper;
         this.copyOnWriteHandler = copyOnWriteHandler;
     }
@@ -220,8 +220,8 @@ public class ReverseGeocodingManagementService {
     public List<GeocodingProviderDTO> getEnabledProviders() {
         List<GeocodingProviderDTO> providers = new ArrayList<>();
 
-        String primaryProvider = geocodingConfig.provider().primary();
-        String fallbackProvider = geocodingConfig.provider().fallback().orElse(null);
+        String primaryProvider = configService.getPrimaryProvider();
+        String fallbackProvider = configService.getFallbackProvider();
 
         List<String> enabledProviders = providerFactory.getEnabledProviders();
 

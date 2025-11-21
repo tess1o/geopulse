@@ -17,7 +17,7 @@ import java.util.UUID;
 @Path("/api/statistics")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 @Slf4j
 public class StatisticsResource {
 

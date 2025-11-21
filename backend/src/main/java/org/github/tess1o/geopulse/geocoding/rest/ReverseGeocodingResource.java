@@ -22,7 +22,7 @@ import java.util.UUID;
 @Path("/api/geocoding")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 @Slf4j
 public class ReverseGeocodingResource {
 

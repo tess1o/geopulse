@@ -10,6 +10,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -76,7 +77,7 @@ public class GpsPointServiceTest {
         // Create fresh test user
         UserEntity user = UserEntity.builder()
                 .email("test@test.com" + System.nanoTime()) // Make email unique
-                .role("USER")
+                .role(Role.USER)
                 .passwordHash("pass")
                 .build();
         userRepository.persist(user);

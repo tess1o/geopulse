@@ -73,7 +73,7 @@ public class GpsPointResource {
     @GET
     @Path("/path")
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getGpsPointPath(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime) {
@@ -108,7 +108,7 @@ public class GpsPointResource {
     @GET
     @Path("/summary")
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getGpsPointSummary(
             @QueryParam("startTime") String startTime,
             @QueryParam("endTime") String endTime,
@@ -158,7 +158,7 @@ public class GpsPointResource {
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getGpsPoints(
             @QueryParam("page") @DefaultValue("1") int page,
             @QueryParam("limit") @DefaultValue("50") int limit,
@@ -227,7 +227,7 @@ public class GpsPointResource {
     @GET
     @Path("/export")
     @Produces("text/csv")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response exportGpsPoints(
             @QueryParam("startDate") String startDate,
             @QueryParam("endDate") String endDate,
@@ -449,7 +449,7 @@ public class GpsPointResource {
     @Path("/{pointId}")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response updateGpsPoint(@PathParam("pointId") Long pointId, @Valid EditGpsPointDto editDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to update GPS point {} for user {}", pointId, userId);
@@ -482,7 +482,7 @@ public class GpsPointResource {
      */
     @DELETE
     @Path("/{pointId}")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response deleteGpsPoint(@PathParam("pointId") Long pointId) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete GPS point {} for user {}", pointId, userId);
@@ -517,7 +517,7 @@ public class GpsPointResource {
     @Path("/bulk")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response deleteGpsPoints(@Valid BulkDeleteGpsPointsDto bulkDeleteDto) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to delete {} GPS points for user {}",
@@ -542,7 +542,7 @@ public class GpsPointResource {
     @Path("/last-known-position")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.APPLICATION_JSON)
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getLastKnownPosition() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Received request to get last known position for user {}", userId);

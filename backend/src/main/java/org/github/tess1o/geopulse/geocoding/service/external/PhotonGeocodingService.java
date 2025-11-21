@@ -4,18 +4,21 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.eclipse.microprofile.faulttolerance.Bulkhead;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
-import org.eclipse.microprofile.rest.client.inject.RestClient;
 import org.github.tess1o.geopulse.geocoding.adapter.PhotonResponseAdapter;
 import org.github.tess1o.geopulse.geocoding.client.PhotonRestClient;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.locationtech.jts.geom.Point;
 
+import java.net.URI;
 import java.time.temporal.ChronoUnit;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Nominatim geocoding service that handles API calls and response transformation.
@@ -25,17 +28,36 @@ import java.time.temporal.ChronoUnit;
 @Slf4j
 public class PhotonGeocodingService {
 
-    private final PhotonRestClient photonClient;
     private final PhotonResponseAdapter adapter;
-    private final GeocodingConfig config;
+    private final GeocodingConfigurationService configService;
+    private final String defaultUrl;
 
     @Inject
-    public PhotonGeocodingService(@RestClient PhotonRestClient photonClient,
-                                  PhotonResponseAdapter adapter,
-                                  GeocodingConfig config) {
-        this.photonClient = photonClient;
+    public PhotonGeocodingService(PhotonResponseAdapter adapter,
+                                  GeocodingConfigurationService configService,
+                                  @ConfigProperty(name = "quarkus.rest-client.photon-api.url") String defaultUrl) {
         this.adapter = adapter;
-        this.config = config;
+        this.configService = configService;
+        this.defaultUrl = defaultUrl;
+    }
+
+    /**
+     * Get the Photon REST client with the current configured URL.
+     * Builds client dynamically to support runtime URL changes.
+     */
+    private PhotonRestClient getClient() {
+        String url = configService.getPhotonUrl().orElse(defaultUrl);
+        try {
+            return RestClientBuilder.newBuilder()
+                    .baseUri(URI.create(url))
+                    .connectTimeout(10, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .property("microprofile.rest.client.disable.default.mapper", true)
+                    .build(PhotonRestClient.class);
+        } catch (Exception e) {
+            log.error("Failed to build Photon REST client with URL: {}", url, e);
+            throw new RuntimeException("Failed to build Photon REST client", e);
+        }
     }
 
     /**
@@ -60,7 +82,8 @@ public class PhotonGeocodingService {
 
         log.debug("Calling Photon for coordinates: lon={}, lat={}", longitude, latitude);
 
-        return photonClient.getAddress(longitude, latitude)
+        PhotonRestClient client = getClient();
+        return client.getAddress(longitude, latitude)
                 .map(response -> {
                     log.debug("Photon response received: {}", response);
                     return adapter.adapt(response, requestCoordinates, getProviderName());
@@ -81,7 +104,7 @@ public class PhotonGeocodingService {
      * @return true if enabled
      */
     public boolean isEnabled() {
-        return config.provider().photon().enabled();
+        return configService.isPhotonEnabled();
     }
 
     /**

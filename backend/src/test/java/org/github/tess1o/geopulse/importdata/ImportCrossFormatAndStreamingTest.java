@@ -73,7 +73,6 @@ public class ImportCrossFormatAndStreamingTest {
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);
-        testUser.setRole("USER");
         testUser.setCreatedAt(Instant.now());
         testUser.setUpdatedAt(Instant.now());
         userRepository.persist(testUser);

@@ -25,6 +25,8 @@ export const useAuthStore = defineStore('auth', {
         measureUnit: (state) => state.user?.measureUnit || 'METRIC',
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         shareLocationWithFriends: (state) => state.user?.shareLocationWithFriends ?? true,
+        userRole: (state) => state.user?.role || 'USER',
+        isAdmin: (state) => state.user?.role === 'ADMIN',
     },
 
     actions: {
@@ -46,7 +48,8 @@ export const useAuthStore = defineStore('auth', {
                     customMapTileUrl: user.customMapTileUrl || '',
                     measureUnit: user.measureUnit || 'METRIC',
                     defaultRedirectUrl: user.defaultRedirectUrl || '',
-                    shareLocationWithFriends: user.shareLocationWithFriends ?? true
+                    shareLocationWithFriends: user.shareLocationWithFriends ?? true,
+                    role: user.role || 'USER'
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
                 timezone.setTimezone(user.timezone || 'UTC');
@@ -182,7 +185,8 @@ export const useAuthStore = defineStore('auth', {
                     customMapTileUrl: userInfo.customMapTileUrl || '',
                     measureUnit: userInfo.measureUnit || 'METRIC',
                     defaultRedirectUrl: userInfo.defaultRedirectUrl || '',
-                    shareLocationWithFriends: userInfo.shareLocationWithFriends ?? true
+                    shareLocationWithFriends: userInfo.shareLocationWithFriends ?? true,
+                    role: userInfo.role || 'USER'
                 }
 
                 this.setUser(user)

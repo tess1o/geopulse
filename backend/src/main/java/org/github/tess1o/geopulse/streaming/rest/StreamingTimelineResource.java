@@ -55,7 +55,7 @@ public class StreamingTimelineResource {
     org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
 
     @GET
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getTimeline(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Streaming timeline request from user {} for period {} to {}", userId, startTime, endTime);
@@ -104,7 +104,7 @@ public class StreamingTimelineResource {
      */
     @GET
     @Path("/count")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getTimelineCount(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
         UUID userId = currentUserService.getCurrentUserId();
         log.debug("Timeline count request from user {} for period {} to {}", userId, startTime, endTime);
@@ -153,7 +153,7 @@ public class StreamingTimelineResource {
      */
     @GET
     @Path("/user/preferences")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getUserPreferences() {
         UUID userId = currentUserService.getCurrentUserId();
 
@@ -180,7 +180,7 @@ public class StreamingTimelineResource {
      */
     @POST
     @Path("/regenerate-all")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response regenerateAllTimeline() {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Full streaming timeline regeneration requested by user {}", userId);
@@ -216,7 +216,7 @@ public class StreamingTimelineResource {
      */
     @GET
     @Path("/jobs/{jobId}")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getJobProgress(@PathParam("jobId") String jobId) {
         UUID userId = currentUserService.getCurrentUserId();
 
@@ -258,7 +258,7 @@ public class StreamingTimelineResource {
      */
     @GET
     @Path("/jobs/active")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getActiveJob() {
         UUID userId = currentUserService.getCurrentUserId();
 
@@ -286,7 +286,7 @@ public class StreamingTimelineResource {
      */
     @GET
     @Path("/jobs/history")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getJobHistory() {
         UUID userId = currentUserService.getCurrentUserId();
 

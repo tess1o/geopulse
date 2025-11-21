@@ -7,6 +7,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.insight.model.JourneyInsights;
 import org.github.tess1o.geopulse.insight.service.JourneyInsightService;
 
@@ -14,18 +15,18 @@ import java.util.UUID;
 
 @Path("/api/journey-insights")
 @Produces(MediaType.APPLICATION_JSON)
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 public class JourneyInsightResource {
 
     @Inject
-    JsonWebToken jwt;
+    CurrentUserService currentUserService;
 
     @Inject
     JourneyInsightService journeyInsightService;
 
     @GET
     public JourneyInsights getJourneyInsights() {
-        UUID userId = UUID.fromString(jwt.getSubject());
+        UUID userId = currentUserService.getCurrentUserId();
         return journeyInsightService.getJourneyInsights(userId);
     }
 }

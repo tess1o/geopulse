@@ -73,6 +73,32 @@ const requireGuest = async (to, from, next) => {
     }
 }
 
+// Admin guard function
+const requireAdmin = async (to, from, next) => {
+    const authStore = useAuthStore()
+
+    try {
+        // Check auth on first navigation
+        if (!authStore.user) {
+            await authStore.checkAuth()
+        }
+
+        // If not authenticated, redirect to login
+        if (!authStore.isAuthenticated) {
+            next('/login')
+        } else if (!authStore.isAdmin) {
+            // If not admin, redirect to timeline
+            next('/app/timeline')
+        } else {
+            next()
+        }
+    } catch (error) {
+        console.log('Admin check failed, redirecting to login')
+        authStore.clearUser()
+        next('/login')
+    }
+}
+
 const routes = [
     {
         path: '/app',
@@ -240,6 +266,37 @@ const routes = [
           message: route.query.message,
           details: route.query.details
         })
+    },
+    // Admin routes
+    {
+        path: '/app/admin',
+        name: 'Admin Dashboard',
+        component: () => import('@/views/app/admin/AdminDashboardPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
+        path: '/app/admin/settings',
+        name: 'Admin Settings',
+        component: () => import('@/views/app/admin/AdminSettingsPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
+        path: '/app/admin/users',
+        name: 'Admin Users',
+        component: () => import('@/views/app/admin/AdminUsersPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
+        path: '/app/admin/users/:id',
+        name: 'Admin User Details',
+        component: () => import('@/views/app/admin/AdminUserDetailsPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
+        path: '/app/admin/oidc-providers',
+        name: 'Admin OIDC Providers',
+        component: () => import('@/views/app/admin/AdminOidcProvidersPage.vue'),
+        beforeEnter: requireAdmin
     },
     {
         path: '/:pathMatch(.*)*',

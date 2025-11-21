@@ -138,4 +138,47 @@ public class GpsPointsMetrics {
             );
         }
     }
+
+    /**
+     * Check if metrics are enabled
+     * @return true if metrics are enabled
+     */
+    public boolean isEnabled() {
+        return prometheusEnabled && gpsPointsMetricsEnabled;
+    }
+
+    /**
+     * Get total number of GPS points (queries DB directly if metrics disabled)
+     * @return total GPS points count
+     */
+    public long getTotalGpsPoints() {
+        if (!isEnabled()) {
+            return gpsRepository.count();
+        }
+        return totalGpsPoints.get();
+    }
+
+    /**
+     * Get last GPS point timestamp (Unix timestamp in seconds)
+     * @return last GPS timestamp
+     */
+    public long getLastGpsTimestamp() {
+        return lastGpsTimestamp.get();
+    }
+
+    /**
+     * Get number of GPS points added in last 24 hours
+     * @return GPS points in last 24 hours
+     */
+    public long getGpsPointsLast24h() {
+        return gpsPointsLast24h.get();
+    }
+
+    /**
+     * Get average GPS points per user
+     * @return average GPS points per user
+     */
+    public long getAvgGpsPointsPerUser() {
+        return avgGpsPointsPerUser.get();
+    }
 }

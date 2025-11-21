@@ -3,45 +3,35 @@ package org.github.tess1o.geopulse.auth.config;
 import io.quarkus.runtime.Startup;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.Config;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 
 import jakarta.inject.Inject;
 
+/**
+ * Service for authentication configuration.
+ * Uses SystemSettingsService for dynamic settings that can be changed via admin panel.
+ */
 @ApplicationScoped
 @Slf4j
 @Startup
 public class AuthConfigurationService {
 
     @Inject
-    Config config;
-
-    @ConfigProperty(name = "geopulse.auth.registration.enabled", defaultValue = "true")
-    boolean registrationEnabled;
-
-    @ConfigProperty(name = "geopulse.auth.password-registration.enabled", defaultValue = "true")
-    boolean passwordRegistrationEnabled;
-
-    @ConfigProperty(name = "geopulse.auth.oidc.registration.enabled", defaultValue = "true")
-    boolean oidcRegistrationEnabled;
-
-    private static final String DEPRECATED_PROPERTY = "geoupuse.auth.sign-up-enabled";
+    SystemSettingsService settingsService;
 
     public boolean isPasswordRegistrationEnabled() {
-        boolean specificPasswordEnabled = passwordRegistrationEnabled;
-
-        // Check for deprecated property if new one is not explicitly set
-        if (config.getOptionalValue("geopulse.auth.password-registration.enabled", String.class).isEmpty() &&
-            config.getOptionalValue(DEPRECATED_PROPERTY, String.class).isPresent()) {
-            specificPasswordEnabled = config.getValue(DEPRECATED_PROPERTY, Boolean.class);
-            log.warn("The configuration property '{}' is deprecated and will be removed in a future release. Please use '{}' instead.",
-                    DEPRECATED_PROPERTY, "geopulse.auth.password-registration.enabled");
-        }
-
-        return registrationEnabled && specificPasswordEnabled;
+        boolean registrationEnabled = settingsService.getBoolean("auth.registration.enabled");
+        boolean passwordEnabled = settingsService.getBoolean("auth.password-registration.enabled");
+        return registrationEnabled && passwordEnabled;
     }
 
     public boolean isOidcRegistrationEnabled() {
-        return registrationEnabled && oidcRegistrationEnabled;
+        boolean registrationEnabled = settingsService.getBoolean("auth.registration.enabled");
+        boolean oidcEnabled = settingsService.getBoolean("auth.oidc.registration.enabled");
+        return registrationEnabled && oidcEnabled;
+    }
+
+    public boolean isAutoLinkAccountsEnabled() {
+        return settingsService.getBoolean("auth.oidc.auto-link-accounts");
     }
 }

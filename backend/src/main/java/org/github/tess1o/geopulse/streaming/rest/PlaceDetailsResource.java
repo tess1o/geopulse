@@ -51,7 +51,7 @@ public class PlaceDetailsResource {
      */
     @GET
     @Path("/{type}/{id}")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getPlaceDetails(@PathParam("type") String type, @PathParam("id") Long id) {
         UUID userId = currentUserService.getCurrentUserId();
         log.info("Place details request from user {} for {}:{}", userId, type, id);
@@ -88,7 +88,7 @@ public class PlaceDetailsResource {
      */
     @GET
     @Path("/{type}/{id}/visits")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getPlaceVisits(
             @PathParam("type") String type,
             @PathParam("id") Long id,
@@ -132,7 +132,7 @@ public class PlaceDetailsResource {
      */
     @PUT
     @Path("/{type}/{id}")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response updatePlaceName(
             @PathParam("type") String type,
             @PathParam("id") Long id,
@@ -179,7 +179,7 @@ public class PlaceDetailsResource {
     @GET
     @Path("/{type}/{id}/visits/export")
     @Produces("text/csv")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response exportPlaceVisits(
             @PathParam("type") String type,
             @PathParam("id") Long id,

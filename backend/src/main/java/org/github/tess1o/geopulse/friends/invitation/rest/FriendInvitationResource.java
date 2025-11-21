@@ -29,7 +29,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 @Slf4j
-@RolesAllowed("USER")
+@RolesAllowed({"USER", "ADMIN"})
 public class FriendInvitationResource {
     private final FriendInvitationService friendInvitationService;
     private final CurrentUserService currentUserService;

@@ -163,7 +163,7 @@ public class OidcAuthenticationResource {
      */
     @POST
     @Path("/link/{provider}")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response initiateLinking(@PathParam("provider") String providerName,
                                     @QueryParam("redirectUri") @DefaultValue("/app/profile") String redirectUri) {
         try {
@@ -183,7 +183,7 @@ public class OidcAuthenticationResource {
      */
     @DELETE
     @Path("/unlink/{provider}")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response unlinkProvider(@PathParam("provider") String providerName) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -206,7 +206,7 @@ public class OidcAuthenticationResource {
      */
     @GET
     @Path("/connections")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getUserConnections() {
         try {
             UUID userId = currentUserService.getCurrentUserId();

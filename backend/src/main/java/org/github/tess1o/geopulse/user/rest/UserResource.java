@@ -73,7 +73,7 @@ public class UserResource {
 
     @POST
     @Path("/update")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response updateProfile(@Valid UpdateProfileRequest request) {
         try {
             if (request.getUserId() == null) {
@@ -96,7 +96,7 @@ public class UserResource {
 
     @POST
     @Path("/changePassword")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response changePassword(@Valid UpdateUserPasswordRequest request) {
         try {
             if (request.getUserId() == null) {
@@ -121,7 +121,7 @@ public class UserResource {
     }
 
     @PUT
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Path("/preferences/timeline")
     public Response updateTimelinePreferences(@Valid UpdateTimelinePreferencesRequest request) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -144,7 +144,7 @@ public class UserResource {
     }
 
     @DELETE
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     @Path("/preferences/timeline")
     public Response resetPreferencesToDefaults() {
         UUID userId = currentUserService.getCurrentUserId();
@@ -171,7 +171,7 @@ public class UserResource {
      */
     @GET
     @Path("/me")
-    @RolesAllowed("USER")
+    @RolesAllowed({"USER", "ADMIN"})
     public Response getCurrentUserProfile() {
         try {
             UserEntity user = currentUserService.getCurrentUser();

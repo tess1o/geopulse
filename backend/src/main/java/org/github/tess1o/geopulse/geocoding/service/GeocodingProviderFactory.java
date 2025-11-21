@@ -4,7 +4,7 @@ import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.service.external.GoogleMapsGeocodingService;
@@ -27,19 +27,19 @@ public class GeocodingProviderFactory {
     private final GoogleMapsGeocodingService googleMapsService;
     private final MapboxGeocodingService mapboxService;
     private final PhotonGeocodingService photonService;
-    private final GeocodingConfig geocodingConfig;
+    private final GeocodingConfigurationService configService;
 
     @Inject
     public GeocodingProviderFactory(NominatimGeocodingService nominatimService,
                                     GoogleMapsGeocodingService googleMapsService,
                                     MapboxGeocodingService mapboxService,
                                     PhotonGeocodingService photonService,
-                                    GeocodingConfig geocodingConfig) {
+                                    GeocodingConfigurationService configService) {
         this.nominatimService = nominatimService;
         this.googleMapsService = googleMapsService;
         this.mapboxService = mapboxService;
         this.photonService = photonService;
-        this.geocodingConfig = geocodingConfig;
+        this.configService = configService;
     }
 
     /**
@@ -49,23 +49,20 @@ public class GeocodingProviderFactory {
      * @return Structured geocoding result
      */
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
+        String primaryProvider = configService.getPrimaryProvider();
         log.debug("Reverse geocoding coordinates: lon={}, lat={} using primary provider: {}",
-                requestCoordinates.getX(), requestCoordinates.getY(), geocodingConfig.provider().primary());
+                requestCoordinates.getX(), requestCoordinates.getY(), primaryProvider);
 
         // Try primary provider
-        Uni<FormattableGeocodingResult> primaryResult = callProvider(geocodingConfig.provider().primary(), requestCoordinates);
+        Uni<FormattableGeocodingResult> primaryResult = callProvider(primaryProvider, requestCoordinates);
 
         // If fallback is configured, try it on primary failure
-        // Treat empty/blank strings as "no fallback configured"
-        Optional<String> fallbackProvider = geocodingConfig.provider().fallback()
-                .filter(s -> !s.isBlank())
-                .filter(s -> !s.equalsIgnoreCase(geocodingConfig.provider().primary()));
-
-        if (fallbackProvider.isPresent()) {
+        String fallbackProvider = configService.getFallbackProvider();
+        if (!fallbackProvider.isEmpty() && !fallbackProvider.equalsIgnoreCase(primaryProvider)) {
             return primaryResult.onFailure().recoverWithUni(failure -> {
                 log.warn("Primary provider '{}' failed, trying fallback provider '{}'",
-                        geocodingConfig.provider().primary(), fallbackProvider.get(), failure);
-                return callProvider(fallbackProvider.get(), requestCoordinates);
+                        primaryProvider, fallbackProvider, failure);
+                return callProvider(fallbackProvider, requestCoordinates);
             });
         } else {
             log.debug("No valid fallback provider configured, returning primary result");

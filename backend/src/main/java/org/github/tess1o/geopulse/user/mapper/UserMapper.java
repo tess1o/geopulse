@@ -26,7 +26,7 @@ public class UserMapper {
                 .email(entity.getEmail())
                 .avatar(entity.getAvatar())
                 .fullName(entity.getFullName())
-                .role(entity.getRole())
+                .role(entity.getRole() != null ? entity.getRole().name() : "USER")
                 .hasPassword(entity.getPasswordHash() != null)
                 .timezone(entity.getTimezone())
                 .customMapTileUrl(entity.getCustomMapTileUrl())

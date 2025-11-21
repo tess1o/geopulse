@@ -69,6 +69,10 @@ public class AuthenticationResource {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("Invalid password"))
                     .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
         } catch (Exception e) {
             log.info("Authentication failed for user {}", request.getEmail(), e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -99,6 +103,10 @@ public class AuthenticationResource {
         } catch (InvalidPasswordException e) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("Invalid password"))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
             log.info("API authentication failed for user {}", request.getEmail(), e);

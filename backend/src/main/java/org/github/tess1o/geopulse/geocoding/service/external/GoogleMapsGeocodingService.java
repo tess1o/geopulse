@@ -5,7 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.client.GoogleMapsRestClient;
-import org.github.tess1o.geopulse.geocoding.config.GeocodingConfig;
+import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.eclipse.microprofile.faulttolerance.Bulkhead;
 import org.eclipse.microprofile.faulttolerance.CircuitBreaker;
 import org.eclipse.microprofile.faulttolerance.Retry;
@@ -27,15 +27,15 @@ public class GoogleMapsGeocodingService {
 
     private final GoogleMapsRestClient googleMapsClient;
     private final GoogleMapsResponseAdapter adapter;
-    private final GeocodingConfig config;
+    private final GeocodingConfigurationService configService;
 
     @Inject
     public GoogleMapsGeocodingService(@RestClient GoogleMapsRestClient googleMapsClient,
                                     GoogleMapsResponseAdapter adapter,
-                                    GeocodingConfig config) {
+                                    GeocodingConfigurationService configService) {
         this.googleMapsClient = googleMapsClient;
         this.adapter = adapter;
-        this.config = config;
+        this.configService = configService;
     }
 
     /**
@@ -55,7 +55,7 @@ public class GoogleMapsGeocodingService {
             return Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled"));
         }
 
-        String apiKey = config.googlemaps().apiKey();
+        String apiKey = configService.getGoogleMapsApiKey();
         if (apiKey.isEmpty()) {
             return Uni.createFrom().failure(new GeocodingException("Google Maps API key not configured"));
         }
@@ -85,11 +85,12 @@ public class GoogleMapsGeocodingService {
 
     /**
      * Check if this provider is enabled and properly configured.
-     * 
+     *
      * @return true if enabled and has API key
      */
     public boolean isEnabled() {
-        return config.provider().googlemaps().enabled() && !config.googlemaps().apiKey().isEmpty();
+        String apiKey = configService.getGoogleMapsApiKey();
+        return configService.isGoogleMapsEnabled() && apiKey != null && !apiKey.isBlank();
     }
 
     /**
