@@ -56,7 +56,7 @@ entries:
     created: "2025-11-14T21:43:48.795407+02:00"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
-    digest: f105f38163321c6b091d7e7b0c8c3f4d1946f3015977fe45906d1a9756b5f3a7
+    digest: f105f38163321.6.091d7e7b0c8c3f4d1946f3015977fe45906d1a9756b5f3a7
     home: https://github.com/tess1o/geopulse
     icon: https://raw.githubusercontent.com/tess1o/geopulse/main/frontend/public/geopulse-logo.svg
     keywords:
