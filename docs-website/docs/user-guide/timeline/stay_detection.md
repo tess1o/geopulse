@@ -452,7 +452,6 @@ Stay detection works together with other timeline features:
 - **[Trip Detection](/docs/user-guide/timeline/trip_detection)** - How movement between stays is detected
 - **[Data Gaps](/docs/user-guide/timeline/data_gaps)** - How missing GPS data is handled
 - **[Travel Classification](/docs/user-guide/timeline/travel_classification)** - How trip types are determined
-- **[Favorite Locations](/docs/user-guide/personalization/favorite-locations)** - Creating areas for better stay detection
 
 ---
 
