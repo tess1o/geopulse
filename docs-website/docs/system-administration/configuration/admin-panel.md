@@ -88,6 +88,7 @@ The dashboard also provides quick links to:
 - **User Invitations** - Generate invitation links for new users
 - **OIDC Providers** - Configure authentication providers
 - **System Settings** - Configure system-wide settings
+- **Audit Logs** - Review administrative actions and system changes
 
 ---
 
@@ -316,6 +317,123 @@ The following tabs show planned features:
 - **GPS Processing:** Stay detection algorithms, accuracy filtering, batch processing
 - **Import:** Import job limits and concurrent processing settings
 - **System:** Performance tuning, database maintenance, metrics configuration
+
+---
+
+## Audit Logs
+
+Navigate to **Admin Dashboard > Audit Logs** or `/app/admin/audit-logs`.
+
+The Audit Logs page provides a comprehensive view of all administrative actions performed in your GeoPulse instance, allowing administrators to track system changes, investigate issues, and maintain security compliance.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Complete Action History** | All administrative actions are automatically logged |
+| **Detailed Context** | Each log entry includes before/after values and full action context |
+| **Powerful Filtering** | Filter by date range, action type, target type, and admin user |
+| **IP Tracking** | Records the IP address for each administrative action |
+| **Expandable Details** | View full JSON details for each action with formatted viewer |
+
+### Audit Table
+
+The audit log table displays the following information:
+
+| Column | Description |
+|--------|-------------|
+| **Timestamp** | Date and time when the action occurred |
+| **Admin** | Email address of the administrator who performed the action |
+| **Action** | Type of action with color-coded icon and tag |
+| **Target Type** | Type of entity affected (Setting, User, OIDC Provider, Invitation) |
+| **Target ID** | Identifier of the affected entity |
+| **IP Address** | IP address from which the action was performed |
+
+### Available Filters
+
+Use the filter panel to narrow down audit log entries:
+
+| Filter | Description |
+|--------|-------------|
+| **Date Range** | Select a start and end date to view actions within a specific time period |
+| **Action Type** | Filter by specific administrative actions (see Action Types below) |
+| **Target Type** | Filter by entity type (Setting, User, OIDC Provider, Invitation) |
+| **Admin Email** | Search for actions performed by a specific administrator |
+
+### Action Types
+
+The following administrative actions are logged:
+
+**User Management:**
+- `USER_ENABLED` - User account was enabled
+- `USER_DISABLED` - User account was disabled
+- `USER_DELETED` - User account was permanently deleted
+- `USER_ROLE_CHANGED` - User role was changed (e.g., promoted to admin)
+- `USER_PASSWORD_RESET` - User password was reset by an administrator
+
+**System Settings:**
+- `SETTING_CHANGED` - A system setting value was modified
+- `SETTING_RESET` - A system setting was reset to default value
+
+**OIDC Providers:**
+- `OIDC_PROVIDER_CREATED` - New OIDC authentication provider was added
+- `OIDC_PROVIDER_UPDATED` - OIDC provider configuration was modified
+- `OIDC_PROVIDER_DELETED` - OIDC provider was removed
+- `OIDC_PROVIDER_RESET` - OIDC provider was reset to environment defaults
+
+**User Invitations:**
+- `INVITATION_CREATED` - New user invitation was generated
+- `INVITATION_REVOKED` - Pending invitation was revoked
+
+**Administrative:**
+- `ADMIN_LOGIN` - Administrator logged into the system
+
+### Action Details
+
+Click on any row to expand and view detailed information:
+
+| Detail | Description |
+|--------|-------------|
+| **JSON Viewer** | Formatted view of the complete action context, including before/after values where applicable |
+| **Admin User ID** | UUID of the administrator who performed the action |
+| **Full Timestamp** | Complete date and time with timezone |
+
+The JSON details typically include:
+- Previous and new values for modifications
+- User email for user-related actions
+- Setting key and values for configuration changes
+- Provider details for OIDC operations
+- Token information for invitations
+
+### Use Cases
+
+**Security Monitoring:**
+- Track who is accessing admin functions
+- Identify unauthorized or suspicious administrative actions
+- Monitor user role changes and deletions
+
+**Compliance:**
+- Maintain audit trail for regulatory requirements
+- Review configuration changes and their timeline
+- Document user account lifecycle events
+
+**Troubleshooting:**
+- Investigate when and how settings were changed
+- Trace the history of user account issues
+- Identify the source of configuration problems
+
+**Accountability:**
+- See which administrator made specific changes
+- Review actions performed during a particular time period
+- Track OIDC provider and invitation management
+
+:::tip Best Practice
+Regularly review audit logs to ensure administrative actions align with your organization's policies and to detect any unusual activity early.
+:::
+
+:::note
+Audit logs are stored permanently in the database and are not automatically deleted. Consider implementing a data retention policy if storage becomes a concern.
+:::
 
 ---
 

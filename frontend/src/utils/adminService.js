@@ -202,6 +202,17 @@ const adminService = {
         return apiService.delete(`/admin/invitations/${invitationId}`);
     },
 
+    // ==================== Audit Log Management ====================
+
+    /**
+     * Get audit logs with pagination and filters
+     * @param {Object} params - Query parameters (page, size, actionType, targetType, adminUserId, from, to)
+     * @returns {Promise<Object>} Paginated audit log list
+     */
+    async getAuditLogs(params = {}) {
+        return apiService.get('/admin/audit-logs', params);
+    },
+
     // ==================== Dashboard Stats ====================
 
     /**

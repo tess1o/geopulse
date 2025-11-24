@@ -21,6 +21,7 @@ import org.github.tess1o.geopulse.admin.model.*;
                 UserListResponse.class,
                 SettingInfo.class,
                 SettingDefinition.class,
+                AuditLogResponse.class,
                 // Invitation DTOs
                 InvitationResponse.class,
                 InvitationResponse.AdminUserInfo.class,

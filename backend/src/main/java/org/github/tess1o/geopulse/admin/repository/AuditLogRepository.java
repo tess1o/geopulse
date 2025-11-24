@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.admin.model.AuditLogEntity;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,25 +29,31 @@ public class AuditLogRepository implements PanacheRepositoryBase<AuditLogEntity,
             int size) {
 
         StringBuilder query = new StringBuilder("1=1");
+        List<Object> params = new ArrayList<>();
+        int paramIndex = 1;
 
         if (actionType != null) {
-            query.append(" and actionType = ?1");
+            query.append(" and actionType = ?").append(paramIndex++);
+            params.add(actionType);
         }
         if (targetType != null) {
-            query.append(" and targetType = ?2");
+            query.append(" and targetType = ?").append(paramIndex++);
+            params.add(targetType);
         }
         if (adminUserId != null) {
-            query.append(" and adminUserId = ?3");
+            query.append(" and adminUserId = ?").append(paramIndex++);
+            params.add(adminUserId);
         }
         if (from != null) {
-            query.append(" and timestamp >= ?4");
+            query.append(" and timestamp >= ?").append(paramIndex++);
+            params.add(from);
         }
         if (to != null) {
-            query.append(" and timestamp <= ?5");
+            query.append(" and timestamp <= ?").append(paramIndex++);
+            params.add(to);
         }
 
-        return find(query.toString(), Sort.descending("timestamp"),
-                actionType, targetType, adminUserId, from, to)
+        return find(query.toString(), Sort.descending("timestamp"), params.toArray())
                 .page(Page.of(page, size))
                 .list();
     }
@@ -59,24 +66,31 @@ public class AuditLogRepository implements PanacheRepositoryBase<AuditLogEntity,
             Instant to) {
 
         StringBuilder query = new StringBuilder("1=1");
+        List<Object> params = new ArrayList<>();
+        int paramIndex = 1;
 
         if (actionType != null) {
-            query.append(" and actionType = ?1");
+            query.append(" and actionType = ?").append(paramIndex++);
+            params.add(actionType);
         }
         if (targetType != null) {
-            query.append(" and targetType = ?2");
+            query.append(" and targetType = ?").append(paramIndex++);
+            params.add(targetType);
         }
         if (adminUserId != null) {
-            query.append(" and adminUserId = ?3");
+            query.append(" and adminUserId = ?").append(paramIndex++);
+            params.add(adminUserId);
         }
         if (from != null) {
-            query.append(" and timestamp >= ?4");
+            query.append(" and timestamp >= ?").append(paramIndex++);
+            params.add(from);
         }
         if (to != null) {
-            query.append(" and timestamp <= ?5");
+            query.append(" and timestamp <= ?").append(paramIndex++);
+            params.add(to);
         }
 
-        return count(query.toString(), actionType, targetType, adminUserId, from, to);
+        return count(query.toString(), params.toArray());
     }
 
     public List<AuditLogEntity> findByAdminUserId(UUID adminUserId, int page, int size) {
