@@ -20,10 +20,11 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * CRITICAL CLASSIFICATION ORDER:
  * 1. FLIGHT - highest priority (400+ km/h avg OR 500+ km/h peak)
  * 2. TRAIN - high speed with low variance (30-150 km/h, variance < 15)
- * 3. BICYCLE - medium speeds (8-25 km/h) - MUST be before CAR!
- * 4. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
- * 5. WALK - low speeds (<= 6 km/h avg, <= 8 km/h peak)
- * 6. UNKNOWN - fallback
+ * 3. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
+ * 4. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
+ * 5. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
+ * 6. WALK - low speeds (<= 6 km/h avg, <= 8 km/h peak)
+ * 7. UNKNOWN - fallback
  */
 @ApplicationScoped
 @Slf4j
@@ -243,10 +244,11 @@ public class TravelClassification {
      * CRITICAL PRIORITY ORDER:
      * 1. FLIGHT - highest priority (unambiguous speeds)
      * 2. TRAIN - before CAR (uses variance discriminator)
-     * 3. BICYCLE - BEFORE CAR (overlapping speeds)
-     * 4. CAR - mandatory type
-     * 5. WALK - mandatory type
-     * 6. UNKNOWN - fallback
+     * 3. BICYCLE - checked before RUNNING (higher speeds)
+     * 4. RUNNING - BEFORE CAR (overlapping speeds)
+     * 5. CAR - mandatory type
+     * 6. WALK - mandatory type
+     * 7. UNKNOWN - fallback
      *
      * @param avgSpeedKmh   average speed in km/h
      * @param maxSpeedKmh   maximum speed in km/h
@@ -293,8 +295,7 @@ public class TravelClassification {
         }
 
         // 3. BICYCLE - medium speeds
-        //    CRITICAL: MUST be checked BEFORE CAR due to overlapping speeds (8-25 km/h)
-        //    Also captures running/jogging (8-15 km/h)
+        //    CRITICAL: MUST be checked BEFORE RUNNING due to higher speeds (8-25 km/h)
         if (Boolean.TRUE.equals(config.getBicycleEnabled()) &&
                 avgSpeedKmh >= config.getBicycleMinAvgSpeed() &&
                 avgSpeedKmh <= config.getBicycleMaxAvgSpeed() &&
@@ -302,23 +303,33 @@ public class TravelClassification {
             return BICYCLE;
         }
 
-        // 4. CAR - motorized transport (mandatory)
-        //    CRITICAL: Checked AFTER BICYCLE to avoid capturing bicycle trips
+        // 4. RUNNING - medium-low speeds
+        //    CRITICAL: MUST be checked BEFORE CAR due to overlapping speeds (7-14 km/h)
+        //    Conservative thresholds to distinguish from fast walking and slow cycling
+        if (Boolean.TRUE.equals(config.getRunningEnabled()) &&
+                avgSpeedKmh >= config.getRunningMinAvgSpeed() &&
+                avgSpeedKmh <= config.getRunningMaxAvgSpeed() &&
+                maxSpeedKmh <= config.getRunningMaxMaxSpeed()) {
+            return RUNNING;
+        }
+
+        // 5. CAR - motorized transport (mandatory)
+        //    CRITICAL: Checked AFTER BICYCLE and RUNNING to avoid capturing human-powered trips
         //    Uses OR logic: avg >= 10 OR max >= 15
         if (avgSpeedKmh >= config.getCarMinAvgSpeed() ||
                 maxSpeedKmh >= config.getCarMinMaxSpeed()) {
             return CAR;
         }
 
-        // 5. WALK - low speeds (mandatory)
+        // 6. WALK - low speeds (mandatory)
         //    Both avg AND max must be within walking range
         if (avgSpeedKmh <= config.getWalkingMaxAvgSpeed() &&
                 maxSpeedKmh <= config.getWalkingMaxMaxSpeed()) {
             return WALK;
         }
 
-        // 6. UNKNOWN - fallback for edge cases
-        //    Example: 7 km/h avg (above walk, below bicycle if disabled, below car min)
+        // 7. UNKNOWN - fallback for edge cases
+        //    Example: 7 km/h avg (above walk, below running if disabled, below car min)
         return UNKNOWN;
     }
 

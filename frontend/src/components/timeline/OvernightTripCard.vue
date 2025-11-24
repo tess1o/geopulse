@@ -84,6 +84,7 @@ const getMovementIcon = () => {
   switch (props.tripItem.movementType) {
     case 'WALK': return '🚶'
     case 'BICYCLE': return '🚴'
+    case 'RUNNING': return '🏃'
     case 'CAR': return '🚗'
     case 'TRAIN': return '🚊'
     case 'FLIGHT': return '✈️'
@@ -100,6 +101,7 @@ const formatMovementType = (type) => {
   const movementTypeMap = {
     WALK: 'Walk',
     BICYCLE: 'Bicycle',
+    RUNNING: 'Running',
     CAR: 'Car',
     TRAIN: 'Train',
     FLIGHT: 'Flight',

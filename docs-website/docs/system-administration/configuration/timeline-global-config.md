@@ -74,18 +74,33 @@ Car classification uses **OR logic**: a trip is classified as CAR if **either** 
 
 ### Bicycle Classification (Optional)
 
-Bicycle is an optional trip type for detecting cycling and running. **Disabled by default.**
+Bicycle is an optional trip type for detecting cycling. **Disabled by default.**
 
 :::warning Classification Priority
-Bicycle must be checked **before** Car in the classification algorithm because their speed ranges overlap (8-25 km/h). If disabled, trips in this range will be classified as CAR instead.
+Bicycle must be checked **before** RUNNING and CAR in the classification algorithm because their speed ranges overlap. If disabled, trips in the cycling range will be classified as RUNNING (if enabled) or CAR.
 :::
 
 | Property                              | Default | Description                                                                       |
 |---------------------------------------|---------|-----------------------------------------------------------------------------------|
 | `GEOPULSE_TIMELINE_BICYCLE_ENABLED`       | `false` | Whether bicycle classification is enabled                                         |
-| `GEOPULSE_TIMELINE_BICYCLE_MIN_AVG_SPEED` | `8.0`   | Minimum average speed (km/h) for bicycle trips. Slower trips classify as walking  |
+| `GEOPULSE_TIMELINE_BICYCLE_MIN_AVG_SPEED` | `8.0`   | Minimum average speed (km/h) for bicycle trips. Slower trips classify as running or walking  |
 | `GEOPULSE_TIMELINE_BICYCLE_MAX_AVG_SPEED` | `25.0`  | Maximum average speed (km/h) for bicycle trips. Faster trips classify as car      |
 | `GEOPULSE_TIMELINE_BICYCLE_MAX_MAX_SPEED` | `35.0`  | Maximum peak speed (km/h) for bicycle trips. Allows for downhill segments/e-bikes |
+
+### Running Classification (Optional)
+
+Running is an optional trip type for detecting running and jogging. **Disabled by default.**
+
+:::warning Classification Priority
+Running must be checked **before** CAR in the classification algorithm because their speed ranges overlap (7-14 km/h). When disabled, running speeds are classified as BICYCLE (if enabled) or CAR.
+:::
+
+| Property                              | Default | Description                                                                       |
+|---------------------------------------|---------|-----------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_RUNNING_ENABLED`       | `false` | Whether running classification is enabled                                         |
+| `GEOPULSE_TIMELINE_RUNNING_MIN_AVG_SPEED` | `7.0`   | Minimum average speed (km/h) for running trips. Slower trips classify as walking  |
+| `GEOPULSE_TIMELINE_RUNNING_MAX_AVG_SPEED` | `14.0`  | Maximum average speed (km/h) for running trips. Faster trips classify as bicycle or car |
+| `GEOPULSE_TIMELINE_RUNNING_MAX_MAX_SPEED` | `18.0`  | Maximum peak speed (km/h) for running trips. Allows for sprint segments |
 
 ### Train Classification (Optional)
 
@@ -124,13 +139,14 @@ The system evaluates trip types in this specific order:
 
 1. **FLIGHT** - Highest priority (400+ km/h avg OR 500+ km/h peak)
 2. **TRAIN** - High speed with low variance (30-150 km/h, variance < 15)
-3. **BICYCLE** - Medium speeds (8-25 km/h) - **Must be before CAR!**
-4. **CAR** - Motorized transport (8+ km/h avg OR 15+ km/h peak)
-5. **WALK** - Low speeds (≤6 km/h avg, ≤8 km/h peak)
-6. **UNKNOWN** - Fallback for edge cases
+3. **BICYCLE** - Medium speeds (8-25 km/h) - **Checked before RUNNING!**
+4. **RUNNING** - Medium-low speeds (7-14 km/h) - **Must be before CAR!**
+5. **CAR** - Motorized transport (10+ km/h avg OR 15+ km/h peak)
+6. **WALK** - Low speeds (≤6 km/h avg, ≤8 km/h peak)
+7. **UNKNOWN** - Fallback for edge cases
 
 :::danger Important
-The order is critical! BICYCLE must be checked before CAR because their speed ranges overlap. Changing the order will cause misclassification.
+The order is critical! BICYCLE and RUNNING must be checked before CAR because their speed ranges overlap. Changing the order will cause misclassification.
 :::
 
 ### GPS Noise Detection

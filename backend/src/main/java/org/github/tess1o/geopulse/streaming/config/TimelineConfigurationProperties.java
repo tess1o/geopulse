@@ -137,6 +137,23 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String bicycleMaxMaxSpeed;
 
+    // Optional Trip Types - Running
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.running.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String runningEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.running.min_avg_speed", defaultValue = "7.0")
+    @StaticInitSafe
+    String runningMinAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.running.max_avg_speed", defaultValue = "14.0")
+    @StaticInitSafe
+    String runningMaxAvgSpeed;
+
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.running.max_max_speed", defaultValue = "18.0")
+    @StaticInitSafe
+    String runningMaxMaxSpeed;
+
     // Optional Trip Types - Train
     @ConfigProperty(name = "geopulse.timeline.travel.classification.train.enabled", defaultValue = "false")
     @StaticInitSafe

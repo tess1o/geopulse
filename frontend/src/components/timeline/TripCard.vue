@@ -73,6 +73,7 @@ const timezone = useTimezone()
 const movementTypeMap = {
   WALK: { label: 'Walk', icon: '🚶' },
   BICYCLE: { label: 'Bicycle', icon: '🚴' },
+  RUNNING: { label: 'Running', icon: '🏃' },
   CAR: { label: 'Car', icon: '🚗' },
   TRAIN: { label: 'Train', icon: '🚊' },
   FLIGHT: { label: 'Flight', icon: '✈️' },

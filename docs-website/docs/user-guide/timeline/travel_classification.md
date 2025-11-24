@@ -13,9 +13,9 @@ GeoPulse automatically analyzes your trips to determine how you traveled  wheth
 
 When GeoPulse detects that you're moving between two locations (a trip), it analyzes the GPS data to classify the trip type. This classification is based primarily on:
 
-- **Average Speed**  Your typical speed throughout the trip
-- **Maximum Speed**  The highest speed reached during the trip
-- **Speed Variance**  How consistent your speed was (important for distinguishing trains from cars)
+- **Average Speed**  -  Your typical speed throughout the trip
+- **Maximum Speed**  -  The highest speed reached during the trip
+- **Speed Variance**  -  How consistent your speed was (important for distinguishing trains from cars)
 
 The system then compares these metrics against configurable thresholds to determine which mode of transport best matches your trip characteristics.
 
@@ -29,17 +29,18 @@ GeoPulse supports both **mandatory** and **optional** trip types:
 
 These types are always enabled and cannot be disabled:
 
-- **WALK**  Low-speed movement (walking, jogging)
-- **CAR**  Motorized transport including cars, buses, motorcycles
-- **UNKNOWN**  Trips that don't clearly match any category
+- **WALK**  -  Low-speed movement (walking, slow jogging)
+- **CAR**  -  Motorized transport including cars, buses, motorcycles
+- **UNKNOWN**  -  Trips that don't clearly match any category
 
 ### Optional Types
 
 These types can be enabled or disabled in your Timeline Preferences:
 
-- **BICYCLE**  Medium-speed cycling or running
-- **TRAIN**  High-speed rail travel with consistent speeds
-- **FLIGHT**  Air travel with very high speeds
+- **BICYCLE**  -  Medium-speed cycling
+- **RUNNING**  -  Medium-low speed running and jogging
+- **TRAIN**  -  High-speed rail travel with consistent speeds
+- **FLIGHT**  -  Air travel with very high speeds
 
 :::tip
 If you don't use certain travel modes, you can disable them in your Timeline Preferences to improve classification accuracy. For example, if you never cycle, disable **BICYCLE** to prevent car trips from being misclassified.
@@ -53,25 +54,26 @@ If you don't use certain travel modes, you can disable them in your Timeline Pre
 
 The system evaluates trip types in a specific order to ensure accurate classification:
 
-1. **FLIGHT**  Checked first (400+ km/h average OR 500+ km/h peak)
-2. **TRAIN**  High speed with low variance (30-150 km/h, consistent speed)
-3. **BICYCLE**  Medium speeds (8-25 km/h)  **Must be before CAR!**
-4. **CAR**  Motorized transport (10+ km/h average OR 15+ km/h peak)
-5. **WALK**  Low speeds (d6 km/h average, d8 km/h peak)
-6. **UNKNOWN**  Fallback for edge cases
+1. **FLIGHT**  -  Checked first (400+ km/h average OR 500+ km/h peak)
+2. **TRAIN**  -  High speed with low variance (30-150 km/h, consistent speed)
+3. **BICYCLE**  -  Medium speeds (8-25 km/h)  -  **Checked before RUNNING!**
+4. **RUNNING**  -  Medium-low speeds (7-14 km/h)  -  **Must be before CAR!**
+5. **CAR**  -  Motorized transport (10+ km/h average OR 15+ km/h peak)
+6. **WALK**  -  Low speeds (≤6 km/h average, ≤8 km/h peak)
+7. **UNKNOWN**  -  Fallback for edge cases
 
 :::warning Important
-**BICYCLE must be checked before CAR** because their speed ranges overlap (8-25 km/h). If BICYCLE is disabled, those trips will be classified as CAR instead.
+**BICYCLE and RUNNING must be checked before CAR** because their speed ranges overlap. The order matters: BICYCLE (8-25 km/h) is checked first to catch faster speeds, then RUNNING (7-14 km/h), then CAR. If BICYCLE or RUNNING are disabled, those trips will be classified as the next matching type or CAR.
 :::
 
 ### GPS Data Quality
 
 GeoPulse includes sophisticated GPS noise detection to ensure accurate classification:
 
-- **Supersonic Speed Detection**  Rejects impossible speeds above 1,200 km/h (GPS noise)
-- **Reliability Validation**  Compares GPS speeds against calculated speeds from distance/duration
-- **Adaptive Thresholds**  Uses different validation rules for low-speed vs. high-speed trips
-- **Smart Fallbacks**  Automatically switches to calculated speeds when GPS data is unreliable
+- **Supersonic Speed Detection**  -  Rejects impossible speeds above 1,200 km/h (GPS noise)
+- **Reliability Validation**  -  Compares GPS speeds against calculated speeds from distance/duration
+- **Adaptive Thresholds**  -  Uses different validation rules for low-speed vs. high-speed trips
+- **Smart Fallbacks**  -  Automatically switches to calculated speeds when GPS data is unreliable
 
 ### Special Cases
 
@@ -83,8 +85,8 @@ Uses OR logic for flight detection: if **either** average speed e400 km/h **or**
 **Train vs. Car Distinction**
 Trains typically maintain consistent speeds (low variance) while cars have variable speeds due to traffic, stops, and acceleration. A trip with 60 km/h average might be classified as TRAIN if speed variance is low, or CAR if variance is high.
 
-**Bicycle vs. Car Overlap**
-Speeds between 10-25 km/h could be either cycling or slow driving. The system checks BICYCLE thresholds first. If BICYCLE is disabled, these trips default to CAR.
+**Bicycle vs. Running vs. Car Overlap**
+Speeds between 7-25 km/h could be cycling, running, or slow driving. The system checks in priority order: BICYCLE first (8-25 km/h), then RUNNING (7-14 km/h), then CAR. If BICYCLE or RUNNING are disabled, trips in their ranges will be classified as the next matching type or CAR.
 
 **Walking Verification**
 After initial classification, the system double-checks WALK classifications. If the calculated speed exceeds the walking threshold by more than 20%, the trip is reclassified as CAR. This catches cases where GPS noise made a car trip appear slower than it was.
@@ -136,8 +138,22 @@ You can fine-tune travel classification in **Timeline Preferences** to match you
 - **Bicycle Max Average Speed** (default: 25 km/h)
   Maximum average speed for cycling trips. Faster trips are classified as CAR.
 
-- **Bicycle Max Maximum Speed** (default: 30 km/h)
-  Maximum peak speed allowed for bicycle trips.
+- **Bicycle Max Maximum Speed** (default: 35 km/h)
+  Maximum peak speed allowed for bicycle trips. Allows for downhill segments and e-bikes.
+
+#### Running Settings (Optional)
+
+- **Enable Running** (default: disabled)
+  Toggle to enable/disable running classification. When disabled, running speeds are classified as BICYCLE (if enabled) or CAR.
+
+- **Running Min Average Speed** (default: 7 km/h)
+  Minimum average speed for running trips. Slower trips are classified as WALK.
+
+- **Running Max Average Speed** (default: 14 km/h)
+  Maximum average speed for running trips. Faster trips are classified as BICYCLE (if enabled) or CAR.
+
+- **Running Max Maximum Speed** (default: 18 km/h)
+  Maximum peak speed allowed for running trips. Allows for sprint segments.
 
 #### Train Settings (Optional)
 
@@ -221,9 +237,9 @@ You can fine-tune travel classification in **Timeline Preferences** to match you
 
 Trip classifications appear in several places throughout GeoPulse:
 
-- **Timeline View**  Each trip shows an icon indicating its type (walking person, car, bicycle, train, airplane)
-- **Journey Insights**  Breakdown of trips by type with statistics
-- **Dashboard**  Summary of travel modes used over time periods
+- **Timeline View**  -  Each trip shows an icon indicating its type (walking person, car, bicycle, train, airplane)
+- **Journey Insights**  -  Breakdown of trips by type with statistics
+- **Dashboard**  -  Summary of travel modes used over time periods
 
 ### Trip Type Icons
 
@@ -240,11 +256,11 @@ Trip classifications appear in several places throughout GeoPulse:
 
 A trip may be classified as UNKNOWN for several reasons:
 
-1. **GPS Noise**  Impossible speeds detected (>1,200 km/h), likely due to GPS errors
-2. **Speed in Gray Area**  Speed falls between classification thresholds
+1. **GPS Noise**  -  Impossible speeds detected (>1,200 km/h), likely due to GPS errors
+2. **Speed in Gray Area**  -  Speed falls between classification thresholds
    - Example: 7 km/h (above WALK max of 6, below CAR min of 10, BICYCLE disabled)
-3. **Missing GPS Data**  Insufficient speed information to make a determination
-4. **Disabled Optional Types**  Trip matches an optional type that's currently disabled
+3. **Missing GPS Data**  -  Insufficient speed information to make a determination
+4. **Disabled Optional Types**  -  Trip matches an optional type that's currently disabled
 
 :::tip
 If you see many UNKNOWN classifications, try enabling more optional trip types (BICYCLE, TRAIN, FLIGHT) or adjusting your speed thresholds to reduce gaps between categories.
@@ -296,10 +312,10 @@ Example: Trip initially classified as WALK with GPS showing 5 km/h, but calculat
 
 ### For Accurate Classification
 
-1. **Enable relevant optional types**  If you cycle, take trains, or fly, enable those classifications
-2. **Calibrate to your patterns**  Adjust speed thresholds based on your actual travel speeds
-3. **Consider your location**  Urban heavy traffic may need lower CAR min speeds
-4. **Monitor UNKNOWN trips**  If you see many UNKNOWN classifications, review and adjust thresholds
+1. **Enable relevant optional types**  -  If you cycle, take trains, or fly, enable those classifications
+2. **Calibrate to your patterns**  -  Adjust speed thresholds based on your actual travel speeds
+3. **Consider your location**  -  Urban heavy traffic may need lower CAR min speeds
+4. **Monitor UNKNOWN trips**  -  If you see many UNKNOWN classifications, review and adjust thresholds
 
 ### For Specific Use Cases
 

@@ -215,6 +215,156 @@ public class TimelineTripClassificationTest {
     }
 
     // ====================
+    // RUNNING TESTS
+    // ====================
+
+    @Test
+    void testRunningClassification_WhenEnabled() {
+        TimelineConfig runningConfig = TimelineConfig.builder()
+                .runningEnabled(true)
+                .runningMinAvgSpeed(7.0)
+                .runningMaxAvgSpeed(14.0)
+                .runningMaxMaxSpeed(18.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Typical jogging: 12 km/h avg, 14 km/h max
+        TripGpsStatistics stats = new TripGpsStatistics(12.0/3.6, 14.0/3.6, 5.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(20), 4000, runningConfig);
+
+        assertEquals(TripType.RUNNING, result);
+    }
+
+    @Test
+    void testRunningClassification_WhenDisabled() {
+        // Running speeds but running detection disabled
+        TripGpsStatistics stats = new TripGpsStatistics(12.0/3.6, 14.0/3.6, 5.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(20), 4000, config);
+
+        // Should fall back to CAR (since avgSpeed 12 >= carMinAvg 10)
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testRunningToWalkingBoundary() {
+        TimelineConfig runningConfig = TimelineConfig.builder()
+                .runningEnabled(true)
+                .runningMinAvgSpeed(7.0)
+                .runningMaxAvgSpeed(14.0)
+                .runningMaxMaxSpeed(18.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Fast walking: 5.5 km/h avg, 7.5 km/h max - below running min (7.0), within walk limits
+        TripGpsStatistics stats = new TripGpsStatistics(5.5/3.6, 7.5/3.6, 3.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(15), 1400, runningConfig);
+
+        // Should be WALK (below runningMinAvgSpeed 7.0, within walkingMaxAvgSpeed 6.0 and walkingMaxMaxSpeed 8.0)
+        assertEquals(TripType.WALK, result);
+    }
+
+    @Test
+    void testRunningToCyclingBoundary_ExceedsMaxAvgSpeed() {
+        TimelineConfig runningConfig = TimelineConfig.builder()
+                .runningEnabled(true)
+                .runningMinAvgSpeed(7.0)
+                .runningMaxAvgSpeed(14.0)
+                .runningMaxMaxSpeed(18.0)
+                .bicycleEnabled(false)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        // Fast running: 15 km/h avg exceeds runningMaxAvgSpeed (14)
+        TripGpsStatistics stats = new TripGpsStatistics(15.0/3.6, 17.0/3.6, 6.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(10), 2500, runningConfig);
+
+        // Should fall back to CAR (bicycle disabled, exceeds running max)
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testRunningToCyclingBoundary_ExceedsMaxMaxSpeed() {
+        TimelineConfig runningConfig = TimelineConfig.builder()
+                .runningEnabled(true)
+                .runningMinAvgSpeed(7.0)
+                .runningMaxAvgSpeed(14.0)
+                .runningMaxMaxSpeed(18.0)
+                .bicycleEnabled(false)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        // Sprint interval run: 13 km/h avg, but 20 km/h max exceeds runningMaxMaxSpeed (18)
+        TripGpsStatistics stats = new TripGpsStatistics(13.0/3.6, 20.0/3.6, 7.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(12), 2600, runningConfig);
+
+        // Should fall back to CAR (exceeds running max peak speed)
+        assertEquals(TripType.CAR, result);
+    }
+
+    @Test
+    void testBicycleTakesPriorityOverRunning() {
+        TimelineConfig bothConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .runningEnabled(true)
+                .runningMinAvgSpeed(7.0)
+                .runningMaxAvgSpeed(14.0)
+                .runningMaxMaxSpeed(18.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        // Speed in overlap range (12 km/h): matches both BICYCLE and RUNNING
+        TripGpsStatistics stats = new TripGpsStatistics(12.0/3.6, 14.0/3.6, 5.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(20), 4000, bothConfig);
+
+        // BICYCLE should win (checked before RUNNING in priority order)
+        assertEquals(TripType.BICYCLE, result);
+    }
+
+    @Test
+    void testRunningWithBicycleEnabled_SlowRun() {
+        TimelineConfig bothConfig = TimelineConfig.builder()
+                .bicycleEnabled(true)
+                .bicycleMinAvgSpeed(8.0)
+                .bicycleMaxAvgSpeed(25.0)
+                .bicycleMaxMaxSpeed(35.0)
+                .runningEnabled(true)
+                .runningMinAvgSpeed(7.0)
+                .runningMaxAvgSpeed(14.0)
+                .runningMaxMaxSpeed(18.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        // Slow run: 7.5 km/h avg - below bicycle min (8.0), within running range
+        TripGpsStatistics stats = new TripGpsStatistics(7.5/3.6, 9.0/3.6, 4.0, 0);
+
+        TripType result = classification.classifyTravelType(stats, Duration.ofMinutes(25), 3100, bothConfig);
+
+        // Should be RUNNING (below bicycleMinAvgSpeed, within running range)
+        assertEquals(TripType.RUNNING, result);
+    }
+
+    // ====================
     // TRAIN TESTS
     // ====================
 

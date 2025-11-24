@@ -88,7 +88,7 @@ const props = defineProps({
   type: {
     type: String,
     required: true,
-    validator: (value) => ['walk', 'bicycle', 'car', 'train', 'flight'].includes(value)
+    validator: (value) => ['walk', 'bicycle', 'running', 'car', 'train', 'flight'].includes(value)
   },
   title: {
     type: String,

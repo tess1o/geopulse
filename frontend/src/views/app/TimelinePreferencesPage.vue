@@ -286,6 +286,8 @@
                           <i class="pi pi-arrow-right"></i>
                           <span class="priority-step">🚴 BICYCLE</span>
                           <i class="pi pi-arrow-right"></i>
+                          <span class="priority-step">🏃 RUNNING</span>
+                          <i class="pi pi-arrow-right"></i>
                           <span class="priority-step">🚗 CAR</span>
                           <i class="pi pi-arrow-right"></i>
                           <span class="priority-step">🚶 WALK</span>
@@ -294,7 +296,7 @@
                         </div>
                         <p class="priority-description">
                           Trips are classified in priority order from top to bottom. Once a match is found, classification stops.
-                          This order handles overlapping speed ranges correctly - e.g., a 20 km/h trip matches BICYCLE before reaching CAR.
+                          This order handles overlapping speed ranges correctly - e.g., a 12 km/h trip matches BICYCLE before RUNNING, and RUNNING before CAR.
                         </p>
                       </div>
                     </div>
@@ -373,7 +375,7 @@
                     title="Bicycle"
                     subtitle="Optional transport type"
                     icon="pi pi-circle"
-                    description="Detects cycling trips (8-25 km/h typical range). Also captures running/jogging. Priority order ensures correct classification even with speed overlap with cars."
+                    description="Detects cycling trips (8-25 km/h typical range). Priority order ensures correct classification even with speed overlap with running and cars."
                     v-model:enabled="prefs.bicycleEnabled"
                     :collapsible="true"
                     :validation-messages="getWarningMessagesForType('bicycle').value"
@@ -382,7 +384,7 @@
                       <div class="parameter-group">
                         <label class="parameter-label">Minimum Average Speed</label>
                         <p class="parameter-description">
-                          Trips slower than this will be classified as walking
+                          Trips slower than this will be classified as running or walking
                         </p>
                         <div class="control-value">{{ prefs.bicycleMinAvgSpeed }} km/h</div>
                         <SliderControl
@@ -420,6 +422,65 @@
                           v-model="prefs.bicycleMaxMaxSpeed"
                           :min="20.0" :max="50.0" :step="5.0"
                           :labels="['20.0 km/h (City)', '35.0 km/h (Default)', '50.0 km/h (E-bike)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+                    </template>
+                  </TransportTypeCard>
+
+                  <!-- Running Classification -->
+                  <TransportTypeCard
+                    type="running"
+                    title="Running"
+                    subtitle="Optional transport type"
+                    icon="pi pi-bolt"
+                    description="Detects running/jogging trips (7-14 km/h typical range). Conservative thresholds separate running from fast walking and slow cycling. When disabled, running speeds are captured by BICYCLE (if enabled) or CAR."
+                    v-model:enabled="prefs.runningEnabled"
+                    :collapsible="true"
+                    :validation-messages="getWarningMessagesForType('running').value"
+                  >
+                    <template #parameters>
+                      <div class="parameter-group">
+                        <label class="parameter-label">Minimum Average Speed</label>
+                        <p class="parameter-description">
+                          Trips slower than this will be classified as walking
+                        </p>
+                        <div class="control-value">{{ prefs.runningMinAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.runningMinAvgSpeed !== undefined"
+                          v-model="prefs.runningMinAvgSpeed"
+                          :min="5.0" :max="10.0" :step="0.5"
+                          :labels="['5.0 km/h (Slow)', '7.0 km/h (Default)', '10.0 km/h (Fast)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Average Speed</label>
+                        <p class="parameter-description">
+                          Trips faster than this will be classified as cycling or motorized transport
+                        </p>
+                        <div class="control-value">{{ prefs.runningMaxAvgSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.runningMaxAvgSpeed !== undefined"
+                          v-model="prefs.runningMaxAvgSpeed"
+                          :min="10.0" :max="18.0" :step="0.5"
+                          :labels="['10.0 km/h (Slow)', '14.0 km/h (Default)', '18.0 km/h (Fast)']"
+                          suffix=" km/h" :decimal-places="1"
+                        />
+                      </div>
+
+                      <div class="parameter-group">
+                        <label class="parameter-label">Maximum Peak Speed</label>
+                        <p class="parameter-description">
+                          Allows for sprint segments while staying below cycling speeds
+                        </p>
+                        <div class="control-value">{{ prefs.runningMaxMaxSpeed }} km/h</div>
+                        <SliderControl
+                          v-if="prefs.runningMaxMaxSpeed !== undefined"
+                          v-model="prefs.runningMaxMaxSpeed"
+                          :min="12.0" :max="25.0" :step="1.0"
+                          :labels="['12.0 km/h (Slow)', '18.0 km/h (Default)', '25.0 km/h (Sprint)']"
                           suffix=" km/h" :decimal-places="1"
                         />
                       </div>
@@ -1183,6 +1244,8 @@ const hasClassificationParameters = (changes) => {
     'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
     // Bicycle
     'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',
+    // Running
+    'runningEnabled', 'runningMinAvgSpeed', 'runningMaxAvgSpeed', 'runningMaxMaxSpeed',
     // Train
     'trainEnabled', 'trainMinAvgSpeed', 'trainMaxAvgSpeed', 'trainMinMaxSpeed',
     'trainMaxMaxSpeed', 'trainMaxSpeedVariance',
