@@ -271,14 +271,146 @@ When `GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS=true`, the system automatically links OID
 3. System automatically links Keycloak to the account and logs the user in
 4. No verification required (trusting that Keycloak verified the email)
 
+## Kubernetes / Helm Configuration
+
+The GeoPulse Helm chart provides native support for OIDC configuration via `values.yaml`. This is the recommended approach for Kubernetes deployments.
+
+### Supported Providers in Helm
+
+The Helm chart supports three OIDC providers out of the box:
+- **Google** (`config.oidc.google`)
+- **Microsoft** (`config.oidc.microsoft`)
+- **Generic OIDC** (`config.oidc.generic`) - for Keycloak, Authentik, Okta, Auth0, etc.
+
+### Google OIDC Configuration
+
+```yaml
+# values.yaml or custom-values.yaml
+config:
+  oidc:
+    enabled: true
+    google:
+      enabled: true
+      clientId: "your-google-client-id.apps.googleusercontent.com"
+      clientSecret: "your-google-client-secret"
+```
+
+Apply with:
+```bash
+helm upgrade geopulse ./helm/geopulse -f custom-values.yaml
+```
+
+### Microsoft Azure AD Configuration
+
+```yaml
+config:
+  oidc:
+    enabled: true
+    microsoft:
+      enabled: true
+      clientId: "your-azure-client-id"
+      clientSecret: "your-azure-client-secret"
+```
+
+### Keycloak / Authentik / Generic OIDC Configuration
+
+```yaml
+config:
+  oidc:
+    enabled: true
+    autoLinkAccounts: false  # See security note above
+    cleanupEnabled: true
+    generic:
+      enabled: true
+      name: "Company SSO"  # Display name in UI
+      clientId: "geopulse"
+      clientSecret: "your-keycloak-client-secret"
+      discoveryUrl: "https://keycloak.example.com/realms/master/.well-known/openid-configuration"
+```
+
+### Multiple Providers in Helm
+
+You can enable multiple providers simultaneously:
+
+```yaml
+config:
+  oidc:
+    enabled: true
+    google:
+      enabled: true
+      clientId: "..."
+      clientSecret: "..."
+    microsoft:
+      enabled: true
+      clientId: "..."
+      clientSecret: "..."
+    generic:
+      enabled: true
+      name: "Company SSO"
+      clientId: "..."
+      clientSecret: "..."
+      discoveryUrl: "..."
+```
+
+### Additional OIDC Providers (Advanced)
+
+If you need to configure OIDC providers beyond the three built-in options (e.g., Auth0, GitLab, multiple Keycloak realms), use custom environment variables:
+
+```yaml
+backend:
+  extraEnv:
+    - name: GEOPULSE_OIDC_PROVIDER_AUTH0_ENABLED
+      value: "true"
+    - name: GEOPULSE_OIDC_PROVIDER_AUTH0_NAME
+      value: "Auth0"
+    - name: GEOPULSE_OIDC_PROVIDER_AUTH0_CLIENT_ID
+      value: "your-auth0-client-id"
+    - name: GEOPULSE_OIDC_PROVIDER_AUTH0_DISCOVERY_URL
+      value: "https://your-domain.auth0.com/.well-known/openid-configuration"
+    - name: GEOPULSE_OIDC_PROVIDER_AUTH0_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: geopulse-oidc-secrets
+          key: auth0-client-secret
+```
+
+First, create the secret:
+```bash
+kubectl create secret generic geopulse-oidc-secrets \
+  --from-literal=auth0-client-secret='your-auth0-client-secret'
+```
+
+### Managing OIDC Secrets in Kubernetes
+
+**Security Best Practices:**
+
+1. **Use Kubernetes Secrets** - Never commit client secrets to Git
+2. **Use Sealed Secrets** - For GitOps workflows, encrypt secrets with Sealed Secrets or External Secrets Operator
+3. **Rotate secrets regularly** - Update secrets periodically and restart pods
+
+**Example using kubectl:**
+```bash
+# Create OIDC secrets
+kubectl create secret generic geopulse-oidc \
+  --from-literal=google-client-secret='...' \
+  --from-literal=microsoft-client-secret='...' \
+  --from-literal=keycloak-client-secret='...'
+
+# Update values.yaml to reference secrets
+# (Note: The Helm chart already handles this automatically)
+```
+
+For more details on Helm configuration, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide).
+
 ## Troubleshooting
 
 **OIDC providers not showing on login page:**
 
-- Verify `GEOPULSE_OIDC_ENABLED=true` is set
+- Verify `GEOPULSE_OIDC_ENABLED=true` is set (or `config.oidc.enabled: true` in Helm)
 - Check that individual provider `_ENABLED=true` settings are configured
 - Ensure all required properties (client-id, client-secret, discovery-url) are provided
 - Check application logs for provider initialization errors
+- For Kubernetes: Verify ConfigMap and Secret contain the OIDC configuration
 
 **Account linking errors:**
 

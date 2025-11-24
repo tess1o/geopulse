@@ -72,3 +72,17 @@ For local/development deployments with HTTP:
 ```bash
 GEOPULSE_AUTH_SECURE_COOKIES=false
 ```
+
+## Kubernetes / Helm Configuration
+
+Configure in `values.yaml`:
+
+```yaml
+config:
+  cookieDomain: ""  # Keep empty for standard nginx deployments
+  authSecureCookies: true  # Set to true for HTTPS/production
+```
+
+Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
+
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#core-configuration).

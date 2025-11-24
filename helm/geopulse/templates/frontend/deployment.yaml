@@ -48,6 +48,10 @@ spec:
           env:
             - name: API_BASE_URL
               value: "/api"
+            - name: CLIENT_MAX_BODY_SIZE
+              value: {{ .Values.frontend.nginx.clientMaxBodySize | quote }}
+            - name: OSM_RESOLVER
+              value: {{ .Values.frontend.nginx.osmResolver | quote }}
           envFrom:
             - configMapRef:
                 name: {{ include "geopulse.fullname" . }}-config

@@ -175,3 +175,25 @@ Detects and handles gaps in GPS data that might indicate missing location inform
 |---------------------------------------------------|---------|-----------------------------------------------------------------|
 | `GEOPULSE_TIMELINE_DATA_GAP_THRESHOLD_SECONDS`    | `10800` | Time threshold (seconds) to consider a gap in data (3 hours)    |
 | `GEOPULSE_TIMELINE_DATA_GAP_MIN_DURATION_SECONDS` | `1800`  | Minimum duration (seconds) for a gap to be significant (30 min) |
+
+## Kubernetes / Helm Configuration
+
+Timeline configuration variables are **not included** in the default Helm chart values to keep it simple. Most users can configure timeline settings via the **Admin Panel UI**.
+
+If you need to override timeline defaults, use custom environment variables:
+
+```yaml
+# custom-values.yaml
+backend:
+  extraEnv:
+    - name: GEOPULSE_TIMELINE_PROCESSING_THREADS
+      value: "4"
+    - name: GEOPULSE_TIMELINE_VIEW_ITEM_LIMIT
+      value: "200"
+    - name: GEOPULSE_TIMELINE_STAYPOINT_RADIUS_METERS
+      value: "75"
+```
+
+Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
+
+For more details on adding custom environment variables, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#advanced-configuration-custom-environment-variables).

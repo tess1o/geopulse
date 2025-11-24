@@ -33,4 +33,20 @@ The registration system checks both the master switch and the specific registrat
   ```
 
 If the master `GEOPULSE_AUTH_REGISTRATION_ENABLED` is `false`, no new users can register, regardless of the other
-settings. The UI will hide all registration buttons and links.  
+settings. The UI will hide all registration buttons and links.
+
+## Kubernetes / Helm Configuration
+
+Configure in `values.yaml`:
+
+```yaml
+config:
+  auth:
+    registrationEnabled: false  # Disable all registration
+    passwordRegistrationEnabled: true
+    oidcRegistrationEnabled: true
+```
+
+Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
+
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#authentication--registration).  

@@ -2,7 +2,7 @@ apiVersion: v2
 name: geopulse
 description: A self-hosted location tracking and analysis platform with PostGIS and optional MQTT support
 type: application
-version: 1.6.0
+version: 1.6.1
 appVersion: "1.6.0"
 keywords:
   - gps

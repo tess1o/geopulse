@@ -29,7 +29,6 @@
 tests/
 *.test
 # Documentation
-README.md
 CONTRIBUTING.md
 LICENSE
 docs/

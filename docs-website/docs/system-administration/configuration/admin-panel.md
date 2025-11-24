@@ -44,12 +44,19 @@ services:
       # ... other environment variables
 ```
 
-### Kubernetes/Helm Example
+### Kubernetes/Helm Configuration
+
+Configure in `values.yaml`:
 
 ```yaml
-env:
-  GEOPULSE_ADMIN_EMAIL: admin@example.com
+config:
+  admin:
+    email: "admin@example.com"
 ```
+
+Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
+
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#admin-configuration).
 
 ---
 

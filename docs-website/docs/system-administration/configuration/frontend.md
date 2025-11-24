@@ -56,3 +56,18 @@ both IpV4 and Ipv6.
 - `CLIENT_MAX_BODY_SIZE` affects all upload endpoints served through Nginx.
 - Ensure that your specified DNS servers are reachable from within the container environment.
 - After modifying environment variables, restart or redeploy the Nginx service for changes to take effect.
+
+## Kubernetes / Helm Configuration
+
+Configure frontend nginx settings in `values.yaml`:
+
+```yaml
+frontend:
+  nginx:
+    clientMaxBodySize: "500M"  # Increase upload limit
+    osmResolver: "127.0.0.11 8.8.8.8"  # DNS resolvers
+```
+
+Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
+
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide).

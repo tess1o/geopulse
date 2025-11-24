@@ -44,7 +44,7 @@ You can selectively enable or disable specific metric categories:
 | `GEOPULSE_PROMETHEUS_GEOCODING_ENABLED`      | `true`  | Enable/disable reverse geocoding metrics.     |
 | `GEOPULSE_PROMETHEUS_MEMORY_ENABLED`         | `true`  | Enable/disable process memory metrics.        |
 
-### Configuration Examples
+### Docker / Docker Compose Configuration
 
 **Enable custom GeoPulse metrics (in addition to default Micrometer metrics):**
 ```bash
@@ -82,8 +82,80 @@ GEOPULSE_PROMETHEUS_GEOCODING_ENABLED=true
 GEOPULSE_PROMETHEUS_MEMORY_ENABLED=true
 ```
 
+### Kubernetes / Helm Configuration
+
+The GeoPulse Helm chart provides native support for Prometheus metrics configuration via `values.yaml`:
+
+**Enable all custom metrics:**
+```yaml
+# values.yaml or custom-values.yaml
+config:
+  prometheus:
+    enabled: true
+    refreshInterval: "10m"
+```
+
+**Enable with custom refresh interval:**
+```yaml
+config:
+  prometheus:
+    enabled: true
+    refreshInterval: "5m"  # Refresh every 5 minutes
+```
+
+**Enable only lightweight metrics (disable per-user metrics):**
+```yaml
+config:
+  prometheus:
+    enabled: true
+    refreshInterval: "10m"
+    # Disable resource-intensive per-user metrics
+    gpsPoints:
+      enabled: false
+    timeline:
+      enabled: false
+    favorites:
+      enabled: false
+    # Keep lightweight aggregate metrics
+    userMetrics:
+      enabled: true
+    geocoding:
+      enabled: true
+    memory:
+      enabled: true
+```
+
+**Apply the configuration:**
+```bash
+helm upgrade geopulse ./helm/geopulse -f custom-values.yaml
+```
+
+**Using with Prometheus Operator / ServiceMonitor:**
+
+If you're using the Prometheus Operator, create a ServiceMonitor to scrape GeoPulse metrics:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: geopulse
+  labels:
+    app: geopulse
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: geopulse
+      app.kubernetes.io/component: backend
+  endpoints:
+  - port: http
+    path: /api/prometheus/metrics
+    interval: 30s
+```
+
+For more details on Helm configuration, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#prometheus-metrics).
+
 :::note
-All configuration changes require an application restart to take effect. These settings are compatible with native images and work at runtime.
+All configuration changes require an application restart to take effect. For Kubernetes deployments, this happens automatically during `helm upgrade`.
 :::
 
 ## Available Metrics

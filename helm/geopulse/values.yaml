@@ -79,6 +79,13 @@ frontend:
     type: ClusterIP
     port: 80
 
+  # Nginx configuration
+  nginx:
+    # Maximum upload file size (for imports, backups)
+    clientMaxBodySize: "200M"
+    # DNS resolver for OSM tile servers
+    osmResolver: "127.0.0.11 8.8.8.8"
+
   resources:
     limits:
       memory: 128Mi
@@ -327,9 +334,119 @@ config:
   # Set to true in production to ensure auth cookies are only sent over HTTPS
   authSecureCookies: false
 
+  # Admin Configuration
+  admin:
+    # Email address to automatically promote to admin role on first login
+    # Leave empty if you don't want to set an initial admin
+    email: ""
+
+  # Authentication & Registration Configuration
+  auth:
+    # Enable/disable user registration (default: true)
+    registrationEnabled: true
+    # Enable password-based registration (default: true)
+    passwordRegistrationEnabled: true
+    # Enable OIDC-based registration (default: true)
+    oidcRegistrationEnabled: true
+
+  # JWT Configuration
+  jwt:
+    # Access token lifespan in seconds (default: 1800 = 30 minutes)
+    accessTokenLifespan: 1800
+    # Refresh token lifespan in seconds (default: 604800 = 7 days)
+    refreshTokenLifespan: 604800
+    # JWT issuer URL (should match your backend URL)
+    issuer: "http://localhost:8080"
+    # Public key location for JWT verification
+    publicKeyLocation: "file:/app/keys/jwt-public-key.pem"
+    # Private key location for JWT signing
+    privateKeyLocation: "file:/app/keys/jwt-private-key.pem"
+
+  # GPS Filtering Configuration
+  gps:
+    # Enable filtering of inaccurate GPS data (default: true)
+    filterInaccurateData: true
+    # Maximum allowed accuracy in meters (points with worse accuracy are filtered)
+    # Default: 100 meters
+    maxAllowedAccuracy: 100
+    # Maximum allowed speed in m/s (points with higher speed are filtered)
+    # Default: 250 m/s (900 km/h - filters unrealistic speeds)
+    maxAllowedSpeed: 250
+
+  # Prometheus Metrics Configuration
+  prometheus:
+    # Enable custom Prometheus metrics collection (default: false)
+    # Note: The /api/prometheus/metrics endpoint is always available
+    # This setting controls whether GeoPulse collects and exposes custom application metrics
+    enabled: false
+    # Refresh interval for metrics collection (default: 10m)
+    refreshInterval: "10m"
+    # Per-metric-class control (all enabled by default when prometheus.enabled=true)
+    gpsPoints:
+      enabled: true
+    userMetrics:
+      enabled: true
+    timeline:
+      enabled: true
+    favorites:
+      enabled: true
+    geocoding:
+      enabled: true
+    memory:
+      enabled: true
+
+  # Geocoding Configuration
+  # Note: Most geocoding settings can also be configured via Admin Panel UI
+  # These values serve as initial defaults or for environments without Admin Panel access
+  geocoding:
+    # Primary geocoding provider (nominatim, photon, googlemaps, mapbox)
+    primaryProvider: "nominatim"
+    # Fallback geocoding provider (optional, leave empty for none)
+    fallbackProvider: ""
+    # Delay between geocoding requests in milliseconds (default: 1000)
+    # Used for rate limiting to respect provider terms of service
+    delayMs: 1000
+
+    # Nominatim (OpenStreetMap) - Free, enabled by default
+    nominatim:
+      enabled: true
+      url: "https://nominatim.openstreetmap.org"
+
+    # Photon (Komoot) - Free alternative
+    photon:
+      enabled: false
+      url: "https://photon.komoot.io"
+
+    # Google Maps - Requires API key
+    googleMaps:
+      enabled: false
+      apiKey: ""  # Stored in secret if provided
+
+    # Mapbox - Requires access token
+    mapbox:
+      enabled: false
+      accessToken: ""  # Stored in secret if provided
+
+  # Location Sharing Configuration
+  share:
+    # Override base URL for share links (optional)
+    # If not set, uses config.uiUrl
+    # Example: "https://geopulse.example.com" or "https://share.example.com"
+    baseUrl: ""
+
+  # OwnTracks Configuration
+  owntracks:
+    # Override ping message timestamps with server time (default: false)
+    # Enable if OwnTracks ping messages have incorrect timestamps
+    pingTimestampOverride: false
+
   # OIDC Configuration (Optional)
   oidc:
     enabled: false
+    # Auto-link OIDC accounts with existing accounts by email (default: false)
+    autoLinkAccounts: false
+    # Enable cleanup of stale OIDC sessions (default: true)
+    cleanupEnabled: true
 
     # Google OIDC
     google:

@@ -75,7 +75,9 @@ configure multiple providers with automatic fallback support. **This configurati
 > addresses in your database (which this app does by default) — you may need a **paid** or **commercial** plan that
 > supports permanent data storage.
 
-# Geocoding Environment Variables
+# Configuration
+
+## Docker / Docker Compose
 
 ```bash
 # Geocoding Service Configuration
@@ -98,3 +100,28 @@ GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
 #Delay between requests to geocoding provider
 GEOPULSE_GEOCODING_DELAY_MS=1000
 ```
+
+## Kubernetes / Helm
+
+Configure geocoding in `values.yaml`:
+
+```yaml
+config:
+  geocoding:
+    primaryProvider: "nominatim"
+    fallbackProvider: "googlemaps"
+    delayMs: 1000
+    nominatim:
+      enabled: true
+      url: "https://nominatim.openstreetmap.org"
+    googleMaps:
+      enabled: true
+      apiKey: "your-api-key"  # Stored as Kubernetes Secret
+    mapbox:
+      enabled: false
+      accessToken: ""
+```
+
+Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
+
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#geocoding-configuration).
