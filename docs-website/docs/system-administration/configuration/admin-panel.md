@@ -1,6 +1,6 @@
 # Admin Panel
 
-GeoPulse includes a built-in Admin Panel for managing users, OIDC providers, and system settings through a web interface. This guide covers how to promote the first administrator and use the available admin features.
+GeoPulse includes a built-in Admin Panel for managing users, user invitations, OIDC providers, and system settings through a web interface. This guide covers how to promote the first administrator and use the available admin features.
 
 ---
 
@@ -85,6 +85,7 @@ The Admin Dashboard (`/app/admin`) provides a system overview with quick statist
 
 The dashboard also provides quick links to:
 - **User Management** - Manage user accounts
+- **User Invitations** - Generate invitation links for new users
 - **OIDC Providers** - Configure authentication providers
 - **System Settings** - Configure system-wide settings
 
@@ -120,6 +121,111 @@ From the User Details page, administrators can:
 
 :::warning
 Be cautious when granting admin privileges. Admins can modify system settings, delete users, and access all administrative functions.
+:::
+
+---
+
+## User Invitations
+
+Navigate to **Admin Dashboard > User Invitations** or `/app/admin/invitations`.
+
+The User Invitations feature allows administrators to generate secure, one-time registration links for inviting specific users to join your GeoPulse instance. **Invitation links work even when public registration is disabled**, making them ideal for private or controlled-access deployments.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Bypass Registration Checks** | Invitation links allow registration even when public registration is disabled |
+| **Single-Use Tokens** | Each invitation can only be used once for registration |
+| **Customizable Expiry** | Set custom expiration dates (default: 7 days) |
+| **Secure Tokens** | 64-character cryptographically secure tokens using SecureRandom |
+| **Status Tracking** | Monitor invitation status (Pending, Used, Expired, Revoked) |
+| **Audit Logging** | All invitation actions are logged for security |
+
+### Creating an Invitation
+
+1. Click **Create Invitation** button
+2. Set the expiration date (or use the default 7-day expiry)
+3. Click **Create**
+4. Copy the generated link and share it with the intended user
+
+The invitation link format:
+```
+https://your-geopulse-instance/register/invite/{token}
+```
+
+### Invitation Statuses
+
+| Status | Description |
+|--------|-------------|
+| **Pending** | Invitation is valid and can be used |
+| **Used** | Invitation was successfully used for registration |
+| **Expired** | Invitation has passed its expiration date |
+| **Revoked** | Invitation was manually revoked by an administrator |
+
+### Managing Invitations
+
+The invitations table displays:
+- **Token** - First 12 characters of the invitation token
+- **Created By** - Administrator who created the invitation
+- **Created** - Creation timestamp
+- **Expires** - Expiration timestamp
+- **Status** - Current invitation status
+- **Used By** - User who registered with this invitation (if used)
+
+### Actions
+
+| Action | Description | Availability |
+|--------|-------------|--------------|
+| **Copy Link** | Copy the invitation URL to clipboard | Pending only |
+| **Revoke** | Cancel an unused invitation | Pending only |
+
+### Configuration
+
+Configure the base URL for invitation links:
+
+| Environment Variable | Default | Description |
+|---------------------|---------|-------------|
+| `GEOPULSE_INVITATION_BASE_URL` | (empty) | Custom domain for invitation links (e.g., https://geopulse.example.com) |
+
+If not set, the frontend will use `window.location.origin` to construct invitation URLs.
+
+**Docker Compose Example:**
+```yaml
+services:
+  geopulse:
+    image: tess1o/geopulse:latest
+    environment:
+      GEOPULSE_INVITATION_BASE_URL: https://geopulse.example.com
+      # ... other environment variables
+```
+
+**Kubernetes/Helm Configuration:**
+```yaml
+config:
+  invitation:
+    baseUrl: "https://geopulse.example.com"
+```
+
+### User Registration Flow
+
+When a user receives an invitation link:
+
+1. User clicks the invitation link
+2. GeoPulse validates the token (checks if it's valid, not expired, not used, not revoked)
+3. User completes the registration form (email, password, name, timezone)
+4. Account is created and invitation is marked as used
+5. User is automatically logged in and redirected to onboarding
+
+:::tip Use Case: Private Deployments
+Invitations are perfect for private GeoPulse instances where you want to control who can register. Simply disable public registration and use invitation links to selectively allow specific users to join.
+:::
+
+:::warning Security Note
+- Invitation tokens are cryptographically secure and cannot be guessed
+- Each token is 64 characters long and can only be used once
+- Expired or revoked invitations cannot be used for registration
+- All invitation actions are logged to the audit log
 :::
 
 ---
@@ -207,7 +313,6 @@ Configure reverse geocoding providers:
 
 The following tabs show planned features:
 
-- **Invite links**: Generate invite links to allow specific users to join your GeoPulse instance, even when public registration is disabled
 - **GPS Processing:** Stay detection algorithms, accuracy filtering, batch processing
 - **Import:** Import job limits and concurrent processing settings
 - **System:** Performance tuning, database maintenance, metrics configuration

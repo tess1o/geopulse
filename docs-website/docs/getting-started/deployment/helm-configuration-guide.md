@@ -1,6 +1,7 @@
 # Helm Chart Configuration Guide
 
-This guide explains how to configure GeoPulse when deployed to Kubernetes using the Helm chart. It covers both built-in configuration options and advanced customization techniques.
+This guide explains how to configure GeoPulse when deployed to Kubernetes using the Helm chart. It covers both built-in
+configuration options and advanced customization techniques.
 
 ## Overview
 
@@ -11,7 +12,8 @@ The GeoPulse Helm chart provides two ways to configure the application:
 
 ## Understanding values.yaml
 
-The Helm chart uses a hierarchical `values.yaml` file to configure GeoPulse. When you install or upgrade the chart, you can override these values:
+The Helm chart uses a hierarchical `values.yaml` file to configure GeoPulse. When you install or upgrade the chart, you
+can override these values:
 
 ```bash
 # Option 1: Command-line flags
@@ -27,19 +29,20 @@ The following features are natively supported in the Helm chart and can be confi
 
 ### Core Configuration
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Frontend URL | `config.uiUrl` | `GEOPULSE_UI_URL` | `http://localhost:5555` |
-| Cookie Domain | `config.cookieDomain` | `GEOPULSE_COOKIE_DOMAIN` | `""` (empty) |
-| Secure Cookies | `config.authSecureCookies` | `GEOPULSE_AUTH_SECURE_COOKIES` | `false` |
+| Feature        | values.yaml Path           | Environment Variable           | Default                 |
+|----------------|----------------------------|--------------------------------|-------------------------|
+| Frontend URL   | `config.uiUrl`             | `GEOPULSE_UI_URL`              | `http://localhost:5555` |
+| Cookie Domain  | `config.cookieDomain`      | `GEOPULSE_COOKIE_DOMAIN`       | `""` (empty)            |
+| Secure Cookies | `config.authSecureCookies` | `GEOPULSE_AUTH_SECURE_COOKIES` | `false`                 |
 
 ### Admin Configuration
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Admin Email | `config.admin.email` | `GEOPULSE_ADMIN_EMAIL` | `""` |
+| Feature     | values.yaml Path     | Environment Variable   | Default |
+|-------------|----------------------|------------------------|---------|
+| Admin Email | `config.admin.email` | `GEOPULSE_ADMIN_EMAIL` | `""`    |
 
 **Example:**
+
 ```yaml
 config:
   admin:
@@ -48,13 +51,14 @@ config:
 
 ### Authentication & Registration
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Registration Enabled | `config.auth.registrationEnabled` | `GEOPULSE_AUTH_REGISTRATION_ENABLED` | `true` |
-| Password Registration | `config.auth.passwordRegistrationEnabled` | `GEOPULSE_AUTH_PASSWORD_REGISTRATION_ENABLED` | `true` |
-| OIDC Registration | `config.auth.oidcRegistrationEnabled` | `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED` | `true` |
+| Feature               | values.yaml Path                          | Environment Variable                          | Default |
+|-----------------------|-------------------------------------------|-----------------------------------------------|---------|
+| Registration Enabled  | `config.auth.registrationEnabled`         | `GEOPULSE_AUTH_REGISTRATION_ENABLED`          | `true`  |
+| Password Registration | `config.auth.passwordRegistrationEnabled` | `GEOPULSE_AUTH_PASSWORD_REGISTRATION_ENABLED` | `true`  |
+| OIDC Registration     | `config.auth.oidcRegistrationEnabled`     | `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED`     | `true`  |
 
 **Example:**
+
 ```yaml
 config:
   auth:
@@ -65,15 +69,16 @@ config:
 
 ### JWT Configuration
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Access Token Lifespan | `config.jwt.accessTokenLifespan` | `GEOPULSE_JWT_ACCESS_TOKEN_LIFESPAN` | `1800` (30 min) |
-| Refresh Token Lifespan | `config.jwt.refreshTokenLifespan` | `GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN` | `604800` (7 days) |
-| JWT Issuer | `config.jwt.issuer` | `GEOPULSE_JWT_ISSUER` | `http://localhost:8080` |
-| Public Key Location | `config.jwt.publicKeyLocation` | `GEOPULSE_JWT_PUBLIC_KEY_LOCATION` | `file:/app/keys/jwt-public-key.pem` |
-| Private Key Location | `config.jwt.privateKeyLocation` | `GEOPULSE_JWT_PRIVATE_KEY_LOCATION` | `file:/app/keys/jwt-private-key.pem` |
+| Feature                | values.yaml Path                  | Environment Variable                  | Default                              |
+|------------------------|-----------------------------------|---------------------------------------|--------------------------------------|
+| Access Token Lifespan  | `config.jwt.accessTokenLifespan`  | `GEOPULSE_JWT_ACCESS_TOKEN_LIFESPAN`  | `1800` (30 min)                      |
+| Refresh Token Lifespan | `config.jwt.refreshTokenLifespan` | `GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN` | `604800` (7 days)                    |
+| JWT Issuer             | `config.jwt.issuer`               | `GEOPULSE_JWT_ISSUER`                 | `http://localhost:8080`              |
+| Public Key Location    | `config.jwt.publicKeyLocation`    | `GEOPULSE_JWT_PUBLIC_KEY_LOCATION`    | `file:/app/keys/jwt-public-key.pem`  |
+| Private Key Location   | `config.jwt.privateKeyLocation`   | `GEOPULSE_JWT_PRIVATE_KEY_LOCATION`   | `file:/app/keys/jwt-private-key.pem` |
 
 **Example:**
+
 ```yaml
 config:
   jwt:
@@ -84,13 +89,14 @@ config:
 
 ### GPS Filtering
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Filter Inaccurate Data | `config.gps.filterInaccurateData` | `GEOPULSE_GPS_FILTER_INACCURATE_DATA_ENABLED` | `true` |
-| Max Allowed Accuracy | `config.gps.maxAllowedAccuracy` | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY` | `100` meters |
-| Max Allowed Speed | `config.gps.maxAllowedSpeed` | `GEOPULSE_GPS_MAX_ALLOWED_SPEED` | `250` m/s |
+| Feature                | values.yaml Path                  | Environment Variable                          | Default      |
+|------------------------|-----------------------------------|-----------------------------------------------|--------------|
+| Filter Inaccurate Data | `config.gps.filterInaccurateData` | `GEOPULSE_GPS_FILTER_INACCURATE_DATA_ENABLED` | `true`       |
+| Max Allowed Accuracy   | `config.gps.maxAllowedAccuracy`   | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY`           | `100` meters |
+| Max Allowed Speed      | `config.gps.maxAllowedSpeed`      | `GEOPULSE_GPS_MAX_ALLOWED_SPEED`              | `250` m/s    |
 
 **Example:**
+
 ```yaml
 config:
   gps:
@@ -101,18 +107,19 @@ config:
 
 ### Prometheus Metrics
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Enabled | `config.prometheus.enabled` | `GEOPULSE_PROMETHEUS_ENABLED` | `false` |
-| Refresh Interval | `config.prometheus.refreshInterval` | `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL` | `10m` |
-| GPS Points Metrics | `config.prometheus.gpsPoints.enabled` | `GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED` | `true` |
-| User Metrics | `config.prometheus.userMetrics.enabled` | `GEOPULSE_PROMETHEUS_USER_METRICS_ENABLED` | `true` |
-| Timeline Metrics | `config.prometheus.timeline.enabled` | `GEOPULSE_PROMETHEUS_TIMELINE_ENABLED` | `true` |
-| Favorites Metrics | `config.prometheus.favorites.enabled` | `GEOPULSE_PROMETHEUS_FAVORITES_ENABLED` | `true` |
-| Geocoding Metrics | `config.prometheus.geocoding.enabled` | `GEOPULSE_PROMETHEUS_GEOCODING_ENABLED` | `true` |
-| Memory Metrics | `config.prometheus.memory.enabled` | `GEOPULSE_PROMETHEUS_MEMORY_ENABLED` | `true` |
+| Feature            | values.yaml Path                        | Environment Variable                       | Default |
+|--------------------|-----------------------------------------|--------------------------------------------|---------|
+| Enabled            | `config.prometheus.enabled`             | `GEOPULSE_PROMETHEUS_ENABLED`              | `false` |
+| Refresh Interval   | `config.prometheus.refreshInterval`     | `GEOPULSE_PROMETHEUS_REFRESH_INTERVAL`     | `10m`   |
+| GPS Points Metrics | `config.prometheus.gpsPoints.enabled`   | `GEOPULSE_PROMETHEUS_GPS_POINTS_ENABLED`   | `true`  |
+| User Metrics       | `config.prometheus.userMetrics.enabled` | `GEOPULSE_PROMETHEUS_USER_METRICS_ENABLED` | `true`  |
+| Timeline Metrics   | `config.prometheus.timeline.enabled`    | `GEOPULSE_PROMETHEUS_TIMELINE_ENABLED`     | `true`  |
+| Favorites Metrics  | `config.prometheus.favorites.enabled`   | `GEOPULSE_PROMETHEUS_FAVORITES_ENABLED`    | `true`  |
+| Geocoding Metrics  | `config.prometheus.geocoding.enabled`   | `GEOPULSE_PROMETHEUS_GEOCODING_ENABLED`    | `true`  |
+| Memory Metrics     | `config.prometheus.memory.enabled`      | `GEOPULSE_PROMETHEUS_MEMORY_ENABLED`       | `true`  |
 
 **Example:**
+
 ```yaml
 config:
   prometheus:
@@ -125,21 +132,22 @@ config:
 
 ### Geocoding Configuration
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Primary Provider | `config.geocoding.primaryProvider` | `GEOPULSE_GEOCODING_PRIMARY_PROVIDER` | `nominatim` |
-| Fallback Provider | `config.geocoding.fallbackProvider` | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `""` |
-| Delay (ms) | `config.geocoding.delayMs` | `GEOPULSE_GEOCODING_DELAY_MS` | `1000` |
-| Nominatim Enabled | `config.geocoding.nominatim.enabled` | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED` | `true` |
-| Nominatim URL | `config.geocoding.nominatim.url` | `GEOPULSE_GEOCODING_NOMINATIM_URL` | `https://nominatim.openstreetmap.org` |
-| Photon Enabled | `config.geocoding.photon.enabled` | `GEOPULSE_GEOCODING_PHOTON_ENABLED` | `false` |
-| Photon URL | `config.geocoding.photon.url` | `GEOPULSE_GEOCODING_PHOTON_URL` | `https://photon.komoot.io` |
-| Google Maps Enabled | `config.geocoding.googleMaps.enabled` | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false` |
-| Google Maps API Key | `config.geocoding.googleMaps.apiKey` | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `""` (secret) |
-| Mapbox Enabled | `config.geocoding.mapbox.enabled` | `GEOPULSE_GEOCODING_MAPBOX_ENABLED` | `false` |
-| Mapbox Access Token | `config.geocoding.mapbox.accessToken` | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | `""` (secret) |
+| Feature             | values.yaml Path                      | Environment Variable                     | Default                               |
+|---------------------|---------------------------------------|------------------------------------------|---------------------------------------|
+| Primary Provider    | `config.geocoding.primaryProvider`    | `GEOPULSE_GEOCODING_PRIMARY_PROVIDER`    | `nominatim`                           |
+| Fallback Provider   | `config.geocoding.fallbackProvider`   | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | `""`                                  |
+| Delay (ms)          | `config.geocoding.delayMs`            | `GEOPULSE_GEOCODING_DELAY_MS`            | `1000`                                |
+| Nominatim Enabled   | `config.geocoding.nominatim.enabled`  | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                |
+| Nominatim URL       | `config.geocoding.nominatim.url`      | `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` |
+| Photon Enabled      | `config.geocoding.photon.enabled`     | `GEOPULSE_GEOCODING_PHOTON_ENABLED`      | `false`                               |
+| Photon URL          | `config.geocoding.photon.url`         | `GEOPULSE_GEOCODING_PHOTON_URL`          | `https://photon.komoot.io`            |
+| Google Maps Enabled | `config.geocoding.googleMaps.enabled` | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               |
+| Google Maps API Key | `config.geocoding.googleMaps.apiKey`  | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `""` (secret)                         |
+| Mapbox Enabled      | `config.geocoding.mapbox.enabled`     | `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               |
+| Mapbox Access Token | `config.geocoding.mapbox.accessToken` | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | `""` (secret)                         |
 
 **Example:**
+
 ```yaml
 config:
   geocoding:
@@ -155,24 +163,40 @@ config:
 
 ### Location Sharing
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| Base URL Override | `config.share.baseUrl` | `GEOPULSE_SHARE_BASE_URL` | `""` (uses uiUrl) |
+| Feature           | values.yaml Path       | Environment Variable      | Default                            |
+|-------------------|------------------------|---------------------------|------------------------------------|
+| Base URL Override | `config.share.baseUrl` | `GEOPULSE_SHARE_BASE_URL` | `""` (uses window.location.origin) |
 
 **Example:**
+
 ```yaml
 config:
   share:
     baseUrl: "https://share.geopulse.example.com"
 ```
 
+### User Invitation
+
+| Feature           | values.yaml Path            | Environment Variable           | Default                            |
+|-------------------|-----------------------------|--------------------------------|------------------------------------|
+| Base URL Override | `config.invitation.baseUrl` | `GEOPULSE_INVITATION_BASE_URL` | `""` (uses window.location.origin) |
+
+**Example:**
+
+```yaml
+config:
+  share:
+    baseUrl: "https://invite.geopulse.example.com"
+```
+
 ### OwnTracks
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
+| Feature                 | values.yaml Path                         | Environment Variable                         | Default |
+|-------------------------|------------------------------------------|----------------------------------------------|---------|
 | Ping Timestamp Override | `config.owntracks.pingTimestampOverride` | `GEOPULSE_OWNTRACKS_PING_TIMESTAMP_OVERRIDE` | `false` |
 
 **Example:**
+
 ```yaml
 config:
   owntracks:
@@ -181,11 +205,11 @@ config:
 
 ### OIDC / SSO Configuration
 
-| Feature | values.yaml Path | Environment Variable | Default |
-|---------|------------------|----------------------|---------|
-| OIDC Enabled | `config.oidc.enabled` | `GEOPULSE_OIDC_ENABLED` | `false` |
+| Feature            | values.yaml Path               | Environment Variable               | Default |
+|--------------------|--------------------------------|------------------------------------|---------|
+| OIDC Enabled       | `config.oidc.enabled`          | `GEOPULSE_OIDC_ENABLED`            | `false` |
 | Auto-Link Accounts | `config.oidc.autoLinkAccounts` | `GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS` | `false` |
-| Cleanup Enabled | `config.oidc.cleanupEnabled` | `GEOPULSE_OIDC_CLEANUP_ENABLED` | `true` |
+| Cleanup Enabled    | `config.oidc.cleanupEnabled`   | `GEOPULSE_OIDC_CLEANUP_ENABLED`    | `true`  |
 
 #### Google OIDC
 
@@ -227,7 +251,8 @@ config:
 
 ## Advanced Configuration: Custom Environment Variables
 
-Some GeoPulse features are not exposed in the default Helm chart `values.yaml`. For these advanced settings, you can add custom environment variables to the backend deployment.
+Some GeoPulse features are not exposed in the default Helm chart `values.yaml`. For these advanced settings, you can add
+custom environment variables to the backend deployment.
 
 ### Method 1: Using extraEnv in values.yaml
 

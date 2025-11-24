@@ -147,8 +147,6 @@ public class AuthenticationService {
         String accessToken = createAccessToken(user);
         String refreshToken = createRefreshToken(user);
 
-        log.info("User role we send to frontend: {}", user.getRole().name());
-
         return AuthResponse.builder()
                 .id(user.getId().toString())
                 .accessToken(accessToken)

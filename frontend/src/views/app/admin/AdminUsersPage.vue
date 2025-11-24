@@ -4,8 +4,18 @@
       <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
 
       <div class="page-header">
-        <h1>User Management</h1>
-        <p class="text-muted">Manage user accounts</p>
+        <div>
+          <h1>User Management</h1>
+          <p class="text-muted">Manage user accounts</p>
+        </div>
+        <router-link to="/app/admin/invitations" class="no-underline">
+          <Button
+            label="User Invitations"
+            icon="pi pi-send"
+            severity="secondary"
+            outlined
+          />
+        </router-link>
       </div>
 
     <div class="card">
@@ -327,12 +337,19 @@ onMounted(() => {
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 1.5rem;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 1.75rem;
+}
+
+.no-underline {
+  text-decoration: none;
 }
 
 .card {

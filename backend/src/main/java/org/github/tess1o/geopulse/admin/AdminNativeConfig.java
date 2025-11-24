@@ -21,16 +21,25 @@ import org.github.tess1o.geopulse.admin.model.*;
                 UserListResponse.class,
                 SettingInfo.class,
                 SettingDefinition.class,
+                // Invitation DTOs
+                InvitationResponse.class,
+                InvitationResponse.AdminUserInfo.class,
+                CreateInvitationRequest.class,
+                CreateInvitationResponse.class,
+                InvitationRegisterRequest.class,
+                ValidateInvitationResponse.class,
                 // Entities
                 OidcProviderEntity.class,
                 SystemSettingsEntity.class,
                 AuditLogEntity.class,
+                UserInvitationEntity.class,
                 // Enums
                 Role.class,
                 ActionType.class,
                 TargetType.class,
                 ValueType.class,
-                SettingsCategory.class
+                SettingsCategory.class,
+                InvitationStatus.class
         }
 )
 public class AdminNativeConfig {

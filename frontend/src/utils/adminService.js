@@ -165,6 +165,43 @@ const adminService = {
         return apiService.delete(`/admin/users/${userId}`);
     },
 
+    // ==================== Invitation Management ====================
+
+    /**
+     * Get all invitations with optional status filter
+     * @param {Object} params - Query parameters (page, size, status)
+     * @returns {Promise<Object>} Paginated invitation list
+     */
+    async getInvitations(params = {}) {
+        return apiService.get('/admin/invitations', params);
+    },
+
+    /**
+     * Get the configured base URL for invitation links
+     * @returns {Promise<Object>} Base URL configuration
+     */
+    async getInvitationBaseUrl() {
+        return apiService.get('/admin/invitations/base-url');
+    },
+
+    /**
+     * Create a new invitation
+     * @param {Object} data - Invitation data (expiresAt)
+     * @returns {Promise<Object>} Created invitation with token and baseUrl
+     */
+    async createInvitation(data = {}) {
+        return apiService.post('/admin/invitations', data);
+    },
+
+    /**
+     * Revoke an invitation
+     * @param {string} invitationId - Invitation ID
+     * @returns {Promise<Object>} Result
+     */
+    async revokeInvitation(invitationId) {
+        return apiService.delete(`/admin/invitations/${invitationId}`);
+    },
+
     // ==================== Dashboard Stats ====================
 
     /**

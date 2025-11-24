@@ -430,8 +430,15 @@ config:
   # Location Sharing Configuration
   share:
     # Override base URL for share links (optional)
-    # If not set, uses config.uiUrl
+    # If not set, uses window.location.origin
     # Example: "https://geopulse.example.com" or "https://share.example.com"
+    baseUrl: ""
+
+  # User Invitation Configuration
+  invitation:
+    # Override base URL for user invitation links (optional)
+    # If not set, uses window.location.origin
+    # Example: "https://geopulse.example.com" or "https://user-invite.example.com"
     baseUrl: ""
 
   # OwnTracks Configuration

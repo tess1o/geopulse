@@ -114,6 +114,56 @@ public class UserService {
         return user;
     }
 
+    /**
+     * Register a new user via invitation.
+     * This method bypasses the registration enabled check to allow invited users
+     * to register even when public registration is disabled.
+     *
+     * @param invitationToken The invitation token (for validation)
+     * @param email    The user email
+     * @param password The password (will be hashed)
+     * @param fullName The user's full name
+     * @param timezone The user's timezone (IANA format)
+     * @return The created user entity
+     * @throws IllegalArgumentException if the user already exists
+     */
+    @Transactional
+    public UserEntity registerUserViaInvitation(String invitationToken, String email, String password, String fullName, String timezone) {
+        // NOTE: This method intentionally bypasses the isPasswordRegistrationEnabled() check
+        // to allow invited users to register even when public registration is disabled.
+
+        // Check if the user already exists
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("User with email " + email + " already exists");
+        }
+
+        // Validate and set timezone (defaults to UTC if null/invalid)
+        String validatedTimezone = validateTimezone(timezone);
+
+        // Determine role - check if email matches admin email
+        Role role = Role.USER;
+        if (adminEmail.isPresent() && !adminEmail.get().isBlank() && adminEmail.get().equalsIgnoreCase(email)) {
+            role = Role.ADMIN;
+            log.info("Promoting user {} to ADMIN role (matches admin email) via invitation", email);
+        }
+
+        // Create a new user entity
+        UserEntity user = UserEntity.builder()
+                .email(email)
+                .fullName(fullName)
+                .role(role)
+                .isActive(true)
+                .emailVerified(false)
+                .passwordHash(securePasswordUtils.hashPassword(password))
+                .timezone(validatedTimezone)
+                .measureUnit(MeasureUnit.METRIC)
+                .build();
+
+        userRepository.persist(user);
+        log.info("User {} registered via invitation token {}", email, invitationToken.substring(0, 8) + "...");
+        return user;
+    }
+
     public Optional<UserEntity> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
