@@ -283,6 +283,12 @@ const adminSystemItems = computed(() => [
     icon: 'pi pi-th-large',
     to: '/app/admin',
     key: 'admin-dashboard'
+  },
+  {
+    label: 'Audit Logs',
+    icon: 'pi pi-history',
+    to: '/app/admin/audit-logs',
+    key: 'admin-audit-logs'
   }
 ])
 

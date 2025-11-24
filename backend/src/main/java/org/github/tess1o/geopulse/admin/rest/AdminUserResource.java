@@ -1,8 +1,10 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.service.AdminUserService;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
@@ -26,6 +29,9 @@ import java.util.stream.Collectors;
 @RolesAllowed("ADMIN")
 @Slf4j
 public class AdminUserResource {
+
+    @Context
+    HttpServerRequest httpRequest;
 
     @Inject
     AdminUserService adminUserService;
@@ -101,7 +107,7 @@ public class AdminUserResource {
         adminUserService.setUserStatus(id, request.isActive());
 
         // Audit log
-        String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logUserStatusChange(adminId, id, request.isActive(), ipAddress);
 
         return Response.ok(Map.of("success", true)).build();
@@ -134,7 +140,7 @@ public class AdminUserResource {
         }
 
         // Audit log
-        String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logUserRoleChange(adminId, id, oldRole, request.getRole().name(), ipAddress);
 
         return Response.ok(Map.of("success", true)).build();
@@ -155,7 +161,7 @@ public class AdminUserResource {
         String tempPassword = adminUserService.resetPassword(id);
 
         // Audit log
-        String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logPasswordReset(adminId, id, ipAddress);
 
         return Response.ok(ResetPasswordResponse.builder()
@@ -196,7 +202,7 @@ public class AdminUserResource {
         }
 
         // Audit log
-        String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logUserDeleted(adminId, id, userEmail, ipAddress);
 
         return Response.ok(Map.of("success", true)).build();

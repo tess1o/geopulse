@@ -1,9 +1,11 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.github.tess1o.geopulse.admin.model.InvitationStatus;
 import org.github.tess1o.geopulse.admin.model.UserInvitationEntity;
 import org.github.tess1o.geopulse.admin.service.UserInvitationService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +28,9 @@ import java.util.UUID;
 @RolesAllowed("ADMIN")
 @Slf4j
 public class AdminInvitationResource {
+
+    @Context
+    HttpServerRequest request;
 
     @Inject
     UserInvitationService invitationService;
@@ -81,17 +87,17 @@ public class AdminInvitationResource {
      */
     @POST
     public Response createInvitation(
-            @Valid CreateInvitationRequest request,
+            @Valid CreateInvitationRequest createRequest,
             @HeaderParam("X-Forwarded-For") String forwardedFor,
             @HeaderParam("X-Real-IP") String realIp
     ) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
 
             UserInvitationEntity invitation = invitationService.createInvitation(
                     adminUserId,
-                    request.getExpiresAt(),
+                    createRequest.getExpiresAt(),
                     ipAddress
             );
 
@@ -127,7 +133,7 @@ public class AdminInvitationResource {
     ) {
         try {
             UUID adminUserId = currentUserService.getCurrentUserId();
-            String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+            String ipAddress = UserIpAddress.resolve(request, forwardedFor, realIp);
 
             invitationService.revokeInvitation(invitationId, adminUserId, ipAddress);
 

@@ -310,6 +310,12 @@ const routes = [
         beforeEnter: requireAdmin
     },
     {
+        path: '/app/admin/audit-logs',
+        name: 'Admin Audit Logs',
+        component: () => import('@/views/app/admin/AdminAuditLogsPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: NotFoundPage

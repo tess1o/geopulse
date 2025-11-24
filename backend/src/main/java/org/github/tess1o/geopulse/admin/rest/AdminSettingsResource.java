@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -14,6 +15,7 @@ import org.github.tess1o.geopulse.admin.model.SettingInfo;
 import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,9 @@ import java.util.UUID;
 @RolesAllowed("ADMIN")
 @Slf4j
 public class AdminSettingsResource {
+
+    @Context
+    HttpServerRequest httpRequest;
 
     @Inject
     SystemSettingsService settingsService;
@@ -74,7 +79,7 @@ public class AdminSettingsResource {
         settingsService.setValue(key, request.getValue(), adminId);
 
         // Audit log
-        String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logSettingChange(adminId, key, oldValue, request.getValue(), ipAddress);
 
         return Response.ok(Map.of("success", true)).build();
@@ -96,7 +101,7 @@ public class AdminSettingsResource {
         settingsService.resetToDefault(key);
 
         // Audit log
-        String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+        String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
         auditLogService.logSettingReset(adminId, key, oldValue, ipAddress);
 
         return Response.ok(Map.of("success", true, "defaultValue", settingsService.getDefaultValue(key))).build();

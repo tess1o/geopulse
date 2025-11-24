@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import io.vertx.core.http.HttpServerRequest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ import org.github.tess1o.geopulse.admin.service.OidcProviderConfigurationService
 import org.github.tess1o.geopulse.auth.oidc.model.OidcDiscoveryDocument;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.net.URI;
 import java.time.Instant;
@@ -37,6 +39,9 @@ import java.util.stream.Collectors;
 @RolesAllowed("ADMIN")
 @Slf4j
 public class AdminOidcProviderResource {
+
+    @Context
+    HttpServerRequest httpRequest;
 
     @Inject
     OidcProviderConfigurationService configurationService;
@@ -111,7 +116,7 @@ public class AdminOidcProviderResource {
             OidcProviderConfiguration saved = configurationService.saveProvider(provider, adminId);
 
             // Audit log
-            String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+            String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
             auditLogService.logAction(
                     adminId,
                     ActionType.OIDC_PROVIDER_CREATED,
@@ -190,7 +195,7 @@ public class AdminOidcProviderResource {
             newState.put("discoveryUrl", saved.getDiscoveryUrl());
 
             // Audit log
-            String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+            String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
             auditLogService.logAction(
                     adminId,
                     ActionType.OIDC_PROVIDER_UPDATED,
@@ -253,7 +258,7 @@ public class AdminOidcProviderResource {
             configurationService.deleteProvider(name);
 
             // Audit log
-            String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+            String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
             auditLogService.logAction(
                     adminId,
                     ActionType.OIDC_PROVIDER_DELETED,
@@ -309,7 +314,7 @@ public class AdminOidcProviderResource {
             configurationService.deleteProvider(name);
 
             // Audit log
-            String ipAddress = forwardedFor != null ? forwardedFor : realIp;
+            String ipAddress = UserIpAddress.resolve(httpRequest, forwardedFor, realIp);
             auditLogService.logAction(
                     adminId,
                     ActionType.OIDC_PROVIDER_RESET,
