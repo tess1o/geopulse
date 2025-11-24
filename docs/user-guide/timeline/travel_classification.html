@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Travel Classification | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Travel Classification | GeoPulse documentation"><meta data-rh="true" name="description" content="How GeoPulse automatically identifies your travel mode (walking, car, bicycle, train, flight) based on GPS data."><meta data-rh="true" property="og:description" content="How GeoPulse automatically identifies your travel mode (walking, car, bicycle, train, flight) based on GPS data."><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Travel Classification","item":"https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
-<script src="/geopulse/assets/js/runtime~main.119dc722.js" defer="defer"></script>
-<script src="/geopulse/assets/js/main.93a749a2.js" defer="defer"></script>
+<script src="/geopulse/assets/js/runtime~main.5c91cf45.js" defer="defer"></script>
+<script src="/geopulse/assets/js/main.33fa3ec1.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
 <svg style="display: none;"><defs>
@@ -17,9 +17,9 @@
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="overview">Overview<a href="#overview" class="hash-link" aria-label="Direct link to Overview" title="Direct link to Overview" translate="no">​</a></h2>
 <p>When GeoPulse detects that you&#x27;re moving between two locations (a trip), it analyzes the GPS data to classify the trip type. This classification is based primarily on:</p>
 <ul>
-<li class=""><strong>Average Speed</strong>  Your typical speed throughout the trip</li>
-<li class=""><strong>Maximum Speed</strong>  The highest speed reached during the trip</li>
-<li class=""><strong>Speed Variance</strong>  How consistent your speed was (important for distinguishing trains from cars)</li>
+<li class=""><strong>Average Speed</strong>  -  Your typical speed throughout the trip</li>
+<li class=""><strong>Maximum Speed</strong>  -  The highest speed reached during the trip</li>
+<li class=""><strong>Speed Variance</strong>  -  How consistent your speed was (important for distinguishing trains from cars)</li>
 </ul>
 <p>The system then compares these metrics against configurable thresholds to determine which mode of transport best matches your trip characteristics.</p>
 <hr>
@@ -28,16 +28,17 @@
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="mandatory-types">Mandatory Types<a href="#mandatory-types" class="hash-link" aria-label="Direct link to Mandatory Types" title="Direct link to Mandatory Types" translate="no">​</a></h3>
 <p>These types are always enabled and cannot be disabled:</p>
 <ul>
-<li class=""><strong>WALK</strong>  Low-speed movement (walking, jogging)</li>
-<li class=""><strong>CAR</strong>  Motorized transport including cars, buses, motorcycles</li>
-<li class=""><strong>UNKNOWN</strong>  Trips that don&#x27;t clearly match any category</li>
+<li class=""><strong>WALK</strong>  -  Low-speed movement (walking, slow jogging)</li>
+<li class=""><strong>CAR</strong>  -  Motorized transport including cars, buses, motorcycles</li>
+<li class=""><strong>UNKNOWN</strong>  -  Trips that don&#x27;t clearly match any category</li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="optional-types">Optional Types<a href="#optional-types" class="hash-link" aria-label="Direct link to Optional Types" title="Direct link to Optional Types" translate="no">​</a></h3>
 <p>These types can be enabled or disabled in your Timeline Preferences:</p>
 <ul>
-<li class=""><strong>BICYCLE</strong>  Medium-speed cycling or running</li>
-<li class=""><strong>TRAIN</strong>  High-speed rail travel with consistent speeds</li>
-<li class=""><strong>FLIGHT</strong>  Air travel with very high speeds</li>
+<li class=""><strong>BICYCLE</strong>  -  Medium-speed cycling</li>
+<li class=""><strong>RUNNING</strong>  -  Medium-low speed running and jogging</li>
+<li class=""><strong>TRAIN</strong>  -  High-speed rail travel with consistent speeds</li>
+<li class=""><strong>FLIGHT</strong>  -  Air travel with very high speeds</li>
 </ul>
 <div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>tip</div><div class="admonitionContent_BuS1"><p>If you don&#x27;t use certain travel modes, you can disable them in your Timeline Preferences to improve classification accuracy. For example, if you never cycle, disable <strong>BICYCLE</strong> to prevent car trips from being misclassified.</p></div></div>
 <hr>
@@ -45,21 +46,22 @@
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="classification-priority-order">Classification Priority Order<a href="#classification-priority-order" class="hash-link" aria-label="Direct link to Classification Priority Order" title="Direct link to Classification Priority Order" translate="no">​</a></h3>
 <p>The system evaluates trip types in a specific order to ensure accurate classification:</p>
 <ol>
-<li class=""><strong>FLIGHT</strong>  Checked first (400+ km/h average OR 500+ km/h peak)</li>
-<li class=""><strong>TRAIN</strong>  High speed with low variance (30-150 km/h, consistent speed)</li>
-<li class=""><strong>BICYCLE</strong>  Medium speeds (8-25 km/h)  <strong>Must be before CAR!</strong></li>
-<li class=""><strong>CAR</strong>  Motorized transport (10+ km/h average OR 15+ km/h peak)</li>
-<li class=""><strong>WALK</strong>  Low speeds (d6 km/h average, d8 km/h peak)</li>
-<li class=""><strong>UNKNOWN</strong>  Fallback for edge cases</li>
+<li class=""><strong>FLIGHT</strong>  -  Checked first (400+ km/h average OR 500+ km/h peak)</li>
+<li class=""><strong>TRAIN</strong>  -  High speed with low variance (30-150 km/h, consistent speed)</li>
+<li class=""><strong>BICYCLE</strong>  -  Medium speeds (8-25 km/h)  -  <strong>Checked before RUNNING!</strong></li>
+<li class=""><strong>RUNNING</strong>  -  Medium-low speeds (7-14 km/h)  -  <strong>Must be before CAR!</strong></li>
+<li class=""><strong>CAR</strong>  -  Motorized transport (10+ km/h average OR 15+ km/h peak)</li>
+<li class=""><strong>WALK</strong>  -  Low speeds (≤6 km/h average, ≤8 km/h peak)</li>
+<li class=""><strong>UNKNOWN</strong>  -  Fallback for edge cases</li>
 </ol>
-<div class="theme-admonition theme-admonition-warning admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Important</div><div class="admonitionContent_BuS1"><p><strong>BICYCLE must be checked before CAR</strong> because their speed ranges overlap (8-25 km/h). If BICYCLE is disabled, those trips will be classified as CAR instead.</p></div></div>
+<div class="theme-admonition theme-admonition-warning admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Important</div><div class="admonitionContent_BuS1"><p><strong>BICYCLE and RUNNING must be checked before CAR</strong> because their speed ranges overlap. The order matters: BICYCLE (8-25 km/h) is checked first to catch faster speeds, then RUNNING (7-14 km/h), then CAR. If BICYCLE or RUNNING are disabled, those trips will be classified as the next matching type or CAR.</p></div></div>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="gps-data-quality">GPS Data Quality<a href="#gps-data-quality" class="hash-link" aria-label="Direct link to GPS Data Quality" title="Direct link to GPS Data Quality" translate="no">​</a></h3>
 <p>GeoPulse includes sophisticated GPS noise detection to ensure accurate classification:</p>
 <ul>
-<li class=""><strong>Supersonic Speed Detection</strong>  Rejects impossible speeds above 1,200 km/h (GPS noise)</li>
-<li class=""><strong>Reliability Validation</strong>  Compares GPS speeds against calculated speeds from distance/duration</li>
-<li class=""><strong>Adaptive Thresholds</strong>  Uses different validation rules for low-speed vs. high-speed trips</li>
-<li class=""><strong>Smart Fallbacks</strong>  Automatically switches to calculated speeds when GPS data is unreliable</li>
+<li class=""><strong>Supersonic Speed Detection</strong>  -  Rejects impossible speeds above 1,200 km/h (GPS noise)</li>
+<li class=""><strong>Reliability Validation</strong>  -  Compares GPS speeds against calculated speeds from distance/duration</li>
+<li class=""><strong>Adaptive Thresholds</strong>  -  Uses different validation rules for low-speed vs. high-speed trips</li>
+<li class=""><strong>Smart Fallbacks</strong>  -  Automatically switches to calculated speeds when GPS data is unreliable</li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="special-cases">Special Cases<a href="#special-cases" class="hash-link" aria-label="Direct link to Special Cases" title="Direct link to Special Cases" translate="no">​</a></h3>
 <p>The classification algorithm handles several special scenarios:</p>
@@ -67,8 +69,8 @@
 Uses OR logic for flight detection: if <strong>either</strong> average speed e400 km/h <strong>or</strong> peak speed e500 km/h, the trip is classified as FLIGHT. This handles flights with long taxi/boarding times that lower the average.</p>
 <p><strong>Train vs. Car Distinction</strong>
 Trains typically maintain consistent speeds (low variance) while cars have variable speeds due to traffic, stops, and acceleration. A trip with 60 km/h average might be classified as TRAIN if speed variance is low, or CAR if variance is high.</p>
-<p><strong>Bicycle vs. Car Overlap</strong>
-Speeds between 10-25 km/h could be either cycling or slow driving. The system checks BICYCLE thresholds first. If BICYCLE is disabled, these trips default to CAR.</p>
+<p><strong>Bicycle vs. Running vs. Car Overlap</strong>
+Speeds between 7-25 km/h could be cycling, running, or slow driving. The system checks in priority order: BICYCLE first (8-25 km/h), then RUNNING (7-14 km/h), then CAR. If BICYCLE or RUNNING are disabled, trips in their ranges will be classified as the next matching type or CAR.</p>
 <p><strong>Walking Verification</strong>
 After initial classification, the system double-checks WALK classifications. If the calculated speed exceeds the walking threshold by more than 20%, the trip is reclassified as CAR. This catches cases where GPS noise made a car trip appear slower than it was.</p>
 <hr>
@@ -121,8 +123,27 @@ Minimum average speed for cycling trips.</p>
 Maximum average speed for cycling trips. Faster trips are classified as CAR.</p>
 </li>
 <li class="">
-<p><strong>Bicycle Max Maximum Speed</strong> (default: 30 km/h)
-Maximum peak speed allowed for bicycle trips.</p>
+<p><strong>Bicycle Max Maximum Speed</strong> (default: 35 km/h)
+Maximum peak speed allowed for bicycle trips. Allows for downhill segments and e-bikes.</p>
+</li>
+</ul>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="running-settings-optional">Running Settings (Optional)<a href="#running-settings-optional" class="hash-link" aria-label="Direct link to Running Settings (Optional)" title="Direct link to Running Settings (Optional)" translate="no">​</a></h4>
+<ul>
+<li class="">
+<p><strong>Enable Running</strong> (default: disabled)
+Toggle to enable/disable running classification. When disabled, running speeds are classified as BICYCLE (if enabled) or CAR.</p>
+</li>
+<li class="">
+<p><strong>Running Min Average Speed</strong> (default: 7 km/h)
+Minimum average speed for running trips. Slower trips are classified as WALK.</p>
+</li>
+<li class="">
+<p><strong>Running Max Average Speed</strong> (default: 14 km/h)
+Maximum average speed for running trips. Faster trips are classified as BICYCLE (if enabled) or CAR.</p>
+</li>
+<li class="">
+<p><strong>Running Max Maximum Speed</strong> (default: 18 km/h)
+Maximum peak speed allowed for running trips. Allows for sprint segments.</p>
 </li>
 </ul>
 <h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="train-settings-optional">Train Settings (Optional)<a href="#train-settings-optional" class="hash-link" aria-label="Direct link to Train Settings (Optional)" title="Direct link to Train Settings (Optional)" translate="no">​</a></h4>
@@ -204,23 +225,23 @@ Minimum peak speed for flight trips (cruising altitude).</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="viewing-trip-classifications">Viewing Trip Classifications<a href="#viewing-trip-classifications" class="hash-link" aria-label="Direct link to Viewing Trip Classifications" title="Direct link to Viewing Trip Classifications" translate="no">​</a></h3>
 <p>Trip classifications appear in several places throughout GeoPulse:</p>
 <ul>
-<li class=""><strong>Timeline View</strong>  Each trip shows an icon indicating its type (walking person, car, bicycle, train, airplane)</li>
-<li class=""><strong>Journey Insights</strong>  Breakdown of trips by type with statistics</li>
-<li class=""><strong>Dashboard</strong>  Summary of travel modes used over time periods</li>
+<li class=""><strong>Timeline View</strong>  -  Each trip shows an icon indicating its type (walking person, car, bicycle, train, airplane)</li>
+<li class=""><strong>Journey Insights</strong>  -  Breakdown of trips by type with statistics</li>
+<li class=""><strong>Dashboard</strong>  -  Summary of travel modes used over time periods</li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="trip-type-icons">Trip Type Icons<a href="#trip-type-icons" class="hash-link" aria-label="Direct link to Trip Type Icons" title="Direct link to Trip Type Icons" translate="no">​</a></h3>
 <table><thead><tr><th>Icon</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td>=�</td><td>WALK</td><td>Walking or jogging</td></tr><tr><td>=�</td><td>CAR</td><td>Car, bus, motorcycle, or other motorized vehicle</td></tr><tr><td>=�</td><td>BICYCLE</td><td>Cycling or fast running</td></tr><tr><td>=�</td><td>TRAIN</td><td>Train or metro travel</td></tr><tr><td></td><td>FLIGHT</td><td>Air travel</td></tr><tr><td>S</td><td>UNKNOWN</td><td>Unable to classify with confidence</td></tr></tbody></table>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="why-a-trip-might-be-unknown">Why a Trip Might Be UNKNOWN<a href="#why-a-trip-might-be-unknown" class="hash-link" aria-label="Direct link to Why a Trip Might Be UNKNOWN" title="Direct link to Why a Trip Might Be UNKNOWN" translate="no">​</a></h3>
 <p>A trip may be classified as UNKNOWN for several reasons:</p>
 <ol>
-<li class=""><strong>GPS Noise</strong>  Impossible speeds detected (&gt;1,200 km/h), likely due to GPS errors</li>
-<li class=""><strong>Speed in Gray Area</strong>  Speed falls between classification thresholds<!-- -->
+<li class=""><strong>GPS Noise</strong>  -  Impossible speeds detected (&gt;1,200 km/h), likely due to GPS errors</li>
+<li class=""><strong>Speed in Gray Area</strong>  -  Speed falls between classification thresholds<!-- -->
 <ul>
 <li class="">Example: 7 km/h (above WALK max of 6, below CAR min of 10, BICYCLE disabled)</li>
 </ul>
 </li>
-<li class=""><strong>Missing GPS Data</strong>  Insufficient speed information to make a determination</li>
-<li class=""><strong>Disabled Optional Types</strong>  Trip matches an optional type that&#x27;s currently disabled</li>
+<li class=""><strong>Missing GPS Data</strong>  -  Insufficient speed information to make a determination</li>
+<li class=""><strong>Disabled Optional Types</strong>  -  Trip matches an optional type that&#x27;s currently disabled</li>
 </ol>
 <div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>tip</div><div class="admonitionContent_BuS1"><p>If you see many UNKNOWN classifications, try enabling more optional trip types (BICYCLE, TRAIN, FLIGHT) or adjusting your speed thresholds to reduce gaps between categories.</p></div></div>
 <hr>
@@ -256,10 +277,10 @@ If a trip is classified as WALK but the calculated speed exceeds the walking thr
 <h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="best-practices">Best Practices<a href="#best-practices" class="hash-link" aria-label="Direct link to Best Practices" title="Direct link to Best Practices" translate="no">​</a></h2>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="for-accurate-classification">For Accurate Classification<a href="#for-accurate-classification" class="hash-link" aria-label="Direct link to For Accurate Classification" title="Direct link to For Accurate Classification" translate="no">​</a></h3>
 <ol>
-<li class=""><strong>Enable relevant optional types</strong>  If you cycle, take trains, or fly, enable those classifications</li>
-<li class=""><strong>Calibrate to your patterns</strong>  Adjust speed thresholds based on your actual travel speeds</li>
-<li class=""><strong>Consider your location</strong>  Urban heavy traffic may need lower CAR min speeds</li>
-<li class=""><strong>Monitor UNKNOWN trips</strong>  If you see many UNKNOWN classifications, review and adjust thresholds</li>
+<li class=""><strong>Enable relevant optional types</strong>  -  If you cycle, take trains, or fly, enable those classifications</li>
+<li class=""><strong>Calibrate to your patterns</strong>  -  Adjust speed thresholds based on your actual travel speeds</li>
+<li class=""><strong>Consider your location</strong>  -  Urban heavy traffic may need lower CAR min speeds</li>
+<li class=""><strong>Monitor UNKNOWN trips</strong>  -  If you see many UNKNOWN classifications, review and adjust thresholds</li>
 </ol>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="for-specific-use-cases">For Specific Use Cases<a href="#for-specific-use-cases" class="hash-link" aria-label="Direct link to For Specific Use Cases" title="Direct link to For Specific Use Cases" translate="no">​</a></h3>
 <p><strong>Urban Commuter</strong></p>
