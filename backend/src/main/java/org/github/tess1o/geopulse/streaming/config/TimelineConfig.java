@@ -244,6 +244,35 @@ public class TimelineConfig {
      */
     private Double bicycleMaxMaxSpeed;
 
+    // Optional Trip Types Configuration - Running
+    /**
+     * Enable or disable running trip type detection.
+     * When disabled, trips in running speed range (7-14 km/h) fall back to BICYCLE or CAR classification.
+     * Default: false (disabled)
+     */
+    private Boolean runningEnabled;
+
+    /**
+     * Minimum average speed in km/h to classify movement as running.
+     * Separates running from fast walking.
+     * Default: 7.0 km/h
+     */
+    private Double runningMinAvgSpeed;
+
+    /**
+     * Maximum average speed in km/h to classify movement as running.
+     * Above this speed, trips are classified as BICYCLE (if enabled) or CAR.
+     * Default: 14.0 km/h (conservative threshold for typical running)
+     */
+    private Double runningMaxAvgSpeed;
+
+    /**
+     * Maximum peak speed in km/h for running classification.
+     * Allows for sprint segments while staying below cycling speeds.
+     * Default: 18.0 km/h
+     */
+    private Double runningMaxMaxSpeed;
+
     // Optional Trip Types Configuration - Train
     /**
      * Enable or disable train trip type detection.

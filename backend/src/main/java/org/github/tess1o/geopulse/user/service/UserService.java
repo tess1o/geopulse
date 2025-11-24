@@ -441,6 +441,13 @@ public class UserService {
                 update.getBicycleMinAvgSpeed() != null ||
                 update.getBicycleMaxAvgSpeed() != null ||
                 update.getBicycleMaxMaxSpeed() != null ||
+
+                // Running
+                update.getRunningEnabled() != null ||
+                update.getRunningMaxAvgSpeed() != null ||
+                update.getRunningMinAvgSpeed() != null  ||
+                update.getRunningMaxMaxSpeed() != null ||
+
                 // Train
                 update.getTrainEnabled() != null ||
                 update.getTrainMinAvgSpeed() != null ||

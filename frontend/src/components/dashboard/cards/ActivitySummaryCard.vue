@@ -126,6 +126,7 @@ const props = defineProps({
 const tripTypeConfig = {
   WALK: { label: 'Walk', color: 'success' },
   BICYCLE: { label: 'Bicycle', color: 'warning' },
+  RUNNING: { label: 'Running', color: 'contrast' },
   CAR: { label: 'Car', color: 'primary' },
   TRAIN: { label: 'Train', color: 'secondary' },
   FLIGHT: { label: 'Flight', color: 'danger' }
@@ -201,6 +202,8 @@ const chartDatasets = computed(() => {
       color: config.color
     })
   })
+
+  console.log(datasets)
 
   return datasets
 })

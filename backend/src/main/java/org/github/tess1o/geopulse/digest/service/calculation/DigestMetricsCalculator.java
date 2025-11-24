@@ -46,6 +46,7 @@ public class DigestMetricsCalculator {
         double carDistance = calculateDistanceForTripType(stats, "CAR");
         double walkDistance = calculateDistanceForTripType(stats, "WALK");
         double bicycleDistance = calculateDistanceForTripType(stats, "BICYCLE");
+        double runningDistance = calculateDistanceForTripType(stats, "RUNNING");
         double trainDistance = calculateDistanceForTripType(stats, "TRAIN");
         double flightDistance = calculateDistanceForTripType(stats, "FLIGHT");
         double unknownDistance = calculateDistanceForTripType(stats, "UNKNOWN");
@@ -60,6 +61,7 @@ public class DigestMetricsCalculator {
                 .carDistance(carDistance * 1000)
                 .walkDistance(walkDistance * 1000)
                 .bicycleDistance(bicycleDistance * 1000)
+                .runningDistance(runningDistance * 1000)
                 .trainDistance(trainDistance * 1000)
                 .flightDistance(flightDistance * 1000)
                 .unknownDistance(unknownDistance * 1000)

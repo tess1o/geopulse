@@ -24,13 +24,14 @@
 import { computed } from 'vue'
 import BarChart from '@/components/charts/BarChart.vue'
 
-// Trip type display configuration
+// Trip type display configuration with distinct colors
 const tripTypeConfig = {
-  WALK: { label: 'Walk', color: 'success' },
-  BICYCLE: { label: 'Bicycle', color: 'warning' },
-  CAR: { label: 'Car', color: 'primary' },
-  TRAIN: { label: 'Train', color: 'secondary' },
-  FLIGHT: { label: 'Flight', color: 'danger' }
+  WALK: { label: 'Walk', color: 'success' },      // Green
+  RUNNING: { label: 'Running', color: 'contrast' }, // Purple/Contrast
+  BICYCLE: { label: 'Bicycle', color: 'warning' }, // Orange/Yellow
+  CAR: { label: 'Car', color: 'primary' },        // Blue
+  TRAIN: { label: 'Train', color: 'secondary' },  // Gray
+  FLIGHT: { label: 'Flight', color: 'danger' }    // Red
 }
 
 const props = defineProps({

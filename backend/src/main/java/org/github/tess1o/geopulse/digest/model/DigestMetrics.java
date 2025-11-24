@@ -20,6 +20,7 @@ public class DigestMetrics {
     private double carDistance;
     private double walkDistance;
     private double bicycleDistance;
+    private double runningDistance;
     private double trainDistance;
     private double flightDistance;
     private double unknownDistance;

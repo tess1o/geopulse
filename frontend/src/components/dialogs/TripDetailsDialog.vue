@@ -193,6 +193,7 @@ const getTransportSeverity = (transportMode) => {
     'CAR': 'info',
     'WALK': 'success',
     'BICYCLE': 'info',
+    'RUNNING': 'success',
     'TRAIN': 'info',
     'FLIGHT': 'danger',
     'UNKNOWN': 'secondary'
@@ -205,6 +206,7 @@ const getTransportIcon = (transportMode) => {
     'CAR': 'pi pi-car',
     'WALK': 'fas fa-walking',
     'BICYCLE': 'fas fa-bicycle',
+    'RUNNING': 'fas fa-running',
     'TRAIN': 'fas fa-train',
     'FLIGHT': 'fas fa-plane',
     'UNKNOWN': 'pi pi-question-circle'

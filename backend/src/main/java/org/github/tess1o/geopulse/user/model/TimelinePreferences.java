@@ -54,6 +54,12 @@ public class TimelinePreferences {
     private Double bicycleMaxAvgSpeed;
     private Double bicycleMaxMaxSpeed;
 
+    // Optional Trip Types - Running
+    private Boolean runningEnabled;
+    private Double runningMinAvgSpeed;
+    private Double runningMaxAvgSpeed;
+    private Double runningMaxMaxSpeed;
+
     // Optional Trip Types - Train
     private Boolean trainEnabled;
     private Double trainMinAvgSpeed;

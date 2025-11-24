@@ -13,10 +13,16 @@ public enum TripType {
 
     /**
      * Bicycle trip - characterized by medium speeds (8-25 km/h average).
-     * Optional type, disabled by default. Also captures running/jogging.
-     * Consider displaying as "Cycling/Running" in UI.
+     * Optional type, disabled by default.
      */
     BICYCLE,
+
+    /**
+     * Running trip - characterized by medium-low speeds (7-14 km/h average).
+     * Optional type, disabled by default. Separates running from walking and cycling.
+     * When disabled, running speeds are captured by BICYCLE (if enabled) or CAR.
+     */
+    RUNNING,
 
     /**
      * Car trip - characterized by higher speeds and vehicular movement patterns.

@@ -116,6 +116,16 @@
                 </div>
               </div>
 
+              <!-- Distance Running -->
+              <div class="insight-stat-large travel-card" v-if="distanceTraveled?.byRunning > 0">
+                <div class="travel-icon">🏃</div>
+                <div class="stat-number">{{ formatDistanceRounded(distanceTraveled?.byRunning * 1000 || 0) }}</div>
+                <div class="stat-label">Distance Running</div>
+                <div class="stat-detail">
+                  {{ getRunningPercentage(distanceTraveled) }} - {{ getRunningPhrase(distanceTraveled?.byRunning || 0) }}
+                </div>
+              </div>
+
               <!-- Distance by Train -->
               <div class="insight-stat-large travel-card" v-if="distanceTraveled?.byTrain > 0">
                 <div class="travel-icon">🚆</div>
@@ -447,6 +457,12 @@ const getBicyclePercentage = (distanceData) => {
   return `(${percentage}%)`
 }
 
+const getRunningPercentage = (distanceData) => {
+  if (!distanceData?.total || distanceData.total === 0) return '(0%)'
+  const percentage = Math.round((distanceData.byRunning / distanceData.total) * 100)
+  return `(${percentage}%)`
+}
+
 const getTrainPercentage = (distanceData) => {
   if (!distanceData?.total || distanceData.total === 0) return '(0%)'
   const percentage = Math.round((distanceData.byTrain / distanceData.total) * 100)
@@ -562,6 +578,29 @@ const bicyclePhrases = [
     ]}
 ]
 
+const runningPhrases = [
+  { min: 0, max: 10, phrases: [
+      "Great start, keep running!",
+      "First steps towards fitness!",
+      "Every run counts!"
+    ]},
+  { min: 10, max: 50, phrases: [
+      "You're building running momentum!",
+      "Runner's high achieved!",
+      "Keep those legs moving!"
+    ]},
+  { min: 50, max: 200, phrases: [
+      "You're a dedicated runner!",
+      "Marathon training in progress!",
+      "Running towards your goals!"
+    ]},
+  { min: 200, max: Infinity, phrases: [
+      "Ultra-runner achievements!",
+      "You've run across countries!",
+      "Running legend status!"
+    ]}
+]
+
 const trainPhrases = [
   { min: 0, max: 100, phrases: [
       "All aboard the adventure train!",
@@ -629,6 +668,12 @@ const getWalkPhrase = (distance) => {
 const getBicyclePhrase = (distance) => {
   const range = bicyclePhrases.find(r => distance >= r.min && distance < r.max)
   if (!range) return "Keep cycling!"
+  return range.phrases[Math.floor(Math.random() * range.phrases.length)]
+}
+
+const getRunningPhrase = (distance) => {
+  const range = runningPhrases.find(r => distance >= r.min && distance < r.max)
+  if (!range) return "Keep running!"
   return range.phrases[Math.floor(Math.random() * range.phrases.length)]
 }
 

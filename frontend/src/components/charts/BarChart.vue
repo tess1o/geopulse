@@ -73,6 +73,16 @@ const colorVariants = {
     bg: '--p-red-500',
     border: '--p-red-600',
     light: '--p-red-100'
+  },
+  info: {
+    bg: '--p-cyan-500',
+    border: '--p-cyan-600',
+    light: '--p-cyan-100'
+  },
+  contrast: {
+    bg: '--p-purple-500',
+    border: '--p-purple-600',
+    light: '--p-purple-100'
   }
 }
 

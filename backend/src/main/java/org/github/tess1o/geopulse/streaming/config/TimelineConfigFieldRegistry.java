@@ -231,6 +231,35 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setBicycleMaxMaxSpeed,
                         Double::valueOf
                 ))
+                // Optional Trip Types - Running
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.running.enabled",
+                        properties.getRunningEnabled(),
+                        TimelineConfig::getRunningEnabled,
+                        TimelineConfig::setRunningEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.running.min_avg_speed",
+                        properties.getRunningMinAvgSpeed(),
+                        TimelineConfig::getRunningMinAvgSpeed,
+                        TimelineConfig::setRunningMinAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.running.max_avg_speed",
+                        properties.getRunningMaxAvgSpeed(),
+                        TimelineConfig::getRunningMaxAvgSpeed,
+                        TimelineConfig::setRunningMaxAvgSpeed,
+                        Double::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.running.max_max_speed",
+                        properties.getRunningMaxMaxSpeed(),
+                        TimelineConfig::getRunningMaxMaxSpeed,
+                        TimelineConfig::setRunningMaxMaxSpeed,
+                        Double::valueOf
+                ))
                 // Optional Trip Types - Train
                 .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.train.enabled",

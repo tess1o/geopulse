@@ -103,6 +103,15 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "bicycleMaxMaxSpeed",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Optional Trip Types - Running
+    @org.mapstruct.Mapping(target = "runningEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "runningMinAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "runningMaxAvgSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "runningMaxMaxSpeed",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     // Optional Trip Types - Train
     @org.mapstruct.Mapping(target = "trainEnabled",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -168,6 +177,10 @@ public interface TimelinePreferencesMapper {
                     .bicycleMinAvgSpeed(fromImport.getBicycleMinAvgSpeed())
                     .bicycleMaxAvgSpeed(fromImport.getBicycleMaxAvgSpeed())
                     .bicycleMaxMaxSpeed(fromImport.getBicycleMaxMaxSpeed())
+                    .runningEnabled(fromImport.getRunningEnabled())
+                    .runningMinAvgSpeed(fromImport.getRunningMinAvgSpeed())
+                    .runningMaxAvgSpeed(fromImport.getRunningMaxAvgSpeed())
+                    .runningMaxMaxSpeed(fromImport.getRunningMaxMaxSpeed())
                     .trainEnabled(fromImport.getTrainEnabled())
                     .trainMinAvgSpeed(fromImport.getTrainMinAvgSpeed())
                     .trainMaxAvgSpeed(fromImport.getTrainMaxAvgSpeed())
@@ -212,6 +225,10 @@ public interface TimelinePreferencesMapper {
                 .bicycleMinAvgSpeed(existing.getBicycleMinAvgSpeed())
                 .bicycleMaxAvgSpeed(existing.getBicycleMaxAvgSpeed())
                 .bicycleMaxMaxSpeed(existing.getBicycleMaxMaxSpeed())
+                .runningEnabled(existing.getRunningEnabled())
+                .runningMinAvgSpeed(existing.getRunningMinAvgSpeed())
+                .runningMaxAvgSpeed(existing.getRunningMaxAvgSpeed())
+                .runningMaxMaxSpeed(existing.getRunningMaxMaxSpeed())
                 .trainEnabled(existing.getTrainEnabled())
                 .trainMinAvgSpeed(existing.getTrainMinAvgSpeed())
                 .trainMaxAvgSpeed(existing.getTrainMaxAvgSpeed())

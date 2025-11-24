@@ -11,11 +11,12 @@ public class DistanceTraveled {
     private int byCar;
     private int byWalk;
     private int byBicycle;
+    private int byRunning;
     private int byTrain;
     private int byFlight;
     private int byUnknown;
 
     public int getTotal() {
-        return byCar + byWalk + byBicycle + byTrain + byFlight + byUnknown;
+        return byCar + byWalk + byBicycle + byRunning + byTrain + byFlight + byUnknown;
     }
 }

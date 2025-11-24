@@ -48,6 +48,16 @@
         </div>
       </div>
 
+      <!-- Running Distance -->
+      <div class="metric-card" v-if="metrics.runningDistance > 0">
+        <div class="metric-icon">🏃</div>
+        <div class="metric-value">{{ formatDistanceRounded(metrics.runningDistance) }}</div>
+        <div class="metric-label">Distance Running</div>
+        <div class="metric-percentage" v-if="metrics.totalDistance > 0">
+          {{ getPercentage(metrics.runningDistance, metrics.totalDistance) }}% of total
+        </div>
+      </div>
+
       <!-- Train Distance -->
       <div class="metric-card" v-if="metrics.trainDistance > 0">
         <div class="metric-icon">🚆</div>
