@@ -151,6 +151,11 @@ const routes = [
         beforeEnter: requireGuest
     },
     {
+        path: '/register/invite/:token',
+        name: 'Invitation Register',
+        component: () => import('@/views/InvitationRegisterPage.vue')
+    },
+    {
         path: '/oidc/callback',
         name: 'OidcCallback',
         component: () => import('@/views/OidcCallback.vue')
@@ -290,6 +295,12 @@ const routes = [
         path: '/app/admin/users/:id',
         name: 'Admin User Details',
         component: () => import('@/views/app/admin/AdminUserDetailsPage.vue'),
+        beforeEnter: requireAdmin
+    },
+    {
+        path: '/app/admin/invitations',
+        name: 'Admin Invitations',
+        component: () => import('@/views/app/admin/AdminInvitationsPage.vue'),
         beforeEnter: requireAdmin
     },
     {

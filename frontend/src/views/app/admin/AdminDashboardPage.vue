@@ -96,6 +96,9 @@
             <router-link to="/app/admin/users" class="no-underline">
               <Button label="Manage Users" icon="pi pi-users" class="action-button" />
             </router-link>
+            <router-link to="/app/admin/invitations" class="no-underline">
+              <Button label="User Invitations" icon="pi pi-send" severity="secondary" class="action-button" />
+            </router-link>
             <router-link to="/app/admin/oidc-providers" class="no-underline">
               <Button label="OIDC Providers" icon="pi pi-key" severity="secondary" class="action-button" />
             </router-link>

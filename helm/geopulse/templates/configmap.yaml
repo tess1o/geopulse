@@ -55,6 +55,7 @@ data:
 
   # Location Sharing
   GEOPULSE_SHARE_BASE_URL: {{ .Values.config.share.baseUrl | quote }}
+  GEOPULSE_INVITATION_BASE_URL: {{ .Values.config.invitation.baseUrl | quote }}
 
   # OwnTracks
   GEOPULSE_OWNTRACKS_PING_TIMESTAMP_OVERRIDE: {{ .Values.config.owntracks.pingTimestampOverride | quote }}

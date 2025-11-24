@@ -258,6 +258,12 @@ const adminUserManagementItems = computed(() => [
     key: 'admin-users'
   },
   {
+    label: 'Invitations',
+    icon: 'pi pi-send',
+    to: '/app/admin/invitations',
+    key: 'admin-invitations'
+  },
+  {
     label: 'OIDC Providers',
     icon: 'pi pi-key',
     to: '/app/admin/oidc-providers',
