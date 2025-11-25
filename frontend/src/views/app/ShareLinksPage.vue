@@ -48,15 +48,20 @@
           <div v-if="!shareLinksStore.isLoading || shareLinksStore.links.length > 0"
                class="links-container">
 
-            <!-- Active Links -->
-            <div v-if="shareLinksStore.getActiveLinks.length > 0" class="links-section">
-              <h2 class="section-title">Active Links ({{
-                  shareLinksStore.getActiveLinks.length
-                }}/{{ shareLinksStore.maxLinks }})</h2>
-              <div class="links-grid">
-                <Card v-for="link in shareLinksStore.getActiveLinks"
+            <!-- Timeline Shares Section -->
+            <div v-if="activeTimelineShares.length > 0 || expiredTimelineShares.length > 0" class="share-type-section">
+              <h2 class="type-title">
+                <i class="pi pi-calendar"></i>
+                Timeline Shares
+              </h2>
+
+              <!-- Active Timeline Links -->
+              <div v-if="activeTimelineShares.length > 0" class="links-section">
+                <h3 class="section-subtitle">Active ({{ activeTimelineShares.length }})</h3>
+                <div class="links-grid">
+                <Card v-for="link in activeTimelineShares"
                       :key="link.id"
-                      class="link-card active">
+                      class="link-card active timeline-card">
                   <template #content>
                     <div class="link-header">
                       <div class="link-info">
@@ -145,13 +150,13 @@
               </div>
             </div>
 
-            <!-- Expired Links -->
-            <div v-if="shareLinksStore.getExpiredLinks.length > 0" class="links-section">
-              <h2 class="section-title">Expired Links ({{ shareLinksStore.getExpiredLinks.length }})</h2>
+            <!-- Expired Timeline Links -->
+            <div v-if="expiredTimelineShares.length > 0" class="links-section">
+              <h3 class="section-subtitle">Expired ({{ expiredTimelineShares.length }})</h3>
               <div class="links-grid">
-                <Card v-for="link in shareLinksStore.getExpiredLinks"
+                <Card v-for="link in expiredTimelineShares"
                       :key="link.id"
-                      class="link-card expired">
+                      class="link-card expired timeline-card">
                   <template #content>
                     <div class="link-header">
                       <div class="link-info">
@@ -177,6 +182,130 @@
                     </div>
                   </template>
                 </Card>
+              </div>
+            </div>
+            </div>
+
+            <!-- Live Location Shares Section -->
+            <div v-if="activeLiveLocationShares.length > 0 || expiredLiveLocationShares.length > 0" class="share-type-section">
+              <h2 class="type-title">
+                <i class="pi pi-map-marker"></i>
+                Live Location Shares
+              </h2>
+
+              <!-- Active Live Location Links -->
+              <div v-if="activeLiveLocationShares.length > 0" class="links-section">
+                <h3 class="section-subtitle">Active ({{ activeLiveLocationShares.length }})</h3>
+                <div class="links-grid">
+                  <Card v-for="link in activeLiveLocationShares"
+                        :key="link.id"
+                        class="link-card active live-location-card">
+                    <template #content>
+                      <div class="link-header">
+                        <div class="link-info">
+                          <h3 class="link-title">{{ link.name || 'Untitled Link' }}</h3>
+                          <div class="link-meta">
+                            <span class="link-date">Created {{ formatDate(link.created_at) }}</span>
+                            <span class="link-expires">Expires {{ formatDate(link.expires_at) }}</span>
+                          </div>
+                        </div>
+                        <div class="link-status">
+                          <Tag severity="success" value="Active"/>
+                        </div>
+                      </div>
+
+                      <div class="link-details">
+                        <div class="link-url-section">
+                          <label class="url-label">Share URL:</label>
+                          <div class="url-input-group">
+                            <InputText
+                                :value="getShareUrl(link)"
+                                readonly
+                                class="share-url-input"
+                            />
+                            <Button
+                                icon="pi pi-copy"
+                                @click="copyToClipboard(getShareUrl(link))"
+                                class="copy-btn"
+                                v-tooltip="'Copy to clipboard'"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="link-settings">
+                          <div class="setting-item">
+                            <span class="setting-label">Type:</span>
+                            <span class="setting-value">Live Location</span>
+                          </div>
+                          <div class="setting-item">
+                            <span class="setting-label">Password Protected:</span>
+                            <span class="setting-value">{{ link.has_password ? 'Yes' : 'No' }}</span>
+                          </div>
+                          <div class="setting-item">
+                            <span class="setting-label">View Count:</span>
+                            <span class="setting-value">{{ link.view_count || 0 }}</span>
+                          </div>
+                          <div class="setting-item">
+                            <span class="setting-label">Show History:</span>
+                            <span class="setting-value">{{ formatShowHistory(link) }}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="link-actions">
+                        <Button
+                            label="Edit"
+                            icon="pi pi-pencil"
+                            severity="secondary"
+                            @click="editLink(link)"
+                            class="edit-btn"
+                        />
+                        <Button
+                            label="Delete"
+                            icon="pi pi-trash"
+                            severity="danger"
+                            @click="confirmDeleteLink(link)"
+                            class="delete-btn"
+                        />
+                      </div>
+                    </template>
+                  </Card>
+                </div>
+              </div>
+
+              <!-- Expired Live Location Links -->
+              <div v-if="expiredLiveLocationShares.length > 0" class="links-section">
+                <h3 class="section-subtitle">Expired ({{ expiredLiveLocationShares.length }})</h3>
+                <div class="links-grid">
+                  <Card v-for="link in expiredLiveLocationShares"
+                        :key="link.id"
+                        class="link-card expired live-location-card">
+                    <template #content>
+                      <div class="link-header">
+                        <div class="link-info">
+                          <h3 class="link-title">{{ link.name || 'Untitled Link' }}</h3>
+                          <div class="link-meta">
+                            <span class="link-date">Created {{ formatDate(link.created_at) }}</span>
+                            <span class="link-expires">Expired {{ formatDate(link.expires_at) }}</span>
+                          </div>
+                        </div>
+                        <div class="link-status">
+                          <Tag severity="danger" value="Expired"/>
+                        </div>
+                      </div>
+
+                      <div class="link-actions">
+                        <Button
+                            label="Delete"
+                            icon="pi pi-trash"
+                            severity="danger"
+                            @click="confirmDeleteLink(link)"
+                            class="delete-btn"
+                        />
+                      </div>
+                    </template>
+                  </Card>
+                </div>
               </div>
             </div>
 
@@ -421,13 +550,21 @@ const closeDialog = () => {
 
 const editLink = (link) => {
   editingLink.value = link
-  linkForm.name = link.name || ''
-  linkForm.expires_at = link.expires_at ? timezone.fromUtc(link.expires_at).toDate() : null
-  linkForm.show_history = link.show_history
-  linkForm.history_hours = link.history_hours || 24
-  linkForm.has_password = link.has_password
-  linkForm.password = '' // Don't pre-fill password for security
-  showCreateDialog.value = true
+
+  // Check link type and open appropriate dialog
+  if (link.share_type === 'TIMELINE') {
+    // Open Timeline dialog
+    showTimelineDialog.value = true
+  } else {
+    // Open Live Location dialog
+    linkForm.name = link.name || ''
+    linkForm.expires_at = link.expires_at ? timezone.fromUtc(link.expires_at).toDate() : null
+    linkForm.show_history = link.show_history
+    linkForm.history_hours = link.history_hours || 24
+    linkForm.has_password = link.has_password
+    linkForm.password = '' // Don't pre-fill password for security
+    showCreateDialog.value = true
+  }
 }
 
 const submitLinkForm = async () => {
@@ -564,13 +701,21 @@ const formatShowHistory = (link) => {
 function handleTimelineCreated(share) {
   console.log('Timeline share created:', share)
   showTimelineDialog.value = false
+  editingLink.value = null
   shareLinksStore.fetchShareLinks() // Refresh list
 }
 
 function handleTimelineUpdated(share) {
   console.log('Timeline share updated:', share)
   showTimelineDialog.value = false
+  editingLink.value = null
   shareLinksStore.fetchShareLinks() // Refresh list
+  toast.add({
+    severity: 'success',
+    summary: 'Success',
+    detail: 'Timeline share updated successfully',
+    life: 3000
+  })
 }
 
 function getTimelineStatusSeverity(status) {
@@ -582,13 +727,21 @@ function getTimelineStatusSeverity(status) {
   }
 }
 
-// Computed properties for filtering links by type
-const liveLocationShares = computed(() =>
-  shareLinksStore.getLiveLocationShares()
+// Computed properties for filtering links by type and status
+const activeTimelineShares = computed(() =>
+  shareLinksStore.getActiveLinks.filter(link => link.share_type === 'TIMELINE')
 )
 
-const timelineShares = computed(() =>
-  shareLinksStore.getTimelineShares()
+const expiredTimelineShares = computed(() =>
+  shareLinksStore.getExpiredLinks.filter(link => link.share_type === 'TIMELINE')
+)
+
+const activeLiveLocationShares = computed(() =>
+  shareLinksStore.getActiveLinks.filter(link => link.share_type !== 'TIMELINE')
+)
+
+const expiredLiveLocationShares = computed(() =>
+  shareLinksStore.getExpiredLinks.filter(link => link.share_type !== 'TIMELINE')
 )
 
 // Lifecycle
@@ -668,8 +821,37 @@ onMounted(async () => {
   color: var(--text-color-secondary);
 }
 
+.share-type-section {
+  margin-bottom: 3rem;
+  padding: 1.5rem;
+  background: var(--surface-50);
+  border-radius: 12px;
+  border: 1px solid var(--surface-border);
+}
+
+.type-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem 0;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--surface-border);
+}
+
+.type-title i {
+  color: var(--primary-color);
+  font-size: 1.5rem;
+}
+
 .links-section {
   margin-bottom: 2rem;
+}
+
+.links-section:last-child {
+  margin-bottom: 0;
 }
 
 .section-title {
@@ -677,6 +859,13 @@ onMounted(async () => {
   font-weight: 600;
   margin-bottom: 1rem;
   color: var(--text-color);
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-color-secondary);
 }
 
 .links-grid {
@@ -696,6 +885,20 @@ onMounted(async () => {
 
 .link-card.expired {
   opacity: 0.7;
+}
+
+.timeline-card {
+  border-left: 4px solid var(--blue-500);
+}
+
+.live-location-card {
+  border-left: 4px solid var(--green-500);
+}
+
+/* Dark mode adjustments for share type sections */
+.p-dark .share-type-section {
+  background: var(--surface-100);
+  border-color: var(--surface-border);
 }
 
 .link-header {
@@ -956,6 +1159,24 @@ onMounted(async () => {
   .header-content {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .share-type-section {
+    padding: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .type-title {
+    font-size: 1.25rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .type-title i {
+    font-size: 1.25rem;
+  }
+
+  .section-subtitle {
+    font-size: 1rem;
   }
 
   .links-grid {

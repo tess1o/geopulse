@@ -13,17 +13,6 @@
     <!-- Normal Timeline View -->
     <template v-else>
       <div class="timeline-content-wrapper">
-        <!-- Timeline Header with Share Button -->
-        <div class="timeline-header">
-          <Button
-              label="Share"
-              icon="pi pi-share-alt"
-              @click="showShareDialog = true"
-              outlined
-              class="share-btn"
-          />
-        </div>
-
         <div class="timeline-main">
           <div class="left-pane">
         <div v-if="mapNoData" class="loading-messages">
@@ -70,7 +59,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted, computed } from 'vue'
+import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { TimelineContainer } from '@/components/timeline'
@@ -80,7 +69,6 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
-import Button from 'primevue/button'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -121,8 +109,8 @@ const showLargeDatasetWarning = ref(false)
 const datasetCounts = ref({ totalItems: 0, stays: 0, trips: 0, dataGaps: 0, limit: 150 })
 const forceLoadLargeDataset = ref(false)
 
-// Share dialog state
-const showShareDialog = ref(false)
+// Share dialog state - injected from MainAppPage
+const showShareDialog = inject('shareDialogVisible', ref(false))
 const shareDates = computed(() => ({
   start: dateRangeStore.startDate,
   end: dateRangeStore.endDate
@@ -313,13 +301,8 @@ const handleForceLoad = () => {
 }
 
 const handleShareCreated = (share) => {
-  toast.add({
-    severity: 'success',
-    summary: 'Timeline Shared',
-    detail: 'Your timeline has been shared successfully',
-    life: 3000
-  })
-  showShareDialog.value = false
+  // Dialog will stay open to show the success state with copy link
+  // No need to show toast as the dialog already shows success message
 }
 
 // Lifecycle
@@ -437,13 +420,6 @@ watch(pathData, () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.timeline-header {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0.5rem 1rem 0 1rem;
-  margin-bottom: 0.5rem;
 }
 
 .timeline-main {

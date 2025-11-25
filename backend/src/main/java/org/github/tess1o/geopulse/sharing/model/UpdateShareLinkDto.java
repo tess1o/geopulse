@@ -22,7 +22,7 @@ public class UpdateShareLinkDto {
     @JsonProperty("expires_at")
     private Instant expiresAt;
 
-    @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
+    @Size(min = 2, max = 100, message = "Password must be between 2 and 100 characters")
     @JsonProperty("password")
     private String password;
 

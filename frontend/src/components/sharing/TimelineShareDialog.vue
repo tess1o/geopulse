@@ -238,8 +238,8 @@ function validateForm() {
     }
   }
 
-  if (formData.value.has_password && (!formData.value.password || formData.value.password.length < 6)) {
-    errors.value.password = 'Password must be at least 6 characters'
+  if (formData.value.has_password && (!formData.value.password || formData.value.password.length < 2)) {
+    errors.value.password = 'Password must be at least 2 characters'
     isValid = false
   }
 

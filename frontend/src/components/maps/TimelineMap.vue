@@ -74,7 +74,7 @@
 
         <!-- Immich Photos Layer -->
         <ImmichLayer
-          v-if="map && isReady"
+          v-if="map && isReady && shouldShowImmich"
           ref="immichLayerRef"
           :map="map"
           :visible="showImmich"
@@ -202,6 +202,14 @@ const props = defineProps({
   showCurrentLocation: {
     type: Boolean,
     default: false
+  },
+  isPublicView: {
+    type: Boolean,
+    default: false
+  },
+  showPhotos: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -339,6 +347,14 @@ const controlsProps = computed(() => ({
 const immichConfigured = computed(() => immichStore.isConfigured)
 const immichLoading = computed(() => immichStore.photosLoading || immichStore.configLoading)
 
+// For public views, respect the showPhotos prop; for private views, always allow
+const shouldShowImmich = computed(() => {
+  if (props.isPublicView) {
+    return props.showPhotos
+  }
+  return true // For non-public views, always allow (controlled by toggle)
+})
+
 // Context menu items
 const mapMenuItems = ref([
   {
@@ -422,6 +438,11 @@ const handleMapClick = (event) => {
 }
 
 const handleMapContextMenu = (event) => {
+  // Don't show context menu in public view
+  if (props.isPublicView) {
+    return
+  }
+
   // If drawing is in progress, do nothing to avoid conflicts with touch events.
   if (isDrawing()) {
     return
@@ -432,16 +453,16 @@ const handleMapContextMenu = (event) => {
     favoriteContextMenuActive.value = false
     return
   }
-  
+
   // Prevent default browser context menu
   if (event.originalEvent) {
     event.originalEvent.preventDefault()
     event.originalEvent.stopPropagation()
   }
-  
+
   dialogState.value.addToFavoritesLatLng = event.latlng
   baseHandleMapContextMenu(event)
-  
+
   // Show PrimeVue context menu
   if (mapContextMenuRef.value && event.originalEvent) {
     mapContextMenuRef.value.show(event.originalEvent)

@@ -129,6 +129,8 @@
                 :timelineData="timelineData"
                 :currentLocation="currentLocation"
                 :showCurrentLocation="shareInfo.show_current_location && shareInfo.timeline_status === 'active'"
+                :is-public-view="true"
+                :show-photos="shareInfo.show_photos || false"
                 @timeline-marker-click="handleTimelineItemClick"
             />
           </div>
@@ -276,18 +278,41 @@ async function loadShareInfo() {
     // Fetch share info (public, no auth required)
     shareInfo.value = await shareLinksStore.fetchSharedLocationInfo(linkId)
 
+    console.log('Share info loaded:', {
+      has_password: shareInfo.value.has_password,
+      link_id: linkId,
+      share_type: shareInfo.value.share_type
+    })
+
     // Check if password is required
     if (shareInfo.value.has_password) {
       // Check for stored token
       const storedToken = getStoredToken()
-      if (storedToken && isTokenValid(storedToken)) {
+      console.log('Stored token found:', storedToken ? 'yes' : 'no')
+
+      // Validate token exists, is not expired, AND was issued for a password-protected link
+      if (storedToken && isTokenValid(storedToken) && storedToken.has_password === true) {
+        console.log('Using cached authentication token')
         shareLinksStore.sharedAccessToken = storedToken.access_token
         authenticated.value = true
         await loadTimelineData()
       } else {
+        console.log('No valid token or password protection status changed, showing password prompt')
+        if (storedToken) {
+          // Clear token (expired or password status changed)
+          localStorage.removeItem(`shareLink_${linkId}`)
+        }
         needsPassword.value = true
       }
     } else {
+      console.log('No password required for this share')
+      // Check if we have a token from when this link had a password
+      const storedToken = getStoredToken()
+      if (storedToken && storedToken.has_password === true) {
+        // Password was removed, clear the old token
+        console.log('Password protection removed, clearing old token')
+        localStorage.removeItem(`shareLink_${linkId}`)
+      }
       // No password required, verify without password
       await handlePasswordSubmit()
     }
@@ -383,7 +408,8 @@ function isTokenValid(tokenData) {
 function storeToken(response) {
   const tokenData = {
     access_token: response.access_token,
-    expires_at: Date.now() + (response.expires_in * 1000)
+    expires_at: Date.now() + (response.expires_in * 1000),
+    has_password: shareInfo.value.has_password // Store password protection status
   }
   localStorage.setItem(`shareLink_${linkId}`, JSON.stringify(tokenData))
 }
