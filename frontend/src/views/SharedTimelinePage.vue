@@ -124,16 +124,20 @@
         <div class="timeline-container">
           <div class="timeline-map">
             <TimelineMap
+                ref="mapRef"
                 :pathData="pathData"
                 :timelineData="timelineData"
                 :currentLocation="currentLocation"
                 :showCurrentLocation="shareInfo.show_current_location && shareInfo.timeline_status === 'active'"
+                @timeline-marker-click="handleTimelineItemClick"
             />
           </div>
           <div class="timeline-sidebar">
             <TimelineContainer
+                ref="timelineRef"
                 :timeline-data="timelineData"
                 :is-public-view="true"
+                @timeline-item-click="handleTimelineItemClick"
             />
           </div>
         </div>
@@ -147,6 +151,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { useHighlightStore } from '@/stores/highlight'
 import { useTimezone } from '@/composables/useTimezone'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -161,6 +166,7 @@ import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 const route = useRoute()
 const shareLinksStore = useShareLinksStore()
 const dateRangeStore = useDateRangeStore()
+const highlightStore = useHighlightStore()
 const timezone = useTimezone()
 
 const linkId = route.params.linkId
@@ -176,6 +182,10 @@ const shareInfo = ref(null)
 const timelineData = ref(null)
 const pathData = ref(null)
 const currentLocation = ref(null)
+
+// Component refs
+const mapRef = ref(null)
+const timelineRef = ref(null)
 
 // Date filter state
 const filterStartDate = ref(null)
@@ -410,6 +420,17 @@ async function resetDateFilter() {
 
   // Refetch with full share range (no date params)
   await loadTimelineData()
+}
+
+function handleTimelineItemClick(item) {
+  // Check if this item is already highlighted
+  if (highlightStore.isItemHighlighted(item)) {
+    highlightStore.clearAllHighlights()
+    return
+  }
+
+  // Highlight the clicked item
+  highlightStore.setHighlightedItem(item)
 }
 </script>
 
