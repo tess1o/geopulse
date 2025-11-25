@@ -12,7 +12,20 @@
 
     <!-- Normal Timeline View -->
     <template v-else>
-      <div class="left-pane">
+      <div class="timeline-content-wrapper">
+        <!-- Timeline Header with Share Button -->
+        <div class="timeline-header">
+          <Button
+              label="Share"
+              icon="pi pi-share-alt"
+              @click="showShareDialog = true"
+              outlined
+              class="share-btn"
+          />
+        </div>
+
+        <div class="timeline-main">
+          <div class="left-pane">
         <div v-if="mapNoData" class="loading-messages">
           No data to show on the map. Try to select different date range.
         </div>
@@ -42,6 +55,15 @@
             :dateRange="dateRange"
             @timeline-item-click="handleTimelineItemClick"
         />
+          </div>
+        </div>
+
+        <!-- Timeline Share Dialog -->
+        <TimelineShareDialog
+            v-model:visible="showShareDialog"
+            :prefill-dates="shareDates"
+            @created="handleShareCreated"
+        />
       </div>
     </template>
   </div>
@@ -57,6 +79,8 @@ import TimelineLargeDatasetWarning from '@/components/timeline/TimelineLargeData
 import ProgressSpinner from 'primevue/progressspinner'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
+import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
+import Button from 'primevue/button'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -96,6 +120,13 @@ const geolocationError = ref(null)
 const showLargeDatasetWarning = ref(false)
 const datasetCounts = ref({ totalItems: 0, stays: 0, trips: 0, dataGaps: 0, limit: 150 })
 const forceLoadLargeDataset = ref(false)
+
+// Share dialog state
+const showShareDialog = ref(false)
+const shareDates = computed(() => ({
+  start: dateRangeStore.startDate,
+  end: dateRangeStore.endDate
+}))
 
 // Methods
 const triggerMapResize = () => {
@@ -281,6 +312,16 @@ const handleForceLoad = () => {
   }
 }
 
+const handleShareCreated = (share) => {
+  toast.add({
+    severity: 'success',
+    summary: 'Timeline Shared',
+    detail: 'Your timeline has been shared successfully',
+    life: 3000
+  })
+  showShareDialog.value = false
+}
+
 // Lifecycle
 onMounted(async () => {
   await Promise.all([
@@ -380,6 +421,7 @@ watch(pathData, () => {
 .timeline-page {
   flex: 1;
   display: flex;
+  flex-direction: column;
   height: calc(100vh - 160px); /* Account for navbar (60px) + tabs (40px) + padding (60px) */
   overflow: hidden;
 }
@@ -390,10 +432,30 @@ watch(pathData, () => {
   align-items: center;
 }
 
+.timeline-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem 0 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.timeline-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
 .left-pane {
   flex: 5;
   display: flex;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   margin-left: 0.5rem;
   margin-right: 1rem;
   height: 100%;
@@ -434,10 +496,13 @@ watch(pathData, () => {
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .timeline-page {
+  .timeline-main {
     flex-direction: column;
-    height: calc(100vh - 140px); /* Adjust for mobile navbar height */
     gap: 0.5rem;
+  }
+
+  .timeline-page {
+    height: calc(100vh - 140px); /* Adjust for mobile navbar height */
   }
 
   .left-pane {

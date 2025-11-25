@@ -15,12 +15,14 @@
             </div>
             <div class="header-actions">
               <Button
-                  label="Create New Link"
+                  label="Create New"
                   icon="pi pi-plus"
-                  @click="showCreateDialog = true"
-                  :disabled="!shareLinksStore.canCreateNewLink"
+                  @click="(event) => menu.toggle(event)"
                   class="create-link-btn"
+                  aria-haspopup="true"
+                  aria-controls="create_menu"
               />
+              <Menu ref="menu" id="create_menu" :model="createMenuItems" :popup="true" />
             </div>
           </div>
         </div>
@@ -74,13 +76,13 @@
                         <label class="url-label">Share URL:</label>
                         <div class="url-input-group">
                           <InputText
-                              :value="getShareUrl(link.id)"
+                              :value="getShareUrl(link)"
                               readonly
                               class="share-url-input"
                           />
                           <Button
                               icon="pi pi-copy"
-                              @click="copyToClipboard(getShareUrl(link.id))"
+                              @click="copyToClipboard(getShareUrl(link))"
                               class="copy-btn"
                               v-tooltip="'Copy to clipboard'"
                           />
@@ -89,6 +91,10 @@
 
                       <div class="link-settings">
                         <div class="setting-item">
+                          <span class="setting-label">Type:</span>
+                          <span class="setting-value">{{ link.share_type === 'TIMELINE' ? 'Timeline' : 'Live Location' }}</span>
+                        </div>
+                        <div class="setting-item">
                           <span class="setting-label">Password Protected:</span>
                           <span class="setting-value">{{ link.has_password ? 'Yes' : 'No' }}</span>
                         </div>
@@ -96,9 +102,24 @@
                           <span class="setting-label">View Count:</span>
                           <span class="setting-value">{{ link.view_count || 0 }}</span>
                         </div>
-                        <div class="setting-item">
+                        <div v-if="link.share_type !== 'TIMELINE'" class="setting-item">
                           <span class="setting-label">Show History:</span>
                           <span class="setting-value">{{ formatShowHistory(link) }}</span>
+                        </div>
+                      </div>
+
+                      <!-- Timeline-specific info -->
+                      <div v-if="link.share_type === 'TIMELINE'" class="timeline-info">
+                        <div class="setting-item">
+                          <span class="setting-label">Date Range:</span>
+                          <span class="setting-value">
+                            {{ formatDate(link.start_date) }} - {{ formatDate(link.end_date) }}
+                          </span>
+                        </div>
+                        <div class="setting-item">
+                          <span class="setting-label">Status:</span>
+                          <Tag :value="link.timeline_status"
+                               :severity="getTimelineStatusSeverity(link.timeline_status)" />
                         </div>
                       </div>
                     </div>
@@ -282,6 +303,14 @@
           </form>
         </Dialog>
 
+        <!-- Timeline Share Dialog -->
+        <TimelineShareDialog
+            v-model:visible="showTimelineDialog"
+            :editing-share="editingLink"
+            @created="handleTimelineCreated"
+            @updated="handleTimelineUpdated"
+        />
+
         <!-- Delete Confirmation Dialog -->
         <Dialog
             v-model:visible="showDeleteDialog"
@@ -327,17 +356,39 @@ import {useShareLinksStore} from '@/stores/shareLinks'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
+import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
+import Menu from 'primevue/menu'
 
 const timezone = useTimezone()
 
 const toast = useToast()
 const shareLinksStore = useShareLinksStore()
 
+// Create menu items for dropdown
+const createMenuItems = ref([
+  {
+    label: 'Live Location Share',
+    icon: 'pi pi-map-marker',
+    command: () => {
+      showCreateDialog.value = true
+    }
+  },
+  {
+    label: 'Timeline Share',
+    icon: 'pi pi-calendar',
+    command: () => {
+      showTimelineDialog.value = true
+    }
+  }
+])
+
 // Component state
 const showCreateDialog = ref(false)
+const showTimelineDialog = ref(false)
 const showDeleteDialog = ref(false)
 const editingLink = ref(null)
 const linkToDelete = ref(null)
+const menu = ref(null)
 
 // Form state
 const linkForm = reactive({
@@ -447,11 +498,12 @@ const deleteLink = async () => {
   }
 }
 
-const getShareUrl = (linkId) => {
+const getShareUrl = (link) => {
   const baseUrl = shareLinksStore.baseUrl || window.location.origin;
   // Make sure that the base URL does not have a trailing slash
   const sanitizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  return `${sanitizedBaseUrl}/shared/${linkId}`;
+  const path = link.share_type === 'TIMELINE' ? 'shared-timeline' : 'shared';
+  return `${sanitizedBaseUrl}/${path}/${link.id}`;
 }
 
 const copyToClipboard = async (text) => {
@@ -508,6 +560,36 @@ const formatShowHistory = (link) => {
   }
   return 'Yes';
 }
+
+function handleTimelineCreated(share) {
+  console.log('Timeline share created:', share)
+  showTimelineDialog.value = false
+  shareLinksStore.fetchShareLinks() // Refresh list
+}
+
+function handleTimelineUpdated(share) {
+  console.log('Timeline share updated:', share)
+  showTimelineDialog.value = false
+  shareLinksStore.fetchShareLinks() // Refresh list
+}
+
+function getTimelineStatusSeverity(status) {
+  switch (status) {
+    case 'upcoming': return 'info'
+    case 'active': return 'success'
+    case 'completed': return 'secondary'
+    default: return 'secondary'
+  }
+}
+
+// Computed properties for filtering links by type
+const liveLocationShares = computed(() =>
+  shareLinksStore.getLiveLocationShares()
+)
+
+const timelineShares = computed(() =>
+  shareLinksStore.getTimelineShares()
+)
 
 // Lifecycle
 onMounted(async () => {
@@ -701,6 +783,16 @@ onMounted(async () => {
 .setting-value {
   font-weight: 500;
   color: var(--text-color);
+}
+
+.timeline-info {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--surface-100);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .link-actions {

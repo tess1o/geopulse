@@ -278,8 +278,37 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/timeline`, {
                     'Authorization': `Bearer ${this.sharedAccessToken}`
                 })
-                this.sharedTimelineData = response
-                return response
+
+                // Transform response to match TimelineContainer expected format
+                // Backend returns {userId, stays: [], trips: []}
+                // Frontend expects a flat array of timeline items with type field
+                let timelineArray = []
+
+                if (response.stays && Array.isArray(response.stays)) {
+                    const staysWithType = response.stays.map(stay => ({
+                        ...stay,
+                        type: 'stay'
+                    }))
+                    timelineArray = [...staysWithType]
+                }
+
+                if (response.trips && Array.isArray(response.trips)) {
+                    const tripsWithType = response.trips.map(trip => ({
+                        ...trip,
+                        type: 'trip'
+                    }))
+                    timelineArray = [...timelineArray, ...tripsWithType]
+                }
+
+                // Sort by timestamp
+                timelineArray.sort((a, b) => {
+                    const aTime = new Date(a.timestamp).getTime()
+                    const bTime = new Date(b.timestamp).getTime()
+                    return aTime - bTime
+                })
+
+                this.sharedTimelineData = timelineArray
+                return timelineArray
             } catch (error) {
                 this.setError(error.message || 'Failed to fetch timeline data')
                 throw error
@@ -298,8 +327,16 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/path`, {
                     'Authorization': `Bearer ${this.sharedAccessToken}`
                 })
-                this.sharedPathData = response
-                return response
+
+                // Transform response to match expected format
+                // Backend returns array of {latitude, longitude, timestamp}
+                // Frontend expects {points: [{latitude, longitude, timestamp}]}
+                const pathData = {
+                    points: Array.isArray(response) ? response : (response.points || [])
+                }
+
+                this.sharedPathData = pathData
+                return pathData
             } catch (error) {
                 console.error('Failed to fetch path data:', error)
                 throw error
