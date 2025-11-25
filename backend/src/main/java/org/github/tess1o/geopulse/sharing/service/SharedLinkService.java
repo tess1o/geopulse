@@ -337,7 +337,7 @@ public class SharedLinkService {
      * Get timeline data for timeline share
      */
     @Transactional
-    public MovementTimelineDTO getSharedTimeline(UUID linkId, String tempToken) {
+    public MovementTimelineDTO getSharedTimeline(UUID linkId, String tempToken, Instant startTime, Instant endTime) {
         log.debug("Timeline data access attempt for linkId: {}", linkId);
 
         validateTemporaryToken(tempToken, linkId);
@@ -358,18 +358,31 @@ public class SharedLinkService {
             throw new IllegalStateException("Timeline share missing date range");
         }
 
+        // Determine effective date range
+        Instant effectiveStart = startTime != null ? startTime : entity.getStartDate();
+        Instant effectiveEnd = endTime != null ? endTime : entity.getEndDate();
+
+        // Validate dates are within share boundaries
+        if (effectiveStart.isBefore(entity.getStartDate()) || effectiveEnd.isAfter(entity.getEndDate())) {
+            throw new IllegalArgumentException(
+                    String.format("Requested date range must be within share period: %s to %s",
+                            entity.getStartDate(), entity.getEndDate())
+            );
+        }
+
         // Increment view count on first timeline access
         sharedLinkRepository.incrementViewCount(linkId);
 
-        // Get timeline data for the date range
+        // Get timeline data for the effective date range
+        // This automatically includes overnight stays via boundary expansion
         MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDb(
                 entity.getUser().getId(),
-                entity.getStartDate(),
-                entity.getEndDate()
+                effectiveStart,
+                effectiveEnd
         );
 
-        log.info("Timeline data accessed successfully for linkId: {}, items: {}",
-                linkId, timeline.getStaysCount() + timeline.getTripsCount());
+        log.info("Timeline data accessed successfully for linkId: {}, items: {}, dateRange: {} to {}",
+                linkId, timeline.getStaysCount() + timeline.getTripsCount(), effectiveStart, effectiveEnd);
 
         return timeline;
     }
@@ -377,7 +390,7 @@ public class SharedLinkService {
     /**
      * Get GPS path data for timeline share
      */
-    public GpsPointPathDTO getSharedPath(UUID linkId, String tempToken) {
+    public GpsPointPathDTO getSharedPath(UUID linkId, String tempToken, Instant startTime, Instant endTime) {
         log.debug("Path data access attempt for linkId: {}", linkId);
 
         validateTemporaryToken(tempToken, linkId);
@@ -398,11 +411,23 @@ public class SharedLinkService {
             throw new IllegalStateException("Timeline share missing date range");
         }
 
-        // Get GPS points for the date range
+        // Determine effective date range
+        Instant effectiveStart = startTime != null ? startTime : entity.getStartDate();
+        Instant effectiveEnd = endTime != null ? endTime : entity.getEndDate();
+
+        // Validate dates are within share boundaries
+        if (effectiveStart.isBefore(entity.getStartDate()) || effectiveEnd.isAfter(entity.getEndDate())) {
+            throw new IllegalArgumentException(
+                    String.format("Requested date range must be within share period: %s to %s",
+                            entity.getStartDate(), entity.getEndDate())
+            );
+        }
+
+        // Get GPS points for the effective date range
         List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(
                 entity.getUser().getId(),
-                entity.getStartDate(),
-                entity.getEndDate()
+                effectiveStart,
+                effectiveEnd
         );
 
         // Convert to GpsPoint interface for simplification

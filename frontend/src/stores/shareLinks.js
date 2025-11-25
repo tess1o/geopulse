@@ -267,7 +267,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
         },
 
         // Timeline share methods
-        async fetchSharedTimeline(linkId) {
+        async fetchSharedTimeline(linkId, startTime = null, endTime = null) {
             if (!this.sharedAccessToken) {
                 throw new Error('No access token available')
             }
@@ -275,7 +275,17 @@ export const useShareLinksStore = defineStore('shareLinks', {
             this.sharedLocationLoading = true
             this.clearError()
             try {
-                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/timeline`, {
+                // Build URL with optional query params
+                let url = `/shared/${linkId}/timeline`
+                if (startTime && endTime) {
+                    const params = new URLSearchParams({
+                        startTime: startTime,  // ISO-8601 format
+                        endTime: endTime
+                    })
+                    url += `?${params.toString()}`
+                }
+
+                const response = await apiService.getWithCustomHeaders(url, {
                     'Authorization': `Bearer ${this.sharedAccessToken}`
                 })
 
@@ -317,14 +327,24 @@ export const useShareLinksStore = defineStore('shareLinks', {
             }
         },
 
-        async fetchSharedPath(linkId) {
+        async fetchSharedPath(linkId, startTime = null, endTime = null) {
             if (!this.sharedAccessToken) {
                 throw new Error('No access token available')
             }
 
             this.clearError()
             try {
-                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/path`, {
+                // Build URL with optional query params
+                let url = `/shared/${linkId}/path`
+                if (startTime && endTime) {
+                    const params = new URLSearchParams({
+                        startTime: startTime,  // ISO-8601 format
+                        endTime: endTime
+                    })
+                    url += `?${params.toString()}`
+                }
+
+                const response = await apiService.getWithCustomHeaders(url, {
                     'Authorization': `Bearer ${this.sharedAccessToken}`
                 })
 

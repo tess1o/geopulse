@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -97,7 +98,11 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/timeline")
-    public Response getSharedTimeline(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+    public Response getSharedTimeline(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
         try {
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 return Response.status(Response.Status.UNAUTHORIZED)
@@ -106,7 +111,39 @@ public class PublicSharedLinkResource {
             }
 
             String token = authHeader.substring("Bearer ".length());
-            MovementTimelineDTO result = sharedLinkService.getSharedTimeline(linkId, token);
+
+            // Parse optional date parameters
+            Instant startInstant = null;
+            Instant endInstant = null;
+
+            if (startTime != null && !startTime.isEmpty()) {
+                try {
+                    startInstant = Instant.parse(startTime);
+                } catch (Exception e) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid startTime format. Expected ISO-8601"))
+                            .build();
+                }
+            }
+
+            if (endTime != null && !endTime.isEmpty()) {
+                try {
+                    endInstant = Instant.parse(endTime);
+                } catch (Exception e) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid endTime format. Expected ISO-8601"))
+                            .build();
+                }
+            }
+
+            // Validate start < end if both provided
+            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("startTime must be before endTime"))
+                        .build();
+            }
+
+            MovementTimelineDTO result = sharedLinkService.getSharedTimeline(linkId, token, startInstant, endInstant);
             return Response.ok(result).build();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -130,7 +167,11 @@ public class PublicSharedLinkResource {
 
     @GET
     @Path("/{linkId}/path")
-    public Response getSharedPath(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+    public Response getSharedPath(
+            @PathParam("linkId") UUID linkId,
+            @HeaderParam("Authorization") String authHeader,
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime) {
         try {
             if (authHeader == null || !authHeader.startsWith("Bearer ")) {
                 return Response.status(Response.Status.UNAUTHORIZED)
@@ -139,7 +180,39 @@ public class PublicSharedLinkResource {
             }
 
             String token = authHeader.substring("Bearer ".length());
-            GpsPointPathDTO result = sharedLinkService.getSharedPath(linkId, token);
+
+            // Parse optional date parameters
+            Instant startInstant = null;
+            Instant endInstant = null;
+
+            if (startTime != null && !startTime.isEmpty()) {
+                try {
+                    startInstant = Instant.parse(startTime);
+                } catch (Exception e) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid startTime format. Expected ISO-8601"))
+                            .build();
+                }
+            }
+
+            if (endTime != null && !endTime.isEmpty()) {
+                try {
+                    endInstant = Instant.parse(endTime);
+                } catch (Exception e) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid endTime format. Expected ISO-8601"))
+                            .build();
+                }
+            }
+
+            // Validate start < end if both provided
+            if (startInstant != null && endInstant != null && startInstant.isAfter(endInstant)) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("startTime must be before endTime"))
+                        .build();
+            }
+
+            GpsPointPathDTO result = sharedLinkService.getSharedPath(linkId, token, startInstant, endInstant);
             return Response.ok(result).build();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)

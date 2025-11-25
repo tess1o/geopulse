@@ -32,7 +32,9 @@
               showIcon
               :showOnFocus="true"
               dateFormat="mm/dd/yy"
-              placeholder="Select date range"
+              placeholder="Filter date range"
+              :minDate="shareStartDate"
+              :maxDate="shareEndDate"
           />
           <Button icon="pi pi-times" text rounded @click="resetDateFilter"
                  v-if="filterStartDate || filterEndDate"
@@ -122,15 +124,15 @@
         <div class="timeline-container">
           <div class="timeline-map">
             <TimelineMap
-                :pathData="filteredPathData"
-                :timelineData="filteredTimelineData"
+                :pathData="pathData"
+                :timelineData="timelineData"
                 :currentLocation="currentLocation"
                 :showCurrentLocation="shareInfo.show_current_location && shareInfo.timeline_status === 'active'"
             />
           </div>
           <div class="timeline-sidebar">
             <TimelineContainer
-                :timeline-data="filteredTimelineData"
+                :timeline-data="timelineData"
                 :is-public-view="true"
             />
           </div>
@@ -141,9 +143,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
+import { useDateRangeStore } from '@/stores/dateRange'
 import { useTimezone } from '@/composables/useTimezone'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
@@ -157,6 +160,7 @@ import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 
 const route = useRoute()
 const shareLinksStore = useShareLinksStore()
+const dateRangeStore = useDateRangeStore()
 const timezone = useTimezone()
 
 const linkId = route.params.linkId
@@ -189,10 +193,9 @@ const shareEndDate = computed(() => {
 // Two-way binding for DatePicker range mode
 const dateRange = computed({
   get() {
+    // Show full share date range as default, or selected filter dates
     if (filterStartDate.value && filterEndDate.value) {
       return [filterStartDate.value, filterEndDate.value]
-    } else if (filterStartDate.value) {
-      return [filterStartDate.value, filterStartDate.value]
     }
     // Default to full share date range if no filter is set
     if (shareStartDate.value && shareEndDate.value) {
@@ -201,56 +204,53 @@ const dateRange = computed({
     return null
   },
   set(value) {
-    if (value && Array.isArray(value)) {
-      filterStartDate.value = value[0]
-      filterEndDate.value = value[1] || value[0]
-    } else {
+    if (value && Array.isArray(value) && value.length === 2) {
+      // Only update when both dates are selected (complete range)
+      if (value[0] && value[1]) {
+        filterStartDate.value = value[0]
+        filterEndDate.value = value[1]
+      }
+    } else if (!value || (Array.isArray(value) && value.length === 0)) {
+      // Clear filter
       filterStartDate.value = null
       filterEndDate.value = null
     }
+    // Ignore single date selections (incomplete range)
   }
 })
 
-// Filtered timeline data based on date range
-const filteredTimelineData = computed(() => {
-  if (!timelineData.value || (!filterStartDate.value && !filterEndDate.value)) {
-    return timelineData.value
+// Watch for date range changes and refetch from backend
+watch([filterStartDate, filterEndDate], async ([newStart, newEnd], [oldStart, oldEnd]) => {
+  // Sync with date range store for Immich
+  if (newStart && newEnd) {
+    // Use the same date range conversion as the main timeline page
+    const { start: startUtc, end: endUtc } = timezone.createDateRangeFromPicker(newStart, newEnd)
+    dateRangeStore.setDateRange([startUtc, endUtc])
+  } else if (shareStartDate.value && shareEndDate.value) {
+    // Use full share range if no filter
+    const { start: startUtc, end: endUtc } = timezone.createDateRangeFromPicker(
+      shareStartDate.value,
+      shareEndDate.value
+    )
+    dateRangeStore.setDateRange([startUtc, endUtc])
   }
 
-  const startTime = filterStartDate.value ? filterStartDate.value.getTime() : null
-  const endTime = filterEndDate.value ? filterEndDate.value.getTime() + (24 * 60 * 60 * 1000 - 1) : null
+  // Refetch timeline data if already loaded and dates changed
+  if (!timelineData.value) return  // Only refetch if timeline is already loaded
+  if (newStart === oldStart && newEnd === oldEnd) return  // Skip if dates haven't changed
 
-  return timelineData.value.filter(item => {
-    const itemTime = new Date(item.timestamp).getTime()
-
-    if (startTime && itemTime < startTime) return false
-    if (endTime && itemTime > endTime) return false
-
-    return true
-  })
+  // Refetch timeline data with new date range
+  await loadTimelineData()
 })
 
-// Filtered path data based on date range
-const filteredPathData = computed(() => {
-  if (!pathData.value || !pathData.value.points || (!filterStartDate.value && !filterEndDate.value)) {
-    return pathData.value
-  }
-
-  const startTime = filterStartDate.value ? filterStartDate.value.getTime() : null
-  const endTime = filterEndDate.value ? filterEndDate.value.getTime() + (24 * 60 * 60 * 1000 - 1) : null
-
-  const filteredPoints = pathData.value.points.filter(point => {
-    const pointTime = new Date(point.timestamp).getTime()
-
-    if (startTime && pointTime < startTime) return false
-    if (endTime && pointTime > endTime) return false
-
-    return true
-  })
-
-  return {
-    ...pathData.value,
-    points: filteredPoints
+// Initialize date range store when timeline data loads
+watch([shareInfo, timelineData], ([info, data]) => {
+  if (info && data && !filterStartDate.value && !filterEndDate.value) {
+    // Set initial date range to full share range using proper timezone conversion
+    const start = new Date(info.start_date)
+    const end = new Date(info.end_date)
+    const { start: startUtc, end: endUtc } = timezone.createDateRangeFromPicker(start, end)
+    dateRangeStore.setDateRange([startUtc, endUtc])
   }
 })
 
@@ -316,17 +316,33 @@ async function loadTimelineData() {
   }
 
   try {
-    // Load timeline and path data in parallel
+    // Determine date range to fetch
+    let startTime = null
+    let endTime = null
+
+    if (filterStartDate.value && filterEndDate.value) {
+      // User has applied a date filter - use it
+      const { start, end } = timezone.createDateRangeFromPicker(
+        filterStartDate.value,
+        filterEndDate.value
+      )
+      startTime = start  // ISO-8601 UTC string
+      endTime = end      // ISO-8601 UTC string
+    }
+    // If no filter, pass null - backend will use full share range
+
+    // Fetch timeline and path data in parallel with date parameters
     const [timeline, path] = await Promise.all([
-      shareLinksStore.fetchSharedTimeline(linkId),
-      shareLinksStore.fetchSharedPath(linkId)
+      shareLinksStore.fetchSharedTimeline(linkId, startTime, endTime),
+      shareLinksStore.fetchSharedPath(linkId, startTime, endTime)
     ])
 
     timelineData.value = timeline
     pathData.value = path
 
-    // Load current location if applicable
-    if (shareInfo.value.show_current_location && shareInfo.value.timeline_status === 'active') {
+    // Load current location if available
+    if (shareInfo.value.show_current_location &&
+        shareInfo.value.timeline_status === 'active') {
       currentLocation.value = await shareLinksStore.fetchSharedCurrentLocation(linkId)
     }
   } catch (err) {
@@ -388,9 +404,12 @@ function getStatusSeverity() {
   return 'secondary'
 }
 
-function resetDateFilter() {
+async function resetDateFilter() {
   filterStartDate.value = null
   filterEndDate.value = null
+
+  // Refetch with full share range (no date params)
+  await loadTimelineData()
 }
 </script>
 
