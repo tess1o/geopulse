@@ -32,6 +32,21 @@ public class UpdateShareLinkDto {
     @JsonProperty("history_hours")
     private int historyHours;
 
+    @JsonProperty("share_type")
+    private String shareType;
+
+    @JsonProperty("start_date")
+    private Instant startDate;
+
+    @JsonProperty("end_date")
+    private Instant endDate;
+
+    @JsonProperty("show_current_location")
+    private Boolean showCurrentLocation;
+
+    @JsonProperty("show_photos")
+    private Boolean showPhotos;
+
     public boolean isPasswordRemoval() {
         return password == null;
     }

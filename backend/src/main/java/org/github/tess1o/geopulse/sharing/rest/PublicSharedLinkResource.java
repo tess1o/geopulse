@@ -8,9 +8,12 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.service.SharedLinkService;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Path("/api/shared")
@@ -88,6 +91,113 @@ public class PublicSharedLinkResource {
             log.error("Error getting shared location for linkId: {}", linkId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve location"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{linkId}/timeline")
+    public Response getSharedTimeline(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return Response.status(Response.Status.UNAUTHORIZED)
+                        .entity(ApiResponse.error("Authorization token required"))
+                        .build();
+            }
+
+            String token = authHeader.substring("Bearer ".length());
+            MovementTimelineDTO result = sharedLinkService.getSharedTimeline(linkId, token);
+            return Response.ok(result).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Link not found or expired"))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting shared timeline for linkId: {}", linkId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve timeline"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{linkId}/path")
+    public Response getSharedPath(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return Response.status(Response.Status.UNAUTHORIZED)
+                        .entity(ApiResponse.error("Authorization token required"))
+                        .build();
+            }
+
+            String token = authHeader.substring("Bearer ".length());
+            GpsPointPathDTO result = sharedLinkService.getSharedPath(linkId, token);
+            return Response.ok(result).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Link not found or expired"))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting shared path for linkId: {}", linkId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve path"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/{linkId}/current")
+    public Response getSharedCurrentLocation(@PathParam("linkId") UUID linkId, @HeaderParam("Authorization") String authHeader) {
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return Response.status(Response.Status.UNAUTHORIZED)
+                        .entity(ApiResponse.error("Authorization token required"))
+                        .build();
+            }
+
+            String token = authHeader.substring("Bearer ".length());
+            Optional<LocationHistoryResponse.CurrentLocationData> result =
+                    sharedLinkService.getSharedCurrentLocation(linkId, token);
+
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Current location not available"))
+                        .build();
+            }
+
+            return Response.ok(result.get()).build();
+        } catch (NotFoundException e) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity(ApiResponse.error("Current location not available"))
+                    .build();
+        } catch (ForbiddenException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Access denied"))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting current location for linkId: {}", linkId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve current location"))
                     .build();
         }
     }

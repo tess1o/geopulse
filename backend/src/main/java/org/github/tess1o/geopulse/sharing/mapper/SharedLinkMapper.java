@@ -20,6 +20,20 @@ public class SharedLinkMapper {
         sharedLinkEntity.setShowHistory(createShareLinkRequest.isShowHistory());
         sharedLinkEntity.setHistoryHours(createShareLinkRequest.getHistoryHours());
         sharedLinkEntity.setUser(user);
+
+        // Set share type and timeline-specific fields
+        if (createShareLinkRequest.getShareType() != null) {
+            sharedLinkEntity.setShareType(ShareType.valueOf(createShareLinkRequest.getShareType()));
+        } else {
+            sharedLinkEntity.setShareType(ShareType.LIVE_LOCATION);
+        }
+        sharedLinkEntity.setStartDate(createShareLinkRequest.getStartDate());
+        sharedLinkEntity.setEndDate(createShareLinkRequest.getEndDate());
+        sharedLinkEntity.setShowCurrentLocation(createShareLinkRequest.getShowCurrentLocation() != null ?
+                createShareLinkRequest.getShowCurrentLocation() : true);
+        sharedLinkEntity.setShowPhotos(createShareLinkRequest.getShowPhotos() != null ?
+                createShareLinkRequest.getShowPhotos() : false);
+
         return sharedLinkEntity;
     }
 
@@ -43,9 +57,15 @@ public class SharedLinkMapper {
                 .hasPassword(entity.getPassword() != null)
                 .showHistory(entity.isShowHistory())
                 .historyHours(entity.getHistoryHours())
-                .isActive(entity.getExpiresAt() == null || entity.getExpiresAt().isAfter(Instant.now()))
+                .isActive(entity.isActive())
                 .createdAt(entity.getCreatedAt())
                 .viewCount(entity.getViewCount())
+                .shareType(entity.getShareType().name())
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
+                .showCurrentLocation(entity.getShowCurrentLocation())
+                .showPhotos(entity.getShowPhotos())
+                .timelineStatus(entity.getTimelineStatus())
                 .build();
     }
 
@@ -57,11 +77,17 @@ public class SharedLinkMapper {
                 .hasPassword(entity.getPassword() != null)
                 .showHistory(entity.isShowHistory())
                 .historyHours(entity.getHistoryHours())
-                .isActive(entity.getExpiresAt() == null || entity.getExpiresAt().isAfter(Instant.now()))
+                .isActive(entity.isActive())
                 .createdAt(entity.getCreatedAt())
                 .viewCount(entity.getViewCount())
                 .sharedBy(entity.getUser().getFullName() != null ?
                         entity.getUser().getFullName() : entity.getUser().getEmail())
+                .shareType(entity.getShareType().name())
+                .startDate(entity.getStartDate())
+                .endDate(entity.getEndDate())
+                .showCurrentLocation(entity.getShowCurrentLocation())
+                .showPhotos(entity.getShowPhotos())
+                .timelineStatus(entity.getTimelineStatus())
                 .build();
     }
 
@@ -117,5 +143,22 @@ public class SharedLinkMapper {
         }
         entity.setShowHistory(dto.isShowHistory());
         entity.setHistoryHours(dto.getHistoryHours());
+
+        // Update timeline-specific fields if provided
+        if (dto.getShareType() != null) {
+            entity.setShareType(ShareType.valueOf(dto.getShareType()));
+        }
+        if (dto.getStartDate() != null) {
+            entity.setStartDate(dto.getStartDate());
+        }
+        if (dto.getEndDate() != null) {
+            entity.setEndDate(dto.getEndDate());
+        }
+        if (dto.getShowCurrentLocation() != null) {
+            entity.setShowCurrentLocation(dto.getShowCurrentLocation());
+        }
+        if (dto.getShowPhotos() != null) {
+            entity.setShowPhotos(dto.getShowPhotos());
+        }
     }
 }

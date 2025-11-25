@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.sharing.repository;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.sharing.model.ShareType;
 import org.github.tess1o.geopulse.sharing.model.SharedLinkEntity;
 
 import java.time.Instant;
@@ -30,5 +31,20 @@ public class SharedLinkRepository implements PanacheRepositoryBase<SharedLinkEnt
 
     public void incrementViewCount(UUID id) {
         update("viewCount = viewCount + 1 where id = ?1", id);
+    }
+
+    /**
+     * Count active shares by user and share type for separate limits
+     */
+    public long countActiveByUserIdAndType(UUID userId, ShareType shareType) {
+        return count("user.id = ?1 and shareType = ?2 and (expiresAt is null or expiresAt > ?3)",
+                userId, shareType, Instant.now());
+    }
+
+    /**
+     * Find all shares by user and type
+     */
+    public List<SharedLinkEntity> findByUserIdAndType(UUID userId, ShareType shareType) {
+        return find("user.id = ?1 and shareType = ?2", userId, shareType).list();
     }
 }

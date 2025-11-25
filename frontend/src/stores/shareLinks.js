@@ -15,7 +15,11 @@ export const useShareLinksStore = defineStore('shareLinks', {
         sharedLocationInfo: null,
         sharedLocationData: null,
         sharedAccessToken: null,
-        sharedLocationLoading: false
+        sharedLocationLoading: false,
+        // For shared timeline viewing
+        sharedTimelineData: null,
+        sharedPathData: null,
+        sharedCurrentLocation: null
     }),
 
     getters: {
@@ -43,7 +47,16 @@ export const useShareLinksStore = defineStore('shareLinks', {
         // Shared location getters
         getSharedLocationInfo: (state) => state.sharedLocationInfo,
         getSharedLocationData: (state) => state.sharedLocationData,
-        isSharedLocationLoading: (state) => state.sharedLocationLoading
+        isSharedLocationLoading: (state) => state.sharedLocationLoading,
+
+        // Filter by share type
+        getLiveLocationShares: (state) => state.links.filter(l => l.share_type !== 'TIMELINE'),
+        getTimelineShares: (state) => state.links.filter(l => l.share_type === 'TIMELINE'),
+
+        // Shared timeline getters
+        getSharedTimelineData: (state) => state.sharedTimelineData,
+        getSharedPathData: (state) => state.sharedPathData,
+        getSharedCurrentLocation: (state) => state.sharedCurrentLocation
     },
 
     actions: {
@@ -251,6 +264,64 @@ export const useShareLinksStore = defineStore('shareLinks', {
             })
 
             return isExpired
+        },
+
+        // Timeline share methods
+        async fetchSharedTimeline(linkId) {
+            if (!this.sharedAccessToken) {
+                throw new Error('No access token available')
+            }
+
+            this.sharedLocationLoading = true
+            this.clearError()
+            try {
+                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/timeline`, {
+                    'Authorization': `Bearer ${this.sharedAccessToken}`
+                })
+                this.sharedTimelineData = response
+                return response
+            } catch (error) {
+                this.setError(error.message || 'Failed to fetch timeline data')
+                throw error
+            } finally {
+                this.sharedLocationLoading = false
+            }
+        },
+
+        async fetchSharedPath(linkId) {
+            if (!this.sharedAccessToken) {
+                throw new Error('No access token available')
+            }
+
+            this.clearError()
+            try {
+                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/path`, {
+                    'Authorization': `Bearer ${this.sharedAccessToken}`
+                })
+                this.sharedPathData = response
+                return response
+            } catch (error) {
+                console.error('Failed to fetch path data:', error)
+                throw error
+            }
+        },
+
+        async fetchSharedCurrentLocation(linkId) {
+            if (!this.sharedAccessToken) {
+                return null
+            }
+
+            try {
+                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/current`, {
+                    'Authorization': `Bearer ${this.sharedAccessToken}`
+                })
+                this.sharedCurrentLocation = response
+                return response
+            } catch (error) {
+                // Current location may not be available, this is not an error
+                console.log('Current location not available:', error.message)
+                return null
+            }
         }
     }
 })
