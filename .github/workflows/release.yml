@@ -387,8 +387,8 @@ jobs:
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-amd64 \
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-arm64
 
-  # Publish Helm charts to GitHub Pages
-  publish-helm:
+  # Publish Helm charts and documentation to GitHub Pages
+  publish-helm-and-docs:
     needs: [prepare, build-backend-jvm, build-frontend, create-native-manifests, create-native-compat-manifests]
     runs-on: ubuntu-latest
     steps:
@@ -417,18 +417,77 @@ jobs:
           cd docs-website
           npm ci
 
+      - name: Fetch published Helm index from GitHub Pages
+        run: |
+          echo "Fetching current published index.yaml from GitHub Pages..."
+          PUBLISHED_INDEX="https://tess1o.github.io/geopulse/charts/index.yaml"
+
+          # Try to fetch with retries (exponential backoff: 2s, 4s, 8s)
+          for i in 1 2 3; do
+            if curl -sSf -o charts/published-index.yaml "$PUBLISHED_INDEX"; then
+              echo "✅ Successfully fetched published index"
+              echo "MERGE_INDEX=charts/published-index.yaml" >> $GITHUB_ENV
+              break
+            else
+              if [ $i -eq 3 ]; then
+                echo "⚠️ Could not fetch published index, will use local index as fallback"
+                echo "MERGE_INDEX=charts/index.yaml" >> $GITHUB_ENV
+              else
+                WAIT_TIME=$((2 ** i))
+                echo "Attempt $i failed, retrying in ${WAIT_TIME}s..."
+                sleep $WAIT_TIME
+              fi
+            fi
+          done
+
       - name: Package Helm chart
         run: |
+          echo "Packaging Helm chart..."
           helm package helm/geopulse -d charts
 
       - name: Update Helm repo index
         run: |
-          helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge charts/index.yaml
+          echo "Updating Helm repository index..."
+          if [ -f "$MERGE_INDEX" ]; then
+            echo "Merging with: $MERGE_INDEX"
+            helm repo index charts --url https://tess1o.github.io/geopulse/charts --merge "$MERGE_INDEX"
+          else
+            echo "Creating new index (no existing index found)"
+            helm repo index charts --url https://tess1o.github.io/geopulse/charts
+          fi
+
+          # Cleanup temporary file
+          rm -f charts/published-index.yaml
+
+      - name: Validate Helm index
+        run: |
+          echo "Validating Helm repository index..."
+
+          # Check if index.yaml is valid YAML
+          if ! grep -q "apiVersion: v1" charts/index.yaml; then
+            echo "❌ Invalid index.yaml - missing apiVersion"
+            exit 1
+          fi
+
+          # Verify the new version is included
+          NEW_VERSION="${{ needs.prepare.outputs.version }}"
+          if ! grep -q "version: $NEW_VERSION" charts/index.yaml; then
+            echo "❌ New version $NEW_VERSION not found in index"
+            exit 1
+          fi
+
+          # Display all versions for verification
+          echo "✅ Index validated successfully"
+          echo "All versions in index:"
+          grep "^  version:" charts/index.yaml | awk '{print "  - " $2}' | sort -V
 
       - name: Copy charts to docs-website
         run: |
           mkdir -p docs-website/static/charts
           cp -r charts/* docs-website/static/charts/
+
+          echo "Copied to docs-website/static/charts:"
+          ls -lh docs-website/static/charts/
 
       - name: Deploy documentation with Helm charts
         env:
