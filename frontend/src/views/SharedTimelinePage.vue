@@ -3,10 +3,26 @@
     <!-- Header -->
     <div class="shared-header">
       <div class="header-content">
-        <h1 class="brand">GeoPulse</h1>
+        <div class="header-left">
+          <h1 class="brand">GeoPulse</h1>
+          <div v-if="authenticated && shareInfo && timelineData" class="header-info">
+            <span class="timeline-name">{{ shareInfo.name }}</span>
+            <Tag :value="getStatusLabel()" :severity="getStatusSeverity()" class="status-tag" />
+          </div>
+        </div>
 
         <!-- Date Filter Controls (shown when timeline is loaded) -->
         <div v-if="authenticated && shareInfo && timelineData" class="header-controls">
+          <span class="header-meta">
+            <i class="pi pi-user"></i>
+            {{ shareInfo.shared_by }}
+          </span>
+          <span class="header-separator">•</span>
+          <span class="header-meta">
+            <i class="pi pi-clock"></i>
+            Expires {{ formatExpiration() }}
+          </span>
+          <span class="header-separator">•</span>
           <DatePicker
               v-model="dateRange"
               selectionMode="range"
@@ -102,29 +118,6 @@
 
       <!-- Timeline View -->
       <div v-else-if="authenticated && shareInfo && timelineData" class="timeline-view">
-        <!-- Info Card -->
-        <Card class="share-info-card">
-          <template #content>
-            <div class="share-info">
-              <div class="info-row">
-                <h2 class="timeline-title">{{ shareInfo.name }}</h2>
-                <Tag :value="getStatusLabel()" :severity="getStatusSeverity()" />
-              </div>
-              <div class="info-compact">
-                <span class="compact-item">
-                  <i class="pi pi-user"></i>
-                  {{ shareInfo.shared_by }}
-                </span>
-                <span class="compact-separator">•</span>
-                <span class="compact-item">
-                  <i class="pi pi-clock"></i>
-                  Expires {{ formatExpiration() }}
-                </span>
-              </div>
-            </div>
-          </template>
-        </Card>
-
         <!-- Timeline Display -->
         <div class="timeline-container">
           <div class="timeline-map">
@@ -374,13 +367,6 @@ function formatDate(dateStr) {
   return timezone.fromUtc(dateStr).format('MMM D, YYYY')
 }
 
-function formatDateRange() {
-  if (!shareInfo.value) return ''
-  const start = formatDate(shareInfo.value.start_date)
-  const end = formatDate(shareInfo.value.end_date)
-  return `${start} - ${end}`
-}
-
 function formatExpiration() {
   if (!shareInfo.value?.expires_at) return 'Never'
   return formatDate(shareInfo.value.expires_at)
@@ -436,12 +422,19 @@ function resetDateFilter() {
 }
 
 .header-content {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 2rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
   gap: 1.5rem;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -450,26 +443,63 @@ function resetDateFilter() {
   color: var(--gp-primary);
   letter-spacing: -0.025em;
   margin: 0;
+  flex-shrink: 0;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.timeline-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.status-tag {
+  flex-shrink: 0;
 }
 
 .header-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex: 1;
-  justify-content: center;
+  justify-content: flex-end;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
+  white-space: nowrap;
+}
+
+.header-meta i {
+  font-size: 0.85rem;
+}
+
+.header-separator {
+  color: var(--gp-text-secondary);
+  opacity: 0.5;
+  font-weight: 500;
 }
 
 .header-datepicker {
   width: 240px;
+  flex-shrink: 0;
 }
 
 .shared-content {
   flex: 1;
   padding: 1rem 2rem;
-  max-width: 1400px;
+  max-width: 100%;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .state-container {
@@ -561,59 +591,11 @@ function resetDateFilter() {
   margin: 0;
 }
 
-.share-info-card {
-  margin-bottom: 1rem;
-}
-
-.share-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.timeline-title {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.info-compact {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  font-size: 0.9rem;
-  color: var(--text-color-secondary);
-}
-
-.compact-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.compact-item i {
-  font-size: 0.85rem;
-}
-
-.compact-separator {
-  color: var(--text-color-secondary);
-  opacity: 0.5;
-}
-
 .timeline-container {
   display: grid;
   grid-template-columns: 1fr 400px;
   gap: 1.5rem;
-  height: calc(100vh - 220px);
+  height: calc(100vh - 140px);
   min-height: 600px;
 }
 
@@ -657,20 +639,52 @@ function resetDateFilter() {
 }
 
 /* Mobile Responsive */
-@media (max-width: 768px) {
-  .shared-header {
-    padding: 1rem;
-  }
-
+@media (max-width: 1024px) {
   .header-content {
     flex-wrap: wrap;
     gap: 1rem;
   }
 
+  .header-left {
+    flex: 1 1 100%;
+    order: 1;
+  }
+
   .header-controls {
     flex: 1 1 100%;
-    order: 3;
+    order: 2;
     justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .header-meta {
+    font-size: 0.85rem;
+  }
+
+  .header-datepicker {
+    width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .shared-header {
+    padding: 1rem;
+  }
+
+  .header-left {
+    gap: 1rem;
+  }
+
+  .timeline-name {
+    font-size: 0.9rem;
+  }
+
+  .header-meta {
+    font-size: 0.8rem;
+  }
+
+  .header-separator {
+    display: none;
   }
 
   .header-datepicker {
@@ -705,6 +719,20 @@ function resetDateFilter() {
     font-size: 1.25rem;
   }
 
+  .header-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .timeline-name {
+    font-size: 0.85rem;
+  }
+
+  .header-meta {
+    font-size: 0.75rem;
+  }
+
   .header-datepicker {
     width: 160px;
   }
@@ -716,14 +744,6 @@ function resetDateFilter() {
 
   .shared-content {
     padding: 0.5rem;
-  }
-
-  .timeline-title {
-    font-size: 1.1rem;
-  }
-
-  .info-compact {
-    font-size: 0.85rem;
   }
 
   .timeline-container {
