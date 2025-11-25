@@ -177,6 +177,36 @@ public class ImmichResource {
         return updateImmichConfig(userId.toString(), request);
     }
 
+    @POST
+    @Path("/{userId}/immich-config/test")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> testImmichConnection(
+            @PathParam("userId") String userIdStr,
+            @Valid TestImmichConnectionRequest request) {
+
+        UUID userId = parseUserId(userIdStr);
+        validateUserAccess(userId);
+
+        return immichService.testImmichConnection(userId, request)
+                .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
+                .exceptionally(throwable -> {
+                    log.error("Failed to test Immich connection for user {}: {}", userId, throwable.getMessage(), throwable);
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(ApiResponse.error("Failed to test connection"))
+                            .build();
+                });
+    }
+
+    @POST
+    @Path("/me/immich-config/test")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> testCurrentUserImmichConnection(@Valid TestImmichConnectionRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        return testImmichConnection(userId.toString(), request);
+    }
+
     @GET
     @Path("/me/immich/photos/search")
     @RolesAllowed({"USER", "ADMIN"})

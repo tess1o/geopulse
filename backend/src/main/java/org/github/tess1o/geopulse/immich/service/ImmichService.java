@@ -123,6 +123,78 @@ public class ImmichService {
         log.info("Updated Immich config for user {}", userId);
     }
 
+    public CompletableFuture<TestImmichConnectionResponse> testImmichConnection(UUID userId, TestImmichConnectionRequest request) {
+        log.debug("Testing Immich connection for user {} with server URL: {}", userId, request.getServerUrl());
+
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            return CompletableFuture.completedFuture(TestImmichConnectionResponse.builder()
+                    .success(false)
+                    .message("User not found")
+                    .build());
+        }
+
+        String serverUrl = normalizeServerUrl(request.getServerUrl());
+        String apiKey = request.getApiKey();
+
+        // If no API key provided in request, try to use the saved one from DB
+        if (apiKey == null || apiKey.isBlank()) {
+            ImmichPreferences immichPrefs = user.getImmichPreferences();
+            if (immichPrefs != null && immichPrefs.getApiKey() != null && !immichPrefs.getApiKey().isBlank()) {
+                apiKey = immichPrefs.getApiKey();
+                log.debug("Using saved API key from database for connection test");
+            } else {
+                return CompletableFuture.completedFuture(TestImmichConnectionResponse.builder()
+                        .success(false)
+                        .message("API key is required")
+                        .details("No API key provided and no saved API key found in database")
+                        .build());
+            }
+        }
+
+        // Create a minimal search request to test the connection
+        ImmichSearchRequest testSearchRequest = ImmichSearchRequest.builder()
+                .type("IMAGE")
+                .withExif(false)
+                .build();
+
+        return immichClient.searchAssets(serverUrl, apiKey, testSearchRequest)
+                .thenApply(response -> {
+                    log.info("Successfully connected to Immich server at {} for user {}", serverUrl, userId);
+                    return TestImmichConnectionResponse.builder()
+                            .success(true)
+                            .message("Successfully connected to Immich server")
+                            .details(String.format("Server responded with %d total assets", response.getAssets().getTotal()))
+                            .build();
+                })
+                .exceptionally(throwable -> {
+                    log.error("Failed to connect to Immich server at {} for user {}: {}",
+                            serverUrl, userId, throwable.getMessage());
+
+                    String errorMessage = "Failed to connect to Immich server";
+                    String details = throwable.getMessage();
+
+                    if (throwable.getMessage() != null) {
+                        if (throwable.getMessage().contains("401") || throwable.getMessage().contains("Unauthorized")) {
+                            errorMessage = "Authentication failed";
+                            details = "Invalid API key or unauthorized access";
+                        } else if (throwable.getMessage().contains("404") || throwable.getMessage().contains("Not Found")) {
+                            errorMessage = "Server not found";
+                            details = "Could not reach the Immich server at the provided URL";
+                        } else if (throwable.getMessage().contains("timeout") || throwable.getMessage().contains("Connection refused")) {
+                            errorMessage = "Connection timeout";
+                            details = "Unable to connect to the server. Please check the URL and network connection";
+                        }
+                    }
+
+                    return TestImmichConnectionResponse.builder()
+                            .success(false)
+                            .message(errorMessage)
+                            .details(details)
+                            .build();
+                });
+    }
+
     private CompletableFuture<byte[]> getPhotoBytes(UUID userId, String photoId, boolean thumbnail) {
         UserEntity user = userRepository.findById(userId);
         if (user == null) {

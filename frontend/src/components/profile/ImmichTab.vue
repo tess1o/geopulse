@@ -77,17 +77,46 @@
             </small>
           </div>
 
-          <!-- Connection Status -->
-          <div v-if="config" class="connection-status">
-            <div class="status-indicator">
-              <i :class="['pi', config.enabled ? 'pi-check-circle' : 'pi-times-circle']"></i>
-              <span>
-                {{ config.enabled ? 'Connected' : 'Disconnected' }}
-              </span>
-            </div>
-            <small v-if="config.enabled && config.serverUrl" class="help-text">
-              Connected to: {{ config.serverUrl }}
+          <!-- Test Connection Button -->
+          <div v-if="form.enabled" class="form-field">
+            <Button
+              type="button"
+              label="Test Connection"
+              icon="pi pi-link"
+              outlined
+              :loading="testLoading"
+              :disabled="!canTestConnection || loading || saveLoading"
+              @click="handleTestConnection"
+              class="test-connection-btn"
+            />
+            <small v-if="!form.serverUrl?.trim()" class="help-text">
+              Enter a server URL to test the connection
             </small>
+            <small v-else-if="!form.apiKey?.trim() && !apiKeyConfigured" class="help-text">
+              Enter an API key to test the connection
+            </small>
+            <small v-else class="help-text">
+              <i class="pi pi-info-circle"></i>
+              Click to verify connection to your Immich server
+            </small>
+          </div>
+
+          <!-- Test Results -->
+          <div v-if="testStatus" class="test-results">
+            <div v-if="testStatus === 'success'" class="test-success">
+              <div class="test-header">
+                <i class="pi pi-check-circle"></i>
+                <span class="test-title">{{ testMessage }}</span>
+              </div>
+              <small v-if="testDetails" class="test-details">{{ testDetails }}</small>
+            </div>
+            <div v-else-if="testStatus === 'error'" class="test-error">
+              <div class="test-header">
+                <i class="pi pi-times-circle"></i>
+                <span class="test-title">{{ testMessage }}</span>
+              </div>
+              <small v-if="testDetails" class="test-details">{{ testDetails }}</small>
+            </div>
           </div>
         </div>
 
@@ -114,6 +143,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import apiService from '@/utils/apiService'
 
 // Props
 const props = defineProps({
@@ -133,6 +163,10 @@ const emit = defineEmits(['save'])
 // State
 const saveLoading = ref(false)
 const apiKeyConfigured = ref(false)
+const testLoading = ref(false)
+const testStatus = ref(null) // null, 'success', 'error'
+const testMessage = ref('')
+const testDetails = ref('')
 const form = ref({
   serverUrl: '',
   apiKey: '',
@@ -158,7 +192,56 @@ const hasChanges = computed(() => {
   return serverUrlChanged || enabledChanged || apiKeyChanged
 })
 
+const canTestConnection = computed(() => {
+  return form.value.serverUrl?.trim() &&
+         (form.value.apiKey?.trim() || apiKeyConfigured.value)
+})
+
 // Methods
+const handleTestConnection = async () => {
+  if (!form.value.serverUrl?.trim()) {
+    return
+  }
+
+  testLoading.value = true
+  testStatus.value = null
+  testMessage.value = ''
+  testDetails.value = ''
+
+  try {
+    const requestData = {
+      serverUrl: form.value.serverUrl.trim(),
+      apiKey: form.value.apiKey?.trim() || null
+    }
+
+    const result = await apiService.post('/users/me/immich-config/test', requestData)
+
+    // Debug: Log the response structure
+    console.log('Test connection response:', result)
+    console.log('result.data:', result?.data)
+    console.log('result.data.success:', result?.data?.success, typeof result?.data?.success)
+
+    // Check if the test was successful
+    const testSuccessful = result?.data?.success === true
+
+    if (testSuccessful) {
+      testStatus.value = 'success'
+      testMessage.value = result.data.message || 'Successfully connected to Immich server'
+      testDetails.value = result.data.details || ''
+    } else {
+      testStatus.value = 'error'
+      testMessage.value = result.data?.message || 'Failed to test connection'
+      testDetails.value = result.data?.details || ''
+    }
+  } catch (error) {
+    testStatus.value = 'error'
+    testMessage.value = 'Connection test failed'
+    testDetails.value = error.userMessage || error.message || 'An unexpected error occurred'
+  } finally {
+    testLoading.value = false
+  }
+}
+
 const validate = () => {
   errors.value = {}
 
@@ -224,6 +307,11 @@ const loadConfig = () => {
 
 // Watchers
 watch(() => [form.value.serverUrl, form.value.apiKey], () => {
+  // Clear test status when form fields change
+  testStatus.value = null
+  testMessage.value = ''
+  testDetails.value = ''
+
   if (errors.value.serverUrl || errors.value.apiKey) {
     validate()
   }
@@ -324,31 +412,65 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.connection-status {
-  padding: 1rem;
-  background: var(--gp-surface-light);
+.test-connection-btn {
+  width: 100%;
+}
+
+.test-results {
+  padding: 0;
   border-radius: var(--gp-radius-medium);
   margin-top: 0.5rem;
 }
 
-.status-indicator {
+.test-success,
+.test-error {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: var(--gp-radius-medium);
+}
+
+.test-success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.test-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.test-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
+  gap: 0.75rem;
 }
 
-.status-indicator i {
-  font-size: 1.1rem;
+.test-header i {
+  font-size: 1.25rem;
+  flex-shrink: 0;
 }
 
-.status-indicator .pi-check-circle {
+.test-success .test-header i {
   color: var(--gp-success);
 }
 
-.status-indicator .pi-times-circle {
+.test-error .test-header i {
+  color: var(--gp-danger);
+}
+
+.test-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--gp-text-primary);
+}
+
+.test-details {
+  font-size: 0.85rem;
   color: var(--gp-text-secondary);
+  margin-left: 2rem;
+  line-height: 1.4;
 }
 
 /* Form Sections */
