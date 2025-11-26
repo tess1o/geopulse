@@ -1,7 +1,8 @@
 package org.github.tess1o.geopulse.admin.rest;
 
+import io.vertx.core.http.HttpServerRequest;
+import io.vertx.core.net.impl.SocketAddressImpl;
 import jakarta.ws.rs.core.Response;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.github.tess1o.geopulse.admin.dto.CreateOidcProviderRequest;
 import org.github.tess1o.geopulse.admin.dto.OidcProviderResponse;
 import org.github.tess1o.geopulse.admin.dto.UpdateOidcProviderRequest;
@@ -43,6 +44,9 @@ class AdminOidcProviderResourceTest {
     @InjectMocks
     private AdminOidcProviderResource resource;
 
+    @Mock
+    private HttpServerRequest httpServerRequest;
+
     private UUID testAdminId;
     private OidcProviderConfiguration testProvider;
     private CreateOidcProviderRequest createRequest;
@@ -51,6 +55,8 @@ class AdminOidcProviderResourceTest {
     @BeforeEach
     void setUp() {
         testAdminId = UUID.randomUUID();
+
+        lenient().when(httpServerRequest.remoteAddress()).thenReturn(new SocketAddressImpl(0, "localhost"));
 
         // Mock JWT
         lenient().when(currentUserService.getCurrentUserId()).thenReturn(testAdminId);

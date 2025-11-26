@@ -33,6 +33,13 @@ import java.util.*;
 @Slf4j
 public class StreamingTimelineProcessor {
 
+    /**
+     * Distance epsilon tolerance in meters for cross-platform reproducibility.
+     * A 50cm tolerance ensures that small floating-point variations in Haversine
+     * calculations don't cause different stay/trip boundary decisions across JVM versions.
+     */
+    private static final double DISTANCE_EPSILON_METERS = 0.5;
+
     @Inject
     DataGapDetectionEngine dataGapEngine;
 
@@ -237,8 +244,9 @@ public class StreamingTimelineProcessor {
         log.trace("POTENTIAL_STAY: point={}, centroid={}, distance={}, stayRadius={}",
                 point.getTimestamp(), centroid.getTimestamp(), distance, stayRadius);
 
-        if (distance > stayRadius) {
-            log.trace("Distance {} > stayRadius {} - checking favorite areas before transitioning to trip", distance, stayRadius);
+        if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
+            log.trace("Distance {} > stayRadius {} (+ epsilon {}) - checking favorite areas before transitioning to trip",
+                    distance, stayRadius, DISTANCE_EPSILON_METERS);
 
             // Before transitioning to trip, check if both points are within same favorite area
             FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);
@@ -294,8 +302,9 @@ public class StreamingTimelineProcessor {
         double distance = centroid.distanceTo(point);
         double stayRadius = getStayRadius(config);
 
-        if (distance > stayRadius) {
-            log.trace("Distance {} > stayRadius {} in CONFIRMED_STAY - checking favorite areas", distance, stayRadius);
+        if (distance > stayRadius + DISTANCE_EPSILON_METERS) {
+            log.trace("Distance {} > stayRadius {} (+ epsilon {}) in CONFIRMED_STAY - checking favorite areas",
+                    distance, stayRadius, DISTANCE_EPSILON_METERS);
 
             // Before finalizing stay, check if both points are within same favorite area
             FavoriteAreaDto currentPointArea = findContainingFavoriteArea(point, userFavoriteAreas);

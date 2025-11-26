@@ -3,6 +3,8 @@ package org.github.tess1o.geopulse.streaming.model.domain;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +46,20 @@ public class UserState {
             lat += p.getLatitude();
             lon += p.getLongitude();
         }
-        return new GPSPoint(lat / activePoints.size(), lon / activePoints.size(), 0, 0);
+
+        // Apply consistent rounding to match GeoUtils.createPoint() behavior
+        // 8 decimal places provides approximately 1.1 meter precision at the equator
+        double avgLat = lat / activePoints.size();
+        double avgLon = lon / activePoints.size();
+
+        double latRounded = BigDecimal.valueOf(avgLat)
+                .setScale(8, RoundingMode.HALF_UP)
+                .doubleValue();
+        double lonRounded = BigDecimal.valueOf(avgLon)
+                .setScale(8, RoundingMode.HALF_UP)
+                .doubleValue();
+
+        return new GPSPoint(latRounded, lonRounded, 0, 0);
     }
 
     public List<GPSPoint> copyActivePoints() {
