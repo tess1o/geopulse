@@ -157,16 +157,6 @@ const errors = ref({
   password: null
 })
 
-// Watch end_date and automatically set expires_at to 1 week after
-watch(() => formData.value.end_date, (newEndDate) => {
-  if (newEndDate && !isEditMode.value) {
-    // Only auto-set in create mode, not edit mode
-    const expirationDate = new Date(newEndDate)
-    expirationDate.setDate(expirationDate.getDate() + 7)
-    formData.value.expires_at = expirationDate
-  }
-})
-
 // Initialize form data when dialog opens
 watch(() => props.visible, (visible) => {
   if (visible) {

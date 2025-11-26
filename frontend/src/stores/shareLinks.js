@@ -103,7 +103,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 // Set default expiration to 7 days from now if not provided
                 if (!linkData.expires_at) {
                     const timezone = useTimezone()
-                    linkData.expires_at = timezone.add(timezone.now(), 7, 'day').toISOString();
+                    linkData.expires_at = timezone.add(timezone.now(), 7, 'year').toISOString();
                 }
                 
                 const response = await apiService.post('/share-links', linkData)

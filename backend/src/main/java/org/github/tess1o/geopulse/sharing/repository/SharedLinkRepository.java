@@ -14,7 +14,7 @@ import java.util.UUID;
 public class SharedLinkRepository implements PanacheRepositoryBase<SharedLinkEntity, UUID> {
 
     public List<SharedLinkEntity> findByUserId(UUID userId) {
-        return find("user.id", userId).list();
+        return find("user.id = ?1 ORDER BY createdAt desc", userId).list();
     }
 
     public long countActiveByUserId(UUID userId) {
