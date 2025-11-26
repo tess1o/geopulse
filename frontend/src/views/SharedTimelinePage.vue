@@ -2,27 +2,33 @@
   <div class="shared-timeline-page">
     <!-- Header -->
     <div class="shared-header">
-      <div class="header-content">
-        <div class="header-left">
-          <h1 class="brand">GeoPulse</h1>
-          <div v-if="authenticated && shareInfo && timelineData" class="header-info">
+      <!-- Content shown when authenticated -->
+      <div v-if="authenticated && shareInfo && timelineData" class="header-authenticated">
+        <!-- Row 1: Timeline Name and Theme Switcher -->
+        <div class="header-row-1">
+          <div class="timeline-title">
+            <h1 class="brand desktop-only">GeoPulse</h1>
             <span class="timeline-name">{{ shareInfo.name }}</span>
-            <Tag :value="getStatusLabel()" :severity="getStatusSeverity()" class="status-tag" />
+            <Tag :value="getStatusLabel()" :severity="getStatusSeverity()" class="status-tag desktop-only" />
           </div>
+          <DarkModeSwitcher />
         </div>
 
-        <!-- Date Filter Controls (shown when timeline is loaded) -->
-        <div v-if="authenticated && shareInfo && timelineData" class="header-controls">
-          <span class="header-meta">
+        <!-- Row 2: User and Expiration (single line) -->
+        <div class="header-row-2">
+          <span class="meta-compact">
             <i class="pi pi-user"></i>
             {{ shareInfo.shared_by }}
           </span>
-          <span class="header-separator">•</span>
-          <span class="header-meta">
+          <span class="meta-separator">•</span>
+          <span class="meta-compact">
             <i class="pi pi-clock"></i>
             Expires {{ formatExpiration() }}
           </span>
-          <span class="header-separator">•</span>
+        </div>
+
+        <!-- Row 3: Date Filter and Actions -->
+        <div class="header-row-3">
           <DatePicker
               v-model="dateRange"
               selectionMode="range"
@@ -38,12 +44,18 @@
           />
           <Button icon="pi pi-times" text rounded @click="resetDateFilter"
                  v-if="filterStartDate || filterEndDate"
-                 v-tooltip.bottom="'Clear filter'" />
+                 v-tooltip.bottom="'Clear filter'"
+                 aria-label="Clear date filter" />
           <Button v-if="shareInfo.timeline_status === 'active'"
                  icon="pi pi-refresh" text rounded @click="refreshData"
-                 v-tooltip.bottom="'Refresh'" />
+                 v-tooltip.bottom="'Refresh'"
+                 aria-label="Refresh data" />
         </div>
+      </div>
 
+      <!-- Fallback: Show brand and theme switcher when not authenticated -->
+      <div v-else class="header-minimal">
+        <h1 class="brand">GeoPulse</h1>
         <DarkModeSwitcher />
       </div>
     </div>
@@ -476,7 +488,7 @@ function handleTimelineItemClick(item) {
 .shared-header {
   background-color: var(--gp-surface-white);
   border-bottom: 1px solid var(--gp-border-light);
-  padding: 1rem 2rem;
+  padding: 1rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -487,22 +499,21 @@ function handleTimelineItemClick(item) {
   border-bottom: 1px solid var(--gp-border-dark);
 }
 
-.header-content {
-  max-width: 100%;
-  margin: 0 auto;
+/* Authenticated Header - 3 Row Layout */
+.header-authenticated {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Minimal Header (fallback when not authenticated) */
+.header-minimal {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-shrink: 0;
-}
-
+/* Common Elements */
 .brand {
   font-size: 1.5rem;
   font-weight: 700;
@@ -512,52 +523,78 @@ function handleTimelineItemClick(item) {
   flex-shrink: 0;
 }
 
-.header-info {
+.desktop-only {
+  display: inline-flex;
+}
+
+/* Row 1: Timeline Name and Theme Switcher */
+.header-row-1 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.timeline-title {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .timeline-name {
-  font-size: 1rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--gp-text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-tag {
   flex-shrink: 0;
 }
 
-.header-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-  justify-content: flex-end;
-}
-
-.header-meta {
+/* Row 2: User and Expiration (single line) */
+.header-row-2 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: var(--gp-text-secondary);
-  white-space: nowrap;
+  flex-wrap: wrap;
 }
 
-.header-meta i {
-  font-size: 0.85rem;
+.meta-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
-.header-separator {
+.meta-compact i {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.meta-separator {
   color: var(--gp-text-secondary);
   opacity: 0.5;
-  font-weight: 500;
+  margin: 0 0.25rem;
+}
+
+/* Row 3: Date Filter and Actions */
+.header-row-3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .header-datepicker {
-  width: 240px;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 200px;
+  max-width: 400px;
 }
 
 .shared-content {
@@ -596,6 +633,7 @@ function handleTimelineItemClick(item) {
 .card-header h2 {
   margin: 0;
   font-size: 1.5rem;
+  color: var(--gp-text-primary);
 }
 
 .password-form {
@@ -612,6 +650,13 @@ function handleTimelineItemClick(item) {
 
 .field label {
   font-weight: 600;
+}
+
+.field .p-error {
+  color: var(--red-500);
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-top: 0.25rem;
 }
 
 .w-full {
@@ -678,6 +723,26 @@ function handleTimelineItemClick(item) {
   background-color: var(--gp-surface-card);
 }
 
+/* Dark mode for password and info cards */
+.p-dark .card-header h2 {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .field label {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .field .p-error {
+  color: var(--red-400);
+  font-weight: 600;
+}
+
+.p-dark .password-card,
+.p-dark .info-card,
+.p-dark .error-card {
+  background-color: var(--gp-surface-card);
+}
+
 .timeline-map {
   position: relative;
   min-height: 500px;
@@ -704,57 +769,56 @@ function handleTimelineItemClick(item) {
   height: 100%;
 }
 
-/* Mobile Responsive */
-@media (max-width: 1024px) {
-  .header-content {
-    flex-wrap: wrap;
-    gap: 1rem;
-  }
-
-  .header-left {
-    flex: 1 1 100%;
-    order: 1;
-  }
-
-  .header-controls {
-    flex: 1 1 100%;
-    order: 2;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .header-meta {
-    font-size: 0.85rem;
-  }
-
-  .header-datepicker {
-    width: 200px;
-  }
-}
-
+/* Tablet and Mobile - Hide brand and status */
 @media (max-width: 768px) {
   .shared-header {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
   }
 
-  .header-left {
-    gap: 1rem;
+  .header-authenticated {
+    gap: 0.5rem;
+  }
+
+  /* Hide GeoPulse brand and status tag on mobile */
+  .desktop-only {
+    display: none !important;
+  }
+
+  .header-row-1 {
+    gap: 0.75rem;
+  }
+
+  .timeline-title {
+    gap: 0.5rem;
   }
 
   .timeline-name {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
 
-  .header-meta {
+  /* Row 2: Keep user and expiration on same line */
+  .header-row-2 {
     font-size: 0.8rem;
+    gap: 0.375rem;
   }
 
-  .header-separator {
-    display: none;
+  .meta-compact {
+    gap: 0.25rem;
+  }
+
+  .meta-separator {
+    margin: 0 0.125rem;
+  }
+
+  /* Row 3: Full width date picker */
+  .header-row-3 {
+    gap: 0.375rem;
   }
 
   .header-datepicker {
-    width: 180px;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
   }
 
   .shared-content {
@@ -780,32 +844,34 @@ function handleTimelineItemClick(item) {
   }
 }
 
+/* Small Mobile - Even more compact */
 @media (max-width: 480px) {
-  .brand {
-    font-size: 1.25rem;
+  .shared-header {
+    padding: 0.625rem 0.75rem;
   }
 
-  .header-info {
-    flex-direction: column;
-    align-items: flex-start;
+  .header-authenticated {
+    gap: 0.375rem;
+  }
+
+  .header-row-1 {
     gap: 0.5rem;
   }
 
   .timeline-name {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
   }
 
-  .header-meta {
+  .header-row-2 {
     font-size: 0.75rem;
   }
 
-  .header-datepicker {
-    width: 160px;
+  .meta-compact i {
+    font-size: 0.7rem;
   }
 
-  .header-controls {
-    flex-wrap: wrap;
-    gap: 0.5rem;
+  .header-row-3 {
+    gap: 0.25rem;
   }
 
   .shared-content {
@@ -814,6 +880,12 @@ function handleTimelineItemClick(item) {
 
   .timeline-container {
     grid-template-rows: 300px 1fr;
+    gap: 0.75rem;
+  }
+
+  .timeline-map {
+    height: 300px;
+    min-height: 300px;
   }
 }
 </style>
