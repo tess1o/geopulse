@@ -6,7 +6,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 
 import java.time.Instant;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -31,12 +31,12 @@ public class TripFilteringService {
      */
     public Set<Integer> markTripsForRemovalInMergeGroup(List<Integer> mergeGroup, List<Stay> stays, List<Trip> trips) {
         if (mergeGroup == null || mergeGroup.size() < 2 || stays == null || trips == null) {
-            return new HashSet<>();
+            return new LinkedHashSet<>();
         }
 
         log.debug("Marking trips for removal between {} merged stays", mergeGroup.size());
 
-        Set<Integer> removedTripIndices = new HashSet<>();
+        Set<Integer> removedTripIndices = new LinkedHashSet<>();
 
         // Mark trips between consecutive merged stays for removal
         for (int i = 0; i < mergeGroup.size() - 1; i++) {
@@ -64,13 +64,13 @@ public class TripFilteringService {
      */
     public Set<Integer> findTripsBetweenStays(Stay firstStay, Stay secondStay, List<Trip> trips) {
         if (firstStay == null || secondStay == null || trips == null) {
-            return new HashSet<>();
+            return new LinkedHashSet<>();
         }
 
         Instant firstStayTime = firstStay.getStartTime();
         Instant secondStayTime = secondStay.getStartTime();
 
-        Set<Integer> tripIndices = new HashSet<>();
+        Set<Integer> tripIndices = new LinkedHashSet<>();
 
         for (int i = 0; i < trips.size(); i++) {
             Trip trip = trips.get(i);
