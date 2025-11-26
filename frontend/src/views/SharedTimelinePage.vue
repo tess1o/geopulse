@@ -4,17 +4,16 @@
     <div class="shared-header">
       <!-- Content shown when authenticated -->
       <div v-if="authenticated && shareInfo && timelineData" class="header-authenticated">
-        <!-- Row 1: Timeline Name and Theme Switcher -->
+        <!-- Row 1: Timeline Title (Brand, Name, Status) -->
         <div class="header-row-1">
           <div class="timeline-title">
             <h1 class="brand desktop-only">GeoPulse</h1>
             <span class="timeline-name">{{ shareInfo.name }}</span>
             <Tag :value="getStatusLabel()" :severity="getStatusSeverity()" class="status-tag desktop-only" />
           </div>
-          <DarkModeSwitcher />
         </div>
 
-        <!-- Row 2: User and Expiration (single line) -->
+        <!-- Row 2: User and Expiration -->
         <div class="header-row-2">
           <span class="meta-compact">
             <i class="pi pi-user"></i>
@@ -50,6 +49,11 @@
                  icon="pi pi-refresh" text rounded @click="refreshData"
                  v-tooltip.bottom="'Refresh'"
                  aria-label="Refresh data" />
+        </div>
+
+        <!-- Theme Switcher (positioned via CSS order) -->
+        <div class="header-theme-switcher">
+          <DarkModeSwitcher />
         </div>
       </div>
 
@@ -499,11 +503,13 @@ function handleTimelineItemClick(item) {
   border-bottom: 1px solid var(--gp-border-dark);
 }
 
-/* Authenticated Header - 3 Row Layout */
+/* Authenticated Header - Desktop: Single line, Mobile: 3 rows */
 .header-authenticated {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: nowrap;
 }
 
 /* Minimal Header (fallback when not authenticated) */
@@ -515,7 +521,7 @@ function handleTimelineItemClick(item) {
 
 /* Common Elements */
 .brand {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--gp-primary);
   letter-spacing: -0.025em;
@@ -527,29 +533,26 @@ function handleTimelineItemClick(item) {
   display: inline-flex;
 }
 
-/* Row 1: Timeline Name and Theme Switcher */
+/* Row 1: Timeline Title (Brand, Name, Status) */
 .header-row-1 {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  flex-shrink: 0;
+  order: 1;
 }
 
 .timeline-title {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  flex: 1;
-  min-width: 0;
+  gap: 0.75rem;
 }
 
 .timeline-name {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--gp-text-primary);
   line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -557,20 +560,22 @@ function handleTimelineItemClick(item) {
   flex-shrink: 0;
 }
 
-/* Row 2: User and Expiration (single line) */
+/* Row 2: User and Expiration (after status on desktop) */
 .header-row-2 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
-  flex-wrap: wrap;
+  flex-shrink: 0;
+  order: 2;
 }
 
 .meta-compact {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
+  white-space: nowrap;
 }
 
 .meta-compact i {
@@ -584,17 +589,27 @@ function handleTimelineItemClick(item) {
   margin: 0 0.25rem;
 }
 
-/* Row 3: Date Filter and Actions */
+/* Row 3: Date Filter and Actions (before theme switcher on desktop) */
 .header-row-3 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1;
+  justify-content: flex-end;
+  order: 3;
 }
 
 .header-datepicker {
-  flex: 1;
-  min-width: 200px;
-  max-width: 400px;
+  width: 240px;
+  flex-shrink: 0;
+}
+
+/* Theme Switcher - At the end on desktop */
+.header-theme-switcher {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  order: 4;
 }
 
 .shared-content {
@@ -769,13 +784,17 @@ function handleTimelineItemClick(item) {
   height: 100%;
 }
 
-/* Tablet and Mobile - Hide brand and status */
+/* Tablet and Mobile - Switch to 3 row layout */
 @media (max-width: 768px) {
   .shared-header {
     padding: 0.75rem 1rem;
   }
 
+  /* Switch to wrapped 3-row layout */
   .header-authenticated {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     gap: 0.5rem;
   }
 
@@ -784,22 +803,41 @@ function handleTimelineItemClick(item) {
     display: none !important;
   }
 
+  /* Row 1: Timeline name - stays on first line */
   .header-row-1 {
+    display: flex;
+    align-items: center;
     gap: 0.75rem;
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .timeline-title {
     gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
   }
 
   .timeline-name {
     font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  /* Row 2: Keep user and expiration on same line */
+  /* Theme switcher - Right side of row 1 on mobile */
+  .header-theme-switcher {
+    order: 1;
+    flex-shrink: 0;
+  }
+
+  /* Row 2: User and expiration - wraps to new line */
   .header-row-2 {
     font-size: 0.8rem;
     gap: 0.375rem;
+    order: 2;
+    flex-basis: 100%;
+    width: 100%;
   }
 
   .meta-compact {
@@ -810,15 +848,20 @@ function handleTimelineItemClick(item) {
     margin: 0 0.125rem;
   }
 
-  /* Row 3: Full width date picker */
+  /* Row 3: Date picker - wraps to new line */
   .header-row-3 {
     gap: 0.375rem;
+    order: 3;
+    justify-content: flex-start;
+    flex-basis: 100%;
+    width: 100%;
   }
 
   .header-datepicker {
     flex: 1;
     min-width: 0;
     max-width: none;
+    width: auto;
   }
 
   .shared-content {
