@@ -136,10 +136,45 @@
 
       <!-- Timeline View -->
       <div v-else-if="authenticated && shareInfo && timelineData" class="timeline-view">
+        <!-- Empty State: No timeline data -->
+        <Card v-if="!hasTimelineData && !hasPathData" class="info-card">
+          <template #header>
+            <div class="card-header">
+              <i class="pi pi-map-marker" style="font-size: 2rem; color: var(--blue-500)"></i>
+              <h2>No Location Data</h2>
+            </div>
+          </template>
+          <template #content>
+            <div class="info-content">
+              <p class="info-message">No location data is available for this timeline yet.</p>
+              <div class="info-details" v-if="shareInfo.timeline_status === 'active'">
+                <div class="detail-item">
+                  <i class="pi pi-info-circle"></i>
+                  <span>This trip is currently active, but no location data has been recorded yet.</span>
+                </div>
+              </div>
+              <div class="info-details" v-else-if="filterStartDate && filterEndDate">
+                <div class="detail-item">
+                  <i class="pi pi-calendar"></i>
+                  <span>No location data found for the selected date range. Try adjusting the filter.</span>
+                </div>
+              </div>
+              <p class="info-hint" v-if="shareInfo.timeline_status === 'active'">Check back later to see location updates.</p>
+            </div>
+          </template>
+        </Card>
+
         <!-- Timeline Display -->
-        <div class="timeline-container">
+        <div v-else class="timeline-container">
           <div class="timeline-map">
+            <!-- Empty state for map when no path data -->
+            <div v-if="!hasPathData" class="empty-map-state">
+              <i class="pi pi-map" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
+              <p>No route data available</p>
+              <small v-if="filterStartDate && filterEndDate">Try adjusting the date filter</small>
+            </div>
             <TimelineMap
+                v-else
                 ref="mapRef"
                 :pathData="pathData"
                 :timelineData="timelineData"
@@ -151,7 +186,15 @@
             />
           </div>
           <div class="timeline-sidebar">
+            <!-- Empty state for timeline when no timeline data -->
+            <div v-if="!hasTimelineData" class="empty-timeline-state">
+              <i class="pi pi-list" style="font-size: 3rem; color: var(--text-color-secondary); opacity: 0.5"></i>
+              <p>No stays or trips recorded</p>
+              <small v-if="filterStartDate && filterEndDate">Try adjusting the date filter</small>
+              <small v-else-if="shareInfo.timeline_status === 'active'">Check back later for updates</small>
+            </div>
             <TimelineContainer
+                v-else
                 ref="timelineRef"
                 :timeline-data="timelineData"
                 :is-public-view="true"
@@ -208,6 +251,15 @@ const timelineRef = ref(null)
 // Date filter state
 const filterStartDate = ref(null)
 const filterEndDate = ref(null)
+
+// Empty state checks
+const hasTimelineData = computed(() => {
+  return timelineData.value && timelineData.value.length > 0
+})
+
+const hasPathData = computed(() => {
+  return pathData.value && pathData.value.length > 0
+})
 
 // Computed properties for share date range
 const shareStartDate = computed(() => {
@@ -782,6 +834,35 @@ function handleTimelineItemClick(item) {
   flex-direction: column;
   width: 100%;
   height: 100%;
+}
+
+/* Empty state styling */
+.empty-map-state,
+.empty-timeline-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--gp-text-secondary);
+}
+
+.empty-map-state p,
+.empty-timeline-state p {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin: 0;
+  color: var(--gp-text-primary);
+}
+
+.empty-map-state small,
+.empty-timeline-state small {
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
+  opacity: 0.8;
 }
 
 /* Tablet and Mobile - Switch to 3 row layout */

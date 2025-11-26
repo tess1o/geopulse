@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.sharing.model.*;
         ShareLinkResponse.class,
         UpdateShareLinkDto.class,
         VerifyPasswordRequest.class,
+        ShareType.class
 })
 public class SharingNativeConfig {
 }
