@@ -33,4 +33,19 @@ public class CreateShareLinkRequest {
 
     @JsonProperty("history_hours")
     private int historyHours;
+
+    @JsonProperty("share_type")
+    private String shareType = "LIVE_LOCATION";
+
+    @JsonProperty("start_date")
+    private Instant startDate;
+
+    @JsonProperty("end_date")
+    private Instant endDate;
+
+    @JsonProperty("show_current_location")
+    private Boolean showCurrentLocation = true;
+
+    @JsonProperty("show_photos")
+    private Boolean showPhotos = false;
 }

@@ -15,7 +15,11 @@ export const useShareLinksStore = defineStore('shareLinks', {
         sharedLocationInfo: null,
         sharedLocationData: null,
         sharedAccessToken: null,
-        sharedLocationLoading: false
+        sharedLocationLoading: false,
+        // For shared timeline viewing
+        sharedTimelineData: null,
+        sharedPathData: null,
+        sharedCurrentLocation: null
     }),
 
     getters: {
@@ -43,7 +47,16 @@ export const useShareLinksStore = defineStore('shareLinks', {
         // Shared location getters
         getSharedLocationInfo: (state) => state.sharedLocationInfo,
         getSharedLocationData: (state) => state.sharedLocationData,
-        isSharedLocationLoading: (state) => state.sharedLocationLoading
+        isSharedLocationLoading: (state) => state.sharedLocationLoading,
+
+        // Filter by share type
+        getLiveLocationShares: (state) => state.links.filter(l => l.share_type !== 'TIMELINE'),
+        getTimelineShares: (state) => state.links.filter(l => l.share_type === 'TIMELINE'),
+
+        // Shared timeline getters
+        getSharedTimelineData: (state) => state.sharedTimelineData,
+        getSharedPathData: (state) => state.sharedPathData,
+        getSharedCurrentLocation: (state) => state.sharedCurrentLocation
     },
 
     actions: {
@@ -90,7 +103,7 @@ export const useShareLinksStore = defineStore('shareLinks', {
                 // Set default expiration to 7 days from now if not provided
                 if (!linkData.expires_at) {
                     const timezone = useTimezone()
-                    linkData.expires_at = timezone.add(timezone.now(), 7, 'day').toISOString();
+                    linkData.expires_at = timezone.add(timezone.now(), 7, 'year').toISOString();
                 }
                 
                 const response = await apiService.post('/share-links', linkData)
@@ -251,6 +264,121 @@ export const useShareLinksStore = defineStore('shareLinks', {
             })
 
             return isExpired
+        },
+
+        // Timeline share methods
+        async fetchSharedTimeline(linkId, startTime = null, endTime = null) {
+            if (!this.sharedAccessToken) {
+                throw new Error('No access token available')
+            }
+
+            this.sharedLocationLoading = true
+            this.clearError()
+            try {
+                // Build URL with optional query params
+                let url = `/shared/${linkId}/timeline`
+                if (startTime && endTime) {
+                    const params = new URLSearchParams({
+                        startTime: startTime,  // ISO-8601 format
+                        endTime: endTime
+                    })
+                    url += `?${params.toString()}`
+                }
+
+                const response = await apiService.getWithCustomHeaders(url, {
+                    'Authorization': `Bearer ${this.sharedAccessToken}`
+                })
+
+                // Transform response to match TimelineContainer expected format
+                // Backend returns {userId, stays: [], trips: []}
+                // Frontend expects a flat array of timeline items with type field
+                let timelineArray = []
+
+                if (response.stays && Array.isArray(response.stays)) {
+                    const staysWithType = response.stays.map(stay => ({
+                        ...stay,
+                        type: 'stay'
+                    }))
+                    timelineArray = [...staysWithType]
+                }
+
+                if (response.trips && Array.isArray(response.trips)) {
+                    const tripsWithType = response.trips.map(trip => ({
+                        ...trip,
+                        type: 'trip'
+                    }))
+                    timelineArray = [...timelineArray, ...tripsWithType]
+                }
+
+                // Sort by timestamp
+                timelineArray.sort((a, b) => {
+                    const aTime = new Date(a.timestamp).getTime()
+                    const bTime = new Date(b.timestamp).getTime()
+                    return aTime - bTime
+                })
+
+                this.sharedTimelineData = timelineArray
+                return timelineArray
+            } catch (error) {
+                this.setError(error.message || 'Failed to fetch timeline data')
+                throw error
+            } finally {
+                this.sharedLocationLoading = false
+            }
+        },
+
+        async fetchSharedPath(linkId, startTime = null, endTime = null) {
+            if (!this.sharedAccessToken) {
+                throw new Error('No access token available')
+            }
+
+            this.clearError()
+            try {
+                // Build URL with optional query params
+                let url = `/shared/${linkId}/path`
+                if (startTime && endTime) {
+                    const params = new URLSearchParams({
+                        startTime: startTime,  // ISO-8601 format
+                        endTime: endTime
+                    })
+                    url += `?${params.toString()}`
+                }
+
+                const response = await apiService.getWithCustomHeaders(url, {
+                    'Authorization': `Bearer ${this.sharedAccessToken}`
+                })
+
+                // Transform response to match expected format
+                // Backend returns array of {latitude, longitude, timestamp}
+                // Frontend expects {points: [{latitude, longitude, timestamp}]}
+                const pathData = {
+                    points: Array.isArray(response) ? response : (response.points || [])
+                }
+
+                this.sharedPathData = pathData
+                return pathData
+            } catch (error) {
+                console.error('Failed to fetch path data:', error)
+                throw error
+            }
+        },
+
+        async fetchSharedCurrentLocation(linkId) {
+            if (!this.sharedAccessToken) {
+                return null
+            }
+
+            try {
+                const response = await apiService.getWithCustomHeaders(`/shared/${linkId}/current`, {
+                    'Authorization': `Bearer ${this.sharedAccessToken}`
+                })
+                this.sharedCurrentLocation = response
+                return response
+            } catch (error) {
+                // Current location may not be available, this is not an error
+                console.log('Current location not available:', error.message)
+                return null
+            }
         }
     }
 })

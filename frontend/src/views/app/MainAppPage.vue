@@ -1,9 +1,21 @@
 <template>
   <AppLayout variant="app" padding="none">
     <template #navbar>
-      <AppNavbarWithDatePicker @date-change="handleDateChange" @navigate="handleNavigate" />
+      <AppNavbarWithDatePicker @date-change="handleDateChange" @navigate="handleNavigate">
+        <template #end-before>
+          <!-- Share button - only show on Timeline page -->
+          <Button
+            v-if="isTimelinePage"
+            label="Share"
+            icon="pi pi-share-alt"
+            @click="showShareDialog"
+            outlined
+            class="share-btn"
+          />
+        </template>
+      </AppNavbarWithDatePicker>
     </template>
-    
+
     <TabContainer
       :tabs="tabItems"
       :activeIndex="activeIndex"
@@ -16,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useTimezone } from '@/composables/useTimezone'
@@ -25,6 +37,7 @@ import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import AppNavbarWithDatePicker from '@/components/ui/layout/AppNavbarWithDatePicker.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
+import Button from 'primevue/button'
 
 // Stores
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -40,6 +53,8 @@ const { dateRange: dates } = storeToRefs(dateRangeStore)
 
 // Reactive state
 const activeIndex = ref(0)
+const shareDialogVisible = ref(false)
+
 const tabItems = ref([
   {
     label: 'Timeline',
@@ -62,6 +77,12 @@ const tabItems = ref([
   },
 ])
 
+// Computed
+const isTimelinePage = computed(() => route.path === '/app/timeline')
+
+// Provide share dialog state for child components
+provide('shareDialogVisible', shareDialogVisible)
+
 // Methods
 const onTabChange = (e) => {
   const selectedRoute = tabItems.value[e.index].to
@@ -79,6 +100,11 @@ const handleDateChange = (dateRange) => {
 
 const handleNavigate = (item) => {
   // Additional logic if needed
+}
+
+const showShareDialog = () => {
+  // Open share dialog via provided state
+  shareDialogVisible.value = true
 }
 
 const initializeDateRangeFromQuery = () => {
@@ -126,5 +152,19 @@ watch(dates, (newValue) => {
 </script>
 
 <style scoped>
-/* Any specific styling for MainAppPageNew if needed */
+/* Share button styling */
+.share-btn {
+  flex-shrink: 0;
+}
+
+/* Responsive - hide label on mobile */
+@media (max-width: 768px) {
+  .share-btn :deep(.p-button-label) {
+    display: none;
+  }
+
+  .share-btn {
+    padding: 0.5rem;
+  }
+}
 </style>

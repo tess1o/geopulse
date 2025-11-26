@@ -40,4 +40,22 @@ public class SharedLinkDto {
 
     @JsonProperty("view_count")
     private Integer viewCount;
+
+    @JsonProperty("share_type")
+    private String shareType;
+
+    @JsonProperty("start_date")
+    private Instant startDate;
+
+    @JsonProperty("end_date")
+    private Instant endDate;
+
+    @JsonProperty("show_current_location")
+    private Boolean showCurrentLocation;
+
+    @JsonProperty("show_photos")
+    private Boolean showPhotos;
+
+    @JsonProperty("timeline_status")
+    private String timelineStatus;
 }

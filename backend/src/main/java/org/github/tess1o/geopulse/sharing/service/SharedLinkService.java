@@ -10,8 +10,16 @@ import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
+import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
+import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.sharing.mapper.SharedLinkMapper;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.sharing.exceptions.TooManyLinksException;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.sharing.repository.SharedLinkRepository;
@@ -48,6 +56,15 @@ public class SharedLinkService {
     SharedLinkMapper mapper;
 
     @Inject
+    StreamingTimelineAggregator timelineAggregator;
+
+    @Inject
+    PathSimplificationService pathSimplificationService;
+
+    @Inject
+    TimelineConfigurationProvider timelineConfigurationProvider;
+
+    @Inject
     SecurePasswordUtils passwordUtils;
 
     @Inject
@@ -60,19 +77,35 @@ public class SharedLinkService {
     @StaticInitSafe
     Long tempTokenLifespan;
 
+    @Inject
+    @ConfigProperty(name = "geopulse.sharing.temp-token.timeline-lifespan", defaultValue = "7200")
+    @StaticInitSafe
+    Long timelineTokenLifespan;
 
     @Inject
     io.smallrye.jwt.auth.principal.JWTParser jwtParser;
 
     @Transactional
     public CreateShareLinkResponse createShareLink(CreateShareLinkRequest request, UserEntity user) {
-        log.info("Creating share link for user: {}, name: {}, hasPassword: {}, showHistory: {}",
-                user.getId(), request.getName(), request.getPassword() != null, request.isShowHistory());
+        ShareType shareType = request.getShareType() != null ? ShareType.valueOf(request.getShareType()) : ShareType.LIVE_LOCATION;
+        log.info("Creating {} share link for user: {}, name: {}, hasPassword: {}, showHistory: {}",
+                shareType, user.getId(), request.getName(), request.getPassword() != null, request.isShowHistory());
 
-        long activeCount = sharedLinkRepository.countActiveByUserId(user.getId());
+        // Check separate limits for each share type
+        long activeCount = sharedLinkRepository.countActiveByUserIdAndType(user.getId(), shareType);
         if (activeCount >= maxLinksPerUser) {
-            log.warn("User {} exceeded max links limit: {} >= {}", user.getId(), activeCount, maxLinksPerUser);
-            throw new TooManyLinksException("Maximum number of active links reached (" + maxLinksPerUser + ")");
+            log.warn("User {} exceeded max {} links limit: {} >= {}", user.getId(), shareType, activeCount, maxLinksPerUser);
+            throw new TooManyLinksException("Maximum number of active " + shareType + " links reached (" + maxLinksPerUser + ")");
+        }
+
+        // Validate timeline-specific requirements
+        if (shareType == ShareType.TIMELINE) {
+            if (request.getStartDate() == null || request.getEndDate() == null) {
+                throw new IllegalArgumentException("Timeline shares must have start and end dates");
+            }
+            if (request.getEndDate().isBefore(request.getStartDate())) {
+                throw new IllegalArgumentException("End date must be after start date");
+            }
         }
 
         SharedLinkEntity entity = mapper.toEntity(request, user);
@@ -82,7 +115,7 @@ public class SharedLinkService {
         }
 
         sharedLinkRepository.persist(entity);
-        log.info("Share link created successfully: {}, expires: {}", entity.getId(), entity.getExpiresAt());
+        log.info("{} share link created successfully: {}, expires: {}", shareType, entity.getId(), entity.getExpiresAt());
         return mapper.toResponse(entity);
     }
 
@@ -117,7 +150,12 @@ public class SharedLinkService {
                 updateDto.getExpiresAt(),
                 updateDto.getPassword(),
                 updateDto.isShowHistory(),
-                updateDto.getHistoryHours()
+                updateDto.getHistoryHours(),
+                updateDto.getShareType(),
+                updateDto.getStartDate(),
+                updateDto.getEndDate(),
+                updateDto.getShowCurrentLocation(),
+                updateDto.getShowPhotos()
         );
 
         if (safeDto.getPassword() != null && !safeDto.getPassword().trim().isEmpty()) {
@@ -172,9 +210,11 @@ public class SharedLinkService {
             }
         }
 
-        String tempToken = createTemporaryAccessToken(linkId);
-        log.info("Password verification successful for linkId: {}", linkId);
-        return new AccessTokenResponse(tempToken, tempTokenLifespan);
+        // Use longer token lifespan for timeline shares
+        Long tokenLifespan = entity.getShareType() == ShareType.TIMELINE ? timelineTokenLifespan : tempTokenLifespan;
+        String tempToken = createTemporaryAccessToken(linkId, tokenLifespan);
+        log.info("Password verification successful for linkId: {}, tokenLifespan: {}", linkId, tokenLifespan);
+        return new AccessTokenResponse(tempToken, tokenLifespan);
     }
 
     @Transactional
@@ -218,12 +258,12 @@ public class SharedLinkService {
         }
     }
 
-    private String createTemporaryAccessToken(UUID linkId) {
+    private String createTemporaryAccessToken(UUID linkId, Long lifespan) {
         return Jwt.issuer(issuer)
                 .subject("shared-link")
                 .claim("linkId", linkId.toString())
                 .claim("type", "temp")
-                .expiresIn(Duration.ofSeconds(tempTokenLifespan))
+                .expiresIn(Duration.ofSeconds(lifespan))
                 .sign();
     }
 
@@ -251,5 +291,169 @@ public class SharedLinkService {
             log.warn("Temporary token validation failed for linkId: {}, error: {}", expectedLinkId, e.getMessage());
             throw new ForbiddenException("Invalid or expired token");
         }
+    }
+
+    /**
+     * Get current location for timeline share (only during active period)
+     */
+    public Optional<LocationHistoryResponse.CurrentLocationData> getSharedCurrentLocation(UUID linkId, String tempToken) {
+        log.debug("Current location access attempt for timeline share linkId: {}", linkId);
+
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new NotFoundException("Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+
+        // Only return current location for timeline shares
+        if (entity.getShareType() != ShareType.TIMELINE) {
+            throw new IllegalArgumentException("This endpoint is only for timeline shares");
+        }
+
+        // Check if share is configured to show current location
+        if (entity.getShowCurrentLocation() == null || !entity.getShowCurrentLocation()) {
+            throw new NotFoundException("Current location not available for this share");
+        }
+
+        // Check if we're within the active timeline period
+        Instant now = Instant.now();
+        if (entity.getStartDate() == null || entity.getEndDate() == null ||
+            now.isBefore(entity.getStartDate()) || now.isAfter(entity.getEndDate())) {
+            throw new NotFoundException("Current location only available during the timeline period");
+        }
+
+        GpsPointEntity currentLocation = gpsPointRepository.findByUserIdLatestGpsPoint(entity.getUser().getId());
+        if (currentLocation == null) {
+            return Optional.empty();
+        }
+
+        return Optional.of(mapper.toCurrentLocationData(currentLocation));
+    }
+
+    /**
+     * Get timeline data for timeline share
+     */
+    @Transactional
+    public MovementTimelineDTO getSharedTimeline(UUID linkId, String tempToken, Instant startTime, Instant endTime) {
+        log.debug("Timeline data access attempt for linkId: {}", linkId);
+
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new NotFoundException("Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+
+        // Only return timeline data for timeline shares
+        if (entity.getShareType() != ShareType.TIMELINE) {
+            throw new IllegalArgumentException("This endpoint is only for timeline shares");
+        }
+
+        if (entity.getStartDate() == null || entity.getEndDate() == null) {
+            throw new IllegalStateException("Timeline share missing date range");
+        }
+
+        // Determine effective date range
+        Instant effectiveStart = startTime != null ? startTime : entity.getStartDate();
+        Instant effectiveEnd = endTime != null ? endTime : entity.getEndDate();
+
+        // Validate dates are within share boundaries
+        if (effectiveStart.isBefore(entity.getStartDate()) || effectiveEnd.isAfter(entity.getEndDate())) {
+            throw new IllegalArgumentException(
+                    String.format("Requested date range must be within share period: %s to %s",
+                            entity.getStartDate(), entity.getEndDate())
+            );
+        }
+
+        // Increment view count on first timeline access
+        sharedLinkRepository.incrementViewCount(linkId);
+
+        // Get timeline data for the effective date range
+        // This automatically includes overnight stays via boundary expansion
+        MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDb(
+                entity.getUser().getId(),
+                effectiveStart,
+                effectiveEnd
+        );
+
+        log.info("Timeline data accessed successfully for linkId: {}, items: {}, dateRange: {} to {}",
+                linkId, timeline.getStaysCount() + timeline.getTripsCount(), effectiveStart, effectiveEnd);
+
+        return timeline;
+    }
+
+    /**
+     * Get GPS path data for timeline share
+     */
+    public GpsPointPathDTO getSharedPath(UUID linkId, String tempToken, Instant startTime, Instant endTime) {
+        log.debug("Path data access attempt for linkId: {}", linkId);
+
+        validateTemporaryToken(tempToken, linkId);
+
+        Optional<SharedLinkEntity> entityOpt = sharedLinkRepository.findActiveById(linkId);
+        if (entityOpt.isEmpty()) {
+            throw new NotFoundException("Link not found or expired");
+        }
+
+        SharedLinkEntity entity = entityOpt.get();
+
+        // Only return path data for timeline shares
+        if (entity.getShareType() != ShareType.TIMELINE) {
+            throw new IllegalArgumentException("This endpoint is only for timeline shares");
+        }
+
+        if (entity.getStartDate() == null || entity.getEndDate() == null) {
+            throw new IllegalStateException("Timeline share missing date range");
+        }
+
+        // Determine effective date range
+        Instant effectiveStart = startTime != null ? startTime : entity.getStartDate();
+        Instant effectiveEnd = endTime != null ? endTime : entity.getEndDate();
+
+        // Validate dates are within share boundaries
+        if (effectiveStart.isBefore(entity.getStartDate()) || effectiveEnd.isAfter(entity.getEndDate())) {
+            throw new IllegalArgumentException(
+                    String.format("Requested date range must be within share period: %s to %s",
+                            entity.getStartDate(), entity.getEndDate())
+            );
+        }
+
+        // Get GPS points for the effective date range
+        List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(
+                entity.getUser().getId(),
+                effectiveStart,
+                effectiveEnd
+        );
+
+        // Convert to GpsPoint interface for simplification
+        List<GpsPoint> convertedPoints = gpsPoints.stream()
+                .map(gp -> new GpsPointPathPointDTO(
+                        gp.getId(),
+                        gp.getCoordinates().getX(), // longitude
+                        gp.getCoordinates().getY(), // latitude
+                        gp.getTimestamp(),
+                        gp.getAccuracy(),
+                        gp.getAltitude(),
+                        gp.getVelocity(),
+                        entity.getUser().getId(),
+                        gp.getSourceType().name()
+                ))
+                .collect(Collectors.toList());
+
+        // Get user's timeline config for simplification
+        TimelineConfig config = timelineConfigurationProvider.getConfigurationForUser(entity.getUser().getId());
+
+        // Simplify the path to reduce data size
+        List<? extends GpsPoint> simplifiedPoints = pathSimplificationService.simplify(convertedPoints, config);
+
+        log.info("Path data accessed for linkId: {}, original points: {}, simplified: {}",
+                linkId, gpsPoints.size(), simplifiedPoints.size());
+
+        return new GpsPointPathDTO(entity.getUser().getId(), (List<GpsPointPathPointDTO>) simplifiedPoints);
     }
 }

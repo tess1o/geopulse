@@ -21,6 +21,7 @@ import AIChatPage from "@/views/app/AIChatPage.vue";
 import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
 import PlaceDetailsPage from "@/views/app/PlaceDetailsPage.vue";
 import SharedLocationPage from "@/views/SharedLocationPage.vue";
+import SharedTimelinePage from "@/views/SharedTimelinePage.vue";
 import ErrorPage from "@/views/ErrorPage.vue";
 import NotFoundPage from "@/views/NotFoundPage.vue";
 import { useAuthStore } from '@/stores/auth'
@@ -260,6 +261,11 @@ const routes = [
         path: '/shared/:linkId',
         name: 'Shared Location',
         component: SharedLocationPage
+    },
+    {
+        path: '/shared-timeline/:linkId',
+        name: 'Shared Timeline',
+        component: SharedTimelinePage
     },
     {
         path: '/error',
