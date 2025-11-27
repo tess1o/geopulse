@@ -311,6 +311,21 @@
           "history_hours" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "share_type" : {
+            "type" : "string"
+          },
+          "start_date" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "end_date" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "show_current_location" : {
+            "type" : "boolean"
+          },
+          "show_photos" : {
+            "type" : "boolean"
           }
         }
       },
@@ -867,6 +882,19 @@
           }
         }
       },
+      "TestImmichConnectionRequest" : {
+        "required" : [ "serverUrl" ],
+        "type" : "object",
+        "properties" : {
+          "serverUrl" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "apiKey" : {
+            "type" : "string"
+          }
+        }
+      },
       "TimePatterns" : {
         "type" : "object",
         "properties" : {
@@ -1066,7 +1094,7 @@
           },
           "password" : {
             "maxLength" : 100,
-            "minLength" : 6,
+            "minLength" : 2,
             "type" : "string"
           },
           "show_history" : {
@@ -1075,6 +1103,21 @@
           "history_hours" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "share_type" : {
+            "type" : "string"
+          },
+          "start_date" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "end_date" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "show_current_location" : {
+            "type" : "boolean"
+          },
+          "show_photos" : {
+            "type" : "boolean"
           },
           "passwordRemoval" : {
             "type" : "boolean"
@@ -4538,6 +4581,41 @@
         } ]
       }
     },
+    "/api/import/debug/upload" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "multipart/form-data" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  },
+                  "clearExistingData" : {
+                    "default" : true,
+                    "type" : "boolean"
+                  },
+                  "updateTimelineConfig" : {
+                    "default" : true,
+                    "type" : "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Upload Debug Data",
+        "tags" : [ "Debug Import Controller" ]
+      }
+    },
     "/api/import/geojson/upload" : {
       "post" : {
         "requestBody" : {
@@ -5251,6 +5329,25 @@
         } ]
       }
     },
+    "/api/shared/{linkId}/current" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Shared Current Location",
+        "tags" : [ "Public Shared Link Resource" ]
+      }
+    },
     "/api/shared/{linkId}/info" : {
       "get" : {
         "parameters" : [ {
@@ -5286,6 +5383,68 @@
           }
         },
         "summary" : "Get Shared Location",
+        "tags" : [ "Public Shared Link Resource" ]
+      }
+    },
+    "/api/shared/{linkId}/path" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Shared Path",
+        "tags" : [ "Public Shared Link Resource" ]
+      }
+    },
+    "/api/shared/{linkId}/timeline" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "linkId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/components/schemas/UUID"
+          }
+        }, {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Shared Timeline",
         "tags" : [ "Public Shared Link Resource" ]
       }
     },
@@ -5548,6 +5707,35 @@
         } ]
       }
     },
+    "/api/streaming-timeline/trips/{tripId}/classification" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trip Classification Details",
+        "tags" : [ "Streaming Timeline Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/streaming-timeline/user/preferences" : {
       "get" : {
         "responses" : {
@@ -5666,6 +5854,42 @@
           }
         },
         "summary" : "Get Current User Immich Config",
+        "tags" : [ "Immich Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/users/me/immich-config/test" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TestImmichConnectionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : { }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Test Current User Immich Connection",
         "tags" : [ "Immich Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -5966,6 +6190,50 @@
         } ]
       }
     },
+    "/api/users/{userId}/immich-config/test" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "userId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TestImmichConnectionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : { }
+            }
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Test Immich Connection",
+        "tags" : [ "Immich Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/users/{userId}/immich/photos/search" : {
       "get" : {
         "parameters" : [ {
@@ -6120,7 +6388,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.7.0",
+    "version" : "1.8.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
