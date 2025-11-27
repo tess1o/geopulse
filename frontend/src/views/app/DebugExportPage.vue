@@ -167,17 +167,30 @@
               <ul class="info-list">
                 <li>
                   <i class="pi pi-check-circle"></i>
+                  <strong>metadata.json</strong> - Export metadata (date range, counts, version)
+                </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
                   <strong>gps_data.json</strong> - All GPS points in OwnTracks format with shifted coordinates
                 </li>
                 <li>
                   <i class="pi pi-check-circle"></i>
                   <strong>timeline_config.json</strong> - Your complete timeline configuration (if selected)
                 </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>favorite_locations.json</strong> - Anonymized favorite locations with shifted coordinates
+                </li>
+                <li>
+                  <i class="pi pi-check-circle"></i>
+                  <strong>favorite_areas.json</strong> - Anonymized favorite areas with shifted boundaries
+                </li>
               </ul>
               <p class="info-note">
                 <i class="pi pi-info-circle"></i>
+                All coordinates are shifted by the same offset. Favorite location names are anonymized
+                (e.g., "Home" becomes "Location 1"). This preserves timeline structure while protecting privacy.
                 The coordinate shift values are NOT included in the export for privacy protection.
-                Keep a record of them separately if needed.
               </p>
             </div>
           </template>

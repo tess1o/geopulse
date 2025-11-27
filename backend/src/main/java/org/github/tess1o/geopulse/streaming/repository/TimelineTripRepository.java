@@ -9,10 +9,7 @@ import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -356,5 +353,9 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
 
     public long countByUser(UUID userId) {
         return count("user.id = ?1", userId);
+    }
+
+    public void deleteByUserId(UUID userId) {
+        delete("user.id = ?1", userId);
     }
 }

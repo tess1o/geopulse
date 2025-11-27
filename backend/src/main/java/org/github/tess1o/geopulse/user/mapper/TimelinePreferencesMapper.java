@@ -28,6 +28,11 @@ public interface TimelinePreferencesMapper {
     TimelineConfig requestToConfig(UpdateTimelinePreferencesRequest request);
 
     /**
+     * Convert TimelineConfig to UpdateTimelinePreferencesRequest
+     */
+    UpdateTimelinePreferencesRequest configToRequest(TimelineConfig config);
+
+    /**
      * Update TimelinePreferences from TimelineConfig using @MappingTarget
      */
     void updatePreferencesFromConfig(TimelineConfig config, @MappingTarget TimelinePreferences preferences);
