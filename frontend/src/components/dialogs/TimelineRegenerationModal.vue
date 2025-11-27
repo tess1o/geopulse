@@ -78,7 +78,7 @@
 
             <div v-if="jobProgress.details.externalPending > 0" class="detail-item detail-pending">
               <i class="pi pi-clock"></i>
-              <span>{{ jobProgress.details.externalPending }} pending (1/sec)</span>
+              <span>{{ jobProgress.details.externalPending }} pending</span>
             </div>
           </div>
 

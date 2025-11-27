@@ -72,15 +72,56 @@
             label="GPS Reliability"
             :value="details.statistics.gpsReliable ? 'Reliable' : 'Unreliable'"
             :severity="details.statistics.gpsReliable ? 'success' : 'warn'"
+            :hint="details.statistics.gpsReliable
+              ? 'GPS speeds are within expected range and used for classification'
+              : 'GPS speeds unreliable - using calculated speed from distance/duration instead'"
           />
         </div>
       </div>
 
-      <!-- Section 3: Classification Steps -->
+      <!-- Section 3: Classification Priority Order -->
+      <div class="section">
+        <div class="priority-banner">
+          <div class="priority-banner-icon">
+            <i class="pi pi-sort-amount-down"></i>
+          </div>
+          <div class="priority-banner-content">
+            <h3 class="priority-banner-title">Classification Priority Order</h3>
+            <div class="priority-flow">
+              <span class="priority-step">✈️ FLIGHT</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">🚊 TRAIN</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">🚴 BICYCLE</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">🏃 RUNNING</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">🚗 CAR</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="priority-step">🚶 WALK</span>
+              <i class="pi pi-arrow-right"></i>
+              <span class="priority-step priority-unknown">❓ UNKNOWN</span>
+            </div>
+            <p class="priority-banner-description">
+              Trips are classified in priority order from left to right. Once a match is found, classification stops.
+              <a
+                href="https://tess1o.github.io/geopulse/docs/user-guide/timeline/travel_classification"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="doc-link"
+              >
+                <i class="pi pi-external-link"></i> Learn more
+              </a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Classification Steps -->
       <div class="section">
         <h3 class="section-title">Classification Analysis</h3>
         <p class="section-description">
-          Transport types are checked in priority order. The first type that matches all thresholds is selected.
+          Detailed threshold checks for each transport type.
         </p>
 
         <div class="steps-list">
@@ -94,7 +135,7 @@
         </div>
       </div>
 
-      <!-- Section 4: Final Reason -->
+      <!-- Section 5: Final Reason -->
       <div class="section">
         <Message severity="info" :closable="false">
           <strong>Final Decision:</strong> {{ details.finalReason }}
@@ -318,7 +359,127 @@ const getTransportSeverity = (transportMode) => {
   gap: var(--gp-spacing-md);
 }
 
+.priority-banner {
+  display: flex;
+  gap: var(--gp-spacing-md);
+  padding: var(--gp-spacing-lg);
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
+  border-left: 4px solid var(--gp-primary);
+}
+
+.priority-banner-icon {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--gp-primary);
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.priority-banner-content {
+  flex: 1;
+}
+
+.priority-banner-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gp-text-primary);
+  margin: 0 0 var(--gp-spacing-md) 0;
+}
+
+.priority-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  margin-bottom: var(--gp-spacing-md);
+}
+
+.priority-step {
+  padding: var(--gp-spacing-xs) var(--gp-spacing-sm);
+  background: var(--gp-primary);
+  color: white;
+  border-radius: var(--gp-radius-small);
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.priority-step.priority-unknown {
+  background: var(--gp-text-muted);
+}
+
+.priority-flow i {
+  color: var(--gp-primary);
+  font-size: 0.875rem;
+}
+
+.priority-banner-description {
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.doc-link {
+  color: var(--gp-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  transition: all 0.2s ease;
+}
+
+.doc-link:hover {
+  text-decoration: underline;
+  color: var(--gp-primary-dark);
+}
+
+.doc-link i {
+  font-size: 0.75rem;
+}
+
 /* Dark Mode */
+.p-dark .priority-banner {
+  background: var(--gp-surface-darker);
+  border-left-color: var(--gp-primary);
+}
+
+.p-dark .priority-banner-icon {
+  color: var(--gp-primary);
+}
+
+.p-dark .priority-banner-title {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .priority-step {
+  background: var(--gp-primary);
+  color: white;
+}
+
+.p-dark .priority-step.priority-unknown {
+  background: var(--gp-text-muted);
+}
+
+.p-dark .priority-flow i {
+  color: var(--gp-primary);
+}
+
+.p-dark .priority-banner-description {
+  color: var(--gp-text-secondary);
+}
+
+.p-dark .doc-link:hover {
+  color: var(--gp-primary-light);
+}
+
+/* Dark Mode (continued) */
 .p-dark .classification-content::-webkit-scrollbar-track {
   background: var(--gp-surface-darker);
 }
@@ -374,6 +535,40 @@ const getTransportSeverity = (transportMode) => {
 
   .steps-list {
     gap: var(--gp-spacing-sm);
+  }
+
+  .priority-banner {
+    flex-direction: column;
+    padding: var(--gp-spacing-md);
+  }
+
+  .priority-banner-icon {
+    font-size: 1.5rem;
+  }
+
+  .priority-banner-title {
+    font-size: 1rem;
+  }
+
+  .priority-flow {
+    gap: 6px;
+  }
+
+  .priority-step {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+
+  .priority-flow i {
+    font-size: 0.75rem;
+  }
+
+  .priority-banner-description {
+    font-size: 0.8rem;
+  }
+
+  .doc-link {
+    font-size: 0.8rem;
   }
 }
 
