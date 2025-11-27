@@ -84,7 +84,7 @@ frontend:
     # Maximum upload file size (for imports, backups)
     clientMaxBodySize: "200M"
     # DNS resolver for OSM tile servers
-    osmResolver: "1.8.0.0.11 8.8.8.8"
+    osmResolver: "127.0.0.11 8.8.8.8"
 
   resources:
     limits:
