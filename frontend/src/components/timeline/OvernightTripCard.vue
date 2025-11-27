@@ -60,10 +60,17 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['click', 'export-gpx']);
+const emit = defineEmits(['click', 'export-gpx', 'show-classification']);
 
 const contextMenu = ref(null)
 const contextMenuItems = ref([
+  {
+    label: 'Why is this ' + props.tripItem.movementType + '?',
+    icon: 'pi pi-question-circle',
+    command: () => {
+      emit('show-classification', props.tripItem)
+    }
+  },
   {
     label: 'Export as GPX',
     icon: 'pi pi-download',

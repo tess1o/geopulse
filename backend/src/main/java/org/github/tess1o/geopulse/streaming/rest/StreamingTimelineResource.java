@@ -54,6 +54,9 @@ public class StreamingTimelineResource {
     @Inject
     org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties timelineConfigurationProperties;
 
+    @Inject
+    org.github.tess1o.geopulse.streaming.service.TripClassificationDetailsService tripClassificationDetailsService;
+
     @GET
     @RolesAllowed({"USER", "ADMIN"})
     public Response getTimeline(@QueryParam("startTime") String startTime, @QueryParam("endTime") String endTime) {
@@ -165,6 +168,41 @@ public class StreamingTimelineResource {
             log.error("Failed to get timeline preferences for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get preferences: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get detailed classification information for a specific trip.
+     * Provides comprehensive explanation of why a trip was classified as a specific transport type,
+     * including GPS statistics, configuration thresholds, and step-by-step decision trace.
+     *
+     * @param tripId ID of the trip to explain
+     * @return Trip classification details with explanation
+     */
+    @GET
+    @Path("/trips/{tripId}/classification")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getTripClassificationDetails(@PathParam("tripId") Long tripId) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.debug("Trip classification details requested for trip {} by user {}", tripId, userId);
+
+        try {
+            var details = tripClassificationDetailsService.getTripClassificationDetails(tripId, userId);
+
+            if (details.isEmpty()) {
+                log.warn("Trip {} not found or access denied for user {}", tripId, userId);
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Trip not found or access denied"))
+                        .build();
+            }
+
+            return Response.ok(ApiResponse.success(details.get())).build();
+
+        } catch (Exception e) {
+            log.error("Failed to get classification details for trip {} and user {}", tripId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get classification details: " + e.getMessage()))
                     .build();
         }
     }

@@ -17,13 +17,21 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * Supports both mandatory types (WALK, CAR) and optional types (BICYCLE, TRAIN, FLIGHT).
  * Classification is based on speed analysis and movement characteristics.
  * <p>
+ * GPS RELIABILITY VALIDATION (BIDIRECTIONAL):
+ * - Compares GPS-reported speeds against calculated speeds (distance/duration)
+ * - LOW SPEED trips (&lt; 20 km/h): Uses strict ratio-based validation
+ *   - GPS too HIGH: Rejects if GPS &gt; calculated × 2.0 (GPS noise/errors)
+ *   - GPS too LOW: Rejects if GPS &lt; calculated / 1.3 (GPS underreporting, averaging stops)
+ * - MEDIUM SPEED trips (20-200 km/h): Uses percentage-based validation (50% tolerance)
+ * - HIGH SPEED trips (&gt; 200 km/h): Always trusts GPS (straight-line distance unreliable)
+ * <p>
  * CRITICAL CLASSIFICATION ORDER:
  * 1. FLIGHT - highest priority (400+ km/h avg OR 500+ km/h peak)
- * 2. TRAIN - high speed with low variance (30-150 km/h, variance < 15)
+ * 2. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
  * 3. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
  * 4. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
  * 5. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
- * 6. WALK - low speeds (<= 6 km/h avg, <= 8 km/h peak)
+ * 6. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak)
  * 7. UNKNOWN - fallback
  */
 @ApplicationScoped
@@ -69,11 +77,20 @@ public class TravelClassification {
     private static final double HIGH_SPEED_GPS_TRUST_THRESHOLD_KMH = 200.0;
 
     /**
-     * Maximum allowed ratio of GPS avg speed to calculated avg speed for low-speed trips.
+     * Maximum allowed ratio of GPS avg speed to calculated avg speed for low-speed trips (GPS too high).
      * If GPS avg > calculated * this ratio, GPS is considered unreliable.
      * Example: GPS 12 km/h vs calculated 5 km/h = 2.4x ratio (exceeds threshold, use calculated).
      */
     private static final double LOW_SPEED_GPS_RELIABILITY_RATIO = 2.0;
+
+    /**
+     * Minimum allowed ratio of GPS avg speed to calculated avg speed for low-speed trips (GPS too low).
+     * If GPS avg < calculated / this ratio, GPS is considered unreliable.
+     * Example: GPS 5.5 km/h vs calculated 7.5 km/h: 5.5 < 7.5/1.3 = 5.77 (GPS too low, use calculated).
+     * This catches cases where GPS underreports speed due to averaging stops or poor accuracy.
+     * Value of 1.3 allows ~23% variance, which is reasonable for low-speed GPS measurements.
+     */
+    private static final double LOW_SPEED_GPS_MIN_RELIABILITY_RATIO = 1.3;
 
     /**
      * Maximum allowed percentage difference between GPS and calculated speeds for medium-high speed trips.
@@ -479,6 +496,10 @@ public class TravelClassification {
     /**
      * Checks if GPS speed is unreliable compared to calculated speed.
      * Uses adaptive thresholds based on speed range.
+     * <p>
+     * IMPORTANT: This is a BIDIRECTIONAL check that validates GPS in both directions:
+     * - GPS too HIGH: catches GPS noise/errors that inflate speed
+     * - GPS too LOW: catches GPS averaging stops, poor accuracy that deflates speed
      *
      * @param avgSpeedKmh        GPS average speed
      * @param calculatedAvgSpeedKmh Calculated average speed
@@ -490,9 +511,33 @@ public class TravelClassification {
         }
 
         if (calculatedAvgSpeedKmh < LOW_SPEED_THRESHOLD_KMH) {
-            // Low speed trips: Use strict ratio-based validation
+            // Low speed trips: Use strict bidirectional ratio-based validation
+
+            // Check 1: GPS too HIGH (original check)
             // GPS should not exceed calculated by more than 2x
-            return avgSpeedKmh > calculatedAvgSpeedKmh * LOW_SPEED_GPS_RELIABILITY_RATIO;
+            if (avgSpeedKmh > calculatedAvgSpeedKmh * LOW_SPEED_GPS_RELIABILITY_RATIO) {
+                log.debug("GPS unreliable (too high): GPS {} km/h > calculated {} km/h * {}",
+                        String.format("%.2f", avgSpeedKmh),
+                        String.format("%.2f", calculatedAvgSpeedKmh),
+                        LOW_SPEED_GPS_RELIABILITY_RATIO);
+                return true; // GPS unreliable - too high
+            }
+
+            // Check 2: GPS too LOW (new check for underreporting)
+            // GPS should not be less than calculated / 1.3 (i.e., calculated should not exceed GPS by more than ~23%)
+            // Example: Calculated 7.5 km/h, GPS must be >= 7.5/1.3 = 5.77 km/h
+            // If GPS is 5.5 km/h, it's too low (underreporting by ~27%)
+            if (avgSpeedKmh < calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO) {
+                log.debug("GPS unreliable (too low): GPS {} km/h < calculated {} km/h / {} (= {} km/h)",
+                        String.format("%.2f", avgSpeedKmh),
+                        String.format("%.2f", calculatedAvgSpeedKmh),
+                        LOW_SPEED_GPS_MIN_RELIABILITY_RATIO,
+                        String.format("%.2f", calculatedAvgSpeedKmh / LOW_SPEED_GPS_MIN_RELIABILITY_RATIO));
+                return true; // GPS unreliable - too low
+            }
+
+            return false; // GPS is reliable (within acceptable range)
+
         } else if (avgSpeedKmh > HIGH_SPEED_GPS_TRUST_THRESHOLD_KMH) {
             // Very high GPS speed (likely flight/high-speed train): Always trust GPS
             // Calculated speed from distance/duration is unreliable due to route vs straight-line

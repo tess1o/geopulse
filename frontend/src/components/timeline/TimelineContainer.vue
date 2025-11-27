@@ -71,6 +71,7 @@
               :current-date="dateGroup.date"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
+              @show-classification="handleShowClassification"
             />
 
             <TripCard
@@ -78,6 +79,7 @@
               :trip-item="slotProps.item"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
+              @show-classification="handleShowClassification"
             />
 
             <!-- Data Gap Cards -->
@@ -97,11 +99,18 @@
         </Timeline>
       </div>
     </div>
+
+    <!-- Trip Classification Dialog -->
+    <TripClassificationDialog
+      :visible="classificationDialogVisible"
+      :trip="selectedTripForClassification"
+      @close="handleCloseClassificationDialog"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, defineAsyncComponent } from 'vue'
 import Timeline from 'primevue/timeline'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
@@ -115,11 +124,20 @@ import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
 import { useTimezone } from '@/composables/useTimezone'
 
+// Lazy load the classification dialog
+const TripClassificationDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripClassificationDialog.vue')
+)
+
 const toast = useToast()
 const exportImportStore = useExportImportStore()
 
 // Display limit for progressive loading
 const displayLimit = ref(50)
+
+// Classification dialog state
+const classificationDialogVisible = ref(false)
+const selectedTripForClassification = ref(null)
 
 // Props
 const props = defineProps({
@@ -294,6 +312,16 @@ const handleExportStayAsGpx = async (stayItem) => {
       life: 5000
     })
   }
+}
+
+const handleShowClassification = (tripItem) => {
+  selectedTripForClassification.value = tripItem
+  classificationDialogVisible.value = true
+}
+
+const handleCloseClassificationDialog = () => {
+  classificationDialogVisible.value = false
+  selectedTripForClassification.value = null
 }
 </script>
 
