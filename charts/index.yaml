@@ -2,6 +2,31 @@ apiVersion: v1
 entries:
   geopulse:
   - apiVersion: v2
+    appVersion: 1.8.0
+    created: "2025-11-27T20:09:50.536575866Z"
+    description: A self-hosted location tracking and analysis platform with PostGIS
+      and optional MQTT support
+    digest: e64757dfd2583c85ad31ad95b8b2098c4e0c056e4f767e37c1b727272c62381e
+    home: https://github.com/tess1o/geopulse
+    icon: https://raw.githubusercontent.com/tess1o/geopulse/main/frontend/public/geopulse-logo.svg
+    keywords:
+    - gps
+    - tracking
+    - location
+    - postgis
+    - mqtt
+    - self-hosted
+    maintainers:
+    - email: support@geopulse.io
+      name: GeoPulse Team
+    name: geopulse
+    sources:
+    - https://github.com/tess1o/geopulse
+    type: application
+    urls:
+    - https://tess1o.github.io/geopulse/charts/geopulse-1.8.0.tgz
+    version: 1.8.0
+  - apiVersion: v2
     appVersion: 1.7.0
     created: "2025-11-25T22:12:40.906888+02:00"
     description: A self-hosted location tracking and analysis platform with PostGIS
@@ -78,7 +103,7 @@ entries:
     version: 1.5.0
   - apiVersion: v2
     appVersion: 1.4.0
-    created: "2025-11-25T22:12:40.904296+02:00"
+    created: "2025-11-27T20:09:50.535206178Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 3c3371894d512fab97db87c3e397b874a9942c613a169a248774927141e90857
@@ -92,7 +117,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -103,7 +128,7 @@ entries:
     version: 1.4.0
   - apiVersion: v2
     appVersion: 1.3.0
-    created: "2025-11-25T22:12:40.903022+02:00"
+    created: "2025-11-27T20:09:50.534038609Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 00ac187ca9f870a35265a90d90ef10132485bbf35a8a8e64f658c9be73ad618b
@@ -117,7 +142,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -128,7 +153,7 @@ entries:
     version: 1.3.0
   - apiVersion: v2
     appVersion: 1.2.3
-    created: "2025-11-25T22:12:40.901737+02:00"
+    created: "2025-11-27T20:09:50.532900976Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: f105f38163321c6b091d7e7b0c8c3f4d1946f3015977fe45906d1a9756b5f3a7
@@ -142,7 +167,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -153,7 +178,7 @@ entries:
     version: 1.2.3
   - apiVersion: v2
     appVersion: 1.2.2
-    created: "2025-11-25T22:12:40.898899+02:00"
+    created: "2025-11-27T20:09:50.531695206Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 2c456af48060807a34112e91e6e512ba329b76b0b849e48ce020cf741a31d1a4
@@ -167,7 +192,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -178,7 +203,7 @@ entries:
     version: 1.2.2
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2025-11-25T22:12:40.898035+02:00"
+    created: "2025-11-27T20:09:50.529634393Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: b8acab499d64209062049ca03f10a2ccb177e3e1610f8ffcb18f5c31c3e4eea9
@@ -192,7 +217,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -203,7 +228,7 @@ entries:
     version: 1.2.1
   - apiVersion: v2
     appVersion: 1.2.0
-    created: "2025-11-25T22:12:40.897188+02:00"
+    created: "2025-11-27T20:09:50.528351228Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: 9163b40a24bcbcf3749e4d8a71691abee673fb8774426d5f06903a1d386063f1
@@ -217,7 +242,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -228,7 +253,7 @@ entries:
     version: 1.2.0
   - apiVersion: v2
     appVersion: 1.1.3
-    created: "2025-11-25T22:12:40.896084+02:00"
+    created: "2025-11-27T20:09:50.527196042Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: e0c9971a43d5ee8d3527927e8d00fd701ce93054c1b7287b9ae0f7380b95cc97
@@ -242,7 +267,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -253,7 +278,7 @@ entries:
     version: 1.1.3
   - apiVersion: v2
     appVersion: 1.1.2
-    created: "2025-11-25T22:12:40.895064+02:00"
+    created: "2025-11-27T20:09:50.52601057Z"
     description: A self-hosted location tracking and analysis platform with PostGIS
       and optional MQTT support
     digest: fba5326acfcf8362f4d929cfcd7e4828e506a611b6248345f39a22e9ecb241f0
@@ -267,7 +292,7 @@ entries:
     - mqtt
     - self-hosted
     maintainers:
-    - email: kerriden1@gmail.com
+    - email: support@geopulse.io
       name: GeoPulse Team
     name: geopulse
     sources:
@@ -276,4 +301,4 @@ entries:
     urls:
     - https://tess1o.github.io/geopulse/charts/geopulse-1.1.2.tgz
     version: 1.1.2
-generated: "2025-11-25T22:12:40.893178+02:00"
+generated: "2025-11-27T20:09:50.524607669Z"
