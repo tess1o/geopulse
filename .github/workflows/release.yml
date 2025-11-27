@@ -440,6 +440,41 @@ jobs:
             fi
           done
 
+      - name: Download existing Helm charts from GitHub Pages
+        run: |
+          echo "Downloading existing chart packages to preserve old versions..."
+          CHARTS_URL="https://tess1o.github.io/geopulse/charts"
+
+          # Only download if we successfully fetched the published index
+          if [ -f charts/published-index.yaml ]; then
+            # Extract all chart URLs from the published index
+            CHART_URLS=$(grep -E "^\s+- https://tess1o.github.io/geopulse/charts/geopulse-.*\.tgz" charts/published-index.yaml | sed 's/.*- //' | sort -u)
+
+            if [ -n "$CHART_URLS" ]; then
+              echo "Found existing charts to download:"
+              echo "$CHART_URLS"
+
+              # Download each chart
+              for URL in $CHART_URLS; do
+                FILENAME=$(basename "$URL")
+                echo "Downloading $FILENAME..."
+                if curl -sSfL -o "charts/$FILENAME" "$URL"; then
+                  echo "✅ Downloaded $FILENAME"
+                else
+                  echo "⚠️ Failed to download $FILENAME (may not exist yet)"
+                fi
+              done
+
+              echo ""
+              echo "Downloaded charts:"
+              ls -lh charts/*.tgz 2>/dev/null || echo "No charts downloaded"
+            else
+              echo "No existing charts found in published index"
+            fi
+          else
+            echo "⚠️ Skipping chart download - no published index available"
+          fi
+
       - name: Package Helm chart
         run: |
           echo "Packaging Helm chart..."
@@ -476,10 +511,29 @@ jobs:
             exit 1
           fi
 
+          # Verify that all chart files referenced in index.yaml exist
+          echo "Verifying chart files exist..."
+          MISSING_CHARTS=0
+          while IFS= read -r url; do
+            FILENAME=$(basename "$url")
+            if [ ! -f "charts/$FILENAME" ]; then
+              echo "❌ Missing chart file: $FILENAME"
+              MISSING_CHARTS=$((MISSING_CHARTS + 1))
+            fi
+          done < <(grep -E "^\s+- https://tess1o.github.io/geopulse/charts/geopulse-.*\.tgz" charts/index.yaml | sed 's/.*- //' | sed 's|https://tess1o.github.io/geopulse/charts/||')
+
+          if [ $MISSING_CHARTS -gt 0 ]; then
+            echo "❌ Found $MISSING_CHARTS missing chart files"
+            exit 1
+          fi
+
           # Display all versions for verification
           echo "✅ Index validated successfully"
           echo "All versions in index:"
           grep "^  version:" charts/index.yaml | awk '{print "  - " $2}' | sort -V
+          echo ""
+          echo "All chart files present:"
+          ls -1 charts/*.tgz | xargs -n1 basename
 
       - name: Copy charts to docs-website
         run: |
