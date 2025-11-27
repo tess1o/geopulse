@@ -182,8 +182,8 @@
       </Column>
 
       <!-- Actions Column -->
-      <Column 
-        header="Actions" 
+      <Column
+        header="Actions"
         :exportable="false"
         :style="{ 'min-width': '120px' }"
       >
@@ -196,6 +196,16 @@
               rounded
               size="small"
               @click="showDetails(slotProps.data)"
+              class="action-button"
+            />
+            <Button
+              icon="pi pi-question-circle"
+              v-tooltip.top="'Why this classification?'"
+              outlined
+              rounded
+              size="small"
+              severity="help"
+              @click="showClassification(slotProps.data)"
               class="action-button"
             />
           </div>
@@ -218,6 +228,13 @@
       :trip="selectedTripForDetails"
       @close="closeDetailsDialog"
     />
+
+    <!-- Trip Classification Dialog -->
+    <TripClassificationDialog
+      :visible="classificationDialogVisible"
+      :trip="selectedTripForClassification"
+      @close="closeClassificationDialog"
+    />
   </BaseCard>
 </template>
 
@@ -237,9 +254,13 @@ import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 import { memoizedDateTimeFormat, memoizedDurationFormat, memoizedEndTimeFormat, memoizedDistanceFormat } from '@/utils/formatMemoizer'
 
-// Lazy load the dialog component
+// Lazy load the dialog components
 const TripDetailsDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripDetailsDialog.vue')
+)
+
+const TripClassificationDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripClassificationDialog.vue')
 )
 
 const timezone = useTimezone()
@@ -294,6 +315,8 @@ watch(measureUnit, (unit) => {
 const selectedTrip = ref(null)
 const detailsDialogVisible = ref(false)
 const selectedTripForDetails = ref(null)
+const classificationDialogVisible = ref(false)
+const selectedTripForClassification = ref(null)
 
 // Use shared filter logic
 const filteredTripsData = useTripsFilter(
@@ -385,6 +408,16 @@ const showDetails = (trip) => {
 const closeDetailsDialog = () => {
   detailsDialogVisible.value = false
   selectedTripForDetails.value = null
+}
+
+const showClassification = (trip) => {
+  selectedTripForClassification.value = trip
+  classificationDialogVisible.value = true
+}
+
+const closeClassificationDialog = () => {
+  classificationDialogVisible.value = false
+  selectedTripForClassification.value = null
 }
 
 // Search is handled reactively in the computed filteredTripsData
