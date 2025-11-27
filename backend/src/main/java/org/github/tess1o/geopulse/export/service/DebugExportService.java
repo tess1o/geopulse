@@ -10,10 +10,17 @@ import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
+import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
+import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -43,11 +50,17 @@ public class DebugExportService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    FavoriteLocationService favoriteLocationService;
+
     /**
-     * Generate debug export with shifted GPS coordinates and timeline configuration.
+     * Generate debug export with shifted GPS coordinates, timeline configuration, and favorite locations.
      * Returns a ZIP file containing:
+     * - metadata.json: Export metadata
      * - gps_data.json: OwnTracks format with shifted coordinates
      * - timeline_config.json: User's timeline configuration
+     * - favorite_locations.json: Anonymized favorite locations with shifted coordinates
+     * - favorite_areas.json: Anonymized favorite areas with shifted boundaries
      *
      * @param userId  User ID
      * @param request Debug export request with date range and coordinate shifts
@@ -64,27 +77,56 @@ public class DebugExportService {
         // Validate shift won't push coordinates too far out of bounds
         validateCoordinateShift(userId, request);
 
+        // Count GPS points for metadata
+        long gpsPointCount = gpsPointRepository.countByUser(userId);
+
+        // Get favorite locations for metadata
+        FavoriteLocationsDto favoriteLocations = favoriteLocationService.getFavorites(userId);
+        int locationsCount = favoriteLocations != null && favoriteLocations.getPoints() != null
+                ? favoriteLocations.getPoints().size() : 0;
+        int areasCount = favoriteLocations != null && favoriteLocations.getAreas() != null
+                ? favoriteLocations.getAreas().size() : 0;
+
         // Create ZIP archive
         ByteArrayOutputStream zipBaos = new ByteArrayOutputStream();
         try (ZipOutputStream zipOut = new ZipOutputStream(zipBaos)) {
 
-            // 1. Add gps_data.json (OwnTracks format with shifted coordinates)
+            // 1. Add metadata.json
+            zipOut.putNextEntry(new ZipEntry("metadata.json"));
+            byte[] metadataData = generateMetadata(userId, request, gpsPointCount, locationsCount, areasCount);
+            zipOut.write(metadataData);
+            zipOut.closeEntry();
+            log.info("Added metadata.json to archive: {} bytes", metadataData.length);
+
+            // 2. Add gps_data.json (OwnTracks format with shifted coordinates)
             zipOut.putNextEntry(new ZipEntry("gps_data.json"));
             byte[] gpsData = generateShiftedOwnTracksData(userId, request);
             zipOut.write(gpsData);
             zipOut.closeEntry();
-
             log.info("Added gps_data.json to archive: {} bytes", gpsData.length);
 
-            // 2. Add timeline_config.json (timeline configuration)
+            // 3. Add timeline_config.json (timeline configuration)
             if (request.isIncludeConfiguration()) {
                 zipOut.putNextEntry(new ZipEntry("timeline_config.json"));
                 byte[] configData = generateTimelineConfigData(userId);
                 zipOut.write(configData);
                 zipOut.closeEntry();
-
                 log.info("Added timeline_config.json to archive: {} bytes", configData.length);
             }
+
+            // 4. Add favorite_locations.json (shifted + anonymized)
+            zipOut.putNextEntry(new ZipEntry("favorite_locations.json"));
+            byte[] locationsData = generateShiftedFavoriteLocationsData(userId, request);
+            zipOut.write(locationsData);
+            zipOut.closeEntry();
+            log.info("Added favorite_locations.json to archive: {} bytes", locationsData.length);
+
+            // 5. Add favorite_areas.json (shifted + anonymized)
+            zipOut.putNextEntry(new ZipEntry("favorite_areas.json"));
+            byte[] areasData = generateShiftedFavoriteAreasData(userId, request);
+            zipOut.write(areasData);
+            zipOut.closeEntry();
+            log.info("Added favorite_areas.json to archive: {} bytes", areasData.length);
 
             zipOut.finish();
         }
@@ -200,5 +242,98 @@ public class DebugExportService {
 
         log.info("Coordinate shift validation passed. Data range: [{}, {}], shifted range: [{}, {}]",
                 minLat, maxLat, shiftedMinLat, shiftedMaxLat);
+    }
+
+    /**
+     * Generate metadata JSON.
+     */
+    private byte[] generateMetadata(UUID userId, DebugExportRequest request,
+                                    long gpsPointCount, int locationsCount, int areasCount) throws IOException {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("export_version", "1.0");
+        metadata.put("export_date", Instant.now().toString());
+        metadata.put("coordinate_shift_applied", true);
+        metadata.put("anonymization_applied", true);
+
+        Map<String, String> dateRange = new HashMap<>();
+        dateRange.put("start", request.getStartDate().toString());
+        dateRange.put("end", request.getEndDate().toString());
+        metadata.put("original_date_range", dateRange);
+
+        metadata.put("gps_point_count", gpsPointCount);
+        metadata.put("favorite_locations_count", locationsCount);
+        metadata.put("favorite_areas_count", areasCount);
+
+        return objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsBytes(metadata);
+    }
+
+    /**
+     * Generate shifted and anonymized favorite locations JSON.
+     */
+    private byte[] generateShiftedFavoriteLocationsData(UUID userId, DebugExportRequest request) throws IOException {
+        FavoriteLocationsDto favoriteLocations = favoriteLocationService.getFavorites(userId);
+
+        if (favoriteLocations == null || favoriteLocations.getPoints() == null || favoriteLocations.getPoints().isEmpty()) {
+            return "[]".getBytes();
+        }
+
+        // Anonymize and shift favorite locations
+        AtomicInteger counter = new AtomicInteger(1);
+        List<Map<String, Object>> anonymizedLocations = favoriteLocations.getPoints().stream()
+                .map(location -> {
+                    Map<String, Object> shifted = new HashMap<>();
+                    shifted.put("name", "Location " + counter.getAndIncrement());  // Anonymized name
+                    shifted.put("type", location.getType());
+                    shifted.put("latitude", coordinateShiftService.shiftLatitude(
+                            location.getLatitude(), request.getLatitudeShift()));
+                    shifted.put("longitude", coordinateShiftService.shiftLongitude(
+                            location.getLongitude(), request.getLongitudeShift()));
+                    return shifted;
+                })
+                .toList();
+
+        return objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsBytes(anonymizedLocations);
+    }
+
+    /**
+     * Generate shifted and anonymized favorite areas JSON.
+     */
+    private byte[] generateShiftedFavoriteAreasData(UUID userId, DebugExportRequest request) throws IOException {
+        FavoriteLocationsDto favoriteLocations = favoriteLocationService.getFavorites(userId);
+
+        if (favoriteLocations == null || favoriteLocations.getAreas() == null || favoriteLocations.getAreas().isEmpty()) {
+            return "[]".getBytes();
+        }
+
+        // Anonymize and shift favorite areas
+        AtomicInteger counter = new AtomicInteger(1);
+        List<Map<String, Object>> anonymizedAreas = favoriteLocations.getAreas().stream()
+                .map(area -> {
+                    Map<String, Object> shifted = new HashMap<>();
+                    shifted.put("name", "Area " + counter.getAndIncrement());  // Anonymized name
+                    shifted.put("type", area.getType());
+
+                    // Shift all 4 boundary coordinates
+                    shifted.put("northEastLat", coordinateShiftService.shiftLatitude(
+                            area.getNorthEastLat(), request.getLatitudeShift()));
+                    shifted.put("northEastLon", coordinateShiftService.shiftLongitude(
+                            area.getNorthEastLon(), request.getLongitudeShift()));
+                    shifted.put("southWestLat", coordinateShiftService.shiftLatitude(
+                            area.getSouthWestLat(), request.getLatitudeShift()));
+                    shifted.put("southWestLon", coordinateShiftService.shiftLongitude(
+                            area.getSouthWestLon(), request.getLongitudeShift()));
+
+                    // City/country will be wrong due to shift - set to null
+                    shifted.put("city", null);
+                    shifted.put("country", null);
+
+                    return shifted;
+                })
+                .toList();
+
+        return objectMapper.writerWithDefaultPrettyPrinter()
+                .writeValueAsBytes(anonymizedAreas);
     }
 }

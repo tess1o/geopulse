@@ -786,4 +786,8 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     public long countByUser(UUID userId) {
         return count("user.id = ?1", userId);
     }
+
+    public void deleteByUserId(UUID userId) {
+        delete("user.id = ?1", userId);
+    }
 }
