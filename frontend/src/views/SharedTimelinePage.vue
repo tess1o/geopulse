@@ -258,7 +258,7 @@ const hasTimelineData = computed(() => {
 })
 
 const hasPathData = computed(() => {
-  return pathData.value && pathData.value.length > 0
+  return pathData.value && pathData.value.points && pathData.value.points.length > 0
 })
 
 // Computed properties for share date range

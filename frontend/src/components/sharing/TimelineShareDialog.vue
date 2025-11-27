@@ -175,7 +175,7 @@ watch(() => props.visible, (visible) => {
     } else if (props.prefillDates) {
       // Create mode with prefilled dates from TimelinePage
       const endDate = props.prefillDates.end ? new Date(props.prefillDates.end) : null
-      const expiresAt = endDate ? new Date(endDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       formData.value = {
         name: '',
         start_date: props.prefillDates.start ? new Date(props.prefillDates.start) : null,
