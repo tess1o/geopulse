@@ -45,7 +45,10 @@ export function useTimezone() {
 
     const getTimezone = () => userTimezone.value
 
-    const now = () => dayjs().tz(userTimezone.value)
+    const now = () => {
+        // Use explicit Date object to avoid browser timezone detection issues (LibreWolf, etc.)
+        return dayjs(new Date()).tz(userTimezone.value)
+    }
 
     const fromUtc = (date) => dayjs.utc(date).tz(userTimezone.value)
 
@@ -110,8 +113,14 @@ export function useTimezone() {
 
     const convertUtcRangeToCalendarDates = (utcStart, utcEnd) => {
         // Convert UTC range back to calendar dates for display in date picker
-        const startCalendar = fromUtc(utcStart).startOf('day').toDate()
-        const endCalendar = fromUtc(utcEnd).startOf('day').toDate()
+        const startInUserTz = fromUtc(utcStart).startOf('day')
+        const endInUserTz = fromUtc(utcEnd).startOf('day')
+
+        // Create Date objects at noon using year/month/date components to avoid timezone conversion issues
+        // This ensures the date picker shows the correct date regardless of browser timezone (LibreWolf, etc.)
+        const startCalendar = new Date(startInUserTz.year(), startInUserTz.month(), startInUserTz.date(), 12, 0, 0)
+        const endCalendar = new Date(endInUserTz.year(), endInUserTz.month(), endInUserTz.date(), 12, 0, 0)
+
         return [startCalendar, endCalendar]
     }
 

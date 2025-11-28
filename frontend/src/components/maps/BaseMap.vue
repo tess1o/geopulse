@@ -108,14 +108,6 @@ const initializeMap = async () => {
           const tileUrl = getTileUrl()
           const subdomains = getSubdomains()
 
-          // DEBUG: Log tile configuration
-          console.log('[BaseMap] Tile Configuration:', {
-            tileUrl,
-            subdomains,
-            attribution: getTileAttribution(),
-            userInfo: JSON.parse(localStorage.getItem('userInfo') || '{}')
-          })
-
           const tileLayerOptions = {
             attribution: getTileAttribution(),
             maxZoom: 19,
@@ -136,8 +128,6 @@ const initializeMap = async () => {
             tileLayerOptions.subdomains = subdomains
           }
 
-          console.log('[BaseMap] Tile Layer Options:', tileLayerOptions)
-
           try {
             const tileLayer = L.tileLayer(tileUrl, tileLayerOptions)
 
@@ -148,16 +138,8 @@ const initializeMap = async () => {
                 return
               }
 
-              console.error('[BaseMap] Tile load error:', {
-                coords: error.coords,
-                url: error.tile.src,
-                tileElement: error.tile,
-                error: error.error
-              })
-
               // Log cookie information to help debug auth issues (only log once per session)
               if (!window._tileErrorCookiesLogged) {
-                console.log('[BaseMap] Document cookies:', document.cookie)
                 window._tileErrorCookiesLogged = true
               }
 
@@ -173,17 +155,14 @@ const initializeMap = async () => {
                     // Force reload by appending a cache-busting parameter
                     const separator = originalSrc.includes('?') ? '&' : '?'
                     const retrySrc = originalSrc + separator + '_retry=' + Date.now()
-                    console.log('[BaseMap] Retrying tile load (attempt ' + (retryCount + 1) + '):', retrySrc)
                     tile.src = retrySrc
                   }
                 }, 1000 * (retryCount + 1)) // Exponential backoff
               } else if (retryCount >= 2) {
-                console.warn('[BaseMap] Max retries reached for tile:', originalSrc)
               }
             })
 
             tileLayer.addTo(map.value)
-            console.log('[BaseMap] Tile layer added to map')
           } catch (tileError) {
             console.error('Error loading custom tiles, falling back to OSM:', tileError)
             // Fallback to default OSM tiles if custom tiles fail

@@ -26,6 +26,7 @@ import org.github.tess1o.geopulse.user.service.UserService;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -170,7 +171,17 @@ public class DebugImportService {
                 // Parse OwnTracks message
                 OwnTracksLocationMessage message = objectMapper.treeToValue(point, OwnTracksLocationMessage.class);
                 GpsPointEntity entity = gpsPointMapper.toEntity(message, user, message.getTid(), GpsSourceType.OWNTRACKS);
-                gpsPointRepository.persist(entity);
+                Optional<GpsPointEntity> existingPoint = gpsPointRepository.findByUniqueKey(
+                        entity.getUser().getId(),
+                        entity.getTimestamp(),
+                        entity.getCoordinates()
+                );
+                if (existingPoint.isPresent()) {
+                    log.warn("Skipping duplicate GPS point: {}", point);
+                    continue;
+                } else {
+                    gpsPointRepository.persist(entity);
+                }
 
                 imported++;
 

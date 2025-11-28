@@ -16,11 +16,6 @@ export function useMapTiles() {
   const getTileUrl = () => {
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      console.log('[useMapTiles] Getting tile URL. User info:', {
-        hasCustomUrl: !!userInfo.customMapTileUrl,
-        customMapTileUrl: userInfo.customMapTileUrl
-      })
-
       // If user has configured a custom tile URL, use it directly with cache-busting version
       if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
         const customUrl = userInfo.customMapTileUrl.trim()
@@ -34,8 +29,6 @@ export function useMapTiles() {
         // Otherwise use ?v=hash
         const separator = customUrl.includes('?') ? '&' : '?'
         const versionedUrl = `${customUrl}${separator}v=${urlHash}`
-
-        console.log('[useMapTiles] Using custom tiles directly:', versionedUrl, 'version:', urlHash)
         return versionedUrl
       }
     } catch (error) {
@@ -43,7 +36,6 @@ export function useMapTiles() {
     }
 
     // Default to OSM tiles proxied through nginx for caching
-    console.log('[useMapTiles] Using default OSM tiles')
     return '/osm/tiles/{s}/{z}/{x}/{y}.png'
   }
 
