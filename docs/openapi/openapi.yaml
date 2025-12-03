@@ -4538,7 +4538,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.8.0
+  version: 1.8.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
