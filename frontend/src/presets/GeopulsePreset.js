@@ -180,6 +180,55 @@ const GeopulsePreset = definePreset(Aura, {
                     }
                 }
             }
+        },
+        // AutoComplete styling for dark mode support
+        autocomplete: {
+            colorScheme: {
+                light: {
+                    root: {
+                        background: '{surface.0}',
+                        borderColor: '{surface.300}',
+                        color: '{surface.700}'
+                    },
+                    overlay: {
+                        background: '{surface.0}',
+                        borderColor: '{surface.200}',
+                        color: '{surface.700}',
+                        shadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                    },
+                    option: {
+                        focusBackground: '{surface.100}',
+                        selectedBackground: '{highlight.background}',
+                        selectedFocusBackground: '{highlight.focusBackground}',
+                        color: '{surface.700}',
+                        focusColor: '{surface.700}',
+                        selectedColor: '{highlight.color}',
+                        selectedFocusColor: '{highlight.focusColor}'
+                    }
+                },
+                dark: {
+                    root: {
+                        background: '{surface.900}',
+                        borderColor: '{surface.700}',
+                        color: '{surface.0}'
+                    },
+                    overlay: {
+                        background: '{surface.800}',
+                        borderColor: '{surface.700}',
+                        color: '{surface.0}',
+                        shadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2)'
+                    },
+                    option: {
+                        focusBackground: '{surface.700}',
+                        selectedBackground: '{highlight.background}',
+                        selectedFocusBackground: '{highlight.focusBackground}',
+                        color: '{surface.0}',
+                        focusColor: '{surface.0}',
+                        selectedColor: '{highlight.color}',
+                        selectedFocusColor: '{highlight.focusColor}'
+                    }
+                }
+            }
         }
     }
 });
