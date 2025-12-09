@@ -32,7 +32,16 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         PlaceStatisticsDTO.class,
         PlaceVisitDTO.class,
         FavoriteRelationDTO.class,
-        TripClassificationDetailsDTO.class
+        TripClassificationDetailsDTO.class,
+        // Location Analytics DTOs
+        LocationStatisticsDTO.class,
+        TopPlaceInLocationDTO.class,
+        CitySummaryDTO.class,
+        CityDetailsDTO.class,
+        CityInCountryDTO.class,
+        CountrySummaryDTO.class,
+        CountryDetailsDTO.class,
+        LocationSearchResultDTO.class
 })
 public class StreamingNativeConfig {
 }

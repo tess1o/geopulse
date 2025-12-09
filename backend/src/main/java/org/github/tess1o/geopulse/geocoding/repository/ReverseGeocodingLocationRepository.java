@@ -619,4 +619,21 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             default -> "lastAccessedAt";
         };
     }
+
+    /**
+     * Find geocoding locations by display name containing a search term (for location analytics search).
+     * Returns up to 'limit' results ordered by last accessed time.
+     * Searches user-specific copies (user_id = userId) and original shared records (user_id IS NULL).
+     *
+     * @param userId User ID to filter by
+     * @param searchTerm Search term to match in displayName (case-insensitive)
+     * @param limit Maximum number of results
+     * @return List of matching geocoding locations
+     */
+    public List<ReverseGeocodingLocationEntity> findByDisplayNameContaining(UUID userId, String searchTerm, int limit) {
+        return find("(user.id = ?1 OR user.id IS NULL) AND LOWER(displayName) LIKE LOWER(?2) order by lastAccessedAt desc",
+                userId, "%" + searchTerm + "%")
+                .page(0, limit)
+                .list();
+    }
 }

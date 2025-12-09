@@ -265,6 +265,24 @@ const routes = [
         beforeEnter: requireAuth
     },
     {
+        path: '/app/location-analytics',
+        name: 'Location Analytics',
+        component: () => import('@/views/app/LocationAnalyticsPage.vue'),
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/location-analytics/city/:name',
+        name: 'City Details',
+        component: () => import('@/views/app/CityDetailsPage.vue'),
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/location-analytics/country/:name',
+        name: 'Country Details',
+        component: () => import('@/views/app/CountryDetailsPage.vue'),
+        beforeEnter: requireAuth
+    },
+    {
         path: '/shared/:linkId',
         name: 'Shared Location',
         component: SharedLocationPage
