@@ -58,11 +58,22 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         // Find stays that either:
         // 1. Start within the requested range, OR
         // 2. Start before the range but extend into it (boundary expansion)
-        return find("user.id = ?1 AND (" +
-                        "(timestamp >= ?2 AND timestamp <= ?3) OR " +  // Starts within range
-                        "(timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, stayDuration, timestamp) > ?2)" + // Starts before but extends into range
-                        ") ORDER BY timestamp",
-                userId, startTime, endTime).list();
+        // Use LEFT JOIN FETCH to eagerly load favoriteLocation and geocodingLocation for city/country data
+        String query = """
+                SELECT DISTINCT s FROM TimelineStayEntity s
+                LEFT JOIN FETCH s.favoriteLocation
+                LEFT JOIN FETCH s.geocodingLocation
+                WHERE s.user.id = ?1 AND (
+                    (s.timestamp >= ?2 AND s.timestamp <= ?3) OR
+                    (s.timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, s.stayDuration, s.timestamp) > ?2)
+                )
+                ORDER BY s.timestamp
+                """;
+        return getEntityManager().createQuery(query, TimelineStayEntity.class)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
     }
 
     /**
