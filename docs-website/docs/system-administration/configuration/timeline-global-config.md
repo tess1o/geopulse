@@ -212,4 +212,4 @@ backend:
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
-For more details on adding custom environment variables, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#advanced-configuration-custom-environment-variables).
+For more details on adding custom environment variables, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#advanced-configuration-custom-environment-variables).

@@ -400,7 +400,7 @@ kubectl create secret generic geopulse-oidc \
 # (Note: The Helm chart already handles this automatically)
 ```
 
-For more details on Helm configuration, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide).
+For more details on Helm configuration, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment).
 
 ## Troubleshooting
 
