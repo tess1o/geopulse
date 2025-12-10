@@ -96,7 +96,7 @@ const sidebars = {
                         {
                             type: 'doc',
                             id: 'user-guide/interacting-with-data/import-export',
-                            label: 'Import/Export (Coming Soon)',
+                            label: 'Import/Export Data',
                         },
                     ],
                 },
@@ -139,7 +139,7 @@ const sidebars = {
                         {
                             type: 'doc',
                             id: 'user-guide/personalization/profile-settings',
-                            label: 'Profile Settings (Coming Soon)',
+                            label: 'Profile Settings',
                         },
                         'user-guide/personalization/ai-assistant-settings',
                         'user-guide/personalization/custom-map-tiles',
