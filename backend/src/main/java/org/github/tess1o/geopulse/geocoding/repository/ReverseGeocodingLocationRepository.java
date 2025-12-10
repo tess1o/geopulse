@@ -493,7 +493,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             hql.append(" AND r.country = :country");
         }
         if (searchTerm != null && !searchTerm.isBlank()) {
-            hql.append(" AND LOWER(r.displayName) LIKE LOWER(:searchTerm)");
+            hql.append(" AND (LOWER(r.displayName) LIKE LOWER(:searchTerm) OR LOWER(r.city) LIKE LOWER(:searchTerm) OR LOWER(r.country) LIKE LOWER(:searchTerm))");
         }
 
         // Add ordering
@@ -577,7 +577,7 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             hql.append(" AND r.country = :country");
         }
         if (searchTerm != null && !searchTerm.isBlank()) {
-            hql.append(" AND LOWER(r.displayName) LIKE LOWER(:searchTerm)");
+            hql.append(" AND (LOWER(r.displayName) LIKE LOWER(:searchTerm) OR LOWER(r.city) LIKE LOWER(:searchTerm) OR LOWER(r.country) LIKE LOWER(:searchTerm))");
         }
 
         // Build query

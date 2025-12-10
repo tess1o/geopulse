@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.geocoding.client.NominatimRestClient;
 import org.github.tess1o.geopulse.geocoding.client.PhotonRestClient;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
+import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
@@ -61,7 +62,8 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
 
         // Management REST and Service
         ReverseGeocodingResource.class,
-        ReverseGeocodingManagementService.class
+        ReverseGeocodingManagementService.class,
+        ReconciliationJobProgress.class,
 })
 public class GeocodingNativeConfig {
 }
