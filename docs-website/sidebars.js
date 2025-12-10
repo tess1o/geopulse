@@ -72,7 +72,7 @@ const sidebars = {
                         {
                             type: 'doc',
                             id: 'system-administration/maintenance/backup-restore',
-                            label: 'Backup & Restore (Coming Soon)',
+                            label: 'Backup & Restore',
                         },
                     ],
                 },
