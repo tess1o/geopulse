@@ -61,7 +61,7 @@ for file in "${files_to_update[@]}"; do
                     -e "s|(version )$CURRENT_VERSION|\\1$NEW_VERSION|g" \
                     -e "s|(\`)$CURRENT_VERSION|\1$NEW_VERSION|g" \
                     -e "s|$CURRENT_VERSION(\`)|$NEW_VERSION\\1|g" \
-                    -e "s|(\| )$CURRENT_VERSION( \|)|\\1$NEW_VERSION\\2|g" \
+                    -e "s/(\\| )$CURRENT_VERSION( \\|)/\\1$NEW_VERSION\\2/g" \
                     -e "s|$CURRENT_VERSION(-native)|$NEW_VERSION\\1|g" \
                     "$file"
                 ;;
