@@ -190,17 +190,13 @@ Optional:
 - Useful for partial imports or testing
 
 **Replace Existing Data in Time Range:**
-- **Enabled (Recommended for first-time imports):** Deletes existing data in the import time range before importing new data
-  - ⚡ **Much faster** - Uses bulk insert instead of merge operations
+- **Enabled:** Deletes existing data in the import time range before importing new data
   - 🧹 **Cleaner data** - Ensures no duplicates
   - ⚠️ **Warning:** Permanently deletes existing data in the time range
+  - **Use for:** First-time imports or when re-importing corrected data
 - **Disabled:** Merges new data with existing data
-  - Checks for duplicates
-  - Slower but safer for incremental imports
-
-:::tip First-Time Import Performance
-When importing data for the first time, enable "Replace existing data in time range" to significantly improve import speed. The system will use efficient bulk insertion instead of checking for duplicates.
-:::
+  - Checks for duplicates before inserting
+  - **Use for:** Incremental imports or adding new data to existing timeline
 
 #### 5. Start Import
 
@@ -290,8 +286,8 @@ This architecture allows you to import years of location history with efficient 
 
 1. **Start with small files** - Test with a small date range or file first
 2. **Use date filters** - Import specific time periods to avoid overwhelming the system
-3. **Enable "Replace data" for first imports** - Much faster than merge mode
-4. **Disable "Replace data" for updates** - Safer when adding to existing data
+3. **Use "Replace data" for clean imports** - Recommended for first-time imports or when re-importing corrected data
+4. **Use merge mode for incremental imports** - Safer when adding new data to existing timeline
 5. **Monitor timeline generation** - Allow time for timeline processing to complete
 6. **Verify imports** - Check Timeline and GPS Data pages after import
 
@@ -300,10 +296,10 @@ This architecture allows you to import years of location history with efficient 
 1. **Large files** - Files up to 2GB are supported (200MB default, configurable). Large files may take 10-30 minutes to upload and process
 2. **Network speed** - Upload time depends on your internet connection
 3. **Timeline generation** - Can take several minutes for large datasets (years of data)
-4. **Replace vs. Merge:**
-   - Replace mode: ~10x faster for large imports
-   - Merge mode: Safer but slower, checks every point for duplicates
-5. **File size configuration** - If you regularly import files >200MB, increase the frontend limit (see [Frontend Configuration](/docs/system-administration/configuration/frontend))
+4. **File size configuration** - If you regularly import files >200MB, increase the frontend limit (see [Frontend Configuration](/docs/system-administration/configuration/frontend))
+5. **Import mode selection:**
+   - Replace mode: Clean slate, no duplicates, recommended for first-time imports
+   - Merge mode: Preserves existing data, checks for duplicates, use for incremental updates
 
 ## Troubleshooting
 

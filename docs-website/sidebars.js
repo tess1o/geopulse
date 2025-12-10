@@ -19,6 +19,7 @@ const sidebars = {
             label: 'Getting Started',
             items: [
                 'getting-started/introduction',
+                'getting-started/quick-start',
                 'getting-started/architecture-overview',
                 {
                     type: 'category',
@@ -83,6 +84,11 @@ const sidebars = {
             label: 'User Guide',
             items: [
                 {
+                    type: 'doc',
+                    id: 'user-guide/interacting-with-data/import-export',
+                    label: 'Import/Export Data',
+                },
+                {
                     type: 'category',
                     label: 'GPS Data Sources',
                     items: [
@@ -93,11 +99,6 @@ const sidebars = {
                         'user-guide/gps-sources/gps_logger',
                         'user-guide/gps-sources/dawarich',
                         'user-guide/gps-sources/data-mirroring',
-                        {
-                            type: 'doc',
-                            id: 'user-guide/interacting-with-data/import-export',
-                            label: 'Import/Export Data',
-                        },
                     ],
                 },
                 {

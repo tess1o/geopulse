@@ -109,11 +109,6 @@
           <!-- Import Options -->
           <div v-if="selectedFile" class="form-section">
             <h3 class="form-section-title">Import Options</h3>
-            <div class="warning-message">
-              <i class="pi pi-info-circle" style="margin-right: 0.5rem;"></i>
-              <strong>Note: When importing data for the first time, choose “Replace existing data in time range” to make
-                the process faster.</strong>
-            </div>
 
             <div class="import-options">
               <div v-if="getCurrentFormatConfig().supportsDataTypeSelection" class="option-group">
@@ -187,8 +182,7 @@
                 <div class="option-description">
                   <i class="pi pi-info-circle" style="margin-right: 0.5rem; color: var(--gp-primary-500);"></i>
                   When enabled, existing data in the time range being imported will be deleted before importing new
-                  data.
-                  This is faster than merging and ensures clean data replacement.
+                  data. This ensures clean data replacement without duplicates.
                 </div>
                 <div v-if="clearDataBeforeImport" class="warning-message">
                   <i class="pi pi-exclamation-triangle" style="margin-right: 0.5rem;"></i>
