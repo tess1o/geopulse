@@ -67,7 +67,7 @@ const sidebars = {
                         {
                             type: 'doc',
                             id: 'system-administration/maintenance/updating',
-                            label: 'Updating (Coming Soon)',
+                            label: 'Updating GeoPulse',
                         },
                         {
                             type: 'doc',
