@@ -149,27 +149,6 @@ const sidebars = {
                 },
             ],
         },
-        {
-            type: 'category',
-            label: 'Developer Guide',
-            items: [
-                {
-                    type: 'doc',
-                    id: 'developer-guide/contributing',
-                    label: 'Contributing (Coming Soon)',
-                },
-                {
-                    type: 'doc',
-                    id: 'developer-guide/api-reference',
-                    label: 'API Reference (Coming Soon)',
-                },
-                {
-                    type: 'doc',
-                    id: 'developer-guide/roadmap',
-                    label: 'Roadmap (Coming Soon)',
-                },
-            ],
-        },
     ],
 };
 
