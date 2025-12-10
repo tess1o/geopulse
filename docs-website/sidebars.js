@@ -85,6 +85,14 @@ const sidebars = {
                         'user-guide/gps-sources/home_assistant',
                         'user-guide/gps-sources/gps_logger',
                         'user-guide/gps-sources/dawarich',
+                        {
+                            type: 'category',
+                            label: 'Data Mirroring',
+                            items: [
+                                'user-guide/gps-sources/data-mirroring/owntracks-to-geopulse-dawarich',
+                                'user-guide/gps-sources/data-mirroring/mirror-existing-dawarich',
+                            ],
+                        },
                     ],
                 },
                 {
