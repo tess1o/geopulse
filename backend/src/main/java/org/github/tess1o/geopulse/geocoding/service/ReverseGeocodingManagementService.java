@@ -77,7 +77,7 @@ public class ReverseGeocodingManagementService {
 
         // Use new user-filtered repository method
         List<ReverseGeocodingLocationEntity> entities = geocodingRepository.findForUserManagementPage(
-                userId, providerName, null, null, searchText, page, limit);
+                userId, providerName, null, null, searchText, page, limit, sortField, sortOrder);
 
         return dtoMapper.toDTOList(entities);
     }
@@ -273,7 +273,7 @@ public class ReverseGeocodingManagementService {
         if (Boolean.TRUE.equals(request.getReconcileAll())) {
             // Get all geocoding IDs for user (from management page query)
             List<ReverseGeocodingLocationEntity> entities = geocodingRepository.findForUserManagementPage(
-                    userId, request.getFilterByProvider(), null, null, null, 1, Integer.MAX_VALUE);
+                    userId, request.getFilterByProvider(), null, null, null, 1, Integer.MAX_VALUE, null, null);
             return entities.stream()
                     .map(ReverseGeocodingLocationEntity::getId)
                     .collect(Collectors.toList());

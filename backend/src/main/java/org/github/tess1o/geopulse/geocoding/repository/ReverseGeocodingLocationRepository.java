@@ -450,11 +450,13 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
      * @param searchTerm Search in display name (optional)
      * @param page Page number (1-based)
      * @param limit Page size
+     * @param sortField Field to sort by (optional, default lastAccessedAt)
+     * @param sortOrder Sort order (asc or desc, default desc)
      * @return List of geocoding entities relevant to user
      */
     public List<ReverseGeocodingLocationEntity> findForUserManagementPage(
             UUID userId, String providerName, String city, String country,
-            String searchTerm, int page, int limit) {
+            String searchTerm, int page, int limit, String sortField, String sortOrder) {
 
         // Get geocoding IDs used in user's timeline stays
         String timelineGeocodingIdsSql = """
@@ -496,8 +498,10 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
             hql.append(" AND (LOWER(r.displayName) LIKE LOWER(:searchTerm) OR LOWER(r.city) LIKE LOWER(:searchTerm) OR LOWER(r.country) LIKE LOWER(:searchTerm))");
         }
 
-        // Add ordering
-        hql.append(" ORDER BY r.lastAccessedAt DESC");
+        // Add ordering with validated sort field
+        String validSortField = validateSortField(sortField);
+        String validSortOrder = sortOrder != null && sortOrder.equalsIgnoreCase("asc") ? "ASC" : "DESC";
+        hql.append(" ORDER BY r.").append(validSortField).append(" ").append(validSortOrder);
 
         // Build query
         Query dataQuery = getEntityManager().createQuery("SELECT r " + hql.toString(), ReverseGeocodingLocationEntity.class);

@@ -270,7 +270,7 @@ class ReverseGeocodingLocationRepositoryTest {
 
         // When: User A fetches management page
         List<ReverseGeocodingLocationEntity> results = repository.findForUserManagementPage(
-                USER_A_ID, null, null, null, null, 1, 50);
+                USER_A_ID, null, null, null, null, 1, 50, null, null);
 
         // Then: Should see loc1 (referenced) and loc2 (owned), but NOT loc3
         assertEquals(2, results.size(), "Should show 2 entities");
@@ -302,7 +302,7 @@ class ReverseGeocodingLocationRepositoryTest {
 
         // When: Filter by google provider
         List<ReverseGeocodingLocationEntity> results = repository.findForUserManagementPage(
-                USER_A_ID, "google", null, null, null, 1, 50);
+                USER_A_ID, "google", null, null, null, 1, 50, null, null);
 
         // Then: Only google entity returned
         assertEquals(1, results.size(), "Should find only google entity");
@@ -328,7 +328,7 @@ class ReverseGeocodingLocationRepositoryTest {
 
         // When: Search for "coffee"
         List<ReverseGeocodingLocationEntity> results = repository.findForUserManagementPage(
-                USER_A_ID, null, null, null, "coffee", 1, 50);
+                USER_A_ID, null, null, null, "coffee", 1, 50, null, null);
 
         // Then: Only coffee shop returned
         assertEquals(1, results.size(), "Should find only coffee shop");
@@ -454,7 +454,7 @@ class ReverseGeocodingLocationRepositoryTest {
         // When: Get count and entities
         long count = repository.countForUserManagementPage(USER_A_ID, null, null, null, null);
         List<ReverseGeocodingLocationEntity> results = repository.findForUserManagementPage(
-                USER_A_ID, null, null, null, null, 1, 50);
+                USER_A_ID, null, null, null, null, 1, 50, null, null);
 
         // Then: Count matches list size
         assertEquals(5, count, "Count should be 5");
