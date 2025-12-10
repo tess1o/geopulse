@@ -289,8 +289,40 @@ onMounted(async () => {
   }
 
   .location-grid {
-    grid-template-columns: 1fr;
-    gap: var(--gp-spacing-md);
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--gp-spacing-sm);
+  }
+
+  .location-card {
+    padding: var(--gp-spacing-sm);
+  }
+
+  .location-icon {
+    font-size: 1.75rem;
+    margin-bottom: var(--gp-spacing-xs);
+  }
+
+  .location-name {
+    font-size: 0.95rem;
+    margin: 0 0 var(--gp-spacing-xxs);
+  }
+
+  .location-country {
+    font-size: 0.75rem;
+    margin: 0 0 var(--gp-spacing-xs);
+  }
+
+  .location-stats {
+    gap: var(--gp-spacing-sm);
+    padding-top: var(--gp-spacing-xs);
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
   }
 }
 </style>
