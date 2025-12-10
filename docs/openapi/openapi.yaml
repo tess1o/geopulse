@@ -3535,6 +3535,261 @@ paths:
       - Journey Insight Resource
       security:
       - jwt: []
+  /api/location-analytics/cities:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Cities
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/city/{name}:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get City Details
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/city/{name}/visits:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          format: int32
+          default: 0
+          type: integer
+      - name: size
+        in: query
+        schema:
+          format: int32
+          default: 50
+          type: integer
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortDirection
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get City Visits
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/city/{name}/visits/export:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortDirection
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Export City Visits
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/countries:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Countries
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/country/{name}:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Country Details
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/country/{name}/cities:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Cities In Country
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/country/{name}/visits:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          format: int32
+          default: 0
+          type: integer
+      - name: size
+        in: query
+        schema:
+          format: int32
+          default: 50
+          type: integer
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortDirection
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Country Visits
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/country/{name}/visits/export:
+    get:
+      parameters:
+      - name: name
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: sortBy
+        in: query
+        schema:
+          default: timestamp
+          type: string
+      - name: sortDirection
+        in: query
+        schema:
+          default: desc
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Export Country Visits
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/location-analytics/search:
+    get:
+      parameters:
+      - name: q
+        in: query
+        schema:
+          type: string
+      - name: type
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Search
+      tags:
+      - Location Analytics Resource
+      security:
+      - jwt: []
   /api/overland:
     post:
       requestBody:
@@ -4538,7 +4793,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.8.1
+  version: 1.9.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
