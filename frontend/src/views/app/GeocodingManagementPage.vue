@@ -196,8 +196,10 @@
       :reconcile-mode="reconcileMode"
       :total-records="totalRecords"
       :current-filters="{ provider: selectedProvider, searchText: searchText }"
+      :job-progress="jobProgress"
       @close="showReconcileDialog = false"
       @reconcile="handleReconcile"
+      @reconcile-complete="handleReconcileComplete"
     />
     </PageContainer>
   </AppLayout>
@@ -209,6 +211,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useGeocodingStore } from '@/stores/geocoding'
 import { useTimezone } from '@/composables/useTimezone'
+import { useReconciliationJobProgress } from '@/composables/useReconciliationJobProgress'
 
 const timezone = useTimezone()
 
@@ -231,6 +234,9 @@ import InputText from 'primevue/inputtext'
 const geocodingStore = useGeocodingStore()
 const toast = useToast()
 const router = useRouter()
+
+// Progress tracking
+const { jobProgress, startPolling, reset: resetProgress } = useReconciliationJobProgress()
 
 // Reactive state
 const isMobile = ref(false)
@@ -444,37 +450,53 @@ const handleEditSave = async (updatedData) => {
 
 const handleReconcile = async (reconcileData) => {
   try {
-    const result = await geocodingStore.reconcileWithProvider(reconcileData)
+    // Start bulk reconciliation job
+    const result = await geocodingStore.startBulkReconciliation(reconcileData)
+    const jobId = result.jobId
 
-    const successMsg = `Successfully reconciled ${result.successfulUpdates} of ${result.totalProcessed} results`
-    const severity = result.failedUpdates > 0 ? 'warn' : 'success'
+    // Start polling for progress
+    await startPolling(jobId)
 
-    toast.add({
-      severity: severity,
-      summary: 'Reconciliation Complete',
-      detail: successMsg,
-      life: 5000
-    })
-
-    if (result.errors && result.errors.length > 0) {
-      console.warn('Reconciliation errors:', result.errors)
-    }
-
-    selectedRows.value = []
-    await loadGeocodingResults()
+    // Note: Dialog will auto-close when job completes
+    // The reconcile-complete event will trigger data reload
 
   } catch (error) {
-    console.error('Error reconciling results:', error)
+    console.error('Error starting reconciliation:', error)
     toast.add({
       severity: 'error',
       summary: 'Reconciliation Failed',
-      detail: error.message || 'Failed to reconcile results',
+      detail: error.message || 'Failed to start reconciliation',
       life: 5000
     })
-  } finally {
     showReconcileDialog.value = false
     selectedResult.value = null
   }
+}
+
+const handleReconcileComplete = async () => {
+  // Called when reconciliation completes successfully
+  const progress = jobProgress.value
+
+  const successMsg = `Successfully reconciled ${progress.successCount} of ${progress.totalItems} results`
+  const severity = progress.failedCount > 0 ? 'warn' : 'success'
+
+  toast.add({
+    severity: severity,
+    summary: 'Reconciliation Complete',
+    detail: successMsg,
+    life: 5000
+  })
+
+  // Reset state
+  selectedRows.value = []
+  resetProgress()
+
+  // Reload data
+  await loadGeocodingResults()
+
+  // Close dialog
+  showReconcileDialog.value = false
+  selectedResult.value = null
 }
 
 // Lifecycle

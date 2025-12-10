@@ -1,11 +1,14 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
+import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.context.ManagedExecutor;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
@@ -18,6 +21,7 @@ import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -42,6 +46,8 @@ public class ReverseGeocodingManagementService {
     private final GeocodingConfigurationService configService;
     private final ReverseGeocodingDTOMapper dtoMapper;
     private final GeocodingCopyOnWriteHandler copyOnWriteHandler;
+    private final ReconciliationJobProgressService reconciliationProgressService;
+    private final ManagedExecutor managedExecutor;
 
     @Inject
     public ReverseGeocodingManagementService(
@@ -49,12 +55,16 @@ public class ReverseGeocodingManagementService {
             GeocodingProviderFactory providerFactory,
             GeocodingConfigurationService configService,
             ReverseGeocodingDTOMapper dtoMapper,
-            GeocodingCopyOnWriteHandler copyOnWriteHandler) {
+            GeocodingCopyOnWriteHandler copyOnWriteHandler,
+            ReconciliationJobProgressService reconciliationProgressService,
+            ManagedExecutor managedExecutor) {
         this.geocodingRepository = geocodingRepository;
         this.providerFactory = providerFactory;
         this.configService = configService;
         this.dtoMapper = dtoMapper;
         this.copyOnWriteHandler = copyOnWriteHandler;
+        this.reconciliationProgressService = reconciliationProgressService;
+        this.managedExecutor = managedExecutor;
     }
 
     /**
@@ -67,7 +77,7 @@ public class ReverseGeocodingManagementService {
 
         // Use new user-filtered repository method
         List<ReverseGeocodingLocationEntity> entities = geocodingRepository.findForUserManagementPage(
-                userId, providerName, null, null, searchText, page, limit);
+                userId, providerName, null, null, searchText, page, limit, sortField, sortOrder);
 
         return dtoMapper.toDTOList(entities);
     }
@@ -198,13 +208,72 @@ public class ReverseGeocodingManagementService {
     }
 
     /**
+     * Start async bulk reconciliation job and return job ID immediately.
+     * This is the new async method that creates a job and processes it in the background.
+     */
+    public UUID reconcileWithProviderAsync(UUID currentUserId, ReverseGeocodingReconcileRequest request) {
+        List<Long> idsToReconcile = determineIdsToReconcile(currentUserId, request);
+
+        // Create job
+        UUID jobId = reconciliationProgressService.createJob(
+                currentUserId, request.getProviderName(), idsToReconcile.size());
+
+        log.info("Starting async reconciliation job {} for user {} ({} items)",
+                jobId, currentUserId, idsToReconcile.size());
+
+        // Run reconciliation asynchronously using ManagedExecutor
+        CompletableFuture.runAsync(() -> {
+            try {
+                processReconciliationJob(jobId, currentUserId, idsToReconcile, request.getProviderName());
+            } catch (Exception e) {
+                log.error("Failed to process reconciliation job {}", jobId, e);
+                reconciliationProgressService.failJob(jobId, e.getMessage());
+            }
+        }, managedExecutor);
+
+        return jobId;
+    }
+
+    /**
+     * Process reconciliation job with progress tracking.
+     * This runs asynchronously and updates progress after each item.
+     */
+    @Transactional
+    @ActivateRequestContext
+    void processReconciliationJob(UUID jobId, UUID userId, List<Long> ids, String providerName) {
+        int successCount = 0;
+        int failedCount = 0;
+
+        log.info("Processing reconciliation job {} with {} items", jobId, ids.size());
+
+        for (int i = 0; i < ids.size(); i++) {
+            Long id = ids.get(i);
+
+            try {
+                reconcileWithProvider(userId, id, providerName);
+                successCount++;
+            } catch (Exception e) {
+                failedCount++;
+                log.warn("Failed to reconcile geocoding result {} in job {}: {}", id, jobId, e.getMessage());
+            }
+
+            // Update progress after each item
+            reconciliationProgressService.updateProgress(jobId, i + 1, successCount, failedCount);
+        }
+
+        // Mark complete
+        reconciliationProgressService.completeJob(jobId);
+        log.info("Reconciliation job {} completed: {} success, {} failed", jobId, successCount, failedCount);
+    }
+
+    /**
      * Determine which IDs to reconcile based on request.
      */
     private List<Long> determineIdsToReconcile(UUID userId, ReverseGeocodingReconcileRequest request) {
         if (Boolean.TRUE.equals(request.getReconcileAll())) {
             // Get all geocoding IDs for user (from management page query)
             List<ReverseGeocodingLocationEntity> entities = geocodingRepository.findForUserManagementPage(
-                    userId, request.getFilterByProvider(), null, null, null, 1, Integer.MAX_VALUE);
+                    userId, request.getFilterByProvider(), null, null, null, 1, Integer.MAX_VALUE, null, null);
             return entities.stream()
                     .map(ReverseGeocodingLocationEntity::getId)
                     .collect(Collectors.toList());

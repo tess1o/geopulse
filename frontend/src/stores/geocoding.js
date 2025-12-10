@@ -127,6 +127,26 @@ export const useGeocodingStore = defineStore('geocoding', {
                 console.error('Error reconciling geocoding results:', error)
                 throw error
             }
+        },
+
+        async startBulkReconciliation(request) {
+            try {
+                const response = await apiService.post('/geocoding/reconcile/bulk', request)
+                return response // { jobId: "uuid" }
+            } catch (error) {
+                console.error('Error starting bulk reconciliation:', error)
+                throw error
+            }
+        },
+
+        async getReconciliationJobProgress(jobId) {
+            try {
+                const response = await apiService.get(`/geocoding/reconcile/jobs/${jobId}`)
+                return response
+            } catch (error) {
+                console.error('Error fetching reconciliation job progress:', error)
+                throw error
+            }
         }
     }
 })

@@ -89,9 +89,56 @@
       </Message>
 
       <!-- Progress (shown during reconciliation) -->
-      <div v-if="reconciling" class="progress-section">
-        <ProgressBar mode="indeterminate" class="progress-bar" />
-        <p class="progress-text">Reconciling geocoding results, please wait...</p>
+      <div v-if="showProgress" class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">Reconciliation Progress</span>
+          <span class="progress-percentage">{{ jobProgress.progressPercentage }}%</span>
+        </div>
+
+        <ProgressBar
+          :value="jobProgress.progressPercentage"
+          :showValue="false"
+          class="progress-bar"
+          :class="{ 'progress-complete': isComplete }"
+        />
+
+        <div class="progress-details">
+          <div class="detail-row">
+            <span class="detail-label">Processed:</span>
+            <span class="detail-value">{{ jobProgress.processedItems }} / {{ jobProgress.totalItems }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Successful:</span>
+            <span class="detail-value success-count">{{ jobProgress.successCount }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Errors:</span>
+            <span class="detail-value" :class="{ 'failed-count': jobProgress.failedCount > 0 }">
+              {{ jobProgress.failedCount }}
+            </span>
+          </div>
+        </div>
+
+        <div v-if="isComplete && jobProgress.failedCount === 0" class="completion-message">
+          <i class="pi pi-check-circle"></i>
+          <span>Reconciliation completed successfully!</span>
+        </div>
+
+        <div v-if="isComplete && jobProgress.failedCount > 0" class="warning-message-box">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>
+            Completed with {{ jobProgress.failedCount }} error{{ jobProgress.failedCount !== 1 ? 's' : '' }}.
+            {{ jobProgress.successCount }} item{{ jobProgress.successCount !== 1 ? 's' : '' }} reconciled successfully.
+          </span>
+        </div>
+
+        <div v-if="jobProgress.status === 'FAILED'" class="error-message">
+          <i class="pi pi-times-circle"></i>
+          <div>
+            <strong>Reconciliation job failed</strong>
+            <div class="error-details">{{ jobProgress.errorMessage || 'An unexpected error occurred' }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -100,15 +147,15 @@
         <Button
           label="Cancel"
           severity="secondary"
-          @click="$emit('close')"
-          :disabled="reconciling"
+          @click="handleClose"
+          :disabled="showProgress && !isComplete"
         />
         <Button
+          v-if="!showProgress"
           label="Reconcile"
           severity="primary"
           icon="pi pi-refresh"
           @click="handleReconcile"
-          :loading="reconciling"
           :disabled="!selectedProvider"
         />
       </div>
@@ -117,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
@@ -150,10 +197,14 @@ const props = defineProps({
   currentFilters: {
     type: Object,
     default: () => ({ provider: null, searchText: '' })
+  },
+  jobProgress: {
+    type: Object,
+    default: null
   }
 })
 
-const emit = defineEmits(['close', 'reconcile'])
+const emit = defineEmits(['close', 'reconcile', 'reconcile-complete'])
 
 const reconciling = ref(false)
 const selectedProvider = ref(null)
@@ -185,34 +236,53 @@ const providerOptions = computed(() => {
   return props.enabledProviders.filter(p => p.enabled)
 })
 
+const showProgress = computed(() => {
+  return props.jobProgress !== null
+})
+
+const isComplete = computed(() => {
+  return props.jobProgress?.status === 'COMPLETED'
+})
+
 const handleReconcile = async () => {
   if (!selectedProvider.value) return
 
-  reconciling.value = true
-  try {
-    const request = {
-      providerName: selectedProvider.value,
-      reconcileAll: props.reconcileMode === 'all'
-    }
-
-    if (props.reconcileMode === 'all') {
-      // Reconcile all mode
-      request.geocodingIds = []
-
-      // Add filter if active
-      if (props.currentFilters.provider) {
-        request.filterByProvider = props.currentFilters.provider
-      }
-    } else {
-      // Reconcile selected mode
-      request.geocodingIds = props.selectedResults.map(r => r.id)
-    }
-
-    emit('reconcile', request)
-  } finally {
-    reconciling.value = false
+  const request = {
+    providerName: selectedProvider.value,
+    reconcileAll: props.reconcileMode === 'all'
   }
+
+  if (props.reconcileMode === 'all') {
+    // Reconcile all mode
+    request.geocodingIds = []
+
+    // Add filter if active
+    if (props.currentFilters.provider) {
+      request.filterByProvider = props.currentFilters.provider
+    }
+  } else {
+    // Reconcile selected mode
+    request.geocodingIds = props.selectedResults.map(r => r.id)
+  }
+
+  emit('reconcile', request)
 }
+
+const handleClose = () => {
+  if (isComplete.value) {
+    emit('reconcile-complete')
+  }
+  emit('close')
+}
+
+// Watch for job completion to auto-close
+watch(() => props.jobProgress?.status, (status) => {
+  if (status === 'COMPLETED') {
+    setTimeout(() => {
+      handleClose()
+    }, 2000) // Auto-close 2 seconds after completion
+  }
+})
 </script>
 
 <style scoped>
@@ -331,21 +401,124 @@ const handleReconcile = async () => {
 .progress-section {
   display: flex;
   flex-direction: column;
-  gap: var(--gp-spacing-sm);
+  gap: var(--gp-spacing-md);
   padding: var(--gp-spacing-md);
   background-color: var(--gp-surface-light);
   border-radius: var(--gp-radius-medium);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-label {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.progress-percentage {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gp-primary);
 }
 
 .progress-bar {
   height: 8px;
 }
 
-.progress-text {
-  text-align: center;
+.progress-bar.progress-complete :deep(.p-progressbar-value) {
+  background: var(--green-500);
+}
+
+.progress-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-xs);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 0.9rem;
+}
+
+.detail-label {
   color: var(--gp-text-secondary);
-  margin: 0;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.success-count {
+  color: var(--green-600);
+}
+
+.failed-count {
+  color: var(--red-600);
+}
+
+.completion-message {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-sm);
+  background: var(--green-50);
+  border: 1px solid var(--green-200);
+  border-radius: var(--gp-radius-small);
+  color: var(--green-700);
+  font-weight: 600;
+}
+
+.completion-message i {
+  font-size: 1.2rem;
+  color: var(--green-600);
+}
+
+.warning-message-box {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-sm);
+  background: var(--yellow-50);
+  border: 1px solid var(--yellow-300);
+  border-radius: var(--gp-radius-small);
+  color: var(--yellow-900);
+  font-weight: 600;
+}
+
+.warning-message-box i {
+  font-size: 1.2rem;
+  color: var(--yellow-600);
+}
+
+.error-message {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gp-spacing-sm);
+  padding: var(--gp-spacing-sm);
+  background: var(--red-50);
+  border: 1px solid var(--red-200);
+  border-radius: var(--gp-radius-small);
+  color: var(--red-700);
+  font-weight: 600;
+}
+
+.error-message i {
+  font-size: 1.2rem;
+  color: var(--red-600);
+  margin-top: 2px;
+}
+
+.error-details {
+  font-size: 0.85rem;
+  font-weight: 400;
+  margin-top: var(--gp-spacing-xs);
+  color: var(--red-600);
 }
 
 .dialog-footer {

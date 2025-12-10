@@ -9,11 +9,14 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
+import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
+import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementService;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -28,11 +31,16 @@ public class ReverseGeocodingResource {
 
     private final ReverseGeocodingManagementService managementService;
     private final CurrentUserService currentUserService;
+    private final ReconciliationJobProgressService reconciliationProgressService;
 
     @Inject
-    public ReverseGeocodingResource(ReverseGeocodingManagementService managementService, CurrentUserService currentUserService) {
+    public ReverseGeocodingResource(
+            ReverseGeocodingManagementService managementService,
+            CurrentUserService currentUserService,
+            ReconciliationJobProgressService reconciliationProgressService) {
         this.managementService = managementService;
         this.currentUserService = currentUserService;
+        this.reconciliationProgressService = reconciliationProgressService;
     }
 
     /**
@@ -152,17 +160,96 @@ public class ReverseGeocodingResource {
     }
 
     /**
-     * Reconcile geocoding results with a specific provider.
+     * Start bulk reconciliation job (async).
+     * Returns job ID immediately for progress tracking.
+     *
+     * @param request Reconciliation request
+     * @return Job ID
+     */
+    @POST
+    @Path("/reconcile/bulk")
+    public Response reconcileWithProviderBulk(@Valid ReverseGeocodingReconcileRequest request) {
+        UUID currentUserId = getCurrentUserId();
+        log.info("User {} starting bulk reconciliation with provider: {}", currentUserId, request.getProviderName());
+
+        try {
+            // Check if user already has active job
+            Optional<ReconciliationJobProgress> activeJob = reconciliationProgressService.getUserActiveJob(currentUserId);
+            if (activeJob.isPresent()) {
+                return Response.status(Response.Status.CONFLICT)
+                        .entity(Map.of(
+                                "error", "You already have an active reconciliation job",
+                                "jobId", activeJob.get().getJobId().toString()
+                        ))
+                        .build();
+            }
+
+            UUID jobId = managementService.reconcileWithProviderAsync(currentUserId, request);
+            return Response.ok(Map.of("jobId", jobId.toString())).build();
+
+        } catch (Exception e) {
+            log.error("Error starting reconciliation for user {}: {}", currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to start reconciliation: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get progress of a reconciliation job.
+     *
+     * @param jobId Job ID
+     * @return Job progress
+     */
+    @GET
+    @Path("/reconcile/jobs/{jobId}")
+    public Response getReconciliationJobProgress(@PathParam("jobId") String jobId) {
+        UUID currentUserId = getCurrentUserId();
+
+        try {
+            UUID jobUuid = UUID.fromString(jobId);
+            Optional<ReconciliationJobProgress> jobProgress = reconciliationProgressService.getJobProgress(jobUuid);
+
+            if (jobProgress.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(Map.of("error", "Job not found"))
+                        .build();
+            }
+
+            // Verify job belongs to current user
+            if (!jobProgress.get().getUserId().equals(currentUserId)) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(Map.of("error", "Access denied"))
+                        .build();
+            }
+
+            return Response.ok(jobProgress.get()).build();
+
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "Invalid job ID format"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to get job progress for job {}", jobId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to get job progress: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Reconcile geocoding results with a specific provider (single item, synchronous).
+     * Kept for backward compatibility.
      * Applies copy-on-write if data changed for originals.
      *
      * @param request Reconciliation request
      * @return Reconciliation results
      */
     @POST
-    @Path("/reconcile")
-    public Response reconcileWithProvider(@Valid ReverseGeocodingReconcileRequest request) {
+    @Path("/reconcile/single")
+    public Response reconcileSingle(@Valid ReverseGeocodingReconcileRequest request) {
         UUID currentUserId = getCurrentUserId();
-        log.info("User {} reconciling geocoding results with provider: {}", currentUserId, request.getProviderName());
+        log.info("User {} reconciling single result with provider: {}", currentUserId, request.getProviderName());
 
         try {
             ReverseGeocodingReconcileResult result = managementService.reconcileWithProvider(currentUserId, request);
