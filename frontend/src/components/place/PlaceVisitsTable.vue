@@ -54,12 +54,53 @@
         </template>
       </Column>
 
+      <!-- City Column (for Country pages) -->
+      <Column
+        v-if="showCity"
+        field="city"
+        header="City"
+        :sortable="true"
+        :style="{ 'min-width': '120px' }"
+        :class="{ 'hide-on-mobile-city': showCity && showLocationName }"
+        headerClass="city-column-header"
+        bodyClass="city-column-body"
+      >
+        <template #body="slotProps">
+          <span
+            v-if="enableCityNavigation && slotProps.data.city"
+            class="city-link"
+            @click="handleCityClick(slotProps.data.city)"
+          >
+            {{ slotProps.data.city }}
+          </span>
+          <span v-else>{{ slotProps.data.city || 'N/A' }}</span>
+        </template>
+      </Column>
+
+      <!-- Place Name Column (for City/Country pages) -->
+      <Column
+        v-if="showLocationName"
+        field="locationName"
+        header="Place Name"
+        :sortable="true"
+        :style="{ 'min-width': '150px' }"
+        headerClass="place-name-column-header"
+        bodyClass="place-name-column-body"
+      >
+        <template #body="slotProps">
+          <span class="place-name">{{ slotProps.data.locationName || 'Unknown' }}</span>
+        </template>
+      </Column>
+
       <!-- Duration Column -->
       <Column
         field="stayDuration"
         header="Duration"
         :sortable="true"
         :style="{ 'min-width': '120px' }"
+        :class="{ 'duration-column-country': showCity && showLocationName }"
+        headerClass="duration-column-header"
+        :bodyClass="showCity && showLocationName ? 'duration-column-country' : ''"
       >
         <template #body="slotProps">
           <span class="duration-badge">
@@ -70,8 +111,12 @@
 
       <!-- End Time Column -->
       <Column
+        v-if="showEndTime"
         header="End Time"
         :style="{ 'min-width': '150px' }"
+        class="end-time-column"
+        headerClass="end-time-column"
+        bodyClass="end-time-column"
       >
         <template #body="slotProps">
           <div class="datetime-display">
@@ -115,6 +160,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -124,6 +170,7 @@ import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 
 const timezone = useTimezone()
+const router = useRouter()
 
 const props = defineProps({
   visits: {
@@ -137,6 +184,22 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false
+  },
+  showLocationName: {
+    type: Boolean,
+    default: false
+  },
+  showCity: {
+    type: Boolean,
+    default: false
+  },
+  enableCityNavigation: {
+    type: Boolean,
+    default: false
+  },
+  showEndTime: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -195,6 +258,12 @@ const handleSort = (event) => {
 
   const sortDirection = event.sortOrder === 1 ? 'asc' : 'desc'
   emit('sort-change', { sortBy: event.sortField, sortDirection })
+}
+
+const handleCityClick = (cityName) => {
+  if (props.enableCityNavigation && cityName) {
+    router.push(`/app/location-analytics/city/${encodeURIComponent(cityName)}`)
+  }
 }
 </script>
 
@@ -262,6 +331,23 @@ const handleSort = (event) => {
   font-size: 0.9rem;
 }
 
+.city-link {
+  color: var(--gp-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.city-link:hover {
+  color: var(--gp-primary-hover);
+}
+
+.place-name {
+  font-weight: 500;
+  color: var(--gp-text-primary);
+}
+
 .no-data-state,
 .loading-state {
   text-align: center;
@@ -292,6 +378,18 @@ const handleSort = (event) => {
 .p-dark .duration-badge {
   background: var(--gp-primary-900);
   color: var(--gp-primary-300);
+}
+
+.p-dark .city-link {
+  color: var(--gp-primary-light);
+}
+
+.p-dark .city-link:hover {
+  color: var(--gp-primary);
+}
+
+.p-dark .place-name {
+  color: var(--gp-text-primary);
 }
 
 .p-dark .no-data-title {
@@ -373,8 +471,22 @@ const handleSort = (event) => {
     width: 100%;
   }
 
-  /* Hide Day of Week column on mobile */
+  /* Hide columns on mobile based on context */
+  /* For City pages (showLocationName only): Hide End Time and Day of Week */
+  /* For Country pages (showCity + showLocationName): Hide Duration, End Time, Day of Week */
+
+  /* Always hide Day of Week on mobile */
   :deep(.day-of-week-column) {
+    display: none !important;
+  }
+
+  /* Hide End Time on mobile when location columns are shown */
+  :deep(.end-time-column) {
+    display: none !important;
+  }
+
+  /* Hide Duration on mobile for Country pages (when both city and place name shown) */
+  :deep(.duration-column-country) {
     display: none !important;
   }
 

@@ -178,6 +178,12 @@ const mainItems = computed(() => [
     key: 'journey-insights'
   },
   {
+    label: 'Location Analytics',
+    icon: 'pi pi-map',
+    to: '/app/location-analytics',
+    key: 'location-analytics'
+  },
+  {
     label: 'Rewind',
     icon: 'pi pi-calendar-clock',
     to: '/app/rewind',

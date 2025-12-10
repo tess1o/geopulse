@@ -161,6 +161,18 @@ public class StreamingTimelineConverter {
     public TimelineStayLocationDTO convertStayEntityToDto(TimelineStayEntity entity) {
         if (entity == null) return null;
 
+        // Extract city and country from either favorite or geocoding location
+        String city = null;
+        String country = null;
+
+        if (entity.getFavoriteLocation() != null) {
+            city = entity.getFavoriteLocation().getCity();
+            country = entity.getFavoriteLocation().getCountry();
+        } else if (entity.getGeocodingLocation() != null) {
+            city = entity.getGeocodingLocation().getCity();
+            country = entity.getGeocodingLocation().getCountry();
+        }
+
         return TimelineStayLocationDTO.builder()
                 .id(entity.getId())
                 .timestamp(entity.getTimestamp())
@@ -170,6 +182,8 @@ public class StreamingTimelineConverter {
                 .locationName(entity.getLocationName() != null ? entity.getLocationName() : "Unknown location")
                 .favoriteId(entity.getFavoriteLocation() != null ? entity.getFavoriteLocation().getId() : null)
                 .geocodingId(entity.getGeocodingLocation() != null ? entity.getGeocodingLocation().getId() : null)
+                .city(city)
+                .country(country)
                 .build();
     }
 

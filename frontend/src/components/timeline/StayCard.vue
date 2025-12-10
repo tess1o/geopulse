@@ -60,25 +60,59 @@ const props = defineProps({
 const emit = defineEmits(['click', 'export-gpx'])
 
 const contextMenu = ref(null)
-const contextMenuItems = ref([
-  {
-    label: 'View all visits to this place',
-    icon: 'pi pi-map-marker',
-    command: () => {
-      navigateToPlaceDetails()
+
+// Check if stay has city/country info
+const hasCity = computed(() => props.stayItem.city && props.stayItem.city.trim().length > 0)
+const hasCountry = computed(() => props.stayItem.country && props.stayItem.country.trim().length > 0)
+
+const contextMenuItems = computed(() => {
+  const items = [
+    {
+      label: 'View all visits to this place',
+      icon: 'pi pi-map-marker',
+      command: () => {
+        navigateToPlaceDetails()
+      }
     }
-  },
-  {
-    separator: true
-  },
-  {
-    label: 'Export as GPX',
-    icon: 'pi pi-download',
-    command: () => {
-      emit('export-gpx', props.stayItem)
-    }
+  ]
+
+  // Add city details option if available
+  if (hasCity.value) {
+    items.push({
+      label: `View ${props.stayItem.city} Details`,
+      icon: 'pi pi-building',
+      command: () => {
+        navigateToCityDetails()
+      }
+    })
   }
-])
+
+  // Add country details option if available
+  if (hasCountry.value) {
+    items.push({
+      label: `View ${props.stayItem.country} Details`,
+      icon: 'pi pi-globe',
+      command: () => {
+        navigateToCountryDetails()
+      }
+    })
+  }
+
+  items.push(
+    {
+      separator: true
+    },
+    {
+      label: 'Export as GPX',
+      icon: 'pi pi-download',
+      command: () => {
+        emit('export-gpx', props.stayItem)
+      }
+    }
+  )
+
+  return items
+})
 
 const timezone = useTimezone()
 
@@ -100,6 +134,22 @@ const navigateToPlaceDetails = () => {
     router.push({
       name: 'Place Details',
       params: { type, id }
+    })
+  }
+}
+
+const navigateToCityDetails = () => {
+  if (props.stayItem.city) {
+    router.push({
+      path: `/app/location-analytics/city/${encodeURIComponent(props.stayItem.city)}`
+    })
+  }
+}
+
+const navigateToCountryDetails = () => {
+  if (props.stayItem.country) {
+    router.push({
+      path: `/app/location-analytics/country/${encodeURIComponent(props.stayItem.country)}`
     })
   }
 }

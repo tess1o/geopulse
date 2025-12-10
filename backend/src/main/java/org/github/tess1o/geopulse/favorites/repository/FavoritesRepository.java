@@ -221,4 +221,20 @@ public class FavoritesRepository implements PanacheRepository<FavoritesEntity> {
         return resultMap;
     }
 
+    /**
+     * Find favorites by user ID and name containing a search term (for location analytics search).
+     * Returns up to 'limit' results ordered by name.
+     *
+     * @param userId User ID
+     * @param searchTerm Search term to match in name (case-insensitive)
+     * @param limit Maximum number of results
+     * @return List of matching favorites
+     */
+    public List<FavoritesEntity> findByUserIdAndNameContaining(UUID userId, String searchTerm, int limit) {
+        return find("user.id = ?1 and LOWER(name) LIKE LOWER(?2) order by name",
+                userId, "%" + searchTerm + "%")
+                .page(0, limit)
+                .list();
+    }
+
 }

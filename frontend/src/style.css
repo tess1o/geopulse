@@ -267,11 +267,40 @@ body {
     /* ================================
        DARK MODE TAB FIXES
        ================================ */
-    
+
     /* TabMenu Dark Mode Fix - Using Correct PrimeVue 4 Classes */
     .p-dark .p-tabmenu {
         background: var(--gp-surface-dark) !important;
         border-bottom-color: var(--gp-border-dark) !important;
+    }
+
+    /* ================================
+       DARK MODE AUTOCOMPLETE FIXES
+       ================================ */
+
+    /* AutoComplete Overlay (Dropdown Panel) */
+    .p-dark .p-autocomplete-overlay {
+        background: var(--gp-surface-white) !important;
+        border-color: var(--gp-border-medium) !important;
+        color: var(--gp-text-primary) !important;
+    }
+
+    /* AutoComplete Options */
+    .p-dark .p-autocomplete-option {
+        color: var(--gp-text-primary) !important;
+    }
+
+    /* AutoComplete Option Hover/Focus */
+    .p-dark .p-autocomplete-option:hover,
+    .p-dark .p-autocomplete-option.p-focus {
+        background: var(--gp-surface-light) !important;
+        color: var(--gp-text-primary) !important;
+    }
+
+    /* AutoComplete Option Selected */
+    .p-dark .p-autocomplete-option.p-highlight {
+        background: var(--gp-primary) !important;
+        color: #ffffff !important;
     }
     
     /* TabMenu Width Fix - Ensure proper container sizing */

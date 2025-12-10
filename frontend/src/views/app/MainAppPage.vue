@@ -3,6 +3,9 @@
     <template #navbar>
       <AppNavbarWithDatePicker @date-change="handleDateChange" @navigate="handleNavigate">
         <template #end-before>
+          <!-- Location Search Bar -->
+          <LocationSearchBar v-if="shouldShowSearch" class="navbar-search" />
+
           <!-- Share button - only show on Timeline page -->
           <Button
             v-if="isTimelinePage"
@@ -38,6 +41,7 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import AppNavbarWithDatePicker from '@/components/ui/layout/AppNavbarWithDatePicker.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import Button from 'primevue/button'
+import LocationSearchBar from '@/components/search/LocationSearchBar.vue'
 
 // Stores
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -79,6 +83,7 @@ const tabItems = ref([
 
 // Computed
 const isTimelinePage = computed(() => route.path === '/app/timeline')
+const shouldShowSearch = computed(() => route.path === '/app/timeline' || route.path === '/app/dashboard' || route.path === '/app/timeline-reports')
 
 // Provide share dialog state for child components
 provide('shareDialogVisible', shareDialogVisible)
@@ -152,13 +157,56 @@ watch(dates, (newValue) => {
 </script>
 
 <style scoped>
+/* Navbar search styling */
+.navbar-search {
+  max-width: 400px;
+  min-width: 300px;
+  flex: 1;
+}
+
+.navbar-search :deep(.location-search) {
+  max-width: 100%;
+}
+
+.navbar-search :deep(.p-autocomplete-input) {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  height: 38px;
+}
+
 /* Share button styling */
 .share-btn {
   flex-shrink: 0;
 }
 
-/* Responsive - hide label on mobile */
+/* Medium screens - reduce search bar width */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .navbar-search {
+    min-width: 250px;
+    max-width: 300px;
+  }
+}
+
+/* Tablet - more compact search */
+@media (max-width: 1024px) {
+  .navbar-search {
+    min-width: 200px;
+    max-width: 250px;
+  }
+
+  .navbar-search :deep(.p-autocomplete-input) {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    height: 36px;
+  }
+}
+
+/* Mobile - hide search bar completely */
 @media (max-width: 768px) {
+  .navbar-search {
+    display: none;
+  }
+
   .share-btn :deep(.p-button-label) {
     display: none;
   }
