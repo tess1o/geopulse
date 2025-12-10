@@ -46,7 +46,14 @@
             </div>
             <div class="city-header-content">
               <h1 class="city-title">{{ cityDetails.cityName }}</h1>
-              <p class="city-country">{{ cityDetails.country }}</p>
+              <p class="city-country">
+                <span
+                  class="country-link"
+                  @click="navigateToCountry(cityDetails.country)"
+                >
+                  {{ cityDetails.country }}
+                </span>
+              </p>
             </div>
           </div>
         </BaseCard>
@@ -94,6 +101,8 @@
           :visits="cityVisits"
           :pagination="pagination"
           :loading="visitsLoading"
+          :show-location-name="true"
+          :show-end-time="false"
           @page-change="handlePageChange"
           @sort-change="handleSortChange"
           @export="handleExportVisits"
@@ -240,6 +249,12 @@ const navigateToPlace = (place) => {
   router.push(`/app/place-details/${place.type}/${place.id}`)
 }
 
+const navigateToCountry = (countryName) => {
+  if (countryName) {
+    router.push(`/app/location-analytics/country/${encodeURIComponent(countryName)}`)
+  }
+}
+
 const goToLocationAnalytics = () => {
   router.push('/app/location-analytics')
 }
@@ -312,6 +327,18 @@ watch(
   color: var(--gp-text-secondary);
 }
 
+.country-link {
+  color: var(--gp-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.country-link:hover {
+  color: var(--gp-primary-hover);
+}
+
 .top-places-card {
   margin-bottom: var(--gp-spacing-xl);
 }
@@ -366,6 +393,14 @@ watch(
 .place-stats {
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
+}
+
+.p-dark .country-link {
+  color: var(--gp-primary-light);
+}
+
+.p-dark .country-link:hover {
+  color: var(--gp-primary);
 }
 
 @media (max-width: 768px) {

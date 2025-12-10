@@ -22,4 +22,5 @@ public class PlaceVisitDTO {
     private double latitude;
     private double longitude;
     private String locationName;        // Cached location name
+    private String city;                // City name (from geocoding or favorite)
 }

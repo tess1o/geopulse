@@ -964,8 +964,8 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         String orderClause = "s." + sortBy + (ascending ? " ASC" : " DESC");
         String query = """
                 SELECT s FROM TimelineStayEntity s
-                LEFT JOIN s.favoriteLocation f
-                LEFT JOIN s.geocodingLocation g
+                LEFT JOIN FETCH s.favoriteLocation f
+                LEFT JOIN FETCH s.geocodingLocation g
                 WHERE s.user.id = ?1
                   AND COALESCE(f.country, g.country) = ?2
                 ORDER BY """ + " " + orderClause;
@@ -1016,8 +1016,8 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         String orderClause = "s." + sortBy + (ascending ? " ASC" : " DESC");
         String query = """
                 SELECT s FROM TimelineStayEntity s
-                LEFT JOIN s.favoriteLocation f
-                LEFT JOIN s.geocodingLocation g
+                LEFT JOIN FETCH s.favoriteLocation f
+                LEFT JOIN FETCH s.geocodingLocation g
                 WHERE s.user.id = ?1
                   AND COALESCE(f.country, g.country) = ?2
                 ORDER BY """ + " " + orderClause;

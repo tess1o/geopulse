@@ -436,6 +436,14 @@ public class LocationAnalyticsService {
         double latitude = stay.getLocation() != null ? stay.getLocation().getY() : 0.0;
         double longitude = stay.getLocation() != null ? stay.getLocation().getX() : 0.0;
 
+        // Extract city from either geocoding or favorite location
+        String city = null;
+        if (stay.getGeocodingLocation() != null) {
+            city = stay.getGeocodingLocation().getCity();
+        } else if (stay.getFavoriteLocation() != null) {
+            city = stay.getFavoriteLocation().getCity();
+        }
+
         return PlaceVisitDTO.builder()
                 .id(stay.getId())
                 .timestamp(stay.getTimestamp())
@@ -443,6 +451,7 @@ public class LocationAnalyticsService {
                 .latitude(latitude)
                 .longitude(longitude)
                 .locationName(stay.getLocationName())
+                .city(city)
                 .build();
     }
 
