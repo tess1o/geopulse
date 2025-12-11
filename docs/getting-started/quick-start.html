@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-getting-started/quick-start" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">Quick Start Guide | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/getting-started/quick-start"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Quick Start Guide | GeoPulse documentation"><meta data-rh="true" name="description" content="Get started with GeoPulse in minutes - import your data, configure sources, and explore your location history."><meta data-rh="true" property="og:description" content="Get started with GeoPulse in minutes - import your data, configure sources, and explore your location history."><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/getting-started/quick-start"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/getting-started/quick-start" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/getting-started/quick-start" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Quick Start Guide","item":"https://tess1o.github.io/geopulse/docs/getting-started/quick-start"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
+<script src="/geopulse/assets/js/runtime~main.2a4ffa7c.js" defer="defer"></script>
+<script src="/geopulse/assets/js/main.d45abe60.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/geopulse/"><div class="navbar__logo"><img src="/geopulse/img/geopulse-logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/geopulse/img/geopulse-logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">GeoPulse</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/geopulse/docs/getting-started/introduction">Documentation</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/tess1o/geopulse" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" href="/geopulse/docs/getting-started/introduction"><span title="Getting Started" class="categoryLinkLabel_W154">Getting Started</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/getting-started/introduction"><span title="Introduction" class="linkLabel_WmDU">Introduction</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/geopulse/docs/getting-started/quick-start"><span title="Quick Start Guide" class="linkLabel_WmDU">Quick Start Guide</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/getting-started/architecture-overview"><span title="Architecture Overview" class="linkLabel_WmDU">Architecture Overview</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/getting-started/deployment/docker-compose"><span title="Deployment" class="categoryLinkLabel_W154">Deployment</span></a></div></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/system-administration/initial-setup"><span title="Configuration &amp; Administration" class="categoryLinkLabel_W154">Configuration &amp; Administration</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/user-guide/interacting-with-data/import-export"><span title="User Guide" class="categoryLinkLabel_W154">User Guide</span></a></div></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/geopulse/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">Getting Started</span></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Quick Start Guide</span></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Quick Start Guide</h1></header>
+<p>Welcome to GeoPulse! This guide will walk you through everything you need to get started tracking and exploring your location history. By the end of this guide, you&#x27;ll have data in GeoPulse and know how to use the main features.</p>
+<div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Already Deployed?</div><div class="admonitionContent_BuS1"><p>This guide assumes you&#x27;ve already deployed GeoPulse and completed the <a class="" href="/geopulse/docs/system-administration/initial-setup">Initial Setup</a>. If you haven&#x27;t deployed yet, see the <a class="" href="/geopulse/docs/getting-started/deployment/docker-compose">Deployment guides</a> first.</p></div></div>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="overview-your-first-steps">Overview: Your First Steps<a href="#overview-your-first-steps" class="hash-link" aria-label="Direct link to Overview: Your First Steps" title="Direct link to Overview: Your First Steps" translate="no">​</a></h2>
+<p>Getting started with GeoPulse involves three main steps:</p>
+<ol>
+<li class=""><strong>Get your data in</strong> - Import existing location data (if you have it)</li>
+<li class=""><strong>Configure GPS sources</strong> - Set up apps to send new location data</li>
+<li class=""><strong>Explore and use your data</strong> - View timeline, analyze trips, and more</li>
+</ol>
+<p>Let&#x27;s walk through each step!</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-1-get-your-data-into-geopulse">Step 1: Get Your Data Into GeoPulse<a href="#step-1-get-your-data-into-geopulse" class="hash-link" aria-label="Direct link to Step 1: Get Your Data Into GeoPulse" title="Direct link to Step 1: Get Your Data Into GeoPulse" translate="no">​</a></h2>
+<p>If you have existing location data from other tracking apps or services, you&#x27;ll want to import it first. If you don&#x27;t have existing data, you can skip to Step 2.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="do-you-have-existing-location-data">Do You Have Existing Location Data?<a href="#do-you-have-existing-location-data" class="hash-link" aria-label="Direct link to Do You Have Existing Location Data?" title="Direct link to Do You Have Existing Location Data?" translate="no">​</a></h3>
+<p>Common sources of existing location data include:</p>
+<ul>
+<li class=""><strong>Google Timeline</strong> / Google Location History exports</li>
+<li class=""><strong>OwnTracks</strong> backup files</li>
+<li class=""><strong>Fitness tracker</strong> exports (GPX files from Garmin, Strava, etc.)</li>
+<li class=""><strong>Previous tracking apps</strong> (GPX, GeoJSON, or CSV exports)</li>
+<li class=""><strong>Other GeoPulse instances</strong> (GeoPulse backup files)</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="how-to-import-your-data">How to Import Your Data<a href="#how-to-import-your-data" class="hash-link" aria-label="Direct link to How to Import Your Data" title="Direct link to How to Import Your Data" translate="no">​</a></h3>
+<ol>
+<li class="">
+<p><strong>Navigate to Import/Export</strong></p>
+<ul>
+<li class="">Click <strong>Menu</strong> (☰) in the top-left</li>
+<li class="">Select <strong>Import/Export Data</strong></li>
+<li class="">Click the <strong>Import</strong> tab</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Select Your Format</strong></p>
+<ul>
+<li class="">Choose the format that matches your data:<!-- -->
+<ul>
+<li class=""><strong>GeoPulse</strong> - Restoring from GeoPulse backup</li>
+<li class=""><strong>Google Timeline</strong> - Importing from Google Takeout</li>
+<li class=""><strong>OwnTracks</strong> - Importing OwnTracks exports</li>
+<li class=""><strong>GPX</strong> - Fitness trackers, Garmin devices</li>
+<li class=""><strong>GeoJSON</strong> - GIS data exports</li>
+<li class=""><strong>CSV</strong> - Custom data sources</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Upload Your File</strong></p>
+<ul>
+<li class="">Click <strong>Choose Export File</strong></li>
+<li class="">Select your file (any size supported up to 2GB)</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Start Import</strong></p>
+<ul>
+<li class="">Click <strong>Start Import</strong></li>
+<li class="">Watch the progress bar as your data uploads and processes</li>
+<li class="">Timeline generation will start automatically after GPS data import</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Wait for Completion</strong></p>
+<ul>
+<li class="">Small files (&lt; 100MB): 1-5 minutes</li>
+<li class="">Large files (&gt; 500MB): 10-30 minutes</li>
+<li class="">The system uses efficient streaming parsers, so any size works</li>
+</ul>
+</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="detailed-import-documentation">Detailed Import Documentation<a href="#detailed-import-documentation" class="hash-link" aria-label="Direct link to Detailed Import Documentation" title="Direct link to Detailed Import Documentation" translate="no">​</a></h3>
+<p>For detailed information about all supported formats, options, and troubleshooting, see the complete <a class="" href="/geopulse/docs/user-guide/interacting-with-data/import-export">Import/Export Data</a> guide.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-if-i-dont-have-existing-data">What If I Don&#x27;t Have Existing Data?<a href="#what-if-i-dont-have-existing-data" class="hash-link" aria-label="Direct link to What If I Don&#x27;t Have Existing Data?" title="Direct link to What If I Don&#x27;t Have Existing Data?" translate="no">​</a></h3>
+<p>No problem! Skip to <strong>Step 2</strong> to configure GPS sources and start collecting new location data.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-2-configure-gps-sources">Step 2: Configure GPS Sources<a href="#step-2-configure-gps-sources" class="hash-link" aria-label="Direct link to Step 2: Configure GPS Sources" title="Direct link to Step 2: Configure GPS Sources" translate="no">​</a></h2>
+<p>Now that your existing data is imported (or if you&#x27;re starting fresh), you need to configure GPS sources to continuously track your location.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="choose-your-gps-tracking-app">Choose Your GPS Tracking App<a href="#choose-your-gps-tracking-app" class="hash-link" aria-label="Direct link to Choose Your GPS Tracking App" title="Direct link to Choose Your GPS Tracking App" translate="no">​</a></h3>
+<p>GeoPulse supports multiple GPS tracking apps. Choose the one that works best for you:</p>
+<table><thead><tr><th>App</th><th>Platform</th><th>Best For</th><th>Battery Impact</th></tr></thead><tbody><tr><td><strong>OwnTracks</strong></td><td>iOS, Android</td><td>Full-featured tracking, highly customizable</td><td>Medium</td></tr><tr><td><strong>Overland</strong></td><td>iOS</td><td>Simple setup, reliable iOS tracking</td><td>Low</td></tr><tr><td><strong>GPS Logger</strong></td><td>Android</td><td>Lightweight, battery-efficient</td><td>Low</td></tr><tr><td><strong>Dawarich</strong></td><td>iOS, Android</td><td>Privacy-focused, API key authentication</td><td>Low-Medium</td></tr><tr><td><strong>Home Assistant</strong></td><td>Any</td><td>Smart home integration, existing HA users</td><td>Varies</td></tr></tbody></table>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quick-setup-process">Quick Setup Process<a href="#quick-setup-process" class="hash-link" aria-label="Direct link to Quick Setup Process" title="Direct link to Quick Setup Process" translate="no">​</a></h3>
+<ol>
+<li class="">
+<p><strong>Get Your Endpoint URL</strong></p>
+<ul>
+<li class="">Navigate to <strong>Menu → Location Sources</strong></li>
+<li class="">Click <strong>Add New Source</strong></li>
+<li class="">Choose your tracking app</li>
+<li class="">Copy the provided endpoint URL</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Install the Tracking App</strong></p>
+<ul>
+<li class="">Download your chosen app from the App Store or Google Play</li>
+<li class="">Open the app and go to settings</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Configure the App</strong></p>
+<ul>
+<li class="">Paste your GeoPulse endpoint URL</li>
+<li class="">Configure tracking frequency (recommended: 1-5 minutes)</li>
+<li class="">Enable battery optimization settings</li>
+<li class="">Start tracking!</li>
+</ul>
+</li>
+<li class="">
+<p><strong>Verify Data Flow</strong></p>
+<ul>
+<li class="">Wait a few minutes</li>
+<li class="">Check <strong>Menu → GPS Data</strong> to see incoming location points</li>
+<li class="">Timeline items will be generated automatically</li>
+</ul>
+</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="detailed-setup-guides">Detailed Setup Guides<a href="#detailed-setup-guides" class="hash-link" aria-label="Direct link to Detailed Setup Guides" title="Direct link to Detailed Setup Guides" translate="no">​</a></h3>
+<p>For step-by-step instructions for each app, see:</p>
+<ul>
+<li class=""><a class="" href="/geopulse/docs/user-guide/gps-sources/owntracks">OwnTracks Setup Guide</a></li>
+<li class=""><a class="" href="/geopulse/docs/user-guide/gps-sources/overland">Overland Setup Guide</a></li>
+<li class=""><a class="" href="/geopulse/docs/user-guide/gps-sources/gps_logger">GPS Logger Setup Guide</a></li>
+<li class=""><a class="" href="/geopulse/docs/user-guide/gps-sources/dawarich">Dawarich Setup Guide</a></li>
+<li class=""><a class="" href="/geopulse/docs/user-guide/gps-sources/home_assistant">Home Assistant Integration</a></li>
+<li class=""><a class="" href="/geopulse/docs/user-guide/gps-sources/overview">All GPS Sources Overview</a></li>
+</ul>
+<div class="theme-admonition theme-admonition-info admonition_xJq3 alert alert--info"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 14 16"><path fill-rule="evenodd" d="M7 2.3c3.14 0 5.7 2.56 5.7 5.7s-2.56 5.7-5.7 5.7A5.71 5.71 0 0 1 1.3 8c0-3.14 2.56-5.7 5.7-5.7zM7 1C3.14 1 0 4.14 0 8s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm1 3H6v5h2V4zm0 6H6v2h2v-2z"></path></svg></span>Multiple Devices?</div><div class="admonitionContent_BuS1"><p>You can track multiple devices! Create a separate location source for each device (phone, tablet, car tracker, etc.). GeoPulse will combine all data into a unified timeline.</p></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="advanced-data-mirroring">Advanced: Data Mirroring<a href="#advanced-data-mirroring" class="hash-link" aria-label="Direct link to Advanced: Data Mirroring" title="Direct link to Advanced: Data Mirroring" translate="no">​</a></h3>
+<p>If you&#x27;re already using another tracking service (like Dawarich) and want to send data to both services simultaneously without changing your app configuration multiple times, you can set up traffic mirroring.</p>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li class="">Test GeoPulse alongside your existing tracking solution</li>
+<li class="">Send location data to multiple services simultaneously</li>
+<li class="">Maintain redundancy across platforms</li>
+</ul>
+<p><a class="" href="/geopulse/docs/user-guide/gps-sources/data-mirroring">Learn about Data Mirroring with OwnTracks</a></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="step-3-explore-your-data">Step 3: Explore Your Data<a href="#step-3-explore-your-data" class="hash-link" aria-label="Direct link to Step 3: Explore Your Data" title="Direct link to Step 3: Explore Your Data" translate="no">​</a></h2>
+<p>Now that you have data in GeoPulse (either imported or from GPS sources), let&#x27;s explore the main features!</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timeline---your-location-history">Timeline - Your Location History<a href="#timeline---your-location-history" class="hash-link" aria-label="Direct link to Timeline - Your Location History" title="Direct link to Timeline - Your Location History" translate="no">​</a></h3>
+<p>The <strong>Timeline</strong> is your chronological location history, automatically organized into trips and stays.</p>
+<p><strong>How to use:</strong></p>
+<ol>
+<li class="">Navigate to <strong>Menu → Timeline</strong></li>
+<li class="">Browse your location history by date</li>
+<li class="">Click any trip or stay to see details</li>
+<li class="">Filter by date range, location, or activity type</li>
+</ol>
+<p><strong>What you&#x27;ll see:</strong></p>
+<ul>
+<li class="">🚗 <strong>Trips</strong> - When you were moving (with routes on map)</li>
+<li class="">🏠 <strong>Stays</strong> - When you were stationary (home, work, restaurants)</li>
+<li class="">📍 <strong>Addresses</strong> - Automatic reverse geocoding for locations</li>
+<li class="">⏱️ <strong>Duration &amp; Distance</strong> - How long and how far you traveled</li>
+</ul>
+<p><a class="" href="/geopulse/docs/user-guide/core-features/timeline">Learn more about Timeline features</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="dashboard---statistics-overview">Dashboard - Statistics Overview<a href="#dashboard---statistics-overview" class="hash-link" aria-label="Direct link to Dashboard - Statistics Overview" title="Direct link to Dashboard - Statistics Overview" translate="no">​</a></h3>
+<p>The <strong>Dashboard</strong> provides insights about your location patterns and activity.</p>
+<p><strong>Navigate to:</strong> Menu → Dashboard</p>
+<p><strong>What you&#x27;ll see:</strong></p>
+<ul>
+<li class=""><strong>Total distance</strong> traveled (today, this week, this month)</li>
+<li class=""><strong>Most visited places</strong> and time spent</li>
+<li class=""><strong>Activity breakdown</strong> - walking, driving, cycling</li>
+<li class=""><strong>Travel patterns</strong> over time</li>
+<li class=""><strong>Recent activity</strong> summary</li>
+</ul>
+<p><a class="" href="/geopulse/docs/user-guide/core-features/dashboard">Learn more about Dashboard</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="journey-insights---deep-analysis">Journey Insights - Deep Analysis<a href="#journey-insights---deep-analysis" class="hash-link" aria-label="Direct link to Journey Insights - Deep Analysis" title="Direct link to Journey Insights - Deep Analysis" translate="no">​</a></h3>
+<p><strong>Journey Insights</strong> provides detailed analysis of your trips and travel patterns.</p>
+<p><strong>Navigate to:</strong> Menu → Journey Insights</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li class="">Trip-by-trip analysis</li>
+<li class="">Speed and route efficiency metrics</li>
+<li class="">Comparison between time periods</li>
+<li class="">Activity type breakdowns</li>
+<li class="">Export trip data</li>
+</ul>
+<p><a class="" href="/geopulse/docs/user-guide/core-features/journey-insights">Learn more about Journey Insights</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="rewind---visual-timeline-playback">Rewind - Visual Timeline Playback<a href="#rewind---visual-timeline-playback" class="hash-link" aria-label="Direct link to Rewind - Visual Timeline Playback" title="Direct link to Rewind - Visual Timeline Playback" translate="no">​</a></h3>
+<p><strong>Rewind</strong> lets you &quot;replay&quot; your location history on the map, watching your movements over time.</p>
+<p><strong>Navigate to:</strong> Menu → Rewind</p>
+<p><strong>How to use:</strong></p>
+<ol>
+<li class="">Select a date range</li>
+<li class="">Click play to watch your movements</li>
+<li class="">Adjust playback speed</li>
+<li class="">Pause to see details at any point</li>
+</ol>
+<p><a class="" href="/geopulse/docs/user-guide/core-features/rewind">Learn more about Rewind</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="managing-places">Managing Places<a href="#managing-places" class="hash-link" aria-label="Direct link to Managing Places" title="Direct link to Managing Places" translate="no">​</a></h3>
+<p>Save frequently visited locations as <strong>Places</strong> for quick reference and better organization.</p>
+<p><strong>Navigate to:</strong> Menu → Places</p>
+<p><strong>Features:</strong></p>
+<ul>
+<li class="">Mark favorite locations</li>
+<li class="">Categorize places (home, work, gym, etc.)</li>
+<li class="">Automatically recognize future visits</li>
+<li class="">View visit history for each place</li>
+</ul>
+<p><a class="" href="/geopulse/docs/user-guide/core-features/managing-places">Learn more about Managing Places</a></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="next-steps-advanced-features">Next Steps: Advanced Features<a href="#next-steps-advanced-features" class="hash-link" aria-label="Direct link to Next Steps: Advanced Features" title="Direct link to Next Steps: Advanced Features" translate="no">​</a></h2>
+<p>Now that you&#x27;re familiar with the basics, explore these advanced features:</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="ai-assistant">AI Assistant<a href="#ai-assistant" class="hash-link" aria-label="Direct link to AI Assistant" title="Direct link to AI Assistant" translate="no">​</a></h3>
+<p>Enable AI-powered features for intelligent insights and natural language queries about your location history.</p>
+<p><a class="" href="/geopulse/docs/user-guide/personalization/ai-assistant-settings">Configure AI Assistant</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="location-sharing-with-friends">Location Sharing with Friends<a href="#location-sharing-with-friends" class="hash-link" aria-label="Direct link to Location Sharing with Friends" title="Direct link to Location Sharing with Friends" translate="no">​</a></h3>
+<p>Share your location with friends and see where they are in real-time (privacy-controlled).</p>
+<p><a class="" href="/geopulse/docs/user-guide/social-and-sharing/friends">Learn about Friends feature</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="custom-map-tiles">Custom Map Tiles<a href="#custom-map-tiles" class="hash-link" aria-label="Direct link to Custom Map Tiles" title="Direct link to Custom Map Tiles" translate="no">​</a></h3>
+<p>Customize the map appearance with satellite imagery, terrain maps, or custom styles.</p>
+<p><a class="" href="/geopulse/docs/user-guide/personalization/custom-map-tiles">Set up Custom Map Tiles</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="photo-integration-immich">Photo Integration (Immich)<a href="#photo-integration-immich" class="hash-link" aria-label="Direct link to Photo Integration (Immich)" title="Direct link to Photo Integration (Immich)" translate="no">​</a></h3>
+<p>Connect your Immich instance to see photos alongside your timeline.</p>
+<p><a class="" href="/geopulse/docs/user-guide/personalization/immich-integration">Configure Immich Integration</a></p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="backup-your-data">Backup Your Data<a href="#backup-your-data" class="hash-link" aria-label="Direct link to Backup Your Data" title="Direct link to Backup Your Data" translate="no">​</a></h3>
+<p>Regularly export your data to ensure you never lose your location history.</p>
+<p><strong>Quick backup:</strong></p>
+<ol>
+<li class="">Navigate to <strong>Menu → Import/Export Data</strong></li>
+<li class="">Select <strong>Export</strong> tab</li>
+<li class="">Choose <strong>GeoPulse</strong> format</li>
+<li class="">Select all data types</li>
+<li class="">Choose <strong>All Time</strong> date range</li>
+<li class="">Click <strong>Start Export</strong></li>
+<li class="">Download the backup file when ready</li>
+</ol>
+<p><a class="" href="/geopulse/docs/system-administration/maintenance/backup-restore">Learn more about Backup &amp; Restore</a></p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="common-questions">Common Questions<a href="#common-questions" class="hash-link" aria-label="Direct link to Common Questions" title="Direct link to Common Questions" translate="no">​</a></h2>
+<p><strong>Q: How often should my GPS app send location updates?</strong>
+A: For good timeline accuracy, configure your GPS app to send updates every 1-5 minutes. More frequent updates provide better trip detection but use more battery.</p>
+<p><strong>Q: Why don&#x27;t I see trips on my timeline yet?</strong>
+A: Timeline generation can take a few minutes after importing data or receiving new GPS points. Check the Timeline Generation progress in the import status.</p>
+<p><strong>Q: Can I use multiple GPS tracking apps?</strong>
+A: Yes! Create separate location sources for each app. GeoPulse will merge all data intelligently.</p>
+<p><strong>Q: How much data can GeoPulse handle?</strong>
+A: GeoPulse uses efficient streaming parsers and can handle years of location history. Import files up to 2GB are supported (200MB default, configurable).</p>
+<p><strong>Q: Will importing data delete my existing location history?</strong>
+A: Only if you enable &quot;Replace existing data in time range.&quot; Otherwise, new data is merged with existing data (slower but safer).</p>
+<p><strong>Q: How do I increase the 200MB upload limit?</strong>
+A: Administrators can increase the limit by setting <code>CLIENT_MAX_BODY_SIZE</code> in the deployment configuration. See <a class="" href="/geopulse/docs/system-administration/configuration/frontend">Frontend Configuration</a>.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="getting-help">Getting Help<a href="#getting-help" class="hash-link" aria-label="Direct link to Getting Help" title="Direct link to Getting Help" translate="no">​</a></h2>
+<p>If you run into issues:</p>
+<ol>
+<li class=""><strong>Check the documentation</strong> - Most topics have detailed guides</li>
+<li class=""><strong>Review troubleshooting sections</strong> - Common issues have solutions</li>
+<li class=""><strong>Report issues</strong> - Visit <a href="https://github.com/tess1o/geopulse/issues" target="_blank" rel="noopener noreferrer" class="">GitHub Issues</a></li>
+</ol>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="whats-next">What&#x27;s Next?<a href="#whats-next" class="hash-link" aria-label="Direct link to What&#x27;s Next?" title="Direct link to What&#x27;s Next?" translate="no">​</a></h2>
+<ul>
+<li class="">✅ Data imported or GPS source configured</li>
+<li class="">✅ Timeline showing your location history</li>
+<li class="">✅ Dashboard providing insights</li>
+</ul>
+<p>You&#x27;re all set! GeoPulse will now continuously track your location (from configured sources) and provide rich insights into your movements and travel patterns.</p>
+<p>Explore the User Guide sections to learn about advanced features, or dive into Configuration &amp; Administration if you&#x27;re managing GeoPulse for multiple users.</p>
+<p>Happy tracking! 🗺️</p></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/getting-started/introduction"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Introduction</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/getting-started/architecture-overview"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Architecture Overview</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#overview-your-first-steps" class="table-of-contents__link toc-highlight">Overview: Your First Steps</a></li><li><a href="#step-1-get-your-data-into-geopulse" class="table-of-contents__link toc-highlight">Step 1: Get Your Data Into GeoPulse</a><ul><li><a href="#do-you-have-existing-location-data" class="table-of-contents__link toc-highlight">Do You Have Existing Location Data?</a></li><li><a href="#how-to-import-your-data" class="table-of-contents__link toc-highlight">How to Import Your Data</a></li><li><a href="#detailed-import-documentation" class="table-of-contents__link toc-highlight">Detailed Import Documentation</a></li><li><a href="#what-if-i-dont-have-existing-data" class="table-of-contents__link toc-highlight">What If I Don&#39;t Have Existing Data?</a></li></ul></li><li><a href="#step-2-configure-gps-sources" class="table-of-contents__link toc-highlight">Step 2: Configure GPS Sources</a><ul><li><a href="#choose-your-gps-tracking-app" class="table-of-contents__link toc-highlight">Choose Your GPS Tracking App</a></li><li><a href="#quick-setup-process" class="table-of-contents__link toc-highlight">Quick Setup Process</a></li><li><a href="#detailed-setup-guides" class="table-of-contents__link toc-highlight">Detailed Setup Guides</a></li><li><a href="#advanced-data-mirroring" class="table-of-contents__link toc-highlight">Advanced: Data Mirroring</a></li></ul></li><li><a href="#step-3-explore-your-data" class="table-of-contents__link toc-highlight">Step 3: Explore Your Data</a><ul><li><a href="#timeline---your-location-history" class="table-of-contents__link toc-highlight">Timeline - Your Location History</a></li><li><a href="#dashboard---statistics-overview" class="table-of-contents__link toc-highlight">Dashboard - Statistics Overview</a></li><li><a href="#journey-insights---deep-analysis" class="table-of-contents__link toc-highlight">Journey Insights - Deep Analysis</a></li><li><a href="#rewind---visual-timeline-playback" class="table-of-contents__link toc-highlight">Rewind - Visual Timeline Playback</a></li><li><a href="#managing-places" class="table-of-contents__link toc-highlight">Managing Places</a></li></ul></li><li><a href="#next-steps-advanced-features" class="table-of-contents__link toc-highlight">Next Steps: Advanced Features</a><ul><li><a href="#ai-assistant" class="table-of-contents__link toc-highlight">AI Assistant</a></li><li><a href="#location-sharing-with-friends" class="table-of-contents__link toc-highlight">Location Sharing with Friends</a></li><li><a href="#custom-map-tiles" class="table-of-contents__link toc-highlight">Custom Map Tiles</a></li><li><a href="#photo-integration-immich" class="table-of-contents__link toc-highlight">Photo Integration (Immich)</a></li><li><a href="#backup-your-data" class="table-of-contents__link toc-highlight">Backup Your Data</a></li></ul></li><li><a href="#common-questions" class="table-of-contents__link toc-highlight">Common Questions</a></li><li><a href="#getting-help" class="table-of-contents__link toc-highlight">Getting Help</a></li><li><a href="#whats-next" class="table-of-contents__link toc-highlight">What&#39;s Next?</a></li></ul></div></div></div></div></main></div></div></div></div>
+</body>
+</html>
