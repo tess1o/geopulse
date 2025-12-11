@@ -19,6 +19,7 @@ const sidebars = {
             label: 'Getting Started',
             items: [
                 'getting-started/introduction',
+                'getting-started/quick-start',
                 'getting-started/architecture-overview',
                 {
                     type: 'category',
@@ -26,8 +27,7 @@ const sidebars = {
                     items: [
                         'getting-started/deployment/docker-compose',
                         'getting-started/deployment/kubernetes-helm',
-                        'getting-started/deployment/helm',
-                        'getting-started/deployment/helm-configuration-guide',
+                        'getting-started/deployment/helm-deployment',
                     ],
                 },
             ],
@@ -65,8 +65,16 @@ const sidebars = {
                     type: 'category',
                     label: 'Maintenance',
                     items: [
-                        'system-administration/maintenance/updating',
-                        'system-administration/maintenance/backup-restore',
+                        {
+                            type: 'doc',
+                            id: 'system-administration/maintenance/updating',
+                            label: 'Updating GeoPulse',
+                        },
+                        {
+                            type: 'doc',
+                            id: 'system-administration/maintenance/backup-restore',
+                            label: 'Backup & Restore',
+                        },
                     ],
                 },
             ],
@@ -76,8 +84,13 @@ const sidebars = {
             label: 'User Guide',
             items: [
                 {
+                    type: 'doc',
+                    id: 'user-guide/interacting-with-data/import-export',
+                    label: 'Import/Export Data',
+                },
+                {
                     type: 'category',
-                    label: 'Connecting GPS Sources',
+                    label: 'GPS Data Sources',
                     items: [
                         'user-guide/gps-sources/overview',
                         'user-guide/gps-sources/owntracks',
@@ -85,65 +98,56 @@ const sidebars = {
                         'user-guide/gps-sources/home_assistant',
                         'user-guide/gps-sources/gps_logger',
                         'user-guide/gps-sources/dawarich',
+                        'user-guide/gps-sources/data-mirroring',
                     ],
                 },
                 {
                     type: 'category',
-                    label: 'Core Features',
+                    label: 'Using GeoPulse',
                     items: [
-                        'user-guide/core-features/timeline',
                         'user-guide/core-features/dashboard',
-                        'user-guide/core-features/journey-insights',
-                        'user-guide/core-features/rewind',
-                        'user-guide/core-features/managing-places',
-                    ],
-                },
-                {
-                    type: 'category',
-                    label: 'Timeline Deep Dive',
-                    items: [
+                        'user-guide/core-features/timeline',
                         'user-guide/timeline/stay_detection',
                         'user-guide/timeline/trip_detection',
                         'user-guide/timeline/travel_classification',
                         'user-guide/timeline/data_gaps',
+                        'user-guide/core-features/rewind',
+                        'user-guide/core-features/journey-insights',
+                        'user-guide/core-features/managing-places',
+                        'user-guide/using-geopulse/ai-assistant',
                     ],
                 },
                 {
                     type: 'category',
-                    label: 'Interacting with Your Data',
+                    label: 'Sharing & Collaboration',
                     items: [
-                        'user-guide/interacting-with-data/import-export',
-                        'user-guide/interacting-with-data/ai-assistant',
+                        {
+                            type: 'doc',
+                            id: 'user-guide/social-and-sharing/friends',
+                            label: 'Friends (Coming Soon)',
+                        },
+                        {
+                            type: 'doc',
+                            id: 'user-guide/social-and-sharing/public-links',
+                            label: 'Public Links (Coming Soon)',
+                        },
                     ],
                 },
                 {
                     type: 'category',
-                    label: 'Social & Sharing',
+                    label: 'Settings & Personalization',
                     items: [
-                        'user-guide/social-and-sharing/friends',
-                        'user-guide/social-and-sharing/public-links',
-                    ],
-                },
-                {
-                    type: 'category',
-                    label: 'Personalization & Settings',
-                    items: [
-                        'user-guide/personalization/profile-settings',
+                        {
+                            type: 'doc',
+                            id: 'user-guide/personalization/profile-settings',
+                            label: 'Profile Settings',
+                        },
+                        'user-guide/personalization/ai-assistant-settings',
                         'user-guide/personalization/custom-map-tiles',
                         'user-guide/personalization/immich-integration',
                         'user-guide/personalization/measurement-units',
-                        'user-guide/personalization/ai-assistant-settings',
                     ],
                 },
-            ],
-        },
-        {
-            type: 'category',
-            label: 'Developer Guide',
-            items: [
-                'developer-guide/contributing',
-                'developer-guide/api-reference',
-                'developer-guide/roadmap',
             ],
         },
     ],

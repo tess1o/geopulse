@@ -152,7 +152,7 @@ spec:
     interval: 30s
 ```
 
-For more details on Helm configuration, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide#prometheus-metrics).
+For more details on Helm configuration, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#prometheus-metrics).
 
 :::note
 All configuration changes require an application restart to take effect. For Kubernetes deployments, this happens automatically during `helm upgrade`.

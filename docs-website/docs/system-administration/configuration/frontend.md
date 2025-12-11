@@ -70,4 +70,4 @@ frontend:
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
-For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-configuration-guide).
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment).
