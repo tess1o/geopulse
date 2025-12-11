@@ -29,16 +29,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
-  # Build Backend JVM (multi-arch)
-  build-backend-jvm:
+  # Build Backend JVM AMD64
+  build-backend-jvm-amd64:
     needs: prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -56,22 +53,63 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Backend JVM
+      - name: Build and push Backend JVM AMD64
         uses: docker/build-push-action@v5
         with:
           context: .
           file: backend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           build-args: |
             VERSION=${{ needs.prepare.outputs.version }}-jvm
           tags: |
-            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
-            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest
-            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
-            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-amd64
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest-amd64
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-amd64
+            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest-amd64
+          cache-from: type=gha,scope=jvm-amd64
+          cache-to: type=gha,mode=max,scope=jvm-amd64
+
+  # Build Backend JVM ARM64
+  build-backend-jvm-arm64:
+    needs: prepare
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Backend JVM ARM64
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ needs.prepare.outputs.version }}-jvm
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-arm64
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest-arm64
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-arm64
+            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest-arm64
+          cache-from: type=gha,scope=jvm-arm64
+          cache-to: type=gha,mode=max,scope=jvm-arm64
 
   # Build Backend Native AMD64
   build-backend-native-amd64:
@@ -80,9 +118,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -115,8 +150,8 @@ jobs:
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-amd64
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=native-amd64
+          cache-to: type=gha,mode=max,scope=native-amd64
 
   # Build Backend Native ARM64
   build-backend-native-arm64:
@@ -157,8 +192,8 @@ jobs:
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-latest-arm64
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
             ${{ env.GHCR_BACKEND_IMAGE }}:native-latest-arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=native-arm64
+          cache-to: type=gha,mode=max,scope=native-arm64
 
   # Build Backend Native AMD64 Compatible (x86-64-v2 for old CPUs)
   build-backend-native-amd64-compat:
@@ -167,9 +202,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -202,8 +234,8 @@ jobs:
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-amd64
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64-compat
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=native-compat-amd64
+          cache-to: type=gha,mode=max,scope=native-compat-amd64
 
   # Build Backend Native ARM64 Compatible (armv8-a+nolse for Raspberry Pi)
   build-backend-native-arm64-compat:
@@ -244,8 +276,8 @@ jobs:
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:native-compat-arm64
             ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64-compat
             ${{ env.GHCR_BACKEND_IMAGE }}:native-compat-arm64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=native-compat-arm64
+          cache-to: type=gha,mode=max,scope=native-compat-arm64
 
   # Build Frontend (multi-arch)
   build-frontend:
@@ -290,6 +322,52 @@ jobs:
             ${{ env.GHCR_FRONTEND_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Create multi-arch manifests for JVM backend
+  create-jvm-manifests:
+    needs: [prepare, build-backend-jvm-amd64, build-backend-jvm-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push Docker Hub JVM manifests
+        run: |
+          # Create versioned manifest
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-arm64
+
+          # Create latest manifest
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:jvm-latest-arm64
+
+      - name: Create and push GHCR JVM manifests
+        run: |
+          # Create versioned manifest
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm-arm64
+
+          # Create latest manifest
+          docker buildx imagetools create \
+            -t ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest \
+            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest-amd64 \
+            ${{ env.GHCR_BACKEND_IMAGE }}:jvm-latest-arm64
 
   # Create multi-arch manifests for native backend (optimized)
   create-native-manifests:
@@ -389,7 +467,7 @@ jobs:
 
   # Publish Helm charts and documentation to GitHub Pages
   publish-helm-and-docs:
-    needs: [prepare, build-backend-jvm, build-frontend, create-native-manifests, create-native-compat-manifests]
+    needs: [prepare, build-frontend, create-jvm-manifests, create-native-manifests, create-native-compat-manifests]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

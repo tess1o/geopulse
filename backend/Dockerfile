@@ -5,14 +5,21 @@ WORKDIR /app
 # Copy parent pom.xml first
 COPY pom.xml .
 
-# Create backend directory and copy its pom.xml
+# Copy backend pom.xml
 COPY backend/pom.xml backend/
-# Copy backend source code
-COPY backend/src backend/src
 
-# Build the application
+# Download dependencies BEFORE copying source
+# This layer only invalidates when POMs change, not when source changes
 WORKDIR /app/backend
-RUN mvn package -DskipTests -Dquarkus.profile=prod
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn dependency:go-offline
+
+# NOW copy backend source code
+COPY backend/src src/
+
+# Build the application with cached dependencies
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -DskipTests -Dquarkus.profile=prod
 
 # Stage 2: Create a minimal runtime image
 FROM eclipse-temurin:25-jdk-alpine

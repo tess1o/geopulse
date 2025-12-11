@@ -21,8 +21,9 @@ COPY --chown=quarkus:quarkus backend/pom.xml backend/
 USER quarkus
 WORKDIR /app
 
-# Pre-download dependencies (optional, speeds up builds)
-RUN ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.9.0:go-offline -f backend/pom.xml
+# Pre-download dependencies (including native profile dependencies)
+RUN --mount=type=cache,target=/home/quarkus/.m2,uid=1001,gid=1001 \
+    ./mvnw -B org.apache.maven.plugins:maven-dependency-plugin:3.9.0:go-offline -f backend/pom.xml -Pnative
 
 # Copy backend sources
 COPY --chown=quarkus:quarkus backend/src backend/src
@@ -32,7 +33,8 @@ COPY --chown=quarkus:quarkus backend/src backend/src
 # For old CPUs/Raspberry Pi, override via QUARKUS_NATIVE_BUILD_ARGS:
 #   AMD64 compatible (x86-64-v2): QUARKUS_NATIVE_BUILD_ARGS=",-march=x86-64-v2"
 #   ARM64 compatible (Raspberry Pi): QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a+nolse"
-RUN ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
+RUN --mount=type=cache,target=/home/quarkus/.m2,uid=1001,gid=1001 \
+    ./mvnw package -DskipTests -Pnative -f backend/pom.xml -Dquarkus.profile=prod
 
 # ==========================
 # Stage 2: Runtime image
