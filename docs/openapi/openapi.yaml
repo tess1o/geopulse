@@ -2748,7 +2748,7 @@ paths:
       - Reverse Geocoding Resource
       security:
       - jwt: []
-  /api/geocoding/reconcile:
+  /api/geocoding/reconcile/bulk:
     post:
       requestBody:
         content:
@@ -2765,7 +2765,49 @@ paths:
           description: Not Allowed
         "400":
           description: Bad Request
-      summary: Reconcile With Provider
+      summary: Reconcile With Provider Bulk
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/geocoding/reconcile/jobs/{jobId}:
+    get:
+      parameters:
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Reconciliation Job Progress
+      tags:
+      - Reverse Geocoding Resource
+      security:
+      - jwt: []
+  /api/geocoding/reconcile/single:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReverseGeocodingReconcileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Reconcile Single
       tags:
       - Reverse Geocoding Resource
       security:
@@ -4793,7 +4835,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.9.0
+  version: 1.9.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
