@@ -329,6 +329,7 @@ const timezoneOptions = [
   { label: 'Asia/Tokyo GMT+9', value: 'Asia/Tokyo' },
   { label: 'Asia/Seoul GMT+9', value: 'Asia/Seoul' },
   { label: 'Australia/Darwin GMT+9:30', value: 'Australia/Darwin' },
+  { label: 'Australia/Brisbane GMT+10', value: 'Australia/Brisbane' },
   { label: 'Australia/Sydney GMT+10', value: 'Australia/Sydney' },
   { label: 'Australia/Melbourne GMT+10', value: 'Australia/Melbourne' },
   { label: 'Australia/Adelaide GMT+10:30', value: 'Australia/Adelaide' },
