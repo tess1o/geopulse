@@ -118,6 +118,24 @@
           }
         }
       },
+      "BulkAddFavoritesDto" : {
+        "required" : [ "points", "areas" ],
+        "type" : "object",
+        "properties" : {
+          "points" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AddPointToFavoritesDto"
+            }
+          },
+          "areas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AddAreaToFavoritesDto"
+            }
+          }
+        }
+      },
       "BulkDeleteGpsPointsDto" : {
         "required" : [ "gpsPointIds" ],
         "type" : "object",
@@ -489,6 +507,14 @@
             "maxLength" : 100,
             "pattern" : "\\S",
             "type" : "string"
+          },
+          "city" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "country" : {
+            "maxLength" : 100,
+            "type" : "string"
           }
         }
       },
@@ -519,6 +545,36 @@
           },
           "endDate" : {
             "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
+      "FavoriteLocationType" : {
+        "enum" : [ "POINT", "AREA" ],
+        "type" : "string"
+      },
+      "FavoriteReconcileRequest" : {
+        "required" : [ "providerName", "favoriteIds" ],
+        "type" : "object",
+        "properties" : {
+          "providerName" : {
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "favoriteIds" : {
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          "reconcileAll" : {
+            "type" : "boolean"
+          },
+          "filterByType" : {
+            "$ref" : "#/components/schemas/FavoriteLocationType"
+          },
+          "filterBySearchText" : {
+            "type" : "string"
           }
         }
       },
@@ -3344,6 +3400,39 @@
         } ]
       }
     },
+    "/api/favorites/bulk" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkAddFavoritesDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Bulk Add Favorites",
+        "tags" : [ "Favorites Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/favorites/point" : {
       "post" : {
         "requestBody" : {
@@ -3371,6 +3460,67 @@
           }
         },
         "summary" : "Add Point To Favorites",
+        "tags" : [ "Favorites Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/favorites/reconcile/bulk" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/FavoriteReconcileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Reconcile Favorites Bulk",
+        "tags" : [ "Favorites Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/favorites/reconcile/jobs/{jobId}" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "jobId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Reconciliation Job Progress",
         "tags" : [ "Favorites Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -6806,7 +6956,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.9.1",
+    "version" : "1.10.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
