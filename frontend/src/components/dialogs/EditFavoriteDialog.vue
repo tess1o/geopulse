@@ -4,21 +4,45 @@
           modal
           @hide="onDialogHide">
     <div class="edit-favorite-content">
-      <InputText 
-        v-model="favoriteLocation.name" 
-        placeholder="Enter location name"
-        class="w-full"
-      />
+      <div class="form-field">
+        <label for="name" class="field-label">Name</label>
+        <InputText
+          id="name"
+          v-model="favoriteLocation.name"
+          placeholder="Enter location name"
+          class="w-full"
+        />
+      </div>
+
+      <div class="form-field">
+        <label for="city" class="field-label">City</label>
+        <InputText
+          id="city"
+          v-model="favoriteLocation.city"
+          placeholder="Enter city (optional)"
+          class="w-full"
+        />
+      </div>
+
+      <div class="form-field">
+        <label for="country" class="field-label">Country</label>
+        <InputText
+          id="country"
+          v-model="favoriteLocation.country"
+          placeholder="Enter country (optional)"
+          class="w-full"
+        />
+      </div>
     </div>
     <template #footer>
-      <Button 
-        label="Cancel" 
-        severity="secondary" 
-        outlined 
+      <Button
+        label="Cancel"
+        severity="secondary"
+        outlined
         @click="onDialogHide"
       />
-      <Button 
-        label="Save" 
+      <Button
+        label="Save"
         @click="onEditButton"
       />
     </template>
@@ -43,7 +67,11 @@ export default {
   },
   methods: {
     onEditButton() {
-      this.$emit('edit-favorite', this.favoriteLocation);
+      this.$emit('edit-favorite', {
+        name: this.favoriteLocation.name,
+        city: this.favoriteLocation.city,
+        country: this.favoriteLocation.country
+      });
       this.internalVisible = false;
     },
     onDialogHide() {
@@ -66,6 +94,21 @@ export default {
 <style scoped>
 .edit-favorite-content {
   padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--gp-text-primary);
 }
 
 /* GeoPulse Dialog Styling */

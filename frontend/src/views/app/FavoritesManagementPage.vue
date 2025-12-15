@@ -9,6 +9,23 @@
       <template #actions>
         <div class="header-actions">
           <span class="header-info">Right-click on map to add favorites</span>
+          <Button
+            :label="`Reconcile All (${totalRecords})`"
+            icon="pi pi-refresh"
+            severity="secondary"
+            size="small"
+            @click="reconcileAll"
+            :disabled="totalRecords === 0"
+          />
+          <Button
+            v-if="selectedRows.length > 0"
+            :label="`Reconcile Selected (${selectedRows.length})`"
+            icon="pi pi-refresh"
+            severity="info"
+            size="small"
+            @click="reconcileSelected"
+            class="bulk-action-button"
+          />
         </div>
       </template>
 
@@ -76,6 +93,8 @@
             data-key="id"
             responsive-layout="scroll"
             class="favorites-table"
+            v-model:selection="selectedRows"
+            selection-mode="multiple"
         >
           <template #header>
             <div class="table-header">
@@ -90,6 +109,9 @@
               <p>Add your first favorite location to get started.</p>
             </div>
           </template>
+
+          <!-- Selection Column -->
+          <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col"></Column>
 
           <Column field="name" header="Name" sortable class="name-col">
             <template #body="slotProps">
@@ -191,6 +213,20 @@
           @close="showEditDialog = false"
       />
 
+      <!-- Reconcile Dialog -->
+      <FavoriteReconcileDialog
+          :visible="showReconcileDialog"
+          :selected-results="selectedReconcileResults"
+          :enabled-providers="enabledProviders"
+          :reconcile-mode="reconcileMode"
+          :total-records="totalRecords"
+          :current-filters="{ type: selectedType, searchText: searchText }"
+          :job-progress="reconciliationJobProgress"
+          @close="showReconcileDialog = false"
+          @reconcile="handleReconcile"
+          @reconcile-complete="handleReconcileComplete"
+      />
+
       <!-- Add Favorite Dialog -->
       <AddFavoriteDialog
           :visible="showAddDialog"
@@ -232,7 +268,9 @@ import {useRouter} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useFavoritesStore} from '@/stores/favorites'
+import {useGeocodingStore} from '@/stores/geocoding'
 import {useRectangleDrawing} from '@/composables/useRectangleDrawing'
+import {useFavoriteReconciliationProgress} from '@/composables/useFavoriteReconciliationProgress'
 import BaseMap from '@/components/maps/BaseMap.vue'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -240,6 +278,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import AddFavoriteDialog from '@/components/dialogs/AddFavoriteDialog.vue'
+import FavoriteReconcileDialog from '@/components/dialogs/FavoriteReconcileDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
 // PrimeVue
@@ -256,6 +295,7 @@ import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 
 // Store and utils
 const favoritesStore = useFavoritesStore()
+const geocodingStore = useGeocodingStore()
 const toast = useToast()
 const router = useRouter()
 const confirm = useConfirm()
@@ -268,6 +308,13 @@ const {
   jobProgress,
   withTimelineRegeneration
 } = useTimelineRegeneration()
+
+// Reconciliation progress tracking
+const {
+  jobProgress: reconciliationJobProgress,
+  startPolling,
+  reset: resetReconciliationProgress
+} = useFavoriteReconciliationProgress()
 
 // Reactive state
 const isMobile = ref(false)
@@ -283,7 +330,11 @@ const tableLoading = ref(false)
 // Dialog states
 const showEditDialog = ref(false)
 const showAddDialog = ref(false)
+const showReconcileDialog = ref(false)
 const selectedFavorite = ref(null)
+const selectedRows = ref([])
+const reconcileMode = ref('selected') // 'selected' | 'all'
+const enabledProviders = ref([])
 const addDialogHeader = ref('Add Point to Favorites')
 const pendingAddCoordinates = ref(null)
 const pendingAddBounds = ref(null)
@@ -370,6 +421,10 @@ const typeOptions = [
 const hasActiveFilters = computed(() =>
     selectedType.value !== null || (searchText.value && searchText.value.trim() !== '')
 )
+
+const selectedReconcileResults = computed(() => {
+  return selectedRows.value.length > 0 ? selectedRows.value : []
+})
 
 // Context menu items
 const mapMenuItems = ref([
@@ -505,7 +560,12 @@ const handleEditSave = async (updatedData) => {
   if (!selectedFavorite.value) return
 
   try {
-    await favoritesStore.editFavorite(selectedFavorite.value.id, updatedData.name)
+    await favoritesStore.editFavorite(
+      selectedFavorite.value.id,
+      updatedData.name,
+      updatedData.city,
+      updatedData.country
+    )
 
     toast.add({
       severity: 'success',
@@ -527,6 +587,72 @@ const handleEditSave = async (updatedData) => {
       detail: error.message || 'Failed to update favorite location',
       life: 5000
     })
+  }
+}
+
+const reconcileSelected = () => {
+  reconcileMode.value = 'selected'
+  showReconcileDialog.value = true
+}
+
+const reconcileAll = () => {
+  selectedRows.value = []
+  reconcileMode.value = 'all'
+  showReconcileDialog.value = true
+}
+
+const handleReconcile = async (reconcileData) => {
+  try {
+    // Start bulk reconciliation job
+    const result = await favoritesStore.startBulkReconciliation(reconcileData)
+    const jobId = result.jobId
+
+    // Start polling for progress
+    await startPolling(jobId)
+
+    // Dialog will auto-close when job completes
+  } catch (error) {
+    console.error('Error starting favorite reconciliation:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Reconciliation Failed',
+      detail: error.message || 'Failed to start reconciliation',
+      life: 5000
+    })
+    showReconcileDialog.value = false
+  }
+}
+
+const handleReconcileComplete = async () => {
+  const progress = reconciliationJobProgress.value
+
+  const successMsg = `Successfully reconciled ${progress.successCount} of ${progress.totalItems} favorites`
+  const severity = progress.failedCount > 0 ? 'warn' : 'success'
+
+  toast.add({
+    severity: severity,
+    summary: 'Reconciliation Complete',
+    detail: successMsg,
+    life: 5000
+  })
+
+  // Reset state
+  selectedRows.value = []
+  resetReconciliationProgress()
+
+  // Reload data
+  await loadFavorites()
+
+  // Close dialog
+  showReconcileDialog.value = false
+}
+
+const loadEnabledProviders = async () => {
+  try {
+    const providers = await geocodingStore.fetchEnabledProviders()
+    enabledProviders.value = providers
+  } catch (error) {
+    console.error('Error loading enabled providers:', error)
   }
 }
 
@@ -838,7 +964,10 @@ onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
 
-  await loadFavorites()
+  await Promise.all([
+    loadFavorites(),
+    loadEnabledProviders()
+  ])
 })
 
 onUnmounted(() => {

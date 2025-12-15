@@ -141,10 +141,12 @@ export const useFavoritesStore = defineStore('favorites', {
             }
         },
 
-        async editFavorite(id, name) {
+        async editFavorite(id, name, city, country) {
             try {
                 await apiService.put(`/favorites/${id}`, {
-                    name
+                    name,
+                    city,
+                    country
                 })
 
                 // Refresh favorites to get the updated list from backend
@@ -168,5 +170,25 @@ export const useFavoritesStore = defineStore('favorites', {
                 throw error
             }
         },
+
+        async startBulkReconciliation(request) {
+            try {
+                const response = await apiService.post('/favorites/reconcile/bulk', request)
+                return response.data // { jobId: "uuid" }
+            } catch (error) {
+                console.error('Error starting bulk favorite reconciliation:', error)
+                throw error
+            }
+        },
+
+        async getReconciliationJobProgress(jobId) {
+            try {
+                const response = await apiService.get(`/favorites/reconcile/jobs/${jobId}`)
+                return response.data
+            } catch (error) {
+                console.error('Error fetching favorite reconciliation job progress:', error)
+                throw error
+            }
+        }
     }
 })

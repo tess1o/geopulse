@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.favorites.model.*;
         EditFavoriteDto.class,
         FavoriteLocationsDto.class,
         FavoritesEntity.class,
+        FavoriteReconcileRequest.class,
 })
 public class FavoritesNativeConfig {
 }
