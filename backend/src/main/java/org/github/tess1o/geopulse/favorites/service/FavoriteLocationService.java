@@ -2,6 +2,8 @@ package org.github.tess1o.geopulse.favorites.service;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.context.ManagedExecutor;
+import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Event;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
@@ -11,16 +13,20 @@ import org.github.tess1o.geopulse.favorites.model.*;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
+import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.events.FavoriteAddedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.Polygon;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -41,6 +47,8 @@ public class FavoriteLocationService {
     private final Event<FavoriteDeletedEvent> favoriteDeletedEvent;
     private final Event<FavoriteRenamedEvent> favoriteRenamedEvent;
     private final org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService;
+    private final ReconciliationJobProgressService reconciliationProgressService;
+    private final ManagedExecutor managedExecutor;
 
     public FavoriteLocationService(FavoritesRepository repository,
                                    FavoriteLocationMapper mapper,
@@ -48,7 +56,9 @@ public class FavoriteLocationService {
                                    Event<FavoriteAddedEvent> favoriteAddedEvent,
                                    Event<FavoriteDeletedEvent> favoriteDeletedEvent,
                                    Event<FavoriteRenamedEvent> favoriteRenamedEvent,
-                                   org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService) {
+                                   org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService,
+                                   ReconciliationJobProgressService reconciliationProgressService,
+                                   ManagedExecutor managedExecutor) {
         this.repository = repository;
         this.mapper = mapper;
         this.geocodingService = geocodingService;
@@ -56,6 +66,8 @@ public class FavoriteLocationService {
         this.favoriteDeletedEvent = favoriteDeletedEvent;
         this.favoriteRenamedEvent = favoriteRenamedEvent;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
+        this.reconciliationProgressService = reconciliationProgressService;
+        this.managedExecutor = managedExecutor;
         this.maxDistanceFromPoint = maxDistanceFromPoint;
         this.maxDistanceFromArea = maxDistanceFromArea;
     }
@@ -82,10 +94,10 @@ public class FavoriteLocationService {
             entity.setCountry(geocodingResult.getCountry());
 
             log.debug("Populated geocoding data for favorite: city={}, country={}",
-                     geocodingResult.getCity(), geocodingResult.getCountry());
+                    geocodingResult.getCity(), geocodingResult.getCountry());
         } catch (Exception e) {
             log.warn("Failed to get geocoding data for favorite at [{}, {}]: {}",
-                     favorite.getLat(), favorite.getLon(), e.getMessage());
+                    favorite.getLat(), favorite.getLon(), e.getMessage());
             // Continue without geocoding data - city and country will be null
         }
 
@@ -125,7 +137,7 @@ public class FavoriteLocationService {
             entity.setCountry(geocodingResult.getCountry());
 
             log.debug("Populated geocoding data for area favorite using center point [{}, {}]: city={}, country={}",
-                     centerLat, centerLon, geocodingResult.getCity(), geocodingResult.getCountry());
+                    centerLat, centerLon, geocodingResult.getCity(), geocodingResult.getCountry());
         } catch (Exception e) {
             log.warn("Failed to get geocoding data for area favorite: {}", e.getMessage());
             // Continue without geocoding data - city and country will be null
@@ -145,6 +157,116 @@ public class FavoriteLocationService {
         log.info("Successfully added area favorite {} for user {}", favorite.getName(), userId);
     }
 
+    @Transactional
+    public BulkAddFavoritesResult bulkAddFavorites(UUID userId, BulkAddFavoritesDto bulkDto) {
+        log.info("Starting bulk add favorites for user {}: {} points, {} areas",
+                userId, bulkDto.getPoints().size(), bulkDto.getAreas().size());
+
+        List<Long> createdFavoriteIds = new java.util.ArrayList<>();
+        Map<Integer, String> failures = new java.util.HashMap<>();
+        int index = 0;
+        int totalRequested = bulkDto.getPoints().size() + bulkDto.getAreas().size();
+
+        // Process points
+        for (AddPointToFavoritesDto pointDto : bulkDto.getPoints()) {
+            try {
+                validatePointFavorite(pointDto);
+
+                FavoritesEntity entity = mapper.toEntity(pointDto, userId);
+
+                // Get geocoding data to populate city and country
+                try {
+                    Point point = GeoUtils.createPoint(pointDto.getLon(), pointDto.getLat());
+                    FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
+                    entity.setCity(geocodingResult.getCity());
+                    entity.setCountry(geocodingResult.getCountry());
+                } catch (Exception e) {
+                    log.warn("Failed to get geocoding data for point favorite '{}' at [{}, {}]: {}",
+                            pointDto.getName(), pointDto.getLat(), pointDto.getLon(), e.getMessage());
+                    // Continue without geocoding data
+                }
+
+                repository.persist(entity);
+
+                // Fire event for timeline system
+                favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
+                        .favoriteId(entity.getId())
+                        .userId(userId)
+                        .favoriteName(entity.getName())
+                        .favoriteType(entity.getType())
+                        .geometry(entity.getGeometry())
+                        .build());
+
+                createdFavoriteIds.add(entity.getId());
+                log.debug("Successfully added point favorite '{}' (ID: {}) in bulk operation",
+                        pointDto.getName(), entity.getId());
+
+            } catch (Exception e) {
+                log.warn("Failed to add point favorite at index {}: {}", index, e.getMessage());
+                failures.put(index, e.getMessage());
+            }
+            index++;
+        }
+
+        // Process areas
+        for (AddAreaToFavoritesDto areaDto : bulkDto.getAreas()) {
+            try {
+                validateAreaFavorite(areaDto);
+
+                FavoritesEntity entity = mapper.toEntity(areaDto, userId);
+
+                // Get geocoding data using the center point of the area
+                try {
+                    double centerLat = (areaDto.getNorthEastLat() + areaDto.getSouthWestLat()) / 2.0;
+                    double centerLon = (areaDto.getNorthEastLon() + areaDto.getSouthWestLon()) / 2.0;
+                    Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
+
+                    FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
+                    entity.setCity(geocodingResult.getCity());
+                    entity.setCountry(geocodingResult.getCountry());
+                } catch (Exception e) {
+                    log.warn("Failed to get geocoding data for area favorite '{}': {}",
+                            areaDto.getName(), e.getMessage());
+                    // Continue without geocoding data
+                }
+
+                repository.persist(entity);
+
+                // Fire event for timeline system
+                favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
+                        .favoriteId(entity.getId())
+                        .userId(userId)
+                        .favoriteName(entity.getName())
+                        .favoriteType(entity.getType())
+                        .geometry(entity.getGeometry())
+                        .build());
+
+                createdFavoriteIds.add(entity.getId());
+                log.debug("Successfully added area favorite '{}' (ID: {}) in bulk operation",
+                        areaDto.getName(), entity.getId());
+
+            } catch (Exception e) {
+                log.warn("Failed to add area favorite at index {}: {}", index, e.getMessage());
+                failures.put(index, e.getMessage());
+            }
+            index++;
+        }
+
+        int successCount = createdFavoriteIds.size();
+        int failedCount = failures.size();
+
+        log.info("Bulk add favorites completed for user {}: {} successful, {} failed out of {} total",
+                userId, successCount, failedCount, totalRequested);
+
+        return BulkAddFavoritesResult.builder()
+                .totalRequested(totalRequested)
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .createdFavoriteIds(createdFavoriteIds)
+                .failures(failures)
+                .build();
+    }
+
     public FavoriteLocationsDto findByPoint(UUID userId, Point point) {
         Optional<FavoritesEntity> favorite = repository.findByPoint(userId, point, maxDistanceFromPoint, maxDistanceFromArea);
         if (favorite.isEmpty()) {
@@ -157,33 +279,39 @@ public class FavoriteLocationService {
     /**
      * Batch find favorites by multiple points with spatial matching.
      * Uses true batch processing to avoid N+1 query problem.
-     * 
+     *
      * @param userId User ID for favorite location lookup
      * @param points List of points to search for
      * @return Map of coordinate string (lon,lat) to FavoriteLocationsDto
      */
     public Map<String, FavoriteLocationsDto> findByPointsBatch(UUID userId, List<Point> points) {
         Map<String, FavoritesEntity> entities = repository.findByPointsBatch(userId, points, maxDistanceFromPoint, maxDistanceFromArea);
-        
+
         Map<String, FavoriteLocationsDto> results = new java.util.HashMap<>();
         for (Map.Entry<String, FavoritesEntity> entry : entities.entrySet()) {
             String coordKey = entry.getKey();
             FavoritesEntity entity = entry.getValue();
-            
+
             // Convert single entity to DTO format (same as findByPoint)
             List<FavoritesEntity> favorites = List.of(entity);
             FavoriteLocationsDto dto = mapper.toFavoriteLocationDto(favorites);
             results.put(coordKey, dto);
         }
-        
+
         return results;
     }
 
     @Transactional
     public void renameFavorite(UUID userId, long favoriteId, String newName) {
+        updateFavorite(userId, favoriteId, newName, null, null);
+    }
+
+    @Transactional
+    public void updateFavorite(UUID userId, long favoriteId, String newName, String city, String country) {
         validateName(newName);
 
-        log.debug("User {} attempting to rename favorite {} to '{}'", userId, favoriteId, newName);
+        log.debug("User {} attempting to update favorite {}: name='{}', city='{}', country='{}'",
+                userId, favoriteId, newName, city, country);
 
         FavoritesEntity favoritesEntity = repository.findById(favoriteId);
         if (favoritesEntity == null) {
@@ -199,20 +327,24 @@ public class FavoriteLocationService {
 
         String oldName = favoritesEntity.getName();
         favoritesEntity.setName(newName);
+        favoritesEntity.setCity(city);
+        favoritesEntity.setCountry(country);
         repository.persistAndFlush(favoritesEntity);
-        
-        // Fire event for timeline system
-        favoriteRenamedEvent.fire(FavoriteRenamedEvent.builder()
-                .favoriteId(favoriteId)
-                .userId(userId)
-                .oldName(oldName)
-                .newName(newName)
-                .favoriteType(favoritesEntity.getType())
-                .geometry(favoritesEntity.getGeometry())
-                .build());
 
-        log.info("User {} successfully renamed favorite {} from '{}' to '{}'",
-                userId, favoriteId, oldName, newName);
+        // Fire event for timeline system (only if name changed)
+        if (!oldName.equals(newName)) {
+            favoriteRenamedEvent.fire(FavoriteRenamedEvent.builder()
+                    .favoriteId(favoriteId)
+                    .userId(userId)
+                    .oldName(oldName)
+                    .newName(newName)
+                    .favoriteType(favoritesEntity.getType())
+                    .geometry(favoritesEntity.getGeometry())
+                    .build());
+        }
+
+        log.info("User {} successfully updated favorite {}: name='{}', city='{}', country='{}'",
+                userId, favoriteId, newName, city, country);
     }
 
     @Transactional
@@ -256,6 +388,159 @@ public class FavoriteLocationService {
         } catch (IllegalStateException e) {
             log.warn("Could not create regeneration job for user {}: {}", userId, e.getMessage());
             return null;
+        }
+    }
+
+    // Reconciliation methods
+
+    /**
+     * Start async bulk reconciliation job and return job ID immediately.
+     *
+     * @param currentUserId Current user ID
+     * @param request       Reconciliation request
+     * @return Job ID for progress tracking
+     */
+    public UUID reconcileWithProviderAsync(UUID currentUserId, FavoriteReconcileRequest request) {
+        List<Long> idsToReconcile = determineIdsToReconcile(currentUserId, request);
+
+        // Create job
+        UUID jobId = reconciliationProgressService.createJob(
+                currentUserId, request.getProviderName(), idsToReconcile.size());
+
+        log.info("Starting async favorite reconciliation job {} for user {} ({} items)",
+                jobId, currentUserId, idsToReconcile.size());
+
+        // Run reconciliation asynchronously using ManagedExecutor
+        CompletableFuture.runAsync(() -> {
+            try {
+                processFavoriteReconciliationJob(jobId, currentUserId, idsToReconcile);
+            } catch (Exception e) {
+                log.error("Failed to process favorite reconciliation job {}", jobId, e);
+                reconciliationProgressService.failJob(jobId, e.getMessage());
+            }
+        }, managedExecutor);
+
+        return jobId;
+    }
+
+    /**
+     * Process reconciliation job with progress tracking.
+     * This method runs in a separate thread and updates progress after each item.
+     *
+     * @param jobId       Job ID
+     * @param userId      User ID
+     * @param favoriteIds List of favorite IDs to reconcile
+     */
+    @Transactional
+    @ActivateRequestContext
+    void processFavoriteReconciliationJob(UUID jobId, UUID userId, List<Long> favoriteIds) {
+        int successCount = 0;
+        int failedCount = 0;
+
+        log.info("Processing favorite reconciliation job {} with {} items", jobId, favoriteIds.size());
+
+        for (int i = 0; i < favoriteIds.size(); i++) {
+            Long favoriteId = favoriteIds.get(i);
+
+            try {
+                reconcileSingleFavorite(userId, favoriteId);
+                successCount++;
+            } catch (Exception e) {
+                failedCount++;
+                log.warn("Failed to reconcile favorite {} in job {}: {}", favoriteId, jobId, e.getMessage());
+            }
+
+            // Update progress after each item
+            reconciliationProgressService.updateProgress(jobId, i + 1, successCount, failedCount);
+        }
+
+        // Mark complete
+        reconciliationProgressService.completeJob(jobId);
+        log.info("Favorite reconciliation job {} completed: {} success, {} failed",
+                jobId, successCount, failedCount);
+    }
+
+    /**
+     * Reconcile a single favorite with reverse geocoding.
+     * Updates ONLY city and country - all other fields unchanged.
+     *
+     * @param userId     User ID
+     * @param favoriteId Favorite ID to reconcile
+     */
+    @Transactional
+    void reconcileSingleFavorite(UUID userId, Long favoriteId) {
+        FavoritesEntity favorite = repository.findById(favoriteId);
+        if (favorite == null) {
+            throw new IllegalArgumentException("Favorite not found: " + favoriteId);
+        }
+
+        // Security check
+        if (!favorite.getUser().getId().equals(userId)) {
+            throw new SecurityException("Cannot reconcile another user's favorite");
+        }
+
+        try {
+            Point point;
+            if (favorite.getType() == FavoriteLocationType.POINT) {
+                // For points, use the point coordinates directly
+                org.locationtech.jts.geom.Point geomPoint = (org.locationtech.jts.geom.Point) favorite.getGeometry();
+                point = GeoUtils.createPoint(geomPoint.getX(), geomPoint.getY());
+            } else {
+                // For areas, use the center point
+                Polygon polygon = (Polygon) favorite.getGeometry();
+                org.locationtech.jts.geom.Coordinate centroid = polygon.getCentroid().getCoordinate();
+                point = GeoUtils.createPoint(centroid.x, centroid.y);
+            }
+
+            // Fetch fresh geocoding data
+            FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
+
+            // Update ONLY city and country
+            favorite.setCity(geocodingResult.getCity());
+            favorite.setCountry(geocodingResult.getCountry());
+            repository.persistAndFlush(favorite);
+
+            log.debug("Reconciled favorite {}: city='{}', country='{}'",
+                    favoriteId, geocodingResult.getCity(), geocodingResult.getCountry());
+
+        } catch (Exception e) {
+            log.error("Failed to reconcile favorite {}: {}", favoriteId, e.getMessage(), e);
+            throw new RuntimeException("Reconciliation failed: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Determine which IDs to reconcile based on request.
+     *
+     * @param userId  User ID
+     * @param request Reconciliation request
+     * @return List of favorite IDs to reconcile
+     */
+    private List<Long> determineIdsToReconcile(UUID userId, FavoriteReconcileRequest request) {
+        if (Boolean.TRUE.equals(request.getReconcileAll())) {
+            // Get all favorites for user with filters
+            List<FavoritesEntity> favorites = repository.findByUserId(userId);
+
+            return favorites.stream()
+                    .filter(f -> {
+                        // Filter by type if specified
+                        if (request.getFilterByType() != null && f.getType() != request.getFilterByType()) {
+                            return false;
+                        }
+                        // Filter by search text if specified
+                        if (request.getFilterBySearchText() != null && !request.getFilterBySearchText().trim().isEmpty()) {
+                            String searchLower = request.getFilterBySearchText().toLowerCase();
+                            return f.getName().toLowerCase().contains(searchLower) ||
+                                    (f.getCity() != null && f.getCity().toLowerCase().contains(searchLower)) ||
+                                    (f.getCountry() != null && f.getCountry().toLowerCase().contains(searchLower));
+                        }
+                        return true;
+                    })
+                    .map(FavoritesEntity::getId)
+                    .collect(Collectors.toList());
+        } else {
+            // Reconcile only specified IDs
+            return request.getFavoriteIds();
         }
     }
 

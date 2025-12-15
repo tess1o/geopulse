@@ -1,6 +1,5 @@
 package org.github.tess1o.geopulse.geocoding.service;
 
-import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.inject.Inject;

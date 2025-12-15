@@ -9,6 +9,41 @@
       <template #actions>
         <div class="header-actions">
           <span class="header-info">Right-click on map to add favorites</span>
+          <Button
+            :label="bulkAddMode ? 'Bulk Mode: ON' : 'Bulk Mode: OFF'"
+            :icon="bulkAddMode ? 'pi pi-check-square' : 'pi pi-square'"
+            :severity="bulkAddMode ? 'success' : 'secondary'"
+            size="small"
+            @click="toggleBulkMode"
+            v-tooltip.bottom="'Enable bulk mode to add multiple favorites before timeline regeneration'"
+          />
+          <Button
+            v-if="hasPendingFavorites"
+            :label="`Save ${pendingCount} Pending`"
+            icon="pi pi-save"
+            severity="success"
+            size="small"
+            @click="handleBulkSaveClick"
+            class="save-pending-button"
+            v-tooltip.bottom="'Save all pending favorites and regenerate timeline'"
+          />
+          <Button
+            :label="`Reconcile All (${totalRecords})`"
+            icon="pi pi-refresh"
+            severity="secondary"
+            size="small"
+            @click="reconcileAll"
+            :disabled="totalRecords === 0"
+          />
+          <Button
+            v-if="selectedRows.length > 0"
+            :label="`Reconcile Selected (${selectedRows.length})`"
+            icon="pi pi-refresh"
+            severity="info"
+            size="small"
+            @click="reconcileSelected"
+            class="bulk-action-button"
+          />
         </div>
       </template>
 
@@ -31,6 +66,13 @@
           />
         </div>
       </BaseCard>
+
+      <!-- Pending Favorites Panel -->
+      <PendingFavoritesPanel
+          @clear-all="handleClearPending"
+          @save-all="handleBulkSaveClick"
+          @remove="handleRemovePending"
+      />
 
       <!-- Filters -->
       <BaseCard class="filter-section">
@@ -76,6 +118,8 @@
             data-key="id"
             responsive-layout="scroll"
             class="favorites-table"
+            v-model:selection="selectedRows"
+            selection-mode="multiple"
         >
           <template #header>
             <div class="table-header">
@@ -90,6 +134,9 @@
               <p>Add your first favorite location to get started.</p>
             </div>
           </template>
+
+          <!-- Selection Column -->
+          <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col"></Column>
 
           <Column field="name" header="Name" sortable class="name-col">
             <template #body="slotProps">
@@ -191,12 +238,36 @@
           @close="showEditDialog = false"
       />
 
+      <!-- Reconcile Dialog -->
+      <FavoriteReconcileDialog
+          :visible="showReconcileDialog"
+          :selected-results="selectedReconcileResults"
+          :enabled-providers="enabledProviders"
+          :reconcile-mode="reconcileMode"
+          :total-records="totalRecords"
+          :current-filters="{ type: selectedType, searchText: searchText }"
+          :job-progress="reconciliationJobProgress"
+          @close="showReconcileDialog = false"
+          @reconcile="handleReconcile"
+          @reconcile-complete="handleReconcileComplete"
+      />
+
       <!-- Add Favorite Dialog -->
       <AddFavoriteDialog
           :visible="showAddDialog"
           :header="addDialogHeader"
           @add-to-favorites="handleAddFavorite"
           @close="handleCloseAddDialog"
+      />
+
+      <!-- Bulk Save Confirm Dialog -->
+      <BulkSaveConfirmDialog
+          :visible="showBulkSaveDialog"
+          :points-count="pendingPointsCount"
+          :areas-count="pendingAreasCount"
+          :loading="isBulkSaving"
+          @close="showBulkSaveDialog = false"
+          @confirm="handleBulkSaveConfirm"
       />
 
       <!-- Confirm Dialog -->
@@ -222,17 +293,25 @@
           :model="favoriteMenuItems"
           :popup="true"
       />
+
+      <ContextMenu
+          ref="pendingFavoriteContextMenuRef"
+          :model="pendingFavoriteMenuItems"
+          :popup="true"
+      />
     </PageContainer>
   </AppLayout>
 </template>
 
 <script setup>
 import {ref, computed, onMounted, onUnmounted, watch} from 'vue'
-import {useRouter} from 'vue-router'
+import {useRouter, onBeforeRouteLeave} from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
 import {useFavoritesStore} from '@/stores/favorites'
+import {useGeocodingStore} from '@/stores/geocoding'
 import {useRectangleDrawing} from '@/composables/useRectangleDrawing'
+import {useFavoriteReconciliationProgress} from '@/composables/useFavoriteReconciliationProgress'
 import BaseMap from '@/components/maps/BaseMap.vue'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -240,7 +319,10 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import AddFavoriteDialog from '@/components/dialogs/AddFavoriteDialog.vue'
+import FavoriteReconcileDialog from '@/components/dialogs/FavoriteReconcileDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
+import PendingFavoritesPanel from '@/components/favorites/PendingFavoritesPanel.vue'
+import BulkSaveConfirmDialog from '@/components/dialogs/BulkSaveConfirmDialog.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'
@@ -256,6 +338,7 @@ import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 
 // Store and utils
 const favoritesStore = useFavoritesStore()
+const geocodingStore = useGeocodingStore()
 const toast = useToast()
 const router = useRouter()
 const confirm = useConfirm()
@@ -268,6 +351,13 @@ const {
   jobProgress,
   withTimelineRegeneration
 } = useTimelineRegeneration()
+
+// Reconciliation progress tracking
+const {
+  jobProgress: reconciliationJobProgress,
+  startPolling,
+  reset: resetReconciliationProgress
+} = useFavoriteReconciliationProgress()
 
 // Reactive state
 const isMobile = ref(false)
@@ -283,18 +373,29 @@ const tableLoading = ref(false)
 // Dialog states
 const showEditDialog = ref(false)
 const showAddDialog = ref(false)
+const showReconcileDialog = ref(false)
+const showBulkSaveDialog = ref(false)
 const selectedFavorite = ref(null)
+const selectedRows = ref([])
+const reconcileMode = ref('selected') // 'selected' | 'all'
+const enabledProviders = ref([])
 const addDialogHeader = ref('Add Point to Favorites')
 const pendingAddCoordinates = ref(null)
 const pendingAddBounds = ref(null)
+
+// Bulk add mode states
+const bulkAddMode = ref(false)
+const isBulkSaving = ref(false)
 
 
 
 // Context menu refs
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
+const pendingFavoriteContextMenuRef = ref(null)
 const favoriteContextMenuActive = ref(false)
 const contextMenuLatLng = ref(null)
+const selectedPendingFavorite = ref(null)
 
 // Map state
 const baseMapRef = ref(null)
@@ -303,6 +404,7 @@ const favoritesLayerRef = ref(null)
 const tempMarker = ref(null)
 const mapCenter = ref([51.505, -0.09])
 const mapZoom = ref(13)
+const shouldAutoFitMap = ref(false)
 
 // Rectangle drawing composable
 const {
@@ -371,6 +473,16 @@ const hasActiveFilters = computed(() =>
     selectedType.value !== null || (searchText.value && searchText.value.trim() !== '')
 )
 
+const selectedReconcileResults = computed(() => {
+  return selectedRows.value.length > 0 ? selectedRows.value : []
+})
+
+// Pending favorites computed properties
+const hasPendingFavorites = computed(() => favoritesStore.hasPendingFavorites)
+const pendingCount = computed(() => favoritesStore.pendingCount)
+const pendingPointsCount = computed(() => favoritesStore.getPendingPoints.length)
+const pendingAreasCount = computed(() => favoritesStore.getPendingAreas.length)
+
 // Context menu items
 const mapMenuItems = ref([
   {
@@ -417,6 +529,18 @@ const favoriteMenuItems = ref([
     command: () => {
       if (selectedFavorite.value) {
         deleteFavorite(selectedFavorite.value)
+      }
+    }
+  }
+])
+
+const pendingFavoriteMenuItems = ref([
+  {
+    label: 'Remove from Pending',
+    icon: 'pi pi-trash',
+    command: () => {
+      if (selectedPendingFavorite.value) {
+        handleRemovePending(selectedPendingFavorite.value)
       }
     }
   }
@@ -505,7 +629,12 @@ const handleEditSave = async (updatedData) => {
   if (!selectedFavorite.value) return
 
   try {
-    await favoritesStore.editFavorite(selectedFavorite.value.id, updatedData.name)
+    await favoritesStore.editFavorite(
+      selectedFavorite.value.id,
+      updatedData.name,
+      updatedData.city,
+      updatedData.country
+    )
 
     toast.add({
       severity: 'success',
@@ -527,6 +656,72 @@ const handleEditSave = async (updatedData) => {
       detail: error.message || 'Failed to update favorite location',
       life: 5000
     })
+  }
+}
+
+const reconcileSelected = () => {
+  reconcileMode.value = 'selected'
+  showReconcileDialog.value = true
+}
+
+const reconcileAll = () => {
+  selectedRows.value = []
+  reconcileMode.value = 'all'
+  showReconcileDialog.value = true
+}
+
+const handleReconcile = async (reconcileData) => {
+  try {
+    // Start bulk reconciliation job
+    const result = await favoritesStore.startBulkReconciliation(reconcileData)
+    const jobId = result.jobId
+
+    // Start polling for progress
+    await startPolling(jobId)
+
+    // Dialog will auto-close when job completes
+  } catch (error) {
+    console.error('Error starting favorite reconciliation:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Reconciliation Failed',
+      detail: error.message || 'Failed to start reconciliation',
+      life: 5000
+    })
+    showReconcileDialog.value = false
+  }
+}
+
+const handleReconcileComplete = async () => {
+  const progress = reconciliationJobProgress.value
+
+  const successMsg = `Successfully reconciled ${progress.successCount} of ${progress.totalItems} favorites`
+  const severity = progress.failedCount > 0 ? 'warn' : 'success'
+
+  toast.add({
+    severity: severity,
+    summary: 'Reconciliation Complete',
+    detail: successMsg,
+    life: 5000
+  })
+
+  // Reset state
+  selectedRows.value = []
+  resetReconciliationProgress()
+
+  // Reload data
+  await loadFavorites()
+
+  // Close dialog
+  showReconcileDialog.value = false
+}
+
+const loadEnabledProviders = async () => {
+  try {
+    const providers = await geocodingStore.fetchEnabledProviders()
+    enabledProviders.value = providers
+  } catch (error) {
+    console.error('Error loading enabled providers:', error)
   }
 }
 
@@ -575,6 +770,54 @@ const handleAddAreaFromContextMenu = () => {
 const handleAddFavorite = (name) => {
   if (!name || !name.trim()) return
 
+  // If bulk mode is enabled, add to pending list instead of immediate save
+  if (bulkAddMode.value) {
+    if (pendingAddCoordinates.value) {
+      favoritesStore.addPointToPending(
+        name.trim(),
+        pendingAddCoordinates.value.lat,
+        pendingAddCoordinates.value.lng
+      )
+      toast.add({
+        severity: 'info',
+        summary: 'Added to Pending',
+        detail: `"${name}" added to pending favorites`,
+        life: 3000
+      })
+    } else if (pendingAddBounds.value) {
+      favoritesStore.addAreaToPending(
+        name.trim(),
+        pendingAddBounds.value.northEastLat,
+        pendingAddBounds.value.northEastLon,
+        pendingAddBounds.value.southWestLat,
+        pendingAddBounds.value.southWestLon
+      )
+      toast.add({
+        severity: 'info',
+        summary: 'Added to Pending',
+        detail: `Area "${name}" added to pending favorites`,
+        life: 3000
+      })
+    }
+
+    // Close dialog and clean up
+    showAddDialog.value = false
+    pendingAddCoordinates.value = null
+    pendingAddBounds.value = null
+
+    if (tempMarker.value && mapInstance.value) {
+      mapInstance.value.removeLayer(tempMarker.value)
+      tempMarker.value = null
+    }
+    cleanupTempLayer()
+
+    // Update map to show pending markers WITHOUT auto-fitting
+    shouldAutoFitMap.value = false
+    updateMapMarkers()
+    return
+  }
+
+  // EXISTING CODE: immediate save with timeline regeneration
   let action
   let successMessage
 
@@ -650,6 +893,84 @@ const handleCloseAddDialog = () => {
   }
 }
 
+// Bulk mode methods
+const toggleBulkMode = () => {
+  bulkAddMode.value = !bulkAddMode.value
+  const modeText = bulkAddMode.value ? 'enabled' : 'disabled'
+  toast.add({
+    severity: bulkAddMode.value ? 'success' : 'info',
+    summary: 'Bulk Mode',
+    detail: `Bulk add mode ${modeText}. ${bulkAddMode.value ? 'Favorites will be added to pending list.' : 'Favorites will be saved immediately.'}`,
+    life: 4000
+  })
+}
+
+const handleBulkSaveClick = () => {
+  showBulkSaveDialog.value = true
+}
+
+const handleBulkSaveConfirm = async () => {
+  isBulkSaving.value = true
+
+  try {
+    const action = async () => {
+      const result = await favoritesStore.bulkCreateFavorites()
+      return result.jobId
+    }
+
+    await withTimelineRegeneration(action, {
+      modalType: 'favorite',
+      successMessage: `Saved ${pendingCount.value} favorites. Timeline is regenerating.`,
+      errorMessage: 'Failed to bulk save favorites.',
+      onSuccess: () => {
+        loadFavorites()
+        bulkAddMode.value = false
+      }
+    })
+
+    showBulkSaveDialog.value = false
+  } catch (error) {
+    console.error('Error bulk saving favorites:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Bulk Save Failed',
+      detail: error.message || 'Failed to save pending favorites',
+      life: 5000
+    })
+  } finally {
+    isBulkSaving.value = false
+  }
+}
+
+const handleClearPending = () => {
+  confirm.require({
+    message: `Are you sure you want to clear ${pendingCount.value} pending favorite(s)?`,
+    header: 'Clear Pending Favorites',
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => {
+      favoritesStore.clearPending()
+      updateMapMarkers()
+      toast.add({
+        severity: 'info',
+        summary: 'Cleared',
+        detail: 'Pending favorites cleared',
+        life: 3000
+      })
+    }
+  })
+}
+
+const handleRemovePending = (tempId) => {
+  favoritesStore.removeFromPending(tempId)
+  updateMapMarkers()
+  toast.add({
+    severity: 'info',
+    summary: 'Removed',
+    detail: 'Favorite removed from pending list',
+    life: 3000
+  })
+}
+
 
 
 
@@ -674,8 +995,9 @@ const loadFavorites = async () => {
     tableLoading.value = true
     await favoritesStore.fetchFavoritePlaces()
 
-    // Update map markers
+    // Update map markers with auto-fit enabled
     if (mapInstance.value && favoritesLayerRef.value) {
+      shouldAutoFitMap.value = true
       updateMapMarkers()
     }
   } catch (error) {
@@ -703,7 +1025,8 @@ const handleMapReady = (map) => {
   // Initialize rectangle drawing
   initializeDrawing(mapInstance.value)
 
-  // Initial update
+  // Initial update with auto-fit enabled
+  shouldAutoFitMap.value = true
   updateMapMarkers()
 }
 
@@ -758,13 +1081,43 @@ const handleFavoriteContextMenu = (e, favorite) => {
   }
 }
 
+const handlePendingFavoriteContextMenu = (e, pendingFavorite) => {
+  // Set flag to prevent map context menu
+  favoriteContextMenuActive.value = true
+
+  // Prevent default browser context menu and map context menu
+  if (e.originalEvent) {
+    e.originalEvent.preventDefault()
+    e.originalEvent.stopPropagation()
+  }
+
+  if (baseMapRef.value && baseMapRef.value.L) {
+    baseMapRef.value.L.DomEvent.stopPropagation(e)
+  }
+
+  // Store the selected pending favorite (tempId)
+  selectedPendingFavorite.value = pendingFavorite.tempId
+
+  // Show pending favorite context menu
+  if (pendingFavoriteContextMenuRef.value && e.originalEvent) {
+    // Use setTimeout to ensure the event has fully propagated/stopped
+    setTimeout(() => {
+      pendingFavoriteContextMenuRef.value.show(e.originalEvent)
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        favoriteContextMenuActive.value = false
+      }, 100)
+    }, 10)
+  }
+}
+
 const updateMapMarkers = () => {
   if (!mapInstance.value || !favoritesLayerRef.value) return
 
   // Clear existing markers
   favoritesLayerRef.value.clearLayers()
 
-  // Add point markers
+  // Add saved favorite markers
   displayedFavorites.value.forEach(favorite => {
     if (favorite.type === 'POINT') {
       const marker = baseMapRef.value.L.marker([favorite.latitude, favorite.longitude], {
@@ -810,8 +1163,56 @@ const updateMapMarkers = () => {
     }
   })
 
-  // Fit map to show all markers if there are any
-  if (displayedFavorites.value.length > 0 && !pendingAddCoordinates.value) {
+  // Add pending point markers (orange color, dashed border)
+  const pendingPoints = favoritesStore.getPendingPoints
+  pendingPoints.forEach(pending => {
+    const marker = baseMapRef.value.L.marker([pending.lat, pending.lon], {
+      icon: baseMapRef.value.L.divIcon({
+        className: 'pending-point-marker',
+        html: '<div class="pending-marker-icon"><i class="pi pi-map-marker"></i></div>',
+        iconSize: [40, 40],
+        iconAnchor: [20, 40]
+      })
+    })
+
+    marker.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending</span>`)
+
+    // Add context menu handler for pending favorites
+    marker.on('contextmenu', (e) => {
+      handlePendingFavoriteContextMenu(e, pending)
+    })
+
+    marker.addTo(favoritesLayerRef.value)
+  })
+
+  // Add pending area rectangles (orange color, dashed border)
+  const pendingAreas = favoritesStore.getPendingAreas
+  pendingAreas.forEach(pending => {
+    const bounds = [
+      [pending.southWestLat, pending.southWestLon],
+      [pending.northEastLat, pending.northEastLon]
+    ]
+
+    const rectangle = baseMapRef.value.L.rectangle(bounds, {
+      color: '#f59e0b',
+      fillColor: '#f59e0b',
+      fillOpacity: 0.2,
+      weight: 2,
+      dashArray: '5, 5'
+    })
+
+    rectangle.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending Area</span>`)
+
+    // Add context menu handler for pending favorites
+    rectangle.on('contextmenu', (e) => {
+      handlePendingFavoriteContextMenu(e, pending)
+    })
+
+    rectangle.addTo(favoritesLayerRef.value)
+  })
+
+  // Fit map to show all markers if there are any (only if flag is set)
+  if (shouldAutoFitMap.value && (displayedFavorites.value.length > 0 || pendingPoints.length > 0 || pendingAreas.length > 0) && !pendingAddCoordinates.value) {
     const bounds = []
     displayedFavorites.value.forEach(favorite => {
       if (favorite.type === 'POINT') {
@@ -822,9 +1223,21 @@ const updateMapMarkers = () => {
       }
     })
 
+    // Add pending favorites to bounds
+    pendingPoints.forEach(pending => {
+      bounds.push([pending.lat, pending.lon])
+    })
+    pendingAreas.forEach(pending => {
+      bounds.push([pending.southWestLat, pending.southWestLon])
+      bounds.push([pending.northEastLat, pending.northEastLon])
+    })
+
     if (bounds.length > 0) {
       mapInstance.value.fitBounds(bounds, {padding: [50, 50], maxZoom: 15})
     }
+
+    // Reset flag after auto-fit
+    shouldAutoFitMap.value = false
   }
 }
 
@@ -833,16 +1246,51 @@ watch(() => displayedFavorites.value, () => {
   updateMapMarkers()
 }, {deep: true})
 
+// Route guard for navigation warning
+onBeforeRouteLeave((to, from, next) => {
+  if (hasPendingFavorites.value) {
+    confirm.require({
+      message: `You have ${pendingCount.value} unsaved pending favorite(s). If you leave, they will be lost. Are you sure you want to leave?`,
+      header: 'Unsaved Pending Favorites',
+      icon: 'pi pi-exclamation-triangle',
+      accept: () => {
+        favoritesStore.clearPending()
+        next()
+      },
+      reject: () => {
+        next(false)
+      }
+    })
+  } else {
+    next()
+  }
+})
+
+// Browser beforeunload handler for page refresh/close
+const handleBeforeUnload = (e) => {
+  if (hasPendingFavorites.value) {
+    e.preventDefault()
+    // Chrome requires returnValue to be set
+    e.returnValue = ''
+    return ''
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   handleResize()
   window.addEventListener('resize', handleResize)
+  window.addEventListener('beforeunload', handleBeforeUnload)
 
-  await loadFavorites()
+  await Promise.all([
+    loadFavorites(),
+    loadEnabledProviders()
+  ])
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
   if (searchTimeout) clearTimeout(searchTimeout)
 
   // Clean up temp marker
@@ -1225,7 +1673,8 @@ onUnmounted(() => {
 <style>
 /* Global marker styles */
 .temp-favorite-marker,
-.favorite-point-marker {
+.favorite-point-marker,
+.pending-point-marker {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -1269,12 +1718,57 @@ onUnmounted(() => {
   font-size: 1.5rem;
 }
 
+/* Pending marker icon - teardrop shape with orange color and dashed border */
+.pending-marker-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f59e0b;
+  color: white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px dashed white;
+  position: relative;
+}
+
+.pending-marker-icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50% 50% 50% 0;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  animation: pending-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pending-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+.pending-marker-icon i {
+  transform: rotate(45deg);
+  font-size: 1.5rem;
+}
+
 /* Dark mode support */
 .p-dark .favorite-marker-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .p-dark .temp-marker-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.p-dark .pending-marker-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 </style>
