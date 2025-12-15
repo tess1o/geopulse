@@ -10,12 +10,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.favorites.model.AddAreaToFavoritesDto;
-import org.github.tess1o.geopulse.favorites.model.EditFavoriteDto;
-import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
-import org.github.tess1o.geopulse.favorites.model.FavoriteReconcileRequest;
+import org.github.tess1o.geopulse.favorites.model.*;
 import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
-import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
@@ -202,6 +198,57 @@ public class FavoritesResource {
             log.error("Failed to add area favorite", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to add favorite: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/bulk")
+    public Response bulkAddFavorites(@Valid BulkAddFavoritesDto bulkDto) {
+        try {
+            UUID authenticatedUserId = currentUserService.getCurrentUserId();
+            log.info("User {} starting bulk add: {} points, {} areas",
+                    authenticatedUserId, bulkDto.getPoints().size(), bulkDto.getAreas().size());
+
+            // Validate that there's at least one favorite to add
+            if (bulkDto.getPoints().isEmpty() && bulkDto.getAreas().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("No favorites provided for bulk add"))
+                        .build();
+            }
+
+            // Call service to bulk add favorites (transactional)
+            BulkAddFavoritesResult result = service.bulkAddFavorites(authenticatedUserId, bulkDto);
+
+            // If complete failure, return error
+            if (result.getSuccessCount() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Failed to add any favorites"))
+                        .build();
+            }
+
+            // Create timeline regeneration job AFTER transaction commits
+            UUID jobId = service.createTimelineRegenerationJob(authenticatedUserId);
+            if (jobId != null) {
+                result.setJobId(jobId.toString());
+            }
+
+            log.info("User {} bulk add completed: {} successful, {} failed, jobId: {}",
+                    authenticatedUserId, result.getSuccessCount(), result.getFailedCount(), jobId);
+
+            return Response.status(Response.Status.CREATED)
+                    .entity(ApiResponse.success(result))
+                    .build();
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid bulk favorites data: {}", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid favorites data: " + e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to bulk add favorites", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to bulk add favorites: " + e.getMessage()))
                     .build();
         }
     }

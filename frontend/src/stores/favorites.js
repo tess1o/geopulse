@@ -6,6 +6,10 @@ export const useFavoritesStore = defineStore('favorites', {
         favoritePlaces: {
             areas: [],
             points: []
+        },
+        pendingFavorites: {
+            points: [],  // Array of { name, lat, lon, tempId }
+            areas: []    // Array of { name, northEastLat, northEastLon, southWestLat, southWestLon, tempId }
         }
     }),
 
@@ -77,6 +81,29 @@ export const useFavoritesStore = defineStore('favorites', {
                 point.lon >= southWest.lon &&
                 point.lon <= northEast.lon
             )
+        },
+
+        // Pending favorites getters
+        getPendingPoints: (state) => state.pendingFavorites.points || [],
+        getPendingAreas: (state) => state.pendingFavorites.areas || [],
+
+        hasPendingFavorites: (state) => {
+            const points = state.pendingFavorites.points || []
+            const areas = state.pendingFavorites.areas || []
+            return points.length > 0 || areas.length > 0
+        },
+
+        pendingCount: (state) => {
+            const points = state.pendingFavorites.points || []
+            const areas = state.pendingFavorites.areas || []
+            return points.length + areas.length
+        },
+
+        getAllPending: (state) => {
+            return [
+                ...(state.pendingFavorites.points || []).map(p => ({ ...p, type: 'point' })),
+                ...(state.pendingFavorites.areas || []).map(a => ({ ...a, type: 'area' }))
+            ]
         }
     },
 
@@ -187,6 +214,64 @@ export const useFavoritesStore = defineStore('favorites', {
                 return response.data
             } catch (error) {
                 console.error('Error fetching favorite reconciliation job progress:', error)
+                throw error
+            }
+        },
+
+        // Pending favorites actions
+        addPointToPending(name, lat, lon) {
+            const tempId = `point-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            this.pendingFavorites.points.push({
+                name,
+                lat,
+                lon,
+                tempId
+            })
+        },
+
+        addAreaToPending(name, northEastLat, northEastLon, southWestLat, southWestLon) {
+            const tempId = `area-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+            this.pendingFavorites.areas.push({
+                name,
+                northEastLat,
+                northEastLon,
+                southWestLat,
+                southWestLon,
+                tempId
+            })
+        },
+
+        removeFromPending(tempId) {
+            this.pendingFavorites.points = this.pendingFavorites.points.filter(p => p.tempId !== tempId)
+            this.pendingFavorites.areas = this.pendingFavorites.areas.filter(a => a.tempId !== tempId)
+        },
+
+        clearPending() {
+            this.pendingFavorites.points = []
+            this.pendingFavorites.areas = []
+        },
+
+        async bulkCreateFavorites() {
+            try {
+                // Prepare the bulk request - remove tempId from each item
+                const points = this.pendingFavorites.points.map(({ tempId, ...point }) => point)
+                const areas = this.pendingFavorites.areas.map(({ tempId, ...area }) => area)
+
+                const response = await apiService.post('/favorites/bulk', {
+                    points,
+                    areas
+                })
+
+                // Clear pending list after successful creation
+                this.clearPending()
+
+                // Refresh favorites to get the updated list from backend
+                await this.fetchFavoritePlaces()
+
+                // Return the result which includes jobId, successCount, failedCount, etc.
+                return response.data
+            } catch (error) {
+                console.error('Error bulk creating favorites:', error)
                 throw error
             }
         }

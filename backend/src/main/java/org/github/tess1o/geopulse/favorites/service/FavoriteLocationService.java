@@ -157,6 +157,116 @@ public class FavoriteLocationService {
         log.info("Successfully added area favorite {} for user {}", favorite.getName(), userId);
     }
 
+    @Transactional
+    public BulkAddFavoritesResult bulkAddFavorites(UUID userId, BulkAddFavoritesDto bulkDto) {
+        log.info("Starting bulk add favorites for user {}: {} points, {} areas",
+                userId, bulkDto.getPoints().size(), bulkDto.getAreas().size());
+
+        List<Long> createdFavoriteIds = new java.util.ArrayList<>();
+        Map<Integer, String> failures = new java.util.HashMap<>();
+        int index = 0;
+        int totalRequested = bulkDto.getPoints().size() + bulkDto.getAreas().size();
+
+        // Process points
+        for (AddPointToFavoritesDto pointDto : bulkDto.getPoints()) {
+            try {
+                validatePointFavorite(pointDto);
+
+                FavoritesEntity entity = mapper.toEntity(pointDto, userId);
+
+                // Get geocoding data to populate city and country
+                try {
+                    Point point = GeoUtils.createPoint(pointDto.getLon(), pointDto.getLat());
+                    FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(point);
+                    entity.setCity(geocodingResult.getCity());
+                    entity.setCountry(geocodingResult.getCountry());
+                } catch (Exception e) {
+                    log.warn("Failed to get geocoding data for point favorite '{}' at [{}, {}]: {}",
+                            pointDto.getName(), pointDto.getLat(), pointDto.getLon(), e.getMessage());
+                    // Continue without geocoding data
+                }
+
+                repository.persist(entity);
+
+                // Fire event for timeline system
+                favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
+                        .favoriteId(entity.getId())
+                        .userId(userId)
+                        .favoriteName(entity.getName())
+                        .favoriteType(entity.getType())
+                        .geometry(entity.getGeometry())
+                        .build());
+
+                createdFavoriteIds.add(entity.getId());
+                log.debug("Successfully added point favorite '{}' (ID: {}) in bulk operation",
+                        pointDto.getName(), entity.getId());
+
+            } catch (Exception e) {
+                log.warn("Failed to add point favorite at index {}: {}", index, e.getMessage());
+                failures.put(index, e.getMessage());
+            }
+            index++;
+        }
+
+        // Process areas
+        for (AddAreaToFavoritesDto areaDto : bulkDto.getAreas()) {
+            try {
+                validateAreaFavorite(areaDto);
+
+                FavoritesEntity entity = mapper.toEntity(areaDto, userId);
+
+                // Get geocoding data using the center point of the area
+                try {
+                    double centerLat = (areaDto.getNorthEastLat() + areaDto.getSouthWestLat()) / 2.0;
+                    double centerLon = (areaDto.getNorthEastLon() + areaDto.getSouthWestLon()) / 2.0;
+                    Point centerPoint = GeoUtils.createPoint(centerLon, centerLat);
+
+                    FormattableGeocodingResult geocodingResult = geocodingService.getLocationName(centerPoint);
+                    entity.setCity(geocodingResult.getCity());
+                    entity.setCountry(geocodingResult.getCountry());
+                } catch (Exception e) {
+                    log.warn("Failed to get geocoding data for area favorite '{}': {}",
+                            areaDto.getName(), e.getMessage());
+                    // Continue without geocoding data
+                }
+
+                repository.persist(entity);
+
+                // Fire event for timeline system
+                favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
+                        .favoriteId(entity.getId())
+                        .userId(userId)
+                        .favoriteName(entity.getName())
+                        .favoriteType(entity.getType())
+                        .geometry(entity.getGeometry())
+                        .build());
+
+                createdFavoriteIds.add(entity.getId());
+                log.debug("Successfully added area favorite '{}' (ID: {}) in bulk operation",
+                        areaDto.getName(), entity.getId());
+
+            } catch (Exception e) {
+                log.warn("Failed to add area favorite at index {}: {}", index, e.getMessage());
+                failures.put(index, e.getMessage());
+            }
+            index++;
+        }
+
+        int successCount = createdFavoriteIds.size();
+        int failedCount = failures.size();
+
+        log.info("Bulk add favorites completed for user {}: {} successful, {} failed out of {} total",
+                userId, successCount, failedCount, totalRequested);
+
+        return BulkAddFavoritesResult.builder()
+                .totalRequested(totalRequested)
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .createdFavoriteIds(createdFavoriteIds)
+                .failures(failures)
+                .build();
+    }
+
     public FavoriteLocationsDto findByPoint(UUID userId, Point point) {
         Optional<FavoritesEntity> favorite = repository.findByPoint(userId, point, maxDistanceFromPoint, maxDistanceFromArea);
         if (favorite.isEmpty()) {

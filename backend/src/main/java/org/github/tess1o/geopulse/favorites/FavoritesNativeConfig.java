@@ -14,6 +14,8 @@ import org.github.tess1o.geopulse.favorites.model.*;
         FavoriteLocationsDto.class,
         FavoritesEntity.class,
         FavoriteReconcileRequest.class,
+        BulkAddFavoritesDto.class,
+        BulkAddFavoritesResult.class
 })
 public class FavoritesNativeConfig {
 }
