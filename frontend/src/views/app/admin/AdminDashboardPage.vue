@@ -71,13 +71,13 @@
           <template #content>
             <div class="stat-card-content">
               <div>
-                <p class="stat-label">Memory Usage</p>
+                <p class="stat-label">GPS Activity (24h)</p>
                 <h3 class="stat-value">
                   <Skeleton v-if="loading" width="4rem" height="2rem" />
-                  <template v-else>{{ stats.memoryUsageMB }} MB</template>
+                  <template v-else>{{ formatNumber(stats.gpsActivity24h) }}</template>
                 </h3>
               </div>
-              <i class="pi pi-server stat-icon stat-icon-orange"></i>
+              <i class="pi pi-chart-line stat-icon stat-icon-purple"></i>
             </div>
           </template>
         </Card>
@@ -155,7 +155,7 @@ const stats = ref({
   totalUsers: 0,
   activeUsers24h: 0,
   totalGpsPoints: 0,
-  memoryUsageMB: 0
+  gpsActivity24h: 0
 })
 
 const loading = ref(false)
@@ -296,6 +296,10 @@ onMounted(() => {
 
 .stat-icon-blue {
   color: var(--blue-500);
+}
+
+.stat-icon-purple {
+  color: var(--purple-500);
 }
 
 /* Quick Actions Grid */

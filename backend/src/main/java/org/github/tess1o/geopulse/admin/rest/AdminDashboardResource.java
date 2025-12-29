@@ -10,7 +10,6 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.prometheus.UserMetrics;
 import org.github.tess1o.geopulse.prometheus.GpsPointsMetrics;
-import org.github.tess1o.geopulse.prometheus.NativeProcessMemoryMetrics;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,13 +29,10 @@ public class AdminDashboardResource {
     @Inject
     GpsPointsMetrics gpsPointsMetrics;
 
-    @Inject
-    NativeProcessMemoryMetrics memoryMetrics;
-
     /**
      * Get dashboard statistics
      *
-     * @return Dashboard statistics including user, GPS, and system metrics
+     * @return Dashboard statistics including user and GPS metrics
      */
     @GET
     @Path("/stats")
@@ -45,10 +41,9 @@ public class AdminDashboardResource {
             Map<String, Object> stats = new HashMap<>();
 
             // Log metrics status for debugging
-            log.debug("Metrics status - User: {}, GPS: {}, Memory: {}",
+            log.debug("Metrics status - User: {}, GPS: {}",
                     userMetrics.isEnabled(),
-                    gpsPointsMetrics.isEnabled(),
-                    memoryMetrics.isEnabled());
+                    gpsPointsMetrics.isEnabled());
 
             // User metrics (queries DB directly if metrics disabled)
             stats.put("totalUsers", userMetrics.getTotalUsersCount());
@@ -56,16 +51,12 @@ public class AdminDashboardResource {
 
             // GPS metrics (queries DB directly if metrics disabled)
             stats.put("totalGpsPoints", gpsPointsMetrics.getTotalGpsPoints());
-
-            // System metrics (always queries /proc/self/status directly)
-            long memoryBytes = memoryMetrics.getResidentMemoryBytes();
-            stats.put("memoryUsageMB", memoryBytes / (1024 * 1024));
+            stats.put("gpsActivity24h", gpsPointsMetrics.getGpsPointsLast24h());
 
             // Add metadata about metrics status
             stats.put("metricsEnabled", Map.of(
                     "user", userMetrics.isEnabled(),
-                    "gps", gpsPointsMetrics.isEnabled(),
-                    "memory", memoryMetrics.isEnabled()
+                    "gps", gpsPointsMetrics.isEnabled()
             ));
 
             log.debug("Dashboard stats retrieved: {}", stats);

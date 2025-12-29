@@ -238,7 +238,7 @@ const adminService = {
                     totalUsers: 0,
                     activeUsers24h: 0,
                     totalGpsPoints: 0,
-                    memoryUsageMB: 0
+                    gpsActivity24h: 0
                 };
             }
         }
@@ -270,9 +270,7 @@ const adminService = {
             totalUsers: metrics['users_total'] || 0,
             activeUsers24h: metrics['users_active_last_24h'] || 0,
             totalGpsPoints: metrics['gps_points_total'] || 0,
-            memoryUsageMB: metrics['process_resident_memory_bytes']
-                ? Math.round(metrics['process_resident_memory_bytes'] / (1024 * 1024))
-                : 0
+            gpsActivity24h: metrics['gps_points_last_24h'] || 0
         };
     }
 };
