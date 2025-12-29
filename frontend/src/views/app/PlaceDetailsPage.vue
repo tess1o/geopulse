@@ -507,7 +507,9 @@ const handleOpenEditDialog = () => {
     // Prepare data for EditFavoriteDialog
     editFavoriteData.value = {
       id: placeId.value,
-      name: placeDetails.value?.locationName || ''
+      name: placeDetails.value?.locationName || '',
+      city: placeDetails.value?.city || '',
+      country: placeDetails.value?.country || ''
     }
   } else if (placeType.value === 'geocoding') {
     // Prepare data for GeocodingEditDialog
@@ -528,12 +530,16 @@ const handleSaveFavorite = async (favoriteData) => {
   try {
     // Update favorite via API (using favorites endpoint)
     await apiService.put(`/favorites/${favoriteData.id}`, {
-      name: favoriteData.name
+      name: favoriteData.name,
+      city: favoriteData.city,
+      country: favoriteData.country
     })
 
     // Update local state
     if (placeDetails.value) {
       placeDetails.value.locationName = favoriteData.name
+      placeDetails.value.city = favoriteData.city
+      placeDetails.value.country = favoriteData.country
     }
 
     toast.add({

@@ -18,12 +18,12 @@
             />
             <div class="action-buttons">
               <Button
-                v-if="canEdit && !isEditing"
+                v-if="placeType === 'favorite' && canEdit && !isEditing"
                 icon="pi pi-pencil"
-                class="p-button-outlined p-button-sm edit-button"
-                @click="startEdit"
-                v-tooltip.top="'Rename this place'"
-                label="Rename"
+                class="p-button-outlined p-button-sm"
+                @click="openAdvancedEdit"
+                v-tooltip.top="'Edit location details'"
+                label="Edit"
               />
               <Button
                 v-if="placeType === 'geocoding' && !isEditing"

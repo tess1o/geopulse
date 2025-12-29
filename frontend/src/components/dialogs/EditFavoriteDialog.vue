@@ -68,6 +68,7 @@ export default {
   methods: {
     onEditButton() {
       this.$emit('edit-favorite', {
+        id: this.favoriteLocation.id,
         name: this.favoriteLocation.name,
         city: this.favoriteLocation.city,
         country: this.favoriteLocation.country
