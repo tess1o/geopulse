@@ -4,11 +4,20 @@
       <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
 
       <div class="page-header">
-        <h1>OIDC Providers</h1>
-        <p class="text-muted">Manage OAuth/OIDC authentication providers</p>
+        <div>
+          <h1>OIDC Providers</h1>
+          <p class="text-muted">Manage OAuth/OIDC authentication providers</p>
+        </div>
+        <Button
+          label="Add Provider"
+          icon="pi pi-plus"
+          @click="openCreateDialog"
+          class="add-provider-button"
+        />
       </div>
 
-      <div class="card">
+      <!-- Desktop Table View -->
+      <div class="card desktop-only">
         <DataTable
           :value="providers"
           :loading="loading"
@@ -18,12 +27,6 @@
           <template #header>
             <div class="table-header">
               <span class="text-xl font-semibold">Configured Providers</span>
-              <Button
-                label="Add Provider"
-                icon="pi pi-plus"
-                @click="openCreateDialog"
-                class="add-provider-button"
-              />
             </div>
           </template>
 
@@ -115,6 +118,97 @@
             </div>
           </template>
         </DataTable>
+      </div>
+
+      <!-- Mobile Card View -->
+      <div class="mobile-only">
+        <div v-if="loading" class="text-center p-4">
+          <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+        </div>
+
+        <div v-else-if="providers.length === 0" class="text-center p-4 card">
+          No OIDC providers configured.
+        </div>
+
+        <div v-else class="provider-cards">
+          <div v-for="provider in providers" :key="provider.name" class="provider-card">
+            <div class="provider-card-header">
+              <div class="provider-info">
+                <div class="provider-name">
+                  <i :class="provider.icon || 'pi pi-key'" class="provider-icon"></i>
+                  <span>{{ provider.name }}</span>
+                </div>
+                <div class="provider-display-name">{{ provider.displayName }}</div>
+              </div>
+              <div class="provider-badges">
+                <Tag :severity="provider.enabled ? 'success' : 'danger'" :value="provider.enabled ? 'Enabled' : 'Disabled'" />
+              </div>
+            </div>
+
+            <div class="provider-card-body">
+              <div class="provider-stat">
+                <span class="stat-label">Source</span>
+                <Tag
+                  :severity="provider.source === 'ENVIRONMENT' ? 'info' : 'success'"
+                  :value="provider.source === 'ENVIRONMENT' ? 'Environment' : 'Custom'"
+                />
+              </div>
+              <div class="provider-stat">
+                <span class="stat-label">Metadata</span>
+                <Tag
+                  :severity="provider.metadataValid ? 'success' : 'warning'"
+                  :value="provider.metadataValid ? 'Cached' : 'Not Cached'"
+                />
+              </div>
+            </div>
+
+            <div class="provider-client-id">
+              <span class="stat-label">Client ID</span>
+              <code class="client-id-value">{{ provider.clientId }}</code>
+            </div>
+
+            <div class="provider-card-actions">
+              <Button
+                icon="pi pi-pencil"
+                label="Edit"
+                rounded
+                text
+                severity="info"
+                @click="openEditDialog(provider)"
+                size="small"
+              />
+              <Button
+                :icon="provider.enabled ? 'pi pi-ban' : 'pi pi-check'"
+                :label="provider.enabled ? 'Disable' : 'Enable'"
+                rounded
+                text
+                :severity="provider.enabled ? 'warning' : 'success'"
+                @click="toggleProviderStatus(provider)"
+                size="small"
+              />
+              <Button
+                icon="pi pi-wifi"
+                label="Test"
+                rounded
+                text
+                severity="success"
+                @click="testProvider(provider)"
+                :loading="testingProvider === provider.name"
+                size="small"
+              />
+              <Button
+                icon="pi pi-trash"
+                label="Delete"
+                rounded
+                text
+                severity="danger"
+                @click="confirmDelete(provider)"
+                :disabled="!canDeleteProvider(provider)"
+                size="small"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Create/Edit Provider Dialog -->
@@ -470,7 +564,11 @@ onMounted(() => {
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   margin-bottom: 2rem;
+  gap: 1rem;
 }
 
 .page-header h1 {
@@ -569,5 +667,176 @@ code {
 .endpoint-value.error-value {
   background-color: var(--red-50);
   color: var(--red-700);
+}
+
+/* Desktop/Mobile Toggle */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* Mobile Provider Cards */
+.provider-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.provider-card {
+  background: var(--surface-card);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.provider-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.provider-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.provider-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+}
+
+.provider-icon {
+  font-size: 1.25rem;
+  color: var(--primary-color);
+}
+
+.provider-display-name {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+}
+
+.provider-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-end;
+}
+
+.provider-card-body {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+.provider-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.provider-client-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.client-id-value {
+  background-color: var(--surface-100);
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
+  display: block;
+}
+
+.provider-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .admin-oidc-providers {
+    padding: 0.75rem;
+  }
+
+  .admin-breadcrumb {
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .page-header p {
+    margin: 0.25rem 0 0 0;
+  }
+
+  .add-provider-button {
+    width: 100%;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .card {
+    padding: 0.75rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .admin-oidc-providers {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .provider-card {
+    padding: 0.75rem;
+  }
+
+  .provider-card-body {
+    gap: 1rem;
+  }
 }
 </style>

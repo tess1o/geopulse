@@ -119,6 +119,7 @@ import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
+import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 import { useLocationStore } from '@/stores/location'
 
 const timezone = useTimezone()
@@ -215,16 +216,17 @@ const getTransportIcon = (transportMode) => {
 }
 
 const copyToClipboard = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
+  const success = await copyTextToClipboard(text)
+
+  if (success) {
     toast.add({
       severity: 'success',
       summary: 'Copied!',
       detail: 'Coordinates copied to clipboard',
       life: 2000
     })
-  } catch (err) {
-    console.error('Failed to copy:', err)
+  } else {
+    console.error('Failed to copy')
     toast.add({
       severity: 'error',
       summary: 'Copy Failed',

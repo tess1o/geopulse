@@ -25,7 +25,21 @@
         </div>
       </div>
 
-      <div class="card">
+      <!-- Status Filter (Mobile & Desktop) -->
+      <div class="filter-container">
+        <Select
+          v-model="statusFilter"
+          :options="statusOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Filter by status"
+          @change="onFilterChange"
+          class="w-full"
+        />
+      </div>
+
+      <!-- Desktop Table View -->
+      <div class="card desktop-only">
         <DataTable
           :value="invitations"
           :loading="loading"
@@ -40,20 +54,6 @@
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} invitations"
         >
-          <template #header>
-            <div class="flex justify-content-between align-items-center">
-              <Select
-                v-model="statusFilter"
-                :options="statusOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Filter by status"
-                @change="onFilterChange"
-                class="w-15rem"
-              />
-            </div>
-          </template>
-
           <Column field="token" header="Token" style="max-width: 150px">
             <template #body="{ data }">
               <span class="font-mono">{{ data.token.substring(0, 12) }}...</span>
@@ -121,6 +121,99 @@
             </div>
           </template>
         </DataTable>
+      </div>
+
+      <!-- Mobile Card View -->
+      <div class="mobile-only">
+        <div v-if="loading" class="text-center p-4">
+          <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+        </div>
+
+        <div v-else-if="invitations.length === 0" class="text-center p-4 card">
+          No invitations found.
+        </div>
+
+        <div v-else class="invitation-cards">
+          <div v-for="invitation in invitations" :key="invitation.id" class="invitation-card">
+            <div class="invitation-card-header">
+              <div class="invitation-info">
+                <div class="invitation-token">{{ invitation.token.substring(0, 16) }}...</div>
+                <div class="invitation-creator">{{ invitation.createdBy?.email || '-' }}</div>
+              </div>
+              <Tag :severity="getStatusSeverity(invitation.status)" :value="invitation.status" />
+            </div>
+
+            <div class="invitation-card-body">
+              <div class="invitation-stat">
+                <span class="stat-label">Created</span>
+                <span class="stat-value">{{ formatDateTime(invitation.createdAt) }}</span>
+              </div>
+              <div class="invitation-stat">
+                <span class="stat-label">Expires</span>
+                <span class="stat-value">{{ formatDateTime(invitation.expiresAt) }}</span>
+              </div>
+            </div>
+
+            <div v-if="invitation.usedBy" class="invitation-used">
+              <i class="pi pi-user"></i>
+              <span>Used by: {{ invitation.usedBy.email }}</span>
+            </div>
+
+            <div class="invitation-card-actions">
+              <Button
+                icon="pi pi-copy"
+                label="Copy Link"
+                rounded
+                text
+                severity="info"
+                @click="copyInvitationLink(invitation)"
+                :disabled="invitation.status !== 'PENDING'"
+                size="small"
+              />
+              <Button
+                icon="pi pi-ban"
+                label="Revoke"
+                rounded
+                text
+                severity="warning"
+                @click="confirmRevoke(invitation)"
+                :disabled="invitation.status !== 'PENDING'"
+                size="small"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div class="mobile-pagination" v-if="invitations.length > 0">
+          <Button
+            icon="pi pi-angle-double-left"
+            text
+            @click="goToFirstPage"
+            :disabled="page === 0"
+          />
+          <Button
+            icon="pi pi-angle-left"
+            text
+            @click="goToPrevPage"
+            :disabled="page === 0"
+          />
+          <span class="pagination-info">
+            Page {{ page + 1 }} of {{ Math.ceil(totalRecords / pageSize) }}
+          </span>
+          <Button
+            icon="pi pi-angle-right"
+            text
+            @click="goToNextPage"
+            :disabled="(page + 1) * pageSize >= totalRecords"
+          />
+          <Button
+            icon="pi pi-angle-double-right"
+            text
+            @click="goToLastPage"
+            :disabled="(page + 1) * pageSize >= totalRecords"
+          />
+        </div>
       </div>
 
       <!-- Create Invitation Dialog -->
@@ -245,6 +338,7 @@ import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import apiService from '@/utils/apiService'
+import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 const router = useRouter()
 const toast = useToast()
@@ -392,16 +486,16 @@ const copyInvitationLink = async (invitation) => {
 }
 
 const copyToClipboard = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
+  const success = await copyTextToClipboard(text)
+
+  if (success) {
     toast.add({
       severity: 'success',
       summary: 'Copied',
       detail: 'Link copied to clipboard',
       life: 3000
     })
-  } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+  } else {
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -460,6 +554,31 @@ const formatDateTime = (dateStr) => {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   return date.toLocaleString()
+}
+
+// Mobile pagination methods
+const goToFirstPage = () => {
+  page.value = 0
+  loadInvitations()
+}
+
+const goToPrevPage = () => {
+  if (page.value > 0) {
+    page.value--
+    loadInvitations()
+  }
+}
+
+const goToNextPage = () => {
+  if ((page.value + 1) * pageSize.value < totalRecords.value) {
+    page.value++
+    loadInvitations()
+  }
+}
+
+const goToLastPage = () => {
+  page.value = Math.floor(totalRecords.value / pageSize.value)
+  loadInvitations()
 }
 
 onMounted(() => {
@@ -588,8 +707,185 @@ onMounted(() => {
   line-height: 1.4;
 }
 
+/* Filter Container */
+.filter-container {
+  margin-bottom: 1rem;
+}
+
+/* Desktop/Mobile Toggle */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* Mobile Invitation Cards */
+.invitation-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.invitation-card {
+  background: var(--surface-card);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.invitation-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.invitation-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.invitation-token {
+  font-family: monospace;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.invitation-creator {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+}
+
+.invitation-card-body {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+.invitation-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.invitation-used {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: var(--surface-100);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+}
+
+.invitation-used i {
+  color: var(--primary-color);
+}
+
+.invitation-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+/* Mobile Pagination */
+.mobile-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-card);
+  border-radius: 8px;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  padding: 0 0.5rem;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .admin-invitations {
+    padding: 0.75rem;
+  }
+
+  .admin-breadcrumb {
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .page-header p {
+    margin: 0.25rem 0 0 0;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .header-actions .no-underline,
+  .header-actions > button {
+    width: 100%;
+  }
+
+  .header-actions button {
+    width: 100%;
+  }
+
+  .filter-container {
+    margin-bottom: 0.75rem;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .card {
+    padding: 0.75rem;
+  }
+
   .invitation-link-container {
     flex-direction: column;
   }
@@ -600,6 +896,25 @@ onMounted(() => {
 
   .copy-button {
     width: 100%;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .admin-invitations {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .invitation-card {
+    padding: 0.75rem;
+  }
+
+  .invitation-card-body {
+    gap: 1rem;
   }
 }
 </style>

@@ -90,6 +90,7 @@ import { useToast } from 'primevue/usetoast'
 import MapContainer from '@/components/maps/MapContainer.vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
+import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 const timezone = useTimezone()
 const toast = useToast()
@@ -157,18 +158,19 @@ const formatDuration = (seconds) => {
 
 
 const copyToClipboard = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
+  const success = await copyTextToClipboard(text)
+
+  if (success) {
     toast.add({
       severity: 'success',
       summary: 'Copied!',
       detail: 'Coordinates copied to clipboard',
       life: 2000
     })
-  } catch (error) {
-    console.error('Failed to copy to clipboard:', error)
+  } else {
+    console.error('Failed to copy to clipboard')
     toast.add({
-      severity: 'error', 
+      severity: 'error',
       summary: 'Copy failed',
       detail: 'Unable to copy coordinates',
       life: 3000

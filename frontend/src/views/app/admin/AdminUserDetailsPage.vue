@@ -219,6 +219,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import apiService from '@/utils/apiService'
+import { copyToClipboard } from '@/utils/clipboardUtils'
 
 const route = useRoute()
 const router = useRouter()
@@ -348,16 +349,23 @@ const resetPassword = async () => {
 }
 
 const copyPassword = async () => {
-  try {
-    await navigator.clipboard.writeText(tempPassword.value)
+  const success = await copyToClipboard(tempPassword.value)
+
+  if (success) {
     toast.add({
       severity: 'success',
       summary: 'Copied',
       detail: 'Password copied to clipboard',
       life: 2000
     })
-  } catch (error) {
-    console.error('Failed to copy password:', error)
+  } else {
+    console.error('Failed to copy password')
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to copy password to clipboard',
+      life: 3000
+    })
   }
 }
 
