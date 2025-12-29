@@ -150,6 +150,80 @@
           }
         }
       },
+      "BulkUpdateFavoritesDto" : {
+        "required" : [ "favoriteIds" ],
+        "type" : "object",
+        "properties" : {
+          "favoriteIds" : {
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          "updateCity" : {
+            "type" : "boolean"
+          },
+          "city" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "updateCountry" : {
+            "type" : "boolean"
+          },
+          "country" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "cityValid" : {
+            "type" : "boolean"
+          },
+          "countryValid" : {
+            "type" : "boolean"
+          },
+          "atLeastOneFieldSelected" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "BulkUpdateGeocodingDto" : {
+        "required" : [ "geocodingIds" ],
+        "type" : "object",
+        "properties" : {
+          "geocodingIds" : {
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            }
+          },
+          "updateCity" : {
+            "type" : "boolean"
+          },
+          "city" : {
+            "maxLength" : 200,
+            "type" : "string"
+          },
+          "updateCountry" : {
+            "type" : "boolean"
+          },
+          "country" : {
+            "maxLength" : 100,
+            "type" : "string"
+          },
+          "cityValid" : {
+            "type" : "boolean"
+          },
+          "countryValid" : {
+            "type" : "boolean"
+          },
+          "atLeastOneFieldSelected" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "ChatRequest" : {
         "type" : "object",
         "properties" : {
@@ -3433,6 +3507,59 @@
         } ]
       }
     },
+    "/api/favorites/bulk-update" : {
+      "put" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkUpdateFavoritesDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Bulk Update Favorites",
+        "tags" : [ "Favorites Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/favorites/distinct-values" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Distinct Values",
+        "tags" : [ "Favorites Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/favorites/point" : {
       "post" : {
         "requestBody" : {
@@ -3917,6 +4044,59 @@
           }
         },
         "summary" : "Get Geocoding Results",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geocoding/bulk-update" : {
+      "put" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkUpdateGeocodingDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Bulk Update Geocoding",
+        "tags" : [ "Reverse Geocoding Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geocoding/distinct-values" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Distinct Values",
         "tags" : [ "Reverse Geocoding Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -6956,7 +7136,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.10.0",
+    "version" : "1.10.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
