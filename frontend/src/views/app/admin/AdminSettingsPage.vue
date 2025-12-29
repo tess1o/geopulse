@@ -718,4 +718,139 @@ onMounted(() => {
 .coming-soon-badge {
   display: inline-block;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .admin-settings {
+    padding: 0.75rem;
+  }
+
+  .admin-breadcrumb {
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header {
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .settings-section {
+    padding: 1rem 0;
+  }
+
+  .settings-section h3 {
+    padding: 0 0.5rem 0.5rem 0.5rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .setting-info {
+    width: 100%;
+  }
+
+  .setting-control {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Only make text inputs full width */
+  .setting-control :deep(.p-inputtext),
+  .setting-control :deep(.p-password),
+  .setting-control :deep(.p-select),
+  .setting-control :deep(.p-inputnumber) {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  /* Keep switches and buttons at natural size */
+  .setting-control :deep(.p-inputswitch) {
+    flex-shrink: 0;
+  }
+
+  .setting-status {
+    flex-shrink: 0;
+    min-width: auto;
+  }
+
+  /* Override TabContainer for horizontal scroll */
+  .settings-tabs :deep(.tab-menu) {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    gap: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .settings-tabs :deep(.tab-menu::-webkit-scrollbar) {
+    height: 4px;
+  }
+
+  .settings-tabs :deep(.tab-menu::-webkit-scrollbar-thumb) {
+    background: var(--surface-border);
+    border-radius: 2px;
+  }
+
+  .settings-tabs :deep(.tab-menu-item) {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .empty-state {
+    padding: 1.5rem 0.5rem;
+  }
+
+  .empty-state h3 {
+    font-size: 1.25rem;
+  }
+
+  .planned-features {
+    padding: 1rem;
+  }
+
+  .planned-features h4 {
+    font-size: 1rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .admin-settings {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .settings-section h3 {
+    font-size: 0.95rem;
+  }
+
+  .setting-item {
+    padding: 0.75rem 0.25rem;
+  }
+
+  .settings-tabs :deep(.tab-menu-item) {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+  }
+}
 </style>

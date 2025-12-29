@@ -81,8 +81,8 @@
         </div>
       </div>
 
-      <!-- Audit Logs Table -->
-      <div class="card">
+      <!-- Desktop Table View -->
+      <div class="card desktop-only">
         <DataTable
           :value="auditLogs"
           :loading="loading"
@@ -176,6 +176,97 @@
         </DataTable>
       </div>
 
+      <!-- Mobile Card View -->
+      <div class="mobile-only">
+        <div v-if="loading" class="text-center p-4">
+          <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+        </div>
+
+        <div v-else-if="auditLogs.length === 0" class="text-center p-4 card">
+          No audit logs found.
+        </div>
+
+        <div v-else class="audit-cards">
+          <div v-for="log in auditLogs" :key="log.id" class="audit-card">
+            <div class="audit-card-header">
+              <div class="audit-info">
+                <div class="audit-action">
+                  <i :class="getActionIcon(log.actionType)" :style="{ color: getActionColor(log.actionType) }"></i>
+                  <Tag :severity="getActionSeverity(log.actionType)" :value="formatActionType(log.actionType)" />
+                </div>
+                <div class="audit-timestamp">{{ formatDate(log.timestamp) }} {{ formatTime(log.timestamp) }}</div>
+              </div>
+            </div>
+
+            <div class="audit-card-body">
+              <div class="audit-stat">
+                <span class="stat-label">Admin</span>
+                <div class="stat-value">
+                  <i class="pi pi-user"></i>
+                  <span>{{ log.adminEmail }}</span>
+                </div>
+              </div>
+              <div class="audit-stat">
+                <span class="stat-label">Target Type</span>
+                <Tag severity="secondary" :value="log.targetType" />
+              </div>
+            </div>
+
+            <div class="audit-meta">
+              <div class="meta-row" v-if="log.targetId">
+                <span class="meta-label">Target ID:</span>
+                <code class="meta-value">{{ log.targetId }}</code>
+              </div>
+              <div class="meta-row" v-if="log.ipAddress">
+                <span class="meta-label">IP Address:</span>
+                <code class="meta-value">{{ log.ipAddress }}</code>
+              </div>
+            </div>
+
+            <div v-if="log.details && Object.keys(log.details).length > 0" class="audit-details">
+              <div class="details-header" @click="toggleDetails(log.id)">
+                <span class="details-label">Details</span>
+                <i :class="expandedMobileLogs.includes(log.id) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"></i>
+              </div>
+              <div v-if="expandedMobileLogs.includes(log.id)" class="details-content">
+                <pre class="json-viewer">{{ JSON.stringify(log.details, null, 2) }}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Pagination -->
+        <div class="mobile-pagination" v-if="auditLogs.length > 0">
+          <Button
+            icon="pi pi-angle-double-left"
+            text
+            @click="goToFirstPage"
+            :disabled="page === 0"
+          />
+          <Button
+            icon="pi pi-angle-left"
+            text
+            @click="goToPrevPage"
+            :disabled="page === 0"
+          />
+          <span class="pagination-info">
+            Page {{ page + 1 }} of {{ Math.ceil(totalRecords / pageSize) }}
+          </span>
+          <Button
+            icon="pi pi-angle-right"
+            text
+            @click="goToNextPage"
+            :disabled="(page + 1) * pageSize >= totalRecords"
+          />
+          <Button
+            icon="pi pi-angle-double-right"
+            text
+            @click="goToLastPage"
+            :disabled="(page + 1) * pageSize >= totalRecords"
+          />
+        </div>
+      </div>
+
       <Toast />
     </div>
   </AppLayout>
@@ -218,6 +309,7 @@ const totalRecords = ref(0)
 const page = ref(0)
 const pageSize = ref(20)
 const expandedRows = ref([])
+const expandedMobileLogs = ref([])
 
 // Filters
 const dateRange = ref(null)
@@ -398,6 +490,40 @@ const getActionSeverity = (actionType) => {
   return 'secondary'
 }
 
+// Mobile-specific functions
+const toggleDetails = (logId) => {
+  const index = expandedMobileLogs.value.indexOf(logId)
+  if (index > -1) {
+    expandedMobileLogs.value.splice(index, 1)
+  } else {
+    expandedMobileLogs.value.push(logId)
+  }
+}
+
+const goToFirstPage = () => {
+  page.value = 0
+  loadAuditLogs()
+}
+
+const goToPrevPage = () => {
+  if (page.value > 0) {
+    page.value--
+    loadAuditLogs()
+  }
+}
+
+const goToNextPage = () => {
+  if ((page.value + 1) * pageSize.value < totalRecords.value) {
+    page.value++
+    loadAuditLogs()
+  }
+}
+
+const goToLastPage = () => {
+  page.value = Math.floor(totalRecords.value / pageSize.value)
+  loadAuditLogs()
+}
+
 onMounted(() => {
   loadAuditLogs()
 })
@@ -525,5 +651,228 @@ onMounted(() => {
 
 .no-underline {
   text-decoration: none;
+}
+
+/* Desktop/Mobile Toggle */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* Mobile Audit Cards */
+.audit-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+.audit-card {
+  background: var(--gp-surface-white);
+  border: 2px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+/* Dark theme specific */
+:global(.p-dark) .audit-card,
+:global([data-theme="dark"]) .audit-card,
+:global(html.dark) .audit-card {
+  background: var(--gp-surface-dark);
+}
+
+.audit-card-header {
+  margin-bottom: 0.75rem;
+}
+
+.audit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.audit-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.audit-timestamp {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary);
+}
+
+.audit-card-body {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+.audit-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.stat-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.audit-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--surface-50);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.meta-row {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.meta-label {
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+.meta-value {
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.audit-details {
+  border-top: 1px solid var(--surface-border);
+  padding-top: 0.75rem;
+}
+
+.details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  cursor: pointer;
+  background: var(--surface-50);
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.details-header:active {
+  background: var(--surface-100);
+}
+
+.details-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.details-content {
+  margin-top: 0.75rem;
+}
+
+/* Mobile Pagination */
+.mobile-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-card);
+  border-radius: 8px;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  padding: 0 0.5rem;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .admin-audit-logs {
+    padding: 0.75rem;
+  }
+
+  .admin-breadcrumb {
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header {
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .filters-card {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .filters-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .filter-actions {
+    padding-top: 0.75rem;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .card {
+    padding: 0.75rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .admin-audit-logs {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .audit-card {
+    padding: 0.75rem;
+  }
+
+  .audit-card-body {
+    gap: 1rem;
+  }
 }
 </style>

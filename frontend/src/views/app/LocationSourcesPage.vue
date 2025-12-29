@@ -582,6 +582,7 @@ import GpsFilteringSettings from '@/components/GpsFilteringSettings.vue'
 
 // Store
 import { useGpsSourcesStore } from '@/stores/gpsSources'
+import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 // Store setup
 const gpsStore = useGpsSourcesStore()
@@ -1033,15 +1034,16 @@ const deleteSource = async (id) => {
 }
 
 const copyToClipboard = async (text) => {
-  try {
-    await navigator.clipboard.writeText(text)
+  const success = await copyTextToClipboard(text)
+
+  if (success) {
     toast.add({
       severity: 'success',
       summary: 'Copied',
       detail: 'Text copied to clipboard',
       life: 2000
     })
-  } catch (error) {
+  } else {
     toast.add({
       severity: 'error',
       summary: 'Copy Failed',

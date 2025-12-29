@@ -487,6 +487,7 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import Menu from 'primevue/menu'
+import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 const timezone = useTimezone()
 
@@ -644,37 +645,16 @@ const getShareUrl = (link) => {
 }
 
 const copyToClipboard = async (text) => {
-  try {
-    // Try modern clipboard API first
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text)
-    } else {
-      // Fallback to legacy method
-      const textArea = document.createElement('textarea')
-      textArea.value = text
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-999999px'
-      textArea.style.top = '-999999px'
-      document.body.appendChild(textArea)
-      textArea.focus()
-      textArea.select()
+  const success = await copyTextToClipboard(text)
 
-      const successful = document.execCommand('copy')
-      document.body.removeChild(textArea)
-
-      if (!successful) {
-        throw new Error('Copy command failed')
-      }
-    }
-
+  if (success) {
     toast.add({
       severity: 'success',
       summary: 'Copied',
       detail: 'Link copied to clipboard',
       life: 2000
     })
-  } catch (error) {
-    console.error('Copy failed:', error)
+  } else {
     toast.add({
       severity: 'warn',
       summary: 'Copy Failed',

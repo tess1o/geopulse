@@ -104,6 +104,7 @@ import Calendar from 'primevue/calendar'
 import Checkbox from 'primevue/checkbox'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
+import { copyToClipboard } from '@/utils/clipboardUtils'
 
 const props = defineProps({
   visible: {
@@ -288,24 +289,24 @@ async function handleSubmit() {
   }
 }
 
-function copyLinkToClipboard() {
-  navigator.clipboard.writeText(createdShareUrl.value)
-    .then(() => {
-      toast.add({
-        severity: 'success',
-        summary: 'Copied!',
-        detail: 'Share link copied to clipboard',
-        life: 2000
-      })
+async function copyLinkToClipboard() {
+  const success = await copyToClipboard(createdShareUrl.value)
+
+  if (success) {
+    toast.add({
+      severity: 'success',
+      summary: 'Copied!',
+      detail: 'Share link copied to clipboard',
+      life: 2000
     })
-    .catch(() => {
-      toast.add({
-        severity: 'error',
-        summary: 'Copy Failed',
-        detail: 'Could not copy to clipboard',
-        life: 3000
-      })
+  } else {
+    toast.add({
+      severity: 'error',
+      summary: 'Copy Failed',
+      detail: 'Could not copy to clipboard',
+      life: 3000
     })
+  }
 }
 
 function resetToForm() {

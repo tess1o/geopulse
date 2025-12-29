@@ -18,7 +18,18 @@
         </router-link>
       </div>
 
-    <div class="card">
+    <!-- Search Bar (Mobile & Desktop) -->
+    <div class="search-container">
+      <InputText
+        v-model="searchQuery"
+        placeholder="Search users..."
+        @input="onSearch"
+        class="w-full"
+      />
+    </div>
+
+    <!-- Desktop Table View -->
+    <div class="card desktop-only">
       <DataTable
         :value="users"
         :loading="loading"
@@ -34,14 +45,6 @@
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
         currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users"
       >
-        <template #header>
-          <div class="flex justify-content-between align-items-center">
-            <span class="p-input">
-              <InputText v-model="searchQuery" placeholder="Search users..." @input="onSearch" />
-            </span>
-          </div>
-        </template>
-
         <Column field="email" header="Email" sortable>
           <template #body="{ data }">
             <router-link :to="`/app/admin/users/${data.id}`" class="text-primary no-underline">
@@ -115,6 +118,103 @@
           </div>
         </template>
       </DataTable>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="mobile-only">
+      <div v-if="loading" class="text-center p-4">
+        <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+      </div>
+
+      <div v-else-if="users.length === 0" class="text-center p-4 card">
+        No users found.
+      </div>
+
+      <div v-else class="user-cards">
+        <div v-for="user in users" :key="user.id" class="user-card" @click="viewUser(user)">
+          <div class="user-card-header">
+            <div class="user-info">
+              <div class="user-email">{{ user.email }}</div>
+              <div class="user-name">{{ user.fullName }}</div>
+            </div>
+            <div class="user-badges">
+              <Tag :severity="user.role === 'ADMIN' ? 'warning' : 'info'" :value="user.role" />
+              <Tag :severity="user.active ? 'success' : 'danger'" :value="user.active ? 'Active' : 'Disabled'" />
+            </div>
+          </div>
+
+          <div class="user-card-body">
+            <div class="user-stat">
+              <span class="stat-label">GPS Points</span>
+              <span class="stat-value">{{ formatNumber(user.gpsPointsCount) }}</span>
+            </div>
+            <div class="user-stat">
+              <span class="stat-label">Created</span>
+              <span class="stat-value">{{ formatDate(user.createdAt) }}</span>
+            </div>
+          </div>
+
+          <div class="user-card-actions" @click.stop>
+            <Button
+              icon="pi pi-eye"
+              rounded
+              text
+              severity="info"
+              @click="viewUser(user)"
+              size="small"
+            />
+            <Button
+              :icon="user.active ? 'pi pi-ban' : 'pi pi-check'"
+              rounded
+              text
+              :severity="user.active ? 'warning' : 'success'"
+              @click="toggleUserStatus(user)"
+              :disabled="user.id === currentUserId"
+              size="small"
+            />
+            <Button
+              icon="pi pi-trash"
+              rounded
+              text
+              severity="danger"
+              @click="confirmDelete(user)"
+              :disabled="user.id === currentUserId"
+              size="small"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Pagination -->
+      <div class="mobile-pagination" v-if="users.length > 0">
+        <Button
+          icon="pi pi-angle-double-left"
+          text
+          @click="goToFirstPage"
+          :disabled="page === 0"
+        />
+        <Button
+          icon="pi pi-angle-left"
+          text
+          @click="goToPrevPage"
+          :disabled="page === 0"
+        />
+        <span class="pagination-info">
+          Page {{ page + 1 }} of {{ Math.ceil(totalRecords / pageSize) }}
+        </span>
+        <Button
+          icon="pi pi-angle-right"
+          text
+          @click="goToNextPage"
+          :disabled="(page + 1) * pageSize >= totalRecords"
+        />
+        <Button
+          icon="pi pi-angle-double-right"
+          text
+          @click="goToLastPage"
+          :disabled="(page + 1) * pageSize >= totalRecords"
+        />
+      </div>
     </div>
 
     <!-- Delete Confirmation Dialog -->
@@ -322,6 +422,31 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString()
 }
 
+// Mobile pagination methods
+const goToFirstPage = () => {
+  page.value = 0
+  loadUsers()
+}
+
+const goToPrevPage = () => {
+  if (page.value > 0) {
+    page.value--
+    loadUsers()
+  }
+}
+
+const goToNextPage = () => {
+  if ((page.value + 1) * pageSize.value < totalRecords.value) {
+    page.value++
+    loadUsers()
+  }
+}
+
+const goToLastPage = () => {
+  page.value = Math.floor(totalRecords.value / pageSize.value)
+  loadUsers()
+}
+
 onMounted(() => {
   loadUsers()
 })
@@ -361,5 +486,196 @@ onMounted(() => {
 
 .text-muted {
   color: var(--text-color-secondary);
+}
+
+/* Search Container */
+.search-container {
+  margin-bottom: 1rem;
+}
+
+/* Desktop/Mobile Toggle */
+.desktop-only {
+  display: block;
+}
+
+.mobile-only {
+  display: none;
+}
+
+/* Mobile User Cards */
+.user-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+.user-card {
+  background: var(--gp-surface-white);
+  border: 2px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Dark theme specific */
+:global(.p-dark) .user-card,
+:global([data-theme="dark"]) .user-card,
+:global(html.dark) .user-card {
+  background: var(--gp-surface-dark);
+}
+
+.user-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.user-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-email {
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-name {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+}
+
+.user-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-end;
+}
+
+.user-card-body {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+.user-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-color-secondary);
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.user-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+/* Mobile Pagination */
+.mobile-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-card);
+  border-radius: 8px;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-color-secondary);
+  padding: 0 0.5rem;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .admin-users {
+    padding: 0.75rem;
+  }
+
+  .admin-breadcrumb {
+    margin-bottom: 0.75rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .page-header p {
+    margin: 0.25rem 0 0 0;
+  }
+
+  .search-container {
+    margin-bottom: 0.75rem;
+  }
+
+  .desktop-only {
+    display: none;
+  }
+
+  .mobile-only {
+    display: block;
+  }
+
+  .card {
+    padding: 0.75rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .admin-users {
+    padding: 0.5rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .user-card {
+    padding: 0.75rem;
+  }
+
+  .user-card-body {
+    gap: 1rem;
+  }
 }
 </style>
