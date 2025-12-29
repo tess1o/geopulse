@@ -198,9 +198,13 @@
     />
 
     <!-- Bulk Edit Dialog -->
-    <BulkEditGeocodingDialog
+    <BulkEditDialog
       :visible="showBulkEditDialog"
       :selected-items="selectedRows"
+      item-type-name="Geocoding Results"
+      :store="geocodingStore"
+      bulk-update-method="bulkUpdateGeocoding"
+      distinct-values-method="fetchDistinctValues"
       @close="showBulkEditDialog = false"
       @save="handleBulkEditSave"
     />
@@ -238,7 +242,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import GeocodingReconcileDialog from '@/components/dialogs/GeocodingReconcileDialog.vue'
-import BulkEditGeocodingDialog from '@/components/dialogs/BulkEditGeocodingDialog.vue'
+import BulkEditDialog from '@/components/dialogs/BulkEditDialog.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'

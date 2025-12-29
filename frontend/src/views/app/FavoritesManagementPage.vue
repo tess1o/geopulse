@@ -270,9 +270,13 @@
       />
 
       <!-- Bulk Edit Dialog -->
-      <BulkEditFavoritesDialog
+      <BulkEditDialog
           :visible="showBulkEditDialog"
           :selected-items="selectedRows"
+          item-type-name="Favorites"
+          :store="favoritesStore"
+          bulk-update-method="bulkUpdateFavorites"
+          distinct-values-method="fetchDistinctValues"
           @close="showBulkEditDialog = false"
           @save="handleBulkEditSave"
       />
@@ -340,7 +344,7 @@ import FavoriteReconcileDialog from '@/components/dialogs/FavoriteReconcileDialo
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import PendingFavoritesPanel from '@/components/favorites/PendingFavoritesPanel.vue'
 import BulkSaveConfirmDialog from '@/components/dialogs/BulkSaveConfirmDialog.vue'
-import BulkEditFavoritesDialog from '@/components/dialogs/BulkEditFavoritesDialog.vue'
+import BulkEditDialog from '@/components/dialogs/BulkEditDialog.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'

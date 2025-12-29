@@ -1,7 +1,7 @@
 <template>
   <Dialog
       :visible="visible"
-      :header="`Bulk Edit ${selectedItems.length} Geocoding Results`"
+      :header="`Bulk Edit ${selectedItems.length} ${itemTypeName}`"
       :modal="true"
       :closable="!saving"
       @update:visible="handleClose"
@@ -12,7 +12,7 @@
       <!-- Selected Items Summary -->
       <div class="summary-section">
         <i class="pi pi-info-circle"></i>
-        <span>You are editing <strong>{{selectedItems.length}}</strong> geocoding result{{selectedItems.length !== 1 ? 's' : ''}}</span>
+        <span>You are editing <strong>{{selectedItems.length}}</strong> {{itemTypeName.toLowerCase()}}{{selectedItems.length !== 1 ? 's' : ''}}</span>
       </div>
 
       <!-- Field Selections -->
@@ -119,7 +119,6 @@
 <script setup>
 import {ref, computed, watch, onMounted} from 'vue'
 import {useToast} from 'primevue/usetoast'
-import {useGeocodingStore} from '@/stores/geocoding'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
@@ -131,12 +130,31 @@ const props = defineProps({
   selectedItems: {
     type: Array,
     default: () => []
+  },
+  itemTypeName: {
+    type: String,
+    required: true // e.g., "Favorites" or "Geocoding Results"
+  },
+  store: {
+    type: Object,
+    required: true // The Pinia store instance (favoritesStore or geocodingStore)
+  },
+  bulkUpdateMethod: {
+    type: String,
+    required: true // Name of the method to call (e.g., 'bulkUpdateFavorites' or 'bulkUpdateGeocoding')
+  },
+  distinctValuesMethod: {
+    type: String,
+    required: true // Name of the method to call (e.g., 'fetchDistinctValues')
+  },
+  idField: {
+    type: String,
+    default: 'id' // Field name for the ID (usually 'id')
   }
 })
 
 const emit = defineEmits(['close', 'save'])
 
-const geocodingStore = useGeocodingStore()
 const toast = useToast()
 
 // Form state
@@ -181,7 +199,12 @@ const searchCountries = (event) => {
 
 const loadDistinctValues = async () => {
   try {
-    const result = await geocodingStore.fetchDistinctValues()
+    const method = props.store[props.distinctValuesMethod]
+    if (typeof method !== 'function') {
+      console.error(`Method ${props.distinctValuesMethod} not found in store`)
+      return
+    }
+    const result = await method()
     existingCities.value = result.cities || []
     existingCountries.value = result.countries || []
   } catch (error) {
@@ -279,10 +302,15 @@ const proceedWithUpdate = async () => {
   saving.value = true
 
   try {
-    const geocodingIds = props.selectedItems.map(item => item.id)
+    const ids = props.selectedItems.map(item => item[props.idField])
 
-    const result = await geocodingStore.bulkUpdateGeocoding(
-        geocodingIds,
+    const method = props.store[props.bulkUpdateMethod]
+    if (typeof method !== 'function') {
+      throw new Error(`Method ${props.bulkUpdateMethod} not found in store`)
+    }
+
+    const result = await method(
+        ids,
         updateCity.value,
         updateCity.value ? cityValue.value.trim() : null,
         updateCountry.value,
@@ -290,8 +318,8 @@ const proceedWithUpdate = async () => {
     )
 
     const successMsg = result.failedCount > 0
-        ? `Updated ${result.successCount} of ${result.totalRequested} results (${result.failedCount} failed)`
-        : `Successfully updated ${result.successCount} geocoding results`
+        ? `Updated ${result.successCount} of ${result.totalRequested} items (${result.failedCount} failed)`
+        : `Successfully updated ${result.successCount} ${props.itemTypeName.toLowerCase()}`
 
     toast.add({
       severity: result.failedCount > 0 ? 'warn' : 'success',
@@ -303,11 +331,11 @@ const proceedWithUpdate = async () => {
     emit('save')
     handleClose()
   } catch (error) {
-    console.error('Error bulk updating geocoding:', error)
+    console.error(`Error bulk updating ${props.itemTypeName}:`, error)
     toast.add({
       severity: 'error',
       summary: 'Update Failed',
-      detail: error.message || 'Failed to update geocoding results',
+      detail: error.message || `Failed to update ${props.itemTypeName.toLowerCase()}`,
       life: 5000
     })
   } finally {
