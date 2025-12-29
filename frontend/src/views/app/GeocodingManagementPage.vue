@@ -18,6 +18,15 @@
         />
         <Button
           v-if="selectedRows.length > 0"
+          :label="`Bulk Edit (${selectedRows.length})`"
+          icon="pi pi-pencil"
+          severity="secondary"
+          size="small"
+          @click="bulkEditSelected"
+          class="bulk-action-button"
+        />
+        <Button
+          v-if="selectedRows.length > 0"
           :label="`Reconcile Selected (${selectedRows.length})`"
           icon="pi pi-refresh"
           severity="info"
@@ -188,6 +197,14 @@
       @save="handleEditSave"
     />
 
+    <!-- Bulk Edit Dialog -->
+    <BulkEditGeocodingDialog
+      :visible="showBulkEditDialog"
+      :selected-items="selectedRows"
+      @close="showBulkEditDialog = false"
+      @save="handleBulkEditSave"
+    />
+
     <!-- Reconcile Dialog -->
     <GeocodingReconcileDialog
       :visible="showReconcileDialog"
@@ -221,6 +238,7 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import GeocodingReconcileDialog from '@/components/dialogs/GeocodingReconcileDialog.vue'
+import BulkEditGeocodingDialog from '@/components/dialogs/BulkEditGeocodingDialog.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'
@@ -255,6 +273,7 @@ const tableLoading = ref(false)
 // Dialog states
 const showEditDialog = ref(false)
 const showReconcileDialog = ref(false)
+const showBulkEditDialog = ref(false)
 const selectedResult = ref(null)
 const selectedRows = ref([])
 const reconcileMode = ref('selected') // 'selected' | 'all'
@@ -404,6 +423,16 @@ const reconcileResult = (result) => {
   selectedResult.value = result
   selectedRows.value = []
   showReconcileDialog.value = true
+}
+
+const bulkEditSelected = () => {
+  showBulkEditDialog.value = true
+}
+
+const handleBulkEditSave = async () => {
+  // Dialog handles the save, we just need to refresh and clear selection
+  selectedRows.value = []
+  await loadGeocodingResults()
 }
 
 const reconcileSelected = () => {

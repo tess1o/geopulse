@@ -253,6 +253,60 @@ public class FavoritesResource {
         }
     }
 
+    @PUT
+    @Path("/bulk-update")
+    public Response bulkUpdateFavorites(@Valid BulkUpdateFavoritesDto bulkDto) {
+        try {
+            UUID authenticatedUserId = currentUserService.getCurrentUserId();
+            log.info("User {} starting bulk update: {} favorites, updateCity={}, updateCountry={}",
+                    authenticatedUserId, bulkDto.getFavoriteIds().size(),
+                    bulkDto.getUpdateCity(), bulkDto.getUpdateCountry());
+
+            BulkUpdateFavoritesResult result = service.bulkUpdateFavorites(authenticatedUserId, bulkDto);
+
+            // If complete failure, return error
+            if (result.getSuccessCount() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Failed to update any favorites"))
+                        .build();
+            }
+
+            log.info("User {} bulk update completed: {} successful, {} failed",
+                    authenticatedUserId, result.getSuccessCount(), result.getFailedCount());
+
+            return Response.ok(ApiResponse.success(result)).build();
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid bulk update data: {}", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid update data: " + e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to bulk update favorites", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to bulk update favorites: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/distinct-values")
+    public Response getDistinctValues() {
+        try {
+            UUID authenticatedUserId = currentUserService.getCurrentUserId();
+            log.debug("User {} retrieving distinct city/country values", authenticatedUserId);
+
+            DistinctValuesDto distinctValues = service.getDistinctValues(authenticatedUserId);
+            return Response.ok(ApiResponse.success(distinctValues)).build();
+
+        } catch (Exception e) {
+            log.error("Failed to retrieve distinct values", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve distinct values: " + e.getMessage()))
+                    .build();
+        }
+    }
+
     /**
      * Start bulk reconciliation job (async).
      * Returns job ID immediately for progress tracking.

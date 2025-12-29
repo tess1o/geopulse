@@ -95,11 +95,7 @@ public class GpsPointsMetrics {
         );
 
         // Count GPS points in last 24 hours
-        Instant last24h = Instant.now().minus(24, ChronoUnit.HOURS);
-        Long pointsLast24h = (Long) entityManager.createNativeQuery(
-                        "SELECT COUNT(*) FROM gps_points WHERE timestamp >= :threshold")
-                .setParameter("threshold", last24h)
-                .getSingleResult();
+        Long pointsLast24h = getPointsLast24h();
         gpsPointsLast24h.set(pointsLast24h);
 
         // Calculate average GPS points per user (among users with GPS data)
@@ -139,6 +135,15 @@ public class GpsPointsMetrics {
         }
     }
 
+    private Long getPointsLast24h() {
+        Instant last24h = Instant.now().minus(24, ChronoUnit.HOURS);
+        Long pointsLast24h = (Long) entityManager.createNativeQuery(
+                        "SELECT COUNT(*) FROM gps_points WHERE timestamp >= :threshold")
+                .setParameter("threshold", last24h)
+                .getSingleResult();
+        return pointsLast24h;
+    }
+
     /**
      * Check if metrics are enabled
      * @return true if metrics are enabled
@@ -171,6 +176,9 @@ public class GpsPointsMetrics {
      * @return GPS points in last 24 hours
      */
     public long getGpsPointsLast24h() {
+        if (!isEnabled()) {
+            return getPointsLast24h();
+        }
         return gpsPointsLast24h.get();
     }
 

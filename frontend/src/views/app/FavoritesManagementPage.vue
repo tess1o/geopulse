@@ -37,6 +37,15 @@
           />
           <Button
             v-if="selectedRows.length > 0"
+            :label="`Bulk Edit (${selectedRows.length})`"
+            icon="pi pi-pencil"
+            severity="secondary"
+            size="small"
+            @click="bulkEditSelected"
+            class="bulk-action-button"
+          />
+          <Button
+            v-if="selectedRows.length > 0"
             :label="`Reconcile Selected (${selectedRows.length})`"
             icon="pi pi-refresh"
             severity="info"
@@ -260,6 +269,14 @@
           @close="handleCloseAddDialog"
       />
 
+      <!-- Bulk Edit Dialog -->
+      <BulkEditFavoritesDialog
+          :visible="showBulkEditDialog"
+          :selected-items="selectedRows"
+          @close="showBulkEditDialog = false"
+          @save="handleBulkEditSave"
+      />
+
       <!-- Bulk Save Confirm Dialog -->
       <BulkSaveConfirmDialog
           :visible="showBulkSaveDialog"
@@ -323,6 +340,7 @@ import FavoriteReconcileDialog from '@/components/dialogs/FavoriteReconcileDialo
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import PendingFavoritesPanel from '@/components/favorites/PendingFavoritesPanel.vue'
 import BulkSaveConfirmDialog from '@/components/dialogs/BulkSaveConfirmDialog.vue'
+import BulkEditFavoritesDialog from '@/components/dialogs/BulkEditFavoritesDialog.vue'
 
 // PrimeVue
 import DataTable from 'primevue/datatable'
@@ -375,6 +393,7 @@ const showEditDialog = ref(false)
 const showAddDialog = ref(false)
 const showReconcileDialog = ref(false)
 const showBulkSaveDialog = ref(false)
+const showBulkEditDialog = ref(false)
 const selectedFavorite = ref(null)
 const selectedRows = ref([])
 const reconcileMode = ref('selected') // 'selected' | 'all'
@@ -657,6 +676,16 @@ const handleEditSave = async (updatedData) => {
       life: 5000
     })
   }
+}
+
+const bulkEditSelected = () => {
+  showBulkEditDialog.value = true
+}
+
+const handleBulkEditSave = async () => {
+  // Dialog handles the save, we just need to refresh and clear selection
+  selectedRows.value = []
+  await loadFavorites()
 }
 
 const reconcileSelected = () => {

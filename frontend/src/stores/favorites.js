@@ -274,6 +274,37 @@ export const useFavoritesStore = defineStore('favorites', {
                 console.error('Error bulk creating favorites:', error)
                 throw error
             }
+        },
+
+        async bulkUpdateFavorites(favoriteIds, updateCity, city, updateCountry, country) {
+            try {
+                const response = await apiService.put('/favorites/bulk-update', {
+                    favoriteIds,
+                    updateCity,
+                    city,
+                    updateCountry,
+                    country
+                })
+
+                // Refresh favorites to get the updated list from backend
+                await this.fetchFavoritePlaces()
+
+                // Return the result with success/failure counts
+                return response.data
+            } catch (error) {
+                console.error('Error bulk updating favorites:', error)
+                throw error
+            }
+        },
+
+        async fetchDistinctValues() {
+            try {
+                const response = await apiService.get('/favorites/distinct-values')
+                return response.data // { cities: [...], countries: [...] }
+            } catch (error) {
+                console.error('Error fetching distinct values:', error)
+                throw error
+            }
         }
     }
 })

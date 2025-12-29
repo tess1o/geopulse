@@ -64,6 +64,10 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
         ReverseGeocodingResource.class,
         ReverseGeocodingManagementService.class,
         ReconciliationJobProgress.class,
+
+        BulkUpdateGeocodingDto.class,
+        BulkUpdateGeocodingResult.class,
+        DistinctValuesDto.class,
 })
 public class GeocodingNativeConfig {
 }

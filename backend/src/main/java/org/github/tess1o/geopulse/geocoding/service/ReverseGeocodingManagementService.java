@@ -125,6 +125,92 @@ public class ReverseGeocodingManagementService {
         return dtoMapper.toDTO(result.entity());
     }
 
+    /**
+     * Bulk update geocoding results with copy-on-write semantics.
+     * Only updates city and/or country fields for selected entities.
+     */
+    @Transactional
+    public BulkUpdateGeocodingResult bulkUpdateGeocoding(UUID currentUserId, BulkUpdateGeocodingDto bulkDto) {
+        log.info("Starting bulk update geocoding for user {}: {} results, updateCity={}, updateCountry={}",
+                currentUserId, bulkDto.getGeocodingIds().size(), bulkDto.getUpdateCity(), bulkDto.getUpdateCountry());
+
+        java.util.Map<Long, String> failures = new java.util.HashMap<>();
+        int successCount = 0;
+
+        for (Long geocodingId : bulkDto.getGeocodingIds()) {
+            try {
+                ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
+                if (entity == null) {
+                    failures.put(geocodingId, "Geocoding result not found");
+                    continue;
+                }
+
+                // Security check
+                if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
+                    failures.put(geocodingId, "Cannot modify another user's geocoding data");
+                    continue;
+                }
+
+                // Build update DTO with only selected fields
+                ReverseGeocodingUpdateDTO updateDTO = ReverseGeocodingUpdateDTO.builder()
+                        .displayName(entity.getDisplayName()) // Keep existing
+                        .city(Boolean.TRUE.equals(bulkDto.getUpdateCity()) ? bulkDto.getCity().trim() : entity.getCity())
+                        .country(Boolean.TRUE.equals(bulkDto.getUpdateCountry()) ? bulkDto.getCountry().trim() : entity.getCountry())
+                        .build();
+
+                // Use copy-on-write handler to apply update
+                UpdateResult result = copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
+                successCount++;
+
+                log.debug("Successfully updated geocoding {} for user {}", geocodingId, currentUserId);
+
+            } catch (Exception e) {
+                log.warn("Failed to update geocoding {} in bulk operation: {}", geocodingId, e.getMessage());
+                failures.put(geocodingId, e.getMessage());
+            }
+        }
+
+        int failedCount = failures.size();
+        log.info("Bulk update geocoding completed for user {}: {} successful, {} failed out of {} total",
+                currentUserId, successCount, failedCount, bulkDto.getGeocodingIds().size());
+
+        return BulkUpdateGeocodingResult.builder()
+                .totalRequested(bulkDto.getGeocodingIds().size())
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .failures(failures)
+                .build();
+    }
+
+    /**
+     * Get distinct city and country values for current user's geocoding results.
+     * Includes both originals they reference and their own user-specific copies.
+     */
+    public DistinctValuesDto getDistinctValues(UUID userId) {
+        // Use management page query to get all entities accessible to user
+        List<ReverseGeocodingLocationEntity> entities = geocodingRepository.findForUserManagementPage(
+                userId, null, null, null, null, 1, Integer.MAX_VALUE, null, null);
+
+        List<String> cities = entities.stream()
+                .map(ReverseGeocodingLocationEntity::getCity)
+                .filter(city -> city != null && !city.trim().isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        List<String> countries = entities.stream()
+                .map(ReverseGeocodingLocationEntity::getCountry)
+                .filter(country -> country != null && !country.trim().isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        return DistinctValuesDto.builder()
+                .cities(cities)
+                .countries(countries)
+                .build();
+    }
+
 
     /**
      * Reconcile geocoding entity with provider (re-fetch from API).

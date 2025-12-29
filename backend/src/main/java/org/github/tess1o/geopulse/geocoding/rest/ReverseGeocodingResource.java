@@ -160,6 +160,72 @@ public class ReverseGeocodingResource {
     }
 
     /**
+     * Bulk update geocoding results (city and/or country fields).
+     * Uses copy-on-write semantics for shared originals.
+     *
+     * @param bulkDto Bulk update request
+     * @return Bulk update result with success/failure counts
+     */
+    @PUT
+    @Path("/bulk-update")
+    public Response bulkUpdateGeocoding(@Valid BulkUpdateGeocodingDto bulkDto) {
+        UUID currentUserId = getCurrentUserId();
+        log.info("User {} starting bulk update: {} results, updateCity={}, updateCountry={}",
+                currentUserId, bulkDto.getGeocodingIds().size(),
+                bulkDto.getUpdateCity(), bulkDto.getUpdateCountry());
+
+        try {
+            BulkUpdateGeocodingResult result = managementService.bulkUpdateGeocoding(currentUserId, bulkDto);
+
+            // If complete failure, return error
+            if (result.getSuccessCount() == 0) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(Map.of("error", "Failed to update any geocoding results"))
+                        .build();
+            }
+
+            log.info("User {} bulk update completed: {} successful, {} failed",
+                    currentUserId, result.getSuccessCount(), result.getFailedCount());
+
+            return Response.ok(result).build();
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid bulk update data: {}", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", "Invalid update data: " + e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to bulk update geocoding results for user {}: {}", currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to bulk update geocoding results"))
+                    .build();
+        }
+    }
+
+    /**
+     * Get distinct city and country values for current user's geocoding results.
+     * Useful for autocomplete in bulk edit dialogs.
+     *
+     * @return Distinct values DTO
+     */
+    @GET
+    @Path("/distinct-values")
+    public Response getDistinctValues() {
+        UUID currentUserId = getCurrentUserId();
+        log.debug("User {} retrieving distinct city/country values", currentUserId);
+
+        try {
+            DistinctValuesDto distinctValues = managementService.getDistinctValues(currentUserId);
+            return Response.ok(distinctValues).build();
+        } catch (Exception e) {
+            log.error("Failed to retrieve distinct values for user {}: {}", currentUserId, e.getMessage(), e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of("error", "Failed to retrieve distinct values"))
+                    .build();
+        }
+    }
+
+    /**
      * Start bulk reconciliation job (async).
      * Returns job ID immediately for progress tracking.
      *

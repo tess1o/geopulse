@@ -147,6 +147,32 @@ export const useGeocodingStore = defineStore('geocoding', {
                 console.error('Error fetching reconciliation job progress:', error)
                 throw error
             }
+        },
+
+        async bulkUpdateGeocoding(geocodingIds, updateCity, city, updateCountry, country) {
+            try {
+                const response = await apiService.put('/geocoding/bulk-update', {
+                    geocodingIds,
+                    updateCity,
+                    city,
+                    updateCountry,
+                    country
+                })
+                return response // { totalRequested, successCount, failedCount, failures }
+            } catch (error) {
+                console.error('Error bulk updating geocoding results:', error)
+                throw error
+            }
+        },
+
+        async fetchDistinctValues() {
+            try {
+                const response = await apiService.get('/geocoding/distinct-values')
+                return response // { cities: [...], countries: [...] }
+            } catch (error) {
+                console.error('Error fetching distinct values:', error)
+                throw error
+            }
         }
     }
 })

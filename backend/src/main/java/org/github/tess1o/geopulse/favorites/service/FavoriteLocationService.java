@@ -307,6 +307,81 @@ public class FavoriteLocationService {
     }
 
     @Transactional
+    public BulkUpdateFavoritesResult bulkUpdateFavorites(UUID userId, BulkUpdateFavoritesDto bulkDto) {
+        log.info("Starting bulk update favorites for user {}: {} favorites, updateCity={}, updateCountry={}",
+                userId, bulkDto.getFavoriteIds().size(), bulkDto.getUpdateCity(), bulkDto.getUpdateCountry());
+
+        Map<Long, String> failures = new java.util.HashMap<>();
+        int successCount = 0;
+
+        for (Long favoriteId : bulkDto.getFavoriteIds()) {
+            try {
+                FavoritesEntity favoritesEntity = repository.findById(favoriteId);
+                if (favoritesEntity == null) {
+                    failures.put(favoriteId, "Favorite not found");
+                    continue;
+                }
+
+                if (!favoritesEntity.getUser().getId().equals(userId)) {
+                    failures.put(favoriteId, "Not authorized to edit this favorite");
+                    continue;
+                }
+
+                // Update only the selected fields
+                if (Boolean.TRUE.equals(bulkDto.getUpdateCity())) {
+                    favoritesEntity.setCity(bulkDto.getCity().trim());
+                }
+                if (Boolean.TRUE.equals(bulkDto.getUpdateCountry())) {
+                    favoritesEntity.setCountry(bulkDto.getCountry().trim());
+                }
+
+                repository.persistAndFlush(favoritesEntity);
+                successCount++;
+
+                log.debug("Successfully updated favorite {} for user {}", favoriteId, userId);
+
+            } catch (Exception e) {
+                log.warn("Failed to update favorite {} in bulk operation: {}", favoriteId, e.getMessage());
+                failures.put(favoriteId, e.getMessage());
+            }
+        }
+
+        int failedCount = failures.size();
+        log.info("Bulk update favorites completed for user {}: {} successful, {} failed out of {} total",
+                userId, successCount, failedCount, bulkDto.getFavoriteIds().size());
+
+        return BulkUpdateFavoritesResult.builder()
+                .totalRequested(bulkDto.getFavoriteIds().size())
+                .successCount(successCount)
+                .failedCount(failedCount)
+                .failures(failures)
+                .build();
+    }
+
+    public DistinctValuesDto getDistinctValues(UUID userId) {
+        List<FavoritesEntity> favorites = repository.findByUserId(userId);
+
+        List<String> cities = favorites.stream()
+                .map(FavoritesEntity::getCity)
+                .filter(city -> city != null && !city.trim().isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        List<String> countries = favorites.stream()
+                .map(FavoritesEntity::getCountry)
+                .filter(country -> country != null && !country.trim().isEmpty())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        return DistinctValuesDto.builder()
+                .cities(cities)
+                .countries(countries)
+                .build();
+    }
+
+    @Transactional
     public void updateFavorite(UUID userId, long favoriteId, String newName, String city, String country) {
         validateName(newName);
 
