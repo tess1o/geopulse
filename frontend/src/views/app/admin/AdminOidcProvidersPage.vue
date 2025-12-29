@@ -1,5 +1,6 @@
 <template>
   <AppLayout>
+    <PageContainer>
     <div class="admin-oidc-providers">
       <Breadcrumb :home="breadcrumbHome" :model="breadcrumbItems" class="admin-breadcrumb" />
 
@@ -318,6 +319,7 @@
 
       <Toast />
     </div>
+    </PageContainer>
   </AppLayout>
 </template>
 
@@ -335,6 +337,7 @@ import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import OidcProviderDialog from '@/components/admin/OidcProviderDialog.vue'
 import adminService from '@/utils/adminService'
+import PageContainer from "@/components/ui/layout/PageContainer.vue";
 
 const router = useRouter()
 const toast = useToast()
@@ -682,14 +685,30 @@ code {
 .provider-cards {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
 }
 
 .provider-card {
-  background: var(--surface-card);
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--gp-surface-white);
+  border: 2px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+/* Dark theme specific */
+:global(.p-dark) .provider-card,
+:global([data-theme="dark"]) .provider-card,
+:global(html.dark) .provider-card {
+  background: var(--gp-surface-dark);
+}
+
+.provider-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .provider-card-header {

@@ -725,14 +725,30 @@ onMounted(() => {
 .invitation-cards {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
 }
 
 .invitation-card {
-  background: var(--surface-card);
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: var(--gp-surface-white);
+  border: 2px solid var(--surface-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+/* Dark theme specific */
+:global(.p-dark) .invitation-card,
+:global([data-theme="dark"]) .invitation-card,
+:global(html.dark) .invitation-card {
+  background: var(--gp-surface-dark);
+}
+
+.invitation-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .invitation-card-header {
