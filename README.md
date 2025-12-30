@@ -58,7 +58,7 @@ MQTT.
 
 Built with Java (Quarkus native) and PostGIS for maximum reliability and efficiency. GeoPulse uses only **40-100MB of
 memory** compared to 500-1000+MB for similar applications, while maintaining excellent performance with low-level
-optimizations for GPS data processing. Can handle years of location history.
+optimizations for GPS data processing. Can handle years of location history on a small server.
 
 **Mobile-First Design**
 
@@ -96,7 +96,6 @@ GeoPulse can be deployed using **Docker Compose** or **Kubernetes (Helm)** in un
 
 - **Local Deployment** - Deploy on your local machine (zero configuration required)
 - **Production Deployment** - Deploy on server with custom domain and reverse proxy
-- **With MQTT** - Real-time OwnTracks integration
 
 **[Docker Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose)**
 
@@ -135,7 +134,7 @@ helm install my-geopulse geopulse/geopulse
 
 - **RAM**: 512MB (typical usage is much less, but recommended for comfortable operation)
 - **CPU**: 1-2 vCPU
-- **Storage**: Depends on data volume (GPS points, photos if using Immich integration)
+- **Storage**: Depends on data volume
 
 **Notes:**
 
