@@ -22,10 +22,12 @@
                   aria-haspopup="true"
                   aria-controls="create_menu"
               />
-              <Menu ref="menu" id="create_menu" :model="createMenuItems" :popup="true" />
             </div>
           </div>
         </div>
+
+        <!-- Menu rendered unconditionally so it's available in empty state too -->
+        <Menu ref="menu" id="create_menu" :model="createMenuItems" :popup="true" />
 
         <!-- Share Links Content -->
         <div class="share-links-content">
@@ -318,8 +320,10 @@
               <Button
                   label="Create Your First Link"
                   icon="pi pi-plus"
-                  @click="showCreateDialog = true"
+                  @click="(event) => menu.toggle(event)"
                   class="empty-action-btn"
+                  aria-haspopup="true"
+                  aria-controls="create_menu"
               />
             </div>
           </div>
@@ -332,7 +336,8 @@
             :modal="true"
             :closable="true"
             :draggable="false"
-            class="share-link-dialog"
+            :style="{width: '90vw', maxWidth: '700px'}"
+            :breakpoints="{'960px': '90vw', '640px': '95vw'}"
         >
           <form @submit.prevent="submitLinkForm" class="link-form">
             <div class="form-group">
@@ -414,6 +419,47 @@
               />
             </div>
 
+            <div class="form-group">
+              <div class="checkbox-wrapper">
+                <Checkbox
+                    id="use_custom_tiles"
+                    v-model="linkForm.use_custom_tiles"
+                    :binary="true"
+                />
+                <label for="use_custom_tiles" class="checkbox-label">Use custom map tiles</label>
+              </div>
+            </div>
+
+            <div v-if="linkForm.use_custom_tiles" class="custom-tiles-section">
+              <Message severity="warn" :closable="false" class="security-warning">
+                <div class="warning-content">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <div>
+                    <strong>Security Notice:</strong>
+                    The custom tile URL (including any API keys) will be visible to all viewers.
+                    Only enable if you trust the recipients.
+                  </div>
+                </div>
+              </Message>
+
+              <div class="form-group">
+                <label for="custom-tile-url" class="form-label">Custom Tile URL</label>
+                <InputText
+                    id="custom-tile-url"
+                    v-model="linkForm.custom_map_tile_url"
+                    placeholder="https://tile-provider.com/{z}/{x}/{y}.png"
+                    class="form-input"
+                    :class="{'p-invalid': formErrors.custom_map_tile_url}"
+                />
+                <small class="p-text-secondary">
+                  Placeholders: {z} zoom, {x}/{y} coordinates, {s} subdomains
+                </small>
+                <small v-if="formErrors.custom_map_tile_url" class="p-error">
+                  {{ formErrors.custom_map_tile_url }}
+                </small>
+              </div>
+            </div>
+
             <div class="form-actions">
               <Button
                   label="Cancel"
@@ -479,7 +525,7 @@
 </template>
 
 <script setup>
-import {ref, reactive, onMounted, computed} from 'vue'
+import {ref, reactive, onMounted, computed, watch} from 'vue'
 import {useToast} from 'primevue/usetoast'
 import {useShareLinksStore} from '@/stores/shareLinks'
 import { useTimezone } from '@/composables/useTimezone'
@@ -487,6 +533,7 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import Menu from 'primevue/menu'
+import Message from 'primevue/message'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
 
 const timezone = useTimezone()
@@ -527,11 +574,32 @@ const linkForm = reactive({
   show_history: false,
   history_hours: 24,
   has_password: false,
-  password: ''
+  password: '',
+  use_custom_tiles: false,
+  custom_map_tile_url: ''
+})
+
+const formErrors = reactive({
+  custom_map_tile_url: null
 })
 
 // Computed
 const minDate = computed(() => timezone.now().toDate())
+
+// Watch for custom tiles checkbox changes
+watch(() => linkForm.use_custom_tiles, (enabled) => {
+  if (enabled && !linkForm.custom_map_tile_url) {
+    // Pre-fill with user's profile custom tile URL if available
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
+        linkForm.custom_map_tile_url = userInfo.customMapTileUrl.trim()
+      }
+    } catch (error) {
+      console.error('Error reading user custom tile URL:', error)
+    }
+  }
+})
 
 // Methods
 const resetForm = () => {
@@ -541,6 +609,9 @@ const resetForm = () => {
   linkForm.history_hours = 24
   linkForm.has_password = false
   linkForm.password = ''
+  linkForm.use_custom_tiles = false
+  linkForm.custom_map_tile_url = ''
+  formErrors.custom_map_tile_url = null
 }
 
 const closeDialog = () => {
@@ -564,11 +635,27 @@ const editLink = (link) => {
     linkForm.history_hours = link.history_hours || 24
     linkForm.has_password = link.has_password
     linkForm.password = '' // Don't pre-fill password for security
+    linkForm.use_custom_tiles = !!(link.custom_map_tile_url)
+    linkForm.custom_map_tile_url = link.custom_map_tile_url || ''
     showCreateDialog.value = true
   }
 }
 
 const submitLinkForm = async () => {
+  // Clear previous errors
+  formErrors.custom_map_tile_url = null
+
+  // Validate custom tiles if enabled
+  if (linkForm.use_custom_tiles) {
+    if (!linkForm.custom_map_tile_url || !linkForm.custom_map_tile_url.trim()) {
+      formErrors.custom_map_tile_url = 'Custom tile URL required when enabled'
+      return
+    } else if (linkForm.custom_map_tile_url.length > 1000) {
+      formErrors.custom_map_tile_url = 'URL cannot exceed 1000 characters'
+      return
+    }
+  }
+
   try {
     console.log('submitLinkForm', linkForm);
     const formData = {
@@ -576,7 +663,8 @@ const submitLinkForm = async () => {
       expires_at: linkForm.expires_at ? linkForm.expires_at.toISOString() : null,
       show_history: linkForm.show_history,
       history_hours: linkForm.show_history ? linkForm.history_hours : null,
-      password: linkForm.has_password ? linkForm.password : null
+      password: linkForm.has_password ? linkForm.password : null,
+      custom_map_tile_url: linkForm.use_custom_tiles ? linkForm.custom_map_tile_url : null
     }
 
     console.log('formData', formData);
@@ -1012,7 +1100,7 @@ onMounted(async () => {
 }
 
 .share-link-dialog {
-  width: 500px;
+  width: 700px;
   max-width: 95vw;
 }
 
@@ -1170,5 +1258,39 @@ onMounted(async () => {
   .link-actions .p-button {
     flex: 1;
   }
+}
+
+/* Custom Tiles Section Styles */
+.custom-tiles-section {
+  margin-left: 1.75rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--orange-500);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.security-warning {
+  margin: 0;
+}
+
+.warning-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.warning-content i {
+  font-size: 1.25rem;
+  color: var(--orange-500);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.warning-content div {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 </style>

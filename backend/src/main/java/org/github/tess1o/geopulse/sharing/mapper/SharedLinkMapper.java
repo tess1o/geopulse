@@ -33,6 +33,7 @@ public class SharedLinkMapper {
                 createShareLinkRequest.getShowCurrentLocation() : true);
         sharedLinkEntity.setShowPhotos(createShareLinkRequest.getShowPhotos() != null ?
                 createShareLinkRequest.getShowPhotos() : false);
+        sharedLinkEntity.setCustomMapTileUrl(createShareLinkRequest.getCustomMapTileUrl());
 
         return sharedLinkEntity;
     }
@@ -66,6 +67,7 @@ public class SharedLinkMapper {
                 .showCurrentLocation(entity.getShowCurrentLocation())
                 .showPhotos(entity.getShowPhotos())
                 .timelineStatus(entity.getTimelineStatus())
+                .customMapTileUrl(entity.getCustomMapTileUrl())
                 .build();
     }
 
@@ -88,6 +90,7 @@ public class SharedLinkMapper {
                 .showCurrentLocation(entity.getShowCurrentLocation())
                 .showPhotos(entity.getShowPhotos())
                 .timelineStatus(entity.getTimelineStatus())
+                .customMapTileUrl(entity.getCustomMapTileUrl())
                 .build();
     }
 
@@ -160,5 +163,7 @@ public class SharedLinkMapper {
         if (dto.getShowPhotos() != null) {
             entity.setShowPhotos(dto.getShowPhotos());
         }
+        // Always set custom map tile URL (null is valid - means disabled)
+        entity.setCustomMapTileUrl(dto.getCustomMapTileUrl());
     }
 }

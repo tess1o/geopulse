@@ -9,6 +9,8 @@
       :zoom="mapZoom"
       :show-controls="true"
       :controls-props="controlsProps"
+      :custom-tile-url="customTileUrl"
+      :is-shared-view="isSharedView"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
       @map-contextmenu="handleMapContextMenu"
@@ -210,6 +212,14 @@ const props = defineProps({
   showPhotos: {
     type: Boolean,
     default: true
+  },
+  customTileUrl: {
+    type: String,
+    default: null
+  },
+  isSharedView: {
+    type: Boolean,
+    default: false
   }
 })
 

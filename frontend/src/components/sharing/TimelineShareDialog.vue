@@ -1,6 +1,6 @@
 <template>
   <Dialog v-model:visible="dialogVisible" modal :header="dialogHeader"
-          :style="{width: '90vw', maxWidth: '600px'}" :breakpoints="{'960px': '90vw', '640px': '95vw'}"
+          :style="{width: '90vw', maxWidth: '700px'}" :breakpoints="{'960px': '90vw', '640px': '95vw'}"
           @hide="onHide">
 
     <!-- Success State - Show Created Link -->
@@ -70,6 +70,41 @@
       </div>
 
       <div class="field-checkbox">
+        <Checkbox id="use-custom-tiles" v-model="formData.use_custom_tiles" :binary="true" />
+        <label for="use-custom-tiles">Use custom map tiles</label>
+      </div>
+
+      <div v-if="formData.use_custom_tiles" class="custom-tiles-section">
+        <Message severity="warn" :closable="false" class="security-warning">
+          <div class="warning-content">
+            <i class="pi pi-exclamation-triangle"></i>
+            <div>
+              <strong>Security Notice:</strong>
+              The custom tile URL (including any API keys) will be visible to all viewers.
+              Only enable if you trust the recipients.
+            </div>
+          </div>
+        </Message>
+
+        <div class="field">
+          <label for="custom-tile-url">Custom Tile URL</label>
+          <InputText
+            id="custom-tile-url"
+            v-model="formData.custom_map_tile_url"
+            placeholder="https://tile-provider.com/{z}/{x}/{y}.png"
+            class="w-full"
+            :class="{'p-invalid': errors.custom_map_tile_url}"
+          />
+          <small class="p-text-secondary">
+            Placeholders: {z} zoom, {x}/{y} coordinates, {s} subdomains
+          </small>
+          <small v-if="errors.custom_map_tile_url" class="p-error">
+            {{ errors.custom_map_tile_url }}
+          </small>
+        </div>
+      </div>
+
+      <div class="field-checkbox">
         <Checkbox id="has-password" v-model="formData.has_password" :binary="true" />
         <label for="has-password">Password protect this link</label>
       </div>
@@ -104,6 +139,7 @@ import Calendar from 'primevue/calendar'
 import Checkbox from 'primevue/checkbox'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
+import Message from 'primevue/message'
 import { copyToClipboard } from '@/utils/clipboardUtils'
 
 const props = defineProps({
@@ -149,13 +185,16 @@ const formData = ref({
   show_current_location: true,
   show_photos: false,
   has_password: false,
-  password: ''
+  password: '',
+  use_custom_tiles: false,
+  custom_map_tile_url: ''
 })
 
 const errors = ref({
   start_date: null,
   end_date: null,
-  password: null
+  password: null,
+  custom_map_tile_url: null
 })
 
 // Initialize form data when dialog opens
@@ -171,7 +210,9 @@ watch(() => props.visible, (visible) => {
         show_current_location: props.editingShare.show_current_location ?? true,
         show_photos: props.editingShare.show_photos ?? false,
         has_password: props.editingShare.has_password || false,
-        password: ''
+        password: '',
+        use_custom_tiles: !!(props.editingShare.custom_map_tile_url),
+        custom_map_tile_url: props.editingShare.custom_map_tile_url || ''
       }
     } else if (props.prefillDates) {
       // Create mode with prefilled dates from TimelinePage
@@ -185,13 +226,15 @@ watch(() => props.visible, (visible) => {
         show_current_location: true,
         show_photos: false,
         has_password: false,
-        password: ''
+        password: '',
+        use_custom_tiles: false,
+        custom_map_tile_url: ''
       }
     } else {
       // Create mode - reset to defaults
       resetForm()
     }
-    errors.value = { start_date: null, end_date: null, password: null }
+    errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null }
   }
 })
 
@@ -204,12 +247,29 @@ function resetForm() {
     show_current_location: true,
     show_photos: false,
     has_password: false,
-    password: ''
+    password: '',
+    use_custom_tiles: false,
+    custom_map_tile_url: ''
   }
 }
 
+// Watch for custom tiles checkbox changes
+watch(() => formData.value.use_custom_tiles, (enabled) => {
+  if (enabled && !formData.value.custom_map_tile_url) {
+    // Pre-fill with user's profile custom tile URL if available
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
+        formData.value.custom_map_tile_url = userInfo.customMapTileUrl.trim()
+      }
+    } catch (error) {
+      console.error('Error reading user custom tile URL:', error)
+    }
+  }
+})
+
 function validateForm() {
-  errors.value = { start_date: null, end_date: null, password: null }
+  errors.value = { start_date: null, end_date: null, password: null, custom_map_tile_url: null }
   let isValid = true
 
   if (!formData.value.start_date) {
@@ -234,6 +294,16 @@ function validateForm() {
     isValid = false
   }
 
+  if (formData.value.use_custom_tiles) {
+    if (!formData.value.custom_map_tile_url || !formData.value.custom_map_tile_url.trim()) {
+      errors.value.custom_map_tile_url = 'Custom tile URL required when enabled'
+      isValid = false
+    } else if (formData.value.custom_map_tile_url.length > 1000) {
+      errors.value.custom_map_tile_url = 'URL cannot exceed 1000 characters'
+      isValid = false
+    }
+  }
+
   return isValid
 }
 
@@ -254,6 +324,7 @@ async function handleSubmit() {
       show_current_location: formData.value.show_current_location,
       show_photos: formData.value.show_photos,
       password: formData.value.has_password ? formData.value.password : null,
+      custom_map_tile_url: formData.value.use_custom_tiles ? formData.value.custom_map_tile_url : null,
       // Keep live location fields for compatibility
       show_history: false,
       history_hours: 0
@@ -423,6 +494,39 @@ function onHide() {
   max-width: 200px;
 }
 
+/* Custom Tiles Section Styles */
+.custom-tiles-section {
+  margin-left: 1.75rem;
+  padding-left: 1rem;
+  border-left: 3px solid var(--orange-500);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.security-warning {
+  margin: 0;
+}
+
+.warning-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.warning-content i {
+  font-size: 1.25rem;
+  color: var(--orange-500);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.warning-content div {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 /* Mobile responsive */
 @media (max-width: 640px) {
   .timeline-share-form {
@@ -431,6 +535,10 @@ function onHide() {
 
   .field label {
     font-size: 0.9rem;
+  }
+
+  .custom-tiles-section {
+    margin-left: 1rem;
   }
 }
 </style>
