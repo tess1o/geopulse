@@ -64,6 +64,9 @@ public class SharedLinkEntity extends PanacheEntityBase {
     @Builder.Default
     private Boolean showPhotos = false;
 
+    @Column(name = "custom_map_tile_url", length = 1000)
+    private String customMapTileUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = Instant.now();

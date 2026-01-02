@@ -29,13 +29,24 @@ const props = defineProps({
   width: {
     type: String,
     default: '100%'
+  },
+  customTileUrl: {
+    type: String,
+    default: null
+  },
+  isSharedView: {
+    type: Boolean,
+    default: false
   }
 })
 
 const emit = defineEmits(['map-ready', 'map-click', 'map-contextmenu'])
 
-// Get tile configuration
-const { getTileUrl, getTileAttribution, getSubdomains } = useMapTiles()
+// Get tile configuration with optional override
+const { getTileUrl, getTileAttribution, getSubdomains } = useMapTiles({
+  overrideTileUrl: props.customTileUrl,
+  isSharedView: props.isSharedView
+})
 
 // Reactive state
 const map = ref(null)
@@ -264,6 +275,40 @@ watch(() => props.center, (newCenter, oldCenter) => {
 watch(() => props.zoom, (newZoom) => {
   if (map.value && typeof newZoom === 'number') {
     map.value.setZoom(newZoom)
+  }
+})
+
+// Watch for custom tile URL changes (for shared views)
+watch(() => props.customTileUrl, (newUrl, oldUrl) => {
+  if (map.value && newUrl !== oldUrl) {
+    const tileUrl = getTileUrl()
+    const subdomains = getSubdomains()
+
+    // Remove existing tile layers
+    map.value.eachLayer((layer) => {
+      if (layer instanceof L.TileLayer) {
+        map.value.removeLayer(layer)
+      }
+    })
+
+    // Add new tile layer with updated URL
+    const tileLayerOptions = {
+      attribution: getTileAttribution(),
+      maxZoom: 19,
+      minZoom: 0,
+      tileSize: 256,
+      keepBuffer: 2,
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      updateInterval: 200,
+      maxNativeZoom: 19
+    }
+
+    if (subdomains.length > 0) {
+      tileLayerOptions.subdomains = subdomains
+    }
+
+    L.tileLayer(tileUrl, tileLayerOptions).addTo(map.value)
   }
 })
 

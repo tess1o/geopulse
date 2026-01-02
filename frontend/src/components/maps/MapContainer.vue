@@ -8,6 +8,8 @@
       :options="mapOptions"
       :height="height"
       :width="width"
+      :custom-tile-url="customTileUrl"
+      :is-shared-view="isSharedView"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
       @map-contextmenu="handleMapContextMenu"
@@ -67,6 +69,14 @@ const props = defineProps({
   controlsProps: {
     type: Object,
     default: () => ({})
+  },
+  customTileUrl: {
+    type: String,
+    default: null
+  },
+  isSharedView: {
+    type: Boolean,
+    default: false
   }
 })
 

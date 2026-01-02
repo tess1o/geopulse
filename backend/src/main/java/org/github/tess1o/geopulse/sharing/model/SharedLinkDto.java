@@ -58,4 +58,7 @@ public class SharedLinkDto {
 
     @JsonProperty("timeline_status")
     private String timelineStatus;
+
+    @JsonProperty("custom_map_tile_url")
+    private String customMapTileUrl;
 }
