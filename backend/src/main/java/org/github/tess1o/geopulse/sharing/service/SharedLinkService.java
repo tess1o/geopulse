@@ -155,7 +155,8 @@ public class SharedLinkService {
                 updateDto.getStartDate(),
                 updateDto.getEndDate(),
                 updateDto.getShowCurrentLocation(),
-                updateDto.getShowPhotos()
+                updateDto.getShowPhotos(),
+                updateDto.getCustomMapTileUrl()
         );
 
         if (safeDto.getPassword() != null && !safeDto.getPassword().trim().isEmpty()) {

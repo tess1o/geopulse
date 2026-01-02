@@ -1,73 +1,83 @@
 /**
  * Composable for managing custom map tile URLs
- * Provides dynamic tile URLs based on user preferences
+ * Provides dynamic tile URLs based on user preferences or shared link overrides
+ * @param {Object} options - Configuration options
+ * @param {String} options.overrideTileUrl - Optional custom tile URL to override user preferences (for shared views)
+ * @param {Boolean} options.isSharedView - If true, skip user preferences fallback (for shared links)
  */
+export function useMapTiles(options = {}) {
+  const { overrideTileUrl, isSharedView = false } = options
 
-/**
- * Get map tile configuration from user preferences
- * @returns {Object} Tile configuration with URL and attribution
- */
-export function useMapTiles() {
   /**
-   * Get the tile URL from user preferences or default to OSM
-   * Custom tiles are proxied through the backend to avoid CORS/ORB issues
+   * Get the tile URL from override, user preferences, or default to OSM
+   * Priority: 1. Override (shared link) 2. Skip if shared view 3. User preferences 4. Default OSM
    * @returns {string} Tile URL template with {z}, {x}, {y} placeholders
    */
   const getTileUrl = () => {
+    // Priority 1: Use override URL if provided (for shared links)
+    if (overrideTileUrl && overrideTileUrl.trim()) {
+      const customUrl = overrideTileUrl.trim()
+      const urlHash = btoa(customUrl).substring(0, 8)
+      const separator = customUrl.includes('?') ? '&' : '?'
+      return `${customUrl}${separator}v=${urlHash}`
+    }
+
+    // Priority 2: For shared views with no override, skip user preferences and use OSM
+    if (isSharedView) {
+      return '/osm/tiles/{s}/{z}/{x}/{y}.png'
+    }
+
+    // Priority 3: Try user preferences (for authenticated users in normal views)
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      // If user has configured a custom tile URL, use it directly with cache-busting version
       if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
         const customUrl = userInfo.customMapTileUrl.trim()
-
-        // Generate a cache-busting version based on the custom URL
-        // This ensures tiles reload when the custom URL changes
         const urlHash = btoa(customUrl).substring(0, 8)
-
-        // Append version parameter to the URL
-        // If URL already has query params (e.g., ?key=xxx), use &v=hash
-        // Otherwise use ?v=hash
         const separator = customUrl.includes('?') ? '&' : '?'
-        const versionedUrl = `${customUrl}${separator}v=${urlHash}`
-        return versionedUrl
+        return `${customUrl}${separator}v=${urlHash}`
       }
     } catch (error) {
       console.error('[useMapTiles] Error reading custom map tile URL from localStorage:', error)
     }
 
-    // Default to OSM tiles proxied through nginx for caching
+    // Priority 4: Default to OSM tiles
     return '/osm/tiles/{s}/{z}/{x}/{y}.png'
   }
 
   /**
    * Get attribution text based on the tile provider
-   * Detects provider from stored custom tile URL, not the proxy URL
+   * Checks override first, then user preferences (unless isSharedView)
    * @returns {string} Attribution HTML
    */
   const getTileAttribution = () => {
-    try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-
-      // Check the actual custom tile URL for attribution (not the proxy URL)
-      if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
-        const customUrl = userInfo.customMapTileUrl.toLowerCase()
-
-        // Detect common tile providers and provide appropriate attribution
-        if (customUrl.includes('maptiler.com')) {
-          return '© <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
-        } else if (customUrl.includes('mapbox.com')) {
-          return '© <a href="https://www.mapbox.com/about/maps/" target="_blank">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
-        } else if (customUrl.includes('thunderforest.com')) {
-          return '© <a href="https://www.thunderforest.com/" target="_blank">Thunderforest</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
-        } else if (customUrl.includes('stadiamaps.com')) {
-          return '© <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
+    // Determine which URL to check (override or user preferences)
+    const urlToCheck = overrideTileUrl && overrideTileUrl.trim() ?
+      overrideTileUrl.trim() :
+      (!isSharedView ? (function() {
+        try {
+          const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+          return userInfo.customMapTileUrl
+        } catch {
+          return null
         }
+      })() : null)
 
-        // Custom provider - generic attribution
-        return '© Custom Tile Provider © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
+    if (urlToCheck) {
+      const customUrl = urlToCheck.toLowerCase()
+
+      // Detect common tile providers and provide appropriate attribution
+      if (customUrl.includes('maptiler.com')) {
+        return '© <a href="https://www.maptiler.com/copyright/" target="_blank">MapTiler</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
+      } else if (customUrl.includes('mapbox.com')) {
+        return '© <a href="https://www.mapbox.com/about/maps/" target="_blank">Mapbox</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
+      } else if (customUrl.includes('thunderforest.com')) {
+        return '© <a href="https://www.thunderforest.com/" target="_blank">Thunderforest</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
+      } else if (customUrl.includes('stadiamaps.com')) {
+        return '© <a href="https://stadiamaps.com/" target="_blank">Stadia Maps</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
       }
-    } catch (error) {
-      console.warn('Error reading custom map tile URL for attribution:', error)
+
+      // Custom provider - generic attribution
+      return '© Custom Tile Provider © <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap contributors</a>'
     }
 
     // Default OSM attribution
@@ -75,10 +85,16 @@ export function useMapTiles() {
   }
 
   /**
-   * Check if user is using custom tiles (not default OSM)
+   * Check if using custom tiles (override or user preferences unless isSharedView)
    * @returns {boolean} True if using custom tiles
    */
   const isUsingCustomTiles = () => {
+    if (overrideTileUrl && overrideTileUrl.trim()) {
+      return true
+    }
+    if (isSharedView) {
+      return false
+    }
     try {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
       return !!(userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim())
@@ -92,24 +108,28 @@ export function useMapTiles() {
    * @returns {Array<string>} Array of subdomains
    */
   const getSubdomains = () => {
-    try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-
-      // Check the actual custom tile URL (not the proxy URL)
-      if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
-        // Check if the custom URL uses subdomains
-        if (userInfo.customMapTileUrl.includes('{s}')) {
-          return ['a', 'b', 'c']
+    // Determine which URL to check (override or user preferences unless isSharedView)
+    const urlToCheck = overrideTileUrl && overrideTileUrl.trim() ?
+      overrideTileUrl.trim() :
+      (!isSharedView ? (function() {
+        try {
+          const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+          return userInfo.customMapTileUrl
+        } catch {
+          return null
         }
-        // No subdomains in custom URL
-        return []
-      }
-    } catch (error) {
-      console.warn('Error checking subdomains from localStorage:', error)
+      })() : null)
+
+    if (urlToCheck && urlToCheck.includes('{s}')) {
+      return ['a', 'b', 'c']
     }
 
-    // Default OSM uses a, b, c subdomains
-    return ['a', 'b', 'c']
+    // Default OSM uses a, b, c subdomains if no custom URL
+    if (!overrideTileUrl && !urlToCheck) {
+      return ['a', 'b', 'c']
+    }
+
+    return []
   }
 
   return {

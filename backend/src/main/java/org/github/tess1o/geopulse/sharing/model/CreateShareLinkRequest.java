@@ -48,4 +48,8 @@ public class CreateShareLinkRequest {
 
     @JsonProperty("show_photos")
     private Boolean showPhotos = false;
+
+    @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
+    @JsonProperty("custom_map_tile_url")
+    private String customMapTileUrl;
 }

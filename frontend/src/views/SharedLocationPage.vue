@@ -132,6 +132,8 @@
                     height="100%"
                     width="100%"
                     :show-controls="false"
+                    :custom-tile-url="shareLinksStore.getSharedLocationInfo?.custom_map_tile_url"
+                    :is-shared-view="true"
                     @map-ready="handleMapReady"
                 >
                   <template #overlays="{ map, isReady }">

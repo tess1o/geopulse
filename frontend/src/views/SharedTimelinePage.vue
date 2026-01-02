@@ -182,6 +182,8 @@
                 :showCurrentLocation="shareInfo.show_current_location && shareInfo.timeline_status === 'active'"
                 :is-public-view="true"
                 :show-photos="shareInfo.show_photos || false"
+                :custom-tile-url="shareInfo.custom_map_tile_url"
+                :is-shared-view="true"
                 @timeline-marker-click="handleTimelineItemClick"
             />
           </div>
