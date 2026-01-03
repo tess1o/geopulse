@@ -42,6 +42,22 @@
             </div>
           </div>
 
+          <!-- Permissions Section -->
+          <div class="friend-permissions">
+            <div class="permission-item">
+              <i class="pi pi-history permission-icon"></i>
+              <span class="permission-label">Share Timeline History</span>
+              <InputSwitch
+                  v-model="friend.shareTimelinePermission"
+                  @change="handlePermissionChange(friend)"
+                  class="permission-switch"
+              />
+              <i class="pi pi-info-circle info-icon"
+                 v-tooltip="'Allows this friend to view your complete location history'"
+              ></i>
+            </div>
+          </div>
+
           <div class="friend-actions">
             <Button
                 icon="pi pi-map-marker"
@@ -65,11 +81,18 @@
 </template>
 
 <script setup>
+import { ref, onMounted, watch } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+import apiService from '@/utils/apiService'
+import InputSwitch from 'primevue/inputswitch'
 
 const timezone = useTimezone()
+const toast = useToast()
+const confirm = useConfirm()
 
-defineProps({
+const props = defineProps({
   friends: {
     type: Array,
     default: () => []
@@ -77,6 +100,82 @@ defineProps({
 })
 
 defineEmits(['invite-friend', 'show-on-map', 'delete-friend'])
+
+// Load permissions for all friends
+onMounted(async () => {
+  await loadAllPermissions()
+})
+
+// Watch for friends changes and reload permissions
+watch(() => props.friends, async (newFriends) => {
+  if (newFriends && newFriends.length > 0) {
+    await loadAllPermissions()
+  }
+}, { deep: true })
+
+async function loadAllPermissions() {
+  if (!props.friends || props.friends.length === 0) return
+
+  try {
+    // Load permissions for each friend
+    const permissionPromises = props.friends.map(async (friend) => {
+      try {
+        const response = await apiService.getFriendPermissions(friend.friendId)
+        friend.shareTimelinePermission = response.data?.shareTimeline || false
+      } catch (error) {
+        console.error(`Failed to load permissions for friend ${friend.friendId}:`, error)
+        friend.shareTimelinePermission = false
+      }
+    })
+
+    await Promise.all(permissionPromises)
+  } catch (error) {
+    console.error('Failed to load friend permissions:', error)
+  }
+}
+
+async function handlePermissionChange(friend) {
+  const newValue = friend.shareTimelinePermission
+
+  // Show confirmation dialog
+  confirm.require({
+    message: newValue
+      ? `This will allow ${friend.fullName} to view your complete location history (all past stays and trips). Continue?`
+      : `This will revoke ${friend.fullName}'s access to your location history. Continue?`,
+    header: 'Confirm Permission Change',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        await apiService.updateFriendPermissions(friend.friendId, newValue)
+
+        toast.add({
+          severity: 'success',
+          summary: 'Permission Updated',
+          detail: newValue
+            ? `${friend.fullName} can now view your timeline history`
+            : `${friend.fullName} can no longer view your timeline history`,
+          life: 3000
+        })
+      } catch (error) {
+        console.error('Failed to update permission:', error)
+
+        // Revert the switch
+        friend.shareTimelinePermission = !newValue
+
+        toast.add({
+          severity: 'error',
+          summary: 'Failed to Update Permission',
+          detail: error.message || 'Could not update friend permissions',
+          life: 5000
+        })
+      }
+    },
+    reject: () => {
+      // Revert the switch
+      friend.shareTimelinePermission = !newValue
+    }
+  })
+}
 
 // Utility functions
 const getFriendStatus = (friend) => {
@@ -241,6 +340,44 @@ const getLastSeenText = (lastSeen) => {
   font-size: 0.8rem;
   color: var(--gp-text-secondary);
   line-height: 1.2;
+}
+
+/* Permissions Section */
+.friend-permissions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gp-border-light);
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-small);
+}
+
+.permission-icon {
+  font-size: 1rem;
+  color: var(--gp-primary);
+}
+
+.permission-label {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gp-text-primary);
+}
+
+.permission-switch {
+  flex-shrink: 0;
+}
+
+.info-icon {
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  cursor: help;
 }
 
 .friend-actions {

@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.friends.exceptions.FriendsException;
 import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
+import org.github.tess1o.geopulse.friends.model.UserFriendPermissionDTO;
 import org.github.tess1o.geopulse.friends.service.FriendService;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -168,5 +169,128 @@ public class FriendResource {
                     .entity(ApiResponse.error("Failed to search users"))
                     .build();
         }
+    }
+
+    /**
+     * Get timeline sharing permissions for a specific friend.
+     *
+     * @param friendId The friend ID
+     * @return Permission DTO
+     */
+    @GET
+    @Path("/{friendId}/permissions")
+    public Response getFriendPermissions(@PathParam("friendId") @NotNull String friendId) {
+        try {
+            if (friendId == null || friendId.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Friend ID cannot be empty"))
+                        .build();
+            }
+
+            UUID userId = currentUserService.getCurrentUserId();
+            UUID friendIdUUID = UUID.fromString(friendId);
+
+            UserFriendPermissionDTO permissions = friendService.getFriendPermissions(userId, friendIdUUID);
+            return Response.ok(ApiResponse.success(permissions)).build();
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid friend ID format: {}", friendId, e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid friend ID format"))
+                    .build();
+        } catch (FriendsException e) {
+            log.warn("Failed to get friend permissions: {}", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to get friend permissions for friend {}", friendId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve permissions"))
+                    .build();
+        }
+    }
+
+    /**
+     * Update timeline sharing permission for a friend.
+     *
+     * @param friendId The friend ID
+     * @param request  Request containing shareTimeline flag
+     * @return Updated permission DTO
+     */
+    @PUT
+    @Path("/{friendId}/permissions")
+    @Transactional
+    public Response updateFriendPermissions(
+            @PathParam("friendId") @NotNull String friendId,
+            UpdatePermissionRequest request) {
+        try {
+            if (friendId == null || friendId.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Friend ID cannot be empty"))
+                        .build();
+            }
+
+            if (request == null || request.shareTimeline == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("shareTimeline field is required"))
+                        .build();
+            }
+
+            UUID userId = currentUserService.getCurrentUserId();
+            UUID friendIdUUID = UUID.fromString(friendId);
+
+            UserFriendPermissionDTO permissions = friendService.updateFriendPermissions(
+                    userId,
+                    friendIdUUID,
+                    request.shareTimeline
+            );
+
+            return Response.ok(ApiResponse.success(permissions)).build();
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid friend ID format: {}", friendId, e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid friend ID format"))
+                    .build();
+        } catch (FriendsException e) {
+            log.warn("Failed to update friend permissions: {}", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to update friend permissions for friend {}", friendId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to update permissions"))
+                    .build();
+        }
+    }
+
+    /**
+     * Get all friend permissions for the current user.
+     *
+     * @return List of permission DTOs
+     */
+    @GET
+    @Path("/permissions")
+    public Response getAllFriendPermissions() {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            List<UserFriendPermissionDTO> permissions = friendService.getAllFriendPermissions(userId);
+            return Response.ok(ApiResponse.success(permissions)).build();
+
+        } catch (Exception e) {
+            log.error("Failed to get all friend permissions for user", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve permissions"))
+                    .build();
+        }
+    }
+
+    /**
+     * Request DTO for updating permissions.
+     */
+    public static class UpdatePermissionRequest {
+        public Boolean shareTimeline;
     }
 }

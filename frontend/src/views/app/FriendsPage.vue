@@ -104,6 +104,7 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import FriendsListTab from '@/components/friends/FriendsListTab.vue'
 import FriendsMapTab from '@/components/friends/FriendsMapTab.vue'
 import InvitationsTab from '@/components/friends/InvitationsTab.vue'
+import FriendsTimelineTab from '@/components/friends/FriendsTimelineTab.vue'
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
@@ -143,6 +144,11 @@ const tabItems = computed(() => [
     key: 'friends',
     badge: friends.value?.length > 0 ? friends.value.length : null,
     badgeType: 'info'
+  },
+  {
+    label: 'Timeline',
+    icon: 'pi pi-calendar',
+    key: 'timeline'
   },
   {
     label: 'Invitations',
@@ -185,6 +191,11 @@ const currentTabComponent = computed(() => {
         onFriendLocated: handleFriendLocated,
         onShowAll: handleShowAll
       }
+    },
+    timeline: {
+      component: FriendsTimelineTab,
+      props: {},
+      handlers: {}
     },
     invites: {
       component: InvitationsTab,
@@ -249,7 +260,7 @@ const switchToTab = (tabKey) => {
 }
 
 watch(() => route.params.tab, (newTab) => {
-  const validTabs = ['map', 'friends', 'invites']
+  const validTabs = ['map', 'friends', 'timeline', 'invites']
   if (validTabs.includes(newTab)) {
     activeTab.value = newTab
   } else {

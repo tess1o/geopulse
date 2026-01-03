@@ -7,7 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.friends.exceptions.FriendsException;
 import org.github.tess1o.geopulse.friends.invitation.repository.FriendInvitationRepository;
 import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
+import org.github.tess1o.geopulse.friends.model.UserFriendPermissionDTO;
+import org.github.tess1o.geopulse.friends.model.UserFriendPermissionEntity;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
+import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -19,6 +22,7 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.locationtech.jts.geom.Point;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -30,6 +34,7 @@ public class FriendService {
     private final FriendshipRepository friendshipRepository;
     private final FriendInvitationRepository friendInvitationRepository;
     private final UserRepository userRepository;
+    private final UserFriendPermissionRepository permissionRepository;
 
     @Inject
     public FriendService(
@@ -37,12 +42,14 @@ public class FriendService {
             LocationPointResolver locationPointResolver,
             FriendshipRepository friendshipRepository,
             FriendInvitationRepository friendInvitationRepository,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            UserFriendPermissionRepository permissionRepository) {
         this.gpsPointRepository = gpsPointRepository;
         this.locationPointResolver = locationPointResolver;
         this.friendshipRepository = friendshipRepository;
         this.friendInvitationRepository = friendInvitationRepository;
         this.userRepository = userRepository;
+        this.permissionRepository = permissionRepository;
     }
 
     /**
@@ -115,5 +122,123 @@ public class FriendService {
      */
     public List<UserSearchDTO> searchUsersToInvite(UUID currentUserId, String query) {
         return userRepository.searchUsersToInvite(currentUserId, query);
+    }
+
+    /**
+     * Get timeline sharing permissions for a specific friend.
+     *
+     * @param userId   The current user ID
+     * @param friendId The friend ID
+     * @return Permission DTO
+     */
+    public UserFriendPermissionDTO getFriendPermissions(UUID userId, UUID friendId) {
+        // Check friendship exists
+        if (!friendshipRepository.existsFriendship(userId, friendId)) {
+            throw new FriendsException("Not friends with user: " + friendId);
+        }
+
+        // Get or create permission record
+        Optional<UserFriendPermissionEntity> permission = permissionRepository.findByUserIdAndFriendId(userId, friendId);
+
+        UserEntity user = userRepository.findById(userId);
+
+        if (permission.isPresent()) {
+            UserFriendPermissionEntity p = permission.get();
+            return UserFriendPermissionDTO.builder()
+                    .userId(userId)
+                    .friendId(friendId)
+                    .shareTimeline(p.getShareTimeline())
+                    .shareLocationLive(user != null ? user.isShareLocationWithFriends() : false)
+                    .build();
+        } else {
+            // Return default permissions (false)
+            return UserFriendPermissionDTO.builder()
+                    .userId(userId)
+                    .friendId(friendId)
+                    .shareTimeline(false)
+                    .shareLocationLive(user != null ? user.isShareLocationWithFriends() : false)
+                    .build();
+        }
+    }
+
+    /**
+     * Update timeline sharing permission for a friend.
+     *
+     * @param userId        The current user ID
+     * @param friendId      The friend ID
+     * @param shareTimeline Whether to allow timeline access
+     * @return Updated permission DTO
+     */
+    @Transactional
+    public UserFriendPermissionDTO updateFriendPermissions(UUID userId, UUID friendId, boolean shareTimeline) {
+        // Check friendship exists
+        if (!friendshipRepository.existsFriendship(userId, friendId)) {
+            throw new FriendsException("Not friends with user: " + friendId);
+        }
+
+        UserEntity user = userRepository.findById(userId);
+
+        // Get or create permission record
+        Optional<UserFriendPermissionEntity> existingPermission = permissionRepository.findByUserIdAndFriendId(userId, friendId);
+
+        if (existingPermission.isPresent()) {
+            // Update existing
+            permissionRepository.updateShareTimeline(userId, friendId, shareTimeline);
+        } else {
+            // Create new permission record
+            UserEntity userEntity = userRepository.findById(userId);
+            UserEntity friendEntity = userRepository.findById(friendId);
+
+            if (userEntity == null || friendEntity == null) {
+                throw new FriendsException("User or friend not found");
+            }
+
+            permissionRepository.createDefaultPermissions(userEntity, friendEntity);
+            permissionRepository.updateShareTimeline(userId, friendId, shareTimeline);
+        }
+
+        log.info("Updated timeline permission for user {} -> friend {}: shareTimeline={}", userId, friendId, shareTimeline);
+
+        return UserFriendPermissionDTO.builder()
+                .userId(userId)
+                .friendId(friendId)
+                .shareTimeline(shareTimeline)
+                .shareLocationLive(user != null ? user.isShareLocationWithFriends() : false)
+                .build();
+    }
+
+    /**
+     * Get all permissions for the current user (permissions they have granted).
+     *
+     * @param userId The current user ID
+     * @return List of permission DTOs
+     */
+    public List<UserFriendPermissionDTO> getAllFriendPermissions(UUID userId) {
+        List<UserFriendPermissionEntity> permissions = permissionRepository.findAllByUserId(userId);
+        UserEntity user = userRepository.findById(userId);
+        boolean shareLocationLive = user != null ? user.isShareLocationWithFriends() : false;
+
+        return permissions.stream()
+                .map(p -> UserFriendPermissionDTO.builder()
+                        .userId(userId)
+                        .friendId(p.getFriend().getId())
+                        .shareTimeline(p.getShareTimeline())
+                        .shareLocationLive(shareLocationLive)
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Check if a user can view a friend's timeline.
+     *
+     * @param userId   The user who owns the timeline
+     * @param friendId The friend requesting access
+     * @return true if permission granted, false otherwise
+     */
+    public boolean canViewFriendTimeline(UUID userId, UUID friendId) {
+        if (!friendshipRepository.existsFriendship(userId, friendId)) {
+            return false;
+        }
+        return permissionRepository.hasTimelinePermission(userId, friendId);
     }
 }
