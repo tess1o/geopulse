@@ -16,26 +16,20 @@
       <span class="relative-time">{{ timezone.format(props.item.timestamp) }}</span>
     </div>
 
-    <div class="stay-title">
-      <i class="pi pi-map-marker"></i>
+    <div class="stay-subtitle">
+      🏠 Stayed at
       <span class="location-name">{{ item.locationName || 'Unknown Location' }}</span>
     </div>
 
-    <div class="stay-details">
-      <div class="detail-item">
-        <i class="pi pi-clock"></i>
-        <span>{{ formatDuration(item.stayDuration) }}</span>
-      </div>
-      <div v-if="item.city" class="detail-item detail-item--secondary">
-        <i class="pi pi-building"></i>
-        <span>{{ item.city }}</span>
-      </div>
+    <div class="stay-content">
+      <p class="stay-detail">
+        For <span class="font-bold">{{ formatDuration(item.stayDuration) }}</span>
+      </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
 import Avatar from 'primevue/avatar'
@@ -77,7 +71,7 @@ const handleClick = () => {
   border-top: 1px solid var(--gp-border-light);
   border-right: 1px solid var(--gp-border-light);
   border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  background: var(--gp-timeline-purple-light);
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-sm);
 }
@@ -117,65 +111,49 @@ const handleClick = () => {
   white-space: nowrap;
 }
 
-.stay-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.stay-subtitle {
+  font-size: 0.875rem;
+  color: var(--gp-text-primary);
   margin-bottom: var(--gp-spacing-xs);
-}
-
-.stay-title i {
-  color: var(--user-color);
-  font-size: 0.95rem;
+  line-height: 1.4;
 }
 
 .location-name {
-  font-size: 0.9rem;
   font-weight: 600;
   color: var(--gp-text-primary);
-  line-height: 1.3;
 }
 
-.stay-details {
+.stay-content {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.detail-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.stay-detail {
   font-size: 0.875rem;
   color: var(--gp-text-primary);
-  line-height: 1.3;
+  margin: 0;
+  line-height: 1.4;
 }
 
-.detail-item i {
-  color: var(--user-color);
-  font-size: 0.875rem;
-  width: 14px;
-  flex-shrink: 0;
-}
-
-.detail-item--secondary {
+.stay-detail--secondary {
   color: var(--gp-text-secondary);
   font-size: 0.8rem;
 }
 
-.detail-item--secondary i {
-  opacity: 0.7;
+.font-bold {
+  font-weight: 600;
 }
 
 /* Dark mode */
 .p-dark .friend-timeline-card {
-  background: var(--gp-surface-dark);
+  background: var(--gp-timeline-purple);
   border-color: var(--gp-border-medium);
   border-left-color: var(--user-color);
 }
 
 .p-dark .location-name,
-.p-dark .detail-item {
+.p-dark .stay-detail {
   color: var(--gp-text-primary);
 }
 
@@ -198,11 +176,11 @@ const handleClick = () => {
     font-size: 0.7rem;
   }
 
-  .location-name {
-    font-size: 0.875rem;
+  .stay-subtitle {
+    font-size: 0.8rem;
   }
 
-  .detail-item {
+  .stay-detail {
     font-size: 0.8rem;
   }
 }

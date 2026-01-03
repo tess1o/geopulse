@@ -16,24 +16,23 @@
       <span class="relative-time">{{ timezone.format(props.item.timestamp) }}</span>
     </div>
 
-    <div class="trip-title">
-      <i :class="movementIcon"></i>
-      <span class="trip-label">{{ movementLabel }}</span>
+    <div class="trip-subtitle">
+      🔄 Transition to new place
     </div>
 
-    <div class="trip-details">
-      <div class="detail-item">
-        <i class="pi pi-clock"></i>
-        <span>{{ formatDuration(item.tripDuration) }}</span>
-      </div>
-      <div class="detail-item">
-        <i class="pi pi-arrows-h"></i>
-        <span>{{ formatDistance(item.distanceMeters) }}</span>
-      </div>
-      <div v-if="hasEndLocation" class="detail-item detail-item--secondary">
-        <i class="pi pi-arrow-right"></i>
-        <span>{{ item.endLocationName || 'Destination' }}</span>
-      </div>
+    <div class="trip-content">
+      <p class="trip-detail">
+        ⏱️ Duration: <span class="font-bold">{{ formatDuration(item.tripDuration) }}</span>
+      </p>
+      <p class="trip-detail">
+        📏 Distance: <span class="font-bold">{{ formatDistance(item.distanceMeters) }}</span>
+      </p>
+      <p class="trip-detail">
+        🚦 Movement: <span class="font-bold">{{ movementIcon }} {{ movementLabel }}</span>
+      </p>
+      <p v-if="hasEndLocation" class="trip-detail trip-detail--secondary">
+        → {{ item.endLocationName }}
+      </p>
     </div>
   </div>
 </template>
@@ -68,13 +67,13 @@ const emit = defineEmits(['click'])
 const timezone = useTimezone()
 
 const movementTypeMap = {
-  WALK: { label: 'Walk', icon: 'pi pi-user' },
-  BICYCLE: { label: 'Bicycle', icon: 'pi pi-circle' },
-  RUNNING: { label: 'Running', icon: 'pi pi-forward' },
-  CAR: { label: 'Car', icon: 'pi pi-car' },
-  TRAIN: { label: 'Train', icon: 'pi pi-sort-alt' },
-  FLIGHT: { label: 'Flight', icon: 'pi pi-send' },
-  UNKNOWN: { label: 'Trip', icon: 'pi pi-map' }
+  WALK: { label: 'Walk', icon: '🚶' },
+  BICYCLE: { label: 'Bicycle', icon: '🚴' },
+  RUNNING: { label: 'Running', icon: '🏃' },
+  CAR: { label: 'Car', icon: '🚗' },
+  TRAIN: { label: 'Train', icon: '🚊' },
+  FLIGHT: { label: 'Flight', icon: '✈️' },
+  UNKNOWN: { label: 'Unknown', icon: '❓' }
 }
 
 const movementIcon = computed(() => {
@@ -105,7 +104,7 @@ const handleClick = () => {
   border-top: 1px solid var(--gp-border-light);
   border-right: 1px solid var(--gp-border-light);
   border-bottom: 1px solid var(--gp-border-light);
-  background: var(--gp-surface-white);
+  background: var(--gp-timeline-orange-light);
   padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   margin-bottom: var(--gp-spacing-sm);
 }
@@ -145,65 +144,44 @@ const handleClick = () => {
   white-space: nowrap;
 }
 
-.trip-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: var(--gp-spacing-xs);
-}
-
-.trip-title i {
-  color: var(--user-color);
-  font-size: 0.95rem;
-}
-
-.trip-label {
-  font-size: 0.9rem;
-  font-weight: 600;
+.trip-subtitle {
+  font-size: 0.875rem;
   color: var(--gp-text-primary);
-  line-height: 1.3;
+  margin-bottom: var(--gp-spacing-xs);
+  line-height: 1.4;
 }
 
-.trip-details {
+.trip-content {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
-.detail-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.trip-detail {
   font-size: 0.875rem;
   color: var(--gp-text-primary);
-  line-height: 1.3;
+  margin: 0;
+  line-height: 1.4;
 }
 
-.detail-item i {
-  color: var(--user-color);
-  font-size: 0.875rem;
-  width: 14px;
-  flex-shrink: 0;
-}
-
-.detail-item--secondary {
+.trip-detail--secondary {
   color: var(--gp-text-secondary);
   font-size: 0.8rem;
 }
 
-.detail-item--secondary i {
-  opacity: 0.7;
+.font-bold {
+  font-weight: 600;
 }
 
 /* Dark mode */
 .p-dark .friend-timeline-card {
-  background: var(--gp-surface-dark);
+  background: var(--gp-timeline-orange);
   border-color: var(--gp-border-medium);
   border-left-color: var(--user-color);
 }
 
-.p-dark .trip-label,
-.p-dark .detail-item {
+.p-dark .trip-subtitle,
+.p-dark .trip-detail {
   color: var(--gp-text-primary);
 }
 
@@ -226,11 +204,11 @@ const handleClick = () => {
     font-size: 0.7rem;
   }
 
-  .trip-label {
-    font-size: 0.875rem;
+  .trip-subtitle {
+    font-size: 0.8rem;
   }
 
-  .detail-item {
+  .trip-detail {
     font-size: 0.8rem;
   }
 }
