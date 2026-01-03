@@ -13,7 +13,7 @@
         />
         <span class="user-name">{{ userName }}</span>
       </div>
-      <span class="relative-time">{{ relativeTime }}</span>
+      <span class="relative-time">{{ timezone.format(props.item.timestamp) }}</span>
     </div>
 
     <div class="trip-title">
@@ -89,23 +89,6 @@ const movementLabel = computed(() => {
 
 const hasEndLocation = computed(() => {
   return props.item.endLocationName && props.item.endLocationName.trim().length > 0
-})
-
-const relativeTime = computed(() => {
-  if (!props.item.timestamp) return ''
-
-  const date = timezone.fromUtc(props.item.timestamp)
-  const now = timezone.now()
-  const diffMinutes = now.diff(date, 'minute')
-  const diffHours = now.diff(date, 'hour')
-  const diffDays = now.diff(date, 'day')
-
-  if (diffMinutes < 1) return 'Just now'
-  if (diffMinutes < 60) return `${diffMinutes}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-
-  return date.format('MMM D')
 })
 
 const handleClick = () => {

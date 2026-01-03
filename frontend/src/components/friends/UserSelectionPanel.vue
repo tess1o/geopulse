@@ -19,7 +19,6 @@
             :model-value="selectedUserIds.has(user.userId)"
             :binary="true"
             @update:model-value="$emit('toggle-user', user.userId)"
-            :disabled="user.userId === requestingUserId"
         />
         <div class="color-indicator" :style="{ backgroundColor: user.color }"></div>
         <Avatar
@@ -94,6 +93,13 @@ const requestingUserId = computed(() => friendsTimelineStore.requestingUserId)
 .selection-controls {
   display: flex;
   gap: 0.5rem;
+}
+
+/* Hide entire header on mobile to save space */
+@media (max-width: 768px) {
+  .panel-header {
+    display: none;
+  }
 }
 
 .user-list {

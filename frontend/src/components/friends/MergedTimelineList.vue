@@ -50,7 +50,7 @@
               shape="circle"
             />
             <span class="gap-user-name">{{ item.userFullName }}</span>
-            <span class="gap-time">{{ formatTime(item.timestamp) }}</span>
+            <span class="gap-time">{{ timezone.format(item.timestamp) }}</span>
           </div>
           <div class="gap-content">
             <i class="pi pi-exclamation-triangle"></i>
@@ -114,22 +114,6 @@ function loadMore() {
 
 function handleItemClick(item) {
   emit('item-click', item)
-}
-
-function formatTime(timestamp) {
-  const date = timezone.fromUtc(timestamp)
-  const now = timezone.now()
-  const diffHours = now.diff(date, 'hour')
-
-  if (diffHours < 1) {
-    const diffMinutes = now.diff(date, 'minute')
-    return diffMinutes < 1 ? 'Just now' : `${diffMinutes}m ago`
-  }
-  if (diffHours < 24) {
-    return `${Math.floor(diffHours)}h ago`
-  }
-
-  return date.format('MMM D, h:mm A')
 }
 </script>
 

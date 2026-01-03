@@ -196,14 +196,10 @@ export const useFriendsTimelineStore = defineStore('friendsTimeline', {
         },
 
         /**
-         * Deselect all users except the requesting user
+         * Deselect all users
          */
         deselectAllUsers() {
-            if (this.requestingUserId) {
-                this.selectedUserIds = new Set([this.requestingUserId])
-            } else {
-                this.selectedUserIds.clear()
-            }
+            this.selectedUserIds.clear()
         },
 
         /**

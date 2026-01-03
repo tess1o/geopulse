@@ -1,6 +1,6 @@
 <template>
   <div class="friends-timeline-date-picker">
-    <!-- Date Range Picker with Presets -->
+    <label for="friends-timeline-date-picker" class="date-picker-label">Range:</label>
     <DateRangePicker
         variant="inline"
         :maxRangeDays="30"
@@ -48,6 +48,54 @@ onMounted(() => {
 
 <style scoped>
 .friends-timeline-date-picker {
-  /* Container for the date picker */
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  padding: 0.75rem;
+}
+
+.date-picker-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Desktop - wider date picker */
+@media (min-width: 769px) {
+  .friends-timeline-date-picker {
+    justify-content: flex-end;
+  }
+
+  .date-picker-label {
+    margin-right: auto;
+  }
+
+  .friends-timeline-date-picker :deep(.date-range-picker) {
+    min-width: 300px;
+    max-width: 400px;
+  }
+}
+
+/* Dark mode */
+.p-dark .friends-timeline-date-picker {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .friends-timeline-date-picker {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .date-picker-label {
+    font-size: 0.85rem;
+  }
 }
 </style>
