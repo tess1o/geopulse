@@ -3,8 +3,8 @@
     <div class="panel-header">
       <h3>Select Friends</h3>
       <div class="selection-controls">
-        <Button label="All" text size="small" @click="$emit('select-all')" />
-        <Button label="None" text size="small" @click="$emit('deselect-all')" />
+        <Button label="All" outlined size="small" @click="$emit('select-all')" />
+        <Button label="None" outlined size="small" @click="$emit('deselect-all')" />
       </div>
     </div>
 

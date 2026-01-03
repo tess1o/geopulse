@@ -18,5 +18,5 @@ public class UserFriendPermissionDTO {
     private UUID userId;        // The user granting permission
     private UUID friendId;      // The friend receiving permission
     private Boolean shareTimeline;  // Permission to view full timeline
-    private Boolean shareLocationLive;  // Permission to view live location (from UserEntity.shareLocationWithFriends)
+    private Boolean shareLiveLocation;  // Permission to view live/current location (per-friend)
 }

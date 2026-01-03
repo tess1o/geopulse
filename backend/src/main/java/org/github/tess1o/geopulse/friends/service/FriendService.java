@@ -85,10 +85,10 @@ public class FriendService {
             throw new NotAuthorizedUserException("Not authorized to view location of user: " + friendId);
         }
 
-        // Check if the friend has enabled location sharing
-        UserEntity friend = userRepository.findById(friendId);
-        if (friend == null || !friend.isShareLocationWithFriends()) {
-            throw new NotAuthorizedUserException("Friend has disabled location sharing");
+        // Check if the friend has granted live location permission (per-friend)
+        boolean hasPermission = permissionRepository.hasLiveLocationPermission(friendId, userId);
+        if (!hasPermission) {
+            throw new NotAuthorizedUserException("Friend has not granted live location permission");
         }
 
         return gpsPointRepository.findByUserIdLatestGpsPoint(friendId);
@@ -125,7 +125,7 @@ public class FriendService {
     }
 
     /**
-     * Get timeline sharing permissions for a specific friend.
+     * Get timeline and live location sharing permissions for a specific friend.
      *
      * @param userId   The current user ID
      * @param friendId The friend ID
@@ -140,15 +140,13 @@ public class FriendService {
         // Get or create permission record
         Optional<UserFriendPermissionEntity> permission = permissionRepository.findByUserIdAndFriendId(userId, friendId);
 
-        UserEntity user = userRepository.findById(userId);
-
         if (permission.isPresent()) {
             UserFriendPermissionEntity p = permission.get();
             return UserFriendPermissionDTO.builder()
                     .userId(userId)
                     .friendId(friendId)
                     .shareTimeline(p.getShareTimeline())
-                    .shareLocationLive(user != null ? user.isShareLocationWithFriends() : false)
+                    .shareLiveLocation(p.getShareLiveLocation())
                     .build();
         } else {
             // Return default permissions (false)
@@ -156,7 +154,7 @@ public class FriendService {
                     .userId(userId)
                     .friendId(friendId)
                     .shareTimeline(false)
-                    .shareLocationLive(user != null ? user.isShareLocationWithFriends() : false)
+                    .shareLiveLocation(false)
                     .build();
         }
     }
@@ -175,8 +173,6 @@ public class FriendService {
         if (!friendshipRepository.existsFriendship(userId, friendId)) {
             throw new FriendsException("Not friends with user: " + friendId);
         }
-
-        UserEntity user = userRepository.findById(userId);
 
         // Get or create permission record
         Optional<UserFriendPermissionEntity> existingPermission = permissionRepository.findByUserIdAndFriendId(userId, friendId);
@@ -199,12 +195,48 @@ public class FriendService {
 
         log.info("Updated timeline permission for user {} -> friend {}: shareTimeline={}", userId, friendId, shareTimeline);
 
-        return UserFriendPermissionDTO.builder()
-                .userId(userId)
-                .friendId(friendId)
-                .shareTimeline(shareTimeline)
-                .shareLocationLive(user != null ? user.isShareLocationWithFriends() : false)
-                .build();
+        // Return current permissions
+        return getFriendPermissions(userId, friendId);
+    }
+
+    /**
+     * Update live location sharing permission for a friend.
+     *
+     * @param userId             The current user ID
+     * @param friendId           The friend ID
+     * @param shareLiveLocation Whether to allow live location access
+     * @return Updated permission DTO
+     */
+    @Transactional
+    public UserFriendPermissionDTO updateLiveLocationPermission(UUID userId, UUID friendId, boolean shareLiveLocation) {
+        // Check friendship exists
+        if (!friendshipRepository.existsFriendship(userId, friendId)) {
+            throw new FriendsException("Not friends with user: " + friendId);
+        }
+
+        // Get or create permission record
+        Optional<UserFriendPermissionEntity> existingPermission = permissionRepository.findByUserIdAndFriendId(userId, friendId);
+
+        if (existingPermission.isPresent()) {
+            // Update existing
+            permissionRepository.updateShareLiveLocation(userId, friendId, shareLiveLocation);
+        } else {
+            // Create new permission record
+            UserEntity userEntity = userRepository.findById(userId);
+            UserEntity friendEntity = userRepository.findById(friendId);
+
+            if (userEntity == null || friendEntity == null) {
+                throw new FriendsException("User or friend not found");
+            }
+
+            permissionRepository.createDefaultPermissions(userEntity, friendEntity);
+            permissionRepository.updateShareLiveLocation(userId, friendId, shareLiveLocation);
+        }
+
+        log.info("Updated live location permission for user {} -> friend {}: shareLiveLocation={}", userId, friendId, shareLiveLocation);
+
+        // Return current permissions
+        return getFriendPermissions(userId, friendId);
     }
 
     /**
@@ -215,15 +247,13 @@ public class FriendService {
      */
     public List<UserFriendPermissionDTO> getAllFriendPermissions(UUID userId) {
         List<UserFriendPermissionEntity> permissions = permissionRepository.findAllByUserId(userId);
-        UserEntity user = userRepository.findById(userId);
-        boolean shareLocationLive = user != null ? user.isShareLocationWithFriends() : false;
 
         return permissions.stream()
                 .map(p -> UserFriendPermissionDTO.builder()
                         .userId(userId)
                         .friendId(p.getFriend().getId())
                         .shareTimeline(p.getShareTimeline())
-                        .shareLocationLive(shareLocationLive)
+                        .shareLiveLocation(p.getShareLiveLocation())
                         .build())
                 .toList();
     }

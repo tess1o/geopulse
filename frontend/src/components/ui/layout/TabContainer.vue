@@ -295,52 +295,60 @@ const handleTabClick = (index) => {
 /* Dark Mode styles are handled globally in style.css */
 
 /* Responsive */
-/* Tablet and mobile - enable wrapping instead of horizontal scrolling */
+/* Tablet and mobile - prevent wrapping, allow horizontal scroll if needed */
 @media (max-width: 1024px) {
   .gp-tab-menu .p-tabmenu-tablist {
-    padding: 0 var(--gp-spacing-lg);
-    flex-wrap: wrap;
+    padding: 0 var(--gp-spacing-md);
+    flex-wrap: nowrap;
     gap: var(--gp-spacing-xs);
-    align-items: flex-start;
+    align-items: center;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .gp-tab-menu .p-tabmenu-tablist::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
   }
 
   .gp-tab-menu .p-tabmenu-item {
     flex-shrink: 0;
-    margin-bottom: var(--gp-spacing-xs);
+    margin-bottom: 0;
   }
 
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
     white-space: nowrap;
     min-width: auto;
+    padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   }
 }
 
 @media (max-width: 768px) {
   .gp-tab-menu .p-tabmenu-tablist {
-    padding: 0 var(--gp-spacing-lg);
-    gap: var(--gp-spacing-xs);
+    padding: 0 var(--gp-spacing-md);
+    gap: 0.25rem;
   }
 
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
-    padding: var(--gp-spacing-sm) var(--gp-spacing-md);
+    padding: 0.5rem 0.75rem;
     font-size: 0.8rem;
   }
 
   .gp-tab-menu .p-tabmenu-item-icon {
     font-size: 0.8rem;
-    margin-right: var(--gp-spacing-xs);
+    margin-right: 0.25rem;
   }
 }
 
 @media (max-width: 480px) {
   .gp-tab-menu .p-tabmenu-tablist {
-    padding: 0 var(--gp-spacing-md);
-    gap: var(--gp-spacing-xs);
+    padding: 0 0.5rem;
+    gap: 0.25rem;
   }
 
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
-    padding: var(--gp-spacing-sm) var(--gp-spacing-md);
-    font-size: 0.8rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
     white-space: nowrap;
     min-height: 40px;
     display: flex;
@@ -348,20 +356,25 @@ const handleTabClick = (index) => {
   }
 
   .gp-tab-menu .p-tabmenu-item-icon {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    margin-right: 0.25rem;
+  }
+
+  .gp-tab-menu .p-tabmenu-item-label {
+    font-size: 0.75rem;
   }
 }
 
-/* iPhone 16 Pro Max and similar large phones */
+/* iPhone 16 Pro Max and similar large phones - keep compact to fit in one row */
 @media (max-width: 480px) and (min-width: 430px) {
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
-    padding: var(--gp-spacing-sm) var(--gp-spacing-lg);
-    font-size: 0.875rem;
-    min-height: 42px;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+    min-height: 40px;
   }
 
   .gp-tab-menu .p-tabmenu-item-icon {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
   }
 }
 

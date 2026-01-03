@@ -288,9 +288,71 @@ public class FriendResource {
     }
 
     /**
-     * Request DTO for updating permissions.
+     * Update live location sharing permission for a friend.
+     *
+     * @param friendId The friend ID
+     * @param request  Request containing shareLiveLocation flag
+     * @return Updated permission DTO
+     */
+    @PUT
+    @Path("/{friendId}/permissions/live")
+    @Transactional
+    public Response updateLiveLocationPermission(
+            @PathParam("friendId") @NotNull String friendId,
+            UpdateLiveLocationRequest request) {
+        try {
+            if (friendId == null || friendId.trim().isEmpty()) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Friend ID cannot be empty"))
+                        .build();
+            }
+
+            if (request == null || request.shareLiveLocation == null) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("shareLiveLocation field is required"))
+                        .build();
+            }
+
+            UUID userId = currentUserService.getCurrentUserId();
+            UUID friendIdUUID = UUID.fromString(friendId);
+
+            UserFriendPermissionDTO permissions = friendService.updateLiveLocationPermission(
+                    userId,
+                    friendIdUUID,
+                    request.shareLiveLocation
+            );
+
+            return Response.ok(ApiResponse.success(permissions)).build();
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid friend ID format: {}", friendId, e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid friend ID format"))
+                    .build();
+        } catch (FriendsException e) {
+            log.warn("Failed to update live location permission: {}", e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to update live location permission for friend {}", friendId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to update permission"))
+                    .build();
+        }
+    }
+
+    /**
+     * Request DTO for updating timeline permissions.
      */
     public static class UpdatePermissionRequest {
         public Boolean shareTimeline;
+    }
+
+    /**
+     * Request DTO for updating live location permissions.
+     */
+    public static class UpdateLiveLocationRequest {
+        public Boolean shareLiveLocation;
     }
 }

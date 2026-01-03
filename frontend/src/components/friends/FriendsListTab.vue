@@ -45,11 +45,23 @@
           <!-- Permissions Section -->
           <div class="friend-permissions">
             <div class="permission-item">
+              <i class="pi pi-map-marker permission-icon"></i>
+              <span class="permission-label">Share Live Location</span>
+              <InputSwitch
+                  v-model="friend.shareLiveLocationPermission"
+                  @change="handleLiveLocationPermissionChange(friend)"
+                  class="permission-switch"
+              />
+              <i class="pi pi-info-circle info-icon"
+                 v-tooltip="'Allows this friend to see your current location in real-time'"
+              ></i>
+            </div>
+            <div class="permission-item">
               <i class="pi pi-history permission-icon"></i>
               <span class="permission-label">Share Timeline History</span>
               <InputSwitch
                   v-model="friend.shareTimelinePermission"
-                  @change="handlePermissionChange(friend)"
+                  @change="handleTimelinePermissionChange(friend)"
                   class="permission-switch"
               />
               <i class="pi pi-info-circle info-icon"
@@ -122,9 +134,11 @@ async function loadAllPermissions() {
       try {
         const response = await apiService.getFriendPermissions(friend.friendId)
         friend.shareTimelinePermission = response.data?.shareTimeline || false
+        friend.shareLiveLocationPermission = response.data?.shareLiveLocation || false
       } catch (error) {
         console.error(`Failed to load permissions for friend ${friend.friendId}:`, error)
         friend.shareTimelinePermission = false
+        friend.shareLiveLocationPermission = false
       }
     })
 
@@ -134,7 +148,7 @@ async function loadAllPermissions() {
   }
 }
 
-async function handlePermissionChange(friend) {
+async function handleTimelinePermissionChange(friend) {
   const newValue = friend.shareTimelinePermission
 
   // Show confirmation dialog
@@ -173,6 +187,49 @@ async function handlePermissionChange(friend) {
     reject: () => {
       // Revert the switch
       friend.shareTimelinePermission = !newValue
+    }
+  })
+}
+
+async function handleLiveLocationPermissionChange(friend) {
+  const newValue = friend.shareLiveLocationPermission
+
+  // Show confirmation dialog
+  confirm.require({
+    message: newValue
+      ? `This will allow ${friend.fullName} to see your current location in real-time. Continue?`
+      : `This will revoke ${friend.fullName}'s access to your live location. Continue?`,
+    header: 'Confirm Permission Change',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        await apiService.updateLiveLocationPermission(friend.friendId, newValue)
+
+        toast.add({
+          severity: 'success',
+          summary: 'Permission Updated',
+          detail: newValue
+            ? `${friend.fullName} can now view your live location`
+            : `${friend.fullName} can no longer view your live location`,
+          life: 3000
+        })
+      } catch (error) {
+        console.error('Failed to update live location permission:', error)
+
+        // Revert the switch
+        friend.shareLiveLocationPermission = !newValue
+
+        toast.add({
+          severity: 'error',
+          summary: 'Failed to Update Permission',
+          detail: error.message || 'Could not update live location permission',
+          life: 5000
+        })
+      }
+    },
+    reject: () => {
+      // Revert the switch
+      friend.shareLiveLocationPermission = !newValue
     }
   })
 }
@@ -347,6 +404,9 @@ const getLastSeenText = (lastSeen) => {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--gp-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .permission-item {

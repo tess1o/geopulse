@@ -1,18 +1,7 @@
 <template>
   <div class="friends-timeline-tab">
-    <!-- Empty State: No friends with permission -->
-    <div v-if="!isLoading && availableUsers.length === 0" class="empty-state">
-      <div class="empty-icon">
-        <i class="pi pi-calendar"></i>
-      </div>
-      <h3 class="empty-title">No Shared Timelines</h3>
-      <p class="empty-description">
-        None of your friends have enabled timeline sharing yet. Ask them to enable it in Friends settings!
-      </p>
-    </div>
-
-    <!-- Main Timeline View -->
-    <div v-else class="timeline-main">
+    <!-- Main Timeline View - Always render to ensure date picker initializes -->
+    <div class="timeline-main">
       <!-- Left Pane: Map -->
       <div class="left-pane">
         <div v-if="isLoading" class="loading-overlay">
@@ -34,20 +23,35 @@
 
       <!-- Right Pane: Controls + Timeline List -->
       <div class="right-pane">
-        <UserSelectionPanel
-            :available-users="availableUsers"
-            :selected-user-ids="selectedUserIds"
-            @toggle-user="toggleUser"
-            @select-all="selectAll"
-            @deselect-all="deselectAll"
-        />
+        <FriendsTimelineDatePicker />
 
-        <MergedTimelineList
-            v-if="hasSelectedUsers"
-            :timeline-items="mergedTimelineItems"
-            :loading="isLoading"
-            @item-click="handleTimelineItemClick"
-        />
+        <!-- Empty State: No friends with permission -->
+        <div v-if="!isLoading && availableUsers.length === 0" class="empty-state-card">
+          <div class="empty-icon">
+            <i class="pi pi-calendar"></i>
+          </div>
+          <h3 class="empty-title">No Shared Timelines</h3>
+          <p class="empty-description">
+            None of your friends have enabled timeline sharing yet. Ask them to enable it in Friends settings!
+          </p>
+        </div>
+
+        <template v-else>
+          <UserSelectionPanel
+              :available-users="availableUsers"
+              :selected-user-ids="selectedUserIds"
+              @toggle-user="toggleUser"
+              @select-all="selectAll"
+              @deselect-all="deselectAll"
+          />
+
+          <MergedTimelineList
+              v-if="hasSelectedUsers"
+              :timeline-items="mergedTimelineItems"
+              :loading="isLoading"
+              @item-click="handleTimelineItemClick"
+          />
+        </template>
       </div>
     </div>
   </div>
@@ -61,6 +65,7 @@ import { useDateRangeStore } from '@/stores/dateRange'
 import { useToast } from 'primevue/usetoast'
 import ProgressSpinner from 'primevue/progressspinner'
 import FriendsTimelineMap from './FriendsTimelineMap.vue'
+import FriendsTimelineDatePicker from './FriendsTimelineDatePicker.vue'
 import UserSelectionPanel from './UserSelectionPanel.vue'
 import MergedTimelineList from './MergedTimelineList.vue'
 
@@ -77,20 +82,13 @@ const hasSelectedUsers = computed(() => friendsTimelineStore.hasSelectedUsers)
 
 const selectedTimelineItem = ref(null)
 
-// Load timeline data
+// Load timeline data on mount
 onMounted(async () => {
-  // Ensure we have a date range
-  if (!dateRange.value || dateRange.value.length !== 2) {
-    // Set default date range to last 7 days
-    const endDate = new Date()
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 7)
+  // Wait a tick to ensure FriendsTimelineDatePicker has initialized
+  await new Promise(resolve => setTimeout(resolve, 100))
 
-    dateRangeStore.setDateRange([
-      startDate.toISOString(),
-      endDate.toISOString()
-    ])
-  } else {
+  // Load data if date range is set
+  if (dateRange.value && dateRange.value.length === 2) {
     await loadTimelineData()
   }
 })
@@ -104,17 +102,13 @@ watch(dateRange, async (newRange) => {
 
 async function loadTimelineData() {
   if (!dateRange.value || dateRange.value.length !== 2) {
-    console.warn('No date range set for timeline')
     return
   }
 
   const [startTime, endTime] = dateRange.value
 
-  console.log('Loading multi-user timeline:', { startTime, endTime })
-
   try {
     await friendsTimelineStore.fetchMultiUserTimeline(startTime, endTime)
-    console.log('Multi-user timeline loaded:', friendsTimelineStore.availableUsers)
   } catch (error) {
     console.error('Failed to load multi-user timeline:', error)
     toast.add({
@@ -152,43 +146,43 @@ function handleTimelineItemClick(item) {
   flex-direction: column;
 }
 
-/* Empty State */
-.empty-state {
+/* Empty State Card */
+.empty-state-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 3rem 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-large);
-  margin: 2rem;
+  padding: 2rem 1rem;
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
 }
 
 .empty-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 4rem;
-  height: 4rem;
+  width: 3rem;
+  height: 3rem;
   background: var(--gp-primary-light);
   color: var(--gp-primary);
   border-radius: 50%;
-  font-size: 2rem;
+  font-size: 1.5rem;
   margin-bottom: 1rem;
 }
 
 .empty-title {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--gp-text-primary);
   margin-bottom: 0.5rem;
 }
 
 .empty-description {
-  font-size: 1rem;
+  font-size: 0.9rem;
   color: var(--gp-text-secondary);
-  max-width: 400px;
+  line-height: 1.5;
 }
 
 /* Main Timeline Layout */
@@ -201,7 +195,7 @@ function handleTimelineItemClick(item) {
 }
 
 .left-pane {
-  flex: 6;
+  flex: 7;
   display: flex;
   flex-direction: column;
   min-height: 500px;
@@ -211,7 +205,7 @@ function handleTimelineItemClick(item) {
 }
 
 .right-pane {
-  flex: 4;
+  flex: 3;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -248,6 +242,7 @@ function handleTimelineItemClick(item) {
 @media (max-width: 1024px) {
   .timeline-main {
     flex-direction: column;
+    gap: 0.75rem;
   }
 
   .left-pane,
@@ -257,7 +252,42 @@ function handleTimelineItemClick(item) {
   }
 
   .left-pane {
+    min-height: 450px;
+    max-height: 450px;
+    height: 450px;
+  }
+}
+
+@media (max-width: 768px) {
+  .timeline-main {
+    gap: 0.75rem;
+  }
+
+  .left-pane {
     min-height: 400px;
+    max-height: 400px;
+    height: 400px;
+  }
+
+  .right-pane {
+    gap: 0.75rem;
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .timeline-main {
+    gap: 0.5rem;
+  }
+
+  .left-pane {
+    min-height: 350px;
+    max-height: 350px;
+    height: 350px;
+  }
+
+  .right-pane {
+    gap: 0.5rem;
   }
 }
 </style>

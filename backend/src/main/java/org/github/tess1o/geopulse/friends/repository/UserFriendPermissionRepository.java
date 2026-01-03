@@ -111,6 +111,39 @@ public class UserFriendPermissionRepository implements PanacheRepository<UserFri
     }
 
     /**
+     * Check if a user has granted live location access to a friend.
+     *
+     * @param userId   The user who owns the location
+     * @param friendId The friend requesting access
+     * @return true if permission is granted, false otherwise
+     */
+    public boolean hasLiveLocationPermission(UUID userId, UUID friendId) {
+        Optional<UserFriendPermissionEntity> permission = findByUserIdAndFriendId(userId, friendId);
+        return permission.map(UserFriendPermissionEntity::getShareLiveLocation).orElse(false);
+    }
+
+    /**
+     * Update live location sharing permission.
+     *
+     * @param userId             The user granting permission
+     * @param friendId           The friend receiving permission
+     * @param shareLiveLocation  Whether to allow live location access
+     * @return Updated permission entity
+     */
+    public Optional<UserFriendPermissionEntity> updateShareLiveLocation(UUID userId, UUID friendId, boolean shareLiveLocation) {
+        Optional<UserFriendPermissionEntity> existingPermission = findByUserIdAndFriendId(userId, friendId);
+
+        if (existingPermission.isPresent()) {
+            UserFriendPermissionEntity permission = existingPermission.get();
+            permission.setShareLiveLocation(shareLiveLocation);
+            persist(permission);
+            return Optional.of(permission);
+        }
+
+        return Optional.empty();
+    }
+
+    /**
      * Get all permissions for a specific user (permissions they have granted to friends).
      *
      * @param userId The user ID

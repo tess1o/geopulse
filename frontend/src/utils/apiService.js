@@ -515,6 +515,16 @@ const apiService = {
     },
 
     /**
+     * Update live location permission for a friend
+     * @param {string} friendId - Friend's user ID
+     * @param {boolean} shareLiveLocation - Whether to share live location
+     * @returns {Promise<Object>} - Updated permission data
+     */
+    async updateLiveLocationPermission(friendId, shareLiveLocation) {
+        return this.put(`/friends/${friendId}/permissions/live`, { shareLiveLocation });
+    },
+
+    /**
      * Get all friend permissions
      * @returns {Promise<Array>} - Array of permission objects
      */

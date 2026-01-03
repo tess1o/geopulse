@@ -36,6 +36,9 @@ public class UserFriendPermissionEntity {
     @Column(name = "share_timeline", nullable = false)
     private Boolean shareTimeline = false;  // Permission to view full timeline
 
+    @Column(name = "share_live_location", nullable = false)
+    private Boolean shareLiveLocation = false;  // Permission to view live/current location
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -47,6 +50,9 @@ public class UserFriendPermissionEntity {
         createdAt = Instant.now();
         if (shareTimeline == null) {
             shareTimeline = false;
+        }
+        if (shareLiveLocation == null) {
+            shareLiveLocation = false;
         }
     }
 
