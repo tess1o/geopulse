@@ -134,6 +134,16 @@ function deselectAll() {
 
 function handleTimelineItemClick(item) {
   console.log('Timeline item clicked:', item)
+
+  // Toggle: if clicking the already selected item, deselect it
+  if (selectedTimelineItem.value &&
+      selectedTimelineItem.value.userId === item.userId &&
+      selectedTimelineItem.value.timestamp === item.timestamp &&
+      selectedTimelineItem.value.type === item.type) {
+    selectedTimelineItem.value = null
+    return
+  }
+
   selectedTimelineItem.value = item
 }
 </script>

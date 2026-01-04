@@ -88,11 +88,13 @@ const modeOptions = [
 </script>
 
 <style scoped>
+
 .friends-location-tab {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
+  margin-top: calc(-1 * var(--gp-spacing-xl)); /* Offset parent gp-tab-content padding */
 }
 
 /* Mode Toggle */

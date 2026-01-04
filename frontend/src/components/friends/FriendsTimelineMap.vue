@@ -75,6 +75,7 @@ const map = ref(null)
 const markerGroups = ref(new Map()) // userId -> L.LayerGroup
 const markerRefs = ref(new Map()) // itemId -> L.Marker
 const tripPaths = ref(new Map()) // tripId -> L.Polyline
+const highlightedTripId = ref(null) // Currently highlighted trip ID
 
 const visibleTimelines = computed(() => {
   if (!props.multiUserTimeline || !props.multiUserTimeline.timelines) {
@@ -119,13 +120,31 @@ watch([() => props.selectedUserIds, () => props.multiUserTimeline], () => {
 }, { deep: true })
 
 watch(() => props.selectedItem, (newItem) => {
-  if (newItem && map.value) {
+  if (!map.value) return
+
+  if (newItem) {
     handleItemSelection(newItem)
+  } else {
+    // Clear all highlights when item is deselected
+    if (highlightedTripId.value) {
+      const tripPath = tripPaths.value.get(highlightedTripId.value)
+      if (tripPath) {
+        tripPath.setStyle({
+          color: tripPath.options.originalColor,
+          weight: tripPath.options.originalWeight,
+          opacity: tripPath.options.originalOpacity
+        })
+      }
+      highlightedTripId.value = null
+    }
   }
 }, { deep: true })
 
 function renderAllMarkers() {
   if (!map.value) return
+
+  // Clear any existing highlight
+  highlightedTripId.value = null
 
   // Clear existing markers and paths
   markerGroups.value.forEach(group => {
@@ -249,11 +268,45 @@ function handleItemSelection(item) {
     const tripPath = tripPaths.value.get(tripId)
 
     if (tripPath) {
-      // Temporarily highlight the path
-      const originalWeight = tripPath.options.weight
-      const originalOpacity = tripPath.options.opacity
+      // Check if clicking the already highlighted trip (toggle off)
+      if (highlightedTripId.value === tripId) {
+        // Un-highlight: reset to original style
+        tripPath.setStyle({
+          color: tripPath.options.originalColor,
+          weight: tripPath.options.originalWeight,
+          opacity: tripPath.options.originalOpacity
+        })
+        highlightedTripId.value = null
+        return
+      }
 
-      tripPath.setStyle({ weight: 5, opacity: 0.9 })
+      // Reset previously highlighted trip (if different)
+      if (highlightedTripId.value) {
+        const prevTripPath = tripPaths.value.get(highlightedTripId.value)
+        if (prevTripPath) {
+          prevTripPath.setStyle({
+            color: prevTripPath.options.originalColor,
+            weight: prevTripPath.options.originalWeight,
+            opacity: prevTripPath.options.originalOpacity
+          })
+        }
+      }
+
+      // Store original styles if not already stored
+      if (!tripPath.options.originalColor) {
+        tripPath.options.originalColor = tripPath.options.color
+        tripPath.options.originalWeight = tripPath.options.weight
+        tripPath.options.originalOpacity = tripPath.options.opacity
+      }
+
+      // Highlight the path with red color
+      tripPath.setStyle({
+        color: '#ef4444',  // Red highlight color
+        weight: 6,
+        opacity: 1
+      })
+
+      highlightedTripId.value = tripId
 
       // Zoom to trip bounds
       map.value.fitBounds(tripPath.getBounds(), { padding: [50, 50], animate: true })
@@ -262,11 +315,6 @@ function handleItemSelection(item) {
       nextTick(() => {
         tripPath.openPopup()
       })
-
-      // Reset style after a delay
-      setTimeout(() => {
-        tripPath.setStyle({ weight: originalWeight, opacity: originalOpacity })
-      }, 2000)
     }
   }
 }
