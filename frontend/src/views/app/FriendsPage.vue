@@ -17,7 +17,7 @@ x
             <component
               :is="currentTabComponent"
               :key="activeTab"
-              :ref="activeTab === 'locations' ? (el) => friendsMapTabRef = el : undefined"
+              :ref="activeTab === 'live' ? (el) => friendsMapTabRef = el : undefined"
             />
           </keep-alive>
         </TabContainer>
@@ -99,7 +99,8 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 
 // Tab components
 import FriendsListTab from '@/components/friends/FriendsListTab.vue'
-import FriendsLocationTab from '@/components/friends/FriendsLocationTab.vue'
+import FriendsMapTab from '@/components/friends/FriendsMapTab.vue'
+import FriendsTimelineTab from '@/components/friends/FriendsTimelineTab.vue'
 import InvitationsTab from '@/components/friends/InvitationsTab.vue'
 
 // Store
@@ -129,12 +130,17 @@ const showInviteDialog = ref(false)
 const tabItems = computed(() => {
   const tabs = [
     {
-      label: 'Friends & Locations',
+      label: 'Live',
       icon: 'pi pi-map-marker',
-      key: 'locations'
+      key: 'live'
     },
     {
-      label: 'My Friends',
+      label: 'Timeline',
+      icon: 'pi pi-history',
+      key: 'timeline'
+    },
+    {
+      label: 'Friends',
       icon: 'pi pi-users',
       key: 'friends',
       badge: friends.value?.length > 0 ? friends.value.length : null,
@@ -163,8 +169,8 @@ const activeTabIndex = computed(() => {
 
 const currentTabComponent = computed(() => {
   const components = {
-    locations: {
-      component: FriendsLocationTab,
+    live: {
+      component: FriendsMapTab,
       props: {
         friends: friends.value,
         currentUser: currentUser.value,
@@ -179,6 +185,11 @@ const currentTabComponent = computed(() => {
         onShowAll: handleShowAll
       }
     },
+    timeline: {
+      component: FriendsTimelineTab,
+      props: {},
+      handlers: {}
+    },
     friends: {
       component: FriendsListTab,
       props: {
@@ -186,7 +197,8 @@ const currentTabComponent = computed(() => {
       },
       handlers: {
         onInviteFriend: () => { showInviteDialog.value = true },
-        onShowOnMap: showFriendOnMap,
+        onShowOnMap: showFriendOnLiveMap,
+        onShowTimeline: showFriendTimeline,
         onDeleteFriend: confirmDeleteFriend
       }
     },
@@ -253,22 +265,22 @@ const switchToTab = (tabKey) => {
 }
 
 watch(() => route.params.tab, (newTab) => {
-  const validTabs = ['locations', 'friends', 'invites']
+  const validTabs = ['live', 'timeline', 'friends', 'invites']
 
   // Check if the requested tab is valid
   if (validTabs.includes(newTab)) {
-    // Special case: if trying to access 'invites' but there are no invites, redirect to 'locations'
+    // Special case: if trying to access 'invites' but there are no invites, redirect to 'live'
     if (newTab === 'invites') {
       const hasInvites = (receivedInvites.value?.length > 0) || (sentInvites.value?.length > 0)
       if (!hasInvites) {
-        router.replace({name: 'Friends', params: {tab: 'locations'}})
+        router.replace({name: 'Friends', params: {tab: 'live'}})
         return
       }
     }
     activeTab.value = newTab
   } else {
-    // If tab is invalid or not present, default to 'locations' and update URL
-    router.replace({name: 'Friends', params: {tab: 'locations'}})
+    // If tab is invalid or not present, default to 'live' and update URL
+    router.replace({name: 'Friends', params: {tab: 'live'}})
   }
 }, {immediate: true})
 
@@ -280,8 +292,8 @@ watch(() => route.query.friend, (newFriendEmail) => {
 watch([receivedInvites, sentInvites], () => {
   const hasInvites = (receivedInvites.value?.length > 0) || (sentInvites.value?.length > 0)
   if (!hasInvites && activeTab.value === 'invites') {
-    // If we're on the invites tab and there are no more invites, switch to locations
-    router.replace({name: 'Friends', params: {tab: 'locations'}})
+    // If we're on the invites tab and there are no more invites, switch to live
+    router.replace({name: 'Friends', params: {tab: 'live'}})
   }
 })
 
@@ -377,10 +389,10 @@ const deleteFriend = async (friendId) => {
   }
 }
 
-const showFriendOnMap = (friend) => {
+const showFriendOnLiveMap = (friend) => {
   router.replace({
     name: 'Friends',
-    params: {tab: 'locations'},
+    params: {tab: 'live'},
     query: {friend: friend.email}
   }).then(() => {
     // Give more time for map to initialize after tab switch
@@ -396,6 +408,14 @@ const showFriendOnMap = (friend) => {
         }, 500)
       }
     }, 300)
+  })
+}
+
+const showFriendTimeline = (friend) => {
+  router.replace({
+    name: 'Friends',
+    params: {tab: 'timeline'},
+    query: {friend: friend.email}
   })
 }
 
@@ -547,7 +567,7 @@ const handleFriendLocated = (friend) => {
 const handleShowAll = () => {
   router.replace({
     name: 'Friends',
-    params: {tab: 'locations'},
+    params: {tab: 'live'},
     query: {friend: undefined}
   });
 }

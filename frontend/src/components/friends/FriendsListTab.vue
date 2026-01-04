@@ -73,10 +73,20 @@
           <div class="friend-actions">
             <Button
                 icon="pi pi-map-marker"
+                label="Live"
                 size="small"
                 outlined
                 @click="$emit('show-on-map', friend)"
                 :disabled="!friend.lastLatitude || !friend.lastLongitude"
+                v-tooltip.bottom="'Show friend on live map'"
+            />
+            <Button
+                icon="pi pi-history"
+                label="Timeline"
+                size="small"
+                outlined
+                @click="$emit('show-timeline', friend)"
+                v-tooltip.bottom="'View friend\'s timeline history'"
             />
             <Button
                 icon="pi pi-trash"
@@ -84,6 +94,7 @@
                 severity="danger"
                 outlined
                 @click="$emit('delete-friend', friend)"
+                v-tooltip.bottom="'Remove friend'"
             />
           </div>
         </template>
@@ -111,7 +122,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['invite-friend', 'show-on-map', 'delete-friend'])
+defineEmits(['invite-friend', 'show-on-map', 'show-timeline', 'delete-friend'])
 
 // Load permissions for all friends
 onMounted(async () => {
@@ -444,6 +455,9 @@ const getLastSeenText = (lastSeen) => {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gp-border-light);
 }
 
 /* Responsive Design */
