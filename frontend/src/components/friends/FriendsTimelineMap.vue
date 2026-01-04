@@ -6,6 +6,7 @@
         :zoom="13"
         height="100%"
         width="100%"
+        :show-controls="false"
         @map-ready="handleMapReady"
     >
       <template #overlays="{ map, isReady }">
@@ -24,22 +25,7 @@
       </template>
 
       <template #controls="{ map, isReady }">
-        <div v-if="isReady" class="leaflet-top leaflet-right">
-          <div class="leaflet-control map-legend">
-            <div class="legend-header">Users</div>
-            <div class="legend-items">
-              <div
-                  v-for="user in availableUsers"
-                  :key="user.userId"
-                  class="legend-item"
-                  v-show="selectedUserIds.has(user.userId)"
-              >
-                <div class="legend-color" :style="{ backgroundColor: user.color }"></div>
-                <span class="legend-label">{{ user.fullName }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Legend removed - user selection is handled by UserSelectionPanel -->
       </template>
     </MapContainer>
   </div>
@@ -84,17 +70,6 @@ const visibleTimelines = computed(() => {
   return props.multiUserTimeline.timelines.filter(t =>
       props.selectedUserIds.has(t.userId)
   )
-})
-
-const availableUsers = computed(() => {
-  if (!props.multiUserTimeline || !props.multiUserTimeline.timelines) {
-    return []
-  }
-  return props.multiUserTimeline.timelines.map(t => ({
-    userId: t.userId,
-    fullName: t.fullName,
-    color: t.assignedColor
-  }))
 })
 
 const mapCenter = computed(() => {
@@ -344,65 +319,5 @@ function formatDistance(meters) {
   width: 100%;
   height: 100%;
   position: relative;
-}
-
-.map-legend {
-  background: white;
-  padding: 1rem;
-  border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  max-width: 200px;
-}
-
-.legend-header {
-  font-weight: 600;
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-  color: #333;
-  border-bottom: 1px solid #e0e0e0;
-  padding-bottom: 0.5rem;
-}
-
-.legend-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-}
-
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
-}
-
-.legend-label {
-  color: #555;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Dark mode */
-.p-dark .map-legend {
-  background: #1e1e1e;
-}
-
-.p-dark .legend-header {
-  color: #e0e0e0;
-  border-bottom-color: #444;
-}
-
-.p-dark .legend-label {
-  color: #bbb;
 }
 </style>
