@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.geocoding.client;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
@@ -17,5 +18,6 @@ public interface NominatimRestClient {
     Uni<NominatimResponse> getAddress(
             @QueryParam("format") String format,
             @QueryParam("lon") double longitude,
-            @QueryParam("lat") double latitude);
+            @QueryParam("lat") double latitude,
+            @HeaderParam("Accept-Language") String acceptLanguage);
 }

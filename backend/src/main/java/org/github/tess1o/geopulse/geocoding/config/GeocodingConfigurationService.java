@@ -65,6 +65,15 @@ public class GeocodingConfigurationService {
     }
 
     /**
+     * Get Nominatim language preference for Accept-Language header.
+     * @return Language code (e.g., "en-US", "de", "uk") or empty if not configured
+     */
+    public Optional<String> getNominatimLanguage() {
+        String language = settingsService.getString("geocoding.nominatim.language");
+        return language.isEmpty() ? Optional.empty() : Optional.of(language);
+    }
+
+    /**
      * Check if Photon provider is enabled.
      */
     public boolean isPhotonEnabled() {
@@ -78,6 +87,15 @@ public class GeocodingConfigurationService {
     public Optional<String> getPhotonUrl() {
         String url = settingsService.getString("geocoding.photon.url");
         return url.isEmpty() ? Optional.empty() : Optional.of(url);
+    }
+
+    /**
+     * Get Photon language preference for Accept-Language header.
+     * @return Language code (e.g., "en-US", "de", "uk") or empty if not configured
+     */
+    public Optional<String> getPhotonLanguage() {
+        String language = settingsService.getString("geocoding.photon.language");
+        return language.isEmpty() ? Optional.empty() : Optional.of(language);
     }
 
     /**

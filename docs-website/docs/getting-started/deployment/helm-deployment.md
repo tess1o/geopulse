@@ -221,6 +221,9 @@ config:
       apiKey: "your-api-key-here"  # Stored in Kubernetes Secret
     nominatim:
       enabled: true
+      language: "en-US"  # Optional: BCP 47 language tag
+    photon:
+      language: "en-US"  # Optional: BCP 47 language tag
 ```
 
 #### Location Sharing
@@ -526,11 +529,13 @@ config:
     nominatim:
       enabled: true
       url: "https://nominatim.mycompany.internal"
+      language: "de"  # Optional: BCP 47 language tag
     # Self-hosted Photon as fallback
     fallbackProvider: "photon"
     photon:
       enabled: true
       url: "https://photon.mycompany.internal"
+      language: "de"  # Optional: BCP 47 language tag
 ```
 
 ### High-Performance Import Configuration

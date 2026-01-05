@@ -48,8 +48,10 @@ data:
   GEOPULSE_GEOCODING_DELAY_MS: {{ .Values.config.geocoding.delayMs | quote }}
   GEOPULSE_GEOCODING_NOMINATIM_ENABLED: {{ .Values.config.geocoding.nominatim.enabled | quote }}
   GEOPULSE_GEOCODING_NOMINATIM_URL: {{ .Values.config.geocoding.nominatim.url | quote }}
+  GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE: {{ .Values.config.geocoding.nominatim.language | quote }}
   GEOPULSE_GEOCODING_PHOTON_ENABLED: {{ .Values.config.geocoding.photon.enabled | quote }}
   GEOPULSE_GEOCODING_PHOTON_URL: {{ .Values.config.geocoding.photon.url | quote }}
+  GEOPULSE_GEOCODING_PHOTON_LANGUAGE: {{ .Values.config.geocoding.photon.language | quote }}
   GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED: {{ .Values.config.geocoding.googleMaps.enabled | quote }}
   GEOPULSE_GEOCODING_MAPBOX_ENABLED: {{ .Values.config.geocoding.mapbox.enabled | quote }}
 

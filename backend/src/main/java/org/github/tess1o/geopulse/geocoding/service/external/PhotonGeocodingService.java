@@ -80,10 +80,19 @@ public class PhotonGeocodingService {
         double longitude = requestCoordinates.getX();
         double latitude = requestCoordinates.getY();
 
-        log.debug("Calling Photon for coordinates: lon={}, lat={}", longitude, latitude);
+        // Get language from global configuration (if set)
+        String language = configService.getPhotonLanguage().orElse(null);
+
+        if (language != null) {
+            log.debug("Calling Photon for coordinates: lon={}, lat={}, language={}",
+                      longitude, latitude, language);
+        } else {
+            log.debug("Calling Photon for coordinates: lon={}, lat={} (no language header)",
+                      longitude, latitude);
+        }
 
         PhotonRestClient client = getClient();
-        return client.getAddress(longitude, latitude)
+        return client.getAddress(longitude, latitude, language)
                 .map(response -> {
                     log.debug("Photon response received: {}", response);
                     return adapter.adapt(response, requestCoordinates, getProviderName());

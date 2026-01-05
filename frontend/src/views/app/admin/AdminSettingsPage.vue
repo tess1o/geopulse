@@ -131,7 +131,7 @@
         <div class="settings-section">
           <h3>Provider Configuration</h3>
 
-          <div class="setting-item" v-for="setting in geocodingSettings.filter(s => s.key.includes('.url') || s.key.includes('.api-key') || s.key.includes('.access-token'))" :key="setting.key">
+          <div class="setting-item" v-for="setting in geocodingSettings.filter(s => s.key.includes('.url') || s.key.includes('.language') || s.key.includes('.api-key') || s.key.includes('.access-token'))" :key="setting.key">
             <div class="setting-info">
               <label>{{ setting.label }}</label>
               <small class="text-muted">{{ setting.description }}</small>
@@ -150,7 +150,7 @@
                 v-else
                 v-model="setting.currentValue"
                 @blur="updateSetting(setting)"
-                placeholder="Optional custom URL"
+                :placeholder="getPlaceholder(setting)"
                 style="width: 300px"
               />
               <div class="setting-status">
@@ -367,9 +367,17 @@ const settingLabels = {
     label: 'Nominatim URL',
     description: 'Custom Nominatim server URL (optional)'
   },
+  'geocoding.nominatim.language': {
+    label: 'Nominatim Language',
+    description: 'Language preference (BCP 47: en-US, de, uk, ja, etc.)'
+  },
   'geocoding.photon.url': {
     label: 'Photon URL',
     description: 'Custom Photon server URL (optional)'
+  },
+  'geocoding.photon.language': {
+    label: 'Photon Language',
+    description: 'Language preference (BCP 47: en-US, de, uk, ja, etc.)'
   },
   'geocoding.googlemaps.api-key': {
     label: 'Google Maps API Key',
@@ -417,6 +425,15 @@ const fallbackProviderOptions = computed(() => {
   ]
 })
 
+const getPlaceholder = (setting) => {
+  if (setting.key.includes('.language')) {
+    return 'e.g., en-US, de, uk, ja (optional)'
+  } else if (setting.key.includes('.url')) {
+    return 'Optional custom URL'
+  }
+  return 'Optional'
+}
+
 const loadAuthSettings = async () => {
   try {
     const response = await apiService.get('/admin/settings/auth')
@@ -448,6 +465,8 @@ const loadGeocodingSettings = async () => {
         ? setting.value === 'true'
         : setting.valueType === 'INTEGER'
         ? parseInt(setting.value)
+        : setting.value === '""' || setting.value === ''
+        ? ''
         : setting.value
     }))
   } catch (error) {

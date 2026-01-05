@@ -26,8 +26,10 @@ configure multiple providers with automatic fallback support. **This configurati
 | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER`   | _(empty)_                             | Fallback service if primary fails                                         |
 | `GEOPULSE_GEOCODING_NOMINATIM_ENABLED`   | `true`                                | Enable Nominatim geocoding service                                        |
 | `GEOPULSE_GEOCODING_NOMINATIM_URL`       | `https://nominatim.openstreetmap.org` | Nominatim url                                                             |
+| `GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE`  | _(empty)_                             | Nominatim language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent |
 | `GEOPULSE_GEOCODING_PHOTON_ENABLED`      | `false`                               | Enable Photon geocoding service                                           |
-| `GEOPULSE_GEOCODING_PHOTON_URL`          | `https://photon.komoot.io`            | Photon url                                                                |                                                                 |
+| `GEOPULSE_GEOCODING_PHOTON_URL`          | `https://photon.komoot.io`            | Photon url                                                                |
+| `GEOPULSE_GEOCODING_PHOTON_LANGUAGE`     | _(empty)_                             | Photon language preference (BCP 47: en-US, de, uk, ja). If not set, no Accept-Language header is sent    |                                                                 |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false`                               | Enable Google Maps geocoding service                                      |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                            |
 | `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                           |
@@ -42,12 +44,14 @@ configure multiple providers with automatic fallback support. **This configurati
 - Rate limited to 1 request per second
 - Best for privacy-conscious users
 - Possible to use self-hosted version
+- Language can be configured via `GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE` (e.g., "en-US", "de", "uk")
 
 **Photon**
 
 - No API key required
 - Rate limited to 2 request per second
 - Possible to use self-hosted version
+- Language can be configured via `GEOPULSE_GEOCODING_PHOTON_LANGUAGE` (e.g., "en-US", "de", "uk")
 
 **Google Maps**
 
@@ -93,6 +97,10 @@ GEOPULSE_GEOCODING_MAPBOX_ENABLED=false
 GEOPULSE_GEOCODING_NOMINATIM_URL=https://nominatim.openstreetmap.org
 GEOPULSE_GEOCODING_PHOTON_URL=https://photon.komoot.io
 
+# Language preferences (optional - if not set, providers return local language)
+GEOPULSE_GEOCODING_NOMINATIM_LANGUAGE=en-US
+GEOPULSE_GEOCODING_PHOTON_LANGUAGE=en-US
+
 # API Credentials (if using paid services)
 GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY=your_google_api_key_here
 GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
@@ -114,6 +122,11 @@ config:
     nominatim:
       enabled: true
       url: "https://nominatim.openstreetmap.org"
+      language: "en-US"  # Optional
+    photon:
+      enabled: false
+      url: "https://photon.komoot.io"
+      language: "en-US"  # Optional
     googleMaps:
       enabled: true
       apiKey: "your-api-key"  # Stored as Kubernetes Secret
