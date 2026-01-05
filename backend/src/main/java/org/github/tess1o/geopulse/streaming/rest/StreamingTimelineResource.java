@@ -10,7 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
+import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
@@ -20,9 +22,11 @@ import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * REST API resource for the new streaming timeline algorithm.
@@ -56,6 +60,9 @@ public class StreamingTimelineResource {
 
     @Inject
     org.github.tess1o.geopulse.streaming.service.TripClassificationDetailsService tripClassificationDetailsService;
+
+    @Inject
+    MultiUserTimelineService multiUserTimelineService;
 
     @GET
     @RolesAllowed({"USER", "ADMIN"})
@@ -203,6 +210,87 @@ public class StreamingTimelineResource {
             log.error("Failed to get classification details for trip {} and user {}", tripId, userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get classification details: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get timelines for multiple users (friends) with color assignments.
+     * Returns timeline data for the requesting user and all friends who have granted timeline permission.
+     *
+     * @param startTime Start time in ISO-8601 format
+     * @param endTime End time in ISO-8601 format
+     * @param userIds Optional comma-separated list of user IDs to fetch (if not provided, fetches all friends with permission)
+     * @return Multi-user timeline with color-coded data
+     */
+    @GET
+    @Path("/multi-user")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getMultiUserTimeline(
+            @QueryParam("startTime") String startTime,
+            @QueryParam("endTime") String endTime,
+            @QueryParam("userIds") String userIds
+    ) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Multi-user timeline request from user {} for period {} to {}", userId, startTime, endTime);
+
+        try {
+            // Parse the time parameters
+            Instant start = startTime != null ? Instant.parse(startTime) : Instant.EPOCH;
+            Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
+
+            // Validate time range
+            if (start.isAfter(end)) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Start time must be before end time"))
+                        .build();
+            }
+
+            // Parse optional user IDs
+            List<UUID> userIdList = null;
+            if (userIds != null && !userIds.trim().isEmpty()) {
+                try {
+                    userIdList = Arrays.stream(userIds.split(","))
+                            .map(String::trim)
+                            .map(UUID::fromString)
+                            .collect(Collectors.toList());
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid user ID format in multi-user request: {}", userIds, e);
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid user ID format"))
+                            .build();
+                }
+            }
+
+            // Fetch multi-user timeline
+            MultiUserTimelineDTO multiTimeline = multiUserTimelineService.getMultiUserTimeline(
+                    userId,
+                    start,
+                    end,
+                    userIdList
+            );
+
+            log.info("Multi-user timeline generated for user {}: {} users included",
+                    userId, multiTimeline.getTimelines().size());
+
+            return Response.ok(ApiResponse.success(multiTimeline)).build();
+
+        } catch (DateTimeParseException e) {
+            log.warn("Invalid time format in multi-user request from user {}: {}", userId, e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid time format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
+                    .build();
+
+        } catch (jakarta.ws.rs.ForbiddenException e) {
+            log.warn("Forbidden access in multi-user timeline request: {}", e.getMessage());
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Failed to generate multi-user timeline for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to generate multi-user timeline: " + e.getMessage()))
                     .build();
         }
     }

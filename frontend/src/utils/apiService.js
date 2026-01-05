@@ -476,6 +476,63 @@ const apiService = {
     },
 
     /**
+     * Get multi-user timeline data (for friends timeline view)
+     * @param {string} startTime - Start time in ISO format
+     * @param {string} endTime - End time in ISO format
+     * @param {Array<string>} userIds - Optional array of user IDs to fetch
+     * @returns {Promise<Object>} - Multi-user timeline data
+     */
+    async getMultiUserTimeline(startTime, endTime, userIds = null) {
+        const params = {
+            startTime,
+            endTime
+        };
+
+        if (userIds && userIds.length > 0) {
+            params.userIds = userIds.join(',');
+        }
+
+        return this.get('/streaming-timeline/multi-user', params);
+    },
+
+    /**
+     * Get friend permissions for a specific friend
+     * @param {string} friendId - Friend's user ID
+     * @returns {Promise<Object>} - Permission data
+     */
+    async getFriendPermissions(friendId) {
+        return this.get(`/friends/${friendId}/permissions`);
+    },
+
+    /**
+     * Update friend permissions
+     * @param {string} friendId - Friend's user ID
+     * @param {boolean} shareTimeline - Whether to share timeline
+     * @returns {Promise<Object>} - Updated permission data
+     */
+    async updateFriendPermissions(friendId, shareTimeline) {
+        return this.put(`/friends/${friendId}/permissions`, { shareTimeline });
+    },
+
+    /**
+     * Update live location permission for a friend
+     * @param {string} friendId - Friend's user ID
+     * @param {boolean} shareLiveLocation - Whether to share live location
+     * @returns {Promise<Object>} - Updated permission data
+     */
+    async updateLiveLocationPermission(friendId, shareLiveLocation) {
+        return this.put(`/friends/${friendId}/permissions/live`, { shareLiveLocation });
+    },
+
+    /**
+     * Get all friend permissions
+     * @returns {Promise<Array>} - Array of permission objects
+     */
+    async getAllFriendPermissions() {
+        return this.get('/friends/permissions');
+    },
+
+    /**
      * Login user with credentials and store tokens/CSRF token
      * @param {string} email - User ID
      * @param {string} password - User password

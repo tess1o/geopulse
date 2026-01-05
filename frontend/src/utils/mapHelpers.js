@@ -817,3 +817,45 @@ export function formatTooltipContent(data, fields) {
         })
         .join('<br>')
 }
+
+/**
+ * Color palette for multi-user timelines
+ * Matches backend MultiUserTimelineService.java color assignments
+ */
+export const USER_COLORS = [
+    '#3B82F6', // Blue
+    '#10B981', // Green
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#8B5CF6', // Purple
+    '#EC4899', // Pink
+    '#14B8A6', // Teal
+    '#F97316', // Orange
+    '#6366F1', // Indigo
+    '#84CC16'  // Lime
+]
+
+/**
+ * Assign a color from the palette based on index
+ * @param {number} index - User index
+ * @returns {string} - Hex color code
+ */
+export function assignUserColor(index) {
+    return USER_COLORS[index % USER_COLORS.length]
+}
+
+/**
+ * Create a user-specific timeline marker icon
+ * @param {string} color - User's assigned color
+ * @param {string} userInitials - User's initials (optional)
+ * @returns {L.DivIcon} - Custom marker icon
+ */
+export function createUserTimelineIcon(color, userInitials = '') {
+    return createCustomDivIcon({
+        color,
+        icon: userInitials || '📍',
+        size: MARKER_SIZES.STANDARD,
+        className: 'custom-marker user-timeline-marker',
+        shape: 'circle'
+    })
+}

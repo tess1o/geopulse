@@ -2,12 +2,9 @@ x
 <template>
   <AppLayout
     :showInviteFriendButton="true"
-    :showLocationSharingToggle="true"
-    :locationSharingEnabled="shareLocationWithFriends"
     @invite-friend="showInviteDialog = true"
-    @toggle-location-sharing="handleLocationSharingToggle"
   >
-    <PageContainer padding="none" maxWidth="xlarge">
+    <PageContainer padding="none" maxWidth="none">
       <div class="friends-page">
         <!-- Main Content Tabs -->
         <TabContainer
@@ -20,7 +17,7 @@ x
             <component
               :is="currentTabComponent"
               :key="activeTab"
-              :ref="activeTab === 'map' ? (el) => friendsMapTabRef = el : undefined"
+              :ref="activeTab === 'live' ? (el) => friendsMapTabRef = el : undefined"
             />
           </keep-alive>
         </TabContainer>
@@ -103,6 +100,7 @@ import TabContainer from '@/components/ui/layout/TabContainer.vue'
 // Tab components
 import FriendsListTab from '@/components/friends/FriendsListTab.vue'
 import FriendsMapTab from '@/components/friends/FriendsMapTab.vue'
+import FriendsTimelineTab from '@/components/friends/FriendsTimelineTab.vue'
 import InvitationsTab from '@/components/friends/InvitationsTab.vue'
 
 // Store
@@ -123,35 +121,47 @@ const router = useRouter()
 
 // Store refs
 const {friends, receivedInvites, sentInvitations: sentInvites} = storeToRefs(friendsStore)
-const {shareLocationWithFriends} = storeToRefs(authStore)
 
 // State
 const activeTab = ref()
-const localShareLocationWithFriends = ref(true)
 const showInviteDialog = ref(false)
 
 // Tab configuration
-const tabItems = computed(() => [
-  {
-    label: 'Friends Map',
-    icon: 'pi pi-map',
-    key: 'map'
-  },
-  {
-    label: 'My Friends',
-    icon: 'pi pi-users',
-    key: 'friends',
-    badge: friends.value?.length > 0 ? friends.value.length : null,
-    badgeType: 'info'
-  },
-  {
-    label: 'Invitations',
-    icon: 'pi pi-envelope',
-    key: 'invites',
-    badge: receivedInvites.value?.length > 0 ? receivedInvites.value.length : null,
-    badgeType: 'danger'
+const tabItems = computed(() => {
+  const tabs = [
+    {
+      label: 'Live',
+      icon: 'pi pi-map-marker',
+      key: 'live'
+    },
+    {
+      label: 'Timeline',
+      icon: 'pi pi-history',
+      key: 'timeline'
+    },
+    {
+      label: 'Friends',
+      icon: 'pi pi-users',
+      key: 'friends',
+      badge: friends.value?.length > 0 ? friends.value.length : null,
+      badgeType: 'info'
+    }
+  ]
+
+  // Only show Invitations tab if there are pending invitations (received or sent)
+  const hasInvites = (receivedInvites.value?.length > 0) || (sentInvites.value?.length > 0)
+  if (hasInvites) {
+    tabs.push({
+      label: 'Invitations',
+      icon: 'pi pi-envelope',
+      key: 'invites',
+      badge: receivedInvites.value?.length > 0 ? receivedInvites.value.length : null,
+      badgeType: 'danger'
+    })
   }
-])
+
+  return tabs
+})
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
@@ -159,18 +169,7 @@ const activeTabIndex = computed(() => {
 
 const currentTabComponent = computed(() => {
   const components = {
-    friends: {
-      component: FriendsListTab,
-      props: {
-        friends: friends.value
-      },
-      handlers: {
-        onInviteFriend: () => { showInviteDialog.value = true },
-        onShowOnMap: showFriendOnMap,
-        onDeleteFriend: confirmDeleteFriend
-      }
-    },
-    map: {
+    live: {
       component: FriendsMapTab,
       props: {
         friends: friends.value,
@@ -184,6 +183,23 @@ const currentTabComponent = computed(() => {
         onRefresh: refreshFriendsData,
         onFriendLocated: handleFriendLocated,
         onShowAll: handleShowAll
+      }
+    },
+    timeline: {
+      component: FriendsTimelineTab,
+      props: {},
+      handlers: {}
+    },
+    friends: {
+      component: FriendsListTab,
+      props: {
+        friends: friends.value
+      },
+      handlers: {
+        onInviteFriend: () => { showInviteDialog.value = true },
+        onShowOnMap: showFriendOnLiveMap,
+        onShowTimeline: showFriendTimeline,
+        onDeleteFriend: confirmDeleteFriend
       }
     },
     invites: {
@@ -249,18 +265,37 @@ const switchToTab = (tabKey) => {
 }
 
 watch(() => route.params.tab, (newTab) => {
-  const validTabs = ['map', 'friends', 'invites']
+  const validTabs = ['live', 'timeline', 'friends', 'invites']
+
+  // Check if the requested tab is valid
   if (validTabs.includes(newTab)) {
+    // Special case: if trying to access 'invites' but there are no invites, redirect to 'live'
+    if (newTab === 'invites') {
+      const hasInvites = (receivedInvites.value?.length > 0) || (sentInvites.value?.length > 0)
+      if (!hasInvites) {
+        router.replace({name: 'Friends', params: {tab: 'live'}})
+        return
+      }
+    }
     activeTab.value = newTab
   } else {
-    // If tab is invalid or not present, default to 'map' and update URL
-    router.replace({name: 'Friends', params: {tab: 'map'}})
+    // If tab is invalid or not present, default to 'live' and update URL
+    router.replace({name: 'Friends', params: {tab: 'live'}})
   }
 }, {immediate: true})
 
 watch(() => route.query.friend, (newFriendEmail) => {
   initialFriendEmailToZoom.value = newFriendEmail || null
 }, {immediate: true})
+
+// Watch for when all invites are cleared while on the invites tab
+watch([receivedInvites, sentInvites], () => {
+  const hasInvites = (receivedInvites.value?.length > 0) || (sentInvites.value?.length > 0)
+  if (!hasInvites && activeTab.value === 'invites') {
+    // If we're on the invites tab and there are no more invites, switch to live
+    router.replace({name: 'Friends', params: {tab: 'live'}})
+  }
+})
 
 const validateInviteForm = () => {
   inviteErrors.value = {}
@@ -354,10 +389,10 @@ const deleteFriend = async (friendId) => {
   }
 }
 
-const showFriendOnMap = (friend) => {
+const showFriendOnLiveMap = (friend) => {
   router.replace({
     name: 'Friends',
-    params: {tab: 'map'},
+    params: {tab: 'live'},
     query: {friend: friend.email}
   }).then(() => {
     // Give more time for map to initialize after tab switch
@@ -373,6 +408,14 @@ const showFriendOnMap = (friend) => {
         }, 500)
       }
     }, 300)
+  })
+}
+
+const showFriendTimeline = (friend) => {
+  router.replace({
+    name: 'Friends',
+    params: {tab: 'timeline'},
+    query: {friend: friend.email}
   })
 }
 
@@ -524,7 +567,7 @@ const handleFriendLocated = (friend) => {
 const handleShowAll = () => {
   router.replace({
     name: 'Friends',
-    params: {tab: 'map'},
+    params: {tab: 'live'},
     query: {friend: undefined}
   });
 }
@@ -582,52 +625,11 @@ const searchUsers = async (event) => {
   }
 }
 
-const handleLocationSharingToggle = async (newValue) => {
-  try {
-    const user = authStore.user
-    await authStore.updateProfile(
-      user.fullName,
-      user.avatar,
-      user.timezone,
-      user.customMapTileUrl || '',
-      user.measureUnit || 'METRIC',
-      user.defaultRedirectUrl || '',
-      newValue,
-      user.userId
-    )
-
-    toast.add({
-      severity: 'success',
-      summary: newValue ? 'Location Sharing Enabled' : 'Location Sharing Disabled',
-      detail: newValue
-        ? 'Your friends can now see your location'
-        : 'Your friends can no longer see your location',
-      life: 3000
-    })
-  } catch (error) {
-    console.error('Error updating location sharing:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Update Failed',
-      detail: 'Failed to update location sharing setting',
-      life: 5000
-    })
-  }
-}
-
-// Initialize local sharing state
-watch(shareLocationWithFriends, (newValue) => {
-  localShareLocationWithFriends.value = newValue
-}, { immediate: true })
-
 // Lifecycle
 onMounted(async () => {
   try {
-    // Fetch fresh user profile from server to get current location sharing status
+    // Fetch fresh user profile from server
     await authStore.fetchCurrentUserProfile()
-
-    // Initialize local state from store (now updated with server data)
-    localShareLocationWithFriends.value = shareLocationWithFriends.value
 
     // Execute both async calls in parallel
     const [_, lastPosition] = await Promise.all([
@@ -661,13 +663,12 @@ onMounted(async () => {
 
 <style scoped>
 .friends-page {
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: 100%;
+  margin: 0;
   padding: 0;
   box-sizing: border-box;
   width: 100%;
   min-height: auto;
-  border-radius: var(--gp-radius-large);
 }
 
 .friends-page * {
@@ -760,6 +761,44 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .friends-page {
     padding: 0 0.5rem;
+  }
+
+  /* Make tabs fit in one row on mobile */
+  :deep(.p-tabmenu-nav) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  :deep(.p-tabmenuitem) {
+    flex-shrink: 0;
+    min-width: fit-content;
+  }
+
+  :deep(.p-menuitem-link) {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  :deep(.p-menuitem-icon) {
+    font-size: 1rem;
+    margin-right: 0.375rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.p-menuitem-link) {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  :deep(.p-menuitem-icon) {
+    font-size: 0.9rem;
+    margin-right: 0.25rem;
+  }
+
+  :deep(.p-menuitem-text) {
+    white-space: nowrap;
   }
 }
 </style>

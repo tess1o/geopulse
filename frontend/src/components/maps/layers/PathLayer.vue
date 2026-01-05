@@ -15,9 +15,6 @@ import {createHighlightedPathStartMarker, createHighlightedPathEndMarker} from '
 import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
 import {useTimezone} from '@/composables/useTimezone'
 
-import {useLocationStore} from '@/stores/location'  // Add import at top
-
-const locationStore = useLocationStore()
 const timezone = useTimezone()
 
 const props = defineProps({

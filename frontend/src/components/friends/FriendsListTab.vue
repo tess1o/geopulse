@@ -42,13 +42,51 @@
             </div>
           </div>
 
+          <!-- Permissions Section -->
+          <div class="friend-permissions">
+            <div class="permission-item">
+              <i class="pi pi-map-marker permission-icon"></i>
+              <span class="permission-label">Share Live Location</span>
+              <InputSwitch
+                  v-model="friend.shareLiveLocationPermission"
+                  @change="handleLiveLocationPermissionChange(friend)"
+                  class="permission-switch"
+              />
+              <i class="pi pi-info-circle info-icon"
+                 v-tooltip="'Allows this friend to see your current location in real-time'"
+              ></i>
+            </div>
+            <div class="permission-item">
+              <i class="pi pi-history permission-icon"></i>
+              <span class="permission-label">Share Timeline History</span>
+              <InputSwitch
+                  v-model="friend.shareTimelinePermission"
+                  @change="handleTimelinePermissionChange(friend)"
+                  class="permission-switch"
+              />
+              <i class="pi pi-info-circle info-icon"
+                 v-tooltip="'Allows this friend to view your complete location history'"
+              ></i>
+            </div>
+          </div>
+
           <div class="friend-actions">
             <Button
                 icon="pi pi-map-marker"
+                label="Live"
                 size="small"
                 outlined
                 @click="$emit('show-on-map', friend)"
                 :disabled="!friend.lastLatitude || !friend.lastLongitude"
+                v-tooltip.bottom="'Show friend on live map'"
+            />
+            <Button
+                icon="pi pi-history"
+                label="Timeline"
+                size="small"
+                outlined
+                @click="$emit('show-timeline', friend)"
+                v-tooltip.bottom="'View friend\'s timeline history'"
             />
             <Button
                 icon="pi pi-trash"
@@ -56,6 +94,7 @@
                 severity="danger"
                 outlined
                 @click="$emit('delete-friend', friend)"
+                v-tooltip.bottom="'Remove friend'"
             />
           </div>
         </template>
@@ -65,18 +104,154 @@
 </template>
 
 <script setup>
+import { ref, onMounted, watch } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+import apiService from '@/utils/apiService'
+import InputSwitch from 'primevue/inputswitch'
 
 const timezone = useTimezone()
+const toast = useToast()
+const confirm = useConfirm()
 
-defineProps({
+const props = defineProps({
   friends: {
     type: Array,
     default: () => []
   }
 })
 
-defineEmits(['invite-friend', 'show-on-map', 'delete-friend'])
+defineEmits(['invite-friend', 'show-on-map', 'show-timeline', 'delete-friend'])
+
+// Load permissions for all friends
+onMounted(async () => {
+  await loadAllPermissions()
+})
+
+// Watch for friends changes and reload permissions
+watch(() => props.friends, async (newFriends) => {
+  if (newFriends && newFriends.length > 0) {
+    await loadAllPermissions()
+  }
+}, { deep: true })
+
+async function loadAllPermissions() {
+  if (!props.friends || props.friends.length === 0) return
+
+  try {
+    // Load permissions for each friend
+    const permissionPromises = props.friends.map(async (friend) => {
+      try {
+        const response = await apiService.getFriendPermissions(friend.friendId)
+        friend.shareTimelinePermission = response.data?.shareTimeline || false
+        friend.shareLiveLocationPermission = response.data?.shareLiveLocation || false
+      } catch (error) {
+        console.error(`Failed to load permissions for friend ${friend.friendId}:`, error)
+        friend.shareTimelinePermission = false
+        friend.shareLiveLocationPermission = false
+      }
+    })
+
+    await Promise.all(permissionPromises)
+  } catch (error) {
+    console.error('Failed to load friend permissions:', error)
+  }
+}
+
+async function handleTimelinePermissionChange(friend) {
+  const newValue = friend.shareTimelinePermission
+
+  // Show confirmation dialog
+  confirm.require({
+    message: newValue
+      ? `This will allow ${friend.fullName} to view your complete location history (all past stays and trips). Continue?`
+      : `This will revoke ${friend.fullName}'s access to your location history. Continue?`,
+    header: 'Confirm Permission Change',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        const response = await apiService.updateFriendPermissions(friend.friendId, newValue)
+
+        // Update state from API response to ensure consistency
+        friend.shareTimelinePermission = response.data?.shareTimeline ?? newValue
+        friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? friend.shareLiveLocationPermission
+
+        toast.add({
+          severity: 'success',
+          summary: 'Permission Updated',
+          detail: newValue
+            ? `${friend.fullName} can now view your timeline history`
+            : `${friend.fullName} can no longer view your timeline history`,
+          life: 3000
+        })
+      } catch (error) {
+        console.error('Failed to update permission:', error)
+
+        // Revert the switch
+        friend.shareTimelinePermission = !newValue
+
+        toast.add({
+          severity: 'error',
+          summary: 'Failed to Update Permission',
+          detail: error.message || 'Could not update friend permissions',
+          life: 5000
+        })
+      }
+    },
+    reject: () => {
+      // Revert the switch
+      friend.shareTimelinePermission = !newValue
+    }
+  })
+}
+
+async function handleLiveLocationPermissionChange(friend) {
+  const newValue = friend.shareLiveLocationPermission
+
+  // Show confirmation dialog
+  confirm.require({
+    message: newValue
+      ? `This will allow ${friend.fullName} to see your current location in real-time. Continue?`
+      : `This will revoke ${friend.fullName}'s access to your live location. Continue?`,
+    header: 'Confirm Permission Change',
+    icon: 'pi pi-exclamation-triangle',
+    accept: async () => {
+      try {
+        const response = await apiService.updateLiveLocationPermission(friend.friendId, newValue)
+
+        // Update state from API response to ensure consistency
+        friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? newValue
+        friend.shareTimelinePermission = response.data?.shareTimeline ?? friend.shareTimelinePermission
+
+        toast.add({
+          severity: 'success',
+          summary: 'Permission Updated',
+          detail: newValue
+            ? `${friend.fullName} can now view your live location`
+            : `${friend.fullName} can no longer view your live location`,
+          life: 3000
+        })
+      } catch (error) {
+        console.error('Failed to update live location permission:', error)
+
+        // Revert the switch
+        friend.shareLiveLocationPermission = !newValue
+
+        toast.add({
+          severity: 'error',
+          summary: 'Failed to Update Permission',
+          detail: error.message || 'Could not update live location permission',
+          life: 5000
+        })
+      }
+    },
+    reject: () => {
+      // Revert the switch
+      friend.shareLiveLocationPermission = !newValue
+    }
+  })
+}
 
 // Utility functions
 const getFriendStatus = (friend) => {
@@ -243,10 +418,54 @@ const getLastSeenText = (lastSeen) => {
   line-height: 1.2;
 }
 
+/* Permissions Section */
+.friend-permissions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gp-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.permission-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-small);
+}
+
+.permission-icon {
+  font-size: 1rem;
+  color: var(--gp-primary);
+}
+
+.permission-label {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gp-text-primary);
+}
+
+.permission-switch {
+  flex-shrink: 0;
+}
+
+.info-icon {
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
+  cursor: help;
+}
+
 .friend-actions {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gp-border-light);
 }
 
 /* Responsive Design */

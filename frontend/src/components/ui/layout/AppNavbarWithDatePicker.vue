@@ -21,37 +21,17 @@
         <slot name="end-before"/>
 
         <!-- Date Picker -->
-        <div class="gp-navbar-datepicker">
-          <FloatLabel variant="on">
-            <DatePicker
-                id="navbar-date-selector"
-                v-model="dateRange"
-                selectionMode="range"
-                :size="datePickerSize"
-                class="gp-datepicker"
-                :class="datePickerClasses"
-                :style="datePickerStyle"
-                :manualInput="false"
-                iconDisplay="input"
-                variant="filled"
-                showIcon
-                :showOnFocus="true"
-                :showWeek="false"
-                dateFormat="mm/dd/yy"
-            >
-              <template #footer>
-                <Select
-                    :options="presets"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Select Preset"
-                    defaultValue="today"
-                    v-model="selectedPreset"
-                    @change="setPresetRange"
-                />
-              </template>
-            </DatePicker>
-          </FloatLabel>
+        <div class="gp-navbar-datepicker" :style="datePickerStyle">
+          <DateRangePicker
+              :variant="datePickerVariant"
+              :size="datePickerSize"
+              :showLabel="true"
+              :label="datePickerLabel"
+              inputVariant="filled"
+              pickerId="navbar-date-selector"
+              :class="datePickerClasses"
+              @date-change="handleDateChange"
+          />
         </div>
 
         <!-- Additional end content -->
@@ -62,45 +42,10 @@
 </template>
 
 <script setup>
-import {ref, computed} from 'vue'
-import {storeToRefs} from 'pinia'
+import { computed } from 'vue'
 import Toolbar from 'primevue/toolbar'
-import DatePicker from 'primevue/datepicker'
-import FloatLabel from 'primevue/floatlabel'
-import Select from 'primevue/select'
 import AppNavigation from './AppNavigation.vue'
-import {useDateRangeStore} from '@/stores/dateRange'
-import {useTimezone} from '@/composables/useTimezone'
-
-const userTz = useTimezone();
-
-const presets = ref([
-  {label: 'Today', value: 'today'},
-  {label: 'Yesterday', value: 'yesterday'},
-  {label: 'Last 7 days', value: 'lastWeek'},
-  {label: 'Last 30 days', value: 'lastMonth'}
-])
-
-const selectedPreset = ref()
-
-const setPresetRange = () => {
-  if (selectedPreset.value === 'today') {
-    setDateToToday();
-    return;
-  }
-  if (selectedPreset.value === 'yesterday') {
-    setDateToYesterday();
-    return
-  }
-  if (selectedPreset.value === 'lastWeek') {
-    setDateToLast7Days();
-    return;
-  }
-  if (selectedPreset.value === 'lastMonth') {
-    setDateToLast30Days();
-    return;
-  }
-}
+import DateRangePicker from '@/components/ui/DateRangePicker.vue'
 
 const props = defineProps({
   variant: {
@@ -128,13 +73,6 @@ const props = defineProps({
 
 const emit = defineEmits(['navigate', 'date-change'])
 
-// Composables
-const timezone = useTimezone()
-
-// Pinia store
-const dateRangeStore = useDateRangeStore()
-const {dateRange: storeDateRange} = storeToRefs(dateRangeStore)
-
 // Computed properties
 const toolbarClasses = computed(() => ({
   [`gp-navbar--${props.variant}`]: props.variant !== 'default',
@@ -150,6 +88,10 @@ const datePickerSize = computed(() => {
   return props.variant === 'compact' ? 'small' : 'medium'
 })
 
+const datePickerVariant = computed(() => {
+  return props.variant === 'compact' ? 'compact' : 'default'
+})
+
 const datePickerClasses = computed(() => ({
   'gp-datepicker--compact': props.variant === 'compact'
 }))
@@ -158,59 +100,10 @@ const datePickerStyle = computed(() => ({
   width: props.datePickerWidth
 }))
 
-// Two-way binding with DatePicker
-const dateRange = computed({
-  get() {
-    // Convert stored UTC dates to calendar dates for the picker
-    if (storeDateRange.value && storeDateRange.value.length === 2) {
-      return timezone.convertUtcRangeToCalendarDates(storeDateRange.value[0], storeDateRange.value[1]);
-    }
-    return null;
-  },
-  set(value) {
-    setValidDateRange(value)
-  }
-})
-
 // Methods
-const setValidDateRange = (value) => {
-  if (timezone.isValidDateRange(value)) {
-    const [newStartDate, newEndDate] = value
-
-    // Create UTC date range from picker dates using the timezone composable
-    const {start, end} = timezone.createDateRangeFromPicker(newStartDate, newEndDate)
-
-    dateRangeStore.setDateRange([start, end])
-    emit('date-change', [start, end])
-  } else if (!value) { // Handle clear
-    dateRangeStore.setDateRange(null)
-    emit('date-change', null)
-  }
+const handleDateChange = (range) => {
+  emit('date-change', range)
 }
-
-const setDateToToday = () => {
-  const today = userTz.getTodayRangeUtc()
-  dateRangeStore.setDateRange([today.start, today.end])
-  emit('date-change', [today.start, today.end])
-};
-
-const setDateToYesterday = () => {
-  const yesterday = userTz.getYesterdayRangeUtc()
-  dateRangeStore.setDateRange([yesterday.start, yesterday.end])
-  emit('date-change', [yesterday.start, yesterday.end])
-};
-
-const setDateToLast7Days = () => {
-  const week = userTz.getLastWeekRange();
-  dateRangeStore.setDateRange([week.start, week.end])
-  emit('date-change', [week.start, week.end])
-};
-
-const setDateToLast30Days = () => {
-  const month = userTz.getLastMonthRange();
-  dateRangeStore.setDateRange([month.start, month.end])
-  emit('date-change', [month.start, month.end])
-};
 
 const handleNavigate = (item) => {
   emit('navigate', item)
