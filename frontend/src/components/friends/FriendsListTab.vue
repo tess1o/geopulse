@@ -171,7 +171,11 @@ async function handleTimelinePermissionChange(friend) {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await apiService.updateFriendPermissions(friend.friendId, newValue)
+        const response = await apiService.updateFriendPermissions(friend.friendId, newValue)
+
+        // Update state from API response to ensure consistency
+        friend.shareTimelinePermission = response.data?.shareTimeline ?? newValue
+        friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? friend.shareLiveLocationPermission
 
         toast.add({
           severity: 'success',
@@ -214,7 +218,11 @@ async function handleLiveLocationPermissionChange(friend) {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        await apiService.updateLiveLocationPermission(friend.friendId, newValue)
+        const response = await apiService.updateLiveLocationPermission(friend.friendId, newValue)
+
+        // Update state from API response to ensure consistency
+        friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? newValue
+        friend.shareTimelinePermission = response.data?.shareTimeline ?? friend.shareTimelinePermission
 
         toast.add({
           severity: 'success',
