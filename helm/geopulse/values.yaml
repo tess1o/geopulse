@@ -411,11 +411,13 @@ config:
     nominatim:
       enabled: true
       url: "https://nominatim.openstreetmap.org"
+      language: ""  # Optional: BCP 47 language tag (e.g., "en-US", "de", "uk", "ja")
 
     # Photon (Komoot) - Free alternative
     photon:
       enabled: false
       url: "https://photon.komoot.io"
+      language: ""  # Optional: BCP 47 language tag (e.g., "en-US", "de", "uk", "ja")
 
     # Google Maps - Requires API key
     googleMaps:

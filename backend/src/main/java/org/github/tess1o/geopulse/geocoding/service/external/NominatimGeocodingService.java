@@ -84,10 +84,19 @@ public class NominatimGeocodingService {
         double longitude = requestCoordinates.getX();
         double latitude = requestCoordinates.getY();
 
-        log.debug("Calling Nominatim for coordinates: lon={}, lat={}", longitude, latitude);
+        // Get language from global configuration (if set)
+        String language = configService.getNominatimLanguage().orElse(null);
+
+        if (language != null) {
+            log.debug("Calling Nominatim for coordinates: lon={}, lat={}, language={}",
+                      longitude, latitude, language);
+        } else {
+            log.debug("Calling Nominatim for coordinates: lon={}, lat={} (no language header)",
+                      longitude, latitude);
+        }
 
         NominatimRestClient client = getClient();
-        return client.getAddress("json", longitude, latitude)
+        return client.getAddress("json", longitude, latitude, language)
                 .map(response -> {
                     log.debug("Nominatim response received: {}", response.getDisplayName());
                     return adapter.adapt(response, requestCoordinates, getProviderName());

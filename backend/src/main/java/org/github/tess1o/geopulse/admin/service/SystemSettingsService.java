@@ -57,11 +57,15 @@ public class SystemSettingsService {
                 new SettingDefinition("geocoding.provider.nominatim.enabled", "true", ValueType.BOOLEAN, "geocoding", "Enable Nominatim geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.nominatim.url",
                 new SettingDefinition("quarkus.rest-client.nominatim-api.url", "", ValueType.STRING, "geocoding", "Custom Nominatim server URL (optional)"));
+        SETTING_DEFINITIONS.put("geocoding.nominatim.language",
+                new SettingDefinition("geocoding.nominatim.language", "", ValueType.STRING, "geocoding", "Nominatim language preference (BCP 47: en-US, de, uk, ja)"));
 
         SETTING_DEFINITIONS.put("geocoding.photon.enabled",
                 new SettingDefinition("geocoding.provider.photon.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Photon geocoding provider"));
         SETTING_DEFINITIONS.put("geocoding.photon.url",
                 new SettingDefinition("quarkus.rest-client.photon-api.url", "", ValueType.STRING, "geocoding", "Custom Photon server URL (optional)"));
+        SETTING_DEFINITIONS.put("geocoding.photon.language",
+                new SettingDefinition("geocoding.photon.language", "", ValueType.STRING, "geocoding", "Photon language preference (BCP 47: en-US, de, uk, ja)"));
 
         SETTING_DEFINITIONS.put("geocoding.googlemaps.enabled",
                 new SettingDefinition("geocoding.provider.googlemaps.enabled", "false", ValueType.BOOLEAN, "geocoding", "Enable Google Maps geocoding provider"));
