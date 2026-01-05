@@ -317,6 +317,9 @@ components:
           type: boolean
         show_photos:
           type: boolean
+        custom_map_tile_url:
+          maxLength: 1000
+          type: string
     DawarichGeometry:
       type: object
       properties:
@@ -851,6 +854,11 @@ components:
           type: string
         enabled:
           type: boolean
+    UpdateLiveLocationRequest:
+      type: object
+      properties:
+        shareLiveLocation:
+          type: boolean
     UpdateOidcProviderRequest:
       required:
       - displayName
@@ -881,6 +889,11 @@ components:
         scopes:
           maxLength: 255
           type: string
+    UpdatePermissionRequest:
+      type: object
+      properties:
+        shareTimeline:
+          type: boolean
     UpdatePlaceNameRequest:
       type: object
       properties:
@@ -943,6 +956,9 @@ components:
           type: boolean
         show_photos:
           type: boolean
+        custom_map_tile_url:
+          maxLength: 1000
+          type: string
         passwordRemoval:
           type: boolean
     UpdateTimelinePreferencesRequest:
@@ -2814,6 +2830,20 @@ paths:
       - Friend Invitation Resource
       security:
       - jwt: []
+  /api/friends/permissions:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get All Friend Permissions
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
   /api/friends/search-users-to-invite:
     get:
       parameters:
@@ -2870,6 +2900,81 @@ paths:
         "403":
           description: Not Allowed
       summary: Get Friend Location
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
+  /api/friends/{friendId}/permissions:
+    put:
+      parameters:
+      - name: friendId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePermissionRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Friend Permissions
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
+    get:
+      parameters:
+      - name: friendId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Friend Permissions
+      tags:
+      - Friend Resource
+      security:
+      - jwt: []
+  /api/friends/{friendId}/permissions/live:
+    put:
+      parameters:
+      - name: friendId
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLiveLocationRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Live Location Permission
       tags:
       - Friend Resource
       security:
@@ -4583,6 +4688,33 @@ paths:
       - Streaming Timeline Resource
       security:
       - jwt: []
+  /api/streaming-timeline/multi-user:
+    get:
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      - name: userIds
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Multi User Timeline
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
   /api/streaming-timeline/regenerate-all:
     post:
       responses:
@@ -5070,7 +5202,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.10.2
+  version: 1.11.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
