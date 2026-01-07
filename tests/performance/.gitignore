@@ -1,0 +1,17 @@
+# k6 test results
+results/
+*.json
+
+# Environment configuration (contains sensitive data)
+.env
+k6/.env
+
+# k6 cloud results
+cloud-results/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
