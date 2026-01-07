@@ -86,6 +86,7 @@ data:
   GEOPULSE_OIDC_ENABLED: {{ .Values.config.oidc.enabled | quote }}
   GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS: {{ .Values.config.oidc.autoLinkAccounts | quote }}
   GEOPULSE_OIDC_CLEANUP_ENABLED: {{ .Values.config.oidc.cleanupEnabled | quote }}
+  GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS: {{ .Values.config.oidc.jwksCacheTtlHours | default "24" | quote }}
 
   {{- if .Values.config.oidc.google.enabled }}
   GEOPULSE_OIDC_PROVIDER_GOOGLE_ENABLED: "true"

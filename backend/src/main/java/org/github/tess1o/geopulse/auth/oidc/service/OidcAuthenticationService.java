@@ -85,8 +85,47 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     Optional<String> adminEmail;
 
+    // Atomic cache entry to prevent split-brain state between JWKS data and timestamp
+    private record CachedJwks(JWKSet jwkSet, Instant cachedAt) {}
+
     private final Client httpClient = ClientBuilder.newClient();
-    private final Map<String, JWKSet> jwksCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedJwks> jwksCache = new ConcurrentHashMap<>();
+
+    @ConfigProperty(name = "geopulse.oidc.jwks-cache.ttl-hours", defaultValue = "24")
+    @StaticInitSafe
+    int jwksCacheTtlHours;
+
+    /**
+     * Helper method to persist OIDC connection with race condition handling.
+     * Handles duplicate connection attempts by verifying ownership.
+     */
+    private void persistConnectionWithRaceHandling(UserOidcConnectionEntity connection, String providerName, String externalUserId) {
+        try {
+            connectionRepository.persist(connection);
+        } catch (jakarta.persistence.PersistenceException e) {
+            if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
+                log.warn("Duplicate OIDC connection detected. Provider: {}, ExternalUserId: {}. Verifying ownership.",
+                        providerName, externalUserId);
+
+                // Re-query to verify the existing connection
+                Optional<UserOidcConnectionEntity> existing = connectionRepository
+                        .findByProviderNameAndExternalUserId(providerName, externalUserId);
+
+                if (existing.isPresent() && existing.get().getUserId().equals(connection.getUserId())) {
+                    // Same user - safe race condition, just update last login
+                    existing.get().setLastLoginAt(Instant.now());
+                    log.debug("Race condition resolved: connection already exists for same user");
+                } else if (existing.isPresent()) {
+                    // Different user - this OIDC account is already claimed
+                    throw new IllegalArgumentException("This OIDC account is already linked to another user");
+                } else {
+                    throw new RuntimeException("Unique constraint violated but connection not found", e);
+                }
+            } else {
+                throw e;
+            }
+        }
+    }
 
     @Transactional
     public OidcLoginInitResponse initiateLogin(String providerName, UUID linkingUserId, String redirectUri, String linkingToken) {
@@ -95,6 +134,13 @@ public class OidcAuthenticationService {
 
         if (!provider.isEnabled()) {
             throw new IllegalArgumentException("Provider not enabled: " + providerName);
+        }
+
+        // Validate that provider has valid metadata
+        if (provider.getAuthorizationEndpoint() == null || provider.getTokenEndpoint() == null) {
+            log.error("Provider '{}' has invalid metadata. Authorization endpoint: {}, Token endpoint: {}",
+                    providerName, provider.getAuthorizationEndpoint(), provider.getTokenEndpoint());
+            throw new IllegalStateException("Provider metadata is not available. Please check provider configuration and discovery URL.");
         }
 
         // Generate state and nonce for security
@@ -126,20 +172,20 @@ public class OidcAuthenticationService {
 
     @Transactional // Ensure entire callback operation is atomic
     public AuthResponse handleCallback(OidcCallbackRequest request) {
+        OidcSessionStateEntity sessionState = null;
         try {
             // Validate state token
-            OidcSessionStateEntity sessionState = sessionStateRepository.findByStateToken(request.getState())
+            sessionState = sessionStateRepository.findByStateToken(request.getState())
                     .orElseThrow(() -> new IllegalArgumentException("Invalid state token"));
 
             if (sessionState.getExpiresAt().isBefore(Instant.now())) {
-                // Clean up expired session state
-                sessionStateRepository.delete(sessionState);
                 throw new IllegalArgumentException("State token expired");
             }
 
             // Get provider configuration
-            OidcProviderConfiguration provider = providerService.findByName(sessionState.getProviderName())
-                    .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + sessionState.getProviderName()));
+            final String providerName = sessionState.getProviderName();  // Extract to final variable for lambda
+            OidcProviderConfiguration provider = providerService.findByName(providerName)
+                    .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName));
 
             // Exchange code for tokens
             OidcTokenResponse tokenResponse = exchangeCodeForTokens(provider, request.getCode());
@@ -150,9 +196,6 @@ public class OidcAuthenticationService {
             // Find or create user (this method handles all user/connection logic)
             UserEntity user = findOrCreateUser(userInfo, sessionState);
 
-            // Clean up session state after successful authentication
-            sessionStateRepository.delete(sessionState);
-
             // Generate JWT tokens
             return authenticationService.createAuthResponse(user);
 
@@ -160,29 +203,21 @@ public class OidcAuthenticationService {
             log.warn("Registration via OIDC is disabled", e);
             throw e;
         } catch (OidcAccountLinkingRequiredException e) {
-            // Clean up session state but let the linking exception bubble up
-            try {
-                OidcSessionStateEntity sessionState = sessionStateRepository.findByStateToken(request.getState()).orElse(null);
-                if (sessionState != null) {
-                    sessionStateRepository.delete(sessionState);
-                }
-            } catch (Exception cleanupError) {
-                log.warn("Failed to clean up session state after linking error", cleanupError);
-            }
             // Re-throw the linking exception so the REST controller can handle it properly
             throw e;
         } catch (Exception e) {
-            // Clean up session state on any error
-            try {
-                OidcSessionStateEntity sessionState = sessionStateRepository.findByStateToken(request.getState()).orElse(null);
-                if (sessionState != null) {
-                    sessionStateRepository.delete(sessionState);
-                }
-            } catch (Exception cleanupError) {
-                log.warn("Failed to clean up session state after error", cleanupError);
-            }
-            // It's better to throw a more specific, less revealing exception to the client
+            log.error("OIDC callback failed: {}", e.getMessage());
             throw new RuntimeException("OIDC authentication failed.", e);
+        } finally {
+            // Clean up session state in all cases (success or failure)
+            // Single cleanup path eliminates redundant database queries
+            if (sessionState != null) {
+                try {
+                    sessionStateRepository.delete(sessionState);
+                } catch (Exception cleanupError) {
+                    log.warn("Failed to clean up session state for state token: {}", request.getState(), cleanupError);
+                }
+            }
         }
     }
 
@@ -241,11 +276,8 @@ public class OidcAuthenticationService {
                         .lastLoginAt(Instant.now())
                         .build();
 
-                connectionRepository.persist(connection);
-
-                log.info("Auto-linked {} provider to user {} successfully",
-                        sessionState.getProviderName(), user.getEmail());
-
+                persistConnectionWithRaceHandling(connection, sessionState.getProviderName(), userInfo.getSubject());
+                log.info("Auto-linked {} provider to user {}", sessionState.getProviderName(), user.getEmail());
                 return user;
             }
 
@@ -312,7 +344,19 @@ public class OidcAuthenticationService {
                 .lastLoginAt(Instant.now())
                 .build();
 
-        connectionRepository.persist(connection);
+        try {
+            connectionRepository.persist(connection);
+        } catch (jakarta.persistence.PersistenceException e) {
+            // Special handling for new user creation: rollback entire transaction
+            if (e.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
+                log.error("Race condition during user creation: OIDC connection already exists. " +
+                        "Provider: {}, ExternalUserId: {}. Rolling back transaction.",
+                        providerName, userInfo.getSubject());
+                throw new IllegalArgumentException(
+                        "OIDC account already linked during concurrent registration. Please retry.", e);
+            }
+            throw e;
+        }
 
         return user;
     }
@@ -351,8 +395,7 @@ public class OidcAuthenticationService {
                 .lastLoginAt(Instant.now())
                 .build();
 
-        connectionRepository.persist(connection);
-
+        persistConnectionWithRaceHandling(connection, sessionState.getProviderName(), userInfo.getSubject());
         return user;
     }
 
@@ -373,11 +416,8 @@ public class OidcAuthenticationService {
                 .lastLoginAt(Instant.now())
                 .build();
 
-        connectionRepository.persist(connection);
-
-        log.info("Successfully linked {} provider to user {} after OIDC verification",
-                tokenData.newProvider(), user.getEmail());
-
+        persistConnectionWithRaceHandling(connection, tokenData.newProvider(), tokenData.originalUserInfo().getSubject());
+        log.info("Successfully linked {} provider to user {}", tokenData.newProvider(), user.getEmail());
         return user;
     }
 
@@ -406,12 +446,13 @@ public class OidcAuthenticationService {
     }
 
     private OidcTokenResponse exchangeCodeForTokens(OidcProviderConfiguration provider, String code) {
-        log.info("Exchanging authorization code for tokens with provider: {}", provider.getName());
+        String redirectUri = getCallbackUrl();
+        log.debug("Exchanging authorization code for tokens with provider: {}", provider.getName());
 
         Form form = new Form()
                 .param("grant_type", "authorization_code")
                 .param("code", code)
-                .param("redirect_uri", getCallbackUrl())
+                .param("redirect_uri", redirectUri)
                 .param("client_id", provider.getClientId())
                 .param("client_secret", provider.getClientSecret());
 
@@ -423,7 +464,7 @@ public class OidcAuthenticationService {
                 String errorBody = response.readEntity(String.class);
                 log.error("Failed to exchange code for token. Provider: {}, Status: {}, Body: {}",
                         provider.getName(), response.getStatus(), errorBody);
-                throw new RuntimeException("Failed to exchange authorization code for token.");
+                throw new RuntimeException("Failed to exchange authorization code for token. Status: " + response.getStatus());
             }
 
             return response.readEntity(OidcTokenResponse.class);
@@ -440,6 +481,7 @@ public class OidcAuthenticationService {
             String keyID = signedJWT.getHeader().getKeyID();
             JWK jwk = jwkSet.getKeyByKeyId(keyID);
             if (jwk == null) {
+                log.warn("Could not find matching JWK for key ID: {} in provider: {}", keyID, provider.getName());
                 throw new SecurityException("Could not find matching JWK for key ID: " + keyID);
             }
 
@@ -448,6 +490,7 @@ public class OidcAuthenticationService {
             // a strategy pattern would be needed to select the correct JWSVerifier based on the JWT's "alg" header.
             JWSVerifier verifier = new RSASSAVerifier((RSAKey) jwk);
             if (!signedJWT.verify(verifier)) {
+                log.warn("ID token signature validation failed for provider: {}", provider.getName());
                 throw new SecurityException("ID token signature validation failed.");
             }
 
@@ -456,49 +499,81 @@ public class OidcAuthenticationService {
 
             // Issuer
             if (!claims.getIssuer().equals(provider.getIssuer())) {
+                log.error("ID token issuer mismatch. Provider: {}, Expected: {}, Got: {}",
+                        provider.getName(), provider.getIssuer(), claims.getIssuer());
                 throw new SecurityException("ID token issuer mismatch.");
             }
 
             // Audience
             if (!claims.getAudience().contains(provider.getClientId())) {
+                log.error("ID token audience mismatch. Provider: {}, Expected: {}, Got: {}",
+                        provider.getName(), provider.getClientId(), claims.getAudience());
                 throw new SecurityException("ID token audience mismatch.");
             }
 
             // Expiration
             if (Instant.now().isAfter(claims.getExpirationTime().toInstant())) {
+                log.error("ID token expired. Provider: {}, Expiration: {}, Now: {}",
+                        provider.getName(), claims.getExpirationTime().toInstant(), Instant.now());
                 throw new SecurityException("ID token has expired.");
             }
 
             // Nonce
             if (sessionState.getNonce() == null || !sessionState.getNonce().equals(claims.getClaim("nonce"))) {
+                log.error("ID token nonce mismatch. Provider: {}, Expected: {}, Got: {}",
+                        provider.getName(), sessionState.getNonce(), claims.getClaim("nonce"));
                 throw new SecurityException("ID token nonce mismatch. Possible replay attack.");
             }
 
             log.info("ID token validated successfully for subject: {}", claims.getSubject());
 
             // 4. Extract user info from claims
+            String email = claims.getStringClaim("email");
+            if (email == null || email.isBlank()) {
+                log.warn("ID token missing required 'email' claim for provider: {}", provider.getName());
+                throw new SecurityException("ID token missing required 'email' claim");
+            }
+
             return OidcUserInfo.builder()
                     .subject(claims.getSubject())
-                    .email(claims.getStringClaim("email"))
+                    .email(email)
                     .name(claims.getStringClaim("name"))
                     .picture(claims.getStringClaim("picture"))
                     .emailVerified(claims.getBooleanClaim("email_verified"))
                     .build();
 
         } catch (ParseException | JOSEException e) {
+            log.error("Failed to parse or verify ID token: {}", e.getMessage());
             throw new SecurityException("Failed to parse or verify ID token.", e);
         }
     }
 
     private JWKSet getJwkSet(OidcProviderConfiguration provider) {
-        return jwksCache.computeIfAbsent(provider.getJwksUri(), uri -> {
+        String jwksUri = provider.getJwksUri();
+        CachedJwks cached = jwksCache.get(jwksUri);
+
+        // Check if cache is expired or missing
+        boolean needsRefresh = cached == null ||
+                cached.cachedAt.plus(jwksCacheTtlHours, ChronoUnit.HOURS).isBefore(Instant.now());
+
+        if (needsRefresh) {
             try {
-                log.info("Fetching JWKS from: {}", uri);
-                return JWKSet.load(new URI(uri).toURL());
+                log.debug("Fetching JWKS from: {} (cache expired or missing)", jwksUri);
+                JWKSet jwkSet = JWKSet.load(new URI(jwksUri).toURL());
+                // Store both JWKS and timestamp atomically in single object
+                jwksCache.put(jwksUri, new CachedJwks(jwkSet, Instant.now()));
+                return jwkSet;
             } catch (Exception e) {
-                log.error("Failed to load JWKS from URI: {}", uri, e);
+                log.error("Failed to load JWKS from URI: {}", jwksUri, e);
+                // If we have a stale cached version, use it as fallback
+                if (cached != null) {
+                    log.warn("Using stale JWKS cache for provider: {} due to fetch failure", provider.getName());
+                    return cached.jwkSet;
+                }
                 throw new RuntimeException("Could not load JWKS for provider: " + provider.getName(), e);
             }
-        });
+        }
+
+        return cached.jwkSet;
     }
 }

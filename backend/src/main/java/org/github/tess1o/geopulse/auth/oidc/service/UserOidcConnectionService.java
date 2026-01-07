@@ -128,7 +128,8 @@ public class UserOidcConnectionService {
             return otherConnections > 0;
             
         } catch (Exception e) {
-            log.error("Error checking if provider can be unlinked", e);
+            log.error("Error checking if provider '{}' can be unlinked for user {}: {}",
+                    providerName, userId, e.getMessage(), e);
             return false;
         }
     }

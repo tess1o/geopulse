@@ -456,6 +456,9 @@ config:
     autoLinkAccounts: false
     # Enable cleanup of stale OIDC sessions (default: true)
     cleanupEnabled: true
+    # JWKS (JSON Web Key Set) cache TTL in hours (default: 24)
+    # Controls how often OIDC provider's public keys are refreshed for token validation
+    jwksCacheTtlHours: 24
 
     # Google OIDC
     google:

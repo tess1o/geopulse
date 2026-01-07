@@ -175,6 +175,10 @@ GEOPULSE_OIDC_STATE_TOKEN_EXPIRY_MINUTES=10
 GEOPULSE_OIDC_METADATA_CACHE_TTL_HOURS=24
 GEOPULSE_OIDC_METADATA_CACHE_MAX_SIZE=10
 
+# JWKS (JSON Web Key Set) cache TTL in hours (default: 24)
+# Controls how often OIDC provider's public keys are refreshed for token validation
+GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS=24
+
 # Cleanup settings
 GEOPULSE_OIDC_CLEANUP_ENABLED=true
 
@@ -320,6 +324,7 @@ config:
     enabled: true
     autoLinkAccounts: false  # See security note above
     cleanupEnabled: true
+    jwksCacheTtlHours: 24    # Optional: JWKS cache TTL (default: 24)
     generic:
       enabled: true
       name: "Company SSO"  # Display name in UI

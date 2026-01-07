@@ -27,7 +27,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OidcProviderService {
 
+    // Cache for metadata timestamps (to check TTL)
     private final Map<String, Instant> metadataCache = new ConcurrentHashMap<>();
+
+    // Cache for actual discovered metadata (for env-configured providers)
+    private record CachedMetadata(String authorizationEndpoint, String tokenEndpoint,
+                                   String userinfoEndpoint, String jwksUri, String issuer) {}
+    private final Map<String, CachedMetadata> discoveryCache = new ConcurrentHashMap<>();
 
     @Inject
     OidcProviderConfigurationService configurationService;
@@ -70,21 +76,85 @@ public class OidcProviderService {
      * @return Provider with populated metadata
      */
     private OidcProviderConfiguration ensureMetadataPopulated(OidcProviderConfiguration provider) {
-        try {
-            // Check if metadata needs refresh
-            Instant cachedAt = metadataCache.get(provider.getName());
-            boolean needsRefresh = cachedAt == null ||
-                    cachedAt.plus(metadataCacheTtlHours, ChronoUnit.HOURS).isBefore(Instant.now()) ||
-                    !provider.isMetadataValid();
+        // If provider object already has endpoints, no need to fetch
+        if (provider.getAuthorizationEndpoint() != null && provider.getTokenEndpoint() != null) {
+            return provider;
+        }
 
-            if (needsRefresh) {
-                populateMetadataFromDiscovery(provider);
+        // Provider needs metadata - check if we have it cached
+        Instant cachedAt = metadataCache.get(provider.getName());
+        boolean cacheExpired = cachedAt == null ||
+                cachedAt.plus(metadataCacheTtlHours, ChronoUnit.HOURS).isBefore(Instant.now());
+
+        if (cacheExpired) {
+            // Cache expired or missing - fetch from discovery
+            synchronized (metadataCache) {
+                // Double-check after acquiring lock
+                Instant recheckCachedAt = metadataCache.get(provider.getName());
+                if (recheckCachedAt == null || recheckCachedAt.plus(metadataCacheTtlHours, ChronoUnit.HOURS).isBefore(Instant.now())) {
+                    populateMetadataFromDiscovery(provider);
+                } else {
+                    // Another thread just populated it - load from cache
+                    loadCachedMetadata(provider);
+                }
             }
-        } catch (Exception e) {
-            log.error("Failed to populate metadata for provider '{}': {}", provider.getName(), e.getMessage());
+        } else {
+            // Cache is fresh - load metadata from cache instead of refetching
+            loadCachedMetadata(provider);
         }
 
         return provider;
+    }
+
+    private void loadCachedMetadata(OidcProviderConfiguration provider) {
+        // Try in-memory discovery cache first (for env-configured providers)
+        CachedMetadata cached = discoveryCache.get(provider.getName());
+        if (cached != null) {
+            provider.setAuthorizationEndpoint(cached.authorizationEndpoint());
+            provider.setTokenEndpoint(cached.tokenEndpoint());
+            provider.setUserinfoEndpoint(cached.userinfoEndpoint());
+            provider.setJwksUri(cached.jwksUri());
+            provider.setIssuer(cached.issuer());
+            provider.setMetadataValid(true);
+            log.debug("Loaded cached metadata from memory for provider: {}", provider.getName());
+            return;
+        }
+
+        // Try database (for DB-configured providers)
+        if (configurationService.existsInDatabase(provider.getName())) {
+            configurationService.getProviderByName(provider.getName()).ifPresent(dbProvider -> {
+                if (dbProvider.getAuthorizationEndpoint() != null) {
+                    provider.setAuthorizationEndpoint(dbProvider.getAuthorizationEndpoint());
+                    provider.setTokenEndpoint(dbProvider.getTokenEndpoint());
+                    provider.setUserinfoEndpoint(dbProvider.getUserinfoEndpoint());
+                    provider.setJwksUri(dbProvider.getJwksUri());
+                    provider.setIssuer(dbProvider.getIssuer());
+                    provider.setMetadataValid(true);
+                    log.debug("Loaded cached metadata from database for provider: {}", provider.getName());
+                }
+            });
+        }
+
+        // Defensive: If both cache sources failed but timestamp is valid, refetch
+        // This shouldn't happen in normal operation but prevents null endpoints
+        if (provider.getAuthorizationEndpoint() == null) {
+            log.warn("Cache valid but metadata unavailable for provider: {}. Re-synchronizing cache.",
+                    provider.getName());
+            synchronized (metadataCache) {
+                // Re-check inside lock to avoid duplicate fetches
+                CachedMetadata recheck = discoveryCache.get(provider.getName());
+                if (recheck != null) {
+                    provider.setAuthorizationEndpoint(recheck.authorizationEndpoint());
+                    provider.setTokenEndpoint(recheck.tokenEndpoint());
+                    provider.setUserinfoEndpoint(recheck.userinfoEndpoint());
+                    provider.setJwksUri(recheck.jwksUri());
+                    provider.setIssuer(recheck.issuer());
+                    provider.setMetadataValid(true);
+                } else {
+                    populateMetadataFromDiscovery(provider);
+                }
+            }
+        }
     }
 
     /**
@@ -95,7 +165,7 @@ public class OidcProviderService {
      */
     private void populateMetadataFromDiscovery(OidcProviderConfiguration provider) {
         try {
-            log.info("Fetching OIDC metadata for provider: {}", provider.getName());
+            log.debug("Fetching OIDC metadata for provider: {}", provider.getName());
 
             // Create REST client for discovery document
             OidcDiscoveryDocument discovery = RestClientBuilder.newBuilder()
@@ -112,7 +182,14 @@ public class OidcProviderService {
             provider.setMetadataCachedAt(Instant.now());
             provider.setMetadataValid(true);
 
-            // Cache the metadata timestamp in memory
+            // Cache the metadata in memory (for fast reuse)
+            discoveryCache.put(provider.getName(), new CachedMetadata(
+                    discovery.getAuthorizationEndpoint(),
+                    discovery.getTokenEndpoint(),
+                    discovery.getUserinfoEndpoint(),
+                    discovery.getJwksUri(),
+                    discovery.getIssuer()
+            ));
             metadataCache.put(provider.getName(), Instant.now());
 
             // If provider is in database, persist metadata
@@ -120,11 +197,15 @@ public class OidcProviderService {
                 configurationService.updateMetadata(provider.getName(), provider);
             }
 
-            log.info("Successfully cached OIDC metadata for provider: {}", provider.getName());
+            log.debug("Successfully cached OIDC metadata for provider: {}", provider.getName());
 
         } catch (Exception e) {
             log.error("Failed to fetch OIDC metadata for provider: {}", provider.getName(), e);
             provider.setMetadataValid(false);
+
+            // Invalidate cached metadata
+            metadataCache.remove(provider.getName());
+            discoveryCache.remove(provider.getName());
 
             // Invalidate metadata in DB if provider is in database
             if (configurationService.existsInDatabase(provider.getName())) {
