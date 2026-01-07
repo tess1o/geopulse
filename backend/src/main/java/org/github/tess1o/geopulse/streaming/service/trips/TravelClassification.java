@@ -239,6 +239,14 @@ public class TravelClassification {
     /**
      * Fallback classification when GPS statistics are not available.
      * Calculates average speed from distance and duration.
+     *
+     * This method is typically used for:
+     * 1. Inferred trips from data gaps (2 GPS points only)
+     * 2. Legacy trips without pre-calculated GPS statistics
+     *
+     * For such sparse data, we use distance + duration heuristics
+     * in addition to calculated speed, as speed alone can be misleading
+     * (e.g., international flights with taxi/ground time show ~150-200 km/h avg).
      */
     private TripType classifyWithoutGpsStatistics(TimelineConfig config,
                                                   Duration tripDuration,
@@ -247,12 +255,64 @@ public class TravelClassification {
         double hours = tripDuration.getSeconds() / 3600.0;
         double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-        if (hours > 0 && distanceKm > 0) {
-            // When no max speed available, use avg speed for both
-            return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, config);
-        } else {
+        if (hours <= 0 || distanceKm <= 0) {
             return UNKNOWN;
         }
+
+        // ========================================================================
+        // DISTANCE-BASED HEURISTICS FOR SPARSE GPS DATA
+        // ========================================================================
+        // When GPS statistics are unavailable (e.g., inferred trips from data gaps),
+        // calculated speed can be misleading due to ground time, taxi, waiting, etc.
+        // Use distance + speed combination to detect realistic travel modes.
+        // ========================================================================
+
+        // FLIGHT detection for sparse data:
+        // - Very long distance (>300km) + reasonable speed (>100 km/h)
+        //   → Almost certainly a flight (no ground transport sustains this)
+        // - Medium-long distance (>500km) + modest speed (>80 km/h)
+        //   → Likely flight with significant ground time
+        // - Extremely long distance (>1000km)
+        //   → Definitely a flight (no other realistic option)
+        if (Boolean.TRUE.equals(config.getFlightEnabled())) {
+            // Extreme distance: almost certainly a flight
+            if (distanceKm > 1000) {
+                log.debug("Distance {}km > 1000km with no GPS data → classifying as FLIGHT (extreme distance)",
+                         String.format("%.0f", distanceKm));
+                return FLIGHT;
+            }
+
+            // Long distance with high calculated speed: clear flight signature
+            if (distanceKm > 300 && avgSpeedKmh > 100) {
+                log.debug("Distance {}km > 300km AND speed {}km/h > 100km/h → classifying as FLIGHT (long distance + high speed)",
+                         String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                return FLIGHT;
+            }
+
+            // Very long distance with modest speed: likely flight with taxi/ground time
+            if (distanceKm > 500 && avgSpeedKmh > 80) {
+                log.debug("Distance {}km > 500km AND speed {}km/h > 80km/h → classifying as FLIGHT (very long distance)",
+                         String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                return FLIGHT;
+            }
+        }
+
+        // TRAIN detection for sparse data:
+        // Medium-long distance (100-800km) with train-like speeds (50-150 km/h)
+        // and reasonable duration (implies sustained movement, not stuck in traffic)
+        if (Boolean.TRUE.equals(config.getTrainEnabled())) {
+            if (distanceKm > 100 && distanceKm < 800 &&
+                avgSpeedKmh >= 50 && avgSpeedKmh <= 150 &&
+                hours >= 1) {
+                log.debug("Distance {}km (100-800km range) AND speed {}km/h (50-150km/h) → classifying as TRAIN",
+                         String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                return TRAIN;
+            }
+        }
+
+        // For other modes, use standard speed-based classification
+        // When no max speed available, use avg speed for both
+        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, config);
     }
 
     /**

@@ -151,6 +151,35 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setGapStayInferenceMaxGapHours,
                         Integer::valueOf
                 ))
+                // Gap Trip Inference
+                .register(new ConfigField<>(
+                        "geopulse.timeline.gap_trip_inference.enabled",
+                        properties.getGapTripInferenceEnabled(),
+                        TimelineConfig::getGapTripInferenceEnabled,
+                        TimelineConfig::setGapTripInferenceEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.gap_trip_inference.min_distance_meters",
+                        properties.getGapTripInferenceMinDistanceMeters(),
+                        TimelineConfig::getGapTripInferenceMinDistanceMeters,
+                        TimelineConfig::setGapTripInferenceMinDistanceMeters,
+                        Integer::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.gap_trip_inference.min_gap_hours",
+                        properties.getGapTripInferenceMinGapHours(),
+                        TimelineConfig::getGapTripInferenceMinGapHours,
+                        TimelineConfig::setGapTripInferenceMinGapHours,
+                        Integer::valueOf
+                ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.gap_trip_inference.max_gap_hours",
+                        properties.getGapTripInferenceMaxGapHours(),
+                        TimelineConfig::getGapTripInferenceMaxGapHours,
+                        TimelineConfig::setGapTripInferenceMaxGapHours,
+                        Integer::valueOf
+                ))
                 // Travel Classification
                 .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.walking.max_avg_speed",

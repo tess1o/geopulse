@@ -120,10 +120,10 @@ public class UserService {
      * to register even when public registration is disabled.
      *
      * @param invitationToken The invitation token (for validation)
-     * @param email    The user email
-     * @param password The password (will be hashed)
-     * @param fullName The user's full name
-     * @param timezone The user's timezone (IANA format)
+     * @param email           The user email
+     * @param password        The password (will be hashed)
+     * @param fullName        The user's full name
+     * @param timezone        The user's timezone (IANA format)
      * @return The created user entity
      * @throws IllegalArgumentException if the user already exists
      */
@@ -181,7 +181,7 @@ public class UserService {
      * Fetches the user within this transaction to ensure the entity is managed.
      *
      * @param userId the user ID
-     * @param role the new role
+     * @param role   the new role
      * @return the updated user entity, or empty if user not found
      */
     @Transactional
@@ -289,10 +289,10 @@ public class UserService {
 
         // Security: Prevent absolute URLs and external redirects
         if (normalizedUrl.startsWith("//") ||
-            normalizedUrl.toLowerCase().contains("http:") ||
-            normalizedUrl.toLowerCase().contains("https:") ||
-            normalizedUrl.toLowerCase().contains("javascript:") ||
-            normalizedUrl.toLowerCase().contains("data:")) {
+                normalizedUrl.toLowerCase().contains("http:") ||
+                normalizedUrl.toLowerCase().contains("https:") ||
+                normalizedUrl.toLowerCase().contains("javascript:") ||
+                normalizedUrl.toLowerCase().contains("data:")) {
             log.warn("Dangerous pattern detected in redirect URL: {}", redirectUrl);
             throw new IllegalArgumentException("Default redirect URL must be an internal path, not an external URL");
         }
@@ -405,6 +405,7 @@ public class UserService {
 
     /**
      * Update timeline preferences and return type of change made.
+     *
      * @return "classification" for classification-only changes, "structural" for full regeneration needed, null for no changes
      */
     @Transactional
@@ -447,6 +448,7 @@ public class UserService {
 
     /**
      * Reset preferences to defaults.
+     *
      * @return true if timeline regeneration is needed, false otherwise
      */
     @Transactional
@@ -495,7 +497,7 @@ public class UserService {
                 // Running
                 update.getRunningEnabled() != null ||
                 update.getRunningMaxAvgSpeed() != null ||
-                update.getRunningMinAvgSpeed() != null  ||
+                update.getRunningMinAvgSpeed() != null ||
                 update.getRunningMaxMaxSpeed() != null ||
 
                 // Train
@@ -534,6 +536,10 @@ public class UserService {
                 update.getGapStayInferenceEnabled() != null ||
                 update.getGapStayInferenceMaxGapHours() != null ||
                 update.getTripSustainedStopMinDurationSeconds() != null ||
-                update.getTripArrivalDetectionMinDurationSeconds() != null;
+                update.getTripArrivalDetectionMinDurationSeconds() != null ||
+                update.getGapTripInferenceEnabled() != null ||
+                update.getGapTripInferenceMaxGapHours() != null ||
+                update.getGapTripInferenceMinDistanceMeters() != null ||
+                update.getGapTripInferenceMinGapHours() != null;
     }
 }

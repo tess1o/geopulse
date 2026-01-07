@@ -166,6 +166,41 @@ public class TimelineConfig {
      */
     private Integer gapStayInferenceMaxGapHours;
 
+    // Gap Trip Inference Configuration
+    /**
+     * Enable or disable gap trip inference feature.
+     * When enabled, if a data gap occurs and the distance between the GPS points
+     * before and after the gap exceeds a threshold, the system will infer a trip
+     * instead of creating a data gap. This addresses scenarios like international flights
+     * where GPS data stops in one location and resumes thousands of kilometers away.
+     * The trip mode is determined by the existing trip classification algorithm.
+     * Default: false (disabled)
+     */
+    private Boolean gapTripInferenceEnabled;
+
+    /**
+     * Minimum distance in meters between points before/after gap to infer a trip.
+     * Gaps with smaller distances will be processed normally (stay inference or gap creation).
+     * This prevents short-distance gaps from being converted to trips.
+     * Default: 100000 (100km)
+     */
+    private Integer gapTripInferenceMinDistanceMeters;
+
+    /**
+     * Minimum gap duration in hours for trip inference to apply.
+     * Prevents very short gaps from being converted to trips.
+     * Default: 1 hour
+     */
+    private Integer gapTripInferenceMinGapHours;
+
+    /**
+     * Maximum gap duration in hours for trip inference to apply.
+     * Gaps longer than this will create a data gap regardless of distance.
+     * This prevents multi-day gaps from being automatically filled as trips.
+     * Default: 24 hours
+     */
+    private Integer gapTripInferenceMaxGapHours;
+
     // Travel Classification Configuration
     /**
      * Maximum average speed in km/h to classify movement as walking.

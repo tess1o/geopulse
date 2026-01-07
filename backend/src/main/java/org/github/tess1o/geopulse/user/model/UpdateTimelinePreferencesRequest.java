@@ -73,6 +73,21 @@ public class UpdateTimelinePreferencesRequest {
     @Max(value = 168, message = "Gap stay inference max gap hours must be at most 168 hours (1 week)")
     private Integer gapStayInferenceMaxGapHours;
 
+    // Gap Trip Inference Settings
+    private Boolean gapTripInferenceEnabled;
+
+    @Min(value = 1000, message = "Gap trip inference min distance must be at least 1000 meters (1 km)")
+    @Max(value = 1000000, message = "Gap trip inference min distance must be at most 1000000 meters (1000 km)")
+    private Integer gapTripInferenceMinDistanceMeters;
+
+    @Min(value = 0, message = "Gap trip inference min gap hours must be at least 0 hours")
+    @Max(value = 24, message = "Gap trip inference min gap hours must be at most 24 hours")
+    private Integer gapTripInferenceMinGapHours;
+
+    @Min(value = 1, message = "Gap trip inference max gap hours must be at least 1 hour")
+    @Max(value = 336, message = "Gap trip inference max gap hours must be at most 336 hours (2 weeks)")
+    private Integer gapTripInferenceMaxGapHours;
+
     // Travel Classification Settings
     @DecimalMin(value = "3.0", message = "Walking max average speed must be at least 3.0 km/h")
     @DecimalMax(value = "10.0", message = "Walking max average speed must be at most 10.0 km/h")
