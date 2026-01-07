@@ -65,6 +65,84 @@ public class TripClassificationDetailsService {
      */
     private static final double WALK_VERIFICATION_COEFFICIENT = 1.2;
 
+    // ============================================
+    // DISTANCE-BASED CLASSIFICATION THRESHOLDS
+    // These MUST match TravelClassification constants to ensure consistency
+    // ============================================
+
+    /**
+     * Extreme distance threshold (km).
+     * Distances exceeding this are almost certainly flights (no realistic ground transport alternative).
+     */
+    private static final double EXTREME_FLIGHT_DISTANCE_KM = 1000.0;
+
+    /**
+     * Minimum average speed for extreme distance classification (km/h).
+     * Prevents GPS drift/errors and high-speed trains from triggering flight classification.
+     */
+    private static final double EXTREME_FLIGHT_MIN_SPEED_KMH = 350.0;
+
+    /**
+     * Long distance threshold for flight detection (km).
+     * Combined with high speed, indicates likely flight.
+     */
+    private static final double LONG_FLIGHT_DISTANCE_KM = 300.0;
+
+    /**
+     * High speed threshold for long distance flights (km/h).
+     */
+    private static final double LONG_FLIGHT_MIN_SPEED_KMH = 280.0;
+
+    /**
+     * Very long distance threshold for flight detection (km).
+     */
+    private static final double VERY_LONG_FLIGHT_DISTANCE_KM = 600.0;
+
+    /**
+     * Modest speed threshold for very long distance flights (km/h).
+     */
+    private static final double VERY_LONG_FLIGHT_MIN_SPEED_KMH = 150.0;
+
+    /**
+     * Short-haul flight minimum distance (km).
+     */
+    private static final double SHORT_FLIGHT_MIN_DISTANCE_KM = 350.0;
+
+    /**
+     * Short-haul flight maximum distance (km).
+     */
+    private static final double SHORT_FLIGHT_MAX_DISTANCE_KM = 600.0;
+
+    /**
+     * Short-haul flight minimum average speed (km/h).
+     */
+    private static final double SHORT_FLIGHT_MIN_SPEED_KMH = 110.0;
+
+    /**
+     * Train minimum distance threshold (km).
+     */
+    private static final double TRAIN_MIN_DISTANCE_KM = 100.0;
+
+    /**
+     * Train maximum distance threshold (km).
+     */
+    private static final double TRAIN_MAX_DISTANCE_KM = 1500.0;
+
+    /**
+     * Train minimum average speed (km/h).
+     */
+    private static final double TRAIN_MIN_SPEED_KMH = 50.0;
+
+    /**
+     * Train maximum average speed (km/h).
+     */
+    private static final double TRAIN_MAX_SPEED_KMH = 200.0;
+
+    /**
+     * Train minimum duration threshold (hours).
+     */
+    private static final double TRAIN_MIN_DURATION_HOURS = 1.0;
+
     /**
      * Get comprehensive classification details for a trip.
      *
@@ -240,6 +318,9 @@ public class TripClassificationDetailsService {
 
         List<ClassificationStep> steps = new ArrayList<>();
 
+        // Check if this is an inferred trip (no GPS statistics available)
+        boolean isInferredTrip = trip.getAvgGpsSpeed() == null && trip.getMaxGpsSpeed() == null;
+
         // Determine which speeds to use - MUST match TravelClassification.validateGpsReliability() exactly
         double avgSpeedKmh;
         double maxSpeedKmh;
@@ -288,7 +369,8 @@ public class TripClassificationDetailsService {
         String matchedType = null;
 
         // Priority 1: FLIGHT
-        ClassificationStep flightStep = checkFlight(avgSpeedKmh, maxSpeedKmh, config, speedSource);
+        ClassificationStep flightStep = checkFlight(avgSpeedKmh, maxSpeedKmh,
+                trip.getDistanceMeters(), trip.getTripDuration(), isInferredTrip, config, speedSource);
         steps.add(flightStep);
         if (flightStep.checked() && flightStep.passed()) {
             foundMatch = true;
@@ -297,7 +379,8 @@ public class TripClassificationDetailsService {
 
         // Priority 2: TRAIN
         if (!foundMatch) {
-            ClassificationStep trainStep = checkTrain(avgSpeedKmh, maxSpeedKmh, speedVariance, config, speedSource);
+            ClassificationStep trainStep = checkTrain(avgSpeedKmh, maxSpeedKmh, speedVariance,
+                    trip.getDistanceMeters(), trip.getTripDuration(), isInferredTrip, config, speedSource);
             steps.add(trainStep);
             if (trainStep.checked() && trainStep.passed()) {
                 foundMatch = true;
@@ -466,62 +549,148 @@ public class TripClassificationDetailsService {
         return tripType;
     }
 
-    private ClassificationStep checkFlight(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
+    private ClassificationStep checkFlight(double avgSpeedKmh, double maxSpeedKmh,
+                                           long distanceMeters, long tripDurationSeconds,
+                                           boolean isInferredTrip, TimelineConfig config, String speedSource) {
         if (!Boolean.TRUE.equals(config.getFlightEnabled())) {
             return new ClassificationStep("FLIGHT", false, false,
                     "Flight detection is not enabled in configuration", List.of());
         }
 
         List<ThresholdCheck> checks = new ArrayList<>();
-        boolean avgCheck = avgSpeedKmh >= config.getFlightMinAvgSpeed();
-        boolean maxCheck = maxSpeedKmh >= config.getFlightMinMaxSpeed();
+        double distanceKm = distanceMeters / 1000.0;
+        double hours = tripDurationSeconds / 3600.0;
 
-        checks.add(new ThresholdCheck("Average Speed", ">=",
-                config.getFlightMinAvgSpeed(), avgSpeedKmh, avgCheck));
-        checks.add(new ThresholdCheck("Max Speed", ">=",
-                config.getFlightMinMaxSpeed(), maxSpeedKmh, maxCheck));
+        // If inferred trip, use distance-based heuristics (matches TravelClassification.classifyWithoutGpsStatistics)
+        if (isInferredTrip) {
+            // Rule 1: Extreme distance + minimum speed
+            boolean extremeDistanceCheck = distanceKm > EXTREME_FLIGHT_DISTANCE_KM && avgSpeedKmh > EXTREME_FLIGHT_MIN_SPEED_KMH;
+            checks.add(new ThresholdCheck("Extreme Distance", ">",
+                    EXTREME_FLIGHT_DISTANCE_KM, distanceKm, distanceKm > EXTREME_FLIGHT_DISTANCE_KM));
+            checks.add(new ThresholdCheck("Minimum Speed (extreme distance)", ">",
+                    EXTREME_FLIGHT_MIN_SPEED_KMH, avgSpeedKmh, avgSpeedKmh > EXTREME_FLIGHT_MIN_SPEED_KMH));
 
-        boolean passed = avgCheck || maxCheck; // OR logic
-        String reason = passed
-                ? String.format("Flight detected: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds flight thresholds. %s",
-                avgSpeedKmh, maxSpeedKmh, speedSource)
-                : String.format("Not a flight: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
-                avgSpeedKmh, config.getFlightMinAvgSpeed(), maxSpeedKmh, config.getFlightMinMaxSpeed(), speedSource);
+            // Rule 2: Long distance + high speed
+            boolean longDistanceCheck = distanceKm > LONG_FLIGHT_DISTANCE_KM && avgSpeedKmh > LONG_FLIGHT_MIN_SPEED_KMH;
+            checks.add(new ThresholdCheck("Long Distance", ">",
+                    LONG_FLIGHT_DISTANCE_KM, distanceKm, distanceKm > LONG_FLIGHT_DISTANCE_KM));
+            checks.add(new ThresholdCheck("High Speed (long distance)", ">",
+                    LONG_FLIGHT_MIN_SPEED_KMH, avgSpeedKmh, avgSpeedKmh > LONG_FLIGHT_MIN_SPEED_KMH));
 
-        return new ClassificationStep("FLIGHT", true, passed, reason, checks);
+            // Rule 2.5: Short-haul flight
+            boolean shortFlightCheck = distanceKm > SHORT_FLIGHT_MIN_DISTANCE_KM &&
+                    distanceKm <= SHORT_FLIGHT_MAX_DISTANCE_KM &&
+                    avgSpeedKmh > SHORT_FLIGHT_MIN_SPEED_KMH;
+            checks.add(new ThresholdCheck("Short-haul Distance (min)", ">",
+                    SHORT_FLIGHT_MIN_DISTANCE_KM, distanceKm, distanceKm > SHORT_FLIGHT_MIN_DISTANCE_KM));
+            checks.add(new ThresholdCheck("Short-haul Distance (max)", "<=",
+                    SHORT_FLIGHT_MAX_DISTANCE_KM, distanceKm, distanceKm <= SHORT_FLIGHT_MAX_DISTANCE_KM));
+            checks.add(new ThresholdCheck("Short-haul Speed", ">",
+                    SHORT_FLIGHT_MIN_SPEED_KMH, avgSpeedKmh, avgSpeedKmh > SHORT_FLIGHT_MIN_SPEED_KMH));
+
+            // Rule 3: Very long distance + modest speed
+            boolean veryLongDistanceCheck = distanceKm > VERY_LONG_FLIGHT_DISTANCE_KM && avgSpeedKmh > VERY_LONG_FLIGHT_MIN_SPEED_KMH;
+            checks.add(new ThresholdCheck("Very Long Distance", ">",
+                    VERY_LONG_FLIGHT_DISTANCE_KM, distanceKm, distanceKm > VERY_LONG_FLIGHT_DISTANCE_KM));
+            checks.add(new ThresholdCheck("Modest Speed (very long distance)", ">",
+                    VERY_LONG_FLIGHT_MIN_SPEED_KMH, avgSpeedKmh, avgSpeedKmh > VERY_LONG_FLIGHT_MIN_SPEED_KMH));
+
+            boolean passed = extremeDistanceCheck || longDistanceCheck || shortFlightCheck || veryLongDistanceCheck;
+            String reason = passed
+                    ? String.format("Flight detected (inferred trip): distance %.0f km and speed %.1f km/h match flight patterns. %s",
+                    distanceKm, avgSpeedKmh, speedSource)
+                    : String.format("Not a flight (inferred trip): distance %.0f km and speed %.1f km/h don't match flight patterns. %s",
+                    distanceKm, avgSpeedKmh, speedSource);
+
+            return new ClassificationStep("FLIGHT", true, passed, reason, checks);
+        } else {
+            // Standard GPS-based classification
+            boolean avgCheck = avgSpeedKmh >= config.getFlightMinAvgSpeed();
+            boolean maxCheck = maxSpeedKmh >= config.getFlightMinMaxSpeed();
+
+            checks.add(new ThresholdCheck("Average Speed", ">=",
+                    config.getFlightMinAvgSpeed(), avgSpeedKmh, avgCheck));
+            checks.add(new ThresholdCheck("Max Speed", ">=",
+                    config.getFlightMinMaxSpeed(), maxSpeedKmh, maxCheck));
+
+            boolean passed = avgCheck || maxCheck; // OR logic
+            String reason = passed
+                    ? String.format("Flight detected: average speed (%.1f km/h) OR max speed (%.1f km/h) exceeds flight thresholds. %s",
+                    avgSpeedKmh, maxSpeedKmh, speedSource)
+                    : String.format("Not a flight: average speed (%.1f km/h) < %.1f km/h AND max speed (%.1f km/h) < %.1f km/h. %s",
+                    avgSpeedKmh, config.getFlightMinAvgSpeed(), maxSpeedKmh, config.getFlightMinMaxSpeed(), speedSource);
+
+            return new ClassificationStep("FLIGHT", true, passed, reason, checks);
+        }
     }
 
-    private ClassificationStep checkTrain(double avgSpeedKmh, double maxSpeedKmh, Double speedVariance, TimelineConfig config, String speedSource) {
+    private ClassificationStep checkTrain(double avgSpeedKmh, double maxSpeedKmh, Double speedVariance,
+                                          long distanceMeters, long tripDurationSeconds,
+                                          boolean isInferredTrip, TimelineConfig config, String speedSource) {
         if (!Boolean.TRUE.equals(config.getTrainEnabled())) {
             return new ClassificationStep("TRAIN", false, false,
                     "Train detection is not enabled in configuration", List.of());
         }
 
         List<ThresholdCheck> checks = new ArrayList<>();
-        boolean avgMinCheck = avgSpeedKmh >= config.getTrainMinAvgSpeed();
-        boolean avgMaxCheck = avgSpeedKmh <= config.getTrainMaxAvgSpeed();
-        boolean maxMinCheck = maxSpeedKmh >= config.getTrainMinMaxSpeed();
-        boolean maxMaxCheck = maxSpeedKmh <= config.getTrainMaxMaxSpeed();
-        boolean varianceCheck = speedVariance != null && speedVariance < config.getTrainMaxSpeedVariance();
+        double distanceKm = distanceMeters / 1000.0;
+        double hours = tripDurationSeconds / 3600.0;
 
-        checks.add(new ThresholdCheck("Average Speed (min)", ">=",
-                config.getTrainMinAvgSpeed(), avgSpeedKmh, avgMinCheck));
-        checks.add(new ThresholdCheck("Average Speed (max)", "<=",
-                config.getTrainMaxAvgSpeed(), avgSpeedKmh, avgMaxCheck));
-        checks.add(new ThresholdCheck("Max Speed (min)", ">=",
-                config.getTrainMinMaxSpeed(), maxSpeedKmh, maxMinCheck));
-        checks.add(new ThresholdCheck("Max Speed (max)", "<=",
-                config.getTrainMaxMaxSpeed(), maxSpeedKmh, maxMaxCheck));
-        checks.add(new ThresholdCheck("Speed Variance", "<",
-                config.getTrainMaxSpeedVariance(), speedVariance, varianceCheck));
+        // If inferred trip, use distance-based heuristics (matches TravelClassification.classifyWithoutGpsStatistics)
+        if (isInferredTrip) {
+            // Distance-based train detection
+            boolean distanceMinCheck = distanceKm > TRAIN_MIN_DISTANCE_KM;
+            boolean distanceMaxCheck = distanceKm < TRAIN_MAX_DISTANCE_KM;
+            boolean speedMinCheck = avgSpeedKmh >= TRAIN_MIN_SPEED_KMH;
+            boolean speedMaxCheck = avgSpeedKmh <= TRAIN_MAX_SPEED_KMH;
+            boolean durationCheck = hours >= TRAIN_MIN_DURATION_HOURS;
 
-        boolean passed = avgMinCheck && avgMaxCheck && maxMinCheck && maxMaxCheck && varianceCheck;
-        String reason = passed
-                ? String.format("Train detected: speed in range (%.1f-%.1f km/h) with low variance (%.1f). %s",
-                avgSpeedKmh, maxSpeedKmh, speedVariance, speedSource)
-                : String.format("Not a train: speeds or variance outside train profile. %s", speedSource);
+            checks.add(new ThresholdCheck("Distance (min)", ">",
+                    TRAIN_MIN_DISTANCE_KM, distanceKm, distanceMinCheck));
+            checks.add(new ThresholdCheck("Distance (max)", "<",
+                    TRAIN_MAX_DISTANCE_KM, distanceKm, distanceMaxCheck));
+            checks.add(new ThresholdCheck("Speed (min)", ">=",
+                    TRAIN_MIN_SPEED_KMH, avgSpeedKmh, speedMinCheck));
+            checks.add(new ThresholdCheck("Speed (max)", "<=",
+                    TRAIN_MAX_SPEED_KMH, avgSpeedKmh, speedMaxCheck));
+            checks.add(new ThresholdCheck("Duration (min hours)", ">=",
+                    TRAIN_MIN_DURATION_HOURS, hours, durationCheck));
 
-        return new ClassificationStep("TRAIN", true, passed, reason, checks);
+            boolean passed = distanceMinCheck && distanceMaxCheck && speedMinCheck && speedMaxCheck && durationCheck;
+            String confidenceLevel = avgSpeedKmh > 150 ? "high-speed rail" : "regional/intercity";
+            String reason = passed
+                    ? String.format("Train detected (inferred trip - %s): distance %.0f km, speed %.1f km/h, duration %.1f hours. %s",
+                    confidenceLevel, distanceKm, avgSpeedKmh, hours, speedSource)
+                    : String.format("Not a train (inferred trip): distance/speed/duration outside train patterns. %s", speedSource);
+
+            return new ClassificationStep("TRAIN", true, passed, reason, checks);
+        } else {
+            // Standard GPS-based classification
+            boolean avgMinCheck = avgSpeedKmh >= config.getTrainMinAvgSpeed();
+            boolean avgMaxCheck = avgSpeedKmh <= config.getTrainMaxAvgSpeed();
+            boolean maxMinCheck = maxSpeedKmh >= config.getTrainMinMaxSpeed();
+            boolean maxMaxCheck = maxSpeedKmh <= config.getTrainMaxMaxSpeed();
+            boolean varianceCheck = speedVariance != null && speedVariance < config.getTrainMaxSpeedVariance();
+
+            checks.add(new ThresholdCheck("Average Speed (min)", ">=",
+                    config.getTrainMinAvgSpeed(), avgSpeedKmh, avgMinCheck));
+            checks.add(new ThresholdCheck("Average Speed (max)", "<=",
+                    config.getTrainMaxAvgSpeed(), avgSpeedKmh, avgMaxCheck));
+            checks.add(new ThresholdCheck("Max Speed (min)", ">=",
+                    config.getTrainMinMaxSpeed(), maxSpeedKmh, maxMinCheck));
+            checks.add(new ThresholdCheck("Max Speed (max)", "<=",
+                    config.getTrainMaxMaxSpeed(), maxSpeedKmh, maxMaxCheck));
+            checks.add(new ThresholdCheck("Speed Variance", "<",
+                    config.getTrainMaxSpeedVariance(), speedVariance, varianceCheck));
+
+            boolean passed = avgMinCheck && avgMaxCheck && maxMinCheck && maxMaxCheck && varianceCheck;
+            String reason = passed
+                    ? String.format("Train detected: speed in range (%.1f-%.1f km/h) with low variance (%.1f). %s",
+                    avgSpeedKmh, maxSpeedKmh, speedVariance, speedSource)
+                    : String.format("Not a train: speeds or variance outside train profile. %s", speedSource);
+
+            return new ClassificationStep("TRAIN", true, passed, reason, checks);
+        }
     }
 
     private ClassificationStep checkBicycle(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
