@@ -37,6 +37,12 @@ public class TimelinePreferences {
     private Boolean gapStayInferenceEnabled;
     private Integer gapStayInferenceMaxGapHours;
 
+    // Gap Trip Inference Settings
+    private Boolean gapTripInferenceEnabled;
+    private Integer gapTripInferenceMinDistanceMeters;
+    private Integer gapTripInferenceMinGapHours;
+    private Integer gapTripInferenceMaxGapHours;
+
     // Travel Classification Settings
     private Double walkingMaxAvgSpeed;
     private Double walkingMaxMaxSpeed;

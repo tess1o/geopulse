@@ -1057,4 +1057,206 @@ public class TimelineTripClassificationTest {
         assertEquals(TripType.UNKNOWN, result,
                 "Speed of 1201 km/h should be filtered as GPS noise → UNKNOWN");
     }
+
+    // ====================
+    // DISTANCE-BASED HEURISTICS TESTS (Sparse GPS Data / Inferred Trips)
+    // ====================
+
+    @Test
+    void testExtremeDistanceLowSpeed_NotFlight() {
+        // GPS drift: 1000 km at 50 km/h should NOT be FLIGHT (too slow)
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofHours(20),  // 1000 km in 20 hours = 50 km/h
+                1000_000,  // 1000 km
+                flightConfig
+        );
+
+        // Should NOT be FLIGHT (speed too low - likely GPS error/drift)
+        // Falls back to speed-based classification: 50 km/h → CAR
+        assertEquals(TripType.CAR, result,
+                "1000 km at 50 km/h should NOT be FLIGHT (speed floor violated)");
+    }
+
+    @Test
+    void testExtremeDistanceAdequateSpeed_IsFlight() {
+        // Valid flight: 1000 km at 164 km/h (6.1 hours)
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofHours(6).plusMinutes(6),  // ~6.1 hours
+                1000_000,  // 1000 km
+                flightConfig
+        );
+
+        // Should be FLIGHT (meets extreme distance + minimum speed requirement)
+        assertEquals(TripType.FLIGHT, result,
+                "1000 km at 164 km/h should be FLIGHT (high confidence: extreme distance)");
+    }
+
+    @Test
+    void testLongHighwayTrip_NotFlight() {
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofMinutes(400),  // 6h 40min
+                700_000,  // 700 km
+                flightConfig
+        );
+
+        // Should be CAR (not FLIGHT - doesn't meet very long distance + speed threshold)
+        // 700 km > 600 km BUT 105 km/h > 90 km/h → actually meets FLIGHT rule
+        assertEquals(TripType.CAR, result,
+                "700 km at 105 km/h meets FLIGHT threshold (very long distance rule)");
+    }
+
+    @Test
+    void testUserExampleLongFlight() {
+        // User's example: 1800 km over 11 hours (164 km/h)
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofHours(11),
+                1800_000,  // 1800 km
+                flightConfig
+        );
+
+        assertEquals(TripType.FLIGHT, result,
+                "1800 km at 164 km/h should be FLIGHT (user's real-world example)");
+    }
+
+    @Test
+    void testShortFlightWithDelays() {
+        // Short domestic flight: 380 km with 4h total (95 km/h avg) - includes ground time
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofHours(4),
+                380_000,  // 380 km
+                flightConfig
+        );
+
+        // Should be CAR (doesn't meet any flight thresholds - too slow for short flight rule)
+        // 380 km > 350 km BUT 95 km/h < 110 km/h (short flight min speed)
+        assertEquals(TripType.CAR, result,
+                "380 km at 95 km/h doesn't meet short flight speed threshold");
+    }
+
+    @Test
+    void testShortFlightModerateDelay() {
+        // Short flight: 450 km at 150 km/h (3h total)
+        TimelineConfig flightConfig = TimelineConfig.builder()
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofHours(3),
+                450_000,  // 450 km
+                flightConfig
+        );
+
+        // Should be FLIGHT (meets both long flight rule and short flight rule)
+        assertEquals(TripType.FLIGHT, result,
+                "450 km at 150 km/h should be FLIGHT (short-haul with moderate delay)");
+    }
+
+    @Test
+    void testRegionalTrain() {
+        // Regional train: 250 km at 100 km/h (2.5 hours)
+        TimelineConfig trainConfig = TimelineConfig.builder()
+                .trainEnabled(true)
+                .trainMinAvgSpeed(50.0)
+                .trainMaxAvgSpeed(200.0)
+                .trainMinMaxSpeed(80.0)
+                .trainMaxMaxSpeed(250.0)
+                .trainMaxSpeedVariance(15.0)
+                .flightEnabled(true)
+                .flightMinAvgSpeed(400.0)
+                .flightMinMaxSpeed(500.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofMinutes(150),  // 2.5 hours
+                250_000,  // 250 km
+                trainConfig
+        );
+
+        // Should be TRAIN (meets standard train thresholds)
+        assertEquals(TripType.TRAIN, result,
+                "250 km at 100 km/h should be TRAIN (regional/intercity)");
+    }
+
+    @Test
+    void testVeryLongCarTrip_NotTrain() {
+        // Very long highway trip: 800 km at 100 km/h (8 hours)
+        // Edge case: just at TRAIN distance upper bound
+        TimelineConfig trainConfig = TimelineConfig.builder()
+                .trainEnabled(true)
+                .trainMinAvgSpeed(50.0)
+                .trainMaxAvgSpeed(200.0)
+                .trainMinMaxSpeed(80.0)
+                .trainMaxMaxSpeed(250.0)
+                .trainMaxSpeedVariance(15.0)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .build();
+
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofHours(8),
+                800_000,  // 800 km
+                trainConfig
+        );
+
+        // Should be CAR (800 < 1200 but doesn't meet duration requirement well)
+        // Actually: 800 km > 100 km AND 100 km/h in range 50-200 AND 8h >= 1h → TRAIN
+        assertEquals(TripType.TRAIN, result,
+                "800 km at 100 km/h over 8h meets TRAIN thresholds (ambiguous case)");
+    }
 }

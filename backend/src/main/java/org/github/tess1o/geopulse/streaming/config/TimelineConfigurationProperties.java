@@ -90,6 +90,23 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String gapStayInferenceMaxGapHours;
 
+    // Gap Trip Inference - infer trip when gap occurs with long-distance movement
+    @ConfigProperty(name = "geopulse.timeline.gap_trip_inference.enabled", defaultValue = "false")
+    @StaticInitSafe
+    String gapTripInferenceEnabled;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_trip_inference.min_distance_meters", defaultValue = "100000")
+    @StaticInitSafe
+    String gapTripInferenceMinDistanceMeters;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_trip_inference.min_gap_hours", defaultValue = "1")
+    @StaticInitSafe
+    String gapTripInferenceMinGapHours;
+
+    @ConfigProperty(name = "geopulse.timeline.gap_trip_inference.max_gap_hours", defaultValue = "24")
+    @StaticInitSafe
+    String gapTripInferenceMaxGapHours;
+
     // Travel Classification
     @ConfigProperty(name = "geopulse.timeline.travel.classification.walking.max_avg_speed", defaultValue = "6.0")
     @StaticInitSafe

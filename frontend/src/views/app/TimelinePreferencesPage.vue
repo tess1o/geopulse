@@ -827,6 +827,107 @@
                       />
                     </template>
                   </SettingCard>
+
+                  <!-- Gap Trip Inference -->
+                  <SettingCard
+                    title="Gap Trip Inference"
+                    description="Infer trips when GPS data gaps occur with long-distance movement"
+                    :details="{
+                      'When enabled': 'If GPS data stops, then resumes at a distant location, the system infers a trip occurred',
+                      'Use case': 'Overnight flights or long drives where phone was off will show as inferred trips instead of data gaps',
+                      'Trip classification': 'Trip mode is automatically determined by distance, duration, and speed (e.g., flight, car, train)'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.gapTripInferenceEnabled ? 'Enabled' : 'Disabled' }}</div>
+                      <ToggleSwitch
+                        v-model="prefs.gapTripInferenceEnabled"
+                        class="toggle-control"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Gap Trip Inference - Min Distance -->
+                  <SettingCard
+                    v-if="prefs.gapTripInferenceEnabled"
+                    title="Minimum Distance for Trip Inference"
+                    description="Minimum distance between GPS points to infer a trip during a gap"
+                    :details="{
+                      'Lower values': 'Infer trips for shorter movements (e.g., 10km city trips)',
+                      'Higher values': 'Only infer trips for longer movements (e.g., 100km+ intercity travel)'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ (prefs.gapTripInferenceMinDistanceMeters / 1000).toFixed(0) }} km</div>
+                      <SliderControl
+                        v-if="prefs.gapTripInferenceMinDistanceMeters !== undefined"
+                        v-model="prefs.gapTripInferenceMinDistanceMeters"
+                        :min="10000"
+                        :max="500000"
+                        :step="10000"
+                        :labels="['10 km (Short trips)', '100 km (Default)', '500 km (Long distance)']"
+                        suffix=" m"
+                        :input-min="1000"
+                        :input-max="1000000"
+                        :decimal-places="0"
+                        :display-transform="(val) => `${(val / 1000).toFixed(0)} km`"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Gap Trip Inference - Min Gap Hours -->
+                  <SettingCard
+                    v-if="prefs.gapTripInferenceEnabled"
+                    title="Minimum Gap Duration for Trip Inference"
+                    description="Minimum gap duration to consider for trip inference"
+                    :details="{
+                      'Lower values': 'Infer trips for brief gaps (e.g., 30 minutes)',
+                      'Higher values': 'Only infer trips for longer gaps (e.g., several hours)'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.gapTripInferenceMinGapHours }} hour{{ prefs.gapTripInferenceMinGapHours !== 1 ? 's' : '' }}</div>
+                      <SliderControl
+                        v-if="prefs.gapTripInferenceMinGapHours !== undefined"
+                        v-model="prefs.gapTripInferenceMinGapHours"
+                        :min="0"
+                        :max="12"
+                        :step="1"
+                        :labels="['0 hours (Any gap)', '1 hour (Default)', '12 hours (Long gaps)']"
+                        suffix=" hours"
+                        :input-min="0"
+                        :input-max="24"
+                        :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
+
+                  <!-- Gap Trip Inference - Max Gap Hours -->
+                  <SettingCard
+                    v-if="prefs.gapTripInferenceEnabled"
+                    title="Maximum Gap Duration for Trip Inference"
+                    description="Maximum gap duration to infer a trip (longer gaps become data gaps)"
+                    :details="{
+                      'Lower values': 'Only infer trips for shorter gaps (e.g., 12 hours)',
+                      'Higher values': 'Infer trips for longer gaps (e.g., multi-day trips)'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.gapTripInferenceMaxGapHours }} hour{{ prefs.gapTripInferenceMaxGapHours !== 1 ? 's' : '' }}</div>
+                      <SliderControl
+                        v-if="prefs.gapTripInferenceMaxGapHours !== undefined"
+                        v-model="prefs.gapTripInferenceMaxGapHours"
+                        :min="1"
+                        :max="168"
+                        :step="1"
+                        :labels="['1 hour (Strict)', '24 hours (Default)', '168 hours (One week)']"
+                        suffix=" hours"
+                        :input-min="1"
+                        :input-max="336"
+                        :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
                 </div>
               </div>
           </div>
@@ -1265,6 +1366,8 @@ const hasStructuralParameters = (changes) => {
     'pathMaxPoints', 'pathAdaptiveSimplification',
     'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
     'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
+    'gapTripInferenceEnabled', 'gapTripInferenceMinDistanceMeters',
+    'gapTripInferenceMinGapHours', 'gapTripInferenceMaxGapHours',
     'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds'
   ]
   return structuralFields.some(field => field in changes)

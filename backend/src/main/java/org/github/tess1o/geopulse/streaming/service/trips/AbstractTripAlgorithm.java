@@ -70,9 +70,25 @@ public abstract class AbstractTripAlgorithm implements StreamTripAlgorithm {
                 lastTrip.getStartTime().plus(lastTrip.getDuration())
         );
 
+        // Check if any of the trips being merged is an inferred trip (empty GPS statistics)
+        boolean hasInferredTrip = trips.stream()
+                .anyMatch(t -> t.getStatistics() == null || !t.getStatistics().hasValidData());
+
         // Classify the overall trip mode
-        TripGpsStatistics tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(userId, startTime, endTime);
-        TripType overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
+        TripGpsStatistics tripGpsStatistics;
+        TripType overallTripType;
+
+        if (hasInferredTrip) {
+            // If merging includes an inferred trip, use empty statistics to trigger distance-based classification
+            // This prevents polluting flight classification with low-speed GPS data from adjacent car trips
+            log.debug("Merged trips include inferred trip - using distance-based classification");
+            tripGpsStatistics = TripGpsStatistics.empty();
+            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
+        } else {
+            // Normal case: recalculate GPS statistics from actual GPS points
+            tripGpsStatistics = gpsStatisticsCalculator.calculateStatistics(userId, startTime, endTime);
+            overallTripType = classifyMergedTrip(totalDistance, totalDuration, tripGpsStatistics, config);
+        }
 
         Trip mergedTrip = Trip.builder()
                 .startTime(firstTrip.getStartTime())

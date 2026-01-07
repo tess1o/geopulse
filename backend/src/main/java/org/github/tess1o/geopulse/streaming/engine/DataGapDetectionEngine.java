@@ -7,8 +7,12 @@ import org.github.tess1o.geopulse.streaming.model.domain.DataGap;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.StreamingDataGapService;
+import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
+import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
 import java.time.Duration;
@@ -29,6 +33,9 @@ public class DataGapDetectionEngine {
 
     @Inject
     StreamingDataGapService dataGapService;
+
+    @Inject
+    TravelClassification travelClassification;
 
     /**
      * Check if there is a data gap between the last processed point and the current point.
@@ -56,17 +63,47 @@ public class DataGapDetectionEngine {
             log.info("Data gap detected: {} duration between {} and {}",
                     timeDelta, lastPoint.getTimestamp(), currentPoint.getTimestamp());
 
-            // Check if we should infer a stay instead of creating a gap
-            boolean shouldInfer = shouldInferStayDuringGap(currentPoint, userState, config, timeDelta);
+            // Priority 1: Check if we should infer a stay instead of creating a gap
+            boolean shouldInferStay = shouldInferStayDuringGap(currentPoint, userState, config, timeDelta);
             log.info("Gap stay inference check: shouldInfer={}, enabled={}",
-                    shouldInfer, config.getGapStayInferenceEnabled());
-            if (shouldInfer) {
+                    shouldInferStay, config.getGapStayInferenceEnabled());
+            if (shouldInferStay) {
                 log.info("Gap stay inference applied - skipping gap creation, points are at same location");
                 // Don't create gap, don't reset state - let state machine process the point normally
                 // The point will be added to activePoints and duration calculation will span the gap
                 return gapEvents;
             }
 
+            // Priority 2: Check if we should infer a trip instead of creating a gap
+            boolean shouldInferTrip = shouldInferTripDuringGap(lastPoint, currentPoint, userState, config, timeDelta);
+            log.info("Gap trip inference check: shouldInfer={}, enabled={}",
+                    shouldInferTrip, config.getGapTripInferenceEnabled());
+
+            if (shouldInferTrip) {
+                log.info("Gap trip inference applied - creating inferred trip for gap");
+
+                // Finalize any active event before creating the inferred trip
+                TimelineEvent activeEvent = finalizeActiveEvent(userState, lastPoint, config);
+                if (activeEvent != null) {
+                    gapEvents.add(activeEvent);
+                    log.debug("Finalized active event before inferred trip: {} from {} to {}",
+                            activeEvent.getType(), activeEvent.getStartTime(), activeEvent.getEndTime());
+                }
+
+                // Create the inferred trip
+                Trip inferredTrip = createInferredTrip(lastPoint, currentPoint, config);
+                gapEvents.add(inferredTrip);
+                log.debug("Created inferred trip: {} distance, {} duration, type {}",
+                        inferredTrip.getDistanceMeters(), inferredTrip.getDuration(), inferredTrip.getTripType());
+
+                // Reset user state after gap - gap breaks continuity
+                userState.reset();
+                log.debug("User state reset after inferred trip");
+
+                return gapEvents;
+            }
+
+            // Priority 3: No inference - create normal data gap
             // Finalize any active event before creating the gap
             TimelineEvent activeEvent = finalizeActiveEvent(userState, lastPoint, config);
             if (activeEvent != null) {
@@ -154,6 +191,134 @@ public class DataGapDetectionEngine {
         log.info("Gap stay inference conditions met: mode={}, gap={}h, distance={}m (radius={}m)",
                 mode, gapDuration.toHours(), String.format("%.1f", distance), radiusMeters);
         return true;
+    }
+
+    /**
+     * Determines whether to infer a trip during a data gap instead of creating a gap.
+     * This feature helps capture long-distance movements where GPS data was unavailable,
+     * such as international flights or long drives where the phone was off.
+     *
+     * Inference applies when:
+     * - Feature is enabled
+     * - Gap duration is within configured range (min/max hours)
+     * - Distance between points exceeds minimum threshold
+     *
+     * Note: This check runs AFTER gap stay inference, which already handles the
+     * case where points are at the same location. Therefore, no mode check is needed.
+     *
+     * @param lastPoint    the GPS point before the gap
+     * @param currentPoint the GPS point after the gap
+     * @param userState    current user processing state
+     * @param config       timeline configuration
+     * @param gapDuration  duration of the gap
+     * @return true if a trip should be inferred instead of creating a gap
+     */
+    private boolean shouldInferTripDuringGap(GPSPoint lastPoint, GPSPoint currentPoint,
+                                              UserState userState, TimelineConfig config,
+                                              Duration gapDuration) {
+        // Check if feature is enabled
+        Boolean enabled = config.getGapTripInferenceEnabled();
+        if (enabled == null || !enabled) {
+            log.debug("Gap trip inference is disabled (enabled={})", enabled);
+            return false;
+        }
+
+        // Check minimum gap duration
+        Integer minGapHours = config.getGapTripInferenceMinGapHours();
+        if (minGapHours != null && minGapHours > 0) {
+            long gapHours = gapDuration.toHours();
+            if (gapHours < minGapHours) {
+                log.debug("Gap duration {}h is below minimum {}h for trip inference",
+                        gapHours, minGapHours);
+                return false;
+            }
+        }
+
+        // Check maximum gap duration
+        Integer maxGapHours = config.getGapTripInferenceMaxGapHours();
+        if (maxGapHours != null && maxGapHours > 0) {
+            long gapHours = gapDuration.toHours();
+            if (gapHours > maxGapHours) {
+                log.debug("Gap duration {}h exceeds maximum {}h for trip inference",
+                        gapHours, maxGapHours);
+                return false;
+            }
+        }
+
+        // Calculate distance between last point and current point
+        double distance = lastPoint.distanceTo(currentPoint);
+        Integer minDistanceMeters = config.getGapTripInferenceMinDistanceMeters();
+        if (minDistanceMeters == null) {
+            minDistanceMeters = 100000; // default 100km
+        }
+
+        if (distance < minDistanceMeters) {
+            log.debug("Distance {}m is below minimum {}m for trip inference",
+                    String.format("%.1f", distance), minDistanceMeters);
+            return false;
+        }
+
+        log.info("Gap trip inference conditions met: mode={}, gap={}h, distance={}m (min={}m)",
+                userState.getCurrentMode(), gapDuration.toHours(), String.format("%.1f", distance), minDistanceMeters);
+        return true;
+    }
+
+    /**
+     * Creates an inferred trip from a data gap.
+     * The trip consists of only two GPS points (before and after the gap).
+     * Trip classification is performed using the existing classification algorithm.
+     *
+     * IMPORTANT: We use empty GPS statistics instead of calculating from the 2 points
+     * because the GPS speeds at those points (captured before/after the gap) are
+     * unrelated to the actual travel that occurred during the gap.
+     * Example: A flight shows stationary speeds (2-4 km/h) at departure/arrival.
+     *
+     * @param lastPoint    GPS point before the gap (trip origin)
+     * @param currentPoint GPS point after the gap (trip destination)
+     * @param config       timeline configuration for trip classification
+     * @return inferred Trip object with classification
+     */
+    private Trip createInferredTrip(GPSPoint lastPoint, GPSPoint currentPoint, TimelineConfig config) {
+        // Build minimal GPS path (2 points)
+        List<GPSPoint> tripPath = new ArrayList<>();
+        tripPath.add(lastPoint);
+        tripPath.add(currentPoint);
+
+        // Calculate trip metrics
+        Duration tripDuration = Duration.between(lastPoint.getTimestamp(), currentPoint.getTimestamp());
+        double distanceMeters = lastPoint.distanceTo(currentPoint);
+
+        // Use EMPTY statistics for inferred trips
+        // The GPS speeds at the 2 boundary points are meaningless for classification
+        // (e.g., stationary at home before flight, stationary after landing)
+        // This triggers distance-based heuristics in TravelClassification
+        TripGpsStatistics gpsStatistics = TripGpsStatistics.empty();
+
+        // Classify the trip using existing algorithm
+        // This will use classifyWithoutGpsStatistics() which has distance-based heuristics
+        TripType tripType = travelClassification.classifyTravelType(
+                gpsStatistics,
+                tripDuration,
+                Double.valueOf(distanceMeters).longValue(),
+                config
+        );
+
+        log.debug("Inferred trip classification: type={}, distance={}m, duration={}h, avgSpeed={}km/h",
+                tripType,
+                String.format("%.0f", distanceMeters),
+                String.format("%.2f", tripDuration.toHours() + (tripDuration.toMinutesPart() / 60.0)),
+                String.format("%.1f", (distanceMeters / 1000.0) / (tripDuration.getSeconds() / 3600.0)));
+
+        // Build and return the inferred trip
+        return Trip.builder()
+                .startTime(lastPoint.getTimestamp())
+                .duration(tripDuration)
+                .statistics(gpsStatistics)
+                .startPoint(lastPoint)
+                .endPoint(currentPoint)
+                .distanceMeters(distanceMeters)
+                .tripType(tripType)
+                .build();
     }
 
     /**

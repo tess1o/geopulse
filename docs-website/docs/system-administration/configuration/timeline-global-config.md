@@ -192,6 +192,56 @@ Detects and handles gaps in GPS data that might indicate missing location inform
 | `GEOPULSE_TIMELINE_DATA_GAP_THRESHOLD_SECONDS`    | `10800` | Time threshold (seconds) to consider a gap in data (3 hours)    |
 | `GEOPULSE_TIMELINE_DATA_GAP_MIN_DURATION_SECONDS` | `1800`  | Minimum duration (seconds) for a gap to be significant (30 min) |
 
+### Gap Stay Inference
+
+Controls whether to infer continuous stays during data gaps when GPS resumes at the same location.
+
+| Property                                              | Default | Description                                                                         |
+|-------------------------------------------------------|---------|-------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_ENABLED`        | `false` | Enable stay inference during gaps (e.g., overnight at home)                         |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_MAX_GAP_HOURS`  | `24`    | Maximum gap duration (hours) for stay inference. Longer gaps create normal data gaps |
+
+**How it works:**
+When enabled and GPS resumes within the stay radius of the previous location, extends the stay across the gap instead of creating a data gap. Useful for overnight stays at home when GPS tracking stops.
+
+**Example:**
+- Without inference: Stay (20:00-20:05) → Gap (20:05-08:00) → Stay (08:00-...)
+- With inference: Stay (20:00-08:00) continuous overnight
+
+### Gap Trip Inference
+
+Controls whether to infer trips during data gaps based on long-distance movement between GPS points.
+
+| Property                                                     | Default  | Description                                                                                   |
+|--------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_ENABLED`               | `false`  | Enable trip inference during gaps (e.g., flights, long-distance travel)                       |
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_DISTANCE_METERS`   | `100000` | Minimum distance (meters) between points to infer a trip (default: 100 km)                    |
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_GAP_HOURS`         | `1`      | Minimum gap duration (hours) for trip inference                                               |
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MAX_GAP_HOURS`         | `24`     | Maximum gap duration (hours) for trip inference. Longer gaps create normal data gaps          |
+
+**How it works:**
+When enabled and the distance between GPS points before/after a gap exceeds the minimum threshold, creates an inferred trip instead of a data gap. The trip is automatically classified (FLIGHT, TRAIN, CAR) based on distance and duration using intelligent heuristics.
+
+**Example:**
+- Home (Country A) at 18:18 → [GPS off during flight] → Airport (Country B) at 05:25
+- Distance: 1,779 km > 100 km threshold
+- Result: Creates inferred FLIGHT trip instead of data gap
+
+**Distance-based classification heuristics:**
+- **>1000 km**: Almost certainly a flight
+- **>300 km + >100 km/h avg**: Clear flight signature
+- **>500 km + >80 km/h avg**: Likely flight with ground time
+- **100-800 km + 50-150 km/h**: Possibly train travel
+
+**Priority system:**
+1. Same location → Stay inference (if enabled)
+2. Long distance → Trip inference (if enabled)
+3. Neither applies → Normal data gap
+
+:::info User Preference Override
+These gap inference settings can be overridden per-user through the Timeline Preferences interface. Environment variables set the default values for new users.
+:::
+
 ## Kubernetes / Helm Configuration
 
 Timeline configuration variables are **not included** in the default Helm chart values to keep it simple. Most users can configure timeline settings via the **Admin Panel UI**.
@@ -208,6 +258,13 @@ backend:
       value: "200"
     - name: GEOPULSE_TIMELINE_STAYPOINT_RADIUS_METERS
       value: "75"
+    # Gap inference settings
+    - name: GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_ENABLED
+      value: "true"
+    - name: GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_ENABLED
+      value: "true"
+    - name: GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_DISTANCE_METERS
+      value: "100000"
 ```
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`

@@ -85,6 +85,15 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "gapStayInferenceMaxGapHours",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    // Gap Trip Inference
+    @org.mapstruct.Mapping(target = "gapTripInferenceEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "gapTripInferenceMinDistanceMeters",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "gapTripInferenceMinGapHours",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "gapTripInferenceMaxGapHours",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "walkingMaxAvgSpeed",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "walkingMaxMaxSpeed", 
@@ -170,6 +179,10 @@ public interface TimelinePreferencesMapper {
                     .dataGapMinDurationSeconds(fromImport.getDataGapMinDurationSeconds())
                     .gapStayInferenceEnabled(fromImport.getGapStayInferenceEnabled())
                     .gapStayInferenceMaxGapHours(fromImport.getGapStayInferenceMaxGapHours())
+                    .gapTripInferenceEnabled(fromImport.getGapTripInferenceEnabled())
+                    .gapTripInferenceMinDistanceMeters(fromImport.getGapTripInferenceMinDistanceMeters())
+                    .gapTripInferenceMinGapHours(fromImport.getGapTripInferenceMinGapHours())
+                    .gapTripInferenceMaxGapHours(fromImport.getGapTripInferenceMaxGapHours())
                     .walkingMaxAvgSpeed(fromImport.getWalkingMaxAvgSpeed())
                     .walkingMaxMaxSpeed(fromImport.getWalkingMaxMaxSpeed())
                     .carMinAvgSpeed(fromImport.getCarMinAvgSpeed())
@@ -218,6 +231,10 @@ public interface TimelinePreferencesMapper {
                 .dataGapMinDurationSeconds(existing.getDataGapMinDurationSeconds())
                 .gapStayInferenceEnabled(existing.getGapStayInferenceEnabled())
                 .gapStayInferenceMaxGapHours(existing.getGapStayInferenceMaxGapHours())
+                .gapTripInferenceEnabled(existing.getGapTripInferenceEnabled())
+                .gapTripInferenceMinDistanceMeters(existing.getGapTripInferenceMinDistanceMeters())
+                .gapTripInferenceMinGapHours(existing.getGapTripInferenceMinGapHours())
+                .gapTripInferenceMaxGapHours(existing.getGapTripInferenceMaxGapHours())
                 .walkingMaxAvgSpeed(existing.getWalkingMaxAvgSpeed())
                 .walkingMaxMaxSpeed(existing.getWalkingMaxMaxSpeed())
                 .carMinAvgSpeed(existing.getCarMinAvgSpeed())

@@ -75,6 +75,39 @@ GeoPulse includes sophisticated GPS noise detection to ensure accurate classific
 - **Adaptive Thresholds**  -  Uses different validation rules for low-speed vs. high-speed trips
 - **Smart Fallbacks**  -  Automatically switches to calculated speeds when GPS data is unreliable
 
+### Distance-Based Classification (Sparse GPS Data)
+
+When GPS data is not available (e.g., inferred trips from data gaps, phone off during travel), GeoPulse uses intelligent distance-based heuristics instead of speed-based classification. This handles cases where only the start and end points are known, without intermediate GPS tracking.
+
+**How It Works:**
+
+For inferred trips, the system calculates average speed from distance and duration, then applies specialized rules that combine distance + speed patterns characteristic of each transport mode:
+
+**FLIGHT Detection (Inferred Trips):**
+- **Extreme distance** (>1000 km) + speed >350 km/h → FLIGHT (high confidence - distinguishes from high-speed rail)
+- **Long distance** (>300 km) + speed >280 km/h → FLIGHT (medium-high confidence)
+- **Short-haul** (350-600 km) + speed >110 km/h → FLIGHT (medium confidence - short domestic flights)
+- **Very long distance** (>600 km) + speed >150 km/h → FLIGHT (medium confidence - flights with delays)
+
+**TRAIN Detection (Inferred Trips):**
+- **Distance** 100-1,500 km + **Speed** 50-200 km/h + **Duration** ≥1 hour → TRAIN
+- Supports both regional trains (50-150 km/h) and high-speed rail (150-200 km/h)
+- Extended range compared to GPS-based detection to handle modern high-speed rail (China HSR, Shinkansen, TGV)
+
+:::tip Why Distance Matters
+Speed alone can be misleading for sparse data. Example: An international flight with 2 hours of taxi/ground time shows ~150-200 km/h average speed, below the normal flight threshold (400 km/h). But 1,800 km distance over 11 hours is clearly a flight, not a car trip. The distance-based heuristics catch these cases.
+:::
+
+**Example Scenarios:**
+
+| Distance | Duration | Avg Speed | Classification | Reason |
+|----------|----------|-----------|----------------|--------|
+| 1,800 km | 11 hours | 164 km/h | FLIGHT | Extreme distance with adequate speed |
+| 450 km | 3 hours | 150 km/h | FLIGHT | Short-haul flight (domestic) |
+| 700 km | 6.7 hours | 105 km/h | FLIGHT | Very long distance with modest speed |
+| 1,318 km | 5 hours | 263 km/h | TRAIN | High-speed rail (Beijing-Shanghai HSR) |
+| 250 km | 2.5 hours | 100 km/h | TRAIN | Regional/intercity train |
+
 ### Special Cases
 
 The classification algorithm handles several special scenarios:

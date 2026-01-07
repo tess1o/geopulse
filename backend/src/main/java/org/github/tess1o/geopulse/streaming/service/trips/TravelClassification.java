@@ -120,6 +120,103 @@ public class TravelClassification {
     private static final double WALK_VERIFICATION_COEFFICIENT = 1.2;
 
     // ============================================
+    // DISTANCE-BASED CLASSIFICATION THRESHOLDS
+    // ============================================
+
+    /**
+     * Extreme distance threshold (km).
+     * Distances exceeding this are almost certainly flights (no realistic ground transport alternative).
+     * Used as primary discriminator for long-haul flights.
+     */
+    private static final double EXTREME_FLIGHT_DISTANCE_KM = 1000.0;
+
+    /**
+     * Minimum average speed for extreme distance classification (km/h).
+     * Prevents GPS drift/errors and high-speed trains from triggering flight classification.
+     * Example: 1000 km traveled at 50 km/h over 20h is likely GPS error, not a flight.
+     * Set to 350 km/h to distinguish from high-speed rail (200-350 km/h operational max).
+     * This ensures that long-distance high-speed rail trips are classified as TRAIN, not FLIGHT.
+     */
+    private static final double EXTREME_FLIGHT_MIN_SPEED_KMH = 350.0;
+
+    /**
+     * Long distance threshold for flight detection (km).
+     * Combined with high speed, indicates likely flight.
+     */
+    private static final double LONG_FLIGHT_DISTANCE_KM = 300.0;
+
+    /**
+     * High speed threshold for long distance flights (km/h).
+     * Sustained speeds above this with long distances indicate air travel.
+     * Set to 280 km/h to avoid classifying high-speed trains as flights (max operational 200-300 km/h).
+     */
+    private static final double LONG_FLIGHT_MIN_SPEED_KMH = 280.0;
+
+    /**
+     * Very long distance threshold for flight detection (km).
+     * Even with modest speeds (accounting for ground time), this distance suggests flight.
+     */
+    private static final double VERY_LONG_FLIGHT_DISTANCE_KM = 600.0;
+
+    /**
+     * Modest speed threshold for very long distance flights (km/h).
+     * Accounts for flights with significant ground time, taxi, delays.
+     * Example: 600 km flight with 2h ground time at 90 km/h average.
+     * Set to 150 km/h to avoid classifying high-speed trains (200+ km/h) as flights.
+     */
+    private static final double VERY_LONG_FLIGHT_MIN_SPEED_KMH = 150.0;
+
+    /**
+     * Short-haul flight minimum distance (km).
+     * Catches domestic/regional flights with moderate ground time.
+     */
+    private static final double SHORT_FLIGHT_MIN_DISTANCE_KM = 350.0;
+
+    /**
+     * Short-haul flight maximum distance (km).
+     * Upper bound to avoid overlap with very long distance heuristics.
+     */
+    private static final double SHORT_FLIGHT_MAX_DISTANCE_KM = 600.0;
+
+    /**
+     * Short-haul flight minimum average speed (km/h).
+     * Higher threshold to exclude car/bus trips in this distance range.
+     */
+    private static final double SHORT_FLIGHT_MIN_SPEED_KMH = 110.0;
+
+    /**
+     * Train minimum distance threshold (km).
+     * Filters out very short trips that are unlikely to be train journeys.
+     */
+    private static final double TRAIN_MIN_DISTANCE_KM = 100.0;
+
+    /**
+     * Train maximum distance threshold (km).
+     * Extended to support long-distance high-speed rail routes.
+     * Examples: Beijing-Shanghai (1318 km), Paris-Marseille (750 km), Tokyo-Hakata (1069 km).
+     */
+    private static final double TRAIN_MAX_DISTANCE_KM = 1500.0;
+
+    /**
+     * Train minimum average speed (km/h).
+     * Lower bound for regional/commuter trains.
+     */
+    private static final double TRAIN_MIN_SPEED_KMH = 50.0;
+
+    /**
+     * Train maximum average speed (km/h).
+     * Extended to support modern high-speed rail (200-350 km/h operational).
+     * Examples: China HSR (300-350 km/h), Shinkansen (260-320 km/h), TGV (300-320 km/h).
+     */
+    private static final double TRAIN_MAX_SPEED_KMH = 200.0;
+
+    /**
+     * Train minimum duration threshold (hours).
+     * Filters out very short trips that are better classified by speed alone.
+     */
+    private static final double TRAIN_MIN_DURATION_HOURS = 1.0;
+
+    // ============================================
     // HELPER RECORD
     // ============================================
 
@@ -239,6 +336,14 @@ public class TravelClassification {
     /**
      * Fallback classification when GPS statistics are not available.
      * Calculates average speed from distance and duration.
+     *
+     * This method is typically used for:
+     * 1. Inferred trips from data gaps (2 GPS points only)
+     * 2. Legacy trips without pre-calculated GPS statistics
+     *
+     * For such sparse data, we use distance + duration heuristics
+     * in addition to calculated speed, as speed alone can be misleading
+     * (e.g., international flights with taxi/ground time show ~150-200 km/h avg).
      */
     private TripType classifyWithoutGpsStatistics(TimelineConfig config,
                                                   Duration tripDuration,
@@ -247,12 +352,96 @@ public class TravelClassification {
         double hours = tripDuration.getSeconds() / 3600.0;
         double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-        if (hours > 0 && distanceKm > 0) {
-            // When no max speed available, use avg speed for both
-            return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, config);
-        } else {
+        if (hours <= 0 || distanceKm <= 0) {
             return UNKNOWN;
         }
+
+        // ========================================================================
+        // DISTANCE-BASED HEURISTICS FOR SPARSE GPS DATA
+        // ========================================================================
+        // When GPS statistics are unavailable (e.g., inferred trips from data gaps),
+        // calculated speed can be misleading due to ground time, taxi, waiting, etc.
+        // Use distance + speed combination to detect realistic travel modes.
+        // ========================================================================
+
+        // FLIGHT detection for sparse data:
+        // - Very long distance (>300km) + reasonable speed (>100 km/h)
+        //   → Almost certainly a flight (no ground transport sustains this)
+        // - Medium-long distance (>500km) + modest speed (>80 km/h)
+        //   → Likely flight with significant ground time
+        // - Extremely long distance (>1000km)
+        //   → Definitely a flight (no other realistic option)
+        if (Boolean.TRUE.equals(config.getFlightEnabled())) {
+            // Extreme distance: almost certainly a flight (with minimum speed requirement)
+            if (distanceKm > EXTREME_FLIGHT_DISTANCE_KM && avgSpeedKmh > EXTREME_FLIGHT_MIN_SPEED_KMH) {
+                log.debug("Distance {}km > {}km AND speed {}km/h > {}km/h → FLIGHT (high confidence: extreme distance)",
+                         String.format("%.0f", distanceKm),
+                         String.format("%.0f", EXTREME_FLIGHT_DISTANCE_KM),
+                         String.format("%.1f", avgSpeedKmh),
+                         String.format("%.1f", EXTREME_FLIGHT_MIN_SPEED_KMH));
+                return FLIGHT;
+            }
+
+            // Long distance with high calculated speed: clear flight signature
+            if (distanceKm > LONG_FLIGHT_DISTANCE_KM && avgSpeedKmh > LONG_FLIGHT_MIN_SPEED_KMH) {
+                log.debug("Distance {}km > {}km AND speed {}km/h > {}km/h → FLIGHT (medium-high confidence: long distance + high speed)",
+                         String.format("%.0f", distanceKm),
+                         String.format("%.0f", LONG_FLIGHT_DISTANCE_KM),
+                         String.format("%.1f", avgSpeedKmh),
+                         String.format("%.1f", LONG_FLIGHT_MIN_SPEED_KMH));
+                return FLIGHT;
+            }
+
+            // Short-to-medium flights with moderate delays
+            // Catches: 400km flight with 3h total time → 133 km/h average
+            // Higher speed threshold excludes most car/bus trips in this distance range
+            if (distanceKm > SHORT_FLIGHT_MIN_DISTANCE_KM &&
+                distanceKm <= SHORT_FLIGHT_MAX_DISTANCE_KM &&
+                avgSpeedKmh > SHORT_FLIGHT_MIN_SPEED_KMH) {
+                log.debug("Distance {}km ({}-{}km range) AND speed {}km/h > {}km/h → FLIGHT (medium confidence: short-haul)",
+                         String.format("%.0f", distanceKm),
+                         String.format("%.0f", SHORT_FLIGHT_MIN_DISTANCE_KM),
+                         String.format("%.0f", SHORT_FLIGHT_MAX_DISTANCE_KM),
+                         String.format("%.1f", avgSpeedKmh),
+                         String.format("%.1f", SHORT_FLIGHT_MIN_SPEED_KMH));
+                return FLIGHT;
+            }
+
+            // Very long distance with modest speed: likely flight with taxi/ground time
+            if (distanceKm > VERY_LONG_FLIGHT_DISTANCE_KM && avgSpeedKmh > VERY_LONG_FLIGHT_MIN_SPEED_KMH) {
+                log.debug("Distance {}km > {}km AND speed {}km/h > {}km/h → FLIGHT (medium confidence: very long distance)",
+                         String.format("%.0f", distanceKm),
+                         String.format("%.0f", VERY_LONG_FLIGHT_DISTANCE_KM),
+                         String.format("%.1f", avgSpeedKmh),
+                         String.format("%.1f", VERY_LONG_FLIGHT_MIN_SPEED_KMH));
+                return FLIGHT;
+            }
+        }
+
+        // TRAIN detection for sparse data:
+        // Medium-long distance (100-1200km) with train-like speeds (50-200 km/h)
+        // Extended ranges support modern high-speed rail (China HSR, Shinkansen, TGV)
+        // Reasonable duration requirement filters out very short trips
+        if (Boolean.TRUE.equals(config.getTrainEnabled())) {
+            if (distanceKm > TRAIN_MIN_DISTANCE_KM && distanceKm < TRAIN_MAX_DISTANCE_KM &&
+                avgSpeedKmh >= TRAIN_MIN_SPEED_KMH && avgSpeedKmh <= TRAIN_MAX_SPEED_KMH &&
+                hours >= TRAIN_MIN_DURATION_HOURS) {
+
+                // Add confidence logging based on speed range
+                if (avgSpeedKmh > 150) {
+                    log.debug("Distance {}km, speed {}km/h → TRAIN (high-speed rail)",
+                             String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                } else {
+                    log.debug("Distance {}km, speed {}km/h → TRAIN (regional/intercity)",
+                             String.format("%.0f", distanceKm), String.format("%.1f", avgSpeedKmh));
+                }
+                return TRAIN;
+            }
+        }
+
+        // For other modes, use standard speed-based classification
+        // When no max speed available, use avg speed for both
+        return classifyBySpeed(avgSpeedKmh, avgSpeedKmh, null, config);
     }
 
     /**
