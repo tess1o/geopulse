@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.service.StreamingDataGapService;
+import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 
@@ -34,10 +35,7 @@ public class DataGapDetectionEngine {
     StreamingDataGapService dataGapService;
 
     @Inject
-    org.github.tess1o.geopulse.streaming.service.trips.GpsStatisticsCalculator gpsStatisticsCalculator;
-
-    @Inject
-    org.github.tess1o.geopulse.streaming.service.trips.TravelClassification travelClassification;
+    TravelClassification travelClassification;
 
     /**
      * Check if there is a data gap between the last processed point and the current point.
@@ -270,6 +268,11 @@ public class DataGapDetectionEngine {
      * The trip consists of only two GPS points (before and after the gap).
      * Trip classification is performed using the existing classification algorithm.
      *
+     * IMPORTANT: We use empty GPS statistics instead of calculating from the 2 points
+     * because the GPS speeds at those points (captured before/after the gap) are
+     * unrelated to the actual travel that occurred during the gap.
+     * Example: A flight shows stationary speeds (2-4 km/h) at departure/arrival.
+     *
      * @param lastPoint    GPS point before the gap (trip origin)
      * @param currentPoint GPS point after the gap (trip destination)
      * @param config       timeline configuration for trip classification
@@ -285,10 +288,14 @@ public class DataGapDetectionEngine {
         Duration tripDuration = Duration.between(lastPoint.getTimestamp(), currentPoint.getTimestamp());
         double distanceMeters = lastPoint.distanceTo(currentPoint);
 
-        // Calculate GPS statistics (will be minimal with only 2 points)
-        TripGpsStatistics gpsStatistics = gpsStatisticsCalculator.calculateStatistics(tripPath);
+        // Use EMPTY statistics for inferred trips
+        // The GPS speeds at the 2 boundary points are meaningless for classification
+        // (e.g., stationary at home before flight, stationary after landing)
+        // This triggers distance-based heuristics in TravelClassification
+        TripGpsStatistics gpsStatistics = TripGpsStatistics.empty();
 
         // Classify the trip using existing algorithm
+        // This will use classifyWithoutGpsStatistics() which has distance-based heuristics
         TripType tripType = travelClassification.classifyTravelType(
                 gpsStatistics,
                 tripDuration,

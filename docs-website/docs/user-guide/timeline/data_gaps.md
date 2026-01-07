@@ -1,11 +1,11 @@
 ---
-title: Data Gaps & Gap Stay Inference
-description: How GeoPulse handles missing GPS data and intelligently infers stays during gaps.
+title: Data Gaps & Inference Features
+description: How GeoPulse handles missing GPS data and intelligently infers stays or trips during gaps.
 ---
 
-# Data Gaps & Gap Stay Inference
+# Data Gaps & Inference Features
 
-GeoPulse tracks your location continuously, but sometimes GPS data stops being collected. This document explains how data gaps are detected, recorded, and how the new **Gap Stay Inference** feature can intelligently determine what happened during periods of missing data.
+GeoPulse tracks your location continuously, but sometimes GPS data stops being collected. This document explains how data gaps are detected, recorded, and how **Gap Stay Inference** and **Gap Trip Inference** features can intelligently determine what happened during periods of missing data.
 
 ---
 
@@ -19,7 +19,10 @@ A **Data Gap** occurs when there's a significant time jump between consecutive G
 - Battery saver mode restricts background location
 - You're indoors where GPS doesn't work well
 
-By default, GeoPulse creates a "Data Gap" event to represent that your location was not tracked during that period. However, with **Gap Stay Inference** enabled, the system can intelligently determine if you likely stayed at the same location during the gap (e.g., overnight at home) and extend your stay accordingly instead of creating a gap.
+By default, GeoPulse creates a "Data Gap" event to represent that your location was not tracked during that period. However, two intelligent inference features can help:
+
+- **Gap Stay Inference**: Determines if you stayed at the same location during the gap (e.g., overnight at home)
+- **Gap Trip Inference**: Detects long-distance movements during gaps (e.g., international flights) and creates inferred trips
 
 ---
 
@@ -214,7 +217,255 @@ For most users, **24 hours** works well. This covers overnight gaps at home with
 
 ---
 
+## Gap Trip Inference
+
+**Gap Trip Inference** is a feature that detects long-distance movements during data gaps and creates inferred trips instead of data gaps. This is particularly useful for capturing flights, long-distance trains, or drives where GPS tracking was off.
+
+### The Problem
+
+Consider this common scenario:
+
+```
+20:00 Dec 20 - Last GPS point at Home (Country A)
+------ International flight overnight ------
+05:25 Dec 21 - First GPS point near Airport (Country B)
+
+Distance: 1,779 km
+Duration: 9+ hours
+
+Without inference:
+  - Stay: Home (20:00)
+  - Data Gap: (20:00 Dec 20 - 05:25 Dec 21) - 9+ hours unknown
+  - Trip/Stay: Country B (05:25-...)
+
+With inference:
+  - Stay: Home (ends at 20:00)
+  - Inferred Trip: FLIGHT (20:00 Dec 20 - 05:25 Dec 21, 1,779 km)
+  - Trip/Stay: Country B (05:25-...)
+```
+
+The system detects that the large distance (1,779 km) between the last and first GPS points indicates travel occurred, and creates a trip instead of a meaningless data gap.
+
+### How It Works
+
+When a data gap is detected, the system checks if trip inference should apply:
+
+```
+1. Is Gap Trip Inference enabled? (default: disabled)
+2. Is gap duration within configured range? (min and max hours)
+3. Is the distance between points ≥ Minimum Distance threshold?
+
+If ALL conditions are true:
+  → Create inferred trip (with distance-based classification)
+  → Trip mode determined by existing algorithm (FLIGHT, TRAIN, CAR, etc.)
+
+If ANY condition is false:
+  → Fall through to normal gap or stay inference
+```
+
+### Key Features
+
+**Distance-Based Classification:**
+When GPS statistics aren't available (only 2 points), the system uses intelligent distance + duration heuristics:
+
+- **>1000 km**: Almost certainly a flight
+- **>300 km + >100 km/h avg**: Clear flight signature
+- **>500 km + >80 km/h avg**: Likely flight with ground time
+- **100-800 km + 50-150 km/h**: Possibly train travel
+
+**Automatic Trip Classification:**
+The inferred trip is classified using the same algorithm as normal trips:
+- International flight (1,779 km in 9h) → **FLIGHT**
+- Intercity train (250 km in 3h) → **TRAIN**
+- Long drive (400 km in 5h) → **CAR**
+
+**Priority System:**
+Trip inference runs after stay inference, so:
+1. Same location → Stay inference (if enabled)
+2. Long distance → Trip inference (if enabled)
+3. Neither applies → Normal data gap
+
+---
+
+## Gap Trip Inference Settings
+
+### Enable Gap Trip Inference
+
+**Setting:** `Gap Trip Inference`
+**Default:** Disabled
+
+Toggle to enable/disable the feature.
+
+**When to enable:**
+- You frequently travel long distances (flights, trains)
+- Your phone is often off during travel
+- You want trips instead of gaps for long-distance movement
+
+**When to keep disabled:**
+- You want explicit record of all tracking gaps
+- You rarely travel long distances
+- You prefer conservative timeline (only directly observed trips)
+
+### Minimum Distance for Trip Inference
+
+**Setting:** `Minimum Distance for Trip Inference`
+**Default:** 100 km (100,000 meters)
+**Range:** 1 km - 1,000 km
+
+Minimum distance between GPS points to infer a trip.
+
+| Value | Effect | Best For |
+|-------|--------|----------|
+| **10-50 km** | Very sensitive | Detect short intercity trips |
+| **100 km** | Balanced | Most users (default) |
+| **200-300 km** | Conservative | Only long-distance travel |
+| **500+ km** | Very conservative | Primarily flights |
+
+**Trade-offs:**
+- **Lower threshold:** Catches more trips but may create false positives
+- **Higher threshold:** More conservative but misses shorter long-distance trips
+
+### Minimum Gap Duration for Trip Inference
+
+**Setting:** `Minimum Gap Duration for Trip Inference`
+**Default:** 1 hour
+**Range:** 0 - 24 hours
+
+Minimum gap duration to consider for trip inference.
+
+| Value | Effect | Best For |
+|-------|--------|----------|
+| **0 hours** | Any gap | Capture all long-distance gaps |
+| **1 hour** | Short gaps excluded | Most users (default) |
+| **3-6 hours** | Only longer gaps | Conservative inference |
+
+**Trade-offs:**
+- **Shorter minimum:** More trips detected, but may catch brief connectivity issues
+- **Longer minimum:** More conservative, only significant gaps
+
+### Maximum Gap Duration for Trip Inference
+
+**Setting:** `Maximum Gap Duration for Trip Inference`
+**Default:** 24 hours
+**Range:** 1 - 336 hours (2 weeks)
+
+Maximum gap duration for trip inference.
+
+| Value | Effect | Best For |
+|-------|--------|----------|
+| **6-12 hours** | Short trips only | Conservative inference |
+| **24 hours** | Day trips | Most users (default) |
+| **48-72 hours** | Multi-day trips | Extended travel |
+| **168+ hours** | Week-long trips | Very long travel periods |
+
+**Trade-offs:**
+- **Shorter maximum:** More conservative, less risk of wrong inference
+- **Longer maximum:** Handles extended travel but higher risk of incorrect inference
+
+:::warning Multi-Day Gaps
+Gaps longer than a few days are risky to infer as trips. The user might have been stationary at an unmapped location, or the gap might span multiple trips. Use conservative maximum values.
+:::
+
+---
+
 ## Practical Examples
+
+### Example A: International Flight
+
+```
+Configuration:
+  Gap Trip Inference: Enabled
+  Min Distance: 100 km
+  Min Gap Hours: 1
+  Max Gap Hours: 24
+
+Timeline:
+  18:18 Dec 20 - At Home (Country A)
+  ------ Phone off for flight ------
+  05:25 Dec 21 - At destination (Country B)
+
+Distance: 1,779 km > 100 km ✓
+Duration: 11 hours (1 ≤ 11 ≤ 24) ✓
+
+Result: Inferred trip created
+  - Stay: Home (ends at 18:18)
+  - Trip: FLIGHT (18:18 - 05:25, 1,779 km)
+  - Automatic classification detects: 1,779km > 1000km → FLIGHT
+```
+
+### Example B: Short Local Gap
+
+```
+Configuration:
+  Gap Trip Inference: Enabled
+  Min Distance: 100 km
+  Min Gap Hours: 1
+  Max Gap Hours: 24
+
+Timeline:
+  14:00 - At Home
+  ------ 2 hours without tracking ------
+  16:00 - At Office (15 km away)
+
+Distance: 15 km < 100 km ✗
+
+Result: Normal data gap
+  - Stay: Home (14:00)
+  - Data Gap: (14:00-16:00)
+  - Stay: Office (16:00-...)
+
+Trip inference doesn't apply because distance is below threshold.
+```
+
+### Example C: Intercity Train
+
+```
+Configuration:
+  Gap Trip Inference: Enabled
+  Min Distance: 100 km
+  Min Gap Hours: 1
+  Max Gap Hours: 24
+
+Timeline:
+  10:00 - At City A
+  ------ Phone off during train ride ------
+  13:30 - At City B
+
+Distance: 280 km > 100 km ✓
+Duration: 3.5 hours ✓
+
+Result: Inferred trip created
+  - Classification: 280km, 3.5h → 80 km/h avg → TRAIN
+```
+
+### Example D: Weekend Away (Too Long)
+
+```
+Configuration:
+  Gap Trip Inference: Enabled
+  Min Distance: 100 km
+  Min Gap Hours: 1
+  Max Gap Hours: 24
+
+Timeline:
+  Friday 18:00 - At Home
+  ------ Weekend trip, 72 hours ------
+  Monday 18:00 - At Beach House (200 km away)
+
+Distance: 200 km > 100 km ✓
+Duration: 72 hours > 24 hours ✗
+
+Result: Normal data gap
+  - Stay: Home (Friday 18:00)
+  - Data Gap: (Friday 18:00 - Monday 18:00)
+  - Stay: Beach House (Monday 18:00-...)
+
+Gap exceeds maximum duration - too risky to infer.
+```
+
+---
+
+## Practical Examples (Stay Inference)
 
 ### Example 1: Overnight at Home
 
@@ -362,6 +613,9 @@ Data Gap Threshold: 3 hours (default)
 Minimum Gap Duration: 30 minutes
 Gap Stay Inference: Enabled
 Max Gap Duration for Inference: 24 hours
+Gap Trip Inference: Enabled
+Min Distance for Trip Inference: 100 km
+Min/Max Gap Hours for Trip: 1-24 hours
 ```
 
 **Business/Fleet Tracking:**
@@ -369,6 +623,7 @@ Max Gap Duration for Inference: 24 hours
 Data Gap Threshold: 1 hour
 Minimum Gap Duration: 15 minutes
 Gap Stay Inference: Disabled (explicit tracking required)
+Gap Trip Inference: Disabled (explicit tracking required)
 ```
 
 **Casual Location Diary:**
@@ -377,6 +632,9 @@ Data Gap Threshold: 6 hours
 Minimum Gap Duration: 1 hour
 Gap Stay Inference: Enabled
 Max Gap Duration for Inference: 48 hours
+Gap Trip Inference: Enabled
+Min Distance for Trip Inference: 100 km
+Min/Max Gap Hours for Trip: 1-48 hours
 ```
 
 **Research/Analysis:**
@@ -384,6 +642,7 @@ Max Gap Duration for Inference: 48 hours
 Data Gap Threshold: 30 minutes
 Minimum Gap Duration: 5 minutes
 Gap Stay Inference: Disabled (preserve all gaps for analysis)
+Gap Trip Inference: Disabled (preserve all gaps for analysis)
 ```
 
 ### For Different GPS Sources
