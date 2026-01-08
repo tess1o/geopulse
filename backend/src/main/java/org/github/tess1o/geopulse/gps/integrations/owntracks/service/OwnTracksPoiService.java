@@ -1,6 +1,8 @@
 package org.github.tess1o.geopulse.gps.integrations.owntracks.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.control.ActivateRequestContext;
+import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
@@ -29,10 +31,14 @@ public class OwnTracksPoiService {
 
     /**
      * Handle OwnTracks POI (Point of Interest) by creating or updating favorite locations.
+     * This method can be called from MQTT callback threads (non-CDI managed), so it needs
+     * both transaction and request context activation.
      *
      * @param message OwnTracks location message with POI information
      * @param userId User ID
      */
+    @Transactional
+    @ActivateRequestContext
     public void handlePoi(OwnTracksLocationMessage message, UUID userId) {
         String poiName = message.getPoi().trim();
         Double lat = message.getLat();
