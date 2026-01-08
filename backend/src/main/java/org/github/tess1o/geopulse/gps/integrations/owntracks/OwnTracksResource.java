@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -30,10 +31,14 @@ public class OwnTracksResource {
 
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
+    private final OwnTracksPoiService ownTracksPoiService;
 
-    public OwnTracksResource(GpsPointService gpsPointService, GpsIntegrationAuthenticatorRegistry authRegistry) {
+    public OwnTracksResource(GpsPointService gpsPointService,
+                           GpsIntegrationAuthenticatorRegistry authRegistry,
+                           OwnTracksPoiService ownTracksPoiService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
+        this.ownTracksPoiService = ownTracksPoiService;
     }
 
     @POST
@@ -61,6 +66,17 @@ public class OwnTracksResource {
                 ownTracksLocationMessage.setTst(Instant.now().getEpochSecond());
             }
         }
+
+        // Handle POI if present
+        if (ownTracksLocationMessage.getPoi() != null && !ownTracksLocationMessage.getPoi().trim().isEmpty()) {
+            try {
+                ownTracksPoiService.handlePoi(ownTracksLocationMessage, userId);
+            } catch (Exception e) {
+                log.error("Failed to handle OwnTracks POI: {}", e.getMessage(), e);
+                // Continue processing GPS point even if POI handling fails
+            }
+        }
+
         gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS, config);
         return Response.ok("[]").build();
     }

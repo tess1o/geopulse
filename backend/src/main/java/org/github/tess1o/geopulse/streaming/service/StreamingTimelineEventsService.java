@@ -7,7 +7,6 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.streaming.events.FavoriteAddedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
@@ -16,7 +15,6 @@ import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.service.trips.TripReclassificationService;
 
-import java.util.UUID;
 
 @ApplicationScoped
 @Slf4j
@@ -27,18 +25,9 @@ public class StreamingTimelineEventsService {
 
     @Inject
     TimelineStayRepository timelineStayRepository;
-
-    @Inject
-    StreamingTimelineGenerationService streamingTimelineGenerationService;
     
     @Inject
     TripReclassificationService tripReclassificationService;
-
-    @Transactional
-    public void onFavoriteAdded(@Observes FavoriteAddedEvent event) {
-        log.info("Processing favorite added event: {} for user {}", event.getFavoriteName(), event.getUserId());
-        // Timeline regeneration is now handled by FavoriteLocationService with async job
-    }
 
     @Transactional(value = Transactional.TxType.MANDATORY)
     public void onFavoriteDeleted(@Observes(during = TransactionPhase.IN_PROGRESS) FavoriteDeletedEvent event) {

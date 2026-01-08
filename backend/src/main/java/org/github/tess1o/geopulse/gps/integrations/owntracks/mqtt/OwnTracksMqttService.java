@@ -12,6 +12,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
 import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
@@ -45,6 +46,9 @@ public class OwnTracksMqttService {
 
     @Inject
     GpsIntegrationAuthenticatorRegistry authRegistry;
+
+    @Inject
+    OwnTracksPoiService ownTracksPoiService;
 
     private MqttClient mqttClient;
 
@@ -192,7 +196,17 @@ public class OwnTracksMqttService {
                 if ("p".equals(locationMessage.getT())) {
                     locationMessage.setTst(Instant.now().getEpochSecond());
                 }
-            }            
+            }
+
+            // Handle POI if present
+            if (locationMessage.getPoi() != null && !locationMessage.getPoi().trim().isEmpty()) {
+                try {
+                    ownTracksPoiService.handlePoi(locationMessage, authenticationResult.getUserId());
+                } catch (Exception e) {
+                    log.error("Failed to handle OwnTracks POI: {}", e.getMessage(), e);
+                    // Continue processing GPS point even if POI handling fails
+                }
+            }
 
             // Save GPS point
             gpsPointService.saveOwnTracksGpsPoint(locationMessage, authenticationResult.getUserId(), deviceId, GpsSourceType.OWNTRACKS, authenticationResult.getConfig());

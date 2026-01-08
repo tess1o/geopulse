@@ -15,7 +15,6 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
-import org.github.tess1o.geopulse.streaming.events.FavoriteAddedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
 import org.locationtech.jts.geom.Point;
@@ -43,7 +42,6 @@ public class FavoriteLocationService {
     private final FavoritesRepository repository;
     private final FavoriteLocationMapper mapper;
     private final GeocodingService geocodingService;
-    private final Event<FavoriteAddedEvent> favoriteAddedEvent;
     private final Event<FavoriteDeletedEvent> favoriteDeletedEvent;
     private final Event<FavoriteRenamedEvent> favoriteRenamedEvent;
     private final org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService;
@@ -53,7 +51,6 @@ public class FavoriteLocationService {
     public FavoriteLocationService(FavoritesRepository repository,
                                    FavoriteLocationMapper mapper,
                                    GeocodingService geocodingService,
-                                   Event<FavoriteAddedEvent> favoriteAddedEvent,
                                    Event<FavoriteDeletedEvent> favoriteDeletedEvent,
                                    Event<FavoriteRenamedEvent> favoriteRenamedEvent,
                                    org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService,
@@ -62,7 +59,6 @@ public class FavoriteLocationService {
         this.repository = repository;
         this.mapper = mapper;
         this.geocodingService = geocodingService;
-        this.favoriteAddedEvent = favoriteAddedEvent;
         this.favoriteDeletedEvent = favoriteDeletedEvent;
         this.favoriteRenamedEvent = favoriteRenamedEvent;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
@@ -103,15 +99,6 @@ public class FavoriteLocationService {
 
         repository.persist(entity);
 
-        // Fire event for timeline system (for rename handling)
-        favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
-                .favoriteId(entity.getId())
-                .userId(userId)
-                .favoriteName(entity.getName())
-                .favoriteType(entity.getType())
-                .geometry(entity.getGeometry())
-                .build());
-
         log.info("Successfully added point favorite {} for user {}", favorite.getName(), userId);
     }
 
@@ -144,15 +131,6 @@ public class FavoriteLocationService {
         }
 
         repository.persist(entity);
-
-        // Fire event for timeline system (for rename handling)
-        favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
-                .favoriteId(entity.getId())
-                .userId(userId)
-                .favoriteName(entity.getName())
-                .favoriteType(entity.getType())
-                .geometry(entity.getGeometry())
-                .build());
 
         log.info("Successfully added area favorite {} for user {}", favorite.getName(), userId);
     }
@@ -188,15 +166,6 @@ public class FavoriteLocationService {
 
                 repository.persist(entity);
 
-                // Fire event for timeline system
-                favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
-                        .favoriteId(entity.getId())
-                        .userId(userId)
-                        .favoriteName(entity.getName())
-                        .favoriteType(entity.getType())
-                        .geometry(entity.getGeometry())
-                        .build());
-
                 createdFavoriteIds.add(entity.getId());
                 log.debug("Successfully added point favorite '{}' (ID: {}) in bulk operation",
                         pointDto.getName(), entity.getId());
@@ -231,15 +200,6 @@ public class FavoriteLocationService {
                 }
 
                 repository.persist(entity);
-
-                // Fire event for timeline system
-                favoriteAddedEvent.fire(FavoriteAddedEvent.builder()
-                        .favoriteId(entity.getId())
-                        .userId(userId)
-                        .favoriteName(entity.getName())
-                        .favoriteType(entity.getType())
-                        .geometry(entity.getGeometry())
-                        .build());
 
                 createdFavoriteIds.add(entity.getId());
                 log.debug("Successfully added area favorite '{}' (ID: {}) in bulk operation",
