@@ -16,11 +16,12 @@
         <div class="search-result-item">
           <i :class="getIconClass(option)" class="result-icon"></i>
           <div class="result-content">
-            <div class="result-name">{{ option.name }}</div>
+            <div class="result-name">{{ option.type === 'tag' ? option.tagName : option.name }}</div>
             <div class="result-meta">
               <span class="result-type">{{ formatType(option.type) }}</span>
-              <span v-if="option.country" class="result-country">{{ option.country }}</span>
-              <span class="result-visits">{{ option.visitCount }} visits</span>
+              <span v-if="option.type !== 'tag' && option.country" class="result-country">{{ option.country }}</span>
+              <span v-if="option.type === 'tag'" class="result-visits">{{ formatTagDate(option) }}</span>
+              <span v-else class="result-visits">{{ option.visitCount }} visits</span>
             </div>
           </div>
         </div>
@@ -35,9 +36,11 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AutoComplete from 'primevue/autocomplete'
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
+import { usePeriodTagsStore } from '@/stores/periodTags'
 
 const router = useRouter()
 const store = useLocationAnalyticsStore()
+const tagsStore = usePeriodTagsStore()
 
 const { searchResults, searchLoading } = storeToRefs(store)
 
@@ -55,15 +58,37 @@ const handleSearch = async (event) => {
   }
 
   try {
+    // Search locations
     await store.searchLocations(query)
-    filteredResults.value = searchResults.value.map(result => ({
+    const locationResults = searchResults.value.map(result => ({
       ...result,
       displayName: formatDisplayName(result)
     }))
+
+    // Search tags
+    await tagsStore.fetchPeriodTags()
+    const tagResults = tagsStore.periodTags
+      .filter(tag => tag.tagName.toLowerCase().includes(query.toLowerCase()))
+      .map(tag => ({
+        ...tag,
+        type: 'tag',
+        displayName: tag.tagName
+      }))
+
+    // Combine results with tags first
+    filteredResults.value = [...tagResults, ...locationResults]
   } catch (error) {
     console.error('Search failed:', error)
     filteredResults.value = []
   }
+}
+
+const formatDateForUrl = (dateString) => {
+  const date = new Date(dateString)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${month}/${day}/${year}`
 }
 
 const handleSelect = (event) => {
@@ -73,6 +98,18 @@ const handleSelect = (event) => {
 
   // Navigate based on result type
   switch (result.type) {
+    case 'tag': {
+      const startDate = formatDateForUrl(result.startTime)
+      const endDate = result.endTime ? formatDateForUrl(result.endTime) : formatDateForUrl(new Date())
+      router.push({
+        path: '/app/timeline',
+        query: {
+          start: startDate,
+          end: endDate
+        }
+      })
+      break
+    }
     case 'place':
       router.push(`/app/place-details/${result.category}/${result.id}`)
       break
@@ -92,6 +129,8 @@ const handleSelect = (event) => {
 
 const getIconClass = (result) => {
   switch (result.type) {
+    case 'tag':
+      return 'pi pi-tag'
     case 'place':
       return result.category === 'favorite' ? 'pi pi-heart' : 'pi pi-map-marker'
     case 'city':
@@ -104,6 +143,7 @@ const getIconClass = (result) => {
 }
 
 const formatType = (type) => {
+  if (type === 'tag') return 'Period Tag'
   if (type === 'place') return 'Place'
   if (type === 'city') return 'City'
   if (type === 'country') return 'Country'
@@ -115,6 +155,18 @@ const formatDisplayName = (result) => {
     return `${result.name}, ${result.country}`
   }
   return result.name
+}
+
+const formatTagDate = (tag) => {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  if (tag.endTime) {
+    return `${formatDate(tag.startTime)} - ${formatDate(tag.endTime)}`
+  }
+  return `Since ${formatDate(tag.startTime)}`
 }
 </script>
 

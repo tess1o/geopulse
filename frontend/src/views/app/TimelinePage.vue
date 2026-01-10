@@ -43,6 +43,7 @@
             :timelineDataLoading="timelineDataLoading"
             :dateRange="dateRange"
             @timeline-item-click="handleTimelineItemClick"
+            @tag-clicked="handleTagClicked"
         />
           </div>
         </div>
@@ -303,6 +304,21 @@ const handleForceLoad = () => {
 const handleShareCreated = (share) => {
   // Dialog will stay open to show the success state with copy link
   // No need to show toast as the dialog already shows success message
+}
+
+const handleTagClicked = (tag) => {
+  // Update date range to show full tag period
+  const startDate = new Date(tag.startTime)
+  const endDate = tag.endTime ? new Date(tag.endTime) : new Date()
+
+  dateRangeStore.setDateRange([startDate, endDate])
+
+  toast.add({
+    severity: 'info',
+    summary: `Viewing ${tag.tagName}`,
+    detail: `Timeline updated to show ${tag.tagName} period`,
+    life: 3000
+  })
 }
 
 // Lifecycle

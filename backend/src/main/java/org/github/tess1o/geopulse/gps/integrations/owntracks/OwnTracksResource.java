@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTagService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -32,13 +33,16 @@ public class OwnTracksResource {
     private final GpsPointService gpsPointService;
     private final GpsIntegrationAuthenticatorRegistry authRegistry;
     private final OwnTracksPoiService ownTracksPoiService;
+    private final OwnTracksTagService ownTracksTagService;
 
     public OwnTracksResource(GpsPointService gpsPointService,
                            GpsIntegrationAuthenticatorRegistry authRegistry,
-                           OwnTracksPoiService ownTracksPoiService) {
+                           OwnTracksPoiService ownTracksPoiService,
+                           OwnTracksTagService ownTracksTagService) {
         this.gpsPointService = gpsPointService;
         this.authRegistry = authRegistry;
         this.ownTracksPoiService = ownTracksPoiService;
+        this.ownTracksTagService = ownTracksTagService;
     }
 
     @POST
@@ -74,6 +78,16 @@ public class OwnTracksResource {
             } catch (Exception e) {
                 log.error("Failed to handle OwnTracks POI: {}", e.getMessage(), e);
                 // Continue processing GPS point even if POI handling fails
+            }
+        }
+
+        // Handle tag if present
+        if (ownTracksLocationMessage.getTag() != null) {
+            try {
+                ownTracksTagService.handleTag(ownTracksLocationMessage, userId);
+            } catch (Exception e) {
+                log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
+                // Continue processing GPS point even if tag handling fails
             }
         }
 

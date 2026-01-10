@@ -111,6 +111,7 @@ const sidebars = {
                         'user-guide/timeline/trip_detection',
                         'user-guide/timeline/travel_classification',
                         'user-guide/timeline/data_gaps',
+                        'user-guide/core-features/period-tags',
                         'user-guide/core-features/rewind',
                         'user-guide/core-features/journey-insights',
                         'user-guide/core-features/managing-places',

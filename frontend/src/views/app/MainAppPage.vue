@@ -135,6 +135,19 @@ watch(() => route.path, (path) => {
   activeIndex.value = index !== -1 ? index : 0
 }, { immediate: true })
 
+// Watch for query parameter changes to update date range
+watch(() => route.query, (newQuery, oldQuery) => {
+  // Only update if start or end changed
+  if (newQuery.start !== oldQuery?.start || newQuery.end !== oldQuery?.end) {
+    const startFromQuery = timezone.parseUrlDate(newQuery.start, false)
+    const endFromQuery = timezone.parseUrlDate(newQuery.end, true)
+
+    if (timezone.isValidDate(startFromQuery) && timezone.isValidDate(endFromQuery)) {
+      dateRangeStore.setDateRange([startFromQuery, endFromQuery])
+    }
+  }
+}, { deep: true })
+
 // Watch date range changes to update URL
 watch(dates, (newValue) => {
   if (newValue && timezone.isValidDateRange(newValue)) {

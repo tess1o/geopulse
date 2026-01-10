@@ -32,6 +32,20 @@
         <div class="date-separator">
           <div class="date-separator-line"></div>
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
+          <span
+            v-for="tag in getPeriodsForDate(dateGroup.date)"
+            :key="tag.id"
+            class="gp-period-badge gp-period-badge--clickable"
+            :style="{ backgroundColor: tag.color }"
+            @click.stop="handleTagClick(tag)"
+            role="button"
+            :aria-label="`View ${tag.tagName} period`"
+            tabindex="0"
+            @keydown.enter="handleTagClick(tag)"
+            @keydown.space.prevent="handleTagClick(tag)"
+          >
+            {{ tag.tagName }}
+          </span>
           <div class="date-separator-line"></div>
         </div>
 
@@ -110,12 +124,13 @@
 </template>
 
 <script setup>
-import { computed, ref, defineAsyncComponent } from 'vue'
+import { computed, ref, defineAsyncComponent, watch, onMounted } from 'vue'
 import Timeline from 'primevue/timeline'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import { useExportImportStore } from '@/stores/exportImport'
+import { usePeriodTagsStore } from '@/stores/periodTags'
 import StayCard from './StayCard.vue'
 import TripCard from './TripCard.vue'
 import DataGapCard from './DataGapCard.vue'
@@ -131,6 +146,7 @@ const TripClassificationDialog = defineAsyncComponent(() =>
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
+const periodTagsStore = usePeriodTagsStore()
 
 // Display limit for progressive loading
 const displayLimit = ref(50)
@@ -160,7 +176,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['timeline-item-click'])
+const emit = defineEmits(['timeline-item-click', 'tag-clicked'])
 
 // Composables
 const timezone = useTimezone()
@@ -203,6 +219,11 @@ const getMarkerClassForItem = computed(() => (item, dateKey) => {
   const baseClass = getMarkerClass.value(item.type);
   return isOvernightItem(item) ? `${baseClass} marker-overnight` : baseClass;
 })
+
+// Get period tags for a specific date
+const getPeriodsForDate = (dateString) => {
+  return periodTagsStore.getPeriodsForDate(dateString)
+}
 
 // Group timeline data by date with proper overnight stay handling
 const groupedTimelineData = computed(() => {
@@ -274,6 +295,10 @@ const handleTimelineItemClick = (item) => {
   emit('timeline-item-click', item)
 }
 
+const handleTagClick = (tag) => {
+  emit('tag-clicked', tag)
+}
+
 const handleExportTripAsGpx = async (tripItem) => {
   try {
     await exportImportStore.exportTripAsGpx(tripItem.id)
@@ -323,6 +348,30 @@ const handleCloseClassificationDialog = () => {
   classificationDialogVisible.value = false
   selectedTripForClassification.value = null
 }
+
+// Load period tags when dateRange changes
+const loadPeriodTags = async () => {
+  if (props.dateRange && props.dateRange.length === 2) {
+    try {
+      await periodTagsStore.fetchPeriodTagsForTimeRange(
+        props.dateRange[0],
+        props.dateRange[1]
+      )
+    } catch (error) {
+      console.error('Failed to load period tags:', error)
+    }
+  }
+}
+
+// Lifecycle
+onMounted(() => {
+  loadPeriodTags()
+})
+
+// Watch for date range changes
+watch(() => props.dateRange, () => {
+  loadPeriodTags()
+}, { deep: true })
 </script>
 
 <style scoped>
@@ -507,5 +556,32 @@ const handleCloseClassificationDialog = () => {
 .p-dark .date-separator-text {
   color: var(--gp-text-secondary);
   background: var(--gp-surface-white);
+}
+
+/* Clickable period badge styles */
+.gp-period-badge--clickable {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+}
+
+.gp-period-badge--clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  opacity: 0.9;
+}
+
+.gp-period-badge--clickable:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.gp-period-badge--clickable:focus {
+  outline: 2px solid var(--gp-primary);
+  outline-offset: 2px;
+}
+
+.p-dark .gp-period-badge--clickable:hover {
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
 }
 </style>

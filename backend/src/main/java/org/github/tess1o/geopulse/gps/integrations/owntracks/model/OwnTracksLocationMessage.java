@@ -22,6 +22,7 @@ public class OwnTracksLocationMessage {
     private String[] inrids;
     private String p;
     private String poi;
+    private String tag;
     private Double vel;
     private String vac;
     private String[] inregions;

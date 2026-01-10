@@ -249,6 +249,12 @@ const accountItems = computed(() => [
     key: 'favorites-management'
   },
   {
+    label: 'Period Tags',
+    icon: 'pi pi-calendar-times',
+    to: '/app/period-tags',
+    key: 'period-tags'
+  },
+  {
     label: 'Preferences',
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',

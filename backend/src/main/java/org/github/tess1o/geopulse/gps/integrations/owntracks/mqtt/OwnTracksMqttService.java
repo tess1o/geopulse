@@ -13,6 +13,7 @@ import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksPoiService;
+import org.github.tess1o.geopulse.gps.integrations.owntracks.service.OwnTracksTagService;
 import org.github.tess1o.geopulse.gps.model.GpsAuthenticationResult;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
@@ -49,6 +50,9 @@ public class OwnTracksMqttService {
 
     @Inject
     OwnTracksPoiService ownTracksPoiService;
+
+    @Inject
+    OwnTracksTagService ownTracksTagService;
 
     private MqttClient mqttClient;
 
@@ -205,6 +209,16 @@ public class OwnTracksMqttService {
                 } catch (Exception e) {
                     log.error("Failed to handle OwnTracks POI: {}", e.getMessage(), e);
                     // Continue processing GPS point even if POI handling fails
+                }
+            }
+
+            // Handle tag if present
+            if (locationMessage.getTag() != null) {
+                try {
+                    ownTracksTagService.handleTag(locationMessage, authenticationResult.getUserId());
+                } catch (Exception e) {
+                    log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
+                    // Continue processing GPS point even if tag handling fails
                 }
             }
 
