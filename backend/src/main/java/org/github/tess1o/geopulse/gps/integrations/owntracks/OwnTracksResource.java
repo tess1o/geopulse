@@ -81,14 +81,12 @@ public class OwnTracksResource {
             }
         }
 
-        // Handle tag if present
-        if (ownTracksLocationMessage.getTag() != null) {
-            try {
-                ownTracksTagService.handleTag(ownTracksLocationMessage, userId);
-            } catch (Exception e) {
-                log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
-                // Continue processing GPS point even if tag handling fails
-            }
+        // Handle tag (including null/empty to end active tags)
+        try {
+            ownTracksTagService.handleTag(ownTracksLocationMessage, userId);
+        } catch (Exception e) {
+            log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
+            // Continue processing GPS point even if tag handling fails
         }
 
         gpsPointService.saveOwnTracksGpsPoint(ownTracksLocationMessage, userId, deviceId, GpsSourceType.OWNTRACKS, config);

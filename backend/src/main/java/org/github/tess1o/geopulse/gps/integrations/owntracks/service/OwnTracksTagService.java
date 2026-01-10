@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.gps.integrations.owntracks.service;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.control.ActivateRequestContext;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -24,11 +25,14 @@ public class OwnTracksTagService {
 
     private final PeriodTagRepository periodTagRepository;
     private final UserRepository userRepository;
+    private final EntityManager entityManager;
 
     public OwnTracksTagService(PeriodTagRepository periodTagRepository,
-                               UserRepository userRepository) {
+                               UserRepository userRepository,
+                               EntityManager entityManager) {
         this.periodTagRepository = periodTagRepository;
         this.userRepository = userRepository;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -74,6 +78,11 @@ public class OwnTracksTagService {
             PeriodTagEntity currentTag = activeTagOpt.get();
             log.info("Ending active tag '{}' for user {} at {}", currentTag.getTagName(), userId, timestamp);
             endActiveTag(currentTag, timestamp);
+
+            // Flush to ensure the old tag's is_active=false is committed before creating new active tag
+            // This prevents unique constraint violation on idx_period_tags_user_active
+            entityManager.flush();
+            log.debug("Flushed entity manager after ending active tag");
         }
 
         // Create new active tag

@@ -212,14 +212,12 @@ public class OwnTracksMqttService {
                 }
             }
 
-            // Handle tag if present
-            if (locationMessage.getTag() != null) {
-                try {
-                    ownTracksTagService.handleTag(locationMessage, authenticationResult.getUserId());
-                } catch (Exception e) {
-                    log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
-                    // Continue processing GPS point even if tag handling fails
-                }
+            // Handle tag (including null/empty to end active tags)
+            try {
+                ownTracksTagService.handleTag(locationMessage, authenticationResult.getUserId());
+            } catch (Exception e) {
+                log.error("Failed to handle OwnTracks tag: {}", e.getMessage(), e);
+                // Continue processing GPS point even if tag handling fails
             }
 
             // Save GPS point
