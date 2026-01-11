@@ -45,12 +45,14 @@ WORKDIR /work
 # Copy the native runner
 COPY --from=build /app/backend/target/*-runner /work/application
 
-# Set permissions for non-root runtime user
-RUN chmod 775 /work /work/application \
+# Set permissions for arbitrary UIDs and GIDs
+# Uses 777 for maximum flexibility - supports both OpenShift pattern (any UID with GID 0)
+# and standard docker-compose (any UID:GID combination like 1000:1000)
+RUN chmod 777 /work /work/application \
     && chown -R 1001:0 /work \
     && chmod -R g+rwX /work
 
-# Expose port and switch to non-root
+# Expose port and switch to non-root (UID 1001)
 EXPOSE 8080
 USER 1001
 

@@ -1,33 +1,43 @@
 #!/bin/sh
+set -e
 
-# Generate config.js with fixed relative path
-echo "window.VUE_APP_CONFIG = {" > /usr/share/nginx/html/config.js
-echo "  API_BASE_URL: '/api'" >> /usr/share/nginx/html/config.js
-echo "};" >> /usr/share/nginx/html/config.js
+# Use /app/tmp for sed temp files
+export TMPDIR=/app/tmp
 
-echo "Generated config.js with API_BASE_URL=/api"
+cp /etc/nginx/conf.d/default.conf.template /etc/nginx/conf.d/default.conf
 
-# Detect Docker's internal DNS (127.0.0.11) from /etc/resolv.conf if present
+CURRENT_UID=$(id -u)
+
+if [ "$CURRENT_UID" = "0" ]; then
+  NGINX_PORT=80
+  echo "Running as root (UID 0) - using port 80"
+else
+  NGINX_PORT=8080
+  echo "Running as non-root (UID $CURRENT_UID) - using port 8080"
+fi
+
+# Generate config.js
+echo "window.VUE_APP_CONFIG = {" > /app/config/config.js
+echo "  API_BASE_URL: '/api'" >> /app/config/config.js
+echo "};" >> /app/config/config.js
+
+# Detect Resolver
 if grep -q "127.0.0.11" /etc/resolv.conf; then
   DEFAULT_RESOLVER="127.0.0.11 8.8.8.8"
 else
-  # We're likely in Kubernetes or bare metal — use system nameservers + fallback
   SYSTEM_NAMESERVERS=$(grep '^nameserver' /etc/resolv.conf | awk '{if ($2 ~ ":") print "["$2"]"; else print $2}' | paste -sd " " -)
   DEFAULT_RESOLVER="${SYSTEM_NAMESERVERS:-8.8.8.8}"
 fi
-
-# Allow override from env
 : "${OSM_RESOLVER:=${DEFAULT_RESOLVER}}"
 
-# Replace BACKEND_URL_PLACEHOLDER in nginx.conf with the actual backend URL
+# Replace placeholders
+# We are modifying the fresh copy we just made from the template
 sed -i "s|BACKEND_URL_PLACEHOLDER|${GEOPULSE_BACKEND_URL:-http://geopulse-backend:8080}|g" /etc/nginx/conf.d/default.conf
 sed -i "s|CLIENT_MAX_BODY_SIZE_PLACEHOLDER|${CLIENT_MAX_BODY_SIZE:-200M}|g" /etc/nginx/conf.d/default.conf
 sed -i "s|OSM_RESOLVER_PLACEHOLDER|${OSM_RESOLVER}|g" /etc/nginx/conf.d/default.conf
+sed -i "s|NGINX_PORT_PLACEHOLDER|${NGINX_PORT}|g" /etc/nginx/conf.d/default.conf
 
-echo "Updated nginx configuration:"
-echo "  - backend: ${GEOPULSE_BACKEND_URL:-http://geopulse-backend:8080}"
-echo "  - client max body size: ${CLIENT_MAX_BODY_SIZE:-200M}"
-echo "  - OSM resolver: ${OSM_RESOLVER}"
+echo "Starting Nginx on port ${NGINX_PORT}..."
 
 # Start Nginx
 exec nginx -g "daemon off;"

@@ -52,10 +52,11 @@ backend:
     failureThreshold: 3
 
   # Security context
+  # Both JVM and native images support running as non-root with arbitrary UIDs
+  # Using fsGroup: 0 (root group) enables OpenShift compatibility
   securityContext:
     runAsNonRoot: true
-    runAsUser: 1000
-    fsGroup: 1000
+    runAsUser: 1000  # Can be any UID >= 1000
 
   # Node selector
   nodeSelector: {}
@@ -77,7 +78,7 @@ frontend:
 
   service:
     type: ClusterIP
-    port: 80
+    port: 80  # External port - keep at 80 for backward compatibility with Ingress
 
   # Nginx configuration
   nginx:
@@ -99,7 +100,7 @@ frontend:
     enabled: true
     httpGet:
       path: /
-      port: 80
+      port: 8080
     initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 3
@@ -109,15 +110,18 @@ frontend:
     enabled: true
     httpGet:
       path: /
-      port: 80
+      port: 8080
     initialDelaySeconds: 5
     periodSeconds: 5
     timeoutSeconds: 2
     failureThreshold: 3
 
   # Security context
-  # Frontend nginx image needs to run entrypoint as root to setup files
-  securityContext: {}
+  # Frontend runs as non-root on port 8080 (uses world-writable dirs - any UID:GID works)
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101  # nginx user (can be changed to any UID)
+    runAsGroup: 101  # can be changed to any GID
 
   # Node selector
   nodeSelector: {}
@@ -207,8 +211,10 @@ postgres:
     failureThreshold: 3
 
   # Security context
-  # PostgreSQL image handles user/group automatically
+  # PostgreSQL runs as non-root user (UID 999) with fsGroup for volume access
   securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
     fsGroup: 999
 
   # Node selector

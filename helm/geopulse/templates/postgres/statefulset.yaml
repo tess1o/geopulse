@@ -16,6 +16,10 @@ spec:
       labels:
         {{- include "geopulse.postgres.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.postgres.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.global.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

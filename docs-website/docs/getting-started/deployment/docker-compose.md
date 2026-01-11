@@ -380,7 +380,140 @@ server {
 }
 ```
 
+---
+
+## Running as Non-Root User (Optional)
+
+GeoPulse containers support running as non-root users for enhanced security in production environments. This is **completely optional** - by default, containers work without any changes.
+
+### Default Behavior (No Changes Required)
+
+By default, GeoPulse containers run with these security settings:
+
+- **Backend (JVM & Native)**: Already runs as non-root user (secure by default) ✅
+- **Frontend (nginx)**: Runs as root user on port 80 (for backward compatibility)
+
+**Existing deployments continue to work without modifications.**
+
+### Optional: Running Frontend as Non-Root
+
+For enhanced security, you can configure the frontend to run as a non-root user. This requires **two simple changes** in your `docker-compose.yml`:
+
+1. Add the `user` directive with **any UID:GID** you prefer
+2. Update the port mapping from `80` to `8080`
+
+**Example for docker-compose.yml:**
+
+```yaml
+services:
+  geopulse-ui:
+    image: tess1o/geopulse-ui:${GEOPULSE_VERSION}
+    container_name: geopulse-ui
+    restart: unless-stopped
+    user: "1000:1000"  # ← ADD THIS: Use your preferred UID:GID
+    env_file:
+      - .env
+    ports:
+      - 5555:8080      # ← CHANGE THIS: 80 → 8080
+    depends_on:
+      geopulse-backend:
+        condition: service_healthy
+```
+
+**Flexibility**: The container works with **any UID:GID combination**:
+- `user: "1000:1000"` - Your user UID and GID (most common)
+- `user: "1001:1001"` - Different user
+- `user: "1000:0"` - OpenShift pattern (UID with root group)
+- Any other valid UID:GID pair
+
+The container automatically detects the user and adjusts accordingly - no additional configuration needed!
+
+### Optional: Running Backend with Custom User ID
+
+Both backend images (JVM and native) already run as non-root by default, so **no changes are needed**. However, if you want to use a specific user ID (e.g., to match your host filesystem permissions), you can override it:
+
+```yaml
+services:
+  geopulse-backend:
+    image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
+    container_name: geopulse-backend
+    user: "1000:1000"  # ← OPTIONAL: Override with any UID:GID
+    # ... rest of configuration
+```
+
+**Backend flexibility**: Works with any UID:GID combination, including:
+- `user: "1000:1000"` - Standard docker-compose usage
+- `user: "1000:0"` - OpenShift pattern (recommended for Kubernetes)
+
+### How It Works
+
+The frontend container automatically detects whether it's running as root or non-root:
+
+- **Running as root (UID 0)**: Uses port 80 (default, backward compatible)
+- **Running as non-root (any other UID)**: Automatically switches to port 8080 (non-privileged)
+
+This auto-detection ensures backward compatibility while enabling security-enhanced deployments.
+
+### Benefits of Running as Non-Root
+
+Running containers as non-root users provides several security advantages:
+
+- **Principle of Least Privilege**: Containers run with minimal permissions required
+- **Container Escape Mitigation**: Limits potential damage if a container is compromised
+- **Compliance**: Meets security requirements for production environments and regulated industries
+- **Defense in Depth**: Adds an additional security layer to your deployment
+
+### Kubernetes/OpenShift Compatibility
+
+All GeoPulse container images are designed to run in Kubernetes and OpenShift environments with flexible security contexts:
+
+**Frontend Container:**
+- Uses world-writable directories (777) for runtime files
+- Works with **any UID:GID combination** - no special requirements
+- Automatically adapts to root or non-root execution
+
+**Backend Container:**
+- Uses OpenShift pattern (user:group 0 with group permissions)
+- Works best with **GID 0** for Kubernetes/OpenShift
+- Also supports any UID:GID with proper volume permissions
+
+**Example Kubernetes security contexts:**
+
+```yaml
+# Frontend - Simple (any UID:GID works)
+frontend:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 101
+    runAsGroup: 101
+
+# Backend - OpenShift Pattern (recommended)
+backend:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 0  # Root group for OpenShift pattern
+```
+
+Both containers work seamlessly with Kubernetes `runAsUser` and OpenShift's automatic UID assignment. See the [Helm deployment guide](./kubernetes.md) for complete Kubernetes/Helm configuration.
+
+---
+
 ## Troubleshooting
+
+**Non-root user issues:**
+
+If you've added the `user` directive to the frontend service but forgot to update the port mapping:
+
+```bash
+# Check container logs
+docker compose logs geopulse-ui
+
+# You'll see: "Running as non-root (UID 1000) - using port 8080"
+# But the port mapping is still 5555:80 - this causes connection issues
+```
+
+**Solution**: Update the port mapping in docker-compose.yml from `5555:80` to `5555:8080`.
 
 **Port conflicts:**
 

@@ -11,9 +11,10 @@ services:
   geopulse-backend-dev:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: backend/Dockerfile.native
     container_name: geopulse-backend-dev
     restart: unless-stopped
+    user: "1000:1000"
     env_file:
       - .env
     environment:
@@ -34,10 +35,11 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: geopulse-ui-dev
     restart: unless-stopped
+    user: "1000:1000"
     env_file:
       - .env
     ports:
-      - 5555:80  # Change left port to customize external access
+      - 5555:8080  # Change left port to customize external access
     depends_on:
       - geopulse-backend-dev
 
@@ -49,6 +51,8 @@ services:
       POSTGRES_USER: ${GEOPULSE_POSTGRES_USERNAME}
       POSTGRES_PASSWORD: ${GEOPULSE_POSTGRES_PASSWORD}
       POSTGRES_DB: ${GEOPULSE_POSTGRES_DB}
+    ports:
+      - 5432:5432
     volumes:
       - postgres-data-dev:/var/lib/postgresql/data
     # Development PostgreSQL settings with enhanced logging for debugging
