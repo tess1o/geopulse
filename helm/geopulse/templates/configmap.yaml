@@ -20,6 +20,11 @@ data:
   GEOPULSE_AUTH_PASSWORD_REGISTRATION_ENABLED: {{ .Values.config.auth.passwordRegistrationEnabled | quote }}
   GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED: {{ .Values.config.auth.oidcRegistrationEnabled | quote }}
 
+  # Login Control
+  GEOPULSE_AUTH_LOGIN_ENABLED: {{ .Values.config.auth.loginEnabled | quote }}
+  GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED: {{ .Values.config.auth.passwordLoginEnabled | quote }}
+  GEOPULSE_AUTH_OIDC_LOGIN_ENABLED: {{ .Values.config.auth.oidcLoginEnabled | quote }}
+
   # JWT Configuration
   GEOPULSE_JWT_ACCESS_TOKEN_LIFESPAN: {{ .Values.config.jwt.accessTokenLifespan | quote }}
   GEOPULSE_JWT_REFRESH_TOKEN_LIFESPAN: {{ .Values.config.jwt.refreshTokenLifespan | quote }}

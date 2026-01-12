@@ -7,7 +7,42 @@
         <div class="logo-section">
           <img src="/geopulse-logo.svg" alt="GeoPulse" class="app-logo" />
         </div>
-        
+
+        <!-- Login Disabled Message -->
+        <div v-if="!loginStatus.passwordLoginEnabled && !loginStatus.oidcLoginEnabled && !showAdminLogin"
+             class="login-disabled-message">
+          <i class="pi pi-exclamation-triangle"></i>
+          <div class="message-content">
+            <span>Login is currently disabled. Please contact your administrator.</span>
+            <Button
+              label="Administrator Access"
+              icon="pi pi-shield"
+              severity="warning"
+              size="small"
+              outlined
+              @click="showAdminLogin = true"
+              class="admin-login-button"
+            />
+          </div>
+        </div>
+
+        <div v-else-if="!loginStatus.passwordLoginEnabled && loginStatus.oidcLoginEnabled && !showAdminLogin"
+             class="login-disabled-message">
+          <i class="pi pi-info-circle"></i>
+          <div class="message-content">
+            <span>Email/password login is disabled. Please use OIDC providers below.</span>
+            <Button
+              label="Administrator Access"
+              icon="pi pi-shield"
+              severity="warning"
+              size="small"
+              outlined
+              @click="showAdminLogin = true"
+              class="admin-login-button"
+            />
+          </div>
+        </div>
+
         <!-- Login Form -->
         <Card class="login-card">
           <template #content>
@@ -18,8 +53,14 @@
                 <p class="form-subtitle">Sign in to continue your journey</p>
               </div>
 
-              <!-- Login Form -->
-              <form @submit.prevent="handleSubmit" class="login-form">
+              <!-- Login Form (show if password login enabled OR admin override) -->
+              <form v-if="shouldShowPasswordForm" @submit.prevent="handleSubmit" class="login-form">
+                <!-- Admin Override Notice -->
+                <div v-if="showAdminLogin && !loginStatus.passwordLoginEnabled" class="admin-override-notice">
+                  <i class="pi pi-shield"></i>
+                  <span>Administrator access - login restrictions bypassed</span>
+                </div>
+
                 <!-- Email Field -->
                 <div class="form-field">
                   <label for="email" class="field-label">Email Address</label>
@@ -78,6 +119,7 @@
 
               <!-- OIDC Providers Section -->
               <OidcProvidersSection
+                v-if="loginStatus.oidcLoginEnabled && oidcProviders.length > 0"
                 :providers="oidcProviders"
                 :disabled="isLoading"
                 @provider-selected="handleOidcLogin"
@@ -124,6 +166,8 @@ const loginError = ref('')
 const oidcProviders = ref([])
 
 const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
+const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true });
+const showAdminLogin = ref(false);
 
 // Form data
 const formData = ref({
@@ -135,9 +179,13 @@ const formErrors = ref({})
 
 // Computed
 const isFormValid = computed(() => {
-  return formData.value.email && 
-         formData.value.password && 
+  return formData.value.email &&
+         formData.value.password &&
          Object.keys(formErrors.value).length === 0
+})
+
+const shouldShowPasswordForm = computed(() => {
+  return loginStatus.value.passwordLoginEnabled || showAdminLogin.value
 })
 
 // Methods
@@ -262,8 +310,18 @@ onMounted(() => {
     router.push('/app/timeline')
   }
 
-  authStore.getRegistrationStatus().then(status => {
-    registrationStatus.value = status;
+  authStore.getAuthStatus().then(status => {
+    registrationStatus.value = {
+      passwordRegistrationEnabled: status.passwordRegistrationEnabled,
+      oidcRegistrationEnabled: status.oidcRegistrationEnabled
+    };
+    loginStatus.value = {
+      passwordLoginEnabled: status.passwordLoginEnabled,
+      oidcLoginEnabled: status.oidcLoginEnabled
+    };
+  }).catch(err => {
+    console.error("Failed to load auth status", err);
+    // Default to enabled if fetch fails
   });
 
   // Load available OIDC providers
@@ -346,6 +404,64 @@ onMounted(() => {
 
 .app-logo:hover {
   transform: scale(1.05);
+}
+
+/* Login Disabled Message */
+.login-disabled-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--gp-warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-text-on-surface-emphasis);
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.login-disabled-message i {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.login-disabled-message .message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.login-disabled-message .message-content span {
+  line-height: 1.5;
+}
+
+.login-disabled-message .admin-login-button {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+/* Admin Override Notice */
+.admin-override-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(26, 86, 219, 0.1);
+  border: 1px solid rgba(26, 86, 219, 0.3);
+  border-radius: var(--gp-radius-medium);
+  color: var(--gp-text-on-surface-emphasis);
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.admin-override-notice i {
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
 /* Dark Mode Gradient Background */

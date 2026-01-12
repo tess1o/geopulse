@@ -281,6 +281,27 @@ export const useAuthStore = defineStore('auth', {
                 // Return a default that disables registration UI elements
                 return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false };
             }
+        },
+
+        async getAuthStatus() {
+            try {
+                const response = await apiService.get('/auth/status');
+                return response.data || {
+                    passwordRegistrationEnabled: false,
+                    oidcRegistrationEnabled: false,
+                    passwordLoginEnabled: true,
+                    oidcLoginEnabled: true
+                };
+            } catch (error) {
+                console.error('Failed to get auth status:', error);
+                // Fail-open: default to enabled if API fails
+                return {
+                    passwordRegistrationEnabled: false,
+                    oidcRegistrationEnabled: false,
+                    passwordLoginEnabled: true,
+                    oidcLoginEnabled: true
+                };
+            }
         }
     }
 })

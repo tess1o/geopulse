@@ -43,6 +43,12 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.auth.oidc.registration.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC registration"));
         SETTING_DEFINITIONS.put("auth.oidc.auto-link-accounts",
                 new SettingDefinition("geopulse.oidc.auto-link-accounts", "false", ValueType.BOOLEAN, "auth", "Auto-link OIDC accounts by email"));
+        SETTING_DEFINITIONS.put("auth.login.enabled",
+                new SettingDefinition("geopulse.auth.login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable all login"));
+        SETTING_DEFINITIONS.put("auth.password-login.enabled",
+                new SettingDefinition("geopulse.auth.password-login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable password login"));
+        SETTING_DEFINITIONS.put("auth.oidc.login.enabled",
+                new SettingDefinition("geopulse.auth.oidc.login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC login"));
 
         // Geocoding settings - General
         SETTING_DEFINITIONS.put("geocoding.primary-provider",

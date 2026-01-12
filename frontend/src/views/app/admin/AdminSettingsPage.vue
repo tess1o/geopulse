@@ -335,6 +335,18 @@ const settingLabels = {
     label: 'Auto-Link OIDC Accounts',
     description: 'Automatically link OIDC accounts by email (security risk)'
   },
+  'auth.login.enabled': {
+    label: 'Login Enabled',
+    description: 'Allow users to log in (master switch)'
+  },
+  'auth.password-login.enabled': {
+    label: 'Password Login',
+    description: 'Allow login with email/password'
+  },
+  'auth.oidc.login.enabled': {
+    label: 'OIDC Login',
+    description: 'Allow login via OIDC providers'
+  },
   'geocoding.primary-provider': {
     label: 'Primary Provider',
     description: 'Primary geocoding service'

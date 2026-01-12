@@ -49,4 +49,28 @@ config:
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
-For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#authentication--registration).  
+For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#authentication--registration).
+
+## Relationship with Login Controls
+
+Registration controls are **independent** from [login controls](/docs/system-administration/configuration/login-control):
+
+- **Registration controls** (this page) affect new user account creation
+- **Login controls** affect existing user authentication
+
+Example scenarios:
+
+| Registration | Login | Result |
+|--------------|-------|--------|
+| Enabled | Enabled | Normal operation - users can register and login |
+| Disabled | Enabled | Closed system - only existing users can login |
+| Enabled | Disabled | Users can register but can't login immediately (unusual) |
+| Disabled | Disabled | Complete lockdown - no registration or login (admins can still login) |
+
+For controlling who can **log in** (not register), see the [Login Control Management](/docs/system-administration/configuration/login-control) guide.
+
+## Related Documentation
+
+- [Login Control Management](/docs/system-administration/configuration/login-control) - Control user login access
+- [Authentication Configuration](/docs/system-administration/configuration/authentication) - Cookie and JWT settings
+- [OIDC/SSO Configuration](/docs/system-administration/configuration/oidc-sso) - Configure external identity providers  

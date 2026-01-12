@@ -495,7 +495,7 @@ backend:
     fsGroup: 0  # Root group for OpenShift pattern
 ```
 
-Both containers work seamlessly with Kubernetes `runAsUser` and OpenShift's automatic UID assignment. See the [Helm deployment guide](./kubernetes.md) for complete Kubernetes/Helm configuration.
+Both containers work seamlessly with Kubernetes `runAsUser` and OpenShift's automatic UID assignment. See the [Helm deployment guide](./helm-deployment.md) for complete Kubernetes/Helm configuration.
 
 ---
 

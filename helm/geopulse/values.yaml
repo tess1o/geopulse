@@ -355,6 +355,15 @@ config:
     # Enable OIDC-based registration (default: true)
     oidcRegistrationEnabled: true
 
+    # Login Control (default: true for all)
+    # Note: Admin users bypass login restrictions to prevent lockout
+    # Enable/disable all login methods (master switch)
+    loginEnabled: true
+    # Enable password-based login (default: true)
+    passwordLoginEnabled: true
+    # Enable OIDC-based login (default: true)
+    oidcLoginEnabled: true
+
   # JWT Configuration
   jwt:
     # Access token lifespan in seconds (default: 1800 = 30 minutes)

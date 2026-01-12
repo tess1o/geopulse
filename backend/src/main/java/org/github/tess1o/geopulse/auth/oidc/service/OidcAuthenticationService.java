@@ -20,6 +20,7 @@ import jakarta.ws.rs.core.MediaType;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
+import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
 import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
@@ -193,6 +194,23 @@ public class OidcAuthenticationService {
             // Validate ID token and extract user info
             OidcUserInfo userInfo = validateAndExtractUserInfo(tokenResponse, provider, sessionState);
 
+            // Check if OIDC login is enabled (with admin bypass for existing users)
+            Optional<UserOidcConnectionEntity> existingConnection = connectionRepository
+                    .findByProviderNameAndExternalUserId(providerName, userInfo.getSubject());
+
+            if (existingConnection.isPresent()) {
+                // Existing user - check admin bypass
+                UserEntity user = existingConnection.get().getUser();
+                if (user.getRole() != Role.ADMIN && !authConfigurationService.isOidcLoginEnabled()) {
+                    throw new OidcLoginDisabledException("OIDC login is currently disabled");
+                }
+            } else {
+                // New user - no bypass
+                if (!authConfigurationService.isOidcLoginEnabled()) {
+                    throw new OidcLoginDisabledException("OIDC login is currently disabled");
+                }
+            }
+
             // Find or create user (this method handles all user/connection logic)
             UserEntity user = findOrCreateUser(userInfo, sessionState);
 
@@ -201,6 +219,9 @@ public class OidcAuthenticationService {
 
         } catch (OidcRegistrationDisabledException e) {
             log.warn("Registration via OIDC is disabled", e);
+            throw e;
+        } catch (OidcLoginDisabledException e) {
+            log.warn("OIDC login is disabled", e);
             throw e;
         } catch (OidcAccountLinkingRequiredException e) {
             // Re-throw the linking exception so the REST controller can handle it properly

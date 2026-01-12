@@ -10,6 +10,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
+import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
 import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
@@ -57,6 +59,9 @@ public class OidcAuthenticationResource {
     @Inject
     OidcAccountLinkingService accountLinkingService;
 
+    @Inject
+    AuthConfigurationService authConfigurationService;
+
     /**
      * Get list of enabled OIDC providers
      */
@@ -90,6 +95,13 @@ public class OidcAuthenticationResource {
     public Response initiateLogin(@PathParam("provider") String providerName,
                                   @QueryParam("redirectUri") @DefaultValue("/app/timeline") String redirectUri) {
         try {
+            // Check if OIDC login is enabled
+            if (!authConfigurationService.isOidcLoginEnabled()) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(ApiResponse.error("OIDC login is currently disabled"))
+                        .build();
+            }
+
             OidcLoginInitResponse response = oidcAuthService.initiateLogin(providerName, null, redirectUri, null);
             return Response.ok(ApiResponse.success(response)).build();
         } catch (IllegalArgumentException e) {
@@ -126,6 +138,10 @@ public class OidcAuthenticationResource {
                     .cookie(tokenExpirationCookie)
                     .build();
         } catch (OidcRegistrationDisabledException e) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (OidcLoginDisabledException e) {
             return Response.status(Response.Status.FORBIDDEN)
                     .entity(ApiResponse.error(e.getMessage()))
                     .build();

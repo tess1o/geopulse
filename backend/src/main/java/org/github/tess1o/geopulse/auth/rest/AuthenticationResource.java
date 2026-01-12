@@ -49,6 +49,13 @@ public class AuthenticationResource {
     @Path("/login")
     public Response loginUser(LoginRequest request) {
         try {
+            // Check if password login is enabled (with admin bypass)
+            if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(ApiResponse.error("Password login is currently disabled"))
+                        .build();
+            }
+
             AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
 
             // Create cookies for web app
@@ -91,6 +98,13 @@ public class AuthenticationResource {
     @Path("/api-login")
     public Response apiLogin(LoginRequest request) {
         try {
+            // Check if password login is enabled (with admin bypass)
+            if (!authConfigurationService.isPasswordLoginEnabledForUser(request.getEmail())) {
+                return Response.status(Response.Status.FORBIDDEN)
+                        .entity(ApiResponse.error("Password login is currently disabled"))
+                        .build();
+            }
+
             AuthResponse authResponse = authenticationService.authenticate(request.getEmail(), request.getPassword());
 
             // API mode: Return tokens in response body, no cookies
@@ -238,6 +252,8 @@ public class AuthenticationResource {
         AuthStatusResponse status = AuthStatusResponse.builder()
                 .passwordRegistrationEnabled(authConfigurationService.isPasswordRegistrationEnabled())
                 .oidcRegistrationEnabled(authConfigurationService.isOidcRegistrationEnabled())
+                .passwordLoginEnabled(authConfigurationService.isPasswordLoginEnabled())
+                .oidcLoginEnabled(authConfigurationService.isOidcLoginEnabled())
                 .build();
         return Response.ok(ApiResponse.success(status)).build();
     }

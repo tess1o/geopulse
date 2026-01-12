@@ -86,3 +86,70 @@ config:
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
 For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#core-configuration).
+
+## Login Controls
+
+GeoPulse provides granular control over login methods to restrict access during maintenance or enforce specific authentication patterns.
+
+### Environment Variables
+
+#### Global Login Control
+- **Variable:** `GEOPULSE_AUTH_LOGIN_ENABLED`
+- **Default:** `true`
+- **Description:** Master switch for all login methods
+
+#### Password Login Control
+- **Variable:** `GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED`
+- **Default:** `true`
+- **Description:** Controls email/password login
+
+#### OIDC Login Control
+- **Variable:** `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED`
+- **Default:** `true`
+- **Description:** Controls OIDC provider login
+
+### Hierarchical Structure
+
+Login controls use a hierarchical pattern:
+- Password login requires: `GEOPULSE_AUTH_LOGIN_ENABLED=true` **AND** `GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED=true`
+- OIDC login requires: `GEOPULSE_AUTH_LOGIN_ENABLED=true` **AND** `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=true`
+
+### Admin Bypass
+
+**Important:** Admin users bypass all login restrictions to prevent system lockout.
+
+Admin users can always log in regardless of these settings. This prevents scenarios where administrators accidentally lock themselves out of the system.
+
+### Admin Panel Configuration
+
+Login settings can also be configured via the Admin Panel:
+1. Navigate to **Settings** → **Authentication**
+2. Toggle the login controls as needed
+3. Changes take effect immediately
+
+### Behavior
+
+- **Existing sessions:** Remain valid when login is disabled. Only NEW logins are blocked.
+- **Token refresh:** Continues to work. Users with valid refresh tokens can extend their sessions.
+- **Frontend:** Shows informative messages explaining why login is disabled.
+
+### Use Cases
+
+**Maintenance Mode:**
+```bash
+GEOPULSE_AUTH_LOGIN_ENABLED=false
+```
+Blocks all new logins while allowing existing users to continue working. Admins can still log in.
+
+**Force OIDC Authentication:**
+```bash
+GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED=false
+GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=true
+```
+Requires all users to authenticate via OIDC providers.
+
+**Disable External Authentication:**
+```bash
+GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=false
+```
+Only allows password-based login for internal users.

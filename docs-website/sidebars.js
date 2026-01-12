@@ -44,6 +44,7 @@ const sidebars = {
                         'system-administration/configuration/admin-panel',
                         'system-administration/configuration/authentication',
                         'system-administration/configuration/user-registration',
+                        'system-administration/configuration/login-control',
                         'system-administration/configuration/oidc-sso',
                         'system-administration/configuration/reverse-geocoding',
                         'system-administration/configuration/ai-assistant',
@@ -59,6 +60,7 @@ const sidebars = {
                     label: 'Monitoring',
                     items: [
                         'system-administration/monitoring/prometheus',
+                        'system-administration/monitoring/grafana',
                     ],
                 },
                 {
