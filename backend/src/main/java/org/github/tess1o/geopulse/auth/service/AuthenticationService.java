@@ -162,7 +162,6 @@ public class AuthenticationService {
                 .customMapTileUrl(user.getCustomMapTileUrl())
                 .defaultRedirectUrl(user.getDefaultRedirectUrl())
                 .measureUnit(user.getMeasureUnit())
-                .shareLocationWithFriends(user.isShareLocationWithFriends())
                 .build();
     }
 

@@ -25,6 +25,5 @@ public class UserResponse {
     private String customMapTileUrl;
     private MeasureUnit measureUnit;
     private String defaultRedirectUrl;
-    private boolean shareLocationWithFriends;
     // Don't include passwordHash in responses
 }

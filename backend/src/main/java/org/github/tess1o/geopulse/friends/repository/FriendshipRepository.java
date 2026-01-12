@@ -54,17 +54,17 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
         // Optimized query using LATERAL joins for efficient index-only lookups
         // LATERAL allows correlated subqueries that execute once per row using indexes
         // Each LATERAL subquery uses LIMIT 1 with ORDER BY DESC to get latest record efficiently
-        // Respects the friend's share_location_with_friends preference
+        // Respects per-friend live location permission from user_friend_permissions table
         String sql = """
                 SELECT f.user_id,
                        f.friend_id,
                        u.email,
                        u.full_name,
                        u.avatar,
-                       CASE WHEN u.share_location_with_friends = true THEN latest_gps.timestamp ELSE NULL END as gps_timestamp,
-                       CASE WHEN u.share_location_with_friends = true THEN latest_gps.coordinates ELSE NULL END as coordinates,
+                       CASE WHEN ufp.share_live_location = true THEN latest_gps.timestamp ELSE NULL END as gps_timestamp,
+                       CASE WHEN ufp.share_live_location = true THEN latest_gps.coordinates ELSE NULL END as coordinates,
                        CASE
-                           WHEN u.share_location_with_friends = false THEN NULL
+                           WHEN ufp.share_live_location = false OR ufp.share_live_location IS NULL THEN NULL
                            WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
                            WHEN latest_stay.timestamp IS NULL THEN 'TRIP'
                            WHEN latest_trip.timestamp IS NULL THEN 'STAY'
@@ -72,7 +72,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                            ELSE 'TRIP'
                        END as latest_activity_type,
                        CASE
-                           WHEN u.share_location_with_friends = false THEN NULL
+                           WHEN ufp.share_live_location = false OR ufp.share_live_location IS NULL THEN NULL
                            WHEN latest_stay.timestamp IS NULL AND latest_trip.timestamp IS NULL THEN NULL
                            WHEN latest_stay.timestamp IS NULL THEN latest_trip.trip_duration
                            WHEN latest_trip.timestamp IS NULL THEN latest_stay.stay_duration
@@ -81,6 +81,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                        END as latest_activity_duration_seconds
                 FROM user_friends f
                 JOIN users u ON f.friend_id = u.id
+                LEFT JOIN user_friend_permissions ufp ON (ufp.user_id = u.id AND ufp.friend_id = f.user_id)
                 LEFT JOIN LATERAL (
                     SELECT timestamp, coordinates
                     FROM gps_points

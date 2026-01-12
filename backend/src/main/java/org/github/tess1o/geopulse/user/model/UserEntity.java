@@ -100,10 +100,6 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "default_redirect_url", length = 1000)
     private String defaultRedirectUrl;
 
-    @Column(name = "share_location_with_friends", nullable = false)
-    @Builder.Default
-    private boolean shareLocationWithFriends = true;
-
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

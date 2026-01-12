@@ -173,31 +173,6 @@ GeoPulse automatically proxies all custom tile requests through its backend, eli
 
 For more details, see [Custom Map Tiles](/docs/user-guide/personalization/custom-map-tiles).
 
-## Privacy Settings
-
-### Share My Location with Friends
-
-Control whether your friends can see your location when you've accepted their friend requests.
-
-**How it works:**
-- **Enabled** (default) - Friends can see your current and historical location
-- **Disabled** - Your location is hidden from all friends
-
-**Important notes:**
-- You can still see your friends' locations even when your sharing is disabled
-- This affects all friends simultaneously (not per-friend control)
-- Useful for temporary privacy when traveling or when you don't want to be tracked
-- Can be toggled on/off at any time
-
-**What friends see when disabled:**
-- Your marker disappears from the Friends Map
-- They can't see your location history
-- Your profile still appears in their friends list
-
-:::tip Temporary Privacy
-Use this toggle for temporary privacy without removing friends. Simply turn it back on when you want to resume sharing.
-:::
-
 ## Saving Your Changes
 
 ### Save Button
