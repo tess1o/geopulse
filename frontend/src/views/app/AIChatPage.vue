@@ -52,7 +52,7 @@
                     <span v-if="!aiSettings.enabled">
                       AI Assistant is currently disabled.
                     </span>
-                    <span v-else-if="!aiSettings.openaiApiKeyConfigured">
+                    <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">
                       OpenAI API key is not configured.
                     </span>
                     <span v-else>
@@ -203,7 +203,7 @@
                   <i class="pi pi-exclamation-triangle"></i>
                   <span>
                     <span v-if="!aiSettings.enabled">AI Assistant is disabled.</span>
-                    <span v-else-if="!aiSettings.openaiApiKeyConfigured">API key not configured.</span>
+                    <span v-else-if="aiSettings.apiKeyRequired && !aiSettings.openaiApiKeyConfigured">API key not configured.</span>
                     <span v-else>AI Assistant not available.</span>
                   </span>
                 </div>
@@ -240,6 +240,7 @@ const hasExpiredConversation = ref(false)
 const aiSettings = ref({
   enabled: false,
   openaiApiKeyConfigured: false,
+  apiKeyRequired: true,
   openaiModel: 'gpt-3.5-turbo'
 })
 const isAIAvailable = ref(false)
@@ -341,15 +342,18 @@ const checkAIAvailability = async () => {
   try {
     const response = await apiService.get('/ai/settings')
     const data = response.data || response
-    
+
     aiSettings.value = {
       enabled: data.enabled === true,
       openaiApiKeyConfigured: data.openaiApiKeyConfigured === true,
+      apiKeyRequired: data.apiKeyRequired === true,
       openaiModel: data.openaiModel || 'gpt-3.5-turbo'
     }
-    
-    isAIAvailable.value = aiSettings.value.enabled && aiSettings.value.openaiApiKeyConfigured
-    
+
+    // AI is available if enabled AND (no API key required OR API key is configured)
+    isAIAvailable.value = aiSettings.value.enabled &&
+      (!aiSettings.value.apiKeyRequired || aiSettings.value.openaiApiKeyConfigured)
+
   } catch (error) {
     console.warn('Failed to check AI settings:', error)
     isAIAvailable.value = false
@@ -539,13 +543,13 @@ onMounted(async () => {
   
   if (!isAIAvailable.value) {
     let detail = 'Please configure your AI settings in your profile to use the chat assistant.'
-    
+
     if (!aiSettings.value.enabled) {
       detail = 'AI Assistant is disabled. Please enable it in your profile settings.'
-    } else if (!aiSettings.value.openaiApiKeyConfigured) {
+    } else if (aiSettings.value.apiKeyRequired && !aiSettings.value.openaiApiKeyConfigured) {
       detail = 'Please configure your OpenAI API key in your profile to use the chat assistant.'
     }
-    
+
     toast.add({
       severity: 'warn',
       summary: 'AI Chat Unavailable',
