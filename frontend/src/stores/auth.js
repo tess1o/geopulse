@@ -24,7 +24,6 @@ export const useAuthStore = defineStore('auth', {
         customMapTileUrl: (state) => state.user?.customMapTileUrl || '',
         measureUnit: (state) => state.user?.measureUnit || 'METRIC',
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
-        shareLocationWithFriends: (state) => state.user?.shareLocationWithFriends ?? true,
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
     },
@@ -48,7 +47,6 @@ export const useAuthStore = defineStore('auth', {
                     customMapTileUrl: user.customMapTileUrl || '',
                     measureUnit: user.measureUnit || 'METRIC',
                     defaultRedirectUrl: user.defaultRedirectUrl || '',
-                    shareLocationWithFriends: user.shareLocationWithFriends ?? true,
                     role: user.role || 'USER'
                 };
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
@@ -97,7 +95,7 @@ export const useAuthStore = defineStore('auth', {
         },
 
         //TODO: remove userId, find it on backend.
-        async updateProfile(fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl, shareLocationWithFriends, userId) {
+        async updateProfile(fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl, userId) {
             try {
                 await apiService.post(`/users/update`, {
                     fullName,
@@ -106,7 +104,6 @@ export const useAuthStore = defineStore('auth', {
                     customMapTileUrl,
                     measureUnit,
                     defaultRedirectUrl,
-                    shareLocationWithFriends,
                     userId
                 });
 
@@ -118,12 +115,11 @@ export const useAuthStore = defineStore('auth', {
                 userInfo.customMapTileUrl = customMapTileUrl || '';
                 userInfo.measureUnit = measureUnit || 'METRIC';
                 userInfo.defaultRedirectUrl = defaultRedirectUrl || '';
-                userInfo.shareLocationWithFriends = shareLocationWithFriends ?? true;
                 localStorage.setItem('userInfo', JSON.stringify(userInfo));
 
                 // Update the user in store
                 if (this.user) {
-                    this.user = {...this.user, fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl, shareLocationWithFriends}
+                    this.user = {...this.user, fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl}
                 }
             } catch (error) {
                 throw error
@@ -185,7 +181,6 @@ export const useAuthStore = defineStore('auth', {
                     customMapTileUrl: userInfo.customMapTileUrl || '',
                     measureUnit: userInfo.measureUnit || 'METRIC',
                     defaultRedirectUrl: userInfo.defaultRedirectUrl || '',
-                    shareLocationWithFriends: userInfo.shareLocationWithFriends ?? true,
                     role: userInfo.role || 'USER'
                 }
 

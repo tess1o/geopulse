@@ -159,21 +159,6 @@
             </div>
           </div>
 
-          <div class="form-field location-sharing-field">
-            <div class="location-sharing-row">
-              <label for="shareLocationWithFriends" class="form-label">
-                Share My Location with Friends
-                <i class="pi pi-info-circle" v-tooltip.right="'When disabled, your friends will not be able to see your location on the map. You will still see their locations if they have sharing enabled.'"></i>
-              </label>
-              <ToggleSwitch
-                id="shareLocationWithFriends"
-                v-model="form.shareLocationWithFriends"
-              />
-            </div>
-            <small class="help-text">
-              Toggle this off to temporarily stop sharing your location with all friends
-            </small>
-          </div>
         </div>
 
         <!-- Action Buttons -->
@@ -229,10 +214,6 @@ const props = defineProps({
   userDefaultRedirectUrl: {
     type: String,
     default: ''
-  },
-  userShareLocationWithFriends: {
-    type: Boolean,
-    default: true
   }
 })
 
@@ -248,8 +229,7 @@ const form = ref({
   customMapTileUrl: '',
   measureUnit: 'METRIC', // Default value
   defaultRedirectUrl: '',
-  customRedirectUrl: '',
-  shareLocationWithFriends: true
+  customRedirectUrl: ''
 })
 const errors = ref({})
 
@@ -372,8 +352,7 @@ const hasChanges = computed(() => {
          form.value.timezone !== props.userTimezone ||
          form.value.customMapTileUrl !== props.userCustomMapTileUrl ||
          form.value.measureUnit !== props.userMeasureUnit ||
-         effectiveRedirectUrl !== props.userDefaultRedirectUrl ||
-         form.value.shareLocationWithFriends !== props.userShareLocationWithFriends
+         effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
 
 // Methods
@@ -436,8 +415,7 @@ const handleSubmit = async () => {
       timezone: form.value.timezone,
       customMapTileUrl: form.value.customMapTileUrl?.trim() || '',
       measureUnit: form.value.measureUnit,
-      defaultRedirectUrl: effectiveRedirectUrl,
-      shareLocationWithFriends: form.value.shareLocationWithFriends
+      defaultRedirectUrl: effectiveRedirectUrl
     })
   } finally {
     loading.value = false
@@ -449,7 +427,6 @@ const handleReset = () => {
   form.value.timezone = props.userTimezone || 'UTC'
   form.value.customMapTileUrl = props.userCustomMapTileUrl || ''
   form.value.measureUnit = props.userMeasureUnit || 'METRIC'
-  form.value.shareLocationWithFriends = props.userShareLocationWithFriends ?? true
 
   // Check if the stored URL matches any predefined option
   const userRedirectUrl = props.userDefaultRedirectUrl || ''
@@ -485,7 +462,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit, props.userDefaultRedirectUrl, props.userShareLocationWithFriends], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 </script>
