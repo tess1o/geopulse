@@ -508,6 +508,7 @@ watch(pathData, () => {
   .right-pane {
     flex: 1;
     width: 100%;
+    min-height: 0;
     margin-top: 0;
     overflow-y: auto !important;
   }
