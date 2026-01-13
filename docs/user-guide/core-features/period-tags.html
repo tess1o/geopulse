@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en" dir="ltr" class="docs-wrapper plugin-docs plugin-id-default docs-version-current docs-doc-page docs-doc-id-user-guide/core-features/period-tags" data-has-hydrated="false">
+<head>
+<meta charset="UTF-8">
+<meta name="generator" content="Docusaurus v3.9.2">
+<title data-rh="true">Period Tags: Organizing Your Timeline | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/user-guide/core-features/period-tags"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Period Tags: Organizing Your Timeline | GeoPulse documentation"><meta data-rh="true" name="description" content="Period Tags allow you to organize your timeline by tagging specific date ranges with custom labels. Whether it&#x27;s a vacation, business trip, or any significant period in your life, Period Tags help you categorize and quickly navigate through your location history."><meta data-rh="true" property="og:description" content="Period Tags allow you to organize your timeline by tagging specific date ranges with custom labels. Whether it&#x27;s a vacation, business trip, or any significant period in your life, Period Tags help you categorize and quickly navigate through your location history."><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/period-tags"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/period-tags" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/user-guide/core-features/period-tags" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Period Tags: Organizing Your Timeline","item":"https://tess1o.github.io/geopulse/docs/user-guide/core-features/period-tags"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
+<script src="/geopulse/assets/js/runtime~main.929db665.js" defer="defer"></script>
+<script src="/geopulse/assets/js/main.c835c5cc.js" defer="defer"></script>
+</head>
+<body class="navigation-with-keyboard">
+<svg style="display: none;"><defs>
+<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
+</defs></svg>
+<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")),document.documentElement.setAttribute("data-theme-choice",t||"system")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div role="region" aria-label="Skip to main content"><a class="skipToContent_fXgn" href="#__docusaurus_skipToContent_fallback">Skip to main content</a></div><nav aria-label="Main" class="theme-layout-navbar navbar navbar--fixed-top"><div class="navbar__inner"><div class="theme-layout-navbar-left navbar__items"><button aria-label="Toggle navigation bar" aria-expanded="false" class="navbar__toggle clean-btn" type="button"><svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><path stroke="currentColor" stroke-linecap="round" stroke-miterlimit="10" stroke-width="2" d="M4 7h22M4 15h22M4 23h22"></path></svg></button><a class="navbar__brand" href="/geopulse/"><div class="navbar__logo"><img src="/geopulse/img/geopulse-logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--light_NVdE"><img src="/geopulse/img/geopulse-logo.svg" alt="My Site Logo" class="themedComponent_mlkZ themedComponent--dark_xIcU"></div><b class="navbar__title text--truncate">GeoPulse</b></a><a aria-current="page" class="navbar__item navbar__link navbar__link--active" href="/geopulse/docs/getting-started/introduction">Documentation</a></div><div class="theme-layout-navbar-right navbar__items navbar__items--right"><a href="https://github.com/tess1o/geopulse" target="_blank" rel="noopener noreferrer" class="navbar__item navbar__link">GitHub<svg width="13.5" height="13.5" aria-label="(opens in new tab)" class="iconExternalLink_nPIU"><use href="#theme-svg-external-link"></use></svg></a><div class="toggle_vylO colorModeToggle_DEke"><button class="clean-btn toggleButton_gllP toggleButtonDisabled_aARS" type="button" disabled="" title="system mode" aria-label="Switch between dark and light mode (currently system mode)"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP lightToggleIcon_pyhR"><path fill="currentColor" d="M12,9c1.65,0,3,1.35,3,3s-1.35,3-3,3s-3-1.35-3-3S10.35,9,12,9 M12,7c-2.76,0-5,2.24-5,5s2.24,5,5,5s5-2.24,5-5 S14.76,7,12,7L12,7z M2,13l2,0c0.55,0,1-0.45,1-1s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S1.45,13,2,13z M20,13l2,0c0.55,0,1-0.45,1-1 s-0.45-1-1-1l-2,0c-0.55,0-1,0.45-1,1S19.45,13,20,13z M11,2v2c0,0.55,0.45,1,1,1s1-0.45,1-1V2c0-0.55-0.45-1-1-1S11,1.45,11,2z M11,20v2c0,0.55,0.45,1,1,1s1-0.45,1-1v-2c0-0.55-0.45-1-1-1C11.45,19,11,19.45,11,20z M5.99,4.58c-0.39-0.39-1.03-0.39-1.41,0 c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0s0.39-1.03,0-1.41L5.99,4.58z M18.36,16.95 c-0.39-0.39-1.03-0.39-1.41,0c-0.39,0.39-0.39,1.03,0,1.41l1.06,1.06c0.39,0.39,1.03,0.39,1.41,0c0.39-0.39,0.39-1.03,0-1.41 L18.36,16.95z M19.42,5.99c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06c-0.39,0.39-0.39,1.03,0,1.41 s1.03,0.39,1.41,0L19.42,5.99z M7.05,18.36c0.39-0.39,0.39-1.03,0-1.41c-0.39-0.39-1.03-0.39-1.41,0l-1.06,1.06 c-0.39,0.39-0.39,1.03,0,1.41s1.03,0.39,1.41,0L7.05,18.36z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP darkToggleIcon_wfgR"><path fill="currentColor" d="M9.37,5.51C9.19,6.15,9.1,6.82,9.1,7.5c0,4.08,3.32,7.4,7.4,7.4c0.68,0,1.35-0.09,1.99-0.27C17.45,17.19,14.93,19,12,19 c-3.86,0-7-3.14-7-7C5,9.07,6.81,6.55,9.37,5.51z M12,3c-4.97,0-9,4.03-9,9s4.03,9,9,9s9-4.03,9-9c0-0.46-0.04-0.92-0.1-1.36 c-0.98,1.37-2.58,2.26-4.4,2.26c-2.98,0-5.4-2.42-5.4-5.4c0-1.81,0.89-3.42,2.26-4.4C12.92,3.04,12.46,3,12,3L12,3z"></path></svg><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" class="toggleIcon_g3eP systemToggleIcon_QzmC"><path fill="currentColor" d="m12 21c4.971 0 9-4.029 9-9s-4.029-9-9-9-9 4.029-9 9 4.029 9 9 9zm4.95-13.95c1.313 1.313 2.05 3.093 2.05 4.95s-0.738 3.637-2.05 4.95c-1.313 1.313-3.093 2.05-4.95 2.05v-14c1.857 0 3.637 0.737 4.95 2.05z"></path></svg></button></div><div class="navbarSearchContainer_Bca1"></div></div></div><div role="presentation" class="navbar-sidebar__backdrop"></div></nav><div id="__docusaurus_skipToContent_fallback" class="theme-layout-main main-wrapper mainWrapper_z2l0"><div class="docsWrapper_hBAB"><button aria-label="Scroll back to top" class="clean-btn theme-back-to-top-button backToTopButton_sjWU" type="button"></button><div class="docRoot_UBD9"><aside class="theme-doc-sidebar-container docSidebarContainer_YfHR"><div class="sidebarViewport_aRkj"><div class="sidebar_njMd"><nav aria-label="Docs sidebar" class="menu thin-scrollbar menu_SIkG"><ul class="theme-doc-sidebar-menu menu__list"><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/getting-started/introduction"><span title="Getting Started" class="categoryLinkLabel_W154">Getting Started</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" href="/geopulse/docs/system-administration/initial-setup"><span title="Configuration &amp; Administration" class="categoryLinkLabel_W154">Configuration &amp; Administration</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-1 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" href="/geopulse/docs/user-guide/interacting-with-data/import-export"><span title="User Guide" class="categoryLinkLabel_W154">User Guide</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-2 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/interacting-with-data/import-export"><span title="Import/Export Data" class="linkLabel_WmDU">Import/Export Data</span></a></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/gps-sources/overview"><span title="GPS Data Sources" class="categoryLinkLabel_W154">GPS Data Sources</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret menu__link--active" role="button" aria-expanded="true" tabindex="0" href="/geopulse/docs/user-guide/core-features/dashboard"><span title="Using GeoPulse" class="categoryLinkLabel_W154">Using GeoPulse</span></a></div><ul class="menu__list"><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/core-features/dashboard"><span title="The Dashboard" class="linkLabel_WmDU">The Dashboard</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/core-features/timeline"><span title="Understanding Your Timeline: How It Works" class="linkLabel_WmDU">Understanding Your Timeline: How It Works</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/stay_detection"><span title="Stay Detection" class="linkLabel_WmDU">Stay Detection</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/trip_detection"><span title="Trip Detection" class="linkLabel_WmDU">Trip Detection</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/travel_classification"><span title="Travel Classification" class="linkLabel_WmDU">Travel Classification</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/timeline/data_gaps"><span title="Data Gaps &amp; Inference Features" class="linkLabel_WmDU">Data Gaps &amp; Inference Features</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link menu__link--active" aria-current="page" tabindex="0" href="/geopulse/docs/user-guide/core-features/period-tags"><span title="Period Tags: Organizing Your Timeline" class="linkLabel_WmDU">Period Tags: Organizing Your Timeline</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/core-features/rewind"><span title="Rewind" class="linkLabel_WmDU">Rewind</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/core-features/journey-insights"><span title="Journey Insights" class="linkLabel_WmDU">Journey Insights</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/core-features/managing-places"><span title="Favorites and Geocoding" class="linkLabel_WmDU">Favorites and Geocoding</span></a></li><li class="theme-doc-sidebar-item-link theme-doc-sidebar-item-link-level-3 menu__list-item"><a class="menu__link" tabindex="0" href="/geopulse/docs/user-guide/using-geopulse/ai-assistant"><span title="AI Assistant" class="linkLabel_WmDU">AI Assistant</span></a></li></ul></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/social-and-sharing/friends"><span title="Sharing &amp; Collaboration" class="categoryLinkLabel_W154">Sharing &amp; Collaboration</span></a></div></li><li class="theme-doc-sidebar-item-category theme-doc-sidebar-item-category-level-2 menu__list-item menu__list-item--collapsed"><div class="menu__list-item-collapsible"><a class="categoryLink_byQd menu__link menu__link--sublist menu__link--sublist-caret" role="button" aria-expanded="false" tabindex="0" href="/geopulse/docs/user-guide/personalization/profile-settings"><span title="Settings &amp; Personalization" class="categoryLinkLabel_W154">Settings &amp; Personalization</span></a></div></li></ul></li></ul></nav></div></div></aside><main class="docMainContainer_TBSr"><div class="container padding-top--md padding-bottom--lg"><div class="row"><div class="col docItemCol_VOVn"><div class="docItemContainer_Djhp"><article><nav class="theme-doc-breadcrumbs breadcrumbsContainer_Z_bl" aria-label="Breadcrumbs"><ul class="breadcrumbs"><li class="breadcrumbs__item"><a aria-label="Home page" class="breadcrumbs__link" href="/geopulse/"><svg viewBox="0 0 24 24" class="breadcrumbHomeIcon_YNFT"><path d="M10 19v-5h4v5c0 .55.45 1 1 1h3c.55 0 1-.45 1-1v-7h1.7c.46 0 .68-.57.33-.87L12.67 3.6c-.38-.34-.96-.34-1.34 0l-8.36 7.53c-.34.3-.13.87.33.87H5v7c0 .55.45 1 1 1h3c.55 0 1-.45 1-1z" fill="currentColor"></path></svg></a></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">User Guide</span></li><li class="breadcrumbs__item"><span class="breadcrumbs__link">Using GeoPulse</span></li><li class="breadcrumbs__item breadcrumbs__item--active"><span class="breadcrumbs__link">Period Tags: Organizing Your Timeline</span></li></ul></nav><div class="tocCollapsible_ETCw theme-doc-toc-mobile tocMobile_ITEo"><button type="button" class="clean-btn tocCollapsibleButton_TO0P">On this page</button></div><div class="theme-doc-markdown markdown"><header><h1>Period Tags: Organizing Your Timeline</h1></header>
+<p>Period Tags allow you to organize your timeline by tagging specific date ranges with custom labels. Whether it&#x27;s a vacation, business trip, or any significant period in your life, Period Tags help you categorize and quickly navigate through your location history.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="what-are-period-tags">What are Period Tags?<a href="#what-are-period-tags" class="hash-link" aria-label="Direct link to What are Period Tags?" title="Direct link to What are Period Tags?" translate="no">​</a></h2>
+<p>Period Tags are user-defined labels that you can attach to specific time periods in your timeline. Think of them as bookmarks or chapters in your location history. Each tag has:</p>
+<ul>
+<li class=""><strong>Tag Name</strong>: A descriptive name (e.g., &quot;Spain Vacation&quot;, &quot;Work Trip to NYC&quot;)</li>
+<li class=""><strong>Date Range</strong>: Start and end dates for the period</li>
+<li class=""><strong>Color</strong>: A visual identifier to quickly spot tagged periods on your timeline</li>
+</ul>
+<p>Period Tags can be created manually or automatically through integrations like OwnTracks.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="creating-period-tags">Creating Period Tags<a href="#creating-period-tags" class="hash-link" aria-label="Direct link to Creating Period Tags" title="Direct link to Creating Period Tags" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="manual-creation">Manual Creation<a href="#manual-creation" class="hash-link" aria-label="Direct link to Manual Creation" title="Direct link to Manual Creation" translate="no">​</a></h3>
+<p>To create a new Period Tag:</p>
+<ol>
+<li class="">
+<p>Navigate to the <strong>Period Tags Management</strong> page (accessible from the main navigation)</p>
+</li>
+<li class="">
+<p>Click the <strong>&quot;Create Period Tag&quot;</strong> button</p>
+</li>
+<li class="">
+<p>Fill in the required information:</p>
+<ul>
+<li class=""><strong>Tag Name</strong> (required): Give your period a descriptive name</li>
+<li class=""><strong>Date Range</strong> (required): Select the start and end dates</li>
+<li class=""><strong>Color</strong>: Choose or randomize a color for visual identification</li>
+</ul>
+</li>
+<li class="">
+<p>Click <strong>&quot;Create&quot;</strong> to save the tag</p>
+</li>
+</ol>
+<div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Random Colors</div><div class="admonitionContent_BuS1"><p>Each new tag automatically gets a random color from a carefully selected palette. You can click the &quot;Random&quot; button to get a different color, or manually choose one using the color picker.</p></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="overlap-detection">Overlap Detection<a href="#overlap-detection" class="hash-link" aria-label="Direct link to Overlap Detection" title="Direct link to Overlap Detection" translate="no">​</a></h3>
+<p>When creating a Period Tag, GeoPulse automatically checks for overlapping periods. If your new tag overlaps with an existing one, you&#x27;ll see a confirmation dialog showing which tags overlap. You can choose to:</p>
+<ul>
+<li class=""><strong>Create Anyway</strong>: Proceed with creating the overlapping tag</li>
+<li class=""><strong>Cancel</strong>: Return to the form to adjust the dates</li>
+</ul>
+<p>This helps you avoid accidentally creating duplicate or conflicting period tags.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="managing-period-tags">Managing Period Tags<a href="#managing-period-tags" class="hash-link" aria-label="Direct link to Managing Period Tags" title="Direct link to Managing Period Tags" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="viewing-your-tags">Viewing Your Tags<a href="#viewing-your-tags" class="hash-link" aria-label="Direct link to Viewing Your Tags" title="Direct link to Viewing Your Tags" translate="no">​</a></h3>
+<p>The Period Tags Management page displays all your tags in a comprehensive table (desktop) or cards (mobile) showing:</p>
+<ul>
+<li class="">Tag name and active status</li>
+<li class="">Source (Manual or OwnTracks)</li>
+<li class="">Color indicator</li>
+<li class="">Start and end dates</li>
+<li class="">Duration</li>
+<li class="">Available actions</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="filtering-and-searching">Filtering and Searching<a href="#filtering-and-searching" class="hash-link" aria-label="Direct link to Filtering and Searching" title="Direct link to Filtering and Searching" translate="no">​</a></h3>
+<p>Find specific tags quickly using the filter options:</p>
+<ul>
+<li class=""><strong>Search</strong>: Type to search by tag name</li>
+<li class=""><strong>Source Filter</strong>: Show only Manual or OwnTracks tags</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="editing-tags">Editing Tags<a href="#editing-tags" class="hash-link" aria-label="Direct link to Editing Tags" title="Direct link to Editing Tags" translate="no">​</a></h3>
+<p>To edit an existing tag:</p>
+<ol>
+<li class="">Click the <strong>Edit</strong> icon (pencil) next to the tag</li>
+<li class="">Modify the desired fields</li>
+<li class="">Click <strong>&quot;Update&quot;</strong> to save changes</li>
+</ol>
+<div class="theme-admonition theme-admonition-warning admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>OwnTracks Active Tags</div><div class="admonitionContent_BuS1"><p>Active tags created by OwnTracks cannot be edited or deleted while they&#x27;re still active. You can only edit or delete them after they&#x27;ve been completed (when you change tags in OwnTracks).</p></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="deleting-tags">Deleting Tags<a href="#deleting-tags" class="hash-link" aria-label="Direct link to Deleting Tags" title="Direct link to Deleting Tags" translate="no">​</a></h3>
+<p>To delete a tag:</p>
+<ol>
+<li class="">Click the <strong>Delete</strong> icon (trash) next to the tag</li>
+<li class="">Confirm the deletion in the dialog</li>
+</ol>
+<p>You can also bulk delete multiple tags:</p>
+<ol>
+<li class="">Select tags using the checkboxes</li>
+<li class="">Click the <strong>&quot;Delete (X)&quot;</strong> button that appears</li>
+<li class="">Confirm the deletion</li>
+</ol>
+<div class="theme-admonition theme-admonition-warning admonition_xJq3 alert alert--warning"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8.893 1.5c-.183-.31-.52-.5-.887-.5s-.703.19-.886.5L.138 13.499a.98.98 0 0 0 0 1.001c.193.31.53.501.886.501h13.964c.367 0 .704-.19.877-.5a1.03 1.03 0 0 0 .01-1.002L8.893 1.5zm.133 11.497H6.987v-2.003h2.039v2.003zm0-3.004H6.987V5.987h2.039v4.006z"></path></svg></span>Active Tags Protection</div><div class="admonitionContent_BuS1"><p>You cannot delete active OwnTracks tags. The bulk delete operation will warn you if you&#x27;ve selected any active tags and prevent the deletion.</p></div></div>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="viewing-timeline-for-a-tag">Viewing Timeline for a Tag<a href="#viewing-timeline-for-a-tag" class="hash-link" aria-label="Direct link to Viewing Timeline for a Tag" title="Direct link to Viewing Timeline for a Tag" translate="no">​</a></h3>
+<p>To quickly view the timeline for a specific period:</p>
+<ol>
+<li class="">Click the <strong>Calendar</strong> icon next to the tag</li>
+<li class="">You&#x27;ll be redirected to the Timeline page with the date range automatically set to the tag&#x27;s period</li>
+</ol>
+<p>This is perfect for reviewing your activities during a specific vacation or trip.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="color-coding">Color Coding<a href="#color-coding" class="hash-link" aria-label="Direct link to Color Coding" title="Direct link to Color Coding" translate="no">​</a></h2>
+<p>Each tag has a color that appears:</p>
+<ul>
+<li class="">In the Period Tags management table or cards</li>
+<li class="">On the timeline when viewing that period</li>
+<li class="">In any visualizations or reports</li>
+</ul>
+<p>The color palette includes 20 carefully selected colors that are:</p>
+<ul>
+<li class="">Visually distinct from each other</li>
+<li class="">Accessible and readable</li>
+<li class="">Aesthetically pleasing</li>
+</ul>
+<p>You can:</p>
+<ul>
+<li class="">Use similar colors for related periods (e.g., all vacations in blue tones)</li>
+<li class="">Choose distinctive colors for important periods</li>
+<li class="">Keep the default random colors for variety</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="owntracks-integration">OwnTracks Integration<a href="#owntracks-integration" class="hash-link" aria-label="Direct link to OwnTracks Integration" title="Direct link to OwnTracks Integration" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="automatic-tag-creation">Automatic Tag Creation<a href="#automatic-tag-creation" class="hash-link" aria-label="Direct link to Automatic Tag Creation" title="Direct link to Automatic Tag Creation" translate="no">​</a></h3>
+<p>If you use OwnTracks as a GPS source, you can create Period Tags directly from your mobile device:</p>
+<ol>
+<li class="">Open OwnTracks app on your phone</li>
+<li class="">Go to Share -&gt; Set tag</li>
+<li class="">Set a tag (e.g., &quot;Vacation Mode&quot;)</li>
+</ol>
+<p>GeoPulse will automatically:</p>
+<ul>
+<li class="">Create a new Period Tag when you set a tag in OwnTracks</li>
+<li class="">Mark the tag as &quot;Active&quot; (no end date yet)</li>
+<li class="">Set the source to &quot;OwnTracks&quot;</li>
+<li class="">Automatically end the tag when you change or clear it in OwnTracks</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="active-tags">Active Tags<a href="#active-tags" class="hash-link" aria-label="Direct link to Active Tags" title="Direct link to Active Tags" translate="no">​</a></h3>
+<p>OwnTracks tags that are currently active:</p>
+<ul>
+<li class="">Display with an <strong>&quot;Active&quot;</strong> badge</li>
+<li class="">Show &quot;Since [date]&quot; instead of an end date</li>
+<li class="">Cannot be edited or deleted manually (to maintain sync with OwnTracks)</li>
+<li class="">Automatically update when you change tags in OwnTracks</li>
+</ul>
+<p>When you change or clear the tag in OwnTracks:</p>
+<ul>
+<li class="">The current tag automatically gets an end date</li>
+<li class="">A new tag starts if you set a different one</li>
+<li class="">Completed tags can then be edited or deleted manually</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="benefits-of-owntracks-integration">Benefits of OwnTracks Integration<a href="#benefits-of-owntracks-integration" class="hash-link" aria-label="Direct link to Benefits of OwnTracks Integration" title="Direct link to Benefits of OwnTracks Integration" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>No manual entry</strong>: Tag periods automatically as they happen</li>
+<li class=""><strong>Real-time updates</strong>: Changes in OwnTracks immediately reflect in GeoPulse</li>
+<li class=""><strong>Mobile convenience</strong>: Create tags on-the-go from your phone</li>
+<li class=""><strong>Automatic completion</strong>: Tags end automatically when you&#x27;re done</li>
+</ul>
+<div class="theme-admonition theme-admonition-tip admonition_xJq3 alert alert--success"><div class="admonitionHeading_Gvgb"><span class="admonitionIcon_Rf37"><svg viewBox="0 0 12 16"><path fill-rule="evenodd" d="M6.5 0C3.48 0 1 2.19 1 5c0 .92.55 2.25 1 3 1.34 2.25 1.78 2.78 2 4v1h5v-1c.22-1.22.66-1.75 2-4 .45-.75 1-2.08 1-3 0-2.81-2.48-5-5.5-5zm3.64 7.48c-.25.44-.47.8-.67 1.11-.86 1.41-1.25 2.06-1.45 3.23-.02.05-.02.11-.02.17H5c0-.06 0-.13-.02-.17-.2-1.17-.59-1.83-1.45-3.23-.2-.31-.42-.67-.67-1.11C2.44 6.78 2 5.65 2 5c0-2.2 2.02-4 4.5-4 1.22 0 2.36.42 3.22 1.19C10.55 2.94 11 3.94 11 5c0 .66-.44 1.78-.86 2.48zM4 14h5c-.23 1.14-1.3 2-2.5 2s-2.27-.86-2.5-2z"></path></svg></span>Learn More</div><div class="admonitionContent_BuS1"><p>For detailed information about setting up OwnTracks integration, see the <strong><a class="" href="/geopulse/docs/user-guide/gps-sources/owntracks">OwnTracks GPS Source Guide</a></strong>.</p></div></div>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="using-period-tags-in-your-timeline">Using Period Tags in Your Timeline<a href="#using-period-tags-in-your-timeline" class="hash-link" aria-label="Direct link to Using Period Tags in Your Timeline" title="Direct link to Using Period Tags in Your Timeline" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timeline-integration">Timeline Integration<a href="#timeline-integration" class="hash-link" aria-label="Direct link to Timeline Integration" title="Direct link to Timeline Integration" translate="no">​</a></h3>
+<p>When viewing your timeline with an active Period Tag:</p>
+<ol>
+<li class="">Navigate to the Timeline page</li>
+<li class="">If a Period Tag covers the selected date range, you&#x27;ll see:<!-- -->
+<ul>
+<li class="">A visual indicator showing the tagged period</li>
+<li class="">The tag name</li>
+<li class="">Easy access to tag details</li>
+</ul>
+</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="quick-navigation">Quick Navigation<a href="#quick-navigation" class="hash-link" aria-label="Direct link to Quick Navigation" title="Direct link to Quick Navigation" translate="no">​</a></h3>
+<p>Period Tags make it easy to jump to specific periods in your timeline:</p>
+<ol>
+<li class="">From the Period Tags page, click the calendar icon</li>
+<li class="">The timeline automatically loads with the tag&#x27;s date range</li>
+<li class="">You can immediately see all activities during that period</li>
+</ol>
+<p>This is especially useful for:</p>
+<ul>
+<li class="">Reviewing vacation memories</li>
+<li class="">Analyzing work trips</li>
+<li class="">Comparing different time periods</li>
+<li class="">Sharing specific periods with others</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="best-practices">Best Practices<a href="#best-practices" class="hash-link" aria-label="Direct link to Best Practices" title="Direct link to Best Practices" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="naming-conventions">Naming Conventions<a href="#naming-conventions" class="hash-link" aria-label="Direct link to Naming Conventions" title="Direct link to Naming Conventions" translate="no">​</a></h3>
+<p>Create clear, descriptive tag names that include context:</p>
+<ul>
+<li class="">✅ &quot;Summer Vacation 2026 - Italy&quot;</li>
+<li class="">✅ &quot;Client Visit - Tokyo Office&quot;</li>
+<li class="">✅ &quot;Annual Conference - San Francisco&quot;</li>
+<li class="">✅ &quot;Work Trip: Boston&quot;</li>
+<li class="">✅ &quot;Family Reunion - Miami&quot;</li>
+<li class="">❌ &quot;Trip&quot;</li>
+<li class="">❌ &quot;Vacation&quot;</li>
+<li class="">❌ &quot;Meeting&quot;</li>
+</ul>
+<p><strong>Why descriptive names matter:</strong></p>
+<ul>
+<li class="">You&#x27;ll have many tags over time - specific names help you find them quickly</li>
+<li class="">Tag names appear in search results and timeline views</li>
+<li class="">Clear names make it easier to share periods with others</li>
+</ul>
+<p><strong>Suggested naming patterns:</strong></p>
+<ul>
+<li class="">For vacations: <code>&quot;Vacation: [Destination] [Year]&quot;</code> (e.g., &quot;Vacation: Spain 2026&quot;)</li>
+<li class="">For work trips: <code>&quot;Work Trip: [City/Client]&quot;</code> (e.g., &quot;Work Trip: NYC - Acme Corp&quot;)</li>
+<li class="">For events: <code>&quot;[Event Type]: [Name]&quot;</code> (e.g., &quot;Conference: DevCon 2026&quot;)</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="color-usage">Color Usage<a href="#color-usage" class="hash-link" aria-label="Direct link to Color Usage" title="Direct link to Color Usage" translate="no">​</a></h3>
+<p>Make your tags visually distinctive:</p>
+<ul>
+<li class=""><strong>Group related trips</strong>: Use similar color tones for the same type of activity<!-- -->
+<ul>
+<li class="">Blue tones for vacations</li>
+<li class="">Green tones for work trips</li>
+<li class="">Orange tones for events</li>
+</ul>
+</li>
+<li class=""><strong>Highlight important periods</strong>: Use bright, distinctive colors for significant trips</li>
+<li class=""><strong>Keep it simple</strong>: Don&#x27;t overthink it - the random colors work great for most cases</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="regular-maintenance">Regular Maintenance<a href="#regular-maintenance" class="hash-link" aria-label="Direct link to Regular Maintenance" title="Direct link to Regular Maintenance" translate="no">​</a></h3>
+<p>Periodically review your tags:</p>
+<ul>
+<li class="">Delete duplicate or unnecessary tags</li>
+<li class="">Update tags with more descriptive names</li>
+<li class="">Merge overlapping tags that represent the same period</li>
+<li class="">Archive or document significant periods</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="statistics-and-insights">Statistics and Insights<a href="#statistics-and-insights" class="hash-link" aria-label="Direct link to Statistics and Insights" title="Direct link to Statistics and Insights" translate="no">​</a></h2>
+<p>The Period Tags page header shows helpful statistics:</p>
+<ul>
+<li class=""><strong>Total Periods</strong>: Number of tagged periods</li>
+<li class=""><strong>Days Tagged</strong>: Total number of days covered by all tags</li>
+</ul>
+<p>These stats help you understand how well you&#x27;re using Period Tags to organize your timeline.</p>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="common-use-cases">Common Use Cases<a href="#common-use-cases" class="hash-link" aria-label="Direct link to Common Use Cases" title="Direct link to Common Use Cases" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="vacation-tracking">Vacation Tracking<a href="#vacation-tracking" class="hash-link" aria-label="Direct link to Vacation Tracking" title="Direct link to Vacation Tracking" translate="no">​</a></h3>
+<p>Tag your vacations to:</p>
+<ul>
+<li class="">Quickly review trip highlights</li>
+<li class="">Compare different vacation destinations</li>
+<li class="">Share vacation timelines with friends</li>
+<li class="">Build a history of your travels</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="work-travel-management">Work Travel Management<a href="#work-travel-management" class="hash-link" aria-label="Direct link to Work Travel Management" title="Direct link to Work Travel Management" translate="no">​</a></h3>
+<p>Track business trips to:</p>
+<ul>
+<li class="">Monitor travel frequency</li>
+<li class="">Analyze time spent in different locations</li>
+<li class="">Generate expense reports</li>
+<li class="">Review client visits</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="event-documentation">Event Documentation<a href="#event-documentation" class="hash-link" aria-label="Direct link to Event Documentation" title="Direct link to Event Documentation" translate="no">​</a></h3>
+<p>Tag significant events like:</p>
+<ul>
+<li class="">Conferences and seminars</li>
+<li class="">Family gatherings</li>
+<li class="">Sporting events</li>
+<li class="">Festivals and concerts</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="project-time-tracking">Project Time Tracking<a href="#project-time-tracking" class="hash-link" aria-label="Direct link to Project Time Tracking" title="Direct link to Project Time Tracking" translate="no">​</a></h3>
+<p>Use tags for time-based projects:</p>
+<ul>
+<li class="">Field research periods</li>
+<li class="">Construction projects</li>
+<li class="">Temporary assignments</li>
+<li class="">Volunteer work</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="tips-and-tricks">Tips and Tricks<a href="#tips-and-tricks" class="hash-link" aria-label="Direct link to Tips and Tricks" title="Direct link to Tips and Tricks" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="bulk-organization">Bulk Organization<a href="#bulk-organization" class="hash-link" aria-label="Direct link to Bulk Organization" title="Direct link to Bulk Organization" translate="no">​</a></h3>
+<p>When organizing historical data:</p>
+<ol>
+<li class="">Start with major periods (vacations, relocations)</li>
+<li class="">Add work-related tags next</li>
+<li class="">Fill in smaller events as needed</li>
+<li class="">Use filters to review and refine</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="timeline-sharing">Timeline Sharing<a href="#timeline-sharing" class="hash-link" aria-label="Direct link to Timeline Sharing" title="Direct link to Timeline Sharing" translate="no">​</a></h3>
+<p>Combine Period Tags with Public Links:</p>
+<ol>
+<li class="">Create a tag for the period you want to share</li>
+<li class="">Use the tag&#x27;s date range to set up a public link</li>
+<li class="">Share memorable trips with friends and family</li>
+</ol>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="search-integration">Search Integration<a href="#search-integration" class="hash-link" aria-label="Direct link to Search Integration" title="Direct link to Search Integration" translate="no">​</a></h3>
+<p>Use the search bar to find specific tags:</p>
+<ul>
+<li class="">Search by tag name</li>
+<li class="">Search by location names mentioned in the tag name</li>
+<li class="">Filter by source (Manual or OwnTracks)</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="mobile-friendly">Mobile-Friendly<a href="#mobile-friendly" class="hash-link" aria-label="Direct link to Mobile-Friendly" title="Direct link to Mobile-Friendly" translate="no">​</a></h3>
+<p>On mobile devices, tags are displayed as cards instead of a table:</p>
+<ul>
+<li class="">Each card shows all tag information in an easy-to-read format</li>
+<li class="">Tap actions are larger for easier interaction</li>
+<li class="">Checkboxes allow bulk selection on mobile</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="troubleshooting">Troubleshooting<a href="#troubleshooting" class="hash-link" aria-label="Direct link to Troubleshooting" title="Direct link to Troubleshooting" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="tag-not-appearing-on-timeline">Tag Not Appearing on Timeline<a href="#tag-not-appearing-on-timeline" class="hash-link" aria-label="Direct link to Tag Not Appearing on Timeline" title="Direct link to Tag Not Appearing on Timeline" translate="no">​</a></h3>
+<p>If your Period Tag isn&#x27;t showing on the timeline:</p>
+<ul>
+<li class="">Verify the date range matches your timeline view</li>
+<li class="">Check that the tag was successfully created</li>
+<li class="">Refresh the timeline page</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="owntracks-tag-not-syncing">OwnTracks Tag Not Syncing<a href="#owntracks-tag-not-syncing" class="hash-link" aria-label="Direct link to OwnTracks Tag Not Syncing" title="Direct link to OwnTracks Tag Not Syncing" translate="no">​</a></h3>
+<p>If OwnTracks tags aren&#x27;t appearing:</p>
+<ul>
+<li class="">Verify OwnTracks integration is properly configured</li>
+<li class="">Check your OwnTracks app settings</li>
+<li class="">Ensure the OwnTracks service is running</li>
+<li class="">See the OwnTracks integration documentation</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="overlapping-tags">Overlapping Tags<a href="#overlapping-tags" class="hash-link" aria-label="Direct link to Overlapping Tags" title="Direct link to Overlapping Tags" translate="no">​</a></h3>
+<p>If you have overlapping tags:</p>
+<ul>
+<li class="">This is allowed and can be intentional (e.g., a conference during a vacation)</li>
+<li class="">Use descriptive tag names to distinguish different aspects of the same period</li>
+<li class="">Review and merge if they represent the same period</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="cant-edit-or-delete-a-tag">Can&#x27;t Edit or Delete a Tag<a href="#cant-edit-or-delete-a-tag" class="hash-link" aria-label="Direct link to Can&#x27;t Edit or Delete a Tag" title="Direct link to Can&#x27;t Edit or Delete a Tag" translate="no">​</a></h3>
+<p>If you can&#x27;t edit or delete a tag:</p>
+<ul>
+<li class="">Check if it&#x27;s an active OwnTracks tag (can&#x27;t edit or delete while active)</li>
+<li class="">Wait for the tag to complete in OwnTracks (change or clear the tag in the app)</li>
+<li class="">Once completed, you can edit or delete the tag</li>
+</ul>
+<hr>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="related-features">Related Features<a href="#related-features" class="hash-link" aria-label="Direct link to Related Features" title="Direct link to Related Features" translate="no">​</a></h2>
+<p>Period Tags work well with other GeoPulse features:</p>
+<ul>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/core-features/timeline">Timeline</a></strong>: View tagged periods in context</li>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/core-features/dashboard">Dashboard</a></strong>: See statistics for tagged periods</li>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/social-and-sharing/public-links">Public Links</a></strong>: Share specific tagged periods</li>
+<li class=""><strong><a class="" href="/geopulse/docs/user-guide/gps-sources/owntracks">OwnTracks Integration</a></strong>: Automatic tag creation</li>
+</ul></div></article><nav class="docusaurus-mt-lg pagination-nav" aria-label="Docs pages"><a class="pagination-nav__link pagination-nav__link--prev" href="/geopulse/docs/user-guide/timeline/data_gaps"><div class="pagination-nav__sublabel">Previous</div><div class="pagination-nav__label">Data Gaps &amp; Inference Features</div></a><a class="pagination-nav__link pagination-nav__link--next" href="/geopulse/docs/user-guide/core-features/rewind"><div class="pagination-nav__sublabel">Next</div><div class="pagination-nav__label">Rewind</div></a></nav></div></div><div class="col col--3"><div class="tableOfContents_bqdL thin-scrollbar theme-doc-toc-desktop"><ul class="table-of-contents table-of-contents__left-border"><li><a href="#what-are-period-tags" class="table-of-contents__link toc-highlight">What are Period Tags?</a></li><li><a href="#creating-period-tags" class="table-of-contents__link toc-highlight">Creating Period Tags</a><ul><li><a href="#manual-creation" class="table-of-contents__link toc-highlight">Manual Creation</a></li><li><a href="#overlap-detection" class="table-of-contents__link toc-highlight">Overlap Detection</a></li></ul></li><li><a href="#managing-period-tags" class="table-of-contents__link toc-highlight">Managing Period Tags</a><ul><li><a href="#viewing-your-tags" class="table-of-contents__link toc-highlight">Viewing Your Tags</a></li><li><a href="#filtering-and-searching" class="table-of-contents__link toc-highlight">Filtering and Searching</a></li><li><a href="#editing-tags" class="table-of-contents__link toc-highlight">Editing Tags</a></li><li><a href="#deleting-tags" class="table-of-contents__link toc-highlight">Deleting Tags</a></li><li><a href="#viewing-timeline-for-a-tag" class="table-of-contents__link toc-highlight">Viewing Timeline for a Tag</a></li></ul></li><li><a href="#color-coding" class="table-of-contents__link toc-highlight">Color Coding</a></li><li><a href="#owntracks-integration" class="table-of-contents__link toc-highlight">OwnTracks Integration</a><ul><li><a href="#automatic-tag-creation" class="table-of-contents__link toc-highlight">Automatic Tag Creation</a></li><li><a href="#active-tags" class="table-of-contents__link toc-highlight">Active Tags</a></li><li><a href="#benefits-of-owntracks-integration" class="table-of-contents__link toc-highlight">Benefits of OwnTracks Integration</a></li></ul></li><li><a href="#using-period-tags-in-your-timeline" class="table-of-contents__link toc-highlight">Using Period Tags in Your Timeline</a><ul><li><a href="#timeline-integration" class="table-of-contents__link toc-highlight">Timeline Integration</a></li><li><a href="#quick-navigation" class="table-of-contents__link toc-highlight">Quick Navigation</a></li></ul></li><li><a href="#best-practices" class="table-of-contents__link toc-highlight">Best Practices</a><ul><li><a href="#naming-conventions" class="table-of-contents__link toc-highlight">Naming Conventions</a></li><li><a href="#color-usage" class="table-of-contents__link toc-highlight">Color Usage</a></li><li><a href="#regular-maintenance" class="table-of-contents__link toc-highlight">Regular Maintenance</a></li></ul></li><li><a href="#statistics-and-insights" class="table-of-contents__link toc-highlight">Statistics and Insights</a></li><li><a href="#common-use-cases" class="table-of-contents__link toc-highlight">Common Use Cases</a><ul><li><a href="#vacation-tracking" class="table-of-contents__link toc-highlight">Vacation Tracking</a></li><li><a href="#work-travel-management" class="table-of-contents__link toc-highlight">Work Travel Management</a></li><li><a href="#event-documentation" class="table-of-contents__link toc-highlight">Event Documentation</a></li><li><a href="#project-time-tracking" class="table-of-contents__link toc-highlight">Project Time Tracking</a></li></ul></li><li><a href="#tips-and-tricks" class="table-of-contents__link toc-highlight">Tips and Tricks</a><ul><li><a href="#bulk-organization" class="table-of-contents__link toc-highlight">Bulk Organization</a></li><li><a href="#timeline-sharing" class="table-of-contents__link toc-highlight">Timeline Sharing</a></li><li><a href="#search-integration" class="table-of-contents__link toc-highlight">Search Integration</a></li><li><a href="#mobile-friendly" class="table-of-contents__link toc-highlight">Mobile-Friendly</a></li></ul></li><li><a href="#troubleshooting" class="table-of-contents__link toc-highlight">Troubleshooting</a><ul><li><a href="#tag-not-appearing-on-timeline" class="table-of-contents__link toc-highlight">Tag Not Appearing on Timeline</a></li><li><a href="#owntracks-tag-not-syncing" class="table-of-contents__link toc-highlight">OwnTracks Tag Not Syncing</a></li><li><a href="#overlapping-tags" class="table-of-contents__link toc-highlight">Overlapping Tags</a></li><li><a href="#cant-edit-or-delete-a-tag" class="table-of-contents__link toc-highlight">Can&#39;t Edit or Delete a Tag</a></li></ul></li><li><a href="#related-features" class="table-of-contents__link toc-highlight">Related Features</a></li></ul></div></div></div></div></main></div></div></div></div>
+</body>
+</html>
