@@ -13,17 +13,17 @@
     --gp-primary-dark: #1e40af;
     --gp-primary-hover: #1c4ed8;
     --gp-primary-active: #1d4ed8;
-    
+
     /* Secondary Colors */
     --gp-secondary: #10b981;
     --gp-secondary-light: #34d399;
     --gp-secondary-dark: #059669;
-    
+
     /* Map Colors */
     --gp-map-accent: #00bcd4;
     --gp-map-accent-light: rgba(0, 188, 212, 0.7);
     --gp-map-accent-bg: rgba(0, 188, 212, 0.1);
-    
+
     /* Timeline Colors */
     --gp-timeline-blue: rgba(30, 64, 175, 0.15);
     --gp-timeline-blue-light: rgba(219, 234, 254, 0.5);
@@ -33,7 +33,7 @@
     --gp-timeline-orange-light: rgba(254, 243, 199, 0.5);
     --gp-timeline-purple: rgba(139, 92, 246, 0.15);
     --gp-timeline-purple-light: rgba(237, 233, 254, 0.5);
-    
+
     /* Neutral Colors */
     --gp-text-primary: #1e293b;
     --gp-text-secondary: #64748b;
@@ -47,7 +47,7 @@
     --gp-surface-gray: #f1f5f9;
     --gp-surface-dark: #1e293b;
     --gp-surface-darker: #0f172a;
-    
+
     /* Status Colors */
     --gp-success: #10b981;
     --gp-success-light: #f0fdf4;
@@ -62,7 +62,7 @@
     --gp-info: #06b6d4;
     --gp-info-light: #f0f9ff;
     --gp-info-dark: #0284c7;
-    
+
     /* Shadows */
     --gp-shadow-light: 0 1px 3px rgba(0, 0, 0, 0.05);
     --gp-shadow-medium: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -73,13 +73,13 @@
     --gp-shadow-button: 0 2px 4px rgba(26, 86, 219, 0.1);
     --gp-shadow-button-hover: 0 4px 8px rgba(26, 86, 219, 0.15);
     --gp-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.05);
-    
+
     /* Border Radius */
     --gp-radius-small: 4px;
     --gp-radius-medium: 8px;
     --gp-radius-large: 12px;
     --gp-radius-pill: 20px;
-    
+
     /* Spacing */
     --gp-spacing-xs: 0.25rem;
     --gp-spacing-sm: 0.5rem;
@@ -129,11 +129,11 @@ body {
         flex: 1;
         padding: 1rem;
     }
-    
+
     /* ================================
        COMPONENT UTILITY CLASSES
        ================================ */
-    
+
     /* Card Base */
     .gp-card {
         background: var(--gp-surface-white);
@@ -141,7 +141,7 @@ body {
         border: 1px solid var(--gp-border-light);
         box-shadow: var(--gp-shadow-card);
     }
-    
+
     /* Card Header */
     .gp-card-header {
         display: flex;
@@ -150,7 +150,7 @@ body {
         padding: var(--gp-spacing-lg);
         border-bottom: 1px solid var(--gp-border-light);
     }
-    
+
     /* Card Title */
     .gp-card-title {
         color: var(--gp-primary);
@@ -159,7 +159,7 @@ body {
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-    
+
     /* Period Badge */
     .gp-period-badge {
         background: var(--gp-primary);
@@ -169,7 +169,7 @@ body {
         font-size: 0.75rem;
         font-weight: 600;
     }
-    
+
     /* Metric Layout */
     .gp-metric-item {
         display: flex;
@@ -177,7 +177,7 @@ body {
         padding: var(--gp-spacing-md) 0;
         gap: var(--gp-spacing-md);
     }
-    
+
     .gp-metric-icon {
         width: 32px;
         height: 32px;
@@ -188,19 +188,19 @@ body {
         background: var(--gp-primary);
         color: white;
     }
-    
+
     .gp-metric-value {
         font-size: 1.25rem;
         font-weight: 700;
         color: var(--gp-text-primary);
     }
-    
+
     .gp-metric-label {
         font-size: 0.875rem;
         color: var(--gp-text-secondary);
         margin: 0;
     }
-    
+
     /* Button Styles */
     .gp-btn-primary {
         background: var(--gp-primary);
@@ -211,14 +211,14 @@ body {
         font-weight: 600;
         transition: all 0.2s ease;
     }
-    
+
     .gp-btn-primary:hover {
         background: var(--gp-primary-hover);
         border-color: var(--gp-primary-hover);
         transform: translateY(-1px);
         box-shadow: var(--gp-shadow-medium);
     }
-    
+
     .gp-btn-secondary {
         background: transparent;
         color: var(--gp-primary);
@@ -228,12 +228,12 @@ body {
         font-weight: 600;
         transition: all 0.2s ease;
     }
-    
+
     .gp-btn-secondary:hover {
         background: var(--gp-primary);
         color: white;
     }
-    
+
     /* Form Input Styles */
     .gp-input {
         border-radius: var(--gp-radius-medium);
@@ -241,29 +241,29 @@ body {
         padding: var(--gp-spacing-md) var(--gp-spacing-lg);
         transition: all 0.2s ease;
     }
-    
+
     .gp-input:focus {
         border-color: var(--gp-primary);
         box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
     }
-    
+
     /* Text Utilities */
     .gp-text-primary { color: var(--gp-text-primary); }
     .gp-text-secondary { color: var(--gp-text-secondary); }
     .gp-text-muted { color: var(--gp-text-muted); }
     .gp-text-brand { color: var(--gp-primary); }
-    
+
     /* Background Utilities */
     .gp-bg-primary { background-color: var(--gp-primary); }
     .gp-bg-surface { background-color: var(--gp-surface-white); }
     .gp-bg-light { background-color: var(--gp-surface-light); }
-    
+
     /* Status Utilities */
     .gp-success { color: var(--gp-success); }
     .gp-warning { color: var(--gp-warning); }
     .gp-error { color: var(--gp-error); }
     .gp-info { color: var(--gp-info); }
-    
+
     /* ================================
        DARK MODE TAB FIXES
        ================================ */
@@ -302,7 +302,7 @@ body {
         background: var(--gp-primary) !important;
         color: #ffffff !important;
     }
-    
+
     /* TabMenu Width Fix - Ensure proper container sizing */
     .p-tabmenu {
         width: 100% !important;
@@ -311,101 +311,101 @@ body {
         padding: 0 !important;
         box-sizing: border-box !important;
     }
-    
+
     /* TabContainer Dark Mode - Content Area */
     .p-dark .gp-tab-content {
         background: var(--gp-surface-white) !important;
         border-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .gp-tab-menu {
         border-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-tabmenu .p-tabmenu-tablist {
         background: var(--gp-surface-dark) !important;
         border-bottom-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-tabmenu .p-tabmenu-item .p-tabmenu-item-link {
         background-color: var(--gp-surface-darker) !important;
         border-color: var(--gp-border-dark) !important;
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-tabmenu .p-tabmenu-item:not(.p-tabmenu-item-active) .p-tabmenu-item-link:hover {
         background-color: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-medium) !important;
         color: var(--gp-primary-light) !important;
     }
-    
+
     .p-dark .p-tabmenu .p-tabmenu-item.p-tabmenu-item-active .p-tabmenu-item-link {
         background-color: var(--gp-primary) !important;
         border-color: var(--gp-primary) !important;
         color: white !important;
     }
-    
+
     /* PrimeVue Tabs Dark Mode */
     .p-dark .p-tabs-nav {
         background: var(--gp-surface-dark) !important;
         border-bottom-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-tabs-tab {
         background: transparent !important;
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-tabs-tab:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-tabs-tab.p-highlight {
         color: var(--gp-primary-light) !important;
         border-bottom-color: var(--gp-primary) !important;
     }
-    
+
     .p-dark .p-tabs-panels {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
     }
-    
+
     /* PrimeVue Input Components Dark Mode */
     .p-dark .p-inputtext {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-inputtext:focus {
         border-color: var(--gp-primary) !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
-    
+
     .p-dark .p-inputtext:hover {
         border-color: var(--gp-border-medium) !important;
     }
-    
+
     .p-dark .p-inputtext::placeholder {
         color: var(--gp-text-muted) !important;
     }
-    
+
     .p-dark .p-inputtext:disabled {
         background: var(--gp-surface-darker) !important;
         color: var(--gp-text-muted) !important;
         border-color: var(--gp-border-dark) !important;
     }
-    
+
     /* ================================
        TOAST MESSAGES GLOBAL STYLING
        ================================ */
-    
+
     /* Toast Container */
     .p-toast {
         z-index: 9999 !important;
     }
-    
+
     /* Toast Message Styling */
     .p-toast-message {
         border-radius: var(--gp-radius-medium) !important;
@@ -413,116 +413,116 @@ body {
         border: 1px solid var(--gp-border-light) !important;
         margin-bottom: var(--gp-spacing-sm) !important;
     }
-    
+
     /* Toast Message Content */
     .p-toast-message-content {
         padding: var(--gp-spacing-lg) !important;
         border-radius: var(--gp-radius-medium) !important;
     }
-    
+
     /* Toast Text */
     .p-toast-summary {
         font-weight: 600 !important;
         font-size: 0.875rem !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-toast-detail {
         font-size: 0.8rem !important;
         color: var(--gp-text-secondary) !important;
         margin-top: var(--gp-spacing-xs) !important;
     }
-    
+
     /* Toast Severity Colors */
     .p-toast-message-info {
         background: var(--gp-info-light) !important;
         border-color: var(--gp-info) !important;
     }
-    
+
     .p-toast-message-success {
         background: var(--gp-success-light) !important;
         border-color: var(--gp-success) !important;
     }
-    
+
     .p-toast-message-warn {
         background: var(--gp-warning-light) !important;
         border-color: var(--gp-warning) !important;
     }
-    
+
     .p-toast-message-error {
         background: var(--gp-danger-light) !important;
         border-color: var(--gp-danger) !important;
     }
-    
+
     /* Dark Mode Toast Styling */
     .p-dark .p-toast-message {
         border-color: var(--gp-border-dark) !important;
         box-shadow: var(--gp-shadow-medium) !important;
     }
-    
+
     .p-dark .p-toast-summary {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-toast-detail {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-toast-message-info {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-info) !important;
     }
-    
+
     .p-dark .p-toast-message-success {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-success) !important;
     }
-    
+
     .p-dark .p-toast-message-warn {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-warning) !important;
     }
-    
+
     .p-dark .p-toast-message-error {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-danger) !important;
     }
-    
+
     /* Toast Icons */
     .p-toast-icon {
         font-size: 1.1rem !important;
         margin-right: var(--gp-spacing-sm) !important;
     }
-    
+
     /* ================================
        FLOATLABEL DARK MODE FIX
        ================================ */
-    
+
     /* FloatLabel Dark Mode */
     .p-dark .p-floatlabel label {
         background: transparent !important;
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-floatlabel:focus-within label {
         color: var(--gp-primary-light) !important;
         background: transparent !important;
     }
-    
+
     .p-dark .p-floatlabel.p-variant-on label {
         background: transparent !important;
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-floatlabel.p-variant-on:focus-within label {
         color: var(--gp-primary-light) !important;
         background: transparent !important;
     }
-    
+
     /* ================================
        DATEPICKER POPUP DARK MODE FIX
        ================================ */
-    
+
     /* DatePicker Panel (Top-level container) */
     .p-dark .p-datepicker-panel {
         background: var(--gp-surface-dark) !important;
@@ -530,7 +530,7 @@ body {
         box-shadow: var(--gp-shadow-medium) !important;
         border-radius: var(--gp-radius-medium) !important;
     }
-    
+
     /* DatePicker Popup Container */
     .p-dark .p-datepicker-calendar-container {
         background: var(--gp-surface-dark) !important;
@@ -539,11 +539,11 @@ body {
         box-shadow: var(--gp-shadow-medium) !important;
         border-radius: var(--gp-radius-medium) !important;
     }
-    
+
     .p-dark .p-datepicker-calendar {
         background: var(--gp-surface-dark) !important;
     }
-    
+
     /* DatePicker Header */
     .p-dark .p-datepicker-header {
         background: var(--gp-surface-dark) !important;
@@ -551,12 +551,12 @@ body {
         color: var(--gp-text-primary) !important;
         padding: var(--gp-spacing-md) !important;
     }
-    
+
     /* DatePicker Title */
     .p-dark .p-datepicker-title {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-datepicker-select-month,
     .p-dark .p-datepicker-select-year {
         background: transparent !important;
@@ -564,13 +564,13 @@ body {
         border: none !important;
         font-weight: 600 !important;
     }
-    
+
     .p-dark .p-datepicker-select-month:hover,
     .p-dark .p-datepicker-select-year:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-primary-light) !important;
     }
-    
+
     /* Navigation Buttons */
     .p-dark .p-datepicker-prev-button,
     .p-dark .p-datepicker-next-button {
@@ -578,63 +578,63 @@ body {
         border: none !important;
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-datepicker-prev-button:hover,
     .p-dark .p-datepicker-next-button:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-primary-light) !important;
     }
-    
+
     /* Calendar Table */
     .p-dark .p-datepicker-day-view {
         background: var(--gp-surface-dark) !important;
     }
-    
+
     /* Day Headers */
     .p-dark .p-datepicker-weekday-cell {
         background: var(--gp-surface-dark) !important;
     }
-    
+
     .p-dark .p-datepicker-weekday {
         color: var(--gp-text-secondary) !important;
         font-weight: 600 !important;
     }
-    
+
     /* Date Cells */
     .p-dark .p-datepicker-day-cell {
         background: var(--gp-surface-dark) !important;
     }
-    
+
     .p-dark .p-datepicker-day {
         color: var(--gp-text-primary) !important;
         /*background: transparent !important;*/
         border-radius: var(--gp-radius-small) !important;
         transition: all 0.2s ease !important;
     }
-    
+
     /* Date Cell States */
     .p-dark .p-datepicker-day:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-datepicker-today .p-datepicker-day {
         background: var(--gp-secondary) !important;
         color: white !important;
         font-weight: 600 !important;
     }
-    
+
     .p-dark .p-datepicker-day-selected {
         background: var(--gp-primary) !important;
         color: white !important;
         font-weight: 600 !important;
     }
-    
+
     .p-dark .p-datepicker-other-month .p-datepicker-day {
         color: var(--gp-text-muted) !important;
         opacity: 0.6 !important;
     }
-    
+
     .p-dark .p-datepicker-day.p-disabled {
         color: var(--gp-text-muted) !important;
         opacity: 0.4 !important;
@@ -645,11 +645,21 @@ body {
         border-color: var(--gp-border-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
+    .p-textarea {
+        background: var(--gp-surface-light) !important;
+        color: var(--gp-text-primary) !important;
+        border-color: var(--surface-border) !important
+    }
+
+    .p-dark .p-textarea {
+        background: var(--gp-surface-dark) !important;
+    }
+
     /* ================================
        CONFIRM DIALOG GLOBAL STYLING
        ================================ */
-    
+
     /* Confirm Dialog Container */
     .p-confirmdialog {
         border-radius: var(--gp-radius-large) !important;
@@ -659,18 +669,18 @@ body {
         --p-confirmdialog-icon-color: var(--gp-text-primary) !important;
         overflow: hidden !important;
     }
-    
+
     /* Dialog mask and container background fix */
     .p-dialog-mask {
         background: rgba(0, 0, 0, 0.4) !important;
     }
-    
+
     .p-dialog {
         border-radius: var(--gp-radius-large) !important;
         background: var(--gp-surface-white) !important;
         overflow: hidden !important;
     }
-    
+
     /* Confirm Dialog Header */
     .p-confirmdialog .p-dialog-header {
         background: var(--gp-surface-white) !important;
@@ -678,18 +688,18 @@ body {
         padding: var(--gp-spacing-lg) var(--gp-spacing-xl) !important;
         border-radius: var(--gp-radius-large) var(--gp-radius-large) 0 0 !important;
     }
-    
+
     .p-confirmdialog .p-dialog-title {
         color: var(--gp-text-primary) !important;
         font-size: 1.125rem !important;
         font-weight: 600 !important;
         font-family: 'Inter, system-ui, sans-serif' !important;
     }
-    
+
     .p-confirmdialog .p-dialog-header-icon {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-confirmdialog .p-dialog-header-close {
         color: var(--gp-text-secondary) !important;
         background: transparent !important;
@@ -704,25 +714,25 @@ body {
         align-items: center !important;
         justify-content: center !important;
     }
-    
+
     .p-confirmdialog .p-dialog-header-close:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-confirmdialog .p-dialog-header-close .p-dialog-header-close-icon {
         font-size: 1rem !important;
         width: 1rem !important;
         height: 1rem !important;
     }
-    
+
     /* Confirm Dialog Content */
     .p-confirmdialog .p-dialog-content {
         background: var(--gp-surface-white) !important;
         padding: var(--gp-spacing-xl) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-confirmdialog .p-confirm-dialog-message {
         color: var(--gp-text-secondary) !important;
         font-size: 0.875rem !important;
@@ -730,12 +740,12 @@ body {
         font-family: 'Inter, system-ui, sans-serif' !important;
         margin-left: var(--gp-spacing-md) !important;
     }
-    
+
     .p-confirmdialog .p-confirm-dialog-icon {
         color: var(--gp-warning) !important;
         font-size: 1.5rem !important;
     }
-    
+
     /* Confirm Dialog Footer */
     .p-confirmdialog .p-dialog-footer {
         background: var(--gp-surface-white) !important;
@@ -746,7 +756,7 @@ body {
         gap: var(--gp-spacing-md) !important;
         justify-content: flex-end !important;
     }
-    
+
     /* Confirm Dialog Buttons */
     .p-confirmdialog .p-button {
         border-radius: var(--gp-radius-medium) !important;
@@ -756,66 +766,66 @@ body {
         transition: all 0.2s ease !important;
         font-size: 0.875rem !important;
     }
-    
+
     .p-confirmdialog .p-button:not(.p-button-outlined) {
         background: var(--gp-primary) !important;
         border-color: var(--gp-primary) !important;
         color: white !important;
     }
-    
+
     .p-confirmdialog .p-button:not(.p-button-outlined):hover {
         background: var(--gp-primary-hover) !important;
         border-color: var(--gp-primary-hover) !important;
         transform: translateY(-1px) !important;
         box-shadow: var(--gp-shadow-button-hover) !important;
     }
-    
+
     .p-confirmdialog .p-button.p-button-outlined {
         border-color: var(--gp-border-medium) !important;
         color: var(--gp-text-primary) !important;
         background: transparent !important;
     }
-    
+
     .p-confirmdialog .p-button.p-button-outlined:hover {
         background: var(--gp-surface-light) !important;
         border-color: var(--gp-primary) !important;
         color: var(--gp-primary) !important;
     }
-    
+
     .p-confirmdialog .p-button.p-button-danger {
         background: var(--gp-danger) !important;
         border-color: var(--gp-danger) !important;
         color: white !important;
     }
-    
+
     .p-confirmdialog .p-button.p-button-danger:hover {
         background: var(--gp-danger-dark) !important;
         border-color: var(--gp-danger-dark) !important;
         transform: translateY(-1px) !important;
         box-shadow: var(--gp-shadow-button-hover) !important;
     }
-    
+
     /* Dark Mode Confirm Dialog */
     .p-dark .p-confirmdialog {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
         box-shadow: var(--gp-shadow-dialog) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-header {
         background: var(--gp-surface-dark) !important;
         border-bottom-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-title {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-header-icon,
     .p-dark .p-confirmdialog .p-dialog-header-close {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-header-close {
         width: 2.5rem !important;
         height: 2.5rem !important;
@@ -825,157 +835,157 @@ body {
         align-items: center !important;
         justify-content: center !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-header-close:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-header-close .p-dialog-header-close-icon {
         font-size: 1rem !important;
         width: 1rem !important;
         height: 1rem !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-content {
         background: var(--gp-surface-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-confirm-dialog-message {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-confirm-dialog-icon {
         color: var(--gp-warning) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-dialog-footer {
         background: var(--gp-surface-dark) !important;
         border-top-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-button.p-button-outlined {
         border-color: var(--gp-border-medium) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-confirmdialog .p-button.p-button-outlined:hover {
         background: var(--gp-surface-light) !important;
         border-color: var(--gp-primary-light) !important;
         color: var(--gp-primary-light) !important;
     }
-    
+
     /* Dialog Overlay */
     .p-dialog-mask .p-confirmdialog {
         margin: auto !important;
     }
-    
+
     /* Responsive */
     @media (max-width: 768px) {
         .p-confirmdialog {
             margin: var(--gp-spacing-md) !important;
             max-width: calc(100vw - 2rem) !important;
         }
-        
+
         .p-confirmdialog .p-dialog-header,
         .p-confirmdialog .p-dialog-content,
         .p-confirmdialog .p-dialog-footer {
             padding: var(--gp-spacing-md) !important;
         }
-        
+
         .p-confirmdialog .p-dialog-footer {
             flex-direction: column !important;
         }
-        
+
         .p-confirmdialog .p-button {
             width: 100% !important;
         }
     }
-    
+
     /* ================================
        CARD GLOBAL DARK MODE STYLING
        ================================ */
-    
+
     /* Generic Card dark mode for all cards */
     .p-dark .p-card {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
         border-radius: var(--gp-radius-large) !important;
     }
-    
+
     .p-dark .p-card-header,
     .p-dark .p-card-title-section {
         background: var(--gp-surface-dark) !important;
         border-bottom-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-card-title {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-card-content,
     .p-dark .p-card-body {
         background: var(--gp-surface-dark) !important;
         color: var(--gp-text-primary) !important;
         border-radius: var(--gp-radius-large) !important;
     }
-    
+
     .p-dark .p-card-subtitle {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-card-footer {
         background: var(--gp-surface-dark) !important;
         border-top-color: var(--gp-border-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     /* ================================
        DIALOG GLOBAL DARK MODE STYLING
        ================================ */
-    
+
     /* Generic Dialog dark mode for all dialogs */
     .p-dark .p-dialog {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-dialog-header {
         background: var(--gp-surface-dark) !important;
         border-bottom-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-dialog-title {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-dialog-header-close {
         color: var(--gp-text-secondary) !important;
         background: transparent !important;
         border: none !important;
     }
-    
+
     .p-dark .p-dialog-header-close:hover {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-dialog-content {
         background: var(--gp-surface-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-dialog-footer {
         background: var(--gp-surface-dark) !important;
         border-top-color: var(--gp-border-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     /* ================================
        SELECT GLOBAL DARK MODE STYLING
        ================================ */
-    
+
     /* Select Component Dark Mode */
     .p-dark .p-select {
         background: var(--gp-surface-dark) !important;
@@ -1026,88 +1036,88 @@ body {
         border-color: var(--gp-border-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-select:not(.p-disabled):hover {
         border-color: var(--gp-border-medium) !important;
     }
-    
+
     .p-dark .p-select:not(.p-disabled).p-focus {
         border-color: var(--gp-primary) !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
-    
+
     .p-dark .p-select .p-select-label {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-select .p-select-dropdown {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     .p-dark .p-select .p-select-clear-icon {
         color: var(--gp-text-secondary) !important;
     }
-    
+
     /* Select Panel (Dropdown) */
     .p-dark .p-select-overlay {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
         box-shadow: var(--gp-shadow-medium) !important;
     }
-    
+
     .p-dark .p-select-list {
         background: var(--gp-surface-dark) !important;
     }
-    
+
     .p-dark .p-select-option {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-select-option:not(.p-select-option-selected):not(.p-disabled).p-focus {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-select-option.p-select-option-selected {
         background: var(--gp-primary) !important;
         color: white !important;
     }
-    
+
     .p-dark .p-select-option.p-select-option-selected.p-focus {
         background: var(--gp-primary-hover) !important;
         color: white !important;
     }
-    
+
     /* Legacy Dropdown Support (for backward compatibility) */
     .p-dark .p-dropdown {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-dropdown:not(.p-disabled):hover {
         border-color: var(--gp-border-medium) !important;
     }
-    
+
     .p-dark .p-dropdown:not(.p-disabled).p-focus {
         border-color: var(--gp-primary) !important;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
     }
-    
+
     .p-dark .p-dropdown-panel {
         background: var(--gp-surface-dark) !important;
         border-color: var(--gp-border-dark) !important;
     }
-    
+
     .p-dark .p-dropdown-item {
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-dropdown-item:not(.p-highlight):not(.p-disabled).p-focus {
         background: var(--gp-surface-light) !important;
         color: var(--gp-text-primary) !important;
     }
-    
+
     .p-dark .p-dropdown-item.p-highlight {
         background: var(--gp-primary) !important;
         color: white !important;

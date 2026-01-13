@@ -34,26 +34,32 @@ public class AITimelineTools {
         this.routesAnalysisService = routesAnalysisService;
     }
 
-    @Tool("Retrieves a user's complete timeline for a date range, including all stays, trips, and data gaps. Use for detailed, chronological views of user activity.")
-    public AIMovementTimelineDTO queryTimeline(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
+    @Tool("Gets complete timeline with all stays and trips in chronological order. Use when listing specific events or detailed activity.")
+    public AIMovementTimelineDTO queryTimeline(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
         log.info("🔧 AI TOOL EXECUTED: queryTimeline({}, {})", startDate, endDate);
-        AIMovementTimelineDTO timeline = getTimeline(startDate, endDate);
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        AIMovementTimelineDTO timeline = getTimeline(start, end);
         log.debug("Returned AI timeline with {} stays and {} trips", timeline.getStaysCount(), timeline.getTripsCount());
         return timeline;
     }
 
-    @Tool("Lists all locations/places a user has stayed at within a date range. Use this ONLY for listing specific places. For counting or statistical analysis, use getStayStats.")
-    public java.util.List<AITimelineStayDTO> getVisitedLocations(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
+    @Tool("Lists all places stayed at with timestamps. Use ONLY for listing specific places, NOT for counting. For counts use getStayStats.")
+    public java.util.List<AITimelineStayDTO> getVisitedLocations(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
         log.info("🔧 AI TOOL EXECUTED: getVisitedLocations({}, {})", startDate, endDate);
-        AIMovementTimelineDTO timeline = getTimeline(startDate, endDate);
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        AIMovementTimelineDTO timeline = getTimeline(start, end);
         log.debug("Returned {} visited locations", timeline.getStaysCount());
         return timeline.getStays();
     }
 
-    @Tool("Lists all trips/movements a user made within a date range. Use this ONLY for listing individual trips. For totals, distances, or other aggregations, use getTripStats.")
-    public java.util.List<AITimelineTripDTO> getTripMovements(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
+    @Tool("Lists all individual trips with details. Use ONLY for listing specific trips, NOT for totals or distances. For aggregations use getTripStats.")
+    public java.util.List<AITimelineTripDTO> getTripMovements(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
         log.info("🔧 AI TOOL EXECUTED: getTripMovements({}, {})", startDate, endDate);
-        AIMovementTimelineDTO timeline = getTimeline(startDate, endDate);
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        AIMovementTimelineDTO timeline = getTimeline(start, end);
         log.debug("Returned {} trip movements", timeline.getTripsCount());
         return timeline.getTrips();
     }
@@ -72,36 +78,18 @@ public class AITimelineTools {
         return new AIMovementTimelineDTO();
     }
 
-    @Tool("""
-            Calculates comprehensive aggregated statistics about user stays. Use for questions about time spent at locations, 
-            visit frequency, and unique counts of cities or places. Returns enhanced data including unique counts, temporal info, and dominant locations.
-            
-            Enhanced fields returned:
-            - uniqueCityCount: Number of distinct cities in each group
-            - uniqueLocationCount: Number of distinct locations in each group  
-            - uniqueCountryCount: Number of distinct countries in each group
-            - firstStayStart: Earliest stay timestamp in each group
-            - dominantLocation: Location with most time in each group
-            
-            Grouping examples:
-            - LOCATION_NAME: "How much time at each location?" "Which location did I visit most?"
-            - CITY: "How much time in each city?" "Which city did I visit most frequently?" "What locations did I visit in Boston?"
-            - COUNTRY: "How much time per country?" "Which country has most unique cities?"
-            - MONTH: "Which month had most cities?" "How many unique locations each month?"
-            - WEEK: "Where do I spend most time each week?" "Which week had most travel diversity?"
-            - DAY: "Which day had most unique locations?" "How many cities visited per day?"
-            
-            Perfect for: counting, comparisons, patterns, "how much/many", "which most/least", statistical analysis.
-            """)
+    @Tool("Calculates aggregated stay statistics: total time, visit counts, number of unique cities/locations/countries. Use for counting cities, comparing time spent, and statistical analysis grouped by location, city, country, day, week, or month.")
     public List<AIStayStatsDTO> getStayStats(
-            @P("Start date") LocalDate startDate,
-            @P("End date") LocalDate endDate,
-            @P("Group stays by: locationName, city, country, day, week, month") StayGroupBy groupBy) {
+            @P("Start date (YYYY-MM-DD)") String startDate,
+            @P("End date (YYYY-MM-DD)") String endDate,
+            @P("Group by: LOCATION_NAME, CITY, COUNTRY, DAY, WEEK, or MONTH") StayGroupBy groupBy) {
 
         log.info("🔧 AI TOOL EXECUTED: getStayStats({}, {}, {})", startDate, endDate, groupBy);
 
-        Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        LocalDate startLocalDate = LocalDate.parse(startDate);
+        LocalDate endLocalDate = LocalDate.parse(endDate);
+        Instant start = startLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant end = endLocalDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
         UUID userId = currentUserService.getCurrentUserId();
 
         try {
@@ -118,24 +106,18 @@ public class AITimelineTools {
         }
     }
 
-    @Tool("""
-            Calculates aggregated statistics about user trips. Use for questions about travel patterns, distances, and movement types. Ideal for answering questions about total distance, duration, trip counts, and transportation modes.
-            
-            Grouping examples:
-            - movementType: "Did I walk more or drive more?" "How far did I travel by car vs. walking?"
-            - originLocationName: "Which routes do I travel most frequently?"
-            - destinationLocationName: "Which are my most common destinations?"
-            - day/week/month: "Which day had the most travel?" "How many trips per month?"
-            """)
+    @Tool("Calculates aggregated trip statistics: total distance, duration, trip counts by transportation mode. Use for comparing walking vs driving, analyzing travel patterns grouped by movement type, origin, destination, day, week, or month.")
     public List<AITripStatsDTO> getTripStats(
-            @P("Start date") LocalDate startDate,
-            @P("End date") LocalDate endDate,
-            @P("Group trips by: movementType, originLocationName, destinationLocationName, day, week, month") TripGroupBy groupBy) {
+            @P("Start date (YYYY-MM-DD)") String startDate,
+            @P("End date (YYYY-MM-DD)") String endDate,
+            @P("Group by: MOVEMENT_TYPE, ORIGIN_LOCATION_NAME, DESTINATION_LOCATION_NAME, DAY, WEEK, or MONTH") TripGroupBy groupBy) {
 
         log.info("🔧 AI TOOL EXECUTED: getTripStats({}, {}, {})", startDate, endDate, groupBy);
 
-        Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        LocalDate startLocalDate = LocalDate.parse(startDate);
+        LocalDate endLocalDate = LocalDate.parse(endDate);
+        Instant start = startLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant end = endLocalDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
         UUID userId = currentUserService.getCurrentUserId();
 
         try {
@@ -152,22 +134,14 @@ public class AITimelineTools {
         }
     }
 
-    @Tool("""
-            Analyzes route patterns and travel behavior. Use for questions about most common routes, route frequency, and travel patterns.
-            
-            Perfect for answering:
-            - "What's my most common route?" "Which route do I take most frequently?"
-            - "How many unique routes do I have?" "How diverse are my travel patterns?"
-            - "What's my longest trip?" "What's my average trip duration?"
-            - Route efficiency and travel pattern analysis
-            
-            NOT for: transportation modes (use getTripStats), location visits (use getStayStats), or distance by transport type.
-            """)
-    public RoutesStatistics getRoutePatterns(@P("Start date") LocalDate startDate, @P("End date") LocalDate endDate) {
+    @Tool("Analyzes route patterns: most common routes, unique route count, average/longest trip. Use for route frequency and travel diversity. NOT for transport modes or location visits.")
+    public RoutesStatistics getRoutePatterns(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
         log.info("🔧 AI TOOL EXECUTED: getRoutePatterns({}, {})", startDate, endDate);
 
-        Instant start = startDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
-        Instant end = endDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        LocalDate startLocalDate = LocalDate.parse(startDate);
+        LocalDate endLocalDate = LocalDate.parse(endDate);
+        Instant start = startLocalDate.atStartOfDay(ZoneId.systemDefault()).toInstant();
+        Instant end = endLocalDate.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
         UUID userId = currentUserService.getCurrentUserId();
 
         try {

@@ -21,6 +21,7 @@ public class UserAISettings {
     private String openaiModel;
     private boolean openaiApiKeyConfigured; // Frontend-safe flag to indicate if key is set
     private boolean apiKeyRequired;
+    private String customSystemMessage; // Optional custom system message (null = use default)
 
     public UserAISettings copy() {
         return UserAISettings.builder()
@@ -30,6 +31,7 @@ public class UserAISettings {
                 .openaiModel(this.openaiModel)
                 .openaiApiKeyConfigured(this.openaiApiKeyConfigured)
                 .apiKeyRequired(this.apiKeyRequired)
+                .customSystemMessage(this.customSystemMessage)
                 .build();
     }
 }

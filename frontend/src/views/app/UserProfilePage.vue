@@ -75,7 +75,8 @@ const aiSettings = ref({
   openaiApiKey: '',
   openaiApiUrl: 'https://api.openai.com/v1',
   openaiModel: 'gpt-3.5-turbo',
-  openaiApiKeyConfigured: false
+  openaiApiKeyConfigured: false,
+  customSystemMessage: null,
 })
 
 // Tab configuration
@@ -314,6 +315,7 @@ const loadAISettings = async () => {
         openaiApiUrl: data.openaiApiUrl || 'https://api.openai.com/v1',
         openaiModel: data.openaiModel || 'gpt-3.5-turbo',
         openaiApiKeyConfigured: data.openaiApiKeyConfigured === true,
+        customSystemMessage: data.customSystemMessage,
         apiKeyRequired: data.apiKeyRequired,
       }
     }

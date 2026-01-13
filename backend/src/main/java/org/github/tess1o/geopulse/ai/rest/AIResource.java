@@ -5,6 +5,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
 import org.github.tess1o.geopulse.ai.service.AIChatService;
 import org.github.tess1o.geopulse.ai.service.UserAISettingsService;
@@ -25,9 +26,12 @@ public class AIResource {
 
     @Inject
     CurrentUserService currentUserService;
-    
+
     @Inject
     AIChatService aiChatService;
+
+    @Inject
+    SystemSettingsService systemSettingsService;
 
     @GET
     @Path("/settings")
@@ -35,6 +39,24 @@ public class AIResource {
         UUID userId = currentUserService.getCurrentUserId();
         UserAISettings settings = aiSettingsService.getAISettings(userId);
         return Response.ok(settings).build();
+    }
+
+    @GET
+    @Path("/default-system-message")
+    public Response getDefaultSystemMessage() {
+        // Return the effective default (global setting > built-in default)
+        String globalDefault = systemSettingsService.getString("ai.default-system-message");
+        String effectiveDefault = (globalDefault != null && !globalDefault.isBlank())
+                ? globalDefault
+                : AIChatService.SYSTEM_MESSAGE;
+        return Response.ok(new DefaultSystemMessageResponse(effectiveDefault)).build();
+    }
+
+    @GET
+    @Path("/builtin-system-message")
+    public Response getBuiltinSystemMessage() {
+        // Return the actual built-in default (ignores global setting)
+        return Response.ok(new DefaultSystemMessageResponse(AIChatService.SYSTEM_MESSAGE)).build();
     }
 
     @POST
@@ -80,5 +102,8 @@ public class AIResource {
     }
 
     public record ChatResponse(String response) {
+    }
+
+    public record DefaultSystemMessageResponse(String message) {
     }
 }

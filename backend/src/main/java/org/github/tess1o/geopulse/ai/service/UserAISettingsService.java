@@ -59,6 +59,7 @@ public class UserAISettingsService {
 
             UserAISettings settingsToSave = settings.copy();
 
+            // Handle API key
             if (settings.getOpenaiApiKey() != null && !settings.getOpenaiApiKey().isBlank()) {
                 // User provided a new API key - encrypt it
                 settingsToSave.setOpenaiApiKey(encryptionService.encrypt(settings.getOpenaiApiKey()));
@@ -69,7 +70,12 @@ public class UserAISettingsService {
                 // No current API key and none provided - set to empty string
                 settingsToSave.setOpenaiApiKey("");
             }
+
             settingsToSave.setApiKeyRequired(settings.isApiKeyRequired());
+
+            // Handle custom system message - always use what's provided (null or value)
+            // Frontend sends null to use default, or a string to override
+            settingsToSave.setCustomSystemMessage(settings.getCustomSystemMessage());
 
             String json = objectMapper.writeValueAsString(settingsToSave);
             String encryptedJson = encryptionService.encrypt(json);
@@ -95,6 +101,7 @@ public class UserAISettingsService {
             // If decryption fails (e.g., encryption key changed), use empty settings
             dbSettings = UserAISettings.builder()
                     .openaiApiKey("")
+                    .customSystemMessage(null)
                     .build();
         }
 
@@ -146,6 +153,7 @@ public class UserAISettingsService {
                         .openaiModel(DEFAULT_OPENAI_MODEL)
                         .openaiApiKeyConfigured(false)
                         .apiKeyRequired(true)
+                        .customSystemMessage(null) // Use default
                         .build();
             }
 
@@ -161,6 +169,7 @@ public class UserAISettingsService {
                     .openaiModel(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : DEFAULT_OPENAI_MODEL)
                     .openaiApiKeyConfigured(hasApiKey)
                     .apiKeyRequired(settings.isApiKeyRequired())
+                    .customSystemMessage(settings.getCustomSystemMessage())
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to retrieve AI settings", e);
@@ -183,6 +192,7 @@ public class UserAISettingsService {
                         .openaiModel(DEFAULT_OPENAI_MODEL)
                         .openaiApiKeyConfigured(false)
                         .apiKeyRequired(true)
+                        .customSystemMessage(null) // Use default
                         .build();
             }
 

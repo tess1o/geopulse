@@ -106,6 +106,10 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
         SETTING_DEFINITIONS.put("system.timeline.view.item-limit",
                 new SettingDefinition("geopulse.timeline.view.item-limit", "150", ValueType.INTEGER, "system", "Max timeline items in view"));
+
+        // AI Assistant settings
+        SETTING_DEFINITIONS.put("ai.default-system-message",
+                new SettingDefinition("geopulse.ai.default-system-message", "", ValueType.STRING, "ai", "Global default system message for AI assistant (empty = use built-in default)"));
     }
 
     @Inject

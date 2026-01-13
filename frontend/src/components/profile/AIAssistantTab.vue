@@ -101,6 +101,29 @@
                 Choose from common models or enter a custom model name
               </small>
             </div>
+            <div class="form-group">
+              <label for="custom-system-message" class="form-label">
+                System Message
+                <Button
+                  type="button"
+                  icon="pi pi-info-circle"
+                  class="p-button-text p-button-sm"
+                  v-tooltip.right="'Customize the AI assistant behavior. Clear the field to reset to default.'"
+                  style="padding: 0; margin-left: 0.25rem; vertical-align: middle;"
+                />
+              </label>
+              <Textarea
+                id="custom-system-message"
+                v-model="form.customSystemMessage"
+                placeholder="Loading system message..."
+                rows="8"
+                class="w-full"
+                autoResize
+              />
+              <small class="text-secondary">
+                Edit the AI system message to customize behavior. Clear the field to reset to default.
+              </small>
+            </div>
           </div>
           <div v-if="testConnectionStatus" class="connection-status">
             <Message v-if="testConnectionStatus === 'success'" severity="success">Connection successful!</Message>
@@ -134,6 +157,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import Message from 'primevue/message';
+import Textarea from 'primevue/textarea';
 
 // Props
 const props = defineProps({
@@ -145,7 +169,8 @@ const props = defineProps({
       openaiApiUrl: 'https://api.openai.com/v1',
       openaiModel: 'gpt-3.5-turbo',
       openaiApiKeyConfigured: false,
-      apiKeyRequired: true
+      apiKeyRequired: true,
+      customSystemMessage: null
     })
   }
 })
@@ -164,7 +189,8 @@ const form = ref({
   openaiApiKey: '',
   openaiApiUrl: 'https://api.openai.com/v1',
   openaiModel: 'gpt-3.5-turbo',
-  apiKeyRequired: true
+  apiKeyRequired: true,
+  customSystemMessage: null
 })
 
 import apiService from '@/utils/apiService';
@@ -211,7 +237,10 @@ const handleSubmit = async () => {
       enabled: form.value.enabled,
       openaiApiUrl: form.value.openaiApiUrl,
       openaiModel: form.value.openaiModel,
-      apiKeyRequired: form.value.apiKeyRequired
+      apiKeyRequired: form.value.apiKeyRequired,
+      customSystemMessage: form.value.customSystemMessage && form.value.customSystemMessage.trim()
+        ? form.value.customSystemMessage.trim()
+        : null
     }
 
     // Only include API key if user entered a new one and it's required
@@ -228,15 +257,27 @@ const handleSubmit = async () => {
   }
 }
 
-const loadSettings = () => {
+const loadSettings = async () => {
   form.value = {
     enabled: props.initialSettings.enabled === true,
     openaiApiKey: '', // Always empty since backend doesn't send actual key
     openaiApiUrl: props.initialSettings.openaiApiUrl || 'https://api.openai.com/v1',
     openaiModel: props.initialSettings.openaiModel || 'gpt-3.5-turbo',
-    apiKeyRequired: props.initialSettings.apiKeyRequired !== false
+    apiKeyRequired: props.initialSettings.apiKeyRequired !== false,
+    customSystemMessage: props.initialSettings.customSystemMessage || null
   }
   apiKeyConfigured.value = props.initialSettings.openaiApiKeyConfigured === true
+
+  // Load the effective system message (custom or default)
+  if (!form.value.customSystemMessage) {
+    try {
+      const response = await apiService.get('/ai/default-system-message');
+      form.value.customSystemMessage = response.message;
+    } catch (error) {
+      console.error('Failed to load default system message:', error);
+      form.value.customSystemMessage = '';
+    }
+  }
 }
 
 // Initialize
@@ -256,13 +297,15 @@ watch(() => props.initialSettings, () => {
   border: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
   width: 100%;
+  max-width: 1200px;
   box-sizing: border-box;
+  margin: 0 auto;
 }
 
 .ai-settings-card :deep(.p-card-content) {
   width: 100%;
   box-sizing: border-box;
-  padding: 1.5rem;
+  padding: 2rem;
 }
 
 .ai-settings-form {
@@ -322,7 +365,6 @@ watch(() => props.initialSettings, () => {
   flex-direction: column;
   gap: 0.5rem;
   width: 100%;
-  max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -331,12 +373,11 @@ watch(() => props.initialSettings, () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding: 1rem;
+  padding: 1.5rem;
   background: var(--gp-surface-light);
   border-radius: var(--gp-radius-medium);
   border-left: 4px solid var(--gp-primary);
   width: 100%;
-  max-width: 100%;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -429,6 +470,26 @@ watch(() => props.initialSettings, () => {
   box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
 }
 
+/* Textarea Styling */
+:deep(.p-inputtextarea) {
+  border-radius: var(--gp-radius-medium);
+  border: 1px solid var(--gp-border-medium);
+  padding: 1rem;
+  transition: all 0.2s ease;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  min-height: 300px;
+  background: var(--surface-ground);
+  color: var(--text-color);
+}
+
+:deep(.p-inputtextarea:focus) {
+  border-color: var(--gp-primary);
+  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
+  background: var(--surface-card);
+}
+
 /* Button Styling */
 :deep(.p-button) {
   border-radius: var(--gp-radius-medium);
@@ -450,6 +511,12 @@ watch(() => props.initialSettings, () => {
 }
 
 /* Responsive Design */
+@media (max-width: 1280px) {
+  .ai-settings-card {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .ai-header {
     flex-direction: column;
@@ -459,6 +526,14 @@ watch(() => props.initialSettings, () => {
 
   .form-actions {
     flex-direction: column;
+  }
+
+  .ai-settings-card :deep(.p-card-content) {
+    padding: 1.5rem;
+  }
+
+  .provider-settings {
+    padding: 1rem;
   }
 }
 
