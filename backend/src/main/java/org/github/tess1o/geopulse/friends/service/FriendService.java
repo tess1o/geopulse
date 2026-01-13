@@ -98,8 +98,21 @@ public class FriendService {
     public List<FriendInfoDTO> getAllFriends(UUID userId) {
         List<FriendInfoDTO> friends = friendshipRepository.findFriends(userId);
 
+        // Count friends with location data (friends who shared their location with current user)
+        long friendsWithLocation = friends.stream()
+                .filter(f -> f.getLastLatitude() != null && f.getLastLongitude() != null)
+                .count();
+
+        log.info("User {} has {} friends, {} of them shared their location",
+                 userId, friends.size(), friendsWithLocation);
+
         friends.forEach(f -> {
-            if (f.getLastLongitude() == null || f.getLastLatitude() == null) {
+            boolean hasLocation = f.getLastLongitude() != null && f.getLastLatitude() != null;
+
+            log.info("Friend: userId={}, email={}, sharedLiveLocation={}, sharedTimelineLocation={}",
+                     f.getUserId(), f.getEmail(), f.getFriendSharesLiveLocation(), f.getFriendSharesTimeline());
+
+            if (!hasLocation) {
                 f.setLastLocation("N/A");
             } else {
                 Point lastLocation = GeoUtils.createPoint(f.getLastLongitude(), f.getLastLatitude());

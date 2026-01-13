@@ -23,4 +23,8 @@ public class FriendInfoDTO {
     private String lastLocation;
     private String latestActivityType;  //STAY or TRIP
     private int latestActivityDurationSeconds;
+
+    // Permissions: what the friend shares WITH the current user
+    private Boolean friendSharesLiveLocation;   // Does friend allow me to see their live location?
+    private Boolean friendSharesTimeline;       // Does friend allow me to see their timeline?
 }

@@ -78,7 +78,9 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                            WHEN latest_trip.timestamp IS NULL THEN latest_stay.stay_duration
                            WHEN latest_stay.timestamp > latest_trip.timestamp THEN latest_stay.stay_duration
                            ELSE latest_trip.trip_duration
-                       END as latest_activity_duration_seconds
+                       END as latest_activity_duration_seconds,
+                       ufp.share_live_location as friend_shares_live_location,
+                       ufp.share_timeline as friend_shares_timeline
                 FROM user_friends f
                 JOIN users u ON f.friend_id = u.id
                 LEFT JOIN user_friend_permissions ufp ON (ufp.user_id = u.id AND ufp.friend_id = f.user_id)
@@ -126,6 +128,8 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                         .lastLatitude(getCoordinate(record[6], 1))
                         .latestActivityType(record[7] == null ? null : record[7].toString())
                         .latestActivityDurationSeconds(record[8] == null ? 0 : ((Number) record[8]).intValue())
+                        .friendSharesLiveLocation(record[9] == null ? false : (Boolean) record[9])
+                        .friendSharesTimeline(record[10] == null ? false : (Boolean) record[10])
                         .build())
                 .toList();
     }

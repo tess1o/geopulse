@@ -42,11 +42,44 @@
             </div>
           </div>
 
-          <!-- Permissions Section -->
+          <!-- What Friend Shares With You (Read-only status) -->
+          <div class="friend-sharing-status">
+            <div class="section-header">
+              <i class="pi pi-eye"></i>
+              <span>What this friend shares with you:</span>
+            </div>
+
+            <div class="sharing-status-items">
+              <div class="status-item">
+                <i :class="['pi', friend.friendSharesLiveLocation ? 'pi-check-circle' : 'pi-times-circle']"
+                   :style="{ color: friend.friendSharesLiveLocation ? 'var(--green-500)' : 'var(--red-500)' }"></i>
+                <span class="status-label">Live Location</span>
+                <Badge
+                  :value="friend.friendSharesLiveLocation ? 'Shared' : 'Not Shared'"
+                  :severity="friend.friendSharesLiveLocation ? 'success' : 'secondary'"
+                />
+              </div>
+              <div class="status-item">
+                <i :class="['pi', friend.friendSharesTimeline ? 'pi-check-circle' : 'pi-times-circle']"
+                   :style="{ color: friend.friendSharesTimeline ? 'var(--green-500)' : 'var(--red-500)' }"></i>
+                <span class="status-label">Timeline History</span>
+                <Badge
+                  :value="friend.friendSharesTimeline ? 'Shared' : 'Not Shared'"
+                  :severity="friend.friendSharesTimeline ? 'success' : 'secondary'"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- What You Share With Friend (Editable toggles) -->
           <div class="friend-permissions">
+            <div class="section-header">
+              <i class="pi pi-lock"></i>
+              <span>What you share with this friend:</span>
+            </div>
             <div class="permission-item">
               <i class="pi pi-map-marker permission-icon"></i>
-              <span class="permission-label">Share Live Location</span>
+              <span class="permission-label">Live Location</span>
               <InputSwitch
                   v-model="friend.shareLiveLocationPermission"
                   @change="handleLiveLocationPermissionChange(friend)"
@@ -58,7 +91,7 @@
             </div>
             <div class="permission-item">
               <i class="pi pi-history permission-icon"></i>
-              <span class="permission-label">Share Timeline History</span>
+              <span class="permission-label">Timeline History</span>
               <InputSwitch
                   v-model="friend.shareTimelinePermission"
                   @change="handleTimelinePermissionChange(friend)"
@@ -418,14 +451,63 @@ const getLastSeenText = (lastSeen) => {
   line-height: 1.2;
 }
 
-/* Permissions Section */
-.friend-permissions {
+/* Sharing Status Section (What friend shares with you) */
+.friend-sharing-status {
   margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
+  padding: 0.75rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.section-header i {
+  font-size: 0.9rem;
+  color: var(--gp-primary);
+}
+
+.sharing-status-items {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+}
+
+.status-item i {
+  font-size: 1rem;
+}
+
+.status-label {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--gp-text-primary);
+}
+
+/* Permissions Section (What you share with friend) */
+.friend-permissions {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
 }
 
 .permission-item {
@@ -433,8 +515,14 @@ const getLastSeenText = (lastSeen) => {
   align-items: center;
   gap: 0.75rem;
   padding: 0.5rem;
-  background: var(--gp-surface-light);
+  background: var(--gp-surface-white);
+  border: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-small);
+  margin-top: 0.5rem;
+}
+
+.permission-item:first-of-type {
+  margin-top: 0;
 }
 
 .permission-icon {

@@ -122,6 +122,25 @@ const router = useRouter()
 // Store refs
 const {friends, receivedInvites, sentInvitations: sentInvites} = storeToRefs(friendsStore)
 
+// Computed: Filter friends based on what they share with current user
+const friendsWithLiveLocation = computed(() => {
+  const filtered = friends.value?.filter(f => f.friendSharesLiveLocation === true) || []
+  console.log(`[Friends Filter] Total friends: ${friends.value?.length || 0}, With live location: ${filtered.length}`)
+  filtered.forEach(f => {
+    console.log(`[Friends Filter]   - ${f.fullName} (${f.email}) shares live location`)
+  })
+  return filtered
+})
+
+const friendsWithTimeline = computed(() => {
+  const filtered = friends.value?.filter(f => f.friendSharesTimeline === true) || []
+  console.log(`[Friends Filter] Total friends: ${friends.value?.length || 0}, With timeline: ${filtered.length}`)
+  filtered.forEach(f => {
+    console.log(`[Friends Filter]   - ${f.fullName} (${f.email}) shares timeline`)
+  })
+  return filtered
+})
+
 // State
 const activeTab = ref()
 const showInviteDialog = ref(false)
@@ -132,12 +151,16 @@ const tabItems = computed(() => {
     {
       label: 'Live',
       icon: 'pi pi-map-marker',
-      key: 'live'
+      key: 'live',
+      badge: friendsWithLiveLocation.value?.length > 0 ? friendsWithLiveLocation.value.length : null,
+      badgeType: 'success'
     },
     {
       label: 'Timeline',
       icon: 'pi pi-history',
-      key: 'timeline'
+      key: 'timeline',
+      badge: friendsWithTimeline.value?.length > 0 ? friendsWithTimeline.value.length : null,
+      badgeType: 'success'
     },
     {
       label: 'Friends',
@@ -172,7 +195,7 @@ const currentTabComponent = computed(() => {
     live: {
       component: FriendsMapTab,
       props: {
-        friends: friends.value,
+        friends: friendsWithLiveLocation.value,  // Only friends who shared live location
         currentUser: currentUser.value,
         initialFriendEmailToZoom: initialFriendEmailToZoom.value,
         refreshing: refreshing.value,
@@ -187,13 +210,15 @@ const currentTabComponent = computed(() => {
     },
     timeline: {
       component: FriendsTimelineTab,
-      props: {},
+      props: {
+        friends: friendsWithTimeline.value  // Only friends who shared timeline
+      },
       handlers: {}
     },
     friends: {
       component: FriendsListTab,
       props: {
-        friends: friends.value
+        friends: friends.value  // All friends (for managing permissions)
       },
       handlers: {
         onInviteFriend: () => { showInviteDialog.value = true },
