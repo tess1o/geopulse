@@ -380,6 +380,33 @@
           }
         }
       },
+      "CreatePeriodTagDto" : {
+        "required" : [ "tagName", "startTime" ],
+        "type" : "object",
+        "properties" : {
+          "tagName" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "isActive" : {
+            "type" : "boolean"
+          },
+          "color" : {
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          }
+        }
+      },
       "CreateShareLinkRequest" : {
         "required" : [ "name" ],
         "type" : "object",
@@ -1173,6 +1200,33 @@
           }
         }
       },
+      "UpdatePeriodTagDto" : {
+        "required" : [ "tagName", "startTime" ],
+        "type" : "object",
+        "properties" : {
+          "tagName" : {
+            "maxLength" : 100,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "isActive" : {
+            "type" : "boolean"
+          },
+          "color" : {
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          }
+        }
+      },
       "UpdatePermissionRequest" : {
         "type" : "object",
         "properties" : {
@@ -1215,9 +1269,6 @@
           "defaultRedirectUrl" : {
             "maxLength" : 1000,
             "type" : "string"
-          },
-          "shareLocationWithFriends" : {
-            "type" : "boolean"
           },
           "userId" : {
             "$ref" : "#/components/schemas/UUID"
@@ -5933,6 +5984,201 @@
         "tags" : [ "Own Tracks Resource" ]
       }
     },
+    "/api/period-tags" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "endDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "startDate",
+          "in" : "query",
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Period Tags",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreatePeriodTagDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Period Tag",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/period-tags/active" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Active Tag",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/period-tags/check-overlaps" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "excludeId",
+          "in" : "query",
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Check Overlaps",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/period-tags/{id}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdatePeriodTagDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Period Tag",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Delete Period Tag",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/place-details/{type}/{id}" : {
       "put" : {
         "parameters" : [ {
@@ -7348,7 +7594,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.12.0",
+    "version" : "1.13.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
