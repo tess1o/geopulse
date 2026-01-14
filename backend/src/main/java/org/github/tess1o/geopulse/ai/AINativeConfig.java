@@ -28,6 +28,7 @@ import org.github.tess1o.geopulse.ai.service.SimpleAITools;
                 AITripStatsDTO.class,
                 AIResource.ChatRequest.class,
                 AIResource.ChatResponse.class,
+                AIResource.DefaultSystemMessageResponse.class,
                 AIChatService.class,
                 AIResource.TestConnectionRequest.class,
                 GeoPulseOpenAIClient.class,

@@ -26,32 +26,49 @@ public class AIChatService {
     // Singleton chat memory store to persist conversations across requests
     private static final InMemoryChatMemoryStore CHAT_MEMORY_STORE = new InMemoryChatMemoryStore();
 
+    /**
+     * Default system message for AI assistant.
+     * Users can override this with their own custom system message via settings.
+     */
     public static final String SYSTEM_MESSAGE = """
-            You are GeoPulse AI Assistant analyzing user location data.
-            
-            **CRITICAL RULES:**
-            1. ALWAYS respond in the SAME LANGUAGE as the user's question
-            2. NEVER show raw seconds/meters - ALWAYS convert:
-               • Seconds: "45 seconds", "25 minutes", "2 hours 15 minutes", "3 days 5 hours"
-               • Meters >1000: "2.5 km" not "2500 meters"
-            3. Execute tools immediately, don't explain which tool you're using
-            4. Use tools to fetch real data, never invent answers
-            5. For relative dates ("last month"), call getTodayDate() first
-            
-            **Tool Priority:**
-            • STAY STATS (getStayStats): time spent, visit frequency, city counting → "how much time", "which places"
-            • TRIP STATS (getTripStats): transportation modes, distances by mode → "how far walking/driving"
-            • ROUTE PATTERNS (getRoutePatterns): common routes, travel patterns → route frequency
-            • BASIC TOOLS: specific events, detailed timeline data
-            
-            **Quick Examples:**
-            • "How much time in each city?" → getStayStats + CITY grouping
-            • "Did I walk more or drive more?" → getTripStats + MOVEMENT_TYPE grouping
-            • "Most common route?" → getRoutePatterns
-            • Statistical questions ("which month had most X") → use appropriate time grouping
-            
-            **Response Style:**
-            Clear conversational paragraphs, no lists/bold/code blocks, no raw JSON.
+            You are a location data analysis assistant with access to tools that retrieve real user data.
+
+            TOOL USAGE RULES:
+            - You do NOT have user data in your memory. You MUST use tools to get data.
+            - Call tools immediately when asked about locations, cities, trips, distances, or time.
+            - NEVER invent, guess, or fabricate data. Only answer based on tool results.
+            - Do not explain what tool you're using. Just call it and provide results.
+
+            TOOL SELECTION GUIDE:
+            Use getStayStats for questions about:
+            - Number of cities/locations/countries visited
+            - Time spent at locations or in cities
+            - Most/least visited places
+            - Patterns grouped by location, city, country, day, week, or month
+
+            Use getTripStats for questions about:
+            - Distance traveled by transportation mode (walking, driving, etc.)
+            - Number of trips by type or time period
+            - Travel patterns grouped by mode, origin, destination, or time
+
+            Use getRoutePatterns for questions about:
+            - Most common routes taken
+            - Route frequency and diversity
+            - Average or longest trip duration/distance
+
+            Use getTodayDate for any relative date ("this month", "last week", "yesterday").
+
+            DATE HANDLING:
+            - For relative dates like "this month" or "last year", first call getTodayDate to get the current date
+            - Calculate the appropriate date range from the returned date
+            - Use ISO-8601 format for dates: YYYY-MM-DD
+
+            RESPONSE FORMAT:
+            - Answer in the same language as the user's question
+            - Convert seconds to readable time: "2 hours 15 minutes" not "8100 seconds"
+            - Convert large distances: "2.5 km" not "2500 meters"
+            - Provide clear, conversational responses without markdown formatting
+            - Be concise and direct
             """;
     public static final String OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
     public static final int DEFAULT_TIMEOUT_SECONDS = 600;
@@ -68,8 +85,10 @@ public class AIChatService {
     @Inject
     RoutesAnalysisService routesAnalysisService;
 
+    @Inject
+    org.github.tess1o.geopulse.admin.service.SystemSettingsService systemSettingsService;
+
     public interface Assistant {
-        @SystemMessage(SYSTEM_MESSAGE)
         String chat(String userMessage);
     }
 
@@ -93,6 +112,19 @@ public class AIChatService {
 
             ChatModel model = createChatModel(settings);
 
+            // Determine which system message to use (priority: user custom > global default > built-in default)
+            String systemMessage;
+            if (settings.getCustomSystemMessage() != null && !settings.getCustomSystemMessage().isBlank()) {
+                // User has a custom message
+                systemMessage = settings.getCustomSystemMessage();
+            } else {
+                // Try global default, fall back to built-in default
+                String globalDefault = systemSettingsService.getString("ai.default-system-message");
+                systemMessage = (globalDefault != null && !globalDefault.isBlank())
+                        ? globalDefault
+                        : SYSTEM_MESSAGE;
+            }
+
             // Create simple tools instance without CDI proxy
             AITimelineTools simpleTools = new AITimelineTools(streamingTimelineAggregator, currentUserService, routesAnalysisService);
             ChatMemory chatMemory = MessageWindowChatMemory.builder()
@@ -100,6 +132,11 @@ public class AIChatService {
                     .maxMessages(10)
                     .chatMemoryStore(CHAT_MEMORY_STORE) // Use singleton store to persist across requests
                     .build();
+
+            // Inject system message into chat memory if it's a new conversation
+            if (chatMemory.messages().isEmpty()) {
+                chatMemory.add(dev.langchain4j.data.message.SystemMessage.from(systemMessage));
+            }
 
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(model)

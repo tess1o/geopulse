@@ -183,7 +183,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         .uniqueCityCount(((Number) row[7]).longValue())
                         .uniqueLocationCount(((Number) row[8]).longValue())
                         .uniqueCountryCount(((Number) row[9]).longValue())
-                        .firstStayStart(((java.sql.Timestamp) row[10]).toInstant())
+                        .firstStayStart(TimestampUtils.getInstantSafe(row[10]))
                         .dominantLocation((String) row[11])
                         .build())
                 .toList();
@@ -261,7 +261,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         .uniqueCityCount(((Number) row[7]).longValue())
                         .uniqueLocationCount(((Number) row[8]).longValue())
                         .uniqueCountryCount(((Number) row[9]).longValue())
-                        .firstStayStart(((java.sql.Timestamp) row[10]).toInstant())
+                        .firstStayStart(TimestampUtils.getInstantSafe(row[10]))
                         .dominantLocation((String) row[11])
                         .build())
                 .toList();
@@ -339,7 +339,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         .uniqueCityCount(((Number) row[7]).longValue())
                         .uniqueLocationCount(((Number) row[8]).longValue())
                         .uniqueCountryCount(((Number) row[9]).longValue())
-                        .firstStayStart(((java.sql.Timestamp) row[10]).toInstant())
+                        .firstStayStart(TimestampUtils.getInstantSafe(row[10]))
                         .dominantLocation((String) row[11])
                         .build())
                 .toList();
@@ -413,7 +413,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         .uniqueCityCount(((Number) row[7]).longValue())
                         .uniqueLocationCount(((Number) row[8]).longValue())
                         .uniqueCountryCount(((Number) row[9]).longValue())
-                        .firstStayStart(((java.sql.Timestamp) row[10]).toInstant())
+                        .firstStayStart(TimestampUtils.getInstantSafe(row[10]))
                         .dominantLocation((String) row[11])
                         .build())
                 .toList();
@@ -487,7 +487,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         .uniqueCityCount(((Number) row[7]).longValue())
                         .uniqueLocationCount(((Number) row[8]).longValue())
                         .uniqueCountryCount(((Number) row[9]).longValue())
-                        .firstStayStart(((java.sql.Timestamp) row[10]).toInstant())
+                        .firstStayStart(TimestampUtils.getInstantSafe(row[10]))
                         .dominantLocation((String) row[11])
                         .build())
                 .toList();
@@ -561,7 +561,7 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                         .uniqueCityCount(((Number) row[7]).longValue())
                         .uniqueLocationCount(((Number) row[8]).longValue())
                         .uniqueCountryCount(((Number) row[9]).longValue())
-                        .firstStayStart(((java.sql.Timestamp) row[10]).toInstant())
+                        .firstStayStart(TimestampUtils.getInstantSafe(row[10]))
                         .dominantLocation((String) row[11])
                         .build())
                 .toList();
