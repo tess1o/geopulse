@@ -1,8 +1,8 @@
 <template>
-  <PageContainer 
-    title="Dashboard" 
-    subtitle="Overview of your location data and analytics"
-    :loading="isAnyLoading"
+  <PageContainer
+      title="Dashboard"
+      subtitle="Overview of your location data and analytics"
+      :loading="isAnyLoading"
   >
     <!-- Loading States -->
     <template v-if="isAnyLoading">
@@ -18,11 +18,11 @@
       <!-- Selected Period Row (3 cards) -->
       <DashboardGrid v-if="hasSelectedRangeStats" class="dashboard-section" :columns="3">
         <ActivitySummaryCard
-          title="Selected Period Summary"
-          :period="formattedSelectedPeriodRange"
-          :stats="statsUserRange"
-          variant="default"
-          :showChart="hasSelectedChartData"
+            title="Selected Period Summary"
+            :period="formattedSelectedPeriodRange"
+            :stats="statsUserRange"
+            variant="default"
+            :showChart="hasSelectedChartData"
         />
 
         <ActivitySummaryCard
@@ -45,15 +45,15 @@
       <!-- 7 Days Overview Row (3 cards) -->
       <DashboardGrid v-if="hasSevenDaysStats" class="dashboard-section" :columns="3">
 
-        <BaseCard title="Top Places" :period="formattedSelectedPeriodRange">
+        <BaseCard title="Top Places for selected period" :period="formattedSelectedPeriodRange">
           <TopPlacesContent :places="statsUserRange.places" />
         </BaseCard>
-        
-        <BaseCard title="Top Places" :period="formattedLastWeekRange">
+
+        <BaseCard title="Top Places for last 7 days" :period="formattedLastWeekRange">
           <TopPlacesContent :places="statsSevenDays.places" />
         </BaseCard>
 
-        <BaseCard title="Top Places" :period="formattedLastMonthRange">
+        <BaseCard title="Top Places for last 30 days" :period="formattedLastMonthRange">
           <TopPlacesContent :places="statsThirtyDays.places" />
         </BaseCard>
       </DashboardGrid>
@@ -61,16 +61,15 @@
       <!-- 30 Days Overview Row (3 cards) -->
       <DashboardGrid v-if="hasThirtyDaysStats" class="dashboard-section" :columns="3">
 
-        <BaseCard title="Route Analysis" :period="formattedSelectedPeriodRange">
+        <BaseCard title="Route Stats for selected period" :period="formattedSelectedPeriodRange">
           <RouteAnalysisContent :stats="statsUserRange.routes" />
         </BaseCard>
 
-
-        <BaseCard title="Route Analysis" :period="formattedLastWeekRange">
+        <BaseCard title="Route Stats or last 7 days" :period="formattedLastWeekRange">
           <RouteAnalysisContent :stats="statsSevenDays.routes" />
         </BaseCard>
-        
-        <BaseCard title="Route Analysis" :period="formattedLastMonthRange">
+
+        <BaseCard title="Route Stats for last 30 days" :period="formattedLastMonthRange">
           <RouteAnalysisContent :stats="statsThirtyDays.routes" />
         </BaseCard>
       </DashboardGrid>
@@ -81,7 +80,7 @@
           <i class="pi pi-chart-line empty-icon"></i>
           <h3 class="empty-title">No Data Available</h3>
           <p class="empty-message">
-            No location data found for the selected time periods. 
+            No location data found for the selected time periods.
             Check your GPS sources or select a different date range.
           </p>
         </div>
@@ -328,15 +327,15 @@ onMounted(() => {
   .dashboard-section {
     margin-bottom: var(--gp-spacing-lg);
   }
-  
+
   .empty-dashboard {
     padding: var(--gp-spacing-xl) var(--gp-spacing-md);
   }
-  
+
   .empty-icon {
     font-size: 2.5rem;
   }
-  
+
   .empty-title {
     font-size: 1.125rem;
   }
