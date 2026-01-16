@@ -196,15 +196,9 @@ The **Dashboard** provides insights about your location patterns and activity.
 
 ### Rewind - Visual Timeline Playback
 
-**Rewind** lets you "replay" your location history on the map, watching your movements over time.
+**Rewind** Offers a captivating journey through your past location data, transforming it into insightful summaries and visualisations. Discover patterns, revisit significant places, and understand your activity trends over different periods.
 
 **Navigate to:** Menu → Rewind
-
-**How to use:**
-1. Select a date range
-2. Click play to watch your movements
-3. Adjust playback speed
-4. Pause to see details at any point
 
 [Learn more about Rewind](/docs/user-guide/core-features/rewind)
 
