@@ -13,4 +13,5 @@ public class AuthStatusResponse {
     // Login status
     private boolean passwordLoginEnabled;
     private boolean oidcLoginEnabled;
+    private boolean adminLoginBypassEnabled;
 }

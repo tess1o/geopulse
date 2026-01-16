@@ -55,12 +55,20 @@ public class AuthConfigurationService {
     }
 
     /**
+     * Check if admin login bypass is enabled.
+     * When false, admins are subject to the same login restrictions as regular users.
+     */
+    public boolean isAdminLoginBypassEnabled() {
+        return settingsService.getBoolean("auth.admin-login-bypass.enabled");
+    }
+
+    /**
      * Check if password login is enabled for a specific user.
-     * Admin users bypass login restrictions to prevent lockout.
+     * Admin users bypass login restrictions to prevent lockout (if bypass is enabled).
      */
     public boolean isPasswordLoginEnabledForUser(String email) {
         Optional<UserEntity> userOpt = userService.findByEmail(email);
-        if (userOpt.isPresent() && userOpt.get().getRole() == Role.ADMIN) {
+        if (userOpt.isPresent() && userOpt.get().getRole() == Role.ADMIN && isAdminLoginBypassEnabled()) {
             log.debug("Admin user {} bypassing password login restrictions", email);
             return true; // Admin bypass
         }

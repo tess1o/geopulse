@@ -356,13 +356,18 @@ config:
     oidcRegistrationEnabled: true
 
     # Login Control (default: true for all)
-    # Note: Admin users bypass login restrictions to prevent lockout
+    # Note: Admin bypass behavior is configurable via adminLoginBypassEnabled
     # Enable/disable all login methods (master switch)
     loginEnabled: true
     # Enable password-based login (default: true)
     passwordLoginEnabled: true
     # Enable OIDC-based login (default: true)
     oidcLoginEnabled: true
+    # Enable admin login bypass (default: true)
+    # When true, admins can bypass login restrictions to prevent lockout
+    # When false, admins are subject to the same restrictions as regular users
+    # WARNING: Disabling this can result in complete system lockout
+    adminLoginBypassEnabled: true
 
   # JWT Configuration
   jwt:

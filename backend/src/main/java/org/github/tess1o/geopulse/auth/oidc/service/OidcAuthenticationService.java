@@ -194,14 +194,16 @@ public class OidcAuthenticationService {
             // Validate ID token and extract user info
             OidcUserInfo userInfo = validateAndExtractUserInfo(tokenResponse, provider, sessionState);
 
-            // Check if OIDC login is enabled (with admin bypass for existing users)
+            // Check if OIDC login is enabled (with admin bypass for existing users if enabled)
             Optional<UserOidcConnectionEntity> existingConnection = connectionRepository
                     .findByProviderNameAndExternalUserId(providerName, userInfo.getSubject());
 
             if (existingConnection.isPresent()) {
-                // Existing user - check admin bypass
+                // Existing user - check admin bypass if enabled
                 UserEntity user = existingConnection.get().getUser();
-                if (user.getRole() != Role.ADMIN && !authConfigurationService.isOidcLoginEnabled()) {
+                boolean isAdmin = user.getRole() == Role.ADMIN;
+                boolean bypassEnabled = authConfigurationService.isAdminLoginBypassEnabled();
+                if (!authConfigurationService.isOidcLoginEnabled() && !(isAdmin && bypassEnabled)) {
                     throw new OidcLoginDisabledException("OIDC login is currently disabled");
                 }
             } else {

@@ -4,11 +4,12 @@ GeoPulse provides a flexible, hierarchical system to control user login. You can
 
 ## Enable/Disable Login
 
-| Environment Variable                      | Default | Description                                                                                                                                                                                          |
-|-------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GEOPULSE_AUTH_LOGIN_ENABLED`             | `true`  | **Master switch for all user logins.** If set to `false`, all login methods (email/password and OIDC) will be disabled for non-admin users, regardless of the specific settings below              |
-| `GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED`    | `true`  | Enables or disables user login via email and password. This is a specific switch that is only effective if the master switch is enabled.                                                            |
-| `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED`        | `true`  | Enables or disables user login via OIDC providers. This is a specific switch that is only effective if the master switch is enabled                                                                 |
+| Environment Variable                           | Default | Description                                                                                                                                                                                          |
+|------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_AUTH_LOGIN_ENABLED`                  | `true`  | **Master switch for all user logins.** If set to `false`, all login methods (email/password and OIDC) will be disabled (subject to admin bypass setting)                                            |
+| `GEOPULSE_AUTH_PASSWORD_LOGIN_ENABLED`         | `true`  | Enables or disables user login via email and password. This is a specific switch that is only effective if the master switch is enabled.                                                            |
+| `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED`             | `true`  | Enables or disables user login via OIDC providers. This is a specific switch that is only effective if the master switch is enabled                                                                 |
+| `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED`     | `true`  | **Controls admin bypass behavior.** When `true` (default), admins can bypass login restrictions. When `false`, admins are subject to the same login restrictions as regular users                   |
 
 ## How it Works
 
@@ -37,9 +38,11 @@ If the master `GEOPULSE_AUTH_LOGIN_ENABLED` is `false`, no new logins are allowe
 
 ## Admin Bypass
 
-**Important:** Admin users **always bypass login restrictions** to prevent system lockout.
+**Configurable Behavior:** Admin login bypass can be controlled via the `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` setting.
 
-### How Admin Bypass Works
+### Default Behavior (Bypass Enabled)
+
+By default (`GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=true`), admin users bypass login restrictions to prevent system lockout:
 
 1. **Frontend**: When login is disabled, users see a message with an "Administrator Access" button
 2. **Click button**: Reveals the login form with a notice "Administrator access - login restrictions bypassed"
@@ -48,6 +51,17 @@ If the master `GEOPULSE_AUTH_LOGIN_ENABLED` is `false`, no new logins are allowe
    - Non-admin users receive a 403 Forbidden error even if they try to bypass the UI
 
 This prevents scenarios where administrators accidentally lock themselves out of the system during maintenance or configuration changes.
+
+### Disabling Admin Bypass
+
+**WARNING:** Setting `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=false` means admins are subject to the same login restrictions as regular users. This can result in complete system lockout if login is disabled globally.
+
+Use cases for disabling admin bypass:
+- **High-security environments** where even admins must not access the system during maintenance
+- **Compliance requirements** mandating no exceptions to access control policies
+- **Scheduled downtime** where all access (including admin) must be prevented
+
+**Best Practice:** Only disable admin bypass when you have alternative access methods (e.g., direct database access, console access) to re-enable login if needed.
 
 ## Behavior
 
@@ -101,19 +115,30 @@ GEOPULSE_AUTH_LOGIN_ENABLED=true
 ```
 **Result:** Prevents new users from starting work during the maintenance window. Existing users can finish their work.
 
+### Complete System Lockdown
+Prevent all access including admins (high-security maintenance):
+```bash
+GEOPULSE_AUTH_LOGIN_ENABLED=false
+GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=false
+```
+**Result:** Complete lockdown - no new logins allowed for anyone. **WARNING:** Ensure you have alternative access methods before using this configuration!
+
 ## Admin Panel Configuration
 
 Login settings can also be configured via the Admin Panel (requires admin privileges):
 
 1. Navigate to **Settings** → **Authentication**
-2. Find the "Login Control" section with three toggles:
-   - **Login Enabled** (master switch)
-   - **Password Login** (specific control)
-   - **OIDC Login** (specific control)
+2. Find the "Registration Settings" section with four toggles:
+   - **Login Enabled** (master switch for all logins)
+   - **Password Login** (email/password login control)
+   - **OIDC Login** (OIDC provider login control)
+   - **Admin Login Bypass** (allow admins to bypass login restrictions)
 3. Toggle settings as needed
 4. Changes take effect **immediately** (no restart required)
 
 Settings configured via Admin Panel override environment variables and are stored in the database.
+
+**Note:** Be cautious when disabling "Admin Login Bypass" while login is disabled - you may lock yourself out!
 
 ## Kubernetes / Helm Configuration
 
@@ -126,16 +151,29 @@ config:
     loginEnabled: true              # Master switch
     passwordLoginEnabled: true      # Email/password login
     oidcLoginEnabled: true          # OIDC login
+    adminLoginBypassEnabled: true   # Allow admins to bypass restrictions
 ```
 
-### Example: Maintenance Mode
+### Example: Maintenance Mode (Admin Access Allowed)
 
 ```yaml
 config:
   auth:
-    loginEnabled: false  # Disable all login during maintenance
+    loginEnabled: false             # Disable all login during maintenance
     passwordLoginEnabled: true
     oidcLoginEnabled: true
+    adminLoginBypassEnabled: true   # Admins can still log in
+```
+
+### Example: Complete Lockdown (No Admin Bypass)
+
+```yaml
+config:
+  auth:
+    loginEnabled: false              # Disable all login
+    passwordLoginEnabled: true
+    oidcLoginEnabled: true
+    adminLoginBypassEnabled: false   # Even admins cannot log in
 ```
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
@@ -180,9 +218,17 @@ All login attempts (successful and failed) are logged for security auditing.
 
 ### Admin can't login after disabling
 **Possible causes:**
-1. User doesn't have ADMIN role (check `GEOPULSE_ADMIN_EMAIL` matches exactly)
-2. Database role is not set to ADMIN (check Admin Panel → Users)
-3. Frontend shows admin button but backend rejects (check backend logs)
+1. Admin bypass is disabled (`GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=false`) - check settings
+2. User doesn't have ADMIN role (check `GEOPULSE_ADMIN_EMAIL` matches exactly)
+3. Database role is not set to ADMIN (check Admin Panel → Users)
+4. Frontend shows admin button but backend rejects (check backend logs)
+
+### Locked out after disabling admin bypass
+**Solution:** If you've disabled admin bypass and login, you'll need to:
+1. Access the database directly or via console
+2. Update `system_settings` table to set `auth.admin-login-bypass.enabled` to `true`
+3. Or delete the row to revert to default (bypass enabled)
+4. Alternatively, set environment variable `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED=true` and restart
 
 ### Settings not taking effect
 **Solutions:**

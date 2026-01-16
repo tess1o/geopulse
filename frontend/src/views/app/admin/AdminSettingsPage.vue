@@ -409,6 +409,10 @@ const settingLabels = {
     label: 'OIDC Login',
     description: 'Allow login via OIDC providers'
   },
+  'auth.admin-login-bypass.enabled': {
+    label: 'Admin Login Bypass',
+    description: 'Allow admins to bypass login restrictions (prevents lockout)'
+  },
   'geocoding.primary-provider': {
     label: 'Primary Provider',
     description: 'Primary geocoding service'

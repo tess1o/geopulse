@@ -42,24 +42,38 @@
 
           <div class="hero-actions">
             <div v-if="!authStore.isAuthenticated" class="auth-buttons">
-              <Button
-                v-if="registrationStatus.passwordRegistrationEnabled || registrationStatus.oidcRegistrationEnabled"
-                label="Start Your Journey"
-                icon="pi pi-arrow-right"
-                as="router-link"
-                to="/register"
-                class="cta-button primary"
-                size="large"
-              />
-              <Button
-                label="Sign In"
-                as="router-link"
-                to="/login"
-                severity="secondary"
-                outlined
-                class="cta-button secondary"
-                size="large"
-              />
+              <!-- Show message when both login and registration are disabled -->
+              <div v-if="!isLoginAvailable && !authStatus.passwordRegistrationEnabled && !authStatus.oidcRegistrationEnabled"
+                   class="access-disabled-message">
+                <i class="pi pi-lock"></i>
+                <div class="message-text">
+                  <h3>Access Temporarily Unavailable</h3>
+                  <p>Registration and login are currently disabled by the administrator. Please check back later or contact support for assistance.</p>
+                </div>
+              </div>
+
+              <!-- Show buttons when available -->
+              <template v-else>
+                <Button
+                  v-if="authStatus.passwordRegistrationEnabled || authStatus.oidcRegistrationEnabled"
+                  label="Start Your Journey"
+                  icon="pi pi-arrow-right"
+                  as="router-link"
+                  to="/register"
+                  class="cta-button primary"
+                  size="large"
+                />
+                <Button
+                  v-if="isLoginAvailable"
+                  label="Sign In"
+                  as="router-link"
+                  to="/login"
+                  severity="secondary"
+                  outlined
+                  class="cta-button secondary"
+                  size="large"
+                />
+              </template>
             </div>
             <div v-if="authStore.isAuthenticated" class="app-buttons-grid">
               <Button
@@ -157,13 +171,36 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 // Composables
 const authStore = useAuthStore()
-const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
+const authStatus = ref({
+  passwordRegistrationEnabled: false,
+  oidcRegistrationEnabled: false,
+  passwordLoginEnabled: true,
+  oidcLoginEnabled: true,
+  adminLoginBypassEnabled: true
+});
+
+const oidcProviders = ref([]);
+
+// Computed property to check if OIDC is actually available (enabled AND has providers)
+const hasOidcProvidersAvailable = computed(() => {
+  return authStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0;
+});
+
+// Computed property to determine if login is available
+// Login is available if:
+// - Password login is enabled, OR
+// - OIDC login is enabled AND providers exist, OR
+// - Admin bypass is enabled (allows admins to login even when login is disabled)
+const isLoginAvailable = computed(() => {
+  return authStatus.value.passwordLoginEnabled ||
+         hasOidcProvidersAvailable.value ||
+         authStatus.value.adminLoginBypassEnabled;
+});
 
 // Dark mode state
 const isDarkMode = ref(false)
@@ -219,12 +256,20 @@ const toggleDarkMode = () => {
 onMounted(async () => {
   // Sync dark mode state with current DOM state (already initialized in main.js)
   isDarkMode.value = document.documentElement.classList.contains('p-dark')
-  
+
   // Check authentication state to display correct buttons
   await authStore.checkAuth()
 
-  authStore.getRegistrationStatus().then(status => {
-    registrationStatus.value = status;
+  // Fetch auth status
+  authStore.getAuthStatus().then(status => {
+    authStatus.value = status;
+  });
+
+  // Fetch OIDC providers to check if they actually exist
+  authStore.getOidcProviders().then(providers => {
+    oidcProviders.value = providers;
+  }).catch(err => {
+    console.error("Failed to load OIDC providers", err);
   });
 })
 </script>
@@ -386,6 +431,40 @@ onMounted(async () => {
   flex-direction: column;
   gap: 1rem;
   align-items: center;
+}
+
+/* Access Disabled Message */
+.access-disabled-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  background: var(--gp-surface-white);
+  border: 2px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-large);
+  max-width: 500px;
+  text-align: center;
+  box-shadow: var(--gp-shadow-light);
+}
+
+.access-disabled-message i {
+  font-size: 3rem;
+  color: var(--orange-500);
+}
+
+.access-disabled-message .message-text h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+}
+
+.access-disabled-message .message-text p {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--gp-text-secondary);
 }
 
 .app-buttons-grid {
@@ -759,28 +838,45 @@ onMounted(async () => {
   .hero-section {
     min-height: 70vh;
   }
-  
+
   .theme-switcher {
     top: 1rem;
     right: 0.5rem;
   }
-  
+
   .theme-button {
     width: 2.25rem !important;
     height: 2.25rem !important;
   }
-  
+
   .theme-button .p-button-icon {
     font-size: 0.9rem !important;
   }
-  
+
   .app-buttons-grid {
     grid-template-columns: 1fr;
     gap: 0.75rem;
   }
-  
+
   .grid-button {
     min-width: 250px;
+  }
+
+  .access-disabled-message {
+    padding: 1.5rem;
+    margin: 0 1rem;
+  }
+
+  .access-disabled-message i {
+    font-size: 2.5rem;
+  }
+
+  .access-disabled-message .message-text h3 {
+    font-size: 1.1rem;
+  }
+
+  .access-disabled-message .message-text p {
+    font-size: 0.9rem;
   }
 }
 
@@ -814,6 +910,11 @@ onMounted(async () => {
   background: var(--gp-surface-dark);
   border-color: var(--gp-border-dark);
   color: var(--gp-text-secondary);
+}
+
+.p-dark .access-disabled-message {
+  background: var(--gp-surface-dark);
+  border-color: var(--gp-border-dark);
 }
 
 .p-dark .features-section {

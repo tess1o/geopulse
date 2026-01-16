@@ -9,12 +9,14 @@
         </div>
 
         <!-- Login Disabled Message -->
-        <div v-if="!loginStatus.passwordLoginEnabled && !loginStatus.oidcLoginEnabled && !showAdminLogin"
+        <!-- Case 1: No login methods available at all -->
+        <div v-if="!hasAnyLoginMethodAvailable && !showAdminLogin"
              class="login-disabled-message">
           <i class="pi pi-exclamation-triangle"></i>
           <div class="message-content">
             <span>Login is currently disabled. Please contact your administrator.</span>
             <Button
+              v-if="loginStatus.adminLoginBypassEnabled"
               label="Administrator Access"
               icon="pi pi-shield"
               severity="warning"
@@ -26,12 +28,14 @@
           </div>
         </div>
 
-        <div v-else-if="!loginStatus.passwordLoginEnabled && loginStatus.oidcLoginEnabled && !showAdminLogin"
+        <!-- Case 2: Password disabled but OIDC providers available -->
+        <div v-else-if="!loginStatus.passwordLoginEnabled && hasOidcProvidersAvailable && !showAdminLogin"
              class="login-disabled-message">
           <i class="pi pi-info-circle"></i>
           <div class="message-content">
             <span>Email/password login is disabled. Please use OIDC providers below.</span>
             <Button
+              v-if="loginStatus.adminLoginBypassEnabled"
               label="Administrator Access"
               icon="pi pi-shield"
               severity="warning"
@@ -119,10 +123,11 @@
 
               <!-- OIDC Providers Section -->
               <OidcProvidersSection
-                v-if="loginStatus.oidcLoginEnabled && oidcProviders.length > 0"
+                v-if="hasOidcProvidersAvailable"
                 :providers="oidcProviders"
                 :disabled="isLoading"
                 @provider-selected="handleOidcLogin"
+                :show-divider="shouldShowPasswordForm"
               />
 
               <!-- Register Link -->
@@ -166,7 +171,7 @@ const loginError = ref('')
 const oidcProviders = ref([])
 
 const registrationStatus = ref({ passwordRegistrationEnabled: false, oidcRegistrationEnabled: false });
-const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true });
+const loginStatus = ref({ passwordLoginEnabled: true, oidcLoginEnabled: true, adminLoginBypassEnabled: true });
 const showAdminLogin = ref(false);
 
 // Form data
@@ -186,6 +191,16 @@ const isFormValid = computed(() => {
 
 const shouldShowPasswordForm = computed(() => {
   return loginStatus.value.passwordLoginEnabled || showAdminLogin.value
+})
+
+// Check if OIDC is actually available (enabled AND has providers configured)
+const hasOidcProvidersAvailable = computed(() => {
+  return loginStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0
+})
+
+// Check if any login method is actually available
+const hasAnyLoginMethodAvailable = computed(() => {
+  return loginStatus.value.passwordLoginEnabled || hasOidcProvidersAvailable.value
 })
 
 // Methods
@@ -317,7 +332,8 @@ onMounted(() => {
     };
     loginStatus.value = {
       passwordLoginEnabled: status.passwordLoginEnabled,
-      oidcLoginEnabled: status.oidcLoginEnabled
+      oidcLoginEnabled: status.oidcLoginEnabled,
+      adminLoginBypassEnabled: status.adminLoginBypassEnabled
     };
   }).catch(err => {
     console.error("Failed to load auth status", err);

@@ -290,7 +290,8 @@ export const useAuthStore = defineStore('auth', {
                     passwordRegistrationEnabled: false,
                     oidcRegistrationEnabled: false,
                     passwordLoginEnabled: true,
-                    oidcLoginEnabled: true
+                    oidcLoginEnabled: true,
+                    adminLoginBypassEnabled: true
                 };
             } catch (error) {
                 console.error('Failed to get auth status:', error);
@@ -299,7 +300,8 @@ export const useAuthStore = defineStore('auth', {
                     passwordRegistrationEnabled: false,
                     oidcRegistrationEnabled: false,
                     passwordLoginEnabled: true,
-                    oidcLoginEnabled: true
+                    oidcLoginEnabled: true,
+                    adminLoginBypassEnabled: true
                 };
             }
         }

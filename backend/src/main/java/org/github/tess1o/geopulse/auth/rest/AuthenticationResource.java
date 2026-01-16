@@ -254,6 +254,7 @@ public class AuthenticationResource {
                 .oidcRegistrationEnabled(authConfigurationService.isOidcRegistrationEnabled())
                 .passwordLoginEnabled(authConfigurationService.isPasswordLoginEnabled())
                 .oidcLoginEnabled(authConfigurationService.isOidcLoginEnabled())
+                .adminLoginBypassEnabled(authConfigurationService.isAdminLoginBypassEnabled())
                 .build();
         return Response.ok(ApiResponse.success(status)).build();
     }

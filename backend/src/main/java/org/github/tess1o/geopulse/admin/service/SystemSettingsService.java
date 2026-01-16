@@ -49,6 +49,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.auth.password-login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable password login"));
         SETTING_DEFINITIONS.put("auth.oidc.login.enabled",
                 new SettingDefinition("geopulse.auth.oidc.login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC login"));
+        SETTING_DEFINITIONS.put("auth.admin-login-bypass.enabled",
+                new SettingDefinition("geopulse.auth.admin-login-bypass.enabled", "true", ValueType.BOOLEAN, "auth", "Allow admins to bypass login restrictions"));
 
         // Geocoding settings - General
         SETTING_DEFINITIONS.put("geocoding.primary-provider",

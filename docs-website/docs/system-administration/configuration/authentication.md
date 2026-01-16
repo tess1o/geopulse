@@ -108,6 +108,11 @@ GeoPulse provides granular control over login methods to restrict access during 
 - **Default:** `true`
 - **Description:** Controls OIDC provider login
 
+#### Admin Login Bypass Control
+- **Variable:** `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED`
+- **Default:** `true`
+- **Description:** Controls whether admins can bypass login restrictions
+
 ### Hierarchical Structure
 
 Login controls use a hierarchical pattern:
@@ -116,9 +121,11 @@ Login controls use a hierarchical pattern:
 
 ### Admin Bypass
 
-**Important:** Admin users bypass all login restrictions to prevent system lockout.
+**Configurable:** Admin bypass behavior is controlled by `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED`.
 
-Admin users can always log in regardless of these settings. This prevents scenarios where administrators accidentally lock themselves out of the system.
+By default (`true`), admin users bypass login restrictions to prevent system lockout. When set to `false`, admins are subject to the same restrictions as regular users.
+
+**WARNING:** Disabling admin bypass can result in complete system lockout if login is disabled globally. Only use this setting in high-security environments where you have alternative access methods.
 
 ### Admin Panel Configuration
 
