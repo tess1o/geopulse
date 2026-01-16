@@ -652,6 +652,16 @@ const handleEditSave = async (updatedData) => {
   if (!selectedFavorite.value) return
 
   try {
+    // Check if bounds changed for area favorites
+    const isAreaFavorite = selectedFavorite.value.type === 'AREA'
+    const boundsChanged = isAreaFavorite && (
+      selectedFavorite.value.northEastLat !== updatedData.northEastLat ||
+      selectedFavorite.value.northEastLon !== updatedData.northEastLon ||
+      selectedFavorite.value.southWestLat !== updatedData.southWestLat ||
+      selectedFavorite.value.southWestLon !== updatedData.southWestLon
+    )
+
+    // First, update basic data (name, city, country)
     await favoritesStore.editFavorite(
       selectedFavorite.value.id,
       updatedData.name,
@@ -659,18 +669,51 @@ const handleEditSave = async (updatedData) => {
       updatedData.country
     )
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Favorite location updated successfully',
-      life: 3000
-    })
+    // If bounds changed, update them with timeline regeneration
+    if (boundsChanged) {
+      showEditDialog.value = false
+      selectedFavorite.value = null
 
-    showEditDialog.value = false
-    selectedFavorite.value = null
+      // Capture values to avoid closure issues
+      const favoriteId = updatedData.id
+      const favoriteName = updatedData.name
+      const northEastLat = updatedData.northEastLat
+      const northEastLon = updatedData.northEastLon
+      const southWestLat = updatedData.southWestLat
+      const southWestLon = updatedData.southWestLon
 
-    // Update map
-    await loadFavorites()
+      const action = () => favoritesStore.updateAreaBounds(
+        favoriteId,
+        northEastLat,
+        northEastLon,
+        southWestLat,
+        southWestLon
+      )
+
+      withTimelineRegeneration(action, {
+        modalType: 'favorite',
+        successMessage: `Area favorite "${favoriteName}" bounds updated. Timeline is regenerating.`,
+        errorMessage: 'Failed to update area bounds.',
+        onSuccess: () => {
+          // Refresh favorites list from the store
+          loadFavorites()
+        }
+      })
+    } else {
+      // No bounds change, just show success message
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'Favorite location updated successfully',
+        life: 3000
+      })
+
+      showEditDialog.value = false
+      selectedFavorite.value = null
+
+      // Update map
+      await loadFavorites()
+    }
   } catch (error) {
     console.error('Error updating favorite:', error)
     toast.add({
@@ -1193,6 +1236,29 @@ const updateMapMarkers = () => {
       })
 
       rectangle.addTo(favoritesLayerRef.value)
+
+      // Add a center marker icon for better visibility when zoomed out
+      const centerLat = (favorite.southWestLat + favorite.northEastLat) / 2
+      const centerLon = (favorite.southWestLon + favorite.northEastLon) / 2
+
+      const areaMarker = baseMapRef.value.L.marker([centerLat, centerLon], {
+        icon: baseMapRef.value.L.divIcon({
+          className: 'favorite-area-marker',
+          html: '<div class="favorite-area-icon"><i class="pi pi-th-large"></i></div>',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
+        })
+      })
+
+      areaMarker.bindPopup(`<strong>${favorite.name}</strong><br>Area Favorite`)
+      areaMarker.on('click', () => focusOnMap(favorite))
+
+      // Add context menu handler
+      areaMarker.on('contextmenu', (e) => {
+        handleFavoriteContextMenu(e, favorite)
+      })
+
+      areaMarker.addTo(favoritesLayerRef.value)
     }
   })
 
@@ -1242,6 +1308,28 @@ const updateMapMarkers = () => {
     })
 
     rectangle.addTo(favoritesLayerRef.value)
+
+    // Add a center marker icon for better visibility when zoomed out
+    const centerLat = (pending.southWestLat + pending.northEastLat) / 2
+    const centerLon = (pending.southWestLon + pending.northEastLon) / 2
+
+    const pendingAreaMarker = baseMapRef.value.L.marker([centerLat, centerLon], {
+      icon: baseMapRef.value.L.divIcon({
+        className: 'pending-area-marker',
+        html: '<div class="pending-area-icon"><i class="pi pi-th-large"></i></div>',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+      })
+    })
+
+    pendingAreaMarker.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending Area</span>`)
+
+    // Add context menu handler for pending favorites
+    pendingAreaMarker.on('contextmenu', (e) => {
+      handlePendingFavoriteContextMenu(e, pending)
+    })
+
+    pendingAreaMarker.addTo(favoritesLayerRef.value)
   })
 
   // Fit map to show all markers if there are any (only if flag is set)
@@ -1707,7 +1795,9 @@ onUnmounted(() => {
 /* Global marker styles */
 .temp-favorite-marker,
 .favorite-point-marker,
-.pending-point-marker {
+.pending-point-marker,
+.favorite-area-marker,
+.pending-area-marker {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -1792,6 +1882,52 @@ onUnmounted(() => {
   font-size: 1.5rem;
 }
 
+/* Favorite area marker icon - square shape with grid icon */
+.favorite-area-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+}
+
+.favorite-area-icon i {
+  font-size: 1.5rem;
+}
+
+/* Pending area marker icon - square shape with grid icon and dashed border */
+.pending-area-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f59e0b;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px dashed white;
+  position: relative;
+}
+
+.pending-area-icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 8px;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  animation: pending-pulse 2s ease-in-out infinite;
+}
+
+.pending-area-icon i {
+  font-size: 1.5rem;
+}
+
 /* Dark mode support */
 .p-dark .favorite-marker-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
@@ -1802,6 +1938,14 @@ onUnmounted(() => {
 }
 
 .p-dark .pending-marker-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.p-dark .favorite-area-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.p-dark .pending-area-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 </style>
