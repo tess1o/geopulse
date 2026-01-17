@@ -7,9 +7,10 @@
 
     <div v-if="hasChartData" class="chart-container">
       <BarChart
-        :title="viewMode === 'monthly' ? 'Weekly Distance, km' : 'Monthly Distance, km'"
         :labels="chartLabels"
         :datasets="chartDatasets"
+        :yAxisTitle="yAxisTitle"
+        :valueFormatter="formatDistanceValue"
       />
     </div>
 
@@ -23,6 +24,11 @@
 <script setup>
 import { computed } from 'vue'
 import BarChart from '@/components/charts/BarChart.vue'
+import {
+  convertKilometersToDisplayUnit,
+  formatDistanceValue,
+  getDistanceUnitLabel
+} from '@/utils/calculationsHelpers'
 
 // Trip type display configuration with distinct colors
 const tripTypeConfig = {
@@ -33,6 +39,14 @@ const tripTypeConfig = {
   TRAIN: { label: 'Train', color: 'secondary' },  // Gray
   FLIGHT: { label: 'Flight', color: 'danger' }    // Red
 }
+
+// Y-axis title based on unit system and view mode
+const yAxisTitle = computed(() => {
+  const unitLabel = getDistanceUnitLabel()
+  return props.viewMode === 'monthly'
+    ? `Weekly Distance (${unitLabel})`
+    : `Monthly Distance (${unitLabel})`
+})
 
 const props = defineProps({
   chartData: {
@@ -103,11 +117,11 @@ const chartDatasets = computed(() => {
   const allLabels = chartLabels.value
   const chartsByType = props.chartData?.chartsByTripType || {}
 
-  // Helper function to align data with merged labels - use 0 instead of null
+  // Helper function to align data with merged labels - use 0 instead of null, convert km to appropriate unit
   const alignDataWithLabels = (sourceLabels, sourceData) => {
     const labelDataMap = new Map()
     sourceLabels.forEach((label, index) => {
-      labelDataMap.set(label, sourceData[index] || 0)
+      labelDataMap.set(label, convertKilometersToDisplayUnit(sourceData[index] || 0))
     })
 
     // Map data to all labels, use 0 for missing values

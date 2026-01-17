@@ -73,9 +73,10 @@
     <div v-if="showChart && hasChartData" class="chart-section">
       <h4 class="chart-title">Distance Activity</h4>
       <BarChart
-        title="Distance, km"
         :labels="chartLabels"
         :datasets="chartDatasets"
+        :yAxisTitle="yAxisTitle"
+        :valueFormatter="formatDistanceValue"
         class="activity-chart"
       />
     </div>
@@ -87,7 +88,14 @@ import { computed } from 'vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import MetricItem from '@/components/ui/data/MetricItem.vue'
 import BarChart from '@/components/charts/BarChart.vue'
-import { formatDistance, formatDuration, formatSpeed } from '@/utils/calculationsHelpers'
+import {
+  formatDistance,
+  formatDuration,
+  formatSpeed,
+  convertKilometersToDisplayUnit,
+  formatDistanceValue,
+  getDistanceUnitLabel
+} from '@/utils/calculationsHelpers'
 
 const props = defineProps({
   title: {
@@ -131,6 +139,9 @@ const tripTypeConfig = {
   TRAIN: { label: 'Train', color: 'secondary' },
   FLIGHT: { label: 'Flight', color: 'danger' }
 }
+
+// Y-axis title based on unit system
+const yAxisTitle = computed(() => `Distance (${getDistanceUnitLabel()})`)
 
 const hasChartData = computed(() => {
   const chartsByType = props.stats?.distanceChartsByTripType || {}
@@ -190,8 +201,8 @@ const chartDatasets = computed(() => {
     const labels = chartData.labels || []
     const data = chartData.data || []
 
-    // Create label-to-value map for this trip type
-    const dataMap = new Map(labels.map((label, i) => [label, data[i] || 0]))
+    // Create label-to-value map for this trip type, converting km to appropriate unit
+    const dataMap = new Map(labels.map((label, i) => [label, convertKilometersToDisplayUnit(data[i] || 0)]))
 
     // Get configuration for this trip type
     const config = tripTypeConfig[tripType] || { label: tripType, color: 'secondary' }
@@ -202,8 +213,6 @@ const chartDatasets = computed(() => {
       color: config.color
     })
   })
-
-  console.log(datasets)
 
   return datasets
 })
