@@ -1,6 +1,6 @@
 <template>
   <Dialog v-model:visible="dialogVisible" modal :header="dialogHeader"
-          :style="{width: '90vw', maxWidth: '700px'}" :breakpoints="{'960px': '90vw', '640px': '95vw'}"
+          class="gp-dialog-md"
           @hide="onHide">
 
     <!-- Success State - Show Created Link -->

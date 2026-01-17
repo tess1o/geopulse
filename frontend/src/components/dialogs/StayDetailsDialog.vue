@@ -3,7 +3,7 @@
     v-model:visible="internalVisible"
     :header="dialogTitle"
     :modal="true"
-    :style="{ width: '60vw', minWidth: '500px' }"
+    class="gp-dialog-md"
     @hide="$emit('close')"
   >
     <div class="stay-details-content">

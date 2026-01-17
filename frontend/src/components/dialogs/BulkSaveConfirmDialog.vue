@@ -3,7 +3,7 @@
     v-model:visible="internalVisible"
     modal
     header="Confirm Bulk Save"
-    :style="{ width: '450px' }"
+    class="gp-dialog-sm"
     @hide="onDialogHide"
   >
     <div class="dialog-content">

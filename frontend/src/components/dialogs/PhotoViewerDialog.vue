@@ -3,7 +3,7 @@
     :visible="visible"
     modal
     :header="dialogTitle"
-    :style="{ width: '90vw', maxWidth: '800px' }"
+    class="gp-dialog-xl"
     :content-style="{ padding: '0' }"
     :dismissable-mask="true"
     @update:visible="(value) => emit('update:visible', value)"

@@ -3,7 +3,7 @@
     v-model:visible="dialogVisible"
     modal
     :header="dialogHeader"
-    :style="{ width: '600px' }"
+    class="gp-dialog-md"
     @show="loadForm"
   >
     <!-- OwnTracks Tag Warning -->

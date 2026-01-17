@@ -5,7 +5,7 @@
     :modal="true"
     :closable="true"
     @update:visible="$emit('close')"
-    :style="{ width: '700px' }"
+    class="gp-dialog-md"
   >
     <div class="dialog-content">
       <!-- Map Section -->

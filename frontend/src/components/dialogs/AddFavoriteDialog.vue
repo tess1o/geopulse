@@ -2,8 +2,11 @@
   <Dialog v-model:visible="internalVisible"
           v-model:header="internalHeader"
           modal
+          class="gp-dialog-sm"
           @hide="onDialogHide">
-    <InputText v-model="locationName" placeholder="Location name"/>
+    <div class="dialog-content">
+      <InputText v-model="locationName" placeholder="Location name" class="w-full"/>
+    </div>
     <template #footer>
       <Button label="Cancel" @click="onDialogHide"/>
       <Button label="Save" @click="onSaveButton"/>
@@ -50,3 +53,13 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.dialog-content {
+  padding: 0.5rem 0;
+}
+
+.w-full {
+  width: 100%;
+}
+</style>

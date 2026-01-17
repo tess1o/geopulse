@@ -5,8 +5,7 @@
       :modal="true"
       :closable="!saving"
       @update:visible="handleClose"
-      class="bulk-edit-dialog"
-      :style="{width: '600px'}"
+      class="bulk-edit-dialog gp-dialog-md"
   >
     <div class="dialog-content">
       <!-- Selected Items Summary -->
@@ -74,8 +73,7 @@
           v-model:visible="showTypoWarning"
           header="Possible Typo Detected"
           :modal="true"
-          :style="{width: '500px'}"
-          class="typo-warning-dialog"
+          class="typo-warning-dialog gp-dialog-sm"
       >
         <div class="typo-content">
           <i class="pi pi-exclamation-triangle warning-icon"></i>
