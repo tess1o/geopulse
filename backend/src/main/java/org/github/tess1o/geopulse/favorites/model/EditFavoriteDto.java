@@ -19,4 +19,21 @@ public class EditFavoriteDto {
 
     @Size(max = 100, message = "Country name cannot exceed 100 characters")
     private String country;
+
+    // Optional bounds for area favorites
+    @DecimalMin(value = "-90.0", message = "Latitude must be between -90 and 90")
+    @DecimalMax(value = "90.0", message = "Latitude must be between -90 and 90")
+    private Double northEastLat;
+
+    @DecimalMin(value = "-180.0", message = "Longitude must be between -180 and 180")
+    @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180")
+    private Double northEastLon;
+
+    @DecimalMin(value = "-90.0", message = "Latitude must be between -90 and 90")
+    @DecimalMax(value = "90.0", message = "Latitude must be between -90 and 90")
+    private Double southWestLat;
+
+    @DecimalMin(value = "-180.0", message = "Longitude must be between -180 and 180")
+    @DecimalMax(value = "180.0", message = "Longitude must be between -180 and 180")
+    private Double southWestLon;
 }

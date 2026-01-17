@@ -168,16 +168,30 @@ export const useFavoritesStore = defineStore('favorites', {
             }
         },
 
-        async editFavorite(id, name, city, country) {
+        async editFavorite(id, name, city, country, bounds = null) {
             try {
-                await apiService.put(`/favorites/${id}`, {
+                const payload = {
                     name,
                     city,
                     country
-                })
+                }
+
+                // Include bounds if provided (for area favorites)
+                if (bounds) {
+                    payload.northEastLat = bounds.northEastLat
+                    payload.northEastLon = bounds.northEastLon
+                    payload.southWestLat = bounds.southWestLat
+                    payload.southWestLon = bounds.southWestLon
+                }
+
+                const response = await apiService.put(`/favorites/${id}`, payload)
 
                 // Refresh favorites to get the updated list from backend
                 await this.fetchFavoritePlaces()
+
+                // Return job ID if available (for async timeline regeneration when bounds change)
+                // Response structure: { status: "success", data: { message: "...", jobId: "..." } }
+                return response?.data?.jobId || null
             } catch (error) {
                 throw error
             }

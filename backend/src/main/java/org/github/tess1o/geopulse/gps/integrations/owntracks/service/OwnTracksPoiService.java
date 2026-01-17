@@ -5,6 +5,7 @@ import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.favorites.model.AddPointToFavoritesDto;
+import org.github.tess1o.geopulse.favorites.model.EditFavoriteDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteAreaDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoritePointDto;
@@ -75,13 +76,11 @@ public class OwnTracksPoiService {
             if (!existingFavorite.getPoints().isEmpty()) {
                 FavoritePointDto existingPoint = existingFavorite.getPoints().get(0);
                 if (!poiName.equals(existingPoint.getName())) {
-                    favoriteLocationService.updateFavorite(
-                            userId,
-                            existingPoint.getId(),
-                            poiName,
-                            existingPoint.getCity(),
-                            existingPoint.getCountry()
-                    );
+                    EditFavoriteDto dto = new EditFavoriteDto();
+                    dto.setName(poiName);
+                    dto.setCity(existingPoint.getCity());
+                    dto.setCountry(existingPoint.getCountry());
+                    favoriteLocationService.updateFavorite(userId, existingPoint.getId(), dto);
                     log.info("Updated favorite point '{}' to '{}' based on OwnTracks POI",
                             existingPoint.getName(), poiName);
                 } else {
@@ -90,13 +89,11 @@ public class OwnTracksPoiService {
             } else if (!existingFavorite.getAreas().isEmpty()) {
                 FavoriteAreaDto existingArea = existingFavorite.getAreas().getFirst();
                 if (!poiName.equals(existingArea.getName())) {
-                    favoriteLocationService.updateFavorite(
-                            userId,
-                            existingArea.getId(),
-                            poiName,
-                            existingArea.getCity(),
-                            existingArea.getCountry()
-                    );
+                    EditFavoriteDto dto = new EditFavoriteDto();
+                    dto.setName(poiName);
+                    dto.setCity(existingArea.getCity());
+                    dto.setCountry(existingArea.getCountry());
+                    favoriteLocationService.updateFavorite(userId, existingArea.getId(), dto);
                     log.info("Updated favorite area '{}' to '{}' based on OwnTracks POI",
                             existingArea.getName(), poiName);
                 } else {

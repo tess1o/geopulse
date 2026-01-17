@@ -263,7 +263,9 @@ public class FavoriteLocationService {
 
     @Transactional
     public void renameFavorite(UUID userId, long favoriteId, String newName) {
-        updateFavorite(userId, favoriteId, newName, null, null);
+        EditFavoriteDto dto = new EditFavoriteDto();
+        dto.setName(newName);
+        updateFavorite(userId, favoriteId, dto);
     }
 
     @Transactional
@@ -342,11 +344,11 @@ public class FavoriteLocationService {
     }
 
     @Transactional
-    public void updateFavorite(UUID userId, long favoriteId, String newName, String city, String country) {
-        validateName(newName);
+    public boolean updateFavorite(UUID userId, long favoriteId, EditFavoriteDto dto) {
+        validateName(dto.getName());
 
         log.debug("User {} attempting to update favorite {}: name='{}', city='{}', country='{}'",
-                userId, favoriteId, newName, city, country);
+                userId, favoriteId, dto.getName(), dto.getCity(), dto.getCountry());
 
         FavoritesEntity favoritesEntity = repository.findById(favoriteId);
         if (favoritesEntity == null) {
@@ -360,26 +362,70 @@ public class FavoriteLocationService {
             throw new SecurityException("User is not authorized to edit this favorite");
         }
 
+        boolean boundsChanged = false;
+
+        // Update basic fields
         String oldName = favoritesEntity.getName();
-        favoritesEntity.setName(newName);
-        favoritesEntity.setCity(city);
-        favoritesEntity.setCountry(country);
+        favoritesEntity.setName(dto.getName());
+        favoritesEntity.setCity(dto.getCity());
+        favoritesEntity.setCountry(dto.getCountry());
+
+        // Update bounds if provided (for area favorites)
+        if (dto.getNorthEastLat() != null && dto.getNorthEastLon() != null &&
+            dto.getSouthWestLat() != null && dto.getSouthWestLon() != null) {
+
+            if (favoritesEntity.getType() != FavoriteLocationType.AREA) {
+                log.warn("Attempted to update bounds for non-area favorite {}", favoriteId);
+                throw new IllegalArgumentException("Can only update bounds for area favorites");
+            }
+
+            // Validate bounds
+            validateCoordinate("northEastLat", dto.getNorthEastLat(), -90.0, 90.0);
+            validateCoordinate("northEastLon", dto.getNorthEastLon(), -180.0, 180.0);
+            validateCoordinate("southWestLat", dto.getSouthWestLat(), -90.0, 90.0);
+            validateCoordinate("southWestLon", dto.getSouthWestLon(), -180.0, 180.0);
+
+            if (dto.getNorthEastLat() <= dto.getSouthWestLat()) {
+                throw new IllegalArgumentException("North-East latitude must be greater than South-West latitude");
+            }
+
+            if (dto.getNorthEastLon() <= dto.getSouthWestLon()) {
+                throw new IllegalArgumentException("North-East longitude must be greater than South-West longitude");
+            }
+
+            // Create new polygon with updated bounds
+            // buildBoundingBoxPolygon expects: (south lat, north lat, west lon, east lon)
+            Polygon newPolygon = GeoUtils.buildBoundingBoxPolygon(
+                    dto.getSouthWestLat(), dto.getNorthEastLat(),
+                    dto.getSouthWestLon(), dto.getNorthEastLon()
+            );
+
+            // Check if bounds actually changed
+            if (!favoritesEntity.getGeometry().equals(newPolygon)) {
+                favoritesEntity.setGeometry(newPolygon);
+                boundsChanged = true;
+                log.info("User {} updated bounds for area favorite {}", userId, favoriteId);
+            }
+        }
+
         repository.persistAndFlush(favoritesEntity);
 
         // Fire event for timeline system (only if name changed)
-        if (!oldName.equals(newName)) {
+        if (!oldName.equals(dto.getName())) {
             favoriteRenamedEvent.fire(FavoriteRenamedEvent.builder()
                     .favoriteId(favoriteId)
                     .userId(userId)
                     .oldName(oldName)
-                    .newName(newName)
+                    .newName(dto.getName())
                     .favoriteType(favoritesEntity.getType())
                     .geometry(favoritesEntity.getGeometry())
                     .build());
         }
 
-        log.info("User {} successfully updated favorite {}: name='{}', city='{}', country='{}'",
-                userId, favoriteId, newName, city, country);
+        log.info("User {} successfully updated favorite {}: name='{}', city='{}', country='{}', boundsChanged={}",
+                userId, favoriteId, dto.getName(), dto.getCity(), dto.getCountry(), boundsChanged);
+
+        return boundsChanged;
     }
 
     @Transactional

@@ -35,6 +35,7 @@
     --gp-timeline-purple-light: rgba(237, 233, 254, 0.5);
 
     /* Neutral Colors */
+    --gp-neutral-white: #ffffff;
     --gp-text-primary: #1e293b;
     --gp-text-secondary: #64748b;
     --gp-text-muted: #94a3b8;

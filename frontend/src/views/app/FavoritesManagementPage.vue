@@ -456,6 +456,11 @@ const {
   }
 })
 
+// Helper function to extract error message
+const getErrorMessage = (error, fallbackMessage) => {
+  return error.response?.data?.message || error.userMessage || error.message || fallbackMessage
+}
+
 // Computed properties
 const allFavorites = computed(() => {
   const points = favoritesStore.getFavoritePoints.map(p => ({...p, type: 'POINT'}))
@@ -652,31 +657,49 @@ const handleEditSave = async (updatedData) => {
   if (!selectedFavorite.value) return
 
   try {
-    await favoritesStore.editFavorite(
-      selectedFavorite.value.id,
-      updatedData.name,
-      updatedData.city,
-      updatedData.country
+    // Prepare bounds if it's an area favorite
+    const bounds = updatedData.type === 'AREA' ? {
+      northEastLat: updatedData.northEastLat,
+      northEastLon: updatedData.northEastLon,
+      southWestLat: updatedData.southWestLat,
+      southWestLon: updatedData.southWestLon
+    } : null
+
+    // Capture values to avoid closure issues
+    const favoriteId = updatedData.id
+    const favoriteName = updatedData.name
+    const city = updatedData.city
+    const country = updatedData.country
+
+    // Update favorite (with optional bounds)
+    const action = () => favoritesStore.editFavorite(
+      favoriteId,
+      favoriteName,
+      city,
+      country,
+      bounds
     )
 
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Favorite location updated successfully',
-      life: 3000
-    })
-
+    // Close dialog immediately
     showEditDialog.value = false
     selectedFavorite.value = null
 
-    // Update map
-    await loadFavorites()
+    // Use timeline regeneration composable (will only trigger if bounds changed on backend)
+    await withTimelineRegeneration(action, {
+      modalType: 'favorite',
+      successMessage: `Favorite "${favoriteName}" updated successfully.`,
+      errorMessage: 'Failed to update favorite location.',
+      onSuccess: () => {
+        // Refresh favorites list from the store
+        loadFavorites()
+      }
+    })
   } catch (error) {
     console.error('Error updating favorite:', error)
     toast.add({
       severity: 'error',
       summary: 'Update Failed',
-      detail: error.message || 'Failed to update favorite location',
+      detail: getErrorMessage(error, 'Failed to update favorite location'),
       life: 5000
     })
   }
@@ -718,7 +741,7 @@ const handleReconcile = async (reconcileData) => {
     toast.add({
       severity: 'error',
       summary: 'Reconciliation Failed',
-      detail: error.message || 'Failed to start reconciliation',
+      detail: getErrorMessage(error, 'Failed to start reconciliation'),
       life: 5000
     })
     showReconcileDialog.value = false
@@ -967,7 +990,7 @@ const handleBulkSaveConfirm = async () => {
     toast.add({
       severity: 'error',
       summary: 'Bulk Save Failed',
-      detail: error.message || 'Failed to save pending favorites',
+      detail: getErrorMessage(error, 'Failed to save pending favorites'),
       life: 5000
     })
   } finally {
@@ -1193,6 +1216,29 @@ const updateMapMarkers = () => {
       })
 
       rectangle.addTo(favoritesLayerRef.value)
+
+      // Add a center marker icon for better visibility when zoomed out
+      const centerLat = (favorite.southWestLat + favorite.northEastLat) / 2
+      const centerLon = (favorite.southWestLon + favorite.northEastLon) / 2
+
+      const areaMarker = baseMapRef.value.L.marker([centerLat, centerLon], {
+        icon: baseMapRef.value.L.divIcon({
+          className: 'favorite-area-marker',
+          html: '<div class="favorite-area-icon"><i class="pi pi-th-large"></i></div>',
+          iconSize: [40, 40],
+          iconAnchor: [20, 20]
+        })
+      })
+
+      areaMarker.bindPopup(`<strong>${favorite.name}</strong><br>Area Favorite`)
+      areaMarker.on('click', () => focusOnMap(favorite))
+
+      // Add context menu handler
+      areaMarker.on('contextmenu', (e) => {
+        handleFavoriteContextMenu(e, favorite)
+      })
+
+      areaMarker.addTo(favoritesLayerRef.value)
     }
   })
 
@@ -1242,6 +1288,28 @@ const updateMapMarkers = () => {
     })
 
     rectangle.addTo(favoritesLayerRef.value)
+
+    // Add a center marker icon for better visibility when zoomed out
+    const centerLat = (pending.southWestLat + pending.northEastLat) / 2
+    const centerLon = (pending.southWestLon + pending.northEastLon) / 2
+
+    const pendingAreaMarker = baseMapRef.value.L.marker([centerLat, centerLon], {
+      icon: baseMapRef.value.L.divIcon({
+        className: 'pending-area-marker',
+        html: '<div class="pending-area-icon"><i class="pi pi-th-large"></i></div>',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+      })
+    })
+
+    pendingAreaMarker.bindPopup(`<strong>${pending.name}</strong><br><span style="color: #f59e0b;">Pending Area</span>`)
+
+    // Add context menu handler for pending favorites
+    pendingAreaMarker.on('contextmenu', (e) => {
+      handlePendingFavoriteContextMenu(e, pending)
+    })
+
+    pendingAreaMarker.addTo(favoritesLayerRef.value)
   })
 
   // Fit map to show all markers if there are any (only if flag is set)
@@ -1707,7 +1775,9 @@ onUnmounted(() => {
 /* Global marker styles */
 .temp-favorite-marker,
 .favorite-point-marker,
-.pending-point-marker {
+.pending-point-marker,
+.favorite-area-marker,
+.pending-area-marker {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -1792,6 +1862,52 @@ onUnmounted(() => {
   font-size: 1.5rem;
 }
 
+/* Favorite area marker icon - square shape with grid icon */
+.favorite-area-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+}
+
+.favorite-area-icon i {
+  font-size: 1.5rem;
+}
+
+/* Pending area marker icon - square shape with grid icon and dashed border */
+.pending-area-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f59e0b;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px dashed white;
+  position: relative;
+}
+
+.pending-area-icon::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 8px;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  animation: pending-pulse 2s ease-in-out infinite;
+}
+
+.pending-area-icon i {
+  font-size: 1.5rem;
+}
+
 /* Dark mode support */
 .p-dark .favorite-marker-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
@@ -1802,6 +1918,14 @@ onUnmounted(() => {
 }
 
 .p-dark .pending-marker-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.p-dark .favorite-area-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.p-dark .pending-area-icon {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 </style>

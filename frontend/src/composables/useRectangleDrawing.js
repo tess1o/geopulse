@@ -166,10 +166,10 @@ export function useRectangleDrawing(options = {}) {
     const bounds = L.latLngBounds(drawingState.value.startPoint, latlng)
     
     // Only create rectangle if it has some size
-    const sizeDiff = Math.abs(bounds.getNorthEast().lat - bounds.getSouthWest().lat) + 
+    const sizeDiff = Math.abs(bounds.getNorthEast().lat - bounds.getSouthWest().lat) +
                      Math.abs(bounds.getNorthEast().lng - bounds.getSouthWest().lng)
-    
-    if (sizeDiff > 0.001) { // Minimum size threshold
+
+    if (sizeDiff > 0.00001) { // Minimum size threshold (allows small rectangles ~1-2 meters)
       drawingState.value.tempAreaLayer = L.rectangle(bounds, {
         color: '#e91e63',
         weight: 2,
