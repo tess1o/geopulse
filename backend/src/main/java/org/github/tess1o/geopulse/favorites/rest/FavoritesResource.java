@@ -64,7 +64,21 @@ public class FavoritesResource {
             UUID authenticatedUserId = currentUserService.getCurrentUserId();
             log.info("User {} updating favorite {}: name='{}', city='{}', country='{}'",
                     authenticatedUserId, favoriteId, dto.getName(), dto.getCity(), dto.getCountry());
-            service.updateFavorite(authenticatedUserId, favoriteId, dto.getName(), dto.getCity(), dto.getCountry());
+
+            // Update favorite and check if bounds changed
+            boolean boundsChanged = service.updateFavorite(authenticatedUserId, favoriteId, dto);
+
+            // If bounds changed, trigger timeline regeneration
+            if (boundsChanged) {
+                UUID jobId = service.createTimelineRegenerationJob(authenticatedUserId);
+                if (jobId != null) {
+                    return Response.ok(ApiResponse.success(java.util.Map.of(
+                        "message", "Favorite updated successfully. Timeline is regenerating.",
+                        "jobId", jobId.toString()
+                    ))).build();
+                }
+            }
+
             return Response.ok(ApiResponse.success("Favorite updated successfully")).build();
         } catch (SecurityException e) {
             log.warn("User {} attempted to update favorite {} without authorization",
@@ -74,8 +88,8 @@ public class FavoritesResource {
                     .build();
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request to update favorite {}: {}", favoriteId, e.getMessage());
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Favorite not found"))
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
             log.error("Failed to update favorite {}", favoriteId, e);

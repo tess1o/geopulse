@@ -456,6 +456,11 @@ const {
   }
 })
 
+// Helper function to extract error message
+const getErrorMessage = (error, fallbackMessage) => {
+  return error.response?.data?.message || error.userMessage || error.message || fallbackMessage
+}
+
 // Computed properties
 const allFavorites = computed(() => {
   const points = favoritesStore.getFavoritePoints.map(p => ({...p, type: 'POINT'}))
@@ -652,74 +657,49 @@ const handleEditSave = async (updatedData) => {
   if (!selectedFavorite.value) return
 
   try {
-    // Check if bounds changed for area favorites
-    const isAreaFavorite = selectedFavorite.value.type === 'AREA'
-    const boundsChanged = isAreaFavorite && (
-      selectedFavorite.value.northEastLat !== updatedData.northEastLat ||
-      selectedFavorite.value.northEastLon !== updatedData.northEastLon ||
-      selectedFavorite.value.southWestLat !== updatedData.southWestLat ||
-      selectedFavorite.value.southWestLon !== updatedData.southWestLon
+    // Prepare bounds if it's an area favorite
+    const bounds = updatedData.type === 'AREA' ? {
+      northEastLat: updatedData.northEastLat,
+      northEastLon: updatedData.northEastLon,
+      southWestLat: updatedData.southWestLat,
+      southWestLon: updatedData.southWestLon
+    } : null
+
+    // Capture values to avoid closure issues
+    const favoriteId = updatedData.id
+    const favoriteName = updatedData.name
+    const city = updatedData.city
+    const country = updatedData.country
+
+    // Update favorite (with optional bounds)
+    const action = () => favoritesStore.editFavorite(
+      favoriteId,
+      favoriteName,
+      city,
+      country,
+      bounds
     )
 
-    // First, update basic data (name, city, country)
-    await favoritesStore.editFavorite(
-      selectedFavorite.value.id,
-      updatedData.name,
-      updatedData.city,
-      updatedData.country
-    )
+    // Close dialog immediately
+    showEditDialog.value = false
+    selectedFavorite.value = null
 
-    // If bounds changed, update them with timeline regeneration
-    if (boundsChanged) {
-      showEditDialog.value = false
-      selectedFavorite.value = null
-
-      // Capture values to avoid closure issues
-      const favoriteId = updatedData.id
-      const favoriteName = updatedData.name
-      const northEastLat = updatedData.northEastLat
-      const northEastLon = updatedData.northEastLon
-      const southWestLat = updatedData.southWestLat
-      const southWestLon = updatedData.southWestLon
-
-      const action = () => favoritesStore.updateAreaBounds(
-        favoriteId,
-        northEastLat,
-        northEastLon,
-        southWestLat,
-        southWestLon
-      )
-
-      withTimelineRegeneration(action, {
-        modalType: 'favorite',
-        successMessage: `Area favorite "${favoriteName}" bounds updated. Timeline is regenerating.`,
-        errorMessage: 'Failed to update area bounds.',
-        onSuccess: () => {
-          // Refresh favorites list from the store
-          loadFavorites()
-        }
-      })
-    } else {
-      // No bounds change, just show success message
-      toast.add({
-        severity: 'success',
-        summary: 'Success',
-        detail: 'Favorite location updated successfully',
-        life: 3000
-      })
-
-      showEditDialog.value = false
-      selectedFavorite.value = null
-
-      // Update map
-      await loadFavorites()
-    }
+    // Use timeline regeneration composable (will only trigger if bounds changed on backend)
+    await withTimelineRegeneration(action, {
+      modalType: 'favorite',
+      successMessage: `Favorite "${favoriteName}" updated successfully.`,
+      errorMessage: 'Failed to update favorite location.',
+      onSuccess: () => {
+        // Refresh favorites list from the store
+        loadFavorites()
+      }
+    })
   } catch (error) {
     console.error('Error updating favorite:', error)
     toast.add({
       severity: 'error',
       summary: 'Update Failed',
-      detail: error.message || 'Failed to update favorite location',
+      detail: getErrorMessage(error, 'Failed to update favorite location'),
       life: 5000
     })
   }
@@ -761,7 +741,7 @@ const handleReconcile = async (reconcileData) => {
     toast.add({
       severity: 'error',
       summary: 'Reconciliation Failed',
-      detail: error.message || 'Failed to start reconciliation',
+      detail: getErrorMessage(error, 'Failed to start reconciliation'),
       life: 5000
     })
     showReconcileDialog.value = false
@@ -1010,7 +990,7 @@ const handleBulkSaveConfirm = async () => {
     toast.add({
       severity: 'error',
       summary: 'Bulk Save Failed',
-      detail: error.message || 'Failed to save pending favorites',
+      detail: getErrorMessage(error, 'Failed to save pending favorites'),
       life: 5000
     })
   } finally {
