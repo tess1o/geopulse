@@ -45,7 +45,6 @@
           <Button
             :label="isDrawing() ? 'Drawing...' : 'Redraw Area'"
             icon="pi pi-pencil"
-            severity="secondary"
             size="small"
             @click="handleRedrawArea"
             :disabled="isDrawing()"
@@ -276,28 +275,28 @@ onUnmounted(() => {
 
 <style scoped>
 .edit-favorite-content {
-  padding: 1rem 0;
+  padding: 0.5rem 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .field-label {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--gp-text-primary);
 }
 
 /* Bounds Section */
 .bounds-section {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--gp-border-light);
 }
 
@@ -305,7 +304,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .bounds-title-group {
@@ -328,11 +327,11 @@ onUnmounted(() => {
 /* Map Container */
 .map-container {
   width: 100%;
-  height: 400px;
+  height: 350px;
   border-radius: var(--gp-radius-medium);
   overflow: hidden;
   border: 1px solid var(--gp-border-medium);
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   position: relative;
 }
 
@@ -343,7 +342,7 @@ onUnmounted(() => {
   left: 50%;
   transform: translateX(-50%);
   background: var(--gp-primary);
-  color: white;
+  color: var(--gp-neutral-white);
   padding: 0.75rem 1.25rem;
   border-radius: var(--gp-radius-medium);
   display: flex;
@@ -395,7 +394,7 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .map-container {
-    height: 300px;
+    height: 250px;
   }
 }
 
@@ -410,18 +409,18 @@ onUnmounted(() => {
   background: var(--gp-surface-white);
   border-bottom: 1px solid var(--gp-border-light);
   border-radius: var(--gp-radius-large) var(--gp-radius-large) 0 0;
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
 }
 
 :deep(.p-dialog-title) {
   font-weight: 600;
   color: var(--gp-text-primary);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
 }
 
 :deep(.p-dialog-content) {
   background: var(--gp-surface-white);
-  padding: 0 1.5rem;
+  padding: 0 1.25rem;
   color: var(--gp-text-primary);
 }
 
@@ -429,18 +428,18 @@ onUnmounted(() => {
   background: var(--gp-surface-white);
   border-top: 1px solid var(--gp-border-light);
   border-radius: 0 0 var(--gp-radius-large) var(--gp-radius-large);
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 /* Input Styling */
 :deep(.p-inputtext) {
   border-radius: var(--gp-radius-medium);
   border: 1px solid var(--gp-border-medium);
-  padding: 0.75rem;
-  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
   transition: all 0.2s ease;
 }
 
@@ -454,20 +453,21 @@ onUnmounted(() => {
 :deep(.p-button) {
   border-radius: var(--gp-radius-medium);
   font-weight: 600;
-  padding: 0.75rem 1.5rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.95rem;
   transition: all 0.2s ease;
 }
 
 :deep(.p-button:not(.p-button-outlined)) {
   background: var(--gp-primary);
   border-color: var(--gp-primary);
+  color: var(--gp-neutral-white);
 }
 
 :deep(.p-button:not(.p-button-outlined):hover) {
   background: var(--gp-primary-hover);
   border-color: var(--gp-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--gp-shadow-medium);
+  color: var(--gp-neutral-white);
 }
 
 :deep(.p-button.p-button-outlined) {
@@ -511,13 +511,19 @@ onUnmounted(() => {
 
 .p-dark :deep(.p-button.p-button-outlined) {
   border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
+  color: var(--gp-text-primary);
 }
 
 .p-dark :deep(.p-button.p-button-outlined:hover) {
   background: var(--gp-surface-darker);
   border-color: var(--gp-border-light);
   color: var(--gp-text-primary);
+}
+
+.p-dark :deep(.p-button:not(.p-button-outlined)) {
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: var(--gp-neutral-white);
 }
 
 .p-dark .bounds-section {
