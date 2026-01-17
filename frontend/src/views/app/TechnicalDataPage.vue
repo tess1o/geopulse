@@ -638,7 +638,7 @@ const formatDate = (value) => {
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return { date: '-', time: '-' }
   return {
-    date: timezone.format(timestamp, 'MMM D'),
+    date: timezone.format(timestamp, 'YYYY-MM-DD'),
     time: timezone.format(timestamp, 'HH:mm')
   }
 }
