@@ -303,7 +303,14 @@ const updateHighlightedMarker = () => {
       if (shouldBeHighlighted && props.map && item.type !== 'trip') {
         // Disable animation when clustering is enabled to prevent markers flying around
         const useAnimation = !markerClusterGroup.value
-        props.map.setView([item.latitude, item.longitude], 16, {
+
+        // Only change zoom if currently zoomed out beyond default
+        // This preserves user's zoom level when examining multiple nearby stays
+        const currentZoom = props.map.getZoom()
+        const defaultZoom = 16
+        const targetZoom = currentZoom >= defaultZoom ? currentZoom : defaultZoom
+
+        props.map.setView([item.latitude, item.longitude], targetZoom, {
           animate: useAnimation,
           duration: useAnimation ? 0.8 : 0
         })
@@ -342,7 +349,14 @@ const focusOnMarker = (timelineItem) => {
   if (marker && props.map) {
     // Disable animation when clustering is enabled to prevent markers flying around
     const useAnimation = !markerClusterGroup.value
-    props.map.setView(marker.getLatLng(), 15, {
+
+    // Only change zoom if currently zoomed out beyond default
+    // This preserves user's zoom level when examining multiple nearby stays
+    const currentZoom = props.map.getZoom()
+    const defaultZoom = 15
+    const targetZoom = currentZoom >= defaultZoom ? currentZoom : defaultZoom
+
+    props.map.setView(marker.getLatLng(), targetZoom, {
       animate: useAnimation,
       duration: useAnimation ? 0.5 : 0
     })
