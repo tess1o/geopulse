@@ -92,7 +92,7 @@ public class GpsPointService {
 
         // Check for location-based duplicates first (before creating entity)
         if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType)) {
-            log.info("Skipping location duplicate OwnTracks GPS point for user {} at coordinates ({}, {})",
+            log.info("Skipping OwnTracks GPS point for user {} at coordinates ({}, {}): duplicate location detected within configured time window",
                     userId, message.getLat(), message.getLon());
             return;
         }
