@@ -3,8 +3,7 @@
     v-model:visible="internalVisible"
     header="Trip Classification Details"
     :modal="true"
-    :style="{ width: '70vw', minWidth: '600px', maxWidth: '900px' }"
-    :breakpoints="{ '960px': '90vw', '640px': '95vw' }"
+    class="gp-dialog-lg"
     @hide="$emit('close')"
   >
     <div v-if="loading" class="loading-state">

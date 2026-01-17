@@ -3,7 +3,7 @@
     v-model:visible="internalVisible"
     :header="'Edit GPS Point'"
     :modal="true"
-    :style="{ width: '50vw', minWidth: '400px' }"
+    class="gp-dialog-md"
     @hide="$emit('close')"
   >
     <div class="edit-dialog-content">

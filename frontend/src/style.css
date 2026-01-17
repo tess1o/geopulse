@@ -1386,3 +1386,50 @@ html body .p-dark .p-tooltip .p-tooltip-arrow::before {
 .p-dark .p-breadcrumb-item-label {
   color: inherit !important;
 }
+
+/* ================================
+   DIALOG STANDARDIZED SIZES
+   ================================ */
+
+/* Small Dialog - Simple forms, basic inputs (max 500px) */
+.gp-dialog-sm {
+  width: 90vw !important;
+  max-width: 500px !important;
+}
+
+/* Medium Dialog - Standard content, typical forms (max 700px) */
+.gp-dialog-md {
+  width: 90vw !important;
+  max-width: 700px !important;
+}
+
+/* Large Dialog - Complex forms, maps, detailed content (max 900px) */
+.gp-dialog-lg {
+  width: 90vw !important;
+  max-width: 900px !important;
+}
+
+/* Extra Large Dialog - Photo viewers, extensive content (max 1200px) */
+.gp-dialog-xl {
+  width: 90vw !important;
+  max-width: 1200px !important;
+}
+
+/* Responsive breakpoints for all dialog sizes */
+@media (max-width: 960px) {
+  .gp-dialog-sm,
+  .gp-dialog-md,
+  .gp-dialog-lg,
+  .gp-dialog-xl {
+    width: 92vw !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .gp-dialog-sm,
+  .gp-dialog-md,
+  .gp-dialog-lg,
+  .gp-dialog-xl {
+    width: 95vw !important;
+  }
+}

@@ -3,7 +3,7 @@
     :visible="visible"
     :header="isEdit ? 'Edit OIDC Provider' : 'Create OIDC Provider'"
     :modal="true"
-    :style="{ width: '650px' }"
+    class="gp-dialog-md"
     @update:visible="$emit('update:visible', $event)"
   >
     <div class="provider-form">

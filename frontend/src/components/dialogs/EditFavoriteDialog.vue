@@ -2,7 +2,7 @@
   <Dialog v-model:visible="internalVisible"
           v-model:header="internalHeader"
           modal
-          :style="{width: isAreaFavorite ? '800px' : '500px'}"
+          :class="isAreaFavorite ? 'gp-dialog-lg' : 'gp-dialog-sm'"
           @hide="onDialogHide">
     <div class="edit-favorite-content">
       <div class="form-field">
@@ -553,8 +553,12 @@ onUnmounted(() => {
 
   .bounds-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 0.75rem;
+  }
+
+  .bounds-header > button {
+    align-self: flex-end;
   }
 }
 </style>

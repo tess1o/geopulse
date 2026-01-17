@@ -3,7 +3,7 @@
     v-model:visible="dialogVisible"
     modal
     header="Create Period Tag"
-    :style="{ width: '600px' }"
+    class="gp-dialog-md"
     @hide="resetForm"
   >
     <div class="grid">

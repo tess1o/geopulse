@@ -5,7 +5,7 @@
     :modal="true"
     :closable="true"
     @update:visible="$emit('close')"
-    :style="{ width: '600px' }"
+    class="gp-dialog-md"
   >
     <div class="dialog-content">
       <!-- Provider Selection -->
