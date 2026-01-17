@@ -2,6 +2,44 @@ import { useMeasureUnit } from '@/composables/useMeasureUnit';
 
 const { getMeasureUnit } = useMeasureUnit();
 
+/**
+ * Convert kilometers to the display unit (km or miles) as a numeric value
+ * Used for chart data that's already in kilometers from the backend
+ * @param {number} kilometers - Distance in kilometers
+ * @returns {number} - Distance in km (metric) or miles (imperial)
+ */
+export function convertKilometersToDisplayUnit(kilometers) {
+    const unit = getMeasureUnit();
+    if (unit === 'IMPERIAL') {
+        // Convert kilometers to miles
+        return kilometers * 0.621371;
+    }
+    // Already in kilometers, return as-is
+    return kilometers;
+}
+
+/**
+ * Format a distance value that's already in the display unit (km or miles)
+ * @param {number} value - Distance value in km or miles
+ * @returns {string} - Formatted string with unit suffix
+ */
+export function formatDistanceValue(value) {
+    const unit = getMeasureUnit();
+    if (unit === 'IMPERIAL') {
+        return `${value.toFixed(2)} mi`;
+    }
+    return `${value.toFixed(2)} km`;
+}
+
+/**
+ * Get the distance unit label
+ * @returns {string} - 'km' or 'mi'
+ */
+export function getDistanceUnitLabel() {
+    const unit = getMeasureUnit();
+    return unit === 'IMPERIAL' ? 'mi' : 'km';
+}
+
 export function formatDistance(meters) {
     const unit = getMeasureUnit();
 

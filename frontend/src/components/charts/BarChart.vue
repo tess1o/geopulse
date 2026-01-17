@@ -35,6 +35,14 @@ const props = defineProps({
   color: {
     type: String,
     default: 'primary' // primary, secondary, success, warning, danger
+  },
+  valueFormatter: {
+    type: Function,
+    default: null
+  },
+  yAxisTitle: {
+    type: String,
+    default: null
   }
 })
 
@@ -205,7 +213,8 @@ const chartOptions = computed(() => {
           label: function (context) {
             const label = context.dataset.label || '';
             const value = context.parsed.y; // for bar charts
-            return `${label}: ${value} km`;
+            const formattedValue = props.valueFormatter ? props.valueFormatter(value) : `${value} km`;
+            return `${label}: ${formattedValue}`;
           }
         }
       }
@@ -234,6 +243,16 @@ const chartOptions = computed(() => {
       },
       y: {
         beginAtZero: true,
+        title: props.yAxisTitle ? {
+          display: true,
+          text: props.yAxisTitle,
+          color: themeColors.value.textColor || (document.documentElement.classList.contains('p-dark') ? '#f1f5f9' : '#374151'),
+          font: {
+            family: 'Inter, system-ui, sans-serif',
+            size: 12,
+            weight: '600'
+          }
+        } : undefined,
         ticks: {
           color: themeColors.value.textMuted || (document.documentElement.classList.contains('p-dark') ? '#cbd5e1' : '#6B7280'),
           font: {
