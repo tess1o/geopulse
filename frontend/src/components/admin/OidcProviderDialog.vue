@@ -65,14 +65,24 @@
       </div>
 
       <div class="field">
-        <label for="icon">Icon Class</label>
+        <label for="icon">Icon</label>
         <InputText
           id="icon"
           v-model="formData.icon"
-          placeholder="pi pi-google"
+          placeholder="pi pi-google or https://cdn.example.com/icon.svg"
           class="w-full"
         />
-        <small class="field-hint">PrimeIcons class (e.g., pi pi-google, pi pi-shield)</small>
+        <small class="field-hint">
+          CSS class (e.g., pi pi-google), URL (https://...), or local path (/icons/...)
+        </small>
+        <div v-if="formData.icon || formData.name" class="icon-preview">
+          <span class="preview-label">Preview:</span>
+          <ProviderIcon
+            :provider="{ name: formData.name, icon: formData.icon }"
+            size="large"
+            :alt="formData.displayName || 'Provider icon'"
+          />
+        </div>
       </div>
 
       <div class="field">
@@ -120,6 +130,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
+import ProviderIcon from '@/components/common/ProviderIcon.vue'
 
 const props = defineProps({
   visible: {
@@ -254,6 +265,21 @@ watch(() => props.visible, (newVal) => {
   color: var(--text-color-secondary);
   font-size: 0.875rem;
   margin-top: -0.25rem;
+}
+
+.icon-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--surface-100);
+  border-radius: var(--border-radius);
+}
+
+.preview-label {
+  font-size: 0.875rem;
+  color: var(--text-color-secondary);
 }
 
 .field-checkbox {

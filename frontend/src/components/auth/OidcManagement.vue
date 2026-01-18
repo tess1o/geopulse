@@ -15,7 +15,11 @@
               class="provider-item"
             >
               <div class="provider-info">
-                <i :class="[getProviderIcon({ name: connection.providerName, icon: connection.providerIcon }), 'text-2xl']"></i>
+                <ProviderIcon
+                  :provider="{ name: connection.providerName, icon: connection.providerIcon }"
+                  size="large"
+                  :alt="`${connection.providerDisplayName || connection.providerName} icon`"
+                />
                 <div class="provider-details">
                   <span class="provider-name">{{ connection.providerDisplayName || connection.providerName }}</span>
                   <small class="provider-email">{{ connection.displayName }}</small>
@@ -44,7 +48,11 @@
               class="provider-item"
             >
               <div class="provider-info">
-                <i :class="[getProviderIcon(provider), 'text-2xl']"></i>
+                <ProviderIcon
+                  :provider="provider"
+                  size="large"
+                  :alt="`${provider.displayName} icon`"
+                />
                 <span class="provider-name">{{ provider.displayName }}</span>
               </div>
               <Button
@@ -69,16 +77,15 @@ import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from "primevue/useconfirm";
-import { useProviderIcon } from '@/composables/useProviderIcon';
 
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
+import ProviderIcon from '@/components/common/ProviderIcon.vue';
 
 const authStore = useAuthStore();
 const toast = useToast();
 const confirm = useConfirm();
-const { getProviderIcon } = useProviderIcon();
 
 const linkedProviders = ref([]);
 const allProviders = ref([]);

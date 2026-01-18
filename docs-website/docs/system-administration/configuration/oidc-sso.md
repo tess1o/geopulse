@@ -131,8 +131,50 @@ GEOPULSE_OIDC_PROVIDER_GITHUB_ICON=pi pi-github
 
 ## Icon Support
 
-The system provides smart icon detection for common providers. If no icon is specified, it will automatically detect
-icons based on the provider name:
+GeoPulse supports three types of icons for OIDC providers:
+
+### Icon Types
+
+| Type | Format | Example |
+|------|--------|---------|
+| **CSS Classes** | PrimeIcons class names | `pi pi-google` |
+| **External URLs** | Full HTTPS URLs to images | `https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/authentik.svg` |
+
+### CSS Class Icons (PrimeIcons)
+
+Use PrimeIcons CSS classes for built-in icons:
+
+```bash
+GEOPULSE_OIDC_PROVIDER_GOOGLE_ICON=pi pi-google
+GEOPULSE_OIDC_PROVIDER_KEYCLOAK_ICON=pi pi-key
+```
+
+### External URL Icons
+
+Use full URLs to load icons from external sources. The [selfh.st icons](https://github.com/selfhst/icons) collection is recommended for self-hosted applications:
+
+```bash
+# Authentik icon from selfh.st CDN
+GEOPULSE_OIDC_PROVIDER_AUTHENTIK_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/authentik.svg
+
+# Keycloak icon (light variant)
+GEOPULSE_OIDC_PROVIDER_KEYCLOAK_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/keycloak-light.svg
+
+# PocketID icon
+GEOPULSE_OIDC_PROVIDER_POCKETID_ICON=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/pocketid.svg
+```
+
+**Selfh.st Icons URL Format:**
+```
+https://cdn.jsdelivr.net/gh/selfhst/icons@main/[format]/[name]-[variant].[ext]
+```
+- `format`: `svg`, `png`, or `webp`
+- `name`: Icon identifier (e.g., `authentik`, `keycloak`, `authelia`)
+- `variant`: Optional - `light` or `dark` (omit for default)
+
+### Auto-Detection
+
+If no icon is specified, the system will automatically detect icons based on the provider name:
 
 | Provider Pattern     | Auto-detected Icon |
 |----------------------|--------------------|
@@ -151,6 +193,10 @@ icons based on the provider name:
 | `apple`              | `pi pi-apple`      |
 | `amazon`, `aws`      | `pi pi-amazon`     |
 | Custom/Unknown       | `pi pi-sign-in`    |
+
+### Error Handling
+
+If an external URL or local path icon fails to load, the system automatically falls back to the default `pi pi-sign-in` icon.
 
 ## Global OIDC Configuration
 

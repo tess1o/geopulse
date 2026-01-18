@@ -41,7 +41,7 @@ public class OidcProviderEntity extends PanacheEntityBase {
     @Column(name = "discovery_url", nullable = false, length = 500)
     private String discoveryUrl;
 
-    @Column(name = "icon", length = 100)
+    @Column(name = "icon", length = 500)
     private String icon;
 
     @Column(name = "scopes", length = 255)
