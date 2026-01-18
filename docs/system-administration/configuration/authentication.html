@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Authentication Configuration | GeoPulse documentation</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://tess1o.github.io/geopulse/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://tess1o.github.io/geopulse/docs/system-administration/configuration/authentication"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Authentication Configuration | GeoPulse documentation"><meta data-rh="true" name="description" content="Authentication Cookies"><meta data-rh="true" property="og:description" content="Authentication Cookies"><link data-rh="true" rel="icon" href="/geopulse/img/favicon.png"><link data-rh="true" rel="canonical" href="https://tess1o.github.io/geopulse/docs/system-administration/configuration/authentication"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/system-administration/configuration/authentication" hreflang="en"><link data-rh="true" rel="alternate" href="https://tess1o.github.io/geopulse/docs/system-administration/configuration/authentication" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Authentication Configuration","item":"https://tess1o.github.io/geopulse/docs/system-administration/configuration/authentication"}]}</script><link rel="stylesheet" href="/geopulse/assets/css/styles.bee9cf09.css">
-<script src="/geopulse/assets/js/runtime~main.929db665.js" defer="defer"></script>
+<script src="/geopulse/assets/js/runtime~main.608984bf.js" defer="defer"></script>
 <script src="/geopulse/assets/js/main.c835c5cc.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -82,6 +82,12 @@ architecture is important for proper deployment.</p>
 <li class=""><strong>Default:</strong> <code>true</code></li>
 <li class=""><strong>Description:</strong> Controls OIDC provider login</li>
 </ul>
+<h4 class="anchor anchorTargetStickyNavbar_Vzrq" id="admin-login-bypass-control">Admin Login Bypass Control<a href="#admin-login-bypass-control" class="hash-link" aria-label="Direct link to Admin Login Bypass Control" title="Direct link to Admin Login Bypass Control" translate="no">​</a></h4>
+<ul>
+<li class=""><strong>Variable:</strong> <code>GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED</code></li>
+<li class=""><strong>Default:</strong> <code>true</code></li>
+<li class=""><strong>Description:</strong> Controls whether admins can bypass login restrictions</li>
+</ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="hierarchical-structure">Hierarchical Structure<a href="#hierarchical-structure" class="hash-link" aria-label="Direct link to Hierarchical Structure" title="Direct link to Hierarchical Structure" translate="no">​</a></h3>
 <p>Login controls use a hierarchical pattern:</p>
 <ul>
@@ -89,8 +95,9 @@ architecture is important for proper deployment.</p>
 <li class="">OIDC login requires: <code>GEOPULSE_AUTH_LOGIN_ENABLED=true</code> <strong>AND</strong> <code>GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=true</code></li>
 </ul>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="admin-bypass">Admin Bypass<a href="#admin-bypass" class="hash-link" aria-label="Direct link to Admin Bypass" title="Direct link to Admin Bypass" translate="no">​</a></h3>
-<p><strong>Important:</strong> Admin users bypass all login restrictions to prevent system lockout.</p>
-<p>Admin users can always log in regardless of these settings. This prevents scenarios where administrators accidentally lock themselves out of the system.</p>
+<p><strong>Configurable:</strong> Admin bypass behavior is controlled by <code>GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED</code>.</p>
+<p>By default (<code>true</code>), admin users bypass login restrictions to prevent system lockout. When set to <code>false</code>, admins are subject to the same restrictions as regular users.</p>
+<p><strong>WARNING:</strong> Disabling admin bypass can result in complete system lockout if login is disabled globally. Only use this setting in high-security environments where you have alternative access methods.</p>
 <h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="admin-panel-configuration">Admin Panel Configuration<a href="#admin-panel-configuration" class="hash-link" aria-label="Direct link to Admin Panel Configuration" title="Direct link to Admin Panel Configuration" translate="no">​</a></h3>
 <p>Login settings can also be configured via the Admin Panel:</p>
 <ol>
