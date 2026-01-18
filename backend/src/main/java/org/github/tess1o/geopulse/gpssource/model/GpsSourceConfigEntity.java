@@ -48,6 +48,12 @@ public class GpsSourceConfigEntity {
     @Column(name = "max_allowed_speed")
     private Integer maxAllowedSpeed;
 
+    @Column(name = "enable_duplicate_detection")
+    private boolean enableDuplicateDetection = false;
+
+    @Column(name = "duplicate_detection_threshold_minutes")
+    private Integer duplicateDetectionThresholdMinutes;
+
     public enum ConnectionType {
         HTTP, MQTT
     }

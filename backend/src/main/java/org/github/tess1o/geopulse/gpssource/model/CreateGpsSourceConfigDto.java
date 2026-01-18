@@ -21,5 +21,7 @@ public class CreateGpsSourceConfigDto {
     private Boolean filterInaccurateData;
     private Integer maxAllowedAccuracy;
     private Integer maxAllowedSpeed;
+    private Boolean enableDuplicateDetection;
+    private Integer duplicateDetectionThresholdMinutes;
 }
 

@@ -80,7 +80,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         },
 
 
-        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP', filterInaccurateData, maxAllowedAccuracy, maxAllowedSpeed) {
+        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP', filterInaccurateData, maxAllowedAccuracy, maxAllowedSpeed, enableDuplicateDetection, duplicateDetectionThresholdMinutes) {
             try {
                 // Note: Removed userId parameter as per your security discussion
                 await apiService.post('/gps/source', {
@@ -91,7 +91,9 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
                     connectionType,
                     filterInaccurateData,
                     maxAllowedAccuracy,
-                    maxAllowedSpeed
+                    maxAllowedSpeed,
+                    enableDuplicateDetection,
+                    duplicateDetectionThresholdMinutes
                     // Backend should get userId from JWT token
                 })
                 // Refresh the configs after adding
