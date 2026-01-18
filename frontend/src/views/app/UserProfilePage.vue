@@ -435,9 +435,13 @@ onMounted(async () => {
 /* Responsive Design */
 @media (max-width: 768px) {
   .user-profile-page {
-    padding: 0 0.5rem;
-    max-width: calc(100vw - 1rem);
+    padding: 0;
+    max-width: 100%;
     box-sizing: border-box;
+  }
+
+  .page-header {
+    padding: 0 1rem;
   }
 
   .page-title {
@@ -447,13 +451,14 @@ onMounted(async () => {
 
 @media (max-width: 480px) {
   .user-profile-page {
-    padding: 0 0.75rem;
-    max-width: calc(100vw - 1.5rem);
+    padding: 0;
+    max-width: 100%;
     box-sizing: border-box;
   }
 
   .page-header {
     margin-bottom: 1.5rem;
+    padding: 0 1rem;
   }
 
   .page-title {
@@ -468,8 +473,8 @@ onMounted(async () => {
 /* iPhone 16 Pro Max and similar large phones */
 @media (max-width: 480px) and (min-width: 430px) {
   .user-profile-page {
-    padding: 0 1rem;
-    max-width: calc(100vw - 2rem);
+    padding: 0;
+    max-width: 100%;
   }
 
   .profile-tabs :deep(.gp-tab-content > div) {

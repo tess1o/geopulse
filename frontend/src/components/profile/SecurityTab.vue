@@ -339,6 +339,16 @@ watch(() => [form.value.newPassword, form.value.confirmPassword], () => {
 }
 
 @media (max-width: 480px) {
+  .security-card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .security-card :deep(.p-card-content) {
+    padding: 1rem;
+  }
+
   .form-actions .p-button {
     width: 100%;
     min-height: 48px;

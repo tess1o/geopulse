@@ -129,21 +129,24 @@ const handleTabClick = (index) => {
 /* Responsive */
 @media (max-width: 768px) {
   .gp-tab-content {
-    padding: var(--gp-spacing-lg);
+    padding: var(--gp-spacing-md) 0;
+    border-radius: 0;
   }
 
   .gp-tab-content--padding-large {
-    padding: var(--gp-spacing-lg);
+    padding: var(--gp-spacing-lg) 0;
   }
 }
 
 @media (max-width: 480px) {
   .gp-tab-content {
-    padding: var(--gp-spacing-md);
+    padding: var(--gp-spacing-sm) 0;
+    border-left: none;
+    border-right: none;
   }
 
   .gp-tab-content--padding-small {
-    padding: var(--gp-spacing-sm);
+    padding: var(--gp-spacing-xs) 0;
   }
 }
 </style>
@@ -341,6 +344,12 @@ const handleTabClick = (index) => {
 }
 
 @media (max-width: 480px) {
+  .gp-tab-menu {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
   .gp-tab-menu .p-tabmenu-tablist {
     padding: 0 0.5rem;
     gap: 0.25rem;

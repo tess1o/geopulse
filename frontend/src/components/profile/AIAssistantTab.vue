@@ -538,6 +538,21 @@ watch(() => props.initialSettings, () => {
 }
 
 @media (max-width: 480px) {
+  .ai-settings-card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .ai-settings-card :deep(.p-card-content) {
+    padding: 1rem;
+  }
+
+  .provider-settings {
+    border-radius: 0;
+    padding: 1rem;
+  }
+
   .form-actions .p-button {
     width: 100%;
     min-height: 48px;

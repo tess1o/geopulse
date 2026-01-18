@@ -694,6 +694,16 @@ watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCus
 }
 
 @media (max-width: 480px) {
+  .profile-info-card {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .profile-info-card :deep(.p-card-content) {
+    padding: 1rem;
+  }
+
   .avatar-grid {
     grid-template-columns: repeat(3, 1fr);
   }
