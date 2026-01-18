@@ -326,6 +326,13 @@
           "maxAllowedSpeed" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "enableDuplicateDetection" : {
+            "type" : "boolean"
+          },
+          "duplicateDetectionThresholdMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -620,6 +627,30 @@
           "country" : {
             "maxLength" : 100,
             "type" : "string"
+          },
+          "northEastLat" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "northEastLon" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          },
+          "southWestLat" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "southWestLon" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
           }
         }
       },
@@ -1128,6 +1159,13 @@
           "maxAllowedSpeed" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "enableDuplicateDetection" : {
+            "type" : "boolean"
+          },
+          "duplicateDetectionThresholdMinutes" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         }
       },
@@ -1628,6 +1666,9 @@
           },
           "apiKeyRequired" : {
             "type" : "boolean"
+          },
+          "customSystemMessage" : {
+            "type" : "string"
           }
         }
       },
@@ -2569,6 +2610,17 @@
         } ]
       }
     },
+    "/api/ai/builtin-system-message" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Builtin System Message",
+        "tags" : [ "AI Resource" ]
+      }
+    },
     "/api/ai/chat" : {
       "post" : {
         "requestBody" : {
@@ -2597,6 +2649,17 @@
           }
         },
         "summary" : "Chat",
+        "tags" : [ "AI Resource" ]
+      }
+    },
+    "/api/ai/default-system-message" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "summary" : "Get Default System Message",
         "tags" : [ "AI Resource" ]
       }
     },
@@ -7594,7 +7657,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.13.0",
+    "version" : "1.14.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
