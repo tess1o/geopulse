@@ -8,17 +8,22 @@
         v-for="provider in providers"
         :key="provider.name"
         :label="`Continue with ${provider.displayName}`"
-        :icon="getProviderIcon(provider)"
         :class="['oidc-button', `oidc-${provider.name}`]"
         @click="$emit('provider-selected', provider.name)"
         :disabled="disabled"
         outlined
-      />
+      >
+        <template #icon>
+          <ProviderIcon :provider="provider" size="medium" :alt="`${provider.displayName} icon`" />
+        </template>
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup>
+import ProviderIcon from '@/components/common/ProviderIcon.vue';
+
 const props = defineProps({
   providers: {
     type: Array,
@@ -39,10 +44,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['provider-selected'])
-
-// Use shared composable for provider icons
-import { useProviderIcon } from '@/composables/useProviderIcon';
-const { getProviderIcon } = useProviderIcon();
 </script>
 
 <style scoped>

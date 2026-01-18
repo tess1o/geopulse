@@ -34,7 +34,7 @@
           <Column field="name" header="Name" sortable style="min-width: 150px">
             <template #body="{ data }">
               <div class="flex align-items-center gap-2">
-                <i :class="data.icon || 'pi pi-key'" class="text-xl"></i>
+                <ProviderIcon :provider="data" size="medium" :alt="`${data.displayName} icon`" />
                 <span class="font-semibold">{{ data.name }}</span>
               </div>
             </template>
@@ -136,7 +136,7 @@
             <div class="provider-card-header">
               <div class="provider-info">
                 <div class="provider-name">
-                  <i :class="provider.icon || 'pi pi-key'" class="provider-icon"></i>
+                  <ProviderIcon :provider="provider" size="medium" :alt="`${provider.displayName} icon`" custom-class="provider-icon" />
                   <span>{{ provider.name }}</span>
                 </div>
                 <div class="provider-display-name">{{ provider.displayName }}</div>
@@ -336,6 +336,7 @@ import Breadcrumb from 'primevue/breadcrumb'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import OidcProviderDialog from '@/components/admin/OidcProviderDialog.vue'
+import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import adminService from '@/utils/adminService'
 import PageContainer from "@/components/ui/layout/PageContainer.vue";
 

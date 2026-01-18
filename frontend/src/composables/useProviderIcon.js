@@ -1,18 +1,59 @@
 /**
  * Composable for getting OIDC provider icons with hybrid approach
  * Supports custom icons from backend and smart detection based on provider names
+ *
+ * Icon types supported:
+ * - CSS classes (e.g., 'pi pi-google') - PrimeIcons
+ * - URLs (e.g., 'https://cdn.jsdelivr.net/...') - External images
+ * - Local paths (e.g., '/icons/custom.png') - Local image files
  */
 export function useProviderIcon() {
-  
+
+  /**
+   * Default CSS icon class used as fallback
+   */
+  const DEFAULT_ICON = 'pi pi-sign-in';
+
+  /**
+   * Detects the type of icon based on its value
+   * @param {string} iconValue - The icon value to analyze
+   * @returns {'url'|'local'|'css'} The detected icon type
+   */
+  const getIconType = (iconValue) => {
+    if (!iconValue || typeof iconValue !== 'string') {
+      return 'css';
+    }
+
+    const trimmed = iconValue.trim();
+
+    // Check for URL (http:// or https://)
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return 'url';
+    }
+
+    // Check for local path (starts with /)
+    if (trimmed.startsWith('/')) {
+      return 'local';
+    }
+
+    // Default to CSS class
+    return 'css';
+  };
+
+  /**
+   * Gets the raw icon value for a provider (without type detection)
+   * @param {Object|string} provider - Provider object or name
+   * @returns {string} The icon value (CSS class, URL, or local path)
+   */
   const getProviderIcon = (provider) => {
     // If provider object has icon field, use it (highest priority)
     if (typeof provider === 'object' && provider.icon) {
       return provider.icon;
     }
-    
+
     // Extract provider name for smart detection
     const providerName = (typeof provider === 'object' ? provider.name : provider).toLowerCase();
-    
+
     // Smart detection based on provider name patterns
     if (providerName.includes('google')) return 'pi pi-google';
     if (providerName.includes('microsoft') || providerName.includes('azure')) return 'pi pi-microsoft';
@@ -36,12 +77,26 @@ export function useProviderIcon() {
     if (providerName.includes('steam')) return 'pi pi-desktop';
     if (providerName.includes('orcid')) return 'pi pi-user';
     if (providerName.includes('custom') || providerName.includes('generic')) return 'pi pi-sign-in';
-    
+
     // Default fallback
-    return 'pi pi-sign-in';
+    return DEFAULT_ICON;
+  };
+
+  /**
+   * Gets comprehensive icon information for a provider
+   * @param {Object|string} provider - Provider object or name
+   * @returns {{value: string, type: 'url'|'local'|'css'}} Icon value and type
+   */
+  const getProviderIconInfo = (provider) => {
+    const value = getProviderIcon(provider);
+    const type = getIconType(value);
+    return { value, type };
   };
 
   return {
-    getProviderIcon
+    getProviderIcon,
+    getIconType,
+    getProviderIconInfo,
+    DEFAULT_ICON
   };
 }
