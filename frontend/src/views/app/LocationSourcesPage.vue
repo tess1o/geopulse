@@ -610,7 +610,9 @@ const formData = ref({
   // GPS filtering settings - will be populated dynamically from backend defaults
   filterInaccurateData: null,
   maxAllowedAccuracy: null,
-  maxAllowedSpeed: null
+  maxAllowedSpeed: null,
+  enableDuplicateDetection: null,
+  duplicateDetectionThresholdMinutes: null
 })
 
 const formErrors = ref({})
@@ -770,14 +772,18 @@ const getDefaultFiltering = () => {
     return {
       filterInaccurateData: defaultFilteringValues.value.filterInaccurateData,
       maxAllowedAccuracy: defaultFilteringValues.value.maxAllowedAccuracy,
-      maxAllowedSpeed: defaultFilteringValues.value.maxAllowedSpeed
+      maxAllowedSpeed: defaultFilteringValues.value.maxAllowedSpeed,
+      enableDuplicateDetection: defaultFilteringValues.value.enableDuplicateDetection,
+      duplicateDetectionThresholdMinutes: defaultFilteringValues.value.duplicateDetectionThresholdMinutes
     }
   }
   // Fallback to null if backend values not loaded yet
   return {
     filterInaccurateData: null,
     maxAllowedAccuracy: null,
-    maxAllowedSpeed: null
+    maxAllowedSpeed: null,
+    enableDuplicateDetection: null,
+    duplicateDetectionThresholdMinutes: null
   }
 }
 
@@ -821,6 +827,8 @@ const startQuickSetup = (type) => {
   formData.value.filterInaccurateData = defaults.filterInaccurateData
   formData.value.maxAllowedAccuracy = defaults.maxAllowedAccuracy
   formData.value.maxAllowedSpeed = defaults.maxAllowedSpeed
+  formData.value.enableDuplicateDetection = defaults.enableDuplicateDetection
+  formData.value.duplicateDetectionThresholdMinutes = defaults.duplicateDetectionThresholdMinutes
   showAddDialog.value = true
 }
 
@@ -850,7 +858,9 @@ const editSource = (source) => {
     connectionType: source.connectionType || 'HTTP',
     filterInaccurateData: source.filterInaccurateData ?? false,
     maxAllowedAccuracy: source.maxAllowedAccuracy ?? null,
-    maxAllowedSpeed: source.maxAllowedSpeed ?? null
+    maxAllowedSpeed: source.maxAllowedSpeed ?? null,
+    enableDuplicateDetection: source.enableDuplicateDetection ?? false,
+    duplicateDetectionThresholdMinutes: source.duplicateDetectionThresholdMinutes ?? null
   }
   showAddDialog.value = true
 }
@@ -869,7 +879,9 @@ const closeDialog = () => {
     connectionType: 'HTTP',
     filterInaccurateData: defaults.filterInaccurateData,
     maxAllowedAccuracy: defaults.maxAllowedAccuracy,
-    maxAllowedSpeed: defaults.maxAllowedSpeed
+    maxAllowedSpeed: defaults.maxAllowedSpeed,
+    enableDuplicateDetection: defaults.enableDuplicateDetection,
+    duplicateDetectionThresholdMinutes: defaults.duplicateDetectionThresholdMinutes
   }
   formErrors.value = {}
 }
@@ -928,7 +940,9 @@ const saveSource = async () => {
           formData.value.connectionType,
           formData.value.filterInaccurateData,
           formData.value.maxAllowedAccuracy,
-          formData.value.maxAllowedSpeed
+          formData.value.maxAllowedSpeed,
+          formData.value.enableDuplicateDetection,
+          formData.value.duplicateDetectionThresholdMinutes
         )
       } else {
         // For Overland, Dawarich, and Home Assistant - only send token, no username/password
@@ -940,7 +954,9 @@ const saveSource = async () => {
           'HTTP', // always HTTP for these types
           formData.value.filterInaccurateData,
           formData.value.maxAllowedAccuracy,
-          formData.value.maxAllowedSpeed
+          formData.value.maxAllowedSpeed,
+          formData.value.enableDuplicateDetection,
+          formData.value.duplicateDetectionThresholdMinutes
         )
       }
       
@@ -1119,6 +1135,8 @@ onMounted(async () => {
     formData.value.filterInaccurateData = defaults.filterInaccurateData
     formData.value.maxAllowedAccuracy = defaults.maxAllowedAccuracy
     formData.value.maxAllowedSpeed = defaults.maxAllowedSpeed
+    formData.value.enableDuplicateDetection = defaults.enableDuplicateDetection
+    formData.value.duplicateDetectionThresholdMinutes = defaults.duplicateDetectionThresholdMinutes
 
     // Ensure first tab is active after data loads
     await nextTick()

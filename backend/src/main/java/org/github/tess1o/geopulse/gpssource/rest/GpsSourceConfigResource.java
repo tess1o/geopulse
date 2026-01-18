@@ -44,7 +44,9 @@ public class GpsSourceConfigResource {
         var defaults = java.util.Map.of(
             "filterInaccurateData", gpsSourceService.isDefaultFilterInaccurateDataEnabled(),
             "maxAllowedAccuracy", gpsSourceService.getDefaultMaxAllowedAccuracy(),
-            "maxAllowedSpeed", gpsSourceService.getDefaultMaxAllowedSpeed()
+            "maxAllowedSpeed", gpsSourceService.getDefaultMaxAllowedSpeed(),
+            "enableDuplicateDetection", gpsSourceService.isDefaultDuplicateDetectionEnabled(),
+            "duplicateDetectionThresholdMinutes", gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()
         );
         return Response.ok(defaults).build();
     }

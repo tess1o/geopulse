@@ -28,6 +28,8 @@ public class GpsSourceConfigMapper {
                 .filterInaccurateData(config.isFilterInaccurateData())
                 .maxAllowedAccuracy(config.getMaxAllowedAccuracy())
                 .maxAllowedSpeed(config.getMaxAllowedSpeed())
+                .enableDuplicateDetection(config.isEnableDuplicateDetection())
+                .duplicateDetectionThresholdMinutes(config.getDuplicateDetectionThresholdMinutes())
                 .build();
     }
 
@@ -46,6 +48,8 @@ public class GpsSourceConfigMapper {
                 .filterInaccurateData(newConfig.getFilterInaccurateData() != null ? newConfig.getFilterInaccurateData() : false)
                 .maxAllowedAccuracy(newConfig.getMaxAllowedAccuracy())
                 .maxAllowedSpeed(newConfig.getMaxAllowedSpeed())
+                .enableDuplicateDetection(newConfig.getEnableDuplicateDetection() != null ? newConfig.getEnableDuplicateDetection() : false)
+                .duplicateDetectionThresholdMinutes(newConfig.getDuplicateDetectionThresholdMinutes())
                 .build();
     }
 }

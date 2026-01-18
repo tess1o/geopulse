@@ -16,12 +16,15 @@ import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import jakarta.persistence.EntityManager;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
+
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.time.*;
 import java.util.List;
@@ -38,6 +41,9 @@ public class GpsPointService {
     private final EntityManager em;
     private final StreamingTimelineGenerationService streamingTimelineGenerationService;
     private final GpsDataFilteringService filteringService;
+
+    @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
+    int globalDuplicateDetectionThresholdMinutes;
 
     @Inject
     public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository,
@@ -90,11 +96,18 @@ public class GpsPointService {
     public void saveOwnTracksGpsPoint(OwnTracksLocationMessage message, UUID userId, String deviceId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = Instant.ofEpochSecond(message.getTst());
 
-        // Check for location-based duplicates first (before creating entity)
-        if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType)) {
-            log.info("Skipping OwnTracks GPS point for user {} at coordinates ({}, {}): duplicate location detected within configured time window",
-                    userId, message.getLat(), message.getLon());
-            return;
+        // Check for location-based duplicates first (before creating entity) if enabled
+        if (config.isEnableDuplicateDetection()) {
+            // Use per-source threshold if set, otherwise fall back to global config
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                ? config.getDuplicateDetectionThresholdMinutes()
+                : globalDuplicateDetectionThresholdMinutes;
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType, threshold)) {
+                log.info("Skipping OwnTracks GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                        userId, message.getLat(), message.getLon(), threshold);
+                return;
+            }
         }
 
         // Map message to entity (mapper handles unit conversions)
@@ -109,10 +122,27 @@ public class GpsPointService {
     public void saveOverlandGpsPoint(OverlandLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = message.getProperties().getTimestamp();
 
-        // Check for duplicates first
-        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-            log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, timestamp);
-            return;
+        // Check for location-based duplicates if enabled, otherwise use exact timestamp check
+        if (config.isEnableDuplicateDetection()) {
+            // Use per-source threshold if set, otherwise fall back to global config
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                ? config.getDuplicateDetectionThresholdMinutes()
+                : globalDuplicateDetectionThresholdMinutes;
+
+            double lon = message.getGeometry().getCoordinates()[0];
+            double lat = message.getGeometry().getCoordinates()[1];
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
+                log.info("Skipping Overland GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                        userId, lat, lon, threshold);
+                return;
+            }
+        } else {
+            // Fallback to exact timestamp duplicate check
+            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                log.info("Skipping duplicate Overland GPS point for user {} at timestamp {}", userId, timestamp);
+                return;
+            }
         }
 
         // Map message to entity (mapper handles m/s → km/h conversion)
@@ -126,11 +156,33 @@ public class GpsPointService {
     @Transactional
     public void saveDarawichGpsPoints(DawarichPayload payload, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         UserEntity user = em.getReference(UserEntity.class, userId);
+
+        // Pre-calculate threshold if duplicate detection is enabled
+        Integer threshold = null;
+        if (config.isEnableDuplicateDetection()) {
+            threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                ? config.getDuplicateDetectionThresholdMinutes()
+                : globalDuplicateDetectionThresholdMinutes;
+        }
+
         for (DawarichLocation location : payload.getLocations()) {
-            // Check for duplicates first
-            if (duplicateDetectionService.isDuplicatePoint(userId, location.getProperties().getTimestamp(), sourceType)) {
-                log.info("Skipping duplicate Dawarich GPS point for user {} at timestamp {}", userId, location.getProperties().getTimestamp());
-                continue;
+            Instant timestamp = location.getProperties().getTimestamp();
+            double lon = location.getGeometry().getCoordinates().get(0);
+            double lat = location.getGeometry().getCoordinates().get(1);
+
+            // Check for location-based duplicates if enabled, otherwise use exact timestamp check
+            if (config.isEnableDuplicateDetection()) {
+                if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
+                    log.info("Skipping Dawarich GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                            userId, lat, lon, threshold);
+                    continue;
+                }
+            } else {
+                // Fallback to exact timestamp duplicate check
+                if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                    log.info("Skipping duplicate Dawarich GPS point for user {} at timestamp {}", userId, timestamp);
+                    continue;
+                }
             }
 
             // Avoid negative velocity - use 0 to say it's a stationary value
@@ -150,10 +202,27 @@ public class GpsPointService {
     public void saveHomeAssitantGpsPoint(HomeAssistantGpsData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
         Instant timestamp = data.getTimestamp();
 
-        // Check for duplicates first
-        if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
-            log.info("Skipping duplicate Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
-            return;
+        // Check for location-based duplicates if enabled, otherwise use exact timestamp check
+        if (config.isEnableDuplicateDetection()) {
+            // Use per-source threshold if set, otherwise fall back to global config
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                ? config.getDuplicateDetectionThresholdMinutes()
+                : globalDuplicateDetectionThresholdMinutes;
+
+            double lat = data.getLocation().getLatitude();
+            double lon = data.getLocation().getLongitude();
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
+                log.info("Skipping Home Assistant GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                        userId, lat, lon, threshold);
+                return;
+            }
+        } else {
+            // Fallback to exact timestamp duplicate check
+            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                log.info("Skipping duplicate Home Assistant GPS point for user {} at timestamp {}", userId, timestamp);
+                return;
+            }
         }
 
         // Map message to entity (mapper handles m/s → km/h conversion)
@@ -213,74 +282,10 @@ public class GpsPointService {
 
         long totalPoints = ((Number) summaryData[0]).longValue();
         long pointsToday = ((Number) summaryData[1]).longValue();
-        Instant firstTimestamp = getInstantSafe(summaryData[2]);
-        Instant lastTimestamp = getInstantSafe(summaryData[3]);
+        Instant firstTimestamp = TimestampUtils.getInstantSafe(summaryData[2]);
+        Instant lastTimestamp = TimestampUtils.getInstantSafe(summaryData[3]);
 
         return new GpsPointSummaryDTO(totalPoints, pointsToday, firstTimestamp, lastTimestamp, null);
-    }
-
-    private static Instant getInstantSafe(Object date) {
-        if (date == null) return null;
-        if (date instanceof Instant) return (Instant) date;
-        if (date instanceof java.sql.Timestamp) {
-            // Database timestamps are stored in UTC, so treat them as UTC
-            java.sql.Timestamp ts = (java.sql.Timestamp) date;
-            return ts.toLocalDateTime().toInstant(ZoneOffset.UTC);
-        }
-        if (date instanceof java.util.Date) return ((java.util.Date) date).toInstant();
-        if (date instanceof Long) return Instant.ofEpochMilli((Long) date);
-        if (date instanceof LocalDateTime) return ((LocalDateTime) date).toInstant(ZoneOffset.UTC);
-        if (date instanceof String) {
-            try {
-                return Instant.parse((String) date);
-            } catch (Exception e) {
-                log.warn("Failed to parse timestamp string: {}", date);
-            }
-        }
-        log.warn("Unsupported timestamp type: {} with value: {}", date.getClass().getName(), date);
-        return null;
-    }
-
-
-    /**
-     * Get paginated GPS points for a user within a time period with sorting.
-     *
-     * @param userId    The ID of the user
-     * @param startTime The start of the time period
-     * @param endTime   The end of the time period
-     * @param page      Page number (1-based)
-     * @param limit     Number of items per page
-     * @param sortBy    Field to sort by
-     * @param sortOrder Sort order (asc or desc)
-     * @return Paginated GPS points
-     */
-    public GpsPointPageDTO getGpsPointsPage(UUID userId, Instant startTime, Instant endTime,
-                                            int page, int limit, String sortBy, String sortOrder) {
-        int pageIndex = page - 1; // Convert to 0-based for repository
-
-        List<GpsPointEntity> points = gpsPointRepository.findByUserAndDateRange(userId, startTime, endTime,
-                pageIndex, limit, sortBy, sortOrder);
-        long total = gpsPointRepository.count("user.id = ?1 AND timestamp >= ?2 AND timestamp <= ?3",
-                userId, startTime, endTime);
-
-        List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
-
-        long totalPages = (total + limit - 1) / limit; // Ceiling division
-        GpsPointPaginationDTO pagination = new GpsPointPaginationDTO(page, limit, total, totalPages);
-
-        return new GpsPointPageDTO(pointDTOs, pagination);
-    }
-
-    /**
-     * Get all GPS points for a user within a time period for export.
-     *
-     * @param userId    The ID of the user
-     * @param startTime The start of the time period
-     * @param endTime   The end of the time period
-     * @return List of GPS points for export
-     */
-    public List<GpsPointEntity> getGpsPointsForExport(UUID userId, Instant startTime, Instant endTime) {
-        return gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime);
     }
 
     /**
@@ -464,8 +469,8 @@ public class GpsPointService {
 
         long totalPoints = ((Number) summaryData[0]).longValue();
         long pointsToday = ((Number) summaryData[1]).longValue();
-        Instant firstTimestamp = getInstantSafe(summaryData[2]);
-        Instant lastTimestamp = getInstantSafe(summaryData[3]);
+        Instant firstTimestamp = TimestampUtils.getInstantSafe(summaryData[2]);
+        Instant lastTimestamp = TimestampUtils.getInstantSafe(summaryData[3]);
 
         GpsPointSummaryDTO summary = new GpsPointSummaryDTO(totalPoints, pointsToday, firstTimestamp, lastTimestamp, null);
 

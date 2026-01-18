@@ -42,6 +42,14 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     @ConfigProperty(name = "geopulse.gps.max-allowed-speed", defaultValue = "250")
     int defaultMaxAllowedSpeed;
 
+    @Getter
+    @ConfigProperty(name = "geopulse.gps.duplicate-detection.enabled", defaultValue = "false")
+    boolean defaultDuplicateDetectionEnabled;
+
+    @Getter
+    @ConfigProperty(name = "geopulse.gps.duplicate-detection.threshold-minutes", defaultValue = "2")
+    int defaultDuplicateDetectionThresholdMinutes;
+
     @Inject
     public GpsSourceService(GpsSourceRepository gpsSourceRepository,
                             GpsSourceConfigMapper gpsSourceMapper,
@@ -147,6 +155,9 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         dbConfig.setFilterInaccurateData(config.isFilterInaccurateData());
         dbConfig.setMaxAllowedAccuracy(config.getMaxAllowedAccuracy());
         dbConfig.setMaxAllowedSpeed(config.getMaxAllowedSpeed());
+        // Update duplicate detection settings
+        dbConfig.setEnableDuplicateDetection(config.isEnableDuplicateDetection());
+        dbConfig.setDuplicateDetectionThresholdMinutes(config.getDuplicateDetectionThresholdMinutes());
         return true;
     }
 
