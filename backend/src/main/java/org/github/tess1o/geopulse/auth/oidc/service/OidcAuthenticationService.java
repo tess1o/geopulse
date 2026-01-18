@@ -8,8 +8,10 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.quarkus.runtime.StartupEvent;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.client.Client;
@@ -95,6 +97,24 @@ public class OidcAuthenticationService {
     @ConfigProperty(name = "geopulse.oidc.jwks-cache.ttl-hours", defaultValue = "24")
     @StaticInitSafe
     int jwksCacheTtlHours;
+
+    @ConfigProperty(name = "geopulse.oidc.enabled", defaultValue = "false")
+    @StaticInitSafe
+    boolean oidcEnabled;
+
+    void onStart(@Observes StartupEvent ev) {
+        if (!oidcEnabled) {
+            return;
+        }
+
+        if (callbackBaseUrl.contains(",")) {
+            log.warn("OIDC CONFIGURATION WARNING: geopulse.oidc.callback-base-url contains multiple URLs: {}", callbackBaseUrl);
+            log.warn("Only the first URL '{}' will be used for OIDC callbacks.", getEffectiveCallbackBaseUrl());
+            log.warn("To specify an explicit callback URL, set GEOPULSE_OIDC_CALLBACK_BASE_URL environment variable.");
+        }
+
+        log.info("OIDC callback URL: {}/oidc/callback", getEffectiveCallbackBaseUrl());
+    }
 
     /**
      * Helper method to persist OIDC connection with race condition handling.
@@ -464,8 +484,15 @@ public class OidcAuthenticationService {
         return url.toString();
     }
 
+        private String getEffectiveCallbackBaseUrl() {
+        if (callbackBaseUrl.contains(",")) {
+            return callbackBaseUrl.split(",")[0].trim();
+        }
+        return callbackBaseUrl;
+    }
+
     private String getCallbackUrl() {
-        return callbackBaseUrl + "/oidc/callback";
+        return getEffectiveCallbackBaseUrl() + "/oidc/callback";
     }
 
     private OidcTokenResponse exchangeCodeForTokens(OidcProviderConfiguration provider, String code) {
