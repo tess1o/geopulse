@@ -53,6 +53,19 @@ const map = ref(null)
 const isReady = ref(false)
 const isInitializing = ref(false)
 
+// Base tile layer options - reused across all tile layer creations
+const getBaseTileOptions = (attribution = getTileAttribution()) => ({
+  attribution,
+  maxZoom: 19,
+  minZoom: 0,
+  tileSize: 256,
+  keepBuffer: 4,
+  updateWhenIdle: false,
+  updateWhenZooming: true,
+  updateInterval: 50,
+  maxNativeZoom: 19
+})
+
 // Map initialization with improved container detection
 const initializeMap = async () => {
   // Prevent multiple initialization attempts
@@ -118,25 +131,9 @@ const initializeMap = async () => {
           // Add tile layer with dynamic URL from user preferences
           const tileUrl = getTileUrl()
           const subdomains = getSubdomains()
-
           const tileLayerOptions = {
-            attribution: getTileAttribution(),
-            maxZoom: 19,
-            minZoom: 0,
-            tileSize: 256,
-            keepBuffer: 2, // Keep 2 tile layers buffered for smoother panning
-            updateWhenIdle: false, // Update tiles while panning for better UX
-            updateWhenZooming: false, // Don't update during zoom animation
-            updateInterval: 200, // Throttle tile updates to 200ms
-            // Don't set errorTileUrl - let Leaflet handle missing tiles naturally
-            maxNativeZoom: 19
-            // Note: crossOrigin is NOT set to allow credentials (cookies) to be sent with same-origin tile requests
-            // This is required for /api/tiles endpoint which requires authentication
-          }
-
-          // Add subdomains if the URL uses them
-          if (subdomains.length > 0) {
-            tileLayerOptions.subdomains = subdomains
+            ...getBaseTileOptions(),
+            ...(subdomains.length > 0 && { subdomains })
           }
 
           try {
@@ -161,15 +158,13 @@ const initializeMap = async () => {
 
               if (retryCount < 2 && !originalSrc.startsWith('data:')) {
                 setTimeout(() => {
-                  if (tile.src === originalSrc) {
+                  if (tile.src === originalSrc || tile.src === '') {
                     tile.dataset.retryCount = (retryCount + 1).toString()
-                    // Force reload by appending a cache-busting parameter
-                    const separator = originalSrc.includes('?') ? '&' : '?'
-                    const retrySrc = originalSrc + separator + '_retry=' + Date.now()
-                    tile.src = retrySrc
+                    // Retry without cache-busting to allow browser/server cache hits
+                    tile.src = ''
+                    tile.src = originalSrc
                   }
                 }, 1000 * (retryCount + 1)) // Exponential backoff
-              } else if (retryCount >= 2) {
               }
             })
 
@@ -178,12 +173,8 @@ const initializeMap = async () => {
             console.error('Error loading custom tiles, falling back to OSM:', tileError)
             // Fallback to default OSM tiles if custom tiles fail
             L.tileLayer('/osm/tiles/{s}/{z}/{x}/{y}.png', {
-              attribution: '© OpenStreetMap contributors',
+              ...getBaseTileOptions('© OpenStreetMap contributors'),
               subdomains: ['a', 'b', 'c'],
-              maxZoom: 19,
-              keepBuffer: 2,
-              updateWhenIdle: false,
-              updateWhenZooming: false,
               crossOrigin: true
             }).addTo(map.value)
           }
@@ -293,19 +284,8 @@ watch(() => props.customTileUrl, (newUrl, oldUrl) => {
 
     // Add new tile layer with updated URL
     const tileLayerOptions = {
-      attribution: getTileAttribution(),
-      maxZoom: 19,
-      minZoom: 0,
-      tileSize: 256,
-      keepBuffer: 2,
-      updateWhenIdle: false,
-      updateWhenZooming: false,
-      updateInterval: 200,
-      maxNativeZoom: 19
-    }
-
-    if (subdomains.length > 0) {
-      tileLayerOptions.subdomains = subdomains
+      ...getBaseTileOptions(),
+      ...(subdomains.length > 0 && { subdomains })
     }
 
     L.tileLayer(tileUrl, tileLayerOptions).addTo(map.value)
