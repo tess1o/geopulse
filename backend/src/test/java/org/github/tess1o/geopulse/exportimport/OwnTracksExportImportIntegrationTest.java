@@ -20,7 +20,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -58,7 +58,7 @@ class OwnTracksExportImportIntegrationTest {
     ExportDataGenerator exportDataGenerator;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     ImportDataService importDataService;
@@ -214,7 +214,7 @@ class OwnTracksExportImportIntegrationTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("owntracks");
 
-        ImportJob importJob = importService.createOwnTracksImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-owntracks.json", exportedJsonData);
 
         // Validate the import data
@@ -257,7 +257,7 @@ class OwnTracksExportImportIntegrationTest {
         String modifiedJsonContent = objectMapper.writeValueAsString(modifiedMessages);
         byte[] modifiedJsonData = modifiedJsonContent.getBytes();
 
-        ImportJob modifiedImportJob = importService.createOwnTracksImportJob(
+        ImportJob modifiedImportJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-owntracks-modified.json", modifiedJsonData);
 
         importDataService.processImportData(modifiedImportJob);
@@ -300,7 +300,7 @@ class OwnTracksExportImportIntegrationTest {
         filterDateRange.setEndDate(Instant.now().plus(1, ChronoUnit.HOURS));
         importOptions.setDateRangeFilter(filterDateRange);
 
-        ImportJob importJob = importService.createOwnTracksImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-owntracks-filtered.json", exportedJsonData);
 
         importDataService.processImportData(importJob);
@@ -336,7 +336,7 @@ class OwnTracksExportImportIntegrationTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("owntracks");
 
-        ImportJob invalidJsonJob = importService.createOwnTracksImportJob(
+        ImportJob invalidJsonJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "invalid.json", invalidJsonData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -346,7 +346,7 @@ class OwnTracksExportImportIntegrationTest {
         // Test 2: Empty JSON array
         byte[] emptyArrayData = "[]".getBytes();
 
-        ImportJob emptyArrayJob = importService.createOwnTracksImportJob(
+        ImportJob emptyArrayJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "empty.json", emptyArrayData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -357,7 +357,7 @@ class OwnTracksExportImportIntegrationTest {
         String invalidGpsJson = "[{\"_type\":\"location\"}, {\"lat\":null,\"lon\":null,\"tst\":123}]";
         byte[] invalidGpsData = invalidGpsJson.getBytes();
 
-        ImportJob invalidGpsJob = importService.createOwnTracksImportJob(
+        ImportJob invalidGpsJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "invalid-gps.json", invalidGpsData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -394,7 +394,7 @@ class OwnTracksExportImportIntegrationTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("owntracks");
 
-        ImportJob exactDuplicateJob = importService.createOwnTracksImportJob(
+        ImportJob exactDuplicateJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "exact-duplicates.json", exactDuplicateData);
 
         importDataService.processImportData(exactDuplicateJob);
@@ -446,7 +446,7 @@ class OwnTracksExportImportIntegrationTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("owntracks");
 
-        ImportJob largeDatasetJob = importService.createOwnTracksImportJob(
+        ImportJob largeDatasetJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "large-dataset.json", largeDatasetData);
 
 

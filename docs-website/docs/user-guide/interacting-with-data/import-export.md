@@ -253,19 +253,26 @@ When the import finishes successfully:
 
 ### Efficient Memory Usage
 
-GeoPulse uses **streaming parsers** for all import operations, which means:
+GeoPulse uses **streaming parsers** and **chunked uploads** for all import operations, which means:
 
 - ✅ **Low memory usage** - Data is processed in chunks, not loaded entirely into memory
 - ✅ **Fast processing** - Efficient algorithms handle large datasets quickly
-- ✅ **Handles large files** - Files up to 2GB supported
-- ✅ **Reliable** - Handles interrupted imports gracefully
+- ✅ **Handles very large files** - Files up to 10GB supported (configurable)
+- ✅ **Bypasses CDN limits** - Chunked uploads work around Cloudflare's 100MB limit
+- ✅ **Reliable** - Handles interrupted imports gracefully with resume capability
+
+**How It Works:**
+- Files smaller than 80MB are uploaded directly
+- Larger files are automatically split into 50MB chunks on the frontend
+- Chunks are reassembled on the backend before processing
+- Streaming parsers process data incrementally without loading entire files into memory
 
 **File Size Limits:**
-- **Frontend (Nginx):** 200MB default - can be increased via configuration
-- **Backend (Quarkus):** 2GB maximum
+- **Default maximum:** 10GB (configurable via `GEOPULSE_IMPORT_MAX_FILE_SIZE_GB`)
+- **Frontend (Nginx):** 200MB default for direct uploads - chunked uploads bypass this
 
-:::tip Increasing Upload Limits
-If you need to import files larger than 200MB, increase the frontend upload limit by setting `CLIENT_MAX_BODY_SIZE` in your deployment configuration. See [Frontend Nginx Configuration](/docs/system-administration/configuration/frontend) for details.
+:::tip Large File Imports
+For files larger than 80MB, GeoPulse automatically uses chunked uploads. This works seamlessly behind the scenes - just select your file and the system handles the rest. See [Import Configuration](/docs/system-administration/configuration/import) for advanced settings.
 :::
 
 This architecture allows you to import years of location history with efficient memory usage.
@@ -293,10 +300,10 @@ This architecture allows you to import years of location history with efficient 
 
 ### Performance Optimization
 
-1. **Large files** - Files up to 2GB are supported (200MB default, configurable). Large files may take 10-30 minutes to upload and process
-2. **Network speed** - Upload time depends on your internet connection
+1. **Large files** - Files up to 10GB are supported by default (configurable up to any size). Large files use chunked uploads for reliability
+2. **Network speed** - Upload time depends on your internet connection. Chunked uploads show progress and can resume if interrupted
 3. **Timeline generation** - Can take several minutes for large datasets (years of data)
-4. **File size configuration** - If you regularly import files >200MB, increase the frontend limit (see [Frontend Configuration](/docs/system-administration/configuration/frontend))
+4. **Advanced configuration** - For performance tuning, see [Import Configuration](/docs/system-administration/configuration/import)
 5. **Import mode selection:**
    - Replace mode: Clean slate, no duplicates, recommended for first-time imports
    - Merge mode: Preserves existing data, checks for duplicates, use for incremental updates
@@ -332,10 +339,10 @@ This architecture allows you to import years of location history with efficient 
 **Problem:** Upload fails with "413 Request Entity Too Large" or file size error
 
 **Solutions:**
-- Your file exceeds the 200MB default limit
-- Increase the frontend upload limit by setting `CLIENT_MAX_BODY_SIZE` (see [Frontend Configuration](/docs/system-administration/configuration/frontend))
-- Example: Set `CLIENT_MAX_BODY_SIZE=500M` in your `.env` file and restart GeoPulse
-- Maximum supported file size is 2GB (backend limit)
+- For files >80MB, GeoPulse automatically uses chunked uploads which bypass most CDN limits
+- If you still see this error, check if your file exceeds the 10GB default maximum
+- The maximum can be increased via `GEOPULSE_IMPORT_MAX_FILE_SIZE_GB` (see [Import Configuration](/docs/system-administration/configuration/import))
+- For direct (non-chunked) uploads of small files, you may need to adjust `CLIENT_MAX_BODY_SIZE` (see [Frontend Configuration](/docs/system-administration/configuration/frontend))
 
 **Problem:** Import stuck at "Validating"
 
@@ -454,7 +461,7 @@ Example:
 ## Frequently Asked Questions
 
 **Q: What's the maximum file size for imports?**
-A: The frontend (Nginx) has a default limit of 200MB, and the backend (Quarkus) has a maximum limit of 2GB. The 200MB frontend limit can be increased by setting `CLIENT_MAX_BODY_SIZE` in your deployment configuration (see [Frontend Nginx Configuration](/docs/system-administration/configuration/frontend)). Files approaching 2GB will take longer to upload and process.
+A: The default maximum is 10GB, which can be increased via configuration. GeoPulse uses chunked uploads for large files, automatically splitting them into smaller pieces to bypass CDN limits like Cloudflare's 100MB restriction. See [Import Configuration](/docs/system-administration/configuration/import) for details on adjusting limits.
 
 **Q: Can I import data while the system is still processing a previous import?**
 A: No, GeoPulse processes one import job at a time per user to ensure data integrity. Wait for the current job to complete before starting another.

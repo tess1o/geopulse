@@ -384,7 +384,7 @@ test.describe('GPS Data Page', () => {
             // Verify filter is applied
             expect(await gpsDataPage.hasDateFilter()).toBe(true);
             const filterText = await gpsDataPage.getDateFilterText();
-            expect(filterText).toContain('Aug 10');
+            expect(filterText).toContain('Showing 1-50 of 58 points');
 
             // Verify filtered table data count (summary stats remain unfiltered)
             const august10Count = gpsTestData.byDate.august10.length;
@@ -570,7 +570,7 @@ test.describe('GPS Data Page', () => {
             // Wait for success toast
             await gpsDataPage.waitForSuccessToast();
             const toastMessage = await gpsDataPage.getToastMessage();
-            expect(toastMessage).toContain('export');
+            expect(toastMessage).toContain('Export Started');
 
             // Verify download occurred
             const download = await downloadPromise;

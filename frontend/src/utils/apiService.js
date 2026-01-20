@@ -323,6 +323,11 @@ const apiService = {
                 axiosOptions.responseType = options.responseType;
             }
 
+            // Add onUploadProgress if specified (for file uploads with progress tracking)
+            if (options.onUploadProgress) {
+                axiosOptions.onUploadProgress = options.onUploadProgress;
+            }
+
             let response;
             if (method === 'post') {
                 response = await axios.post(`${API_BASE_URL}${endpoint}`, data, axiosOptions);

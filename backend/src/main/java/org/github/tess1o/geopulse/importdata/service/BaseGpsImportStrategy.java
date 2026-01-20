@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.importdata.service;
 
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -24,15 +25,18 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
     
     @Inject
     protected UserRepository userRepository;
-    
+
     @Inject
     protected BatchProcessor batchProcessor;
-    
+
     @Inject
     protected TimelineImportHelper timelineImportHelper;
-    
+
     @Inject
     protected ImportDataClearingService dataClearingService;
+
+    @Inject
+    protected SystemSettingsService settingsService;
     
     @Override
     public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
@@ -182,13 +186,13 @@ public abstract class BaseGpsImportStrategy implements ImportStrategy {
     protected abstract FormatValidationResult validateFormatSpecificData(ImportJob job) throws IOException;
     
     /**
-     * Apply date range filter to a GPS entity if specified in import options.
-     * 
+     * Check if a timestamp falls outside the configured date range filter.
+     *
      * @param timestamp The timestamp to check
      * @param job The import job with potential date range filter
-     * @return true if the entity should be skipped due to date filter
+     * @return true if the timestamp is outside the date range and should be skipped
      */
-    protected boolean shouldSkipDueDateFilter(Instant timestamp, ImportJob job) {
+    protected boolean isOutsideDateRange(Instant timestamp, ImportJob job) {
         if (job.getOptions().getDateRangeFilter() == null || timestamp == null) {
             return false;
         }

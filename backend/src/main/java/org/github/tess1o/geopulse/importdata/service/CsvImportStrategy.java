@@ -1,9 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -35,13 +33,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @ApplicationScoped
 @Slf4j
 public class CsvImportStrategy extends BaseGpsImportStrategy {
-
-    /**
-     * Batch size for streaming processing - aligns with DB batch sizes for optimal performance.
-     */
-    @ConfigProperty(name = "geopulse.import.csv.streaming-batch-size", defaultValue = "500")
-    @StaticInitSafe
-    int streamingBatchSize;
 
     @Override
     public String getFormat() {
@@ -123,7 +114,8 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
     private StreamingImportResult streamingImportWithDirectWrites(ImportJob job, UserEntity user, boolean clearMode)
             throws IOException {
 
-        List<GpsPointEntity> currentBatch = new ArrayList<>(streamingBatchSize);
+        int batchSize = settingsService.getInteger("import.csv-streaming-batch-size");
+        List<GpsPointEntity> currentBatch = new ArrayList<>(batchSize);
         AtomicInteger totalImported = new AtomicInteger(0);
         AtomicInteger totalSkipped = new AtomicInteger(0);
         AtomicInteger totalRows = new AtomicInteger(0);
@@ -133,7 +125,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
         int totalExpectedPoints = job.getTotalRecordsFromValidation();
 
         log.info("Starting CSV streaming import with batch size: {}, clear mode: {}, total expected points: {}, from {}",
-                streamingBatchSize, clearMode, totalExpectedPoints, job.hasTempFile() ? "temp file" : "memory");
+                batchSize, clearMode, totalExpectedPoints, job.hasTempFile() ? "temp file" : "memory");
 
         try (InputStream dataStream = job.getDataStream();
              BufferedReader reader = new BufferedReader(new InputStreamReader(dataStream, StandardCharsets.UTF_8))) {
@@ -154,7 +146,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
                     CsvRow row = parseCsvRow(line);
                     if (row != null && row.isValid()) {
                         // Apply date range filter if specified
-                        if (shouldSkipDueDateFilter(row.timestamp, job)) {
+                        if (isOutsideDateRange(row.timestamp, job)) {
                             totalSkipped.incrementAndGet();
                             continue;
                         }
@@ -162,7 +154,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
                         GpsPointEntity gpsPoint = convertRowToGpsPoint(row, user);
                         if (gpsPoint != null) {
                             addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                                totalImported, totalSkipped, clearMode, job, totalExpectedPoints);
+                                totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
                         }
                     } else {
                         totalSkipped.incrementAndGet();
@@ -194,7 +186,8 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
     private void addToBatchAndFlushIfNeeded(List<GpsPointEntity> currentBatch, GpsPointEntity gpsPoint,
                                             AtomicReference<Instant> firstTimestamp,
                                             AtomicInteger totalImported, AtomicInteger totalSkipped,
-                                            boolean clearMode, ImportJob job, int totalExpectedPoints) {
+                                            boolean clearMode, ImportJob job, int totalExpectedPoints,
+                                            int batchSize) {
         currentBatch.add(gpsPoint);
 
         // Track first timestamp for timeline generation
@@ -203,7 +196,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
         }
 
         // Flush batch if full
-        if (currentBatch.size() >= streamingBatchSize) {
+        if (currentBatch.size() >= batchSize) {
             int processed = batchProcessor.processBatch(currentBatch, clearMode);
             totalImported.addAndGet(processed);
             currentBatch.clear();

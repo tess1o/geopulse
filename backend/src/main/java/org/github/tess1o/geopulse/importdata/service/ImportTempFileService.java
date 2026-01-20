@@ -4,8 +4,10 @@ import io.quarkus.runtime.Startup;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.annotation.PostConstruct;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 
 import java.io.IOException;
@@ -29,14 +31,12 @@ import java.util.stream.Stream;
 @Startup
 public class ImportTempFileService {
 
+    @Inject
+    SystemSettingsService settingsService;
+
+    // Startup-only setting (directory paths require restart)
     @ConfigProperty(name = "geopulse.import.temp-directory", defaultValue = "/tmp/geopulse/imports")
     String tempDirectory;
-
-    @ConfigProperty(name = "geopulse.import.large-file-threshold-mb", defaultValue = "100")
-    int largeFileThresholdMB;
-
-    @ConfigProperty(name = "geopulse.import.temp-file-retention-hours", defaultValue = "24")
-    int tempFileRetentionHours;
 
     @PostConstruct
     void initTempDirectory() {
@@ -55,8 +55,8 @@ public class ImportTempFileService {
             }
 
             log.info("Import temp directory initialized: {}", tempDir);
-            log.info("Large file threshold: {} MB", largeFileThresholdMB);
-            log.info("Temp file retention: {} hours", tempFileRetentionHours);
+            log.info("Large file threshold: {} MB", settingsService.getInteger("import.large-file-threshold-mb"));
+            log.info("Temp file retention: {} hours", settingsService.getInteger("import.temp-file-retention-hours"));
 
             // Clean up any orphaned files from previous runs
             cleanupOrphanedFiles();
@@ -71,7 +71,7 @@ public class ImportTempFileService {
      * Check if a file should be stored on disk vs in memory
      */
     public boolean shouldUseTempFile(long fileSizeBytes) {
-        long thresholdBytes = largeFileThresholdMB * 1024L * 1024L;
+        long thresholdBytes = settingsService.getInteger("import.large-file-threshold-mb") * 1024L * 1024L;
         return fileSizeBytes >= thresholdBytes;
     }
 
@@ -165,7 +165,8 @@ public class ImportTempFileService {
                 return;
             }
 
-            Instant cutoff = Instant.now().minus(tempFileRetentionHours, ChronoUnit.HOURS);
+            int retentionHours = settingsService.getInteger("import.temp-file-retention-hours");
+            Instant cutoff = Instant.now().minus(retentionHours, ChronoUnit.HOURS);
 
             try (Stream<Path> files = Files.list(tempDir)) {
                 long deletedCount = files
@@ -176,7 +177,7 @@ public class ImportTempFileService {
                                 long size = Files.size(f);
                                 Files.delete(f);
                                 log.info("Cleaned up old temp file: {} ({} MB, older than {} hours)",
-                                        f.getFileName(), size / (1024 * 1024), tempFileRetentionHours);
+                                        f.getFileName(), size / (1024 * 1024), retentionHours);
                             } catch (IOException e) {
                                 log.warn("Failed to delete old file: {}", f, e);
                             }
@@ -217,6 +218,6 @@ public class ImportTempFileService {
     }
 
     public int getLargeFileThresholdMB() {
-        return largeFileThresholdMB;
+        return settingsService.getInteger("import.large-file-threshold-mb");
     }
 }

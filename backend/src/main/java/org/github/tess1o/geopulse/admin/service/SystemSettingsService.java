@@ -103,6 +103,26 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("import.temp-file-retention-hours",
                 new SettingDefinition("geopulse.import.temp-file-retention-hours", "24", ValueType.INTEGER, "import", "Temp file retention (hours)"));
 
+        // Chunked upload settings
+        SETTING_DEFINITIONS.put("import.chunk-size-mb",
+                new SettingDefinition("geopulse.import.chunk-size-mb", "50", ValueType.INTEGER, "import", "Size of each upload chunk in megabytes"));
+        SETTING_DEFINITIONS.put("import.max-file-size-gb",
+                new SettingDefinition("geopulse.import.max-file-size-gb", "10", ValueType.INTEGER, "import", "Maximum file size allowed (GB)"));
+        SETTING_DEFINITIONS.put("import.upload-timeout-hours",
+                new SettingDefinition("geopulse.import.upload-timeout-hours", "2", ValueType.INTEGER, "import", "Upload session timeout (hours)"));
+
+        // Streaming batch sizes for each format
+        SETTING_DEFINITIONS.put("import.geojson-streaming-batch-size",
+                new SettingDefinition("geopulse.import.geojson.streaming-batch-size", "500", ValueType.INTEGER, "import", "GeoJSON streaming parser batch size"));
+        SETTING_DEFINITIONS.put("import.googletimeline-streaming-batch-size",
+                new SettingDefinition("geopulse.import.googletimeline.streaming-batch-size", "500", ValueType.INTEGER, "import", "Google Timeline streaming parser batch size"));
+        SETTING_DEFINITIONS.put("import.gpx-streaming-batch-size",
+                new SettingDefinition("geopulse.import.gpx.streaming-batch-size", "500", ValueType.INTEGER, "import", "GPX streaming parser batch size"));
+        SETTING_DEFINITIONS.put("import.csv-streaming-batch-size",
+                new SettingDefinition("geopulse.import.csv.streaming-batch-size", "500", ValueType.INTEGER, "import", "CSV streaming parser batch size"));
+        SETTING_DEFINITIONS.put("import.owntracks-streaming-batch-size",
+                new SettingDefinition("geopulse.import.owntracks.streaming-batch-size", "500", ValueType.INTEGER, "import", "OwnTracks streaming parser batch size"));
+
         // System performance
         SETTING_DEFINITIONS.put("system.timeline.processing.thread-pool-size",
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));

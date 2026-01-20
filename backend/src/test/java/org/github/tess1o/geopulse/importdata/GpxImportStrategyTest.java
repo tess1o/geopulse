@@ -14,7 +14,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.GpxImportStrategy;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -42,7 +42,7 @@ class GpxImportStrategyTest {
     GpxImportStrategy gpxImportStrategy;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     UserRepository userRepository;
@@ -105,7 +105,7 @@ class GpxImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-track.gpx", gpxData);
 
         List<String> detectedDataTypes = gpxImportStrategy.validateAndDetectDataTypes(importJob);
@@ -147,7 +147,7 @@ class GpxImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-track-only.gpx", gpxData);
 
         gpxImportStrategy.processImportData(importJob);
@@ -184,7 +184,7 @@ class GpxImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-waypoints-only.gpx", gpxData);
 
         gpxImportStrategy.processImportData(importJob);
@@ -221,7 +221,7 @@ class GpxImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx");
 
-        ImportJob invalidXmlJob = importService.createImportJob(
+        ImportJob invalidXmlJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "invalid.gpx", invalidXml);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -234,7 +234,7 @@ class GpxImportStrategyTest {
             </gpx>
         """;
         byte[] emptyGpxData = emptyGpx.getBytes();
-        ImportJob emptyGpxJob = importService.createImportJob(
+        ImportJob emptyGpxJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "empty.gpx", emptyGpxData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -255,7 +255,7 @@ class GpxImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-source-type.gpx", gpxData);
 
         gpxImportStrategy.processImportData(importJob);

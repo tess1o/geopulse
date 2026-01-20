@@ -1,9 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.StreamingGoogleTimelineParser;
 import org.github.tess1o.geopulse.gps.integrations.googletimeline.model.GoogleTimelineGpsPoint;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -29,13 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @ApplicationScoped
 @Slf4j
 public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
-
-    /**
-     * Batch size for streaming processing - aligns with DB batch sizes for optimal performance.
-     */
-    @ConfigProperty(name = "geopulse.import.googletimeline.streaming-batch-size", defaultValue = "500")
-    @StaticInitSafe
-    int streamingBatchSize;
 
     @Override
     public String getFormat() {
@@ -100,7 +91,8 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
     private StreamingImportResult streamingImportWithDirectWrites(ImportJob job, UserEntity user, boolean clearMode)
             throws IOException {
 
-        List<GpsPointEntity> currentBatch = new ArrayList<>(streamingBatchSize);
+        int batchSize = settingsService.getInteger("import.googletimeline-streaming-batch-size");
+        List<GpsPointEntity> currentBatch = new ArrayList<>(batchSize);
         AtomicInteger totalImported = new AtomicInteger(0);
         AtomicInteger totalSkipped = new AtomicInteger(0);
         AtomicInteger totalGpsPoints = new AtomicInteger(0);
@@ -110,7 +102,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
         int totalExpectedPoints = job.getTotalRecordsFromValidation();
 
         log.info("Starting streaming import with batch size: {}, clear mode: {}, total expected points: {}, from {}",
-                streamingBatchSize, clearMode, totalExpectedPoints, job.hasTempFile() ? "temp file" : "memory");
+                batchSize, clearMode, totalExpectedPoints, job.hasTempFile() ? "temp file" : "memory");
 
         // Use getDataStream() to abstract whether data is in memory or on disk
         try (InputStream dataStream = job.getDataStream()) {
@@ -123,7 +115,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
                 GpsPointEntity gpsEntity = convertGpsPointToEntity(gpsPoint, user, job);
                 if (gpsEntity != null) {
                     addToBatchAndFlushIfNeeded(currentBatch, gpsEntity, firstTimestamp,
-                        totalImported, totalSkipped, clearMode, job, totalExpectedPoints);
+                        totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
                 }
             });
 
@@ -156,7 +148,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
         }
 
         // Apply date range filter using base class method
-        if (shouldSkipDueDateFilter(point.getTimestamp(), job)) {
+        if (isOutsideDateRange(point.getTimestamp(), job)) {
             return null;
         }
 
@@ -204,7 +196,8 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
             AtomicInteger totalSkipped,
             boolean clearMode,
             ImportJob job,
-            int totalExpectedPoints) {
+            int totalExpectedPoints,
+            int batchSize) {
 
         // Track first timestamp for timeline generation
         if (firstTimestamp.get() == null && gpsPoint.getTimestamp() != null) {
@@ -214,7 +207,7 @@ public class GoogleTimelineImportStrategy extends BaseGpsImportStrategy {
         currentBatch.add(gpsPoint);
 
         // Flush when batch is full
-        if (currentBatch.size() >= streamingBatchSize) {
+        if (currentBatch.size() >= batchSize) {
             flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedPoints);
             currentBatch.clear(); // CRITICAL: Clear to release memory
 

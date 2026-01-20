@@ -51,6 +51,7 @@ const sidebars = {
                         'system-administration/configuration/timeline-global-config',
                         'system-administration/configuration/location-sharing',
                         'system-administration/configuration/frontend',
+                        'system-administration/configuration/import',
                         'system-administration/configuration/gps-data-filtering',
                         'system-administration/configuration/owntracks-additional-config',
                     ],

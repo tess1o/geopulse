@@ -28,7 +28,7 @@ public class StreamingOwnTracksParser {
     private final JsonFactory jsonFactory;
 
     /**
-     * Create a streaming parser from a byte array (typical use case from ImportJob.zipData)
+     * Create a streaming parser from a byte array (typical use case from ImportJob.fileData)
      */
     public StreamingOwnTracksParser(byte[] data, ObjectMapper objectMapper) {
         this(new ByteArrayInputStream(data), objectMapper);

@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
-public class ImportService {
+public class ImportJobService {
 
     @Inject
     ImportDataService importDataService;
@@ -47,110 +47,22 @@ public class ImportService {
     public ImportJob createImportJob(UUID userId, ImportOptions options, String fileName, byte[] zipData) {
         ImportJob job = new ImportJob(userId, options, fileName, zipData);
         activeJobs.put(job.getJobId(), job);
-        
-        log.info("Created import job {} for user {} with file: {}", 
-                job.getJobId(), userId, fileName);
-                
-        return job;
-    }
 
-    public ImportJob createOwnTracksImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
-        // Force format to be owntracks for clarity
-        options.setImportFormat("owntracks");
-        
-        // Create OwnTracks import job - we'll store JSON data in zipData field for simplicity
-        ImportJob job = new ImportJob(userId, options, fileName, jsonData);
-        
-        // Pre-populate detected data types for OwnTracks (only GPS data)
-        job.setDetectedDataTypes(List.of("rawgps"));
-        
-        activeJobs.put(job.getJobId(), job);
-        
-        log.info("Created OwnTracks import job {} for user {} with file: {}", 
-                job.getJobId(), userId, fileName);
-                
-        return job;
-    }
-
-    public ImportJob createGoogleTimelineImportJob(UUID userId, ImportOptions options, String fileName, byte[] jsonData) {
-        // Force format to be google-timeline for clarity
-        options.setImportFormat("google-timeline");
-        
-        // Create Google Timeline import job - we'll store JSON data in zipData field for simplicity
-        ImportJob job = new ImportJob(userId, options, fileName, jsonData);
-        
-        // Pre-populate detected data types for Google Timeline (only GPS data)
-        job.setDetectedDataTypes(List.of("rawgps"));
-        
-        activeJobs.put(job.getJobId(), job);
-        
-        log.info("Created Google Timeline import job {} for user {} with file: {}", 
-                job.getJobId(), userId, fileName);
-                
-        return job;
-    }
-
-    public ImportJob createGpxImportJob(UUID userId, ImportOptions options, String fileName, byte[] gpxData) {
-        // Force format to be gpx for clarity
-        options.setImportFormat("gpx");
-
-        // Create GPX import job - we'll store XML data in zipData field for simplicity
-        ImportJob job = new ImportJob(userId, options, fileName, gpxData);
-
-        // Pre-populate detected data types for GPX (only GPS data)
-        job.setDetectedDataTypes(List.of("rawgps"));
-
-        activeJobs.put(job.getJobId(), job);
-
-        log.info("Created GPX import job {} for user {} with file: {}",
-                job.getJobId(), userId, fileName);
-
-        return job;
-    }
-
-    public ImportJob createGeoJsonImportJob(UUID userId, ImportOptions options, String fileName, byte[] geoJsonData) {
-        // Force format to be geojson for clarity
-        options.setImportFormat("geojson");
-
-        // Create GeoJSON import job - we'll store JSON data in zipData field for simplicity
-        ImportJob job = new ImportJob(userId, options, fileName, geoJsonData);
-
-        // Pre-populate detected data types for GeoJSON (only GPS data)
-        job.setDetectedDataTypes(List.of("rawgps"));
-
-        activeJobs.put(job.getJobId(), job);
-
-        log.info("Created GeoJSON import job {} for user {} with file: {}",
-                job.getJobId(), userId, fileName);
-
-        return job;
-    }
-
-    public ImportJob createCsvImportJob(UUID userId, ImportOptions options, String fileName, byte[] csvData) {
-        // Force format to be csv for clarity
-        options.setImportFormat("csv");
-
-        // Create CSV import job - we'll store CSV data in zipData field for simplicity
-        ImportJob job = new ImportJob(userId, options, fileName, csvData);
-
-        // Pre-populate detected data types for CSV (only GPS data)
-        job.setDetectedDataTypes(List.of("rawgps"));
-
-        activeJobs.put(job.getJobId(), job);
-
-        log.info("Created CSV import job {} for user {} with file: {}",
+        log.info("Created import job {} for user {} with file: {}",
                 job.getJobId(), userId, fileName);
 
         return job;
     }
 
     /**
-     * Register an already-created import job (for temp file scenarios)
+     * Register an already-created import job.
+     * Automatically sets detected data types for non-geopulse formats (they only support rawgps).
      */
     public void registerJob(ImportJob job) {
-        // Pre-populate detected data types for streaming formats (only GPS data)
         String format = job.getOptions().getImportFormat();
-        if ("geojson".equals(format) || "google-timeline".equals(format)) {
+
+        // Non-geopulse formats only support rawgps data type
+        if (!"geopulse".equals(format) && job.getDetectedDataTypes() == null) {
             job.setDetectedDataTypes(List.of("rawgps"));
         }
 
@@ -182,7 +94,7 @@ public class ImportService {
         if (job == null || !job.getUserId().equals(userId)) {
             return false;
         }
-        
+
         activeJobs.remove(jobId);
         log.info("Deleted import job {} for user {}", jobId, userId);
         return true;
@@ -199,11 +111,11 @@ public class ImportService {
             log.info("Import scheduler is disabled. Skipping scheduled import jobs.");
             return;
         }
-        
+
         if (processing) {
             return;
         }
-        
+
         processing = true;
         try {
             processAvailableJobs();
@@ -224,18 +136,18 @@ public class ImportService {
         for (ImportJob job : validatingJobs) {
             try {
                 log.debug("Validating import job {}", job.getJobId());
-                
+
                 List<String> detectedDataTypes = importDataService.validateAndDetectDataTypes(job);
-                
+
                 job.setDetectedDataTypes(detectedDataTypes);
                 job.setStatus(ImportStatus.PROCESSING);
                 job.setProgress(25);
-                
+
                 log.info("Validated import job {} - detected data types: {}", job.getJobId(), detectedDataTypes);
-                
+
             } catch (Exception e) {
                 log.error("Failed to validate import job {}: {}", job.getJobId(), e.getMessage(), e);
-                
+
                 job.setStatus(ImportStatus.FAILED);
                 job.setError(e.getMessage());
                 job.setProgress(0);
@@ -280,7 +192,7 @@ public class ImportService {
                         log.info("Triggered badge recalculation for user {} after import completion", job.getUserId());
                     } catch (Exception e) {
                         log.error("Failed to recalculate badges for user {} after import: {}",
-                                 job.getUserId(), e.getMessage(), e);
+                                job.getUserId(), e.getMessage(), e);
                         // Don't fail the import job if badge calculation fails
                     }
                 }
@@ -366,7 +278,7 @@ public class ImportService {
 
     private void cleanupExpiredJobs() {
         Instant cutoff = Instant.now().minus(JOB_EXPIRY_HOURS, ChronoUnit.HOURS);
-        
+
         List<UUID> expiredJobIds = activeJobs.values().stream()
                 .filter(job -> job.getCreatedAt().isBefore(cutoff))
                 .map(ImportJob::getJobId)
@@ -376,19 +288,9 @@ public class ImportService {
             activeJobs.remove(jobId);
             log.debug("Cleaned up expired import job {}", jobId);
         }
-        
+
         if (!expiredJobIds.isEmpty()) {
             log.info("Cleaned up {} expired import jobs", expiredJobIds.size());
         }
-    }
-
-    public int getActiveJobCount() {
-        return activeJobs.size();
-    }
-
-    public void clearAllJobs() {
-        int count = activeJobs.size();
-        activeJobs.clear();
-        log.info("Cleared {} import jobs", count);
     }
 }

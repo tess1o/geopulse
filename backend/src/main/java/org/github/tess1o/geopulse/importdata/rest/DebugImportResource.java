@@ -16,7 +16,7 @@ import java.util.UUID;
 
 @Path("/api/import/debug")
 @Slf4j
-public class DebugImportController {
+public class DebugImportResource {
 
     @Inject
     DebugImportService debugImportService;

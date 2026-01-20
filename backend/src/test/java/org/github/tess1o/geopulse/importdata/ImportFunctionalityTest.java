@@ -4,7 +4,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -16,14 +16,14 @@ import static org.junit.jupiter.api.Assertions.*;
 public class ImportFunctionalityTest {
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     ImportDataService importDataService;
 
     @Test
-    public void testImportServiceExists() {
-        assertNotNull(importService);
+    public void testImportJobServiceExists() {
+        assertNotNull(importJobService);
         assertNotNull(importDataService);
     }
 
@@ -38,7 +38,7 @@ public class ImportFunctionalityTest {
         
         // This should not throw an exception
         assertDoesNotThrow(() -> {
-            var job = importService.createImportJob(userId, options, fileName, zipData);
+            var job = importJobService.createImportJob(userId, options, fileName, zipData);
             assertNotNull(job);
             assertEquals(userId, job.getUserId());
             assertEquals(fileName, job.getUploadedFileName());

@@ -13,7 +13,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.GeoJsonImportStrategy;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -41,7 +41,7 @@ class GeoJsonImportStrategyTest {
     GeoJsonImportStrategy geoJsonImportStrategy;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     UserRepository userRepository;
@@ -101,7 +101,7 @@ class GeoJsonImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("geojson");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-points.geojson", geoJsonData);
 
         List<String> detectedDataTypes = geoJsonImportStrategy.validateAndDetectDataTypes(importJob);
@@ -147,7 +147,7 @@ class GeoJsonImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("geojson");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-linestring.geojson", geoJsonData);
 
         geoJsonImportStrategy.processImportData(importJob);
@@ -183,7 +183,7 @@ class GeoJsonImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("geojson");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-mixed.geojson", geoJsonData);
 
         geoJsonImportStrategy.processImportData(importJob);
@@ -218,7 +218,7 @@ class GeoJsonImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("geojson");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-large.geojson", geoJsonData);
 
         // Monitor memory before import
@@ -277,7 +277,7 @@ class GeoJsonImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("geojson");
 
-        ImportJob invalidJsonJob = importService.createImportJob(
+        ImportJob invalidJsonJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "invalid.geojson", invalidJson);
 
         assertThrows(Exception.class, () -> {
@@ -292,7 +292,7 @@ class GeoJsonImportStrategyTest {
             }
             """;
         byte[] emptyGeoJsonData = emptyGeoJson.getBytes();
-        ImportJob emptyJob = importService.createImportJob(
+        ImportJob emptyJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "empty.geojson", emptyGeoJsonData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -310,7 +310,7 @@ class GeoJsonImportStrategyTest {
             }
             """;
         byte[] notFCData = notFeatureCollection.getBytes();
-        ImportJob notFCJob = importService.createImportJob(
+        ImportJob notFCJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "notfc.geojson", notFCData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -331,7 +331,7 @@ class GeoJsonImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("geojson");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-source.geojson", geoJsonData);
 
         geoJsonImportStrategy.processImportData(importJob);

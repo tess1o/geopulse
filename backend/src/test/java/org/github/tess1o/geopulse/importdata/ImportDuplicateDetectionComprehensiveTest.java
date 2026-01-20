@@ -11,7 +11,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
@@ -58,7 +58,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
     ImportDataService importDataService;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     GpsPointRepository gpsPointRepository;
@@ -139,7 +139,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
 
         // FIRST IMPORT: Should import all 100 points
         log.info("First import: expecting 100 points to be imported");
-        ImportJob job1 = importService.createOwnTracksImportJob(
+        ImportJob job1 = importJobService.createImportJob(
                 testUserId, options, "first-import.json", jsonData);
 
         importDataService.processImportData(job1);
@@ -150,7 +150,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
 
         // SECOND IMPORT: Same data - should skip ALL duplicates
         log.info("Second import: expecting 0 points imported (all duplicates)");
-        ImportJob job2 = importService.createOwnTracksImportJob(
+        ImportJob job2 = importJobService.createImportJob(
                 testUserId, options, "duplicate-import.json", jsonData);
 
         importDataService.processImportData(job2);
@@ -297,7 +297,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         normalOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
         normalOptions.setClearDataBeforeImport(false); // Normal merge mode
 
-        ImportJob janJob = importService.createOwnTracksImportJob(
+        ImportJob janJob = importJobService.createImportJob(
                 testUserId, normalOptions, "january.json",
                 objectMapper.writeValueAsString(janMessages).getBytes());
 
@@ -325,7 +325,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         clearOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
         clearOptions.setClearDataBeforeImport(true); // CLEAR MODE
 
-        ImportJob febJob = importService.createOwnTracksImportJob(
+        ImportJob febJob = importJobService.createImportJob(
                 testUserId, clearOptions, "february.json",
                 objectMapper.writeValueAsString(febMessages).getBytes());
 
@@ -382,7 +382,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
 
         // FIRST IMPORT
         log.info("First import: expecting 50 points");
-        ImportJob job1 = importService.createOwnTracksImportJob(
+        ImportJob job1 = importJobService.createImportJob(
                 testUserId, options, "first.json", jsonData);
         importDataService.processImportData(job1);
 
@@ -392,7 +392,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
 
         // SECOND IMPORT (immediately after) - Same data
         log.info("Second import: expecting 0 new points (all duplicates)");
-        ImportJob job2 = importService.createOwnTracksImportJob(
+        ImportJob job2 = importJobService.createImportJob(
                 testUserId, options, "second.json", jsonData);
         importDataService.processImportData(job2);
 
@@ -403,7 +403,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
 
         // THIRD IMPORT - Verify consistency
         log.info("Third import: final verification");
-        ImportJob job3 = importService.createOwnTracksImportJob(
+        ImportJob job3 = importJobService.createImportJob(
                 testUserId, options, "third.json", jsonData);
         importDataService.processImportData(job3);
 
@@ -444,7 +444,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob job1 = importService.createOwnTracksImportJob(
+        ImportJob job1 = importJobService.createImportJob(
                 testUserId, options, "first.json",
                 objectMapper.writeValueAsString(firstBatch).getBytes());
 
@@ -479,7 +479,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
                     .build());
         }
 
-        ImportJob job2 = importService.createOwnTracksImportJob(
+        ImportJob job2 = importJobService.createImportJob(
                 testUserId, options, "second.json",
                 objectMapper.writeValueAsString(secondBatch).getBytes());
 
@@ -522,7 +522,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         normalOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
         normalOptions.setClearDataBeforeImport(false);
 
-        ImportJob initialJob = importService.createOwnTracksImportJob(
+        ImportJob initialJob = importJobService.createImportJob(
                 testUserId, normalOptions, "initial.json",
                 objectMapper.writeValueAsString(initialData).getBytes());
 
@@ -556,7 +556,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         clearOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
         clearOptions.setClearDataBeforeImport(true);
 
-        ImportJob clearJob = importService.createOwnTracksImportJob(
+        ImportJob clearJob = importJobService.createImportJob(
                 testUserId, clearOptions, "clear.json",
                 objectMapper.writeValueAsString(clearData).getBytes());
 
@@ -609,7 +609,7 @@ public class ImportDuplicateDetectionComprehensiveTest {
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob job = importService.createOwnTracksImportJob(
+        ImportJob job = importJobService.createImportJob(
                 testUserId, options, "test.json",
                 objectMapper.writeValueAsString(new OwnTracksLocationMessage[]{message}).getBytes());
 

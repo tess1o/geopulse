@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '../utils/apiService'
+import chunkedUploadService from '../utils/chunkedUploadService'
 
 export const useExportImportStore = defineStore('exportImport', {
     state: () => ({
@@ -15,7 +16,10 @@ export const useExportImportStore = defineStore('exportImport', {
         isExporting: false,
         isImporting: false,
         uploadProgress: 0,
-        isUploading: false
+        isUploading: false,
+
+        // Chunked upload state (for internal tracking)
+        currentChunkInfo: null  // { index, completed, total }
     }),
 
     getters: {
@@ -379,20 +383,28 @@ export const useExportImportStore = defineStore('exportImport', {
             }
         },
 
-        // API Actions - Import
-        async uploadImportFile(file, options = {}) {
-            this.isImporting = true
-            this.isUploading = true
-            this.uploadProgress = 0
-            try {
+        // Helper method for file uploads - decides between chunked and direct upload
+        // Uses unified /import/upload endpoint for all formats
+        async _performUpload(file, importFormat, options = {}) {
+            // Check if file should use chunked upload (>80MB)
+            if (chunkedUploadService.shouldUseChunkedUpload(file)) {
+                // Use chunked upload for large files
+                return await chunkedUploadService.uploadFile(file, importFormat, options, {
+                    onProgress: (progress) => {
+                        this.uploadProgress = progress
+                    },
+                    onChunkComplete: (index, completed, total) => {
+                        this.currentChunkInfo = { index, completed, total }
+                    }
+                })
+            } else {
+                // Use direct upload for smaller files via unified endpoint
                 const formData = new FormData()
                 formData.append('file', file)
+                formData.append('format', importFormat)
                 formData.append('options', JSON.stringify(options))
 
-                const response = await apiService.post('/import/geopulse/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
+                const response = await apiService.post('/import/upload', formData, {
                     onUploadProgress: (progressEvent) => {
                         // Cap at 99% during upload, reach 100% only when response received
                         const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
@@ -400,8 +412,21 @@ export const useExportImportStore = defineStore('exportImport', {
                     }
                 })
 
-                // Upload complete, show 100% briefly
+                // Upload complete, show 100%
                 this.uploadProgress = 100
+
+                return response
+            }
+        },
+
+        // API Actions - Import
+        async uploadImportFile(file, options = {}) {
+            this.isImporting = true
+            this.isUploading = true
+            this.uploadProgress = 0
+            this.currentChunkInfo = null
+            try {
+                const response = await this._performUpload(file, 'geopulse', options)
 
                 // Keep upload card visible for 500ms to show completion
                 await new Promise(resolve => setTimeout(resolve, 500))
@@ -416,6 +441,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.isImporting = false
                 this.isUploading = false
                 this.uploadProgress = 0
+                this.currentChunkInfo = null
             }
         },
 
@@ -424,22 +450,10 @@ export const useExportImportStore = defineStore('exportImport', {
             this.isImporting = true
             this.isUploading = true
             this.uploadProgress = 0
+            this.currentChunkInfo = null
             try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('options', JSON.stringify(options))
+                const response = await this._performUpload(file, 'owntracks', options)
 
-                const response = await apiService.post('/import/owntracks/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
-                    onUploadProgress: (progressEvent) => {
-                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
-                        this.uploadProgress = Math.min(progress, 99)
-                    }
-                })
-
-                this.uploadProgress = 100
                 await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
@@ -452,6 +466,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.isImporting = false
                 this.isUploading = false
                 this.uploadProgress = 0
+                this.currentChunkInfo = null
             }
         },
 
@@ -459,22 +474,10 @@ export const useExportImportStore = defineStore('exportImport', {
             this.isImporting = true
             this.isUploading = true
             this.uploadProgress = 0
+            this.currentChunkInfo = null
             try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('options', JSON.stringify(options))
+                const response = await this._performUpload(file, 'gpx', options)
 
-                const response = await apiService.post('/import/gpx/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
-                    onUploadProgress: (progressEvent) => {
-                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
-                        this.uploadProgress = Math.min(progress, 99)
-                    }
-                })
-
-                this.uploadProgress = 100
                 await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
@@ -487,6 +490,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.isImporting = false
                 this.isUploading = false
                 this.uploadProgress = 0
+                this.currentChunkInfo = null
             }
         },
 
@@ -495,22 +499,10 @@ export const useExportImportStore = defineStore('exportImport', {
             this.isImporting = true
             this.isUploading = true
             this.uploadProgress = 0
+            this.currentChunkInfo = null
             try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('options', JSON.stringify(options))
+                const response = await this._performUpload(file, 'google-timeline', options)
 
-                const response = await apiService.post('/import/google-timeline/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
-                    onUploadProgress: (progressEvent) => {
-                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
-                        this.uploadProgress = Math.min(progress, 99)
-                    }
-                })
-
-                this.uploadProgress = 100
                 await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
@@ -523,6 +515,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.isImporting = false
                 this.isUploading = false
                 this.uploadProgress = 0
+                this.currentChunkInfo = null
             }
         },
 
@@ -531,22 +524,10 @@ export const useExportImportStore = defineStore('exportImport', {
             this.isImporting = true
             this.isUploading = true
             this.uploadProgress = 0
+            this.currentChunkInfo = null
             try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('options', JSON.stringify(options))
+                const response = await this._performUpload(file, 'geojson', options)
 
-                const response = await apiService.post('/import/geojson/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
-                    onUploadProgress: (progressEvent) => {
-                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
-                        this.uploadProgress = Math.min(progress, 99)
-                    }
-                })
-
-                this.uploadProgress = 100
                 await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
@@ -559,6 +540,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.isImporting = false
                 this.isUploading = false
                 this.uploadProgress = 0
+                this.currentChunkInfo = null
             }
         },
 
@@ -567,22 +549,10 @@ export const useExportImportStore = defineStore('exportImport', {
             this.isImporting = true
             this.isUploading = true
             this.uploadProgress = 0
+            this.currentChunkInfo = null
             try {
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('options', JSON.stringify(options))
+                const response = await this._performUpload(file, 'csv', options)
 
-                const response = await apiService.post('/import/csv/upload', formData, {
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
-                    onUploadProgress: (progressEvent) => {
-                        const progress = Math.round((progressEvent.loaded * 99) / progressEvent.total)
-                        this.uploadProgress = Math.min(progress, 99)
-                    }
-                })
-
-                this.uploadProgress = 100
                 await new Promise(resolve => setTimeout(resolve, 500))
 
                 this.setCurrentImportJob(response)
@@ -595,6 +565,7 @@ export const useExportImportStore = defineStore('exportImport', {
                 this.isImporting = false
                 this.isUploading = false
                 this.uploadProgress = 0
+                this.currentChunkInfo = null
             }
         },
 
@@ -683,6 +654,7 @@ export const useExportImportStore = defineStore('exportImport', {
             this.currentImportJob = null
             this.isExporting = false
             this.isImporting = false
+            this.currentChunkInfo = null
         },
 
         // Get data type display names

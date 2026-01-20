@@ -13,7 +13,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.GpxZipImportStrategy;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -44,7 +44,7 @@ class GpxZipImportStrategyTest {
     GpxZipImportStrategy gpxZipImportStrategy;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     UserRepository userRepository;
@@ -105,7 +105,7 @@ class GpxZipImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx-zip");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-tracks.zip", zipData);
 
         List<String> detectedDataTypes = gpxZipImportStrategy.validateAndDetectDataTypes(importJob);
@@ -150,7 +150,7 @@ class GpxZipImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx-zip");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "mixed-content.zip", zipData);
 
         // Validate - should find only GPX files
@@ -190,7 +190,7 @@ class GpxZipImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx-zip");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "empty.zip", emptyZipData);
 
         // Should throw validation exception for empty ZIP
@@ -226,7 +226,7 @@ class GpxZipImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx-zip");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "mixed-validity.zip", zipData);
 
         // Validation should continue despite invalid file (logs warning)
@@ -260,7 +260,7 @@ class GpxZipImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("gpx-zip");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-source-type.zip", zipData);
 
         gpxZipImportStrategy.processImportData(importJob);

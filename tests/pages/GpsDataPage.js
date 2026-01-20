@@ -24,7 +24,7 @@ export class GpsDataPage {
       // Date filter controls
       filterSection: '.filter-section',
       dateRangePicker: '.date-picker input',
-      clearFilterButton: 'button:has-text("Clear Filter")',
+      clearFilterButton: 'button:has-text("Clear All")',
       
       // GPS Points table
       gpsTable: '.gps-data-table',

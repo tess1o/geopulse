@@ -16,7 +16,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.GoogleTimelineImportStrategy;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -46,7 +46,7 @@ class GoogleTimelineImportStrategyTest {
     GoogleTimelineImportStrategy googleTimelineImportStrategy;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     UserRepository userRepository;
@@ -113,7 +113,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-google-timeline.json", jsonData);
 
         List<String> detectedDataTypes = googleTimelineImportStrategy.validateAndDetectDataTypes(importJob);
@@ -159,7 +159,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-activity.json", jsonData);
 
         googleTimelineImportStrategy.processImportData(importJob);
@@ -213,7 +213,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-visit.json", jsonData);
 
         googleTimelineImportStrategy.processImportData(importJob);
@@ -253,7 +253,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-timeline-path.json", jsonData);
 
         googleTimelineImportStrategy.processImportData(importJob);
@@ -296,7 +296,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob invalidJsonJob = importService.createImportJob(
+        ImportJob invalidJsonJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "invalid.json", invalidJson);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -305,7 +305,7 @@ class GoogleTimelineImportStrategyTest {
 
         // Test 2: Empty array
         byte[] emptyArray = "[]".getBytes();
-        ImportJob emptyArrayJob = importService.createImportJob(
+        ImportJob emptyArrayJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "empty.json", emptyArray);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -322,7 +322,7 @@ class GoogleTimelineImportStrategyTest {
         String invalidContent = objectMapper.writeValueAsString(invalidRecords);
         byte[] invalidData = invalidContent.getBytes();
 
-        ImportJob invalidDataJob = importService.createImportJob(
+        ImportJob invalidDataJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "invalid-data.json", invalidData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -344,7 +344,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-source-type.json", jsonData);
 
         googleTimelineImportStrategy.processImportData(importJob);
@@ -379,7 +379,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-timeline-trigger.json", jsonData);
 
         // Before import - should have no timeline stays
@@ -533,7 +533,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-semantic-segments.json", jsonData);
 
         // Validate
@@ -646,7 +646,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob importJob = importService.createImportJob(
+        ImportJob importJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "test-records.json", jsonData);
 
         // Validate
@@ -740,7 +740,7 @@ class GoogleTimelineImportStrategyTest {
         ImportOptions importOptions = new ImportOptions();
         importOptions.setImportFormat("google-timeline");
 
-        ImportJob emptyJob = importService.createImportJob(
+        ImportJob emptyJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "empty-records.json", emptyData);
 
         assertThrows(IllegalArgumentException.class, () -> {
@@ -761,7 +761,7 @@ class GoogleTimelineImportStrategyTest {
         """;
 
         byte[] missingFieldsData = missingFieldsJson.getBytes();
-        ImportJob missingFieldsJob = importService.createImportJob(
+        ImportJob missingFieldsJob = importJobService.createImportJob(
                 testUser.getId(), importOptions, "missing-fields-records.json", missingFieldsData);
 
         assertThrows(IllegalArgumentException.class, () -> {

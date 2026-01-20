@@ -1,9 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.integrations.gpx.StreamingGpxParser;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
@@ -35,13 +33,6 @@ import java.util.zip.ZipInputStream;
 @ApplicationScoped
 @Slf4j
 public class GpxZipImportStrategy extends BaseGpsImportStrategy {
-
-    /**
-     * Batch size for streaming processing - aligns with DB batch sizes for optimal performance.
-     */
-    @ConfigProperty(name = "geopulse.import.gpx.streaming-batch-size", defaultValue = "500")
-    @StaticInitSafe
-    int streamingBatchSize;
 
     @Override
     public String getFormat() {
@@ -148,7 +139,8 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
     private StreamingImportResult streamingImportFromZip(ImportJob job, UserEntity user, boolean clearMode)
             throws IOException {
 
-        List<GpsPointEntity> currentBatch = new ArrayList<>(streamingBatchSize);
+        int batchSize = settingsService.getInteger("import.gpx-streaming-batch-size");
+        List<GpsPointEntity> currentBatch = new ArrayList<>(batchSize);
         AtomicInteger totalImported = new AtomicInteger(0);
         AtomicInteger totalSkipped = new AtomicInteger(0);
         AtomicInteger totalGpsPoints = new AtomicInteger(0);
@@ -172,7 +164,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
         }
 
         log.info("Found {} GPX files in ZIP, starting streaming import with batch size: {}, clear mode: {}, total expected points: {}",
-                totalFiles, streamingBatchSize, clearMode, totalExpectedPoints);
+                totalFiles, batchSize, clearMode, totalExpectedPoints);
 
         // Second pass: process each GPX file
         try (InputStream inputStream = job.getDataStream();
@@ -205,7 +197,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
                         totalGpsPoints.incrementAndGet();
 
                         // Apply date range filter if specified
-                        if (shouldSkipDueDateFilter(point.time, job)) {
+                        if (isOutsideDateRange(point.time, job)) {
                             return;
                         }
 
@@ -213,7 +205,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
                         GpsPointEntity gpsEntity = convertGpxPointToGpsEntity(point, user);
                         if (gpsEntity != null) {
                             addToBatchAndFlushIfNeeded(currentBatch, gpsEntity, firstTimestamp,
-                                    totalImported, totalSkipped, clearMode, job, totalExpectedPoints);
+                                    totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
                         }
                     });
 
@@ -258,7 +250,8 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
             AtomicInteger totalSkipped,
             boolean clearMode,
             ImportJob job,
-            int totalExpectedPoints) {
+            int totalExpectedPoints,
+            int batchSize) {
 
         // Track first timestamp for timeline generation
         if (firstTimestamp.get() == null && gpsPoint.getTimestamp() != null) {
@@ -268,7 +261,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
         currentBatch.add(gpsPoint);
 
         // Flush when batch is full
-        if (currentBatch.size() >= streamingBatchSize) {
+        if (currentBatch.size() >= batchSize) {
             flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedPoints);
             currentBatch.clear(); // CRITICAL: Clear to release memory
         }

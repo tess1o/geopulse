@@ -81,7 +81,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     public List<String> validateAndDetectDataTypes(ImportJob job) throws IOException {
         List<String> detectedDataTypes = new ArrayList<>();
 
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(job.getZipData());
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(job.getFileData());
              ZipInputStream zis = new ZipInputStream(bais)) {
 
             ZipEntry entry;
@@ -154,7 +154,7 @@ public class GeoPulseImportStrategy implements ImportStrategy {
     private Map<String, byte[]> extractZipContents(ImportJob job) throws IOException {
         Map<String, byte[]> fileContents = new HashMap<>();
 
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(job.getZipData());
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(job.getFileData());
              ZipInputStream zis = new ZipInputStream(bais)) {
 
             ZipEntry entry;

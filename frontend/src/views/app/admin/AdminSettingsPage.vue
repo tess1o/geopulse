@@ -9,282 +9,387 @@
       </div>
 
       <TabContainer
-        :tabs="tabItems"
-        :activeIndex="activeTabIndex"
-        @tab-change="handleTabChange"
-        class="settings-tabs"
+          :tabs="tabItems"
+          :activeIndex="activeTabIndex"
+          @tab-change="handleTabChange"
+          class="settings-tabs"
       >
         <!-- Authentication Tab -->
         <div v-if="activeTab === 'authentication'">
-        <div class="settings-section">
-          <h3>Registration Settings</h3>
+          <div class="settings-section">
+            <h3>Registration Settings</h3>
 
-          <div class="setting-item" v-for="setting in authSettings" :key="setting.key">
-            <div class="setting-info">
-              <label>{{ setting.label }}</label>
-              <small class="text-muted">{{ setting.description }}</small>
-            </div>
-            <div class="setting-control">
-              <InputSwitch
-                v-if="setting.valueType === 'BOOLEAN'"
-                v-model="setting.currentValue"
-                @change="updateSetting(setting)"
-              />
-              <div class="setting-status">
-                <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
-                <Button
-                  v-else
-                  label="Reset"
-                  icon="pi pi-refresh"
-                  text
-                  size="small"
-                  @click="resetSetting(setting)"
+            <div class="setting-item" v-for="setting in authSettings" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputSwitch
+                    v-if="setting.valueType === 'BOOLEAN'"
+                    v-model="setting.currentValue"
+                    @change="updateSetting(setting)"
                 />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
 
         <!-- Geocoding Tab -->
         <div v-if="activeTab === 'geocoding'">
-        <div class="settings-section">
-          <h3>General Settings</h3>
+          <div class="settings-section">
+            <h3>General Settings</h3>
 
-          <div class="setting-item" v-for="setting in geocodingSettings.filter(s => ['geocoding.primary-provider', 'geocoding.fallback-provider', 'geocoding.delay-ms'].includes(s.key))" :key="setting.key">
-            <div class="setting-info">
-              <label>{{ setting.label }}</label>
-              <small class="text-muted">{{ setting.description }}</small>
-            </div>
-            <div class="setting-control">
-              <Select
-                v-if="setting.key === 'geocoding.primary-provider'"
-                v-model="setting.currentValue"
-                :options="providerOptions"
-                optionLabel="label"
-                optionValue="value"
-                @change="updateSetting(setting)"
-                placeholder="Select primary provider"
-                style="width: 200px"
-              />
-              <Select
-                v-else-if="setting.key === 'geocoding.fallback-provider'"
-                v-model="setting.currentValue"
-                :options="fallbackProviderOptions"
-                optionLabel="label"
-                optionValue="value"
-                @change="updateSetting(setting)"
-                placeholder="Select fallback provider"
-                style="width: 200px"
-              />
-              <InputNumber
-                v-else-if="setting.valueType === 'INTEGER'"
-                v-model="setting.currentValue"
-                @update:modelValue="updateSetting(setting)"
-                :min="0"
-                :step="100"
-                style="width: 150px"
-              />
-              <div class="setting-status">
-                <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
-                <Button
-                  v-else
-                  label="Reset"
-                  icon="pi pi-refresh"
-                  text
-                  size="small"
-                  @click="resetSetting(setting)"
+            <div class="setting-item" v-for="setting in geocodingSettings.filter(s => ['geocoding.primary-provider', 'geocoding.fallback-provider', 'geocoding.delay-ms'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <Select
+                    v-if="setting.key === 'geocoding.primary-provider'"
+                    v-model="setting.currentValue"
+                    :options="providerOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    @change="updateSetting(setting)"
+                    placeholder="Select primary provider"
+                    style="width: 200px"
                 />
+                <Select
+                    v-else-if="setting.key === 'geocoding.fallback-provider'"
+                    v-model="setting.currentValue"
+                    :options="fallbackProviderOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    @change="updateSetting(setting)"
+                    placeholder="Select fallback provider"
+                    style="width: 200px"
+                />
+                <InputNumber
+                    v-else-if="setting.valueType === 'INTEGER'"
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="0"
+                    :step="100"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="settings-section">
-          <h3>Provider Availability</h3>
+          <div class="settings-section">
+            <h3>Provider Availability</h3>
 
-          <div class="setting-item" v-for="setting in geocodingSettings.filter(s => s.key.includes('.enabled'))" :key="setting.key">
-            <div class="setting-info">
-              <label>{{ setting.label }}</label>
-              <small class="text-muted">{{ setting.description }}</small>
-            </div>
-            <div class="setting-control">
-              <InputSwitch
-                v-model="setting.currentValue"
-                @change="updateSetting(setting)"
-              />
-              <div class="setting-status">
-                <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
-                <Button
-                  v-else
-                  label="Reset"
-                  icon="pi pi-refresh"
-                  text
-                  size="small"
-                  @click="resetSetting(setting)"
+            <div class="setting-item" v-for="setting in geocodingSettings.filter(s => s.key.includes('.enabled'))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputSwitch
+                    v-model="setting.currentValue"
+                    @change="updateSetting(setting)"
                 />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div class="settings-section">
-          <h3>Provider Configuration</h3>
+          <div class="settings-section">
+            <h3>Provider Configuration</h3>
 
-          <div class="setting-item" v-for="setting in geocodingSettings.filter(s => s.key.includes('.url') || s.key.includes('.language') || s.key.includes('.api-key') || s.key.includes('.access-token'))" :key="setting.key">
-            <div class="setting-info">
-              <label>{{ setting.label }}</label>
-              <small class="text-muted">{{ setting.description }}</small>
-            </div>
-            <div class="setting-control">
-              <Password
-                v-if="setting.valueType === 'ENCRYPTED'"
-                v-model="setting.currentValue"
-                :feedback="false"
-                toggleMask
-                placeholder="Enter new value to update"
-                @blur="updateSetting(setting)"
-                style="width: 300px"
-              />
-              <InputText
-                v-else
-                v-model="setting.currentValue"
-                @blur="updateSetting(setting)"
-                :placeholder="getPlaceholder(setting)"
-                style="width: 300px"
-              />
-              <div class="setting-status">
-                <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
-                <Button
-                  v-else
-                  label="Reset"
-                  icon="pi pi-refresh"
-                  text
-                  size="small"
-                  @click="resetSetting(setting)"
+            <div class="setting-item" v-for="setting in geocodingSettings.filter(s => s.key.includes('.url') || s.key.includes('.language') || s.key.includes('.api-key') || s.key.includes('.access-token'))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <Password
+                    v-if="setting.valueType === 'ENCRYPTED'"
+                    v-model="setting.currentValue"
+                    :feedback="false"
+                    toggleMask
+                    placeholder="Enter new value to update"
+                    @blur="updateSetting(setting)"
+                    style="width: 300px"
                 />
+                <InputText
+                    v-else
+                    v-model="setting.currentValue"
+                    @blur="updateSetting(setting)"
+                    :placeholder="getPlaceholder(setting)"
+                    style="width: 300px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
 
         <!-- AI Tab -->
         <div v-if="activeTab === 'ai'">
-        <div class="settings-section">
-          <h3>AI Assistant Configuration</h3>
+          <div class="settings-section">
+            <h3>AI Assistant Configuration</h3>
 
-          <div class="ai-setting-description">
-            <p class="text-muted">
-              Configure the global default system message for the AI assistant. This message defines the AI's behavior and will be used for all users unless they override it with their own custom message in their profile settings.
-            </p>
-          </div>
-
-          <div class="ai-message-container">
-            <div class="ai-message-header">
-              <label for="ai-system-message" class="ai-message-label">
-                Default System Message
-              </label>
-              <div class="ai-message-actions">
-                <Button
-                  label="Load Built-in Default"
-                  icon="pi pi-refresh"
-                  size="small"
-                  outlined
-                  @click="loadBuiltInDefault"
-                  :loading="loadingBuiltInDefault"
-                  v-tooltip.left="'Reset to the built-in default system message'"
-                />
-                <Button
-                  label="Save"
-                  icon="pi pi-save"
-                  size="small"
-                  @click="saveAISystemMessage"
-                  :loading="savingAIMessage"
-                  :disabled="!aiSystemMessageChanged"
-                />
-              </div>
+            <div class="ai-setting-description">
+              <p class="text-muted">
+                Configure the global default system message for the AI assistant. This message defines the AI's behavior and will be used for all users unless they override it with their own custom message in their profile settings.
+              </p>
             </div>
-            <Textarea
-              id="ai-system-message"
-              v-model="aiSystemMessage"
-              rows="15"
-              class="ai-system-message-input"
-              placeholder="Loading system message..."
-              @input="aiSystemMessageChanged = true"
-            />
-            <small class="text-muted">
-              This global default will be used for all users. Users can override this in their profile settings. Leave empty and save to use the built-in default.
-            </small>
+
+            <div class="ai-message-container">
+              <div class="ai-message-header">
+                <label for="ai-system-message" class="ai-message-label">
+                  Default System Message
+                </label>
+                <div class="ai-message-actions">
+                  <Button
+                      label="Load Built-in Default"
+                      icon="pi pi-refresh"
+                      size="small"
+                      outlined
+                      @click="loadBuiltInDefault"
+                      :loading="loadingBuiltInDefault"
+                      v-tooltip.left="'Reset to the built-in default system message'"
+                  />
+                  <Button
+                      label="Save"
+                      icon="pi pi-save"
+                      size="small"
+                      @click="saveAISystemMessage"
+                      :loading="savingAIMessage"
+                      :disabled="!aiSystemMessageChanged"
+                  />
+                </div>
+              </div>
+              <Textarea
+                  id="ai-system-message"
+                  v-model="aiSystemMessage"
+                  rows="15"
+                  class="ai-system-message-input"
+                  placeholder="Loading system message..."
+                  @input="aiSystemMessageChanged = true"
+              />
+              <small class="text-muted">
+                This global default will be used for all users. Users can override this in their profile settings. Leave empty and save to use the built-in default.
+              </small>
+            </div>
           </div>
-        </div>
         </div>
 
         <!-- GPS Tab -->
         <div v-if="activeTab === 'gps'">
-        <div class="settings-section empty-state">
-          <div class="empty-state-icon">
-            <i class="pi pi-map-marker" style="font-size: 3rem; color: var(--blue-500);"></i>
+          <div class="settings-section empty-state">
+            <div class="empty-state-icon">
+              <i class="pi pi-map-marker" style="font-size: 3rem; color: var(--blue-500);"></i>
+            </div>
+            <h3>GPS Processing Settings</h3>
+            <p class="text-muted">Configure default GPS data processing behavior</p>
+            <div class="planned-features">
+              <h4>Planned Features:</h4>
+              <ul>
+                <li><strong>Stay Detection Algorithm:</strong> Default algorithm for detecting stays from GPS points</li>
+                <li><strong>Accuracy Filtering:</strong> Minimum GPS accuracy threshold for processing</li>
+                <li><strong>Batch Size:</strong> Number of GPS points to process in each batch</li>
+                <li><strong>Distance Thresholds:</strong> Configure stay/trip distance parameters</li>
+                <li><strong>Time Windows:</strong> Minimum/maximum time for stay detection</li>
+              </ul>
+            </div>
+            <div class="coming-soon-badge">
+              <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+            </div>
           </div>
-          <h3>GPS Processing Settings</h3>
-          <p class="text-muted">Configure default GPS data processing behavior</p>
-          <div class="planned-features">
-            <h4>Planned Features:</h4>
-            <ul>
-              <li><strong>Stay Detection Algorithm:</strong> Default algorithm for detecting stays from GPS points</li>
-              <li><strong>Accuracy Filtering:</strong> Minimum GPS accuracy threshold for processing</li>
-              <li><strong>Batch Size:</strong> Number of GPS points to process in each batch</li>
-              <li><strong>Distance Thresholds:</strong> Configure stay/trip distance parameters</li>
-              <li><strong>Time Windows:</strong> Minimum/maximum time for stay detection</li>
-            </ul>
-          </div>
-          <div class="coming-soon-badge">
-            <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
-          </div>
-        </div>
         </div>
 
         <!-- Import Tab -->
         <div v-if="activeTab === 'import'">
-        <div class="settings-section empty-state">
-          <div class="empty-state-icon">
-            <i class="pi pi-upload" style="font-size: 3rem; color: var(--green-500);"></i>
+          <div class="settings-section">
+            <h3>Chunked Upload Settings</h3>
+
+            <div class="setting-item" v-for="setting in importSettings.filter(s => ['import.chunk-size-mb', 'import.max-file-size-gb', 'import.upload-timeout-hours'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <h3>Import Configuration</h3>
-          <p class="text-muted">Manage GPS data import settings and limits</p>
-          <div class="planned-features">
-            <h4>Planned Features:</h4>
-            <ul>
-              <li><strong>Batch Processing:</strong> Configure concurrent import job limits</li>
-            </ul>
+
+          <div class="settings-section">
+            <h3>Batch Processing</h3>
+
+            <div class="setting-item" v-for="setting in importSettings.filter(s => ['import.bulk-insert-batch-size', 'import.merge-batch-size'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    :step="100"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="coming-soon-badge">
-            <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+
+          <div class="settings-section">
+            <h3>Temporary File Storage</h3>
+
+            <div class="setting-item" v-for="setting in importSettings.filter(s => ['import.large-file-threshold-mb', 'import.temp-file-retention-hours'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+
+          <div class="settings-section">
+            <h3>Streaming Parser Batch Sizes</h3>
+
+            <div class="setting-item" v-for="setting in importSettings.filter(s => s.key.includes('streaming-batch-size'))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    :step="100"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- System Tab -->
         <div v-if="activeTab === 'system'">
-        <div class="settings-section empty-state">
-          <div class="empty-state-icon">
-            <i class="pi pi-server" style="font-size: 3rem; color: var(--orange-500);"></i>
+          <div class="settings-section empty-state">
+            <div class="empty-state-icon">
+              <i class="pi pi-server" style="font-size: 3rem; color: var(--orange-500);"></i>
+            </div>
+            <h3>System Performance & Monitoring</h3>
+            <p class="text-muted">Configure system-wide performance and monitoring settings</p>
+            <div class="planned-features">
+              <h4>Planned Features:</h4>
+              <ul>
+                <li><strong>Timeline Processing:</strong> Background job concurrency and queue settings</li>
+                <li><strong>Database Maintenance:</strong> Auto-vacuum and cleanup schedules</li>
+                <li><strong>Prometheus Metrics:</strong> Enable/disable metrics collection and refresh intervals</li>
+                <li><strong>Logging Levels:</strong> Configure application and SQL logging verbosity</li>
+              </ul>
+            </div>
+            <div class="coming-soon-badge">
+              <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
+            </div>
           </div>
-          <h3>System Performance & Monitoring</h3>
-          <p class="text-muted">Configure system-wide performance and monitoring settings</p>
-          <div class="planned-features">
-            <h4>Planned Features:</h4>
-            <ul>
-              <li><strong>Timeline Processing:</strong> Background job concurrency and queue settings</li>
-              <li><strong>Database Maintenance:</strong> Auto-vacuum and cleanup schedules</li>
-              <li><strong>Prometheus Metrics:</strong> Enable/disable metrics collection and refresh intervals</li>
-              <li><strong>Logging Levels:</strong> Configure application and SQL logging verbosity</li>
-            </ul>
-          </div>
-          <div class="coming-soon-badge">
-            <Tag severity="info" value="Coming Soon" icon="pi pi-clock" />
-          </div>
-        </div>
         </div>
       </TabContainer>
 
@@ -374,6 +479,7 @@ const handleTabChange = (event) => {
 
 const authSettings = ref([])
 const geocodingSettings = ref([])
+const importSettings = ref([])
 const aiSystemMessage = ref('')
 const aiSystemMessageOriginal = ref('')
 const aiSystemMessageChanged = ref(false)
@@ -464,6 +570,55 @@ const settingLabels = {
   'geocoding.mapbox.access-token': {
     label: 'Mapbox Access Token',
     description: 'Access token for Mapbox (encrypted, enter to update)'
+  },
+  // Import settings
+  'import.bulk-insert-batch-size': {
+    label: 'Bulk Insert Batch Size',
+    description: 'Number of GPS points to insert in a single database batch'
+  },
+  'import.merge-batch-size': {
+    label: 'Merge Batch Size',
+    description: 'Batch size when merging data with duplicate detection'
+  },
+  'import.large-file-threshold-mb': {
+    label: 'Large File Threshold (MB)',
+    description: 'Files larger than this are stored as temp files instead of in memory'
+  },
+  'import.temp-file-retention-hours': {
+    label: 'Temp File Retention (Hours)',
+    description: 'How long to keep temporary import files before cleanup'
+  },
+  'import.chunk-size-mb': {
+    label: 'Chunk Size (MB)',
+    description: 'Size of each upload chunk for large file uploads'
+  },
+  'import.max-file-size-gb': {
+    label: 'Max File Size (GB)',
+    description: 'Maximum file size allowed for imports'
+  },
+  'import.upload-timeout-hours': {
+    label: 'Upload Timeout (Hours)',
+    description: 'How long an upload session remains valid'
+  },
+  'import.geojson-streaming-batch-size': {
+    label: 'GeoJSON Batch Size',
+    description: 'Batch size for streaming GeoJSON parser'
+  },
+  'import.googletimeline-streaming-batch-size': {
+    label: 'Google Timeline Batch Size',
+    description: 'Batch size for streaming Google Timeline parser'
+  },
+  'import.gpx-streaming-batch-size': {
+    label: 'GPX Batch Size',
+    description: 'Batch size for streaming GPX parser'
+  },
+  'import.csv-streaming-batch-size': {
+    label: 'CSV Batch Size',
+    description: 'Batch size for streaming CSV parser'
+  },
+  'import.owntracks-streaming-batch-size': {
+    label: 'OwnTracks Batch Size',
+    description: 'Batch size for streaming OwnTracks parser'
   }
 }
 
@@ -540,12 +695,12 @@ const loadGeocodingSettings = async () => {
       label: settingLabels[setting.key]?.label || setting.key,
       description: settingLabels[setting.key]?.description || setting.description,
       currentValue: setting.valueType === 'BOOLEAN'
-        ? setting.value === 'true'
-        : setting.valueType === 'INTEGER'
-        ? parseInt(setting.value)
-        : setting.value === '""' || setting.value === ''
-        ? ''
-        : setting.value
+          ? setting.value === 'true'
+          : setting.valueType === 'INTEGER'
+              ? parseInt(setting.value)
+              : setting.value === '""' || setting.value === ''
+                  ? ''
+                  : setting.value
     }))
   } catch (error) {
     console.error('Failed to load geocoding settings:', error)
@@ -553,6 +708,28 @@ const loadGeocodingSettings = async () => {
       severity: 'error',
       summary: 'Error',
       detail: 'Failed to load geocoding settings',
+      life: 3000
+    })
+  }
+}
+
+const loadImportSettings = async () => {
+  try {
+    const response = await apiService.get('/admin/settings/import')
+    importSettings.value = response.map(setting => ({
+      ...setting,
+      label: settingLabels[setting.key]?.label || setting.key,
+      description: settingLabels[setting.key]?.description || setting.description,
+      currentValue: setting.valueType === 'INTEGER'
+          ? parseInt(setting.value)
+          : setting.value
+    }))
+  } catch (error) {
+    console.error('Failed to load import settings:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load import settings',
       life: 3000
     })
   }
@@ -604,10 +781,10 @@ const updateSetting = async (setting) => {
     }
 
     const value = setting.valueType === 'BOOLEAN'
-      ? setting.currentValue.toString()
-      : setting.valueType === 'INTEGER'
-      ? setting.currentValue.toString()
-      : setting.currentValue
+        ? setting.currentValue.toString()
+        : setting.valueType === 'INTEGER'
+            ? setting.currentValue.toString()
+            : setting.currentValue
 
     await apiService.put(`/admin/settings/${setting.key}`, { value })
 
@@ -645,10 +822,10 @@ const resetSetting = async (setting) => {
 
     setting.isDefault = true
     setting.currentValue = setting.valueType === 'BOOLEAN'
-      ? response.defaultValue === 'true'
-      : setting.valueType === 'INTEGER'
-      ? parseInt(response.defaultValue)
-      : response.defaultValue
+        ? response.defaultValue === 'true'
+        : setting.valueType === 'INTEGER'
+            ? parseInt(response.defaultValue)
+            : response.defaultValue
 
     toast.add({
       severity: 'success',
@@ -735,6 +912,7 @@ const saveAISystemMessage = async () => {
 onMounted(() => {
   loadAuthSettings()
   loadGeocodingSettings()
+  loadImportSettings()
   loadAISettings()
 })
 </script>

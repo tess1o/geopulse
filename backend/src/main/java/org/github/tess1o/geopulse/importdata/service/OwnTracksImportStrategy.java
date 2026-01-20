@@ -3,11 +3,9 @@ package org.github.tess1o.geopulse.importdata.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.StreamingOwnTracksParser;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
@@ -37,13 +35,6 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
     private final ObjectMapper objectMapper = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
-
-    /**
-     * Batch size for streaming processing - aligns with DB batch sizes for optimal performance.
-     */
-    @ConfigProperty(name = "geopulse.import.owntracks.streaming-batch-size", defaultValue = "500")
-    @StaticInitSafe
-    int streamingBatchSize;
 
     @Override
     public String getFormat() {
@@ -113,7 +104,8 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
     private StreamingImportResult streamingImportWithDirectWrites(ImportJob job, UserEntity user, boolean clearMode)
             throws IOException {
 
-        List<GpsPointEntity> currentBatch = new ArrayList<>(streamingBatchSize);
+        int batchSize = settingsService.getInteger("import.owntracks-streaming-batch-size");
+        List<GpsPointEntity> currentBatch = new ArrayList<>(batchSize);
         AtomicInteger totalImported = new AtomicInteger(0);
         AtomicInteger totalSkipped = new AtomicInteger(0);
         AtomicInteger totalMessages = new AtomicInteger(0);
@@ -123,7 +115,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
         int totalExpectedMessages = job.getTotalRecordsFromValidation();
 
         log.info("Starting streaming import with batch size: {}, clear mode: {}, total expected messages: {}, from {}",
-                streamingBatchSize, clearMode, totalExpectedMessages, job.hasTempFile() ? "temp file" : "memory");
+                batchSize, clearMode, totalExpectedMessages, job.hasTempFile() ? "temp file" : "memory");
 
         // Use getDataStream() to abstract whether data is in memory or on disk
         try (InputStream dataStream = job.getDataStream()) {
@@ -139,7 +131,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
 
                 // Apply date range filter using base class method
                 Instant messageTime = Instant.ofEpochSecond(message.getTst());
-                if (shouldSkipDueDateFilter(messageTime, job)) {
+                if (isOutsideDateRange(messageTime, job)) {
                     totalSkipped.incrementAndGet();
                     return;
                 }
@@ -148,7 +140,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
                     String deviceId = message.getTid() != null ? message.getTid() : "owntracks-import";
                     GpsPointEntity gpsPoint = gpsPointMapper.toEntity(message, user, deviceId, GpsSourceType.OWNTRACKS);
                     addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                        totalImported, totalSkipped, clearMode, job, totalExpectedMessages);
+                        totalImported, totalSkipped, clearMode, job, totalExpectedMessages, batchSize);
                 } catch (Exception e) {
                     log.warn("Failed to create GPS point from message: {}", e.getMessage());
                     totalSkipped.incrementAndGet();
@@ -184,7 +176,8 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
             AtomicInteger totalSkipped,
             boolean clearMode,
             ImportJob job,
-            int totalExpectedMessages) {
+            int totalExpectedMessages,
+            int batchSize) {
 
         // Track first timestamp for timeline generation
         if (firstTimestamp.get() == null && gpsPoint.getTimestamp() != null) {
@@ -194,7 +187,7 @@ public class OwnTracksImportStrategy extends BaseGpsImportStrategy {
         currentBatch.add(gpsPoint);
 
         // Flush when batch is full
-        if (currentBatch.size() >= streamingBatchSize) {
+        if (currentBatch.size() >= batchSize) {
             flushBatchToDatabase(currentBatch, clearMode, totalImported, totalSkipped, totalExpectedMessages);
             currentBatch.clear(); // CRITICAL: Clear to release memory
 

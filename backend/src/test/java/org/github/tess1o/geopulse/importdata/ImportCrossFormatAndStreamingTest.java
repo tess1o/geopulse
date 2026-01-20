@@ -10,7 +10,7 @@ import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
-import org.github.tess1o.geopulse.importdata.service.ImportService;
+import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -46,7 +46,7 @@ public class ImportCrossFormatAndStreamingTest {
     ImportDataService importDataService;
 
     @Inject
-    ImportService importService;
+    ImportJobService importJobService;
 
     @Inject
     GpsPointRepository gpsPointRepository;
@@ -126,7 +126,7 @@ public class ImportCrossFormatAndStreamingTest {
         gpxOptions.setImportFormat("gpx");
         gpxOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob gpxJob = importService.createImportJob(
+        ImportJob gpxJob = importJobService.createImportJob(
                 testUserId, gpxOptions, "test.gpx", gpxData.getBytes());
 
         importDataService.processImportData(gpxJob);
@@ -156,7 +156,7 @@ public class ImportCrossFormatAndStreamingTest {
         ownTracksOptions.setImportFormat("owntracks");
         ownTracksOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob ownTracksJob = importService.createOwnTracksImportJob(
+        ImportJob ownTracksJob = importJobService.createImportJob(
                 testUserId, ownTracksOptions, "test.json",
                 objectMapper.writeValueAsString(ownTracksMessages).getBytes());
 
@@ -204,7 +204,7 @@ public class ImportCrossFormatAndStreamingTest {
         options.setImportFormat("gpx");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob job = importService.createImportJob(
+        ImportJob job = importJobService.createImportJob(
                 testUserId, options, "subseconds.gpx", gpxWithSubseconds.getBytes());
 
         importDataService.processImportData(job);
@@ -264,7 +264,7 @@ public class ImportCrossFormatAndStreamingTest {
 
         long startTime = System.currentTimeMillis();
 
-        ImportJob job = importService.createOwnTracksImportJob(
+        ImportJob job = importJobService.createImportJob(
                 testUserId, options, "large.json",
                 objectMapper.writeValueAsString(messages).getBytes());
 
@@ -333,7 +333,7 @@ public class ImportCrossFormatAndStreamingTest {
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob job = importService.createOwnTracksImportJob(
+        ImportJob job = importJobService.createImportJob(
                 testUserId, options, "edge-cases.json",
                 objectMapper.writeValueAsString(messages).getBytes());
 
@@ -385,7 +385,7 @@ public class ImportCrossFormatAndStreamingTest {
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
 
-        ImportJob job = importService.createOwnTracksImportJob(
+        ImportJob job = importJobService.createImportJob(
                 testUserId, options, "small.json",
                 objectMapper.writeValueAsString(smallDataset).getBytes());
 

@@ -34,9 +34,9 @@ export class DashboardPage {
       },
       
       routeAnalysisCards: {
-        selectedPeriod: '.gp-card:has(.gp-card-title:has-text("Route Analysis")):nth-of-type(1)',
-        sevenDays: '.gp-card:has(.gp-card-title:has-text("Route Analysis")):nth-of-type(2)',
-        thirtyDays: '.gp-card:has(.gp-card-title:has-text("Route Analysis")):nth-of-type(3)'
+        selectedPeriod: '.gp-card:has(.gp-card-title:has-text("Route Stats")):nth-of-type(1)',
+        sevenDays: '.gp-card:has(.gp-card-title:has-text("Route Stats")):nth-of-type(2)',
+        thirtyDays: '.gp-card:has(.gp-card-title:has-text("Route Stats")):nth-of-type(3)'
       },
       
       // Metric items within activity cards - using actual gp-metric classes

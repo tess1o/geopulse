@@ -36,7 +36,7 @@ public class ImportJob {
     private int totalRecordsFromValidation;
 
     // Temporary file path for large files (memory optimization)
-    // If set, use this instead of zipData
+    // If set, use this instead of fileData
     private String tempFilePath;
 
     // Flag to track if data processing (GPS import, validation, etc.) is complete
@@ -45,15 +45,15 @@ public class ImportJob {
     private boolean dataProcessingCompleted = false;
 
     @ToString.Exclude
-    private byte[] zipData;
+    private byte[] fileData;
 
-    public ImportJob(UUID userId, ImportOptions options, String fileName, byte[] zipData) {
+    public ImportJob(UUID userId, ImportOptions options, String fileName, byte[] fileData) {
         this.jobId = UUID.randomUUID();
         this.userId = userId;
         this.options = options;
         this.uploadedFileName = fileName;
-        this.zipData = zipData;
-        this.fileSizeBytes = zipData.length;
+        this.fileData = fileData;
+        this.fileSizeBytes = fileData.length;
         this.status = ImportStatus.VALIDATING;
         this.progress = 0;
         this.progressMessage = "Validating file format...";
@@ -74,11 +74,11 @@ public class ImportJob {
         if (tempFilePath != null) {
             // Large file mode: stream from disk
             return java.nio.file.Files.newInputStream(java.nio.file.Paths.get(tempFilePath));
-        } else if (zipData != null) {
+        } else if (fileData != null) {
             // Small file mode: stream from memory
-            return new java.io.ByteArrayInputStream(zipData);
+            return new java.io.ByteArrayInputStream(fileData);
         } else {
-            throw new IllegalStateException("ImportJob has neither tempFilePath nor zipData");
+            throw new IllegalStateException("ImportJob has neither tempFilePath nor fileData");
         }
     }
 

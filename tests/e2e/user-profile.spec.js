@@ -1272,7 +1272,7 @@ test.describe('User Profile Management', () => {
       await page.goto('/login');
 
       // Should redirect to friends page
-      await page.waitForURL('**/app/friends', { timeout: 10000 });
+      await page.waitForURL('**/app/friends/live', { timeout: 10000 });
       expect(page.url()).toContain('/app/friends');
     });
 

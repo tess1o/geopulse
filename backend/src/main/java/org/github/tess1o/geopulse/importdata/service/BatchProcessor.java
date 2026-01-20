@@ -1,12 +1,11 @@
 package org.github.tess1o.geopulse.importdata.service;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates;
@@ -22,10 +21,9 @@ public class BatchProcessor {
 
     @Inject
     EntityManager entityManager;
-    
-    @ConfigProperty(name = "geopulse.import.bulk-insert-batch-size", defaultValue = "500")
-    @StaticInitSafe
-    int bulkInsertBatchSize;
+
+    @Inject
+    SystemSettingsService settingsService;
     
     /**
      * Process a batch of GPS points using intelligent upsert logic.
@@ -58,9 +56,8 @@ public class BatchProcessor {
             return 0;
         }
 
-        // Both CLEAR and MERGE modes use the same logic now
-        // The only difference is CLEAR deletes data first (handled by caller)
-        return processBatchWithUpsert(gpsPoints, clearModeEnabled, totalProcessedSoFar, totalExpected);
+        final int batchSize = settingsService.getInteger("import.bulk-insert-batch-size");
+        return processBatchWithUpsert(gpsPoints, clearModeEnabled, batchSize, totalProcessedSoFar, totalExpected);
     }
     
     /**
@@ -69,14 +66,14 @@ public class BatchProcessor {
      * Works for both CLEAR and MERGE modes (caller handles deletion for CLEAR mode).
      */
     private int processBatchWithUpsert(List<GpsPointEntity> gpsPoints, boolean clearModeEnabled,
+                                       int batchSize,
                                        int totalProcessedSoFar, int totalExpected) {
-        final int BULK_INSERT_BATCH_SIZE = bulkInsertBatchSize;
         int totalUpserted = 0;
         long startTime = System.currentTimeMillis();
         String mode = clearModeEnabled ? "CLEAR" : "MERGE";
 
-        for (int i = 0; i < gpsPoints.size(); i += BULK_INSERT_BATCH_SIZE) {
-            int endIndex = Math.min(i + BULK_INSERT_BATCH_SIZE, gpsPoints.size());
+        for (int i = 0; i < gpsPoints.size(); i += batchSize) {
+            int endIndex = Math.min(i + batchSize, gpsPoints.size());
             List<GpsPointEntity> subBatch = gpsPoints.subList(i, endIndex);
 
             long batchStartTime = System.currentTimeMillis();
