@@ -78,7 +78,11 @@ public class OidcAuthenticationService {
 
     @ConfigProperty(name = "geopulse.oidc.callback-base-url")
     @StaticInitSafe
-    String callbackBaseUrl;
+    Optional<String> callbackBaseUrl;
+
+    @ConfigProperty(name = "quarkus.http.cors.origins", defaultValue = "http://localhost:5555")
+    @StaticInitSafe
+    String uiUrl;
 
     @ConfigProperty(name = "geopulse.oidc.state-token.expiry-minutes", defaultValue = "10")
     @StaticInitSafe
@@ -107,13 +111,21 @@ public class OidcAuthenticationService {
             return;
         }
 
-        if (callbackBaseUrl.contains(",")) {
-            log.warn("OIDC CONFIGURATION WARNING: geopulse.oidc.callback-base-url contains multiple URLs: {}", callbackBaseUrl);
-            log.warn("Only the first URL '{}' will be used for OIDC callbacks.", getEffectiveCallbackBaseUrl());
-            log.warn("To specify an explicit callback URL, set GEOPULSE_OIDC_CALLBACK_BASE_URL environment variable.");
+        String effectiveUrl = getEffectiveCallbackBaseUrl();
+
+        // Warn if using fallback URL with multiple origins
+        if (callbackBaseUrl.isEmpty() || callbackBaseUrl.filter(url -> !url.isBlank()).isEmpty()) {
+            if (uiUrl.contains(",")) {
+                log.warn("OIDC CONFIGURATION WARNING: No explicit callback URL set and UI URL contains multiple origins: {}", uiUrl);
+                log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
+                log.warn("To specify an explicit callback URL, set GEOPULSE_OIDC_CALLBACK_BASE_URL environment variable.");
+            }
+        } else if (callbackBaseUrl.filter(url -> url.contains(",")).isPresent()) {
+            log.warn("OIDC CONFIGURATION WARNING: geopulse.oidc.callback-base-url contains multiple URLs: {}", callbackBaseUrl.get());
+            log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
         }
 
-        log.info("OIDC callback URL: {}/oidc/callback", getEffectiveCallbackBaseUrl());
+        log.info("OIDC callback URL: {}/oidc/callback", effectiveUrl);
     }
 
     /**
@@ -484,11 +496,17 @@ public class OidcAuthenticationService {
         return url.toString();
     }
 
-        private String getEffectiveCallbackBaseUrl() {
-        if (callbackBaseUrl.contains(",")) {
-            return callbackBaseUrl.split(",")[0].trim();
+    private String getEffectiveCallbackBaseUrl() {
+        // Use explicit callback URL if set, otherwise fallback to UI URL (from CORS origins)
+        String baseUrl = callbackBaseUrl
+                .filter(url -> !url.isBlank())
+                .orElse(uiUrl);
+
+        // If contains multiple URLs (comma-separated), use the first one
+        if (baseUrl.contains(",")) {
+            return baseUrl.split(",")[0].trim();
         }
-        return callbackBaseUrl;
+        return baseUrl;
     }
 
     private String getCallbackUrl() {
