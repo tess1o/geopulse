@@ -22,8 +22,9 @@ public class ExportJob {
     private Map<String, Object> options;
     private Instant createdAt;
     private Instant completedAt;
-    private byte[] zipData;
-    private byte[] jsonData;
+    private String tempFilePath;   // Path to temp file on disk (replaces in-memory byte arrays)
+    private String contentType;    // MIME type for download
+    private String fileExtension;  // File extension (.zip, .json, .gpx, .csv)
     private String error;
     private long fileSizeBytes;
 

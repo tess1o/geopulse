@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
@@ -42,6 +43,9 @@ public class GpxExportService {
 
     @Inject
     ExportDataCollectorService dataCollectorService;
+
+    @Inject
+    SystemSettingsService settingsService;
 
     /**
      * Converts a list of GPS points to a GPX track.
@@ -195,7 +199,7 @@ public class GpxExportService {
     private void streamRawGpsTrack(ExportJob job, XMLStreamWriter xml)
             throws XMLStreamException {
 
-        final int BATCH_SIZE = 1000; // Process 1000 points at a time
+        int batchSize = settingsService.getInteger("export.batch-size");
         int page = 0;
         long totalPoints = 0;
         boolean trackStarted = false;
@@ -211,7 +215,7 @@ public class GpxExportService {
                     job.getDateRange().getStartDate(),
                     job.getDateRange().getEndDate(),
                     page,
-                    BATCH_SIZE,
+                    batchSize,
                     "timestamp",
                     "asc"
             );

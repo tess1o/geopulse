@@ -253,7 +253,7 @@ class StreamingExportServiceTest {
         ExportJob job = new ExportJob();
 
         int totalRecords = 5000;
-        int batchSize = StreamingExportService.DEFAULT_BATCH_SIZE;
+        int batchSize = streamingExportService.getBatchSize();
 
         // Act
         int totalWritten = streamingExportService.streamJsonArray(
@@ -329,7 +329,7 @@ class StreamingExportServiceTest {
     void testEstimateRecordCount_UnknownCountLargeBatch() {
         // Arrange - Full batch (= DEFAULT_BATCH_SIZE, suggests more data)
         List<TestEntity> fullBatch = new ArrayList<>();
-        for (int i = 0; i < StreamingExportService.DEFAULT_BATCH_SIZE; i++) {
+        for (int i = 0; i < streamingExportService.getBatchSize(); i++) {
             fullBatch.add(new TestEntity(i, "Item" + i));
         }
 

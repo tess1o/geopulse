@@ -4,10 +4,14 @@ import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportStatus;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -21,23 +25,27 @@ public class ExportJobManager {
     @Inject
     ExportDataGenerator exportDataGenerator;
 
+    @Inject
+    SystemSettingsService settingsService;
+
+    @Inject
+    ExportTempFileService tempFileService;
+
     private final ConcurrentHashMap<UUID, ExportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
 
-    private static final int MAX_JOBS_PER_USER = 5;
-    private static final long JOB_EXPIRY_HOURS = 24;
-
-    public ExportJob createExportJob(UUID userId, List<String> dataTypes, 
-                                   org.github.tess1o.geopulse.export.model.ExportDateRange dateRange, 
+    public ExportJob createExportJob(UUID userId, List<String> dataTypes,
+                                   org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
                                    String format) {
-        
+
         // Check if user has too many active jobs
+        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
                 .filter(job -> job.getStatus() != ExportStatus.FAILED)
                 .count();
 
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+        if (userActiveJobs >= maxJobsPerUser) {
             throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
         }
 
@@ -53,12 +61,13 @@ public class ExportJobManager {
     public ExportJob createOwnTracksExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
 
         // Check if user has too many active jobs
+        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
                 .filter(job -> job.getStatus() != ExportStatus.FAILED)
                 .count();
 
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+        if (userActiveJobs >= maxJobsPerUser) {
             throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
         }
 
@@ -76,12 +85,13 @@ public class ExportJobManager {
     public ExportJob createGeoJsonExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
 
         // Check if user has too many active jobs
+        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
                 .filter(job -> job.getStatus() != ExportStatus.FAILED)
                 .count();
 
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+        if (userActiveJobs >= maxJobsPerUser) {
             throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
         }
 
@@ -100,12 +110,13 @@ public class ExportJobManager {
                                         boolean zipPerTrip, String zipGroupBy) {
 
         // Check if user has too many active jobs
+        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
                 .filter(job -> job.getStatus() != ExportStatus.FAILED)
                 .count();
 
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+        if (userActiveJobs >= maxJobsPerUser) {
             throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
         }
 
@@ -127,12 +138,13 @@ public class ExportJobManager {
     public ExportJob createCsvExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
 
         // Check if user has too many active jobs
+        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
                 .filter(job -> job.getStatus() != ExportStatus.FAILED)
                 .count();
 
-        if (userActiveJobs >= MAX_JOBS_PER_USER) {
+        if (userActiveJobs >= maxJobsPerUser) {
             throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
         }
 
@@ -177,7 +189,12 @@ public class ExportJobManager {
         if (job == null || !job.getUserId().equals(userId)) {
             return false;
         }
-        
+
+        // Clean up temp file if exists
+        if (job.getTempFilePath() != null) {
+            tempFileService.deleteTempFile(job.getTempFilePath());
+        }
+
         activeJobs.remove(jobId);
         log.info("Deleted export job {} for user {}", jobId, userId);
         return true;
@@ -199,28 +216,31 @@ public class ExportJobManager {
     }
 
     private void processAvailableJobs() {
+        int concurrentLimit = settingsService.getInteger("export.concurrent-jobs-limit");
         List<ExportJob> pendingJobs = activeJobs.values().stream()
                 .filter(job -> job.getStatus() == ExportStatus.PROCESSING)
-                .filter(job -> job.getZipData() == null && job.getJsonData() == null) // Not yet processed
-                .limit(3) // Process max 3 jobs concurrently
+                .filter(job -> job.getTempFilePath() == null) // Not yet processed
+                .limit(concurrentLimit)
                 .collect(Collectors.toList());
 
         for (ExportJob job : pendingJobs) {
             try {
                 log.debug("Processing export job {}", job.getJobId());
 
+                byte[] data;
+                String extension;
+                String contentType;
+
                 if ("owntracks".equals(job.getFormat())) {
                     // Generate JSON data for OwnTracks format
-                    byte[] jsonData = exportDataGenerator.generateOwnTracksExport(job);
-                    job.setJsonData(jsonData);
-                    job.setFileSizeBytes(jsonData.length);
-                    log.info("Completed OwnTracks export job {} - {} bytes", job.getJobId(), jsonData.length);
+                    data = exportDataGenerator.generateOwnTracksExport(job);
+                    extension = ".json";
+                    contentType = "application/json";
                 } else if ("geojson".equals(job.getFormat())) {
                     // Generate JSON data for GeoJSON format
-                    byte[] jsonData = exportDataGenerator.generateGeoJsonExport(job);
-                    job.setJsonData(jsonData);
-                    job.setFileSizeBytes(jsonData.length);
-                    log.info("Completed GeoJSON export job {} - {} bytes", job.getJobId(), jsonData.length);
+                    data = exportDataGenerator.generateGeoJsonExport(job);
+                    extension = ".geojson";
+                    contentType = "application/geo+json";
                 } else if ("gpx".equals(job.getFormat())) {
                     // Generate GPX data (either single file or zip)
                     boolean zipPerTrip = false;
@@ -235,34 +255,42 @@ public class ExportJobManager {
                         }
                     }
 
-                    byte[] gpxData = exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
+                    data = exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
 
                     if (zipPerTrip) {
-                        job.setZipData(gpxData);
+                        extension = ".zip";
+                        contentType = "application/zip";
                     } else {
-                        job.setJsonData(gpxData); // Store GPX XML in jsonData field
+                        extension = ".gpx";
+                        contentType = "application/gpx+xml";
                     }
-
-                    job.setFileSizeBytes(gpxData.length);
-                    log.info("Completed GPX export job {} - {} bytes, zipPerTrip={}, zipGroupBy={}",
-                            job.getJobId(), gpxData.length, zipPerTrip, zipGroupBy);
                 } else if ("csv".equals(job.getFormat())) {
                     // Generate CSV data
-                    byte[] csvData = exportDataGenerator.generateCsvExport(job);
-                    job.setJsonData(csvData); // Store CSV in jsonData field
-                    job.setFileSizeBytes(csvData.length);
-                    log.info("Completed CSV export job {} - {} bytes", job.getJobId(), csvData.length);
+                    data = exportDataGenerator.generateCsvExport(job);
+                    extension = ".csv";
+                    contentType = "text/csv; charset=utf-8";
                 } else {
                     // Generate ZIP data for GeoPulse format
-                    byte[] zipData = exportDataGenerator.generateExportZip(job);
-                    job.setZipData(zipData);
-                    job.setFileSizeBytes(zipData.length);
-                    log.info("Completed GeoPulse export job {} - {} bytes", job.getJobId(), zipData.length);
+                    data = exportDataGenerator.generateExportZip(job);
+                    extension = ".zip";
+                    contentType = "application/zip";
                 }
+
+                // Write data to temp file instead of storing in memory
+                Path tempFile = tempFileService.createTempFile(job.getJobId(), extension);
+                Files.write(tempFile, data);
+
+                job.setTempFilePath(tempFile.toString());
+                job.setContentType(contentType);
+                job.setFileExtension(extension);
+                job.setFileSizeBytes(Files.size(tempFile));
 
                 job.setStatus(ExportStatus.COMPLETED);
                 job.setCompletedAt(Instant.now());
                 job.setProgress(100);
+
+                log.info("Completed {} export job {} - {} bytes written to {}",
+                        job.getFormat(), job.getJobId(), job.getFileSizeBytes(), tempFile.getFileName());
 
             } catch (Exception e) {
                 log.error("Failed to process export job {}: {}", job.getJobId(), e.getMessage(), e);
@@ -270,25 +298,35 @@ public class ExportJobManager {
                 job.setStatus(ExportStatus.FAILED);
                 job.setError(e.getMessage());
                 job.setProgress(0);
+
+                // Clean up temp file if it was created
+                if (job.getTempFilePath() != null) {
+                    tempFileService.deleteTempFile(job.getTempFilePath());
+                    job.setTempFilePath(null);
+                }
             }
         }
     }
 
     private void cleanupExpiredJobs() {
-        Instant cutoff = Instant.now().minus(JOB_EXPIRY_HOURS, ChronoUnit.HOURS);
-        
-        List<UUID> expiredJobIds = activeJobs.values().stream()
+        int jobExpiryHours = settingsService.getInteger("export.job-expiry-hours");
+        Instant cutoff = Instant.now().minus(jobExpiryHours, ChronoUnit.HOURS);
+
+        List<ExportJob> expiredJobs = activeJobs.values().stream()
                 .filter(job -> job.getCreatedAt().isBefore(cutoff))
-                .map(ExportJob::getJobId)
                 .collect(Collectors.toList());
 
-        for (UUID jobId : expiredJobIds) {
-            activeJobs.remove(jobId);
-            log.debug("Cleaned up expired export job {}", jobId);
+        for (ExportJob job : expiredJobs) {
+            // Clean up temp file if exists
+            if (job.getTempFilePath() != null) {
+                tempFileService.deleteTempFile(job.getTempFilePath());
+            }
+            activeJobs.remove(job.getJobId());
+            log.debug("Cleaned up expired export job {}", job.getJobId());
         }
-        
-        if (!expiredJobIds.isEmpty()) {
-            log.info("Cleaned up {} expired export jobs", expiredJobIds.size());
+
+        if (!expiredJobs.isEmpty()) {
+            log.info("Cleaned up {} expired export jobs", expiredJobs.size());
         }
     }
 
@@ -297,6 +335,12 @@ public class ExportJobManager {
     }
 
     public void clearAllJobs() {
+        // Clean up temp files for all jobs
+        for (ExportJob job : activeJobs.values()) {
+            if (job.getTempFilePath() != null) {
+                tempFileService.deleteTempFile(job.getTempFilePath());
+            }
+        }
         int count = activeJobs.size();
         activeJobs.clear();
         log.info("Cleared {} export jobs", count);

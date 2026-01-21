@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.export.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -25,7 +26,8 @@ public class CsvExportService {
     @Inject
     GpsPointRepository gpsPointRepository;
 
-    private static final int BATCH_SIZE = 1000;
+    @Inject
+    SystemSettingsService settingsService;
 
     /**
      * Generates a CSV export for the given export job using STREAMING approach.
@@ -39,6 +41,8 @@ public class CsvExportService {
         log.info("Starting streaming CSV export for user {}", job.getUserId());
 
         job.updateProgress(5, "Initializing CSV export...");
+
+        int batchSize = settingsService.getInteger("export.batch-size");
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -58,7 +62,7 @@ public class CsvExportService {
                     job.getDateRange().getStartDate(),
                     job.getDateRange().getEndDate(),
                     page,
-                    BATCH_SIZE,
+                    batchSize,
                     "timestamp",
                     "asc"
                 );
@@ -77,7 +81,7 @@ public class CsvExportService {
                 page++;
 
                 // Update progress (10% to 90%)
-                int progress = 10 + (int) (80.0 * totalWritten / Math.max(totalWritten + BATCH_SIZE, 1));
+                int progress = 10 + (int) (80.0 * totalWritten / Math.max(totalWritten + batchSize, 1));
                 progress = Math.min(progress, 90);
                 job.updateProgress(progress, String.format("Exporting GPS points: %d records", totalWritten));
 

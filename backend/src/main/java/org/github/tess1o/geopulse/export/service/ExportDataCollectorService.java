@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.export.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
@@ -60,6 +61,9 @@ public class ExportDataCollectorService {
     @Inject
     ReverseGeocodingLocationRepository reverseGeocodingLocationRepository;
 
+    @Inject
+    SystemSettingsService settingsService;
+
     /**
      * Collects GPS points for a specific time range (used for trip/stay processing).
      * This is acceptable for small, bounded queries (single trip/stay).
@@ -72,12 +76,13 @@ public class ExportDataCollectorService {
     public List<GpsPointEntity> collectGpsPointsInTimeRange(UUID userId,
                                                              java.time.Instant startTime,
                                                              java.time.Instant endTime) {
+        int tripPointLimit = settingsService.getInteger("export.trip-point-limit");
         return gpsPointRepository.findByUserAndDateRange(
                 userId,
                 startTime,
                 endTime,
                 0,
-                10000, // Large limit to get all points in a typical trip
+                tripPointLimit,
                 "timestamp",
                 "asc"
         );

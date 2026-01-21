@@ -123,6 +123,22 @@ public class SystemSettingsService {
         SETTING_DEFINITIONS.put("import.owntracks-streaming-batch-size",
                 new SettingDefinition("geopulse.import.owntracks.streaming-batch-size", "500", ValueType.INTEGER, "import", "OwnTracks streaming parser batch size"));
 
+        // Export settings
+        SETTING_DEFINITIONS.put("export.max-jobs-per-user",
+                new SettingDefinition("geopulse.export.max-jobs-per-user", "5", ValueType.INTEGER, "export", "Maximum export jobs per user"));
+        SETTING_DEFINITIONS.put("export.job-expiry-hours",
+                new SettingDefinition("geopulse.export.job-expiry-hours", "24", ValueType.INTEGER, "export", "Hours before export jobs expire"));
+        SETTING_DEFINITIONS.put("export.concurrent-jobs-limit",
+                new SettingDefinition("geopulse.export.concurrent-jobs-limit", "3", ValueType.INTEGER, "export", "Maximum concurrent export jobs to process"));
+        SETTING_DEFINITIONS.put("export.scheduler-interval-seconds",
+                new SettingDefinition("geopulse.export.scheduler-interval-seconds", "2", ValueType.INTEGER, "export", "Export job processor interval (seconds)"));
+        SETTING_DEFINITIONS.put("export.batch-size",
+                new SettingDefinition("geopulse.export.batch-size", "1000", ValueType.INTEGER, "export", "Default batch size for streaming exports"));
+        SETTING_DEFINITIONS.put("export.trip-point-limit",
+                new SettingDefinition("geopulse.export.trip-point-limit", "10000", ValueType.INTEGER, "export", "Maximum GPS points per trip export"));
+        SETTING_DEFINITIONS.put("export.temp-file-retention-hours",
+                new SettingDefinition("geopulse.export.temp-file-retention-hours", "24", ValueType.INTEGER, "export", "Temp file retention (hours)"));
+
         // System performance
         SETTING_DEFINITIONS.put("system.timeline.processing.thread-pool-size",
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
@@ -325,7 +341,7 @@ public class SystemSettingsService {
     public Map<String, List<SettingInfo>> getAllSettings() {
         Map<String, List<SettingInfo>> result = new LinkedHashMap<>();
 
-        for (String category : List.of("auth", "geocoding", "gps", "import", "system")) {
+        for (String category : List.of("auth", "geocoding", "gps", "import", "export", "system")) {
             result.put(category, getSettingsByCategory(category));
         }
 

@@ -47,6 +47,8 @@ public class GeoJsonExportService {
 
         job.updateProgress(10, "Starting to stream GPS data...");
 
+        int batchSize = streamingExportService.getBatchSize();
+
         // Stream GeoJSON FeatureCollection with features array
         streamingExportService.streamJsonObjectWithArray(
             baos,
@@ -66,7 +68,7 @@ public class GeoJsonExportService {
                 job.getDateRange().getStartDate(),
                 job.getDateRange().getEndDate(),
                 page,
-                StreamingExportService.DEFAULT_BATCH_SIZE,
+                batchSize,
                 "timestamp",
                 "asc"
             ),

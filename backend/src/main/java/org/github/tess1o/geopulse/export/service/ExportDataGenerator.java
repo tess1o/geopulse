@@ -63,6 +63,9 @@ public class ExportDataGenerator {
     @Inject
     ExportDataCollectorService dataCollectorService;
 
+    @Inject
+    StreamingExportService streamingExportService;
+
     /**
      * Generates a ZIP archive containing exported data in native format using STREAMING.
      * Memory-efficient: processes data in batches without loading everything into memory.
@@ -214,6 +217,8 @@ public class ExportDataGenerator {
 
         job.updateProgress(progressStart, "Exporting GPS data...");
 
+        int batchSize = streamingExportService.getBatchSize();
+
         streamingZipExportService.addStreamingJsonFileToZip(
             zos,
             ExportImportConstants.FileNames.RAW_GPS_DATA,
@@ -236,7 +241,7 @@ public class ExportDataGenerator {
                 job.getDateRange().getStartDate(),
                 job.getDateRange().getEndDate(),
                 page,
-                StreamingExportService.DEFAULT_BATCH_SIZE,
+                batchSize,
                 "timestamp",
                 "asc"
             ),

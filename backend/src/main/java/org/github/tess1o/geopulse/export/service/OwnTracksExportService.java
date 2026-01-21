@@ -45,6 +45,7 @@ public class OwnTracksExportService {
         job.updateProgress(10, "Starting to stream GPS data...");
 
         // Stream as simple JSON array
+        int batchSize = streamingExportService.getBatchSize();
         int totalWritten = streamingExportService.streamJsonArray(
             baos,
             // Fetch batch function
@@ -53,7 +54,7 @@ public class OwnTracksExportService {
                 job.getDateRange().getStartDate(),
                 job.getDateRange().getEndDate(),
                 page,
-                StreamingExportService.DEFAULT_BATCH_SIZE,
+                batchSize,
                 "timestamp",
                 "asc"
             ),
