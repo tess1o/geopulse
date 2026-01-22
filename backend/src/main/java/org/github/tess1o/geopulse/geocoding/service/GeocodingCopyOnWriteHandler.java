@@ -185,6 +185,9 @@ public class GeocodingCopyOnWriteHandler {
         if (entity.getCountry() != null && !entity.getCountry().equals(freshResult.getCountry())) {
             return true;
         }
+        if (entity.getProviderName() != null && !entity.getProviderName().equals(freshResult.getProviderName())) {
+            return true;
+        }
         return false;
     }
 
