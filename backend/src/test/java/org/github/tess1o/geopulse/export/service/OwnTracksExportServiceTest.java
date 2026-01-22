@@ -21,6 +21,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
@@ -46,6 +50,9 @@ class OwnTracksExportServiceTest {
 
     @Inject
     ObjectMapper objectMapper;
+
+    @Inject
+    ExportTempFileService tempFileService;
 
     private UserEntity testUser;
     private Instant testStartDate;
@@ -78,12 +85,19 @@ class OwnTracksExportServiceTest {
     @Transactional
     void testGenerateOwnTracksExport_EmptyData() throws Exception {
         ExportJob job = createExportJob();
-        byte[] result = ownTracksExportService.generateOwnTracksExport(job);
+        ownTracksExportService.generateOwnTracksExport(job);
 
-        assertNotNull(result);
-        JsonNode root = objectMapper.readTree(result);
+        assertNotNull(job.getTempFilePath());
+        assertTrue(job.getFileSizeBytes() >= 0);
+
+        // precise verification of content
+        byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
+        JsonNode root = objectMapper.readTree(content);
         assertTrue(root.isArray());
         assertEquals(0, root.size());
+
+        // cleanup
+        tempFileService.deleteTempFile(job.getTempFilePath());
     }
 
     @Test
@@ -92,9 +106,12 @@ class OwnTracksExportServiceTest {
         createGpsPoint(testStartDate, 37.7749, -122.4194, 100.0, 15.0, 95.0);
         ExportJob job = createExportJob();
 
-        byte[] result = ownTracksExportService.generateOwnTracksExport(job);
+        ownTracksExportService.generateOwnTracksExport(job);
 
-        JsonNode root = objectMapper.readTree(result);
+        assertNotNull(job.getTempFilePath());
+        byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
+
+        JsonNode root = objectMapper.readTree(content);
         assertEquals(1, root.size());
 
         JsonNode message = root.get(0);
@@ -103,6 +120,9 @@ class OwnTracksExportServiceTest {
         assertEquals(100.0, message.get("alt").asDouble(), 0.1);
         assertEquals(15.0, message.get("vel").asDouble(), 0.1);
         assertEquals(95, message.get("batt").asInt());
+
+        // cleanup
+        tempFileService.deleteTempFile(job.getTempFilePath());
     }
 
     @Test
@@ -113,27 +133,33 @@ class OwnTracksExportServiceTest {
 
         for (int i = 0; i < pointCount; i++) {
             createGpsPoint(
-                testStartDate.plus(i, ChronoUnit.SECONDS),
-                37.7749 + (i * 0.0001),
-                -122.4194 + (i * 0.0001),
-                100.0, 15.0, 95.0
-            );
-            if (i % 500 == 0) gpsPointRepository.flush();
+                    testStartDate.plus(i, ChronoUnit.SECONDS),
+                    37.7749 + (i * 0.0001),
+                    -122.4194 + (i * 0.0001),
+                    100.0, 15.0, 95.0);
+            if (i % 500 == 0)
+                gpsPointRepository.flush();
         }
         gpsPointRepository.flush();
 
         ExportJob job = createExportJob();
 
         long startTime = System.currentTimeMillis();
-        byte[] result = ownTracksExportService.generateOwnTracksExport(job);
+        ownTracksExportService.generateOwnTracksExport(job);
         long exportTime = System.currentTimeMillis() - startTime;
 
         log.info("Streamed {} points in {} ms", pointCount, exportTime);
 
-        JsonNode root = objectMapper.readTree(result);
+        assertNotNull(job.getTempFilePath());
+        byte[] content = Files.readAllBytes(Paths.get(job.getTempFilePath()));
+
+        JsonNode root = objectMapper.readTree(content);
         assertEquals(pointCount, root.size());
 
         log.info("✅ Streaming export validated: {} messages", root.size());
+
+        // cleanup
+        tempFileService.deleteTempFile(job.getTempFilePath());
     }
 
     @Test
@@ -141,9 +167,8 @@ class OwnTracksExportServiceTest {
     void testGenerateOwnTracksExport_ProgressTracking() throws Exception {
         for (int i = 0; i < 100; i++) {
             createGpsPoint(
-                testStartDate.plus(i, ChronoUnit.SECONDS),
-                37.7749, -122.4194, 100.0, 15.0, 95.0
-            );
+                    testStartDate.plus(i, ChronoUnit.SECONDS),
+                    37.7749, -122.4194, 100.0, 15.0, 95.0);
         }
         gpsPointRepository.flush();
 
@@ -152,6 +177,10 @@ class OwnTracksExportServiceTest {
 
         assertTrue(job.getProgress() >= 5);
         assertNotNull(job.getProgressMessage());
+        assertNotNull(job.getTempFilePath());
+
+        // cleanup
+        tempFileService.deleteTempFile(job.getTempFilePath());
     }
 
     @Test
@@ -159,16 +188,21 @@ class OwnTracksExportServiceTest {
     void testGenerateOwnTracksExport_ValidJsonArrayFormat() throws Exception {
         for (int i = 0; i < 10; i++) {
             createGpsPoint(
-                testStartDate.plus(i, ChronoUnit.MINUTES),
-                37.7749, -122.4194, 100.0, 15.0, 95.0
-            );
+                    testStartDate.plus(i, ChronoUnit.MINUTES),
+                    37.7749, -122.4194, 100.0, 15.0, 95.0);
         }
 
         ExportJob job = createExportJob();
-        byte[] result = ownTracksExportService.generateOwnTracksExport(job);
+        ownTracksExportService.generateOwnTracksExport(job);
+
+        assertNotNull(job.getTempFilePath());
+        byte[] result = Files.readAllBytes(Paths.get(job.getTempFilePath()));
 
         String json = new String(result);
         assertDoesNotThrow(() -> objectMapper.readValue(json, OwnTracksLocationMessage[].class));
+
+        // cleanup
+        tempFileService.deleteTempFile(job.getTempFilePath());
     }
 
     private ExportJob createExportJob() {
@@ -178,12 +212,13 @@ class OwnTracksExportServiceTest {
 
         ExportJob job = new ExportJob();
         job.setUserId(testUser.getId());
+        job.setJobId(UUID.randomUUID()); // Ensure Job ID is set for filename generation
         job.setDateRange(dateRange);
         return job;
     }
 
     private void createGpsPoint(Instant timestamp, double lat, double lon,
-                                double altitude, double velocity, double battery) {
+            double altitude, double velocity, double battery) {
         GpsPointEntity point = new GpsPointEntity();
         point.setUser(testUser);
         point.setTimestamp(timestamp);

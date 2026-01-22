@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportStatus;
-import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,56 +34,29 @@ public class ExportJobManager {
     private volatile boolean processing = false;
 
     public ExportJob createExportJob(UUID userId, List<String> dataTypes,
-                                   org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
-                                   String format) {
-
-        // Check if user has too many active jobs
-        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ExportStatus.FAILED)
-                .count();
-
-        if (userActiveJobs >= maxJobsPerUser) {
-            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
-        }
-
-        ExportJob job = new ExportJob(userId, dataTypes, dateRange, format);
-        activeJobs.put(job.getJobId(), job);
-        
-        log.info("Created export job {} for user {} with data types: {}", 
-                job.getJobId(), userId, dataTypes);
-                
-        return job;
+            org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
+            String format) {
+        return createExportJob(userId, dataTypes, dateRange, format, null);
     }
 
-    public ExportJob createOwnTracksExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
+    public ExportJob createExportJob(UUID userId, List<String> dataTypes,
+            org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
+            String format,
+            Map<String, Object> options) {
 
-        // Check if user has too many active jobs
-        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ExportStatus.FAILED)
-                .count();
+        // Validate active jobs limit
+        validateJobLimit(userId);
 
-        if (userActiveJobs >= maxJobsPerUser) {
-            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
-        }
-
-        // Create export job for OwnTracks format with GPS data
-        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
-        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "owntracks");
+        ExportJob job = new ExportJob(userId, dataTypes, dateRange, format, options);
         activeJobs.put(job.getJobId(), job);
 
-        log.info("Created OwnTracks export job {} for user {} with date range: {} to {}",
-                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
+        log.info("Created {} export job {} for user {} with date range: {} to {}",
+                format, job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
 
         return job;
     }
 
-    public ExportJob createGeoJsonExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
-
-        // Check if user has too many active jobs
+    private void validateJobLimit(UUID userId) {
         int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
         long userActiveJobs = activeJobs.values().stream()
                 .filter(job -> job.getUserId().equals(userId))
@@ -94,69 +66,6 @@ public class ExportJobManager {
         if (userActiveJobs >= maxJobsPerUser) {
             throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
         }
-
-        // Create export job for GeoJSON format with GPS data
-        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
-        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "geojson");
-        activeJobs.put(job.getJobId(), job);
-
-        log.info("Created GeoJSON export job {} for user {} with date range: {} to {}",
-                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
-
-        return job;
-    }
-
-    public ExportJob createGpxExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
-                                        boolean zipPerTrip, String zipGroupBy) {
-
-        // Check if user has too many active jobs
-        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ExportStatus.FAILED)
-                .count();
-
-        if (userActiveJobs >= maxJobsPerUser) {
-            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
-        }
-
-        // Create export job for GPX format
-        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
-        java.util.Map<String, Object> options = new java.util.HashMap<>();
-        options.put("zipPerTrip", zipPerTrip);
-        options.put("zipGroupBy", zipGroupBy != null ? zipGroupBy : "individual");
-
-        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "gpx", options);
-        activeJobs.put(job.getJobId(), job);
-
-        log.info("Created GPX export job {} for user {} with date range: {} to {}, zipPerTrip={}, zipGroupBy={}",
-                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate(), zipPerTrip, zipGroupBy);
-
-        return job;
-    }
-
-    public ExportJob createCsvExportJob(UUID userId, org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
-
-        // Check if user has too many active jobs
-        int maxJobsPerUser = settingsService.getInteger("export.max-jobs-per-user");
-        long userActiveJobs = activeJobs.values().stream()
-                .filter(job -> job.getUserId().equals(userId))
-                .filter(job -> job.getStatus() != ExportStatus.FAILED)
-                .count();
-
-        if (userActiveJobs >= maxJobsPerUser) {
-            throw new IllegalStateException("Too many active export jobs. Please wait for existing jobs to complete.");
-        }
-
-        // Create export job for CSV format with GPS data
-        List<String> dataTypes = List.of(ExportImportConstants.DataTypes.RAW_GPS);
-        ExportJob job = new ExportJob(userId, dataTypes, dateRange, "csv");
-        activeJobs.put(job.getJobId(), job);
-
-        log.info("Created CSV export job {} for user {} with date range: {} to {}",
-                job.getJobId(), userId, dateRange.getStartDate(), dateRange.getEndDate());
-
-        return job;
     }
 
     public byte[] exportSingleTrip(UUID userId, Long tripId) throws Exception {
@@ -200,12 +109,44 @@ public class ExportJobManager {
         return true;
     }
 
+    private final Map<String, ExportJobProcessor> exportStrategies = new HashMap<>();
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        exportStrategies.put("owntracks", job -> exportDataGenerator.generateOwnTracksExport(job));
+        exportStrategies.put("geojson", job -> exportDataGenerator.generateGeoJsonExport(job));
+        exportStrategies.put("csv", job -> exportDataGenerator.generateCsvExport(job));
+        exportStrategies.put("gpx", job -> {
+            boolean zipPerTrip = false;
+            String zipGroupBy = "individual"; // default
+
+            if (job.getOptions() != null) {
+                if (job.getOptions().containsKey("zipPerTrip")) {
+                    zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
+                }
+                if (job.getOptions().containsKey("zipGroupBy")) {
+                    zipGroupBy = job.getOptions().get("zipGroupBy").toString();
+                }
+            }
+            exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
+        });
+        // Default strategy (geopulse/zip) - can be explicit or fallback
+        exportStrategies.put("geopulse", job -> exportDataGenerator.generateExportZip(job));
+    }
+
+    @FunctionalInterface
+    interface ExportJobProcessor {
+        void process(ExportJob job) throws Exception;
+    }
+
+    // ... existing methods ...
+
     @Scheduled(every = "2s")
     public void processExportJobs() {
         if (processing) {
             return;
         }
-        
+
         processing = true;
         try {
             processAvailableJobs();
@@ -227,70 +168,29 @@ public class ExportJobManager {
             try {
                 log.debug("Processing export job {}", job.getJobId());
 
-                byte[] data;
-                String extension;
-                String contentType;
-
-                if ("owntracks".equals(job.getFormat())) {
-                    // Generate JSON data for OwnTracks format
-                    data = exportDataGenerator.generateOwnTracksExport(job);
-                    extension = ".json";
-                    contentType = "application/json";
-                } else if ("geojson".equals(job.getFormat())) {
-                    // Generate JSON data for GeoJSON format
-                    data = exportDataGenerator.generateGeoJsonExport(job);
-                    extension = ".geojson";
-                    contentType = "application/geo+json";
-                } else if ("gpx".equals(job.getFormat())) {
-                    // Generate GPX data (either single file or zip)
-                    boolean zipPerTrip = false;
-                    String zipGroupBy = "individual"; // default
-
-                    if (job.getOptions() != null) {
-                        if (job.getOptions().containsKey("zipPerTrip")) {
-                            zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
-                        }
-                        if (job.getOptions().containsKey("zipGroupBy")) {
-                            zipGroupBy = job.getOptions().get("zipGroupBy").toString();
-                        }
-                    }
-
-                    data = exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
-
-                    if (zipPerTrip) {
-                        extension = ".zip";
-                        contentType = "application/zip";
-                    } else {
-                        extension = ".gpx";
-                        contentType = "application/gpx+xml";
-                    }
-                } else if ("csv".equals(job.getFormat())) {
-                    // Generate CSV data
-                    data = exportDataGenerator.generateCsvExport(job);
-                    extension = ".csv";
-                    contentType = "text/csv; charset=utf-8";
-                } else {
-                    // Generate ZIP data for GeoPulse format
-                    data = exportDataGenerator.generateExportZip(job);
-                    extension = ".zip";
-                    contentType = "application/zip";
+                ExportJobProcessor processor = exportStrategies.get(job.getFormat());
+                if (processor == null) {
+                    // Fallback to default (geopulse zip) if not found, or error?
+                    // Historic behavior suggests "else" block was for geopulse zip.
+                    // Let's assume blank or unknown format maps to default if we want to preserve
+                    // "else" behavior
+                    processor = exportStrategies.get("geopulse");
                 }
 
-                // Write data to temp file instead of storing in memory
-                Path tempFile = tempFileService.createTempFile(job.getJobId(), extension);
-                Files.write(tempFile, data);
+                if (processor != null) {
+                    processor.process(job);
+                } else {
+                    throw new IllegalArgumentException("Unsupported export format: " + job.getFormat());
+                }
 
-                job.setTempFilePath(tempFile.toString());
-                job.setContentType(contentType);
-                job.setFileExtension(extension);
-                job.setFileSizeBytes(Files.size(tempFile));
-
+                // Status and progress are updated by the generator services,
+                // but we finalize it here to ensure consistency
                 job.setStatus(ExportStatus.COMPLETED);
                 job.setCompletedAt(Instant.now());
                 job.setProgress(100);
 
                 log.info("Completed {} export job {} - {} bytes written to {}",
-                        job.getFormat(), job.getJobId(), job.getFileSizeBytes(), tempFile.getFileName());
+                        job.getFormat(), job.getJobId(), job.getFileSizeBytes(), job.getTempFilePath());
 
             } catch (Exception e) {
                 log.error("Failed to process export job {}: {}", job.getJobId(), e.getMessage(), e);

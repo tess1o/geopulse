@@ -95,10 +95,10 @@ public class GeoPulseImportDataCorruptionTest {
                 testUserA.getId(),
                 List.of(ExportImportConstants.DataTypes.RAW_GPS),
                 dateRange,
-                ExportImportConstants.Formats.JSON
-        );
+                ExportImportConstants.Formats.JSON);
 
-        exportData = exportDataGenerator.generateExportZip(exportJob);
+        exportDataGenerator.generateExportZip(exportJob);
+        exportData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
         assertNotNull(exportData);
         assertTrue(exportData.length > 0);
 
@@ -135,7 +135,8 @@ public class GeoPulseImportDataCorruptionTest {
         Long originalGpsPointId = userAInitialPoints.get(0).getId();
         log.info("User A initial GPS point ID: {}", originalGpsPointId);
 
-        // Step 2: User B imports the same file (this would cause data corruption in old system)
+        // Step 2: User B imports the same file (this would cause data corruption in old
+        // system)
         ImportOptions importOptionsB = new ImportOptions();
         importOptionsB.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
         importOptionsB.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
@@ -155,7 +156,8 @@ public class GeoPulseImportDataCorruptionTest {
         // Verify User A's original GPS point still exists and belongs to User A
         GpsPointEntity userAPoint = userAAfterBImport.get(0);
         assertEquals(originalGpsPointId, userAPoint.getId(), "User A's original GPS point ID should be preserved");
-        assertEquals(testUserA.getId(), userAPoint.getUser().getId(), "User A's GPS point should still belong to User A");
+        assertEquals(testUserA.getId(), userAPoint.getUser().getId(),
+                "User A's GPS point should still belong to User A");
 
         // Verify User B's GPS point is separate with new ID
         GpsPointEntity userBPoint = userBAfterBImport.get(0);
@@ -183,18 +185,18 @@ public class GeoPulseImportDataCorruptionTest {
         assertEquals(1, userBFinalPoints.size(), "User B should still have only 1 GPS point");
 
         // Verify coordinates match (same location data)
-        assertEquals(userAFinalPoints.get(0).getCoordinates().getX(), 
-                    userBFinalPoints.get(0).getCoordinates().getX(), 0.000001,
-                    "Both users should have GPS points at same longitude");
-        assertEquals(userAFinalPoints.get(0).getCoordinates().getY(), 
-                    userBFinalPoints.get(0).getCoordinates().getY(), 0.000001,
-                    "Both users should have GPS points at same latitude");
+        assertEquals(userAFinalPoints.get(0).getCoordinates().getX(),
+                userBFinalPoints.get(0).getCoordinates().getX(), 0.000001,
+                "Both users should have GPS points at same longitude");
+        assertEquals(userAFinalPoints.get(0).getCoordinates().getY(),
+                userBFinalPoints.get(0).getCoordinates().getY(), 0.000001,
+                "Both users should have GPS points at same latitude");
 
         log.info("✅ Data corruption test PASSED - Multiple users can safely import same file");
     }
 
     @Test
-    @Transactional 
+    @Transactional
     void testClearModeImport_UserSpecificClearing() throws Exception {
         log.info("=== Testing Clear Mode Import - User Specific Clearing ===");
 
@@ -230,10 +232,10 @@ public class GeoPulseImportDataCorruptionTest {
 
         // Verify User A still has data (cleared then re-imported)
         // Verify User B's data is untouched
-        assertEquals(1, gpsPointRepository.findByUserId(testUserA.getId()).size(), 
-                    "User A should have data after clear+import");
-        assertEquals(1, gpsPointRepository.findByUserId(testUserB.getId()).size(), 
-                    "User B's data should be unaffected by User A's clear import");
+        assertEquals(1, gpsPointRepository.findByUserId(testUserA.getId()).size(),
+                "User A should have data after clear+import");
+        assertEquals(1, gpsPointRepository.findByUserId(testUserB.getId()).size(),
+                "User B's data should be unaffected by User A's clear import");
 
         log.info("✅ Clear mode test PASSED - Only target user's data is cleared");
     }

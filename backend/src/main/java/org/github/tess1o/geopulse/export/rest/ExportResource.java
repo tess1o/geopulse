@@ -16,6 +16,7 @@ import org.github.tess1o.geopulse.export.model.ExportJobResponse;
 import org.github.tess1o.geopulse.export.service.DebugExportService;
 import org.github.tess1o.geopulse.export.service.ExportJobManager;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -51,78 +52,48 @@ public class ExportResource {
     @POST
     @jakarta.ws.rs.Path("/owntracks/create")
     public Response createOwnTracksExport(CreateExportRequest request) {
-        try {
-            var validationError = validateDateRange(request.getDateRange());
-            if (validationError.isPresent()) {
-                return validationError.get();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            ExportJob job = exportJobManager.createOwnTracksExportJob(userId, request.getDateRange());
-            return createExportJobSuccessResponse(job, "OwnTracks");
-
-        } catch (IllegalStateException e) {
-            return handleTooManyRequests(e);
-        } catch (Exception e) {
-            return handleExportCreationError(e, "OwnTracks");
-        }
+        return handleExportCreation(request, "owntracks", List.of(ExportImportConstants.DataTypes.RAW_GPS), "OwnTracks",
+                null);
     }
 
     @POST
     @jakarta.ws.rs.Path("/geojson/create")
     public Response createGeoJsonExport(CreateExportRequest request) {
-        try {
-            var validationError = validateDateRange(request.getDateRange());
-            if (validationError.isPresent()) {
-                return validationError.get();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            ExportJob job = exportJobManager.createGeoJsonExportJob(userId, request.getDateRange());
-            return createExportJobSuccessResponse(job, "GeoJSON");
-
-        } catch (IllegalStateException e) {
-            return handleTooManyRequests(e);
-        } catch (Exception e) {
-            return handleExportCreationError(e, "GeoJSON");
-        }
+        return handleExportCreation(request, "geojson", List.of(ExportImportConstants.DataTypes.RAW_GPS), "GeoJSON",
+                null);
     }
 
     @POST
     @jakarta.ws.rs.Path("/gpx/create")
     public Response createGpxExport(CreateExportRequest request) {
-        try {
-            var validationError = validateDateRange(request.getDateRange());
-            if (validationError.isPresent()) {
-                return validationError.get();
+        // Get options from request
+        boolean zipPerTrip = false;
+        String zipGroupBy = "individual"; // default
+
+        if (request.getOptions() != null) {
+            if (request.getOptions().containsKey("zipPerTrip")) {
+                zipPerTrip = Boolean.parseBoolean(request.getOptions().get("zipPerTrip").toString());
             }
-
-            // Get zipPerTrip option from request options
-            boolean zipPerTrip = false;
-            String zipGroupBy = "individual"; // default
-            if (request.getOptions() != null) {
-                if (request.getOptions().containsKey("zipPerTrip")) {
-                    zipPerTrip = Boolean.parseBoolean(request.getOptions().get("zipPerTrip").toString());
-                }
-                if (request.getOptions().containsKey("zipGroupBy")) {
-                    zipGroupBy = request.getOptions().get("zipGroupBy").toString();
-                }
+            if (request.getOptions().containsKey("zipGroupBy")) {
+                zipGroupBy = request.getOptions().get("zipGroupBy").toString();
             }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            ExportJob job = exportJobManager.createGpxExportJob(userId, request.getDateRange(), zipPerTrip, zipGroupBy);
-            return createExportJobSuccessResponse(job, "GPX");
-
-        } catch (IllegalStateException e) {
-            return handleTooManyRequests(e);
-        } catch (Exception e) {
-            return handleExportCreationError(e, "GPX");
         }
+
+        Map<String, Object> options = new HashMap<>();
+        options.put("zipPerTrip", zipPerTrip);
+        options.put("zipGroupBy", zipGroupBy);
+
+        return handleExportCreation(request, "gpx", List.of(ExportImportConstants.DataTypes.RAW_GPS), "GPX", options);
     }
 
     @POST
     @jakarta.ws.rs.Path("/csv/create")
     public Response createCsvExport(CreateExportRequest request) {
+        return handleExportCreation(request, "csv", List.of(ExportImportConstants.DataTypes.RAW_GPS), "CSV", null);
+    }
+
+    private Response handleExportCreation(CreateExportRequest request, String format, List<String> dataTypes,
+            String formatName, Map<String, Object> options) {
         try {
             var validationError = validateDateRange(request.getDateRange());
             if (validationError.isPresent()) {
@@ -130,13 +101,14 @@ public class ExportResource {
             }
 
             UUID userId = currentUserService.getCurrentUserId();
-            ExportJob job = exportJobManager.createCsvExportJob(userId, request.getDateRange());
-            return createExportJobSuccessResponse(job, "CSV");
+            ExportJob job = exportJobManager.createExportJob(userId, dataTypes, request.getDateRange(), format,
+                    options);
+            return createExportJobSuccessResponse(job, formatName);
 
         } catch (IllegalStateException e) {
             return handleTooManyRequests(e);
         } catch (Exception e) {
-            return handleExportCreationError(e, "CSV");
+            return handleExportCreationError(e, formatName);
         }
     }
 
@@ -301,7 +273,8 @@ public class ExportResource {
         try {
             // Generate sample CSV with proper format
             StringBuilder csvTemplate = new StringBuilder();
-            csvTemplate.append("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type\n");
+            csvTemplate
+                    .append("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type\n");
             csvTemplate.append("2024-01-15T10:30:00Z,37.7749,-122.4194,10.5,5.2,100.0,85.0,device123,CSV\n");
             csvTemplate.append("2024-01-15T10:35:00Z,37.7750,-122.4195,8.3,12.8,105.2,84.8,,CSV\n");
             csvTemplate.append("2024-01-15T10:40:00Z,37.7751,-122.4196,,15.5,,,device789,GPX\n");
@@ -325,7 +298,7 @@ public class ExportResource {
 
     @GET
     @jakarta.ws.rs.Path("/download/{exportJobId}")
-    @Produces({"application/zip", "application/json", "application/gpx+xml", "text/csv"})
+    @Produces({ "application/zip", "application/json", "application/gpx+xml", "text/csv" })
     public Response downloadExport(@jakarta.ws.rs.PathParam("exportJobId") UUID exportJobId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
@@ -412,7 +385,7 @@ public class ExportResource {
     @GET
     @jakarta.ws.rs.Path("/jobs")
     public Response listExportJobs(@QueryParam("limit") @DefaultValue("10") int limit,
-                                   @QueryParam("offset") @DefaultValue("0") int offset) {
+            @QueryParam("offset") @DefaultValue("0") int offset) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
 
@@ -517,7 +490,7 @@ public class ExportResource {
                     .header("Content-Type", "application/zip")
                     .header("Content-Disposition",
                             "attachment; filename=\"geopulse-debug-" +
-                            userId + "-" + Instant.now().getEpochSecond() + ".zip\"")
+                                    userId + "-" + Instant.now().getEpochSecond() + ".zip\"")
                     .build();
 
         } catch (Exception e) {
@@ -543,9 +516,11 @@ public class ExportResource {
 
     /**
      * Validate date range from export request.
+     * 
      * @return Optional with error Response if invalid, empty if valid
      */
-    private java.util.Optional<Response> validateDateRange(org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
+    private java.util.Optional<Response> validateDateRange(
+            org.github.tess1o.geopulse.export.model.ExportDateRange dateRange) {
         if (dateRange == null ||
                 dateRange.getStartDate() == null ||
                 dateRange.getEndDate() == null) {
