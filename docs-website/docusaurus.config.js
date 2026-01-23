@@ -52,6 +52,15 @@ const config = {
             }),
         ],
     ],
+    headTags: [
+        {
+            tagName: 'meta',
+            attributes: {
+                name: 'algolia-site-verification',
+                content: '5FF05FBB6AA9D36D',
+            },
+        },
+    ],
     themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
@@ -60,16 +69,6 @@ const config = {
             colorMode: {
                 respectPrefersColorScheme: true,
             },
-
-            headTags: [
-                {
-                    tagName: 'meta',
-                    attributes: {
-                        name: 'algolia-site-verification',
-                        content: '5FF05FBB6AA9D36D',
-                    },
-                },
-            ],
 
             navbar: {
                 title: 'GeoPulse',
