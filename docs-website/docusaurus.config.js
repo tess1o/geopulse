@@ -94,7 +94,7 @@ const config = {
             algolia: {
                 appId: '99KWVB1VEW',
                 apiKey: '0a186eea3fe8e8f14c7b8e6f5eae9d70', // public search-only key
-                indexName: 'GeoPulse documentation',
+                indexName: 'GEOPULSE_DOCS',
 
                 contextualSearch: true,
 
