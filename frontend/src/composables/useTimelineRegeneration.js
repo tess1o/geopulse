@@ -76,8 +76,7 @@ export function useTimelineRegeneration() {
         rejectLabel: 'Cancel',
         acceptLabel: 'View Progress',
         accept: () => {
-          const url = router.resolve({ name: 'Job Details', params: { id: activeJobCheck.jobId } }).href
-          window.open(url, '_blank')
+          router.push({ name: 'Timeline Job Details', params: { jobId: activeJobCheck.jobId } })
         }
       })
       return

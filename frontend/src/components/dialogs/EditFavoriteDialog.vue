@@ -4,7 +4,7 @@
           modal
           :class="isAreaFavorite ? 'gp-dialog-lg' : 'gp-dialog-sm'"
           @hide="onDialogHide">
-    <div class="edit-favorite-content">
+    <div v-if="favoriteLocation" class="edit-favorite-content">
       <div class="form-field">
         <label for="name" class="field-label">Name</label>
         <InputText
@@ -209,6 +209,8 @@ const handleRedrawArea = () => {
 }
 
 const onEditButton = () => {
+  if (!props.favoriteLocation) return
+
   const basicData = {
     id: props.favoriteLocation.id,
     name: props.favoriteLocation.name,
@@ -226,7 +228,6 @@ const onEditButton = () => {
   }
 
   emit('edit-favorite', basicData)
-  internalVisible.value = false
 }
 
 const onDialogHide = () => {

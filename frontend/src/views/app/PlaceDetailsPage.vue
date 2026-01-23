@@ -114,20 +114,20 @@
 
     <!-- Edit Dialogs -->
     <EditFavoriteDialog
-      v-if="placeType === 'favorite'"
-      :visible="showEditDialog"
+      v-if="placeType === 'favorite' && selectedFavorite"
+      :visible="showFavoriteDialog"
       :header="'Edit Favorite Location'"
-      :favorite-location="editFavoriteData"
-      @edit-favorite="handleSaveFavorite"
-      @close="showEditDialog = false"
+      :favorite-location="selectedFavorite"
+      @edit-favorite="(data) => handleFavoriteSave(data, { onSuccess: () => loadPlaceData() })"
+      @close="closeFavoriteEditor"
     />
 
     <GeocodingEditDialog
       v-if="placeType === 'geocoding'"
-      :visible="showEditDialog"
+      :visible="showGeocodingEditDialog"
       :geocoding-result="editGeocodingData"
       @save="handleSaveGeocoding"
-      @close="showEditDialog = false"
+      @close="showGeocodingEditDialog = false"
     />
 
     <!-- Create Favorite Dialog -->
@@ -180,6 +180,13 @@
       :job-id="currentJobId"
       :job-progress="jobProgress"
     />
+    <!-- Timeline Regeneration Modal (for favorite editing with bounds change) -->
+    <TimelineRegenerationModal
+      v-model:visible="favoriteTimelineVisible"
+      :type="favoriteTimelineType"
+      :job-id="favoriteJobId"
+      :job-progress="favoriteJobProgress"
+    />
     </PageContainer>
   </AppLayout>
 </template>
@@ -209,6 +216,7 @@ import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 
 import { useTimelineRegeneration } from '@/composables/useTimelineRegeneration'
+import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 
 // Store
 import { usePlaceStatisticsStore } from '@/stores/placeStatistics'
@@ -244,11 +252,25 @@ const error = ref(null)
 const visitsLoading = ref(false)
 const currentSortBy = ref('timestamp')
 const currentSortDirection = ref('desc')
-const showEditDialog = ref(false)
-const editFavoriteData = ref(null)
-const editGeocodingData = ref(null)
 const showCreateFavoriteDialog = ref(false)
 const newFavoriteName = ref('')
+
+// Favorite editor composable (for editing favorite places)
+const {
+  showDialog: showFavoriteDialog,
+  selectedFavorite,
+  openEditor: openFavoriteEditor,
+  closeEditor: closeFavoriteEditor,
+  handleSave: handleFavoriteSave,
+  timelineRegenerationVisible: favoriteTimelineVisible,
+  timelineRegenerationType: favoriteTimelineType,
+  currentJobId: favoriteJobId,
+  jobProgress: favoriteJobProgress
+} = useFavoriteEditor()
+
+// For geocoding edit dialog
+const showGeocodingEditDialog = ref(false)
+const editGeocodingData = ref(null)
 
 // Computed
 const placeType = computed(() => route.params.type)
@@ -503,14 +525,22 @@ const goBack = () => {
 }
 
 const handleOpenEditDialog = () => {
+  console.log('Place Details: ', placeDetails.value)
   if (placeType.value === 'favorite') {
-    // Prepare data for EditFavoriteDialog
-    editFavoriteData.value = {
+    // Prepare data for EditFavoriteDialog via composable
+    const favoriteData = {
       id: placeId.value,
       name: placeDetails.value?.locationName || '',
       city: placeDetails.value?.city || '',
-      country: placeDetails.value?.country || ''
+      country: placeDetails.value?.country || '',
+      type: placeDetails.value?.geometry?.type.toUpperCase() || 'POINT',
+      // Include bounds if AREA favorite
+      northEastLat: placeDetails.value?.geometry?.northEast[0],
+      northEastLon: placeDetails.value?.geometry?.northEast[1],
+      southWestLat: placeDetails.value?.geometry?.southWest[0],
+      southWestLon: placeDetails.value?.geometry?.southWest[1]
     }
+    openFavoriteEditor(favoriteData)
   } else if (placeType.value === 'geocoding') {
     // Prepare data for GeocodingEditDialog
     editGeocodingData.value = {
@@ -522,44 +552,7 @@ const handleOpenEditDialog = () => {
       longitude: placeDetails.value?.geometry?.longitude,
       providerName: placeDetails.value?.providerName || 'Unknown'
     }
-  }
-  showEditDialog.value = true
-}
-
-const handleSaveFavorite = async (favoriteData) => {
-  try {
-    // Update favorite via API (using favorites endpoint)
-    await apiService.put(`/favorites/${favoriteData.id}`, {
-      name: favoriteData.name,
-      city: favoriteData.city,
-      country: favoriteData.country
-    })
-
-    // Update local state
-    if (placeDetails.value) {
-      placeDetails.value.locationName = favoriteData.name
-      placeDetails.value.city = favoriteData.city
-      placeDetails.value.country = favoriteData.country
-    }
-
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Favorite location updated successfully',
-      life: 3000
-    })
-
-    showEditDialog.value = false
-  } catch (err) {
-    console.error('Error updating favorite:', err)
-    const errorMessage = err.response?.data?.message || err.message || 'Failed to update favorite location'
-
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: errorMessage,
-      life: 5000
-    })
+    showGeocodingEditDialog.value = true
   }
 }
 
@@ -578,7 +571,7 @@ const handleSaveGeocoding = async (updatedData) => {
       life: 3000
     })
 
-    showEditDialog.value = false
+    showGeocodingEditDialog.value = false
   } catch (err) {
     console.error('Error updating geocoding result:', err)
     const errorMessage = err.response?.data?.message || err.message || 'Failed to update geocoding location'

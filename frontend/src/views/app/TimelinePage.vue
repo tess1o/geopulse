@@ -32,6 +32,7 @@
             @timeline-marker-click="handleTimelineMarkerClick"
             @highlighted-path-click="handleHighlightedPathClick"
             @edit-favorite="handleEditFavorite"
+            @delete-favorite="handleFavoriteDelete"
         />
       </div>
 
@@ -54,6 +55,24 @@
             :prefill-dates="shareDates"
             @created="handleShareCreated"
         />
+
+        <!-- Edit Favorite Dialog -->
+        <EditFavoriteDialog
+            v-if="selectedFavorite"
+            :visible="showFavoriteDialog"
+            :header="'Edit Favorite Location'"
+            :favorite-location="selectedFavorite"
+            @edit-favorite="(data) => handleFavoriteSave(data, { onSuccess: () => favoritesStore.fetchFavoritePlaces() })"
+            @close="closeFavoriteEditor"
+        />
+
+        <!-- Timeline Regeneration Modal -->
+        <TimelineRegenerationModal
+            v-model:visible="timelineRegenerationVisible"
+            :type="timelineRegenerationType"
+            :job-id="currentJobId"
+            :job-progress="jobProgress"
+        />
       </div>
     </template>
   </div>
@@ -63,6 +82,7 @@
 import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { TimelineContainer } from '@/components/timeline'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineLargeDatasetWarning from '@/components/timeline/TimelineLargeDatasetWarning.vue'
@@ -70,6 +90,9 @@ import ProgressSpinner from 'primevue/progressspinner'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
+import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
+import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
+import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
@@ -85,6 +108,21 @@ const favoritesStore = useFavoritesStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const highlightStore = useHighlightStore()
+const confirm = useConfirm()
+
+// Favorite editor composable
+const {
+  showDialog: showFavoriteDialog,
+  selectedFavorite,
+  openEditor: openFavoriteEditor,
+  closeEditor: closeFavoriteEditor,
+  handleSave: handleFavoriteSave,
+  withTimelineRegeneration,
+  timelineRegenerationVisible,
+  timelineRegenerationType,
+  currentJobId,
+  jobProgress
+} = useFavoriteEditor()
 
 const { dateRange } = storeToRefs(dateRangeStore)
 const { favoritePlaces } = storeToRefs(favoritesStore)
@@ -154,25 +192,29 @@ const handleTimelineItemClick = (item) => {
   highlightStore.setHighlightedItem(item)
 }
 
-const handleEditFavorite = async (favorite) => {
-  try {
-    await favoritesStore.editFavorite(favorite.id, favorite.name)
+const handleEditFavorite = (favorite) => {
+  // Open the edit dialog with full favorite data
+  openFavoriteEditor(favorite)
+}
 
-    toast.add({
-      severity: 'success',
-      summary: 'Favorite renamed',
-      detail: 'The favorite location was renamed',
-      life: 3000
-    })
-  } catch (error) {
-    console.error('Error editing favorite:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Failed to rename favorite',
-      detail: 'Could not rename the favorite location',
-      life: 3000
-    })
-  }
+const handleFavoriteDelete = (favorite) => {
+  confirm.require({
+    message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
+    header: 'Delete Favorite',
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => {
+      const action = () => favoritesStore.deleteFavorite(favorite.id)
+
+      withTimelineRegeneration(action, {
+        modalType: 'favorite-delete',
+        successMessage: `Favorite "${favorite.name}" deleted successfully. Timeline is regenerating.`,
+        errorMessage: 'Failed to delete favorite location.',
+        onSuccess: () => {
+          favoritesStore.fetchFavoritePlaces()
+        }
+      })
+    }
+  })
 }
 
 const fetchLocationData = async (startDate, endDate) => {
