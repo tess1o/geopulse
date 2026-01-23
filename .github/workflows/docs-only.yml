@@ -1,0 +1,68 @@
+name: Update Docs Only
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs-website/**'
+      - '.github/workflows/docs-only.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Restore existing Helm charts from gh-pages
+        run: |
+          echo "Fetching existing charts from gh-pages branch..."
+
+          git fetch origin gh-pages
+
+          git checkout origin/gh-pages -- charts/ || echo "⚠️ No charts found on gh-pages"
+
+          if [ -d "charts" ]; then
+            echo "✅ Found existing charts"
+            mkdir -p docs-website/static
+          
+            # Remove any local static/charts to ensure clean state
+            rm -rf docs-website/static/charts
+          
+            # Move the restored charts folder to static assets
+            mv charts docs-website/static/
+          
+            echo "Charts restored:"
+            ls -lh docs-website/static/charts
+          else
+            echo "⚠️ No existing charts found — deploying docs without charts"
+          fi
+
+      - name: Install dependencies
+        run: |
+          cd docs-website
+          npm ci
+
+      - name: Deploy documentation
+        env:
+          GIT_USER: ${{ github.actor }}
+          GIT_PASS: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd docs-website
+          npm run deploy
