@@ -52,15 +52,25 @@ const config = {
             }),
         ],
     ],
-
     themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
         ({
-            // Replace with your project's social card
             image: 'img/docusaurus-social-card.jpg',
+
             colorMode: {
                 respectPrefersColorScheme: true,
             },
+
+            headTags: [
+                {
+                    tagName: 'meta',
+                    attributes: {
+                        name: 'algolia-site-verification',
+                        content: '5FF05FBB6AA9D36D',
+                    },
+                },
+            ],
+
             navbar: {
                 title: 'GeoPulse',
                 logo: {
@@ -81,6 +91,21 @@ const config = {
                     },
                 ],
             },
+
+            algolia: {
+                appId: '99KWVB1VEW',
+                apiKey: '0a186eea3fe8e8f14c7b8e6f5eae9d70', // public search-only key
+                indexName: 'GeoPulse documentation',
+
+                contextualSearch: true,
+
+                // IMPORTANT for GitHub Pages + baseUrl
+                replaceSearchResultPathname: {
+                    from: '/docs/',
+                    to: '/geopulse/',
+                },
+            },
+
             prism: {
                 theme: prismThemes.github,
                 darkTheme: prismThemes.dracula,
