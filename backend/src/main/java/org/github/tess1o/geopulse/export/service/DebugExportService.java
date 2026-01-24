@@ -144,6 +144,7 @@ public class DebugExportService {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         // Stream OwnTracks messages with shifted coordinates
+        var batchSize = streamingExportService.getBatchSize();
         streamingExportService.streamJsonArray(
                 baos,
                 // Fetch batch function
@@ -152,7 +153,7 @@ public class DebugExportService {
                         request.getStartDate(),
                         request.getEndDate(),
                         page,
-                        StreamingExportService.DEFAULT_BATCH_SIZE,
+                        batchSize,
                         "timestamp",
                         "asc"
                 ),

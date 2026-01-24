@@ -369,6 +369,100 @@
           </div>
         </div>
 
+        <!-- Export Tab -->
+        <div v-if="activeTab === 'export'">
+          <div class="settings-section">
+            <h3>Job Management</h3>
+
+            <div class="setting-item" v-for="setting in exportSettings.filter(s => ['export.max-jobs-per-user', 'export.job-expiry-hours', 'export.concurrent-jobs-limit'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Batch Processing</h3>
+
+            <div class="setting-item" v-for="setting in exportSettings.filter(s => ['export.batch-size', 'export.trip-point-limit'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    :step="100"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Temporary File Storage</h3>
+
+            <div class="setting-item" v-for="setting in exportSettings.filter(s => ['export.temp-file-retention-hours'].includes(s.key))" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputNumber
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- System Tab -->
         <div v-if="activeTab === 'system'">
           <div class="settings-section empty-state">
@@ -460,6 +554,11 @@ const tabItems = ref([
     key: 'import'
   },
   {
+    label: 'Export',
+    icon: 'pi pi-download',
+    key: 'export'
+  },
+  {
     label: 'System',
     icon: 'pi pi-server',
     key: 'system'
@@ -480,6 +579,7 @@ const handleTabChange = (event) => {
 const authSettings = ref([])
 const geocodingSettings = ref([])
 const importSettings = ref([])
+const exportSettings = ref([])
 const aiSystemMessage = ref('')
 const aiSystemMessageOriginal = ref('')
 const aiSystemMessageChanged = ref(false)
@@ -619,6 +719,31 @@ const settingLabels = {
   'import.owntracks-streaming-batch-size': {
     label: 'OwnTracks Batch Size',
     description: 'Batch size for streaming OwnTracks parser'
+  },
+  // Export settings
+  'export.max-jobs-per-user': {
+    label: 'Max Jobs Per User',
+    description: 'Maximum number of export jobs a user can have at once'
+  },
+  'export.job-expiry-hours': {
+    label: 'Job Expiry (Hours)',
+    description: 'Hours before completed export jobs are automatically deleted'
+  },
+  'export.concurrent-jobs-limit': {
+    label: 'Concurrent Jobs Limit',
+    description: 'Maximum number of export jobs processed simultaneously'
+  },
+  'export.batch-size': {
+    label: 'Batch Size',
+    description: 'Number of records to process in each batch during export'
+  },
+  'export.trip-point-limit': {
+    label: 'Trip Point Limit',
+    description: 'Maximum GPS points per single trip export'
+  },
+  'export.temp-file-retention-hours': {
+    label: 'Temp File Retention (Hours)',
+    description: 'How long to keep temporary export files before cleanup'
   }
 }
 
@@ -730,6 +855,28 @@ const loadImportSettings = async () => {
       severity: 'error',
       summary: 'Error',
       detail: 'Failed to load import settings',
+      life: 3000
+    })
+  }
+}
+
+const loadExportSettings = async () => {
+  try {
+    const response = await apiService.get('/admin/settings/export')
+    exportSettings.value = response.map(setting => ({
+      ...setting,
+      label: settingLabels[setting.key]?.label || setting.key,
+      description: settingLabels[setting.key]?.description || setting.description,
+      currentValue: setting.valueType === 'INTEGER'
+          ? parseInt(setting.value)
+          : setting.value
+    }))
+  } catch (error) {
+    console.error('Failed to load export settings:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load export settings',
       life: 3000
     })
   }
@@ -913,6 +1060,7 @@ onMounted(() => {
   loadAuthSettings()
   loadGeocodingSettings()
   loadImportSettings()
+  loadExportSettings()
   loadAISettings()
 })
 </script>

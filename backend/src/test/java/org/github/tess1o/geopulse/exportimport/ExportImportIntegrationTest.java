@@ -49,7 +49,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Comprehensive integration test for export/import functionality with dependency handling.
+ * Comprehensive integration test for export/import functionality with
+ * dependency handling.
  * Tests the complete lifecycle:
  * 1) Insert test data with foreign key relationships
  * 2) Export data and validate dependencies are included
@@ -118,7 +119,8 @@ class ExportImportIntegrationTest {
         testUser.setCreatedAt(Instant.now());
         userRepository.persist(testUser);
 
-        // Create test reverse geocoding location (user-specific for testing export/import)
+        // Create test reverse geocoding location (user-specific for testing
+        // export/import)
         testGeocodingLocation = new ReverseGeocodingLocationEntity();
         testGeocodingLocation.setUser(testUser); // Set user to make it user-specific (not original)
         testGeocodingLocation.setRequestCoordinates(GeoUtils.createPoint(-122.4194, 37.7749)); // San Francisco
@@ -155,11 +157,11 @@ class ExportImportIntegrationTest {
         timelineStayRepository.persist(testStay);
 
         // Create test timeline trip with LineString path
-        Coordinate[] pathCoordinates = new Coordinate[] {
-            new Coordinate(-122.4194, 37.7749), // Start: San Francisco
-            new Coordinate(-122.4150, 37.7770), // Intermediate point 1
-            new Coordinate(-122.4120, 37.7800), // Intermediate point 2
-            new Coordinate(-122.4094, 37.7849)  // End point
+        Coordinate[] pathCoordinates = new Coordinate[]{
+                new Coordinate(-122.4194, 37.7749), // Start: San Francisco
+                new Coordinate(-122.4150, 37.7770), // Intermediate point 1
+                new Coordinate(-122.4120, 37.7800), // Intermediate point 2
+                new Coordinate(-122.4094, 37.7849) // End point
         };
         LineString tripPath = geometryFactory.createLineString(pathCoordinates);
 
@@ -275,27 +277,36 @@ class ExportImportIntegrationTest {
         ExportDateRange dateRange = new ExportDateRange();
         dateRange.setStartDate(Instant.now().minus(1, ChronoUnit.DAYS));
         dateRange.setEndDate(Instant.now().plus(1, ChronoUnit.DAYS));
-        
-        ExportJob exportJob = new ExportJob(
-            testUser.getId(), 
-            List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS, 
-                   ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES), // Note: NOT including favorites or reverse geocoding explicitly
-            dateRange,
-            ExportImportConstants.Formats.JSON
-        );
 
-        byte[] exportedData = exportDataGenerator.generateExportZip(exportJob);
+        ExportJob exportJob = new ExportJob(
+                testUser.getId(),
+                List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS,
+                        ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES),
+                dateRange,
+                ExportImportConstants.Formats.JSON);
+
+        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
+
+        assertNotNull(exportJob.getTempFilePath());
+        byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
+
         assertNotNull(exportedData);
         assertTrue(exportedData.length > 0);
         log.info("Export completed, generated {} bytes", exportedData.length);
 
+        // Cleanup export file after reading (optional, but good practice)
+        // clean up is handled by cleanupHelper usually, or we can leave it for
+        // scheduled cleanup task
+
         // Step 3: Validate export contents (should include auto-collected dependencies)
         log.info("Step 3: Validating export includes dependencies");
         ImportOptions validateOptions = new ImportOptions();
-        // Note: Including TIMELINE for validation to ensure it's in export, but won't be imported 
-        validateOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS, 
-                                             ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES, 
-                                             ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
+        // Note: Including TIMELINE for validation to ensure it's in export, but won't
+        // be imported
+        validateOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.TIMELINE,
+                ExportImportConstants.DataTypes.RAW_GPS,
+                ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES,
+                ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
         validateOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
 
         ImportJob validateJob = new ImportJob(testUser.getId(), validateOptions, "test-export.zip", exportedData);
@@ -303,13 +314,20 @@ class ExportImportIntegrationTest {
         List<String> detectedDataTypes = importDataService.validateAndDetectDataTypes(validateJob);
         log.info("Detected data types in export: {}", detectedDataTypes);
 
-        // Should include auto-collected dependencies (note: timeline will be regenerated from GPS, not imported)
-        assertFalse(detectedDataTypes.contains(ExportImportConstants.DataTypes.TIMELINE), "Timeline data should not be imported - will be regenerated from GPS");
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES), "Favorites should be auto-included due to timeline dependency");
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION), "Reverse geocoding should be auto-included due to timeline dependency");
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS), "Raw GPS data should be included");
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.USER_INFO), "User info should be included");
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.LOCATION_SOURCES), "Location sources should be included");
+        // Should include auto-collected dependencies (note: timeline will be
+        // regenerated from GPS, not imported)
+        assertFalse(detectedDataTypes.contains(ExportImportConstants.DataTypes.TIMELINE),
+                "Timeline data should not be imported - will be regenerated from GPS");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES),
+                "Favorites should be auto-included due to timeline dependency");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION),
+                "Reverse geocoding should be auto-included due to timeline dependency");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.RAW_GPS),
+                "Raw GPS data should be included");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.USER_INFO),
+                "User info should be included");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.LOCATION_SOURCES),
+                "Location sources should be included");
 
         // Step 4: Delete test data (simulating data loss or migration scenario)
         log.info("Step 4: Deleting test data");
@@ -317,7 +335,7 @@ class ExportImportIntegrationTest {
         Long originalGeocodingId = originalGeocodingLocation.getId();
         // Clear the entire transaction context first to avoid stale references
         timelineStayRepository.getEntityManager().clear();
-        
+
         // Delete in dependency order (children first)
         timelineStayRepository.deleteById(testStay.getId());
         timelineTripRepository.deleteById(testTrip.getId());
@@ -326,7 +344,7 @@ class ExportImportIntegrationTest {
         gpsSourceRepository.deleteById(testGpsSource.getId());
         favoritesRepository.deleteById(testFavorite.getId());
         reverseGeocodingLocationRepository.deleteById(testGeocodingLocation.getId());
-        
+
         // Flush and clear the entity manager to ensure deletions are committed
         timelineStayRepository.getEntityManager().flush();
         timelineStayRepository.getEntityManager().clear();
@@ -345,9 +363,9 @@ class ExportImportIntegrationTest {
         log.info("Step 5: Importing data");
         ImportOptions importOptions = new ImportOptions();
         // Note: Excluding TIMELINE from import - it will be regenerated from GPS data
-        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS, 
-                                           ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES, 
-                                           ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
+        importOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS,
+                ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES,
+                ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
         importOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
 
         ImportJob importJob = new ImportJob(testUser.getId(), importOptions, "test-export.zip", exportedData);
@@ -358,35 +376,42 @@ class ExportImportIntegrationTest {
         // Step 6: Verify imported data matches original data
         log.info("Step 6: Verifying imported data matches original");
 
-        // Verify reverse geocoding location (search by coordinates since IDs are regenerated on import)
+        // Verify reverse geocoding location (search by coordinates since IDs are
+        // regenerated on import)
         var importedGeocodingLocation = reverseGeocodingLocationRepository.findByRequestCoordinates(
-            testUser.getId(),
-            originalGeocodingLocation.getRequestCoordinates(),
-            25.0  // tolerance in meters
+                testUser.getId(),
+                originalGeocodingLocation.getRequestCoordinates(),
+                25.0 // tolerance in meters
         );
         assertNotNull(importedGeocodingLocation, "Reverse geocoding location should be imported");
-        assertEquals(originalGeocodingLocation.getDisplayName(), importedGeocodingLocation.getDisplayName(), "Display name should match");
+        assertEquals(originalGeocodingLocation.getDisplayName(), importedGeocodingLocation.getDisplayName(),
+                "Display name should match");
         assertEquals(originalGeocodingLocation.getCity(), importedGeocodingLocation.getCity(), "City should match");
-        assertEquals(originalGeocodingLocation.getCountry(), importedGeocodingLocation.getCountry(), "Country should match");
-        assertEquals(testUser.getId(), importedGeocodingLocation.getUser().getId(), "Should be assigned to importing user");
+        assertEquals(originalGeocodingLocation.getCountry(), importedGeocodingLocation.getCountry(),
+                "Country should match");
+        assertEquals(testUser.getId(), importedGeocodingLocation.getUser().getId(),
+                "Should be assigned to importing user");
 
-        // Verify GPS point (GPS points don't preserve IDs since export format doesn't include them)
+        // Verify GPS point (GPS points don't preserve IDs since export format doesn't
+        // include them)
         var importedGpsPointsList = gpsPointRepository.findByUserAndDateRange(
-            testUser.getId(),
-            originalGpsPoint.getTimestamp().minusSeconds(1),
-            originalGpsPoint.getTimestamp().plusSeconds(1),
-            0, 10, "timestamp", "asc"
-        );
+                testUser.getId(),
+                originalGpsPoint.getTimestamp().minusSeconds(1),
+                originalGpsPoint.getTimestamp().plusSeconds(1),
+                0, 10, "timestamp", "asc");
         assertFalse(importedGpsPointsList.isEmpty(), "At least one GPS point should be imported");
         var importedGpsPoint = importedGpsPointsList.get(0);
         assertNotNull(importedGpsPoint, "GPS point should be imported");
-        assertEquals(originalGpsPoint.getLatitude(), importedGpsPoint.getLatitude(), 0.000001, "GPS latitude should match");
-        assertEquals(originalGpsPoint.getAccuracy(), importedGpsPoint.getAccuracy(), 0.001, "GPS accuracy should match");
+        assertEquals(originalGpsPoint.getLatitude(), importedGpsPoint.getLatitude(), 0.000001,
+                "GPS latitude should match");
+        assertEquals(originalGpsPoint.getAccuracy(), importedGpsPoint.getAccuracy(), 0.001,
+                "GPS accuracy should match");
 
         // Verify GPS source (ID should be preserved exactly)
         var importedGpsSource = gpsSourceRepository.findAll().firstResult();
         assertNotNull(importedGpsSource, "GPS source should be imported with exact ID preservation");
-        assertEquals(originalGpsSource.getUsername(), importedGpsSource.getUsername(), "GPS source username should match");
+        assertEquals(originalGpsSource.getUsername(), importedGpsSource.getUsername(),
+                "GPS source username should match");
 
         log.info("=== Export/Import Integration Test Completed Successfully ===");
     }
@@ -398,7 +423,9 @@ class ExportImportIntegrationTest {
         // Export only favorites (no timeline) - should not auto-include dependencies
         ExportJob exportJob = new ExportJob();
         exportJob.setUserId(testUser.getId());
-        exportJob.setDataTypes(List.of(ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.USER_INFO)); // No timeline
+        exportJob.setDataTypes(
+                List.of(ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.USER_INFO)); // No
+        // timeline
         exportJob.setFormat(ExportImportConstants.Formats.JSON);
 
         ExportDateRange dateRange = new ExportDateRange();
@@ -406,20 +433,25 @@ class ExportImportIntegrationTest {
         dateRange.setEndDate(Instant.now().plus(1, ChronoUnit.DAYS));
         exportJob.setDateRange(dateRange);
 
-        byte[] exportedData = exportDataGenerator.generateExportZip(exportJob);
+        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
+        byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
 
         // Validate that reverse geocoding is NOT auto-included
         ImportOptions validateOptions = new ImportOptions();
-        validateOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
+        validateOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.FAVORITES,
+                ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION));
         validateOptions.setImportFormat(ExportImportConstants.Formats.GEOPULSE);
 
         ImportJob validateJob = new ImportJob(testUser.getId(), validateOptions, "test-export.zip", exportedData);
 
         List<String> detectedDataTypes = importDataService.validateAndDetectDataTypes(validateJob);
 
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES), "Favorites should be included");
-        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.USER_INFO), "User info should be included");
-        assertFalse(detectedDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION), "Reverse geocoding should NOT be auto-included without timeline");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES),
+                "Favorites should be included");
+        assertTrue(detectedDataTypes.contains(ExportImportConstants.DataTypes.USER_INFO),
+                "User info should be included");
+        assertFalse(detectedDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION),
+                "Reverse geocoding should NOT be auto-included without timeline");
 
         log.info("=== Export Without Timeline Dependencies Test Completed Successfully ===");
     }

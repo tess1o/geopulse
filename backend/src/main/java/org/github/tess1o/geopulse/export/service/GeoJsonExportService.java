@@ -9,12 +9,13 @@ import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 /**
- * Service responsible for generating GeoJSON format exports using streaming approach.
- * Memory-efficient: processes GPS points in batches without loading all data into memory.
+ * Service responsible for generating GeoJSON format exports using streaming
+ * approach.
+ * Memory-efficient: processes GPS points in batches without loading all data
+ * into memory.
  */
 @ApplicationScoped
 @Slf4j
@@ -26,66 +27,78 @@ public class GeoJsonExportService {
     @Inject
     StreamingExportService streamingExportService;
 
+    @Inject
+    ExportTempFileService tempFileService;
+
     /**
      * Generates a GeoJSON export for the given export job using STREAMING approach.
-     * Memory usage: O(batch_size) instead of O(total_records).
+     * Writes directly to a temporary file to avoid memory issues.
      *
      * @param job the export job
-     * @return the GeoJSON as bytes
      * @throws IOException if an I/O error occurs
      */
-    public byte[] generateGeoJsonExport(ExportJob job) throws IOException {
+    public void generateGeoJsonExport(ExportJob job) throws IOException {
         log.info("Starting streaming GeoJSON export for user {}", job.getUserId());
 
         job.updateProgress(5, "Initializing GeoJSON export...");
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        // Create temp file
+        java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".geojson");
 
-        // Count total points for progress tracking (optional, can be skipped for performance)
-        // For now, we'll estimate based on batches
-        int totalRecords = -1; // Unknown, will update progress based on batches
+        try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
+                java.io.BufferedOutputStream bos = new java.io.BufferedOutputStream(os)) {
 
-        job.updateProgress(10, "Starting to stream GPS data...");
+            // Count total points for progress tracking (optional, can be skipped for
+            // performance)
+            // For now, we'll estimate based on batches
+            int totalRecords = -1; // Unknown, will update progress based on batches
 
-        // Stream GeoJSON FeatureCollection with features array
-        streamingExportService.streamJsonObjectWithArray(
-            baos,
-            // Write GeoJSON FeatureCollection metadata
-            (gen, mapper) -> {
-                try {
-                    gen.writeStringField("type", "FeatureCollection");
-                } catch (IOException e) {
-                    throw new RuntimeException("Failed to write GeoJSON metadata", e);
-                }
-            },
-            // Array field name
-            "features",
-            // Fetch batch function
-            page -> gpsPointRepository.findByUserAndDateRange(
-                job.getUserId(),
-                job.getDateRange().getStartDate(),
-                job.getDateRange().getEndDate(),
-                page,
-                StreamingExportService.DEFAULT_BATCH_SIZE,
-                "timestamp",
-                "asc"
-            ),
-            // Write each GPS point as GeoJSON feature
-            this::writeGpsPointAsGeoJsonFeature,
-            // Progress tracking
-            job,
-            totalRecords,
-            10,  // progress start: 10%
-            90,  // progress end: 90%
-            "Exporting GPS points:"
-        );
+            job.updateProgress(10, "Starting to stream GPS data...");
 
-        byte[] result = baos.toByteArray();
+            int batchSize = streamingExportService.getBatchSize();
+
+            // Stream GeoJSON FeatureCollection with features array
+            streamingExportService.streamJsonObjectWithArray(
+                    bos,
+                    // Write GeoJSON FeatureCollection metadata
+                    (gen, mapper) -> {
+                        try {
+                            gen.writeStringField("type", "FeatureCollection");
+                        } catch (IOException e) {
+                            throw new RuntimeException("Failed to write GeoJSON metadata", e);
+                        }
+                    },
+                    // Array field name
+                    "features",
+                    // Fetch batch function
+                    page -> gpsPointRepository.findByUserAndDateRange(
+                            job.getUserId(),
+                            job.getDateRange().getStartDate(),
+                            job.getDateRange().getEndDate(),
+                            page,
+                            batchSize,
+                            "timestamp",
+                            "asc"),
+                    // Write each GPS point as GeoJSON feature
+                    this::writeGpsPointAsGeoJsonFeature,
+                    // Progress tracking
+                    job,
+                    totalRecords,
+                    10, // progress start: 10%
+                    90, // progress end: 90%
+                    "Exporting GPS points:");
+
+            log.info("Completed streaming GeoJSON export");
+        }
+
+        // Update job with file info
+        job.setTempFilePath(tempFile.toString());
+        job.setFileExtension(".geojson");
+        job.setContentType("application/geo+json");
+        job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
 
         job.updateProgress(95, "Finalizing GeoJSON export...");
-        log.info("Completed streaming GeoJSON export: {} bytes", result.length);
-
-        return result;
+        job.updateProgress(100, "Export completed");
     }
 
     /**

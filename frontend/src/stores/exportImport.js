@@ -236,67 +236,26 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // API Actions - Export (OwnTracks)
+        // Convenience wrapper for createExportJob with OwnTracks format
         async createOwnTracksExportJob(dateRange) {
-            this.isExporting = true
-            try {
-                const response = await apiService.post('/export/owntracks/create', {
-                    dateRange
-                })
-
-                // Handle successful response
-                if (response.success) {
-                    this.setCurrentExportJob(response)
-                    this.addExportJob(response)
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'OwnTracks export creation failed')
-                }
-            } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'OwnTracks export creation failed')
-                }
-                throw error
-            } finally {
-                this.isExporting = false
-            }
+            return this.createExportJob(['raw_gps'], dateRange, 'owntracks')
         },
 
         // API Actions - Export (GeoJSON)
+        // Convenience wrapper for createExportJob with GeoJSON format
         async createGeoJsonExportJob(dateRange) {
-            this.isExporting = true
-            try {
-                const response = await apiService.post('/export/geojson/create', {
-                    dateRange
-                })
-
-                // Handle successful response
-                if (response.success) {
-                    this.setCurrentExportJob(response)
-                    this.addExportJob(response)
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'GeoJSON export creation failed')
-                }
-            } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'GeoJSON export creation failed')
-                }
-                throw error
-            } finally {
-                this.isExporting = false
-            }
+            return this.createExportJob(['raw_gps'], dateRange, 'geojson')
         },
 
         // API Actions - Export (GPX)
+        // Convenience wrapper for createExportJob with GPX format
         async createGpxExportJob(dateRange, zipPerTrip = false, zipGroupBy = 'individual') {
             this.isExporting = true
             try {
-                const response = await apiService.post('/export/gpx/create', {
+                const response = await apiService.post('/export/create', {
+                    dataTypes: ['raw_gps'],
                     dateRange,
+                    format: 'gpx',
                     options: {
                         zipPerTrip,
                         zipGroupBy
@@ -324,31 +283,9 @@ export const useExportImportStore = defineStore('exportImport', {
         },
 
         // API Actions - Export (CSV)
+        // Convenience wrapper for createExportJob with CSV format
         async createCsvExportJob(dateRange) {
-            this.isExporting = true
-            try {
-                const response = await apiService.post('/export/csv/create', {
-                    dateRange
-                })
-
-                // Handle successful response
-                if (response.success) {
-                    this.setCurrentExportJob(response)
-                    this.addExportJob(response)
-                    return response
-                } else {
-                    throw new Error(response.error?.message || 'CSV export creation failed')
-                }
-            } catch (error) {
-                // Handle API error responses
-                if (error.response?.data?.error) {
-                    const apiError = error.response.data.error
-                    throw new Error(apiError.message || 'CSV export creation failed')
-                }
-                throw error
-            } finally {
-                this.isExporting = false
-            }
+            return this.createExportJob(['raw_gps'], dateRange, 'csv')
         },
 
         // Download CSV template

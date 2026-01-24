@@ -3,20 +3,22 @@ package org.github.tess1o.geopulse.export.service;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Service responsible for generating CSV format exports using streaming approach.
- * Memory-efficient: processes GPS points in batches without loading all data into memory.
+ * Service responsible for generating CSV format exports using streaming
+ * approach.
+ * Memory-efficient: processes GPS points in batches without loading all data
+ * into memory.
  */
 @ApplicationScoped
 @Slf4j
@@ -25,24 +27,32 @@ public class CsvExportService {
     @Inject
     GpsPointRepository gpsPointRepository;
 
-    private static final int BATCH_SIZE = 1000;
+    @Inject
+    SystemSettingsService settingsService;
+
+    @Inject
+    ExportTempFileService tempFileService;
 
     /**
      * Generates a CSV export for the given export job using STREAMING approach.
-     * Memory usage: O(batch_size) instead of O(total_records).
+     * Writes directly to a temporary file to avoid memory issues.
      *
      * @param job the export job
-     * @return the CSV as bytes
      * @throws IOException if an I/O error occurs
      */
-    public byte[] generateCsvExport(ExportJob job) throws IOException {
+    public void generateCsvExport(ExportJob job) throws IOException {
         log.info("Starting streaming CSV export for user {}", job.getUserId());
 
         job.updateProgress(5, "Initializing CSV export...");
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        int batchSize = settingsService.getInteger("export.batch-size");
 
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
+        // Create temp file
+        java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".csv");
+
+        try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8))) {
+
             // Write CSV header
             writer.write("timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type\n");
 
@@ -54,14 +64,13 @@ public class CsvExportService {
             while (true) {
                 // Fetch batch of GPS points
                 List<GpsPointEntity> batch = gpsPointRepository.findByUserAndDateRange(
-                    job.getUserId(),
-                    job.getDateRange().getStartDate(),
-                    job.getDateRange().getEndDate(),
-                    page,
-                    BATCH_SIZE,
-                    "timestamp",
-                    "asc"
-                );
+                        job.getUserId(),
+                        job.getDateRange().getStartDate(),
+                        job.getDateRange().getEndDate(),
+                        page,
+                        batchSize,
+                        "timestamp",
+                        "asc");
 
                 if (batch.isEmpty()) {
                     break;
@@ -77,7 +86,7 @@ public class CsvExportService {
                 page++;
 
                 // Update progress (10% to 90%)
-                int progress = 10 + (int) (80.0 * totalWritten / Math.max(totalWritten + BATCH_SIZE, 1));
+                int progress = 10 + (int) (80.0 * totalWritten / Math.max(totalWritten + batchSize, 1));
                 progress = Math.min(progress, 90);
                 job.updateProgress(progress, String.format("Exporting GPS points: %d records", totalWritten));
 
@@ -90,17 +99,20 @@ public class CsvExportService {
             log.info("Completed streaming CSV export: {} records in {} batches", totalWritten, page);
         }
 
-        byte[] result = baos.toByteArray();
+        // Update job with file info
+        job.setTempFilePath(tempFile.toString());
+        job.setFileExtension(".csv");
+        job.setContentType("text/csv");
+        job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
 
         job.updateProgress(95, "Finalizing CSV export...");
-        log.info("Completed CSV export: {} bytes", result.length);
-
-        return result;
+        job.updateProgress(100, "Export completed");
     }
 
     /**
      * Format a single GPS point as a CSV row.
-     * Format: timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
+     * Format:
+     * timestamp,latitude,longitude,accuracy,velocity,altitude,battery,device_id,source_type
      *
      * @param point GPS point entity
      * @return CSV row string with newline

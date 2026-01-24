@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 
 import java.io.IOException;
@@ -32,13 +33,18 @@ public class StreamingExportService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    SystemSettingsService settingsService;
+
     private final JsonFactory jsonFactory = new JsonFactory();
 
     /**
-     * Default batch size for streaming exports.
-     * Aligned with import batch size for consistency.
+     * Get the batch size for streaming exports from configuration.
+     * Falls back to default of 1000 if not configured.
      */
-    public static final int DEFAULT_BATCH_SIZE = 1000;
+    public int getBatchSize() {
+        return settingsService.getInteger("export.batch-size");
+    }
 
     /**
      * Streams a JSON array to output stream by processing data in batches.
@@ -230,7 +236,7 @@ public class StreamingExportService {
         }
 
         // If first batch is full, there are likely more batches
-        if (firstBatch.size() >= DEFAULT_BATCH_SIZE) {
+        if (firstBatch.size() >= getBatchSize()) {
             log.debug("Estimating record count based on batch size (actual count unavailable)");
             return -1; // Unknown, will skip progress percentage
         }

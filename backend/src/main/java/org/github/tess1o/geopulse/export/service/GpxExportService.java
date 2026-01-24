@@ -6,6 +6,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.gps.integrations.gpx.model.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
@@ -14,7 +15,6 @@ import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -29,7 +29,8 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * Service responsible for generating GPX format exports.
- * Handles single file GPX, per-trip/stay GPX zips, and individual trip/stay exports.
+ * Handles single file GPX, per-trip/stay GPX zips, and individual trip/stay
+ * exports.
  */
 @ApplicationScoped
 @Slf4j
@@ -43,6 +44,12 @@ public class GpxExportService {
     @Inject
     ExportDataCollectorService dataCollectorService;
 
+    @Inject
+    SystemSettingsService settingsService;
+
+    @Inject
+    ExportTempFileService tempFileService;
+
     /**
      * Converts a list of GPS points to a GPX track.
      * This is the core conversion logic used by all export methods.
@@ -53,7 +60,7 @@ public class GpxExportService {
      * @return GPX track with all points, or null if no points
      */
     private GpxTrack convertGpsPointsToGpxTrack(List<org.github.tess1o.geopulse.gps.model.GpsPointEntity> gpsPoints,
-                                                String trackName, String trackDescription) {
+            String trackName, String trackDescription) {
         if (gpsPoints == null || gpsPoints.isEmpty()) {
             return null;
         }
@@ -86,24 +93,27 @@ public class GpxExportService {
     }
 
     /**
-     * Generates a GPX export, either as a single file or as a ZIP with per-trip files.
+     * Generates a GPX export, either as a single file or as a ZIP with per-trip
+     * files.
+     * Writes directly to a temporary file to avoid memory issues.
      *
      * @param job        the export job
-     * @param zipPerTrip if true, creates a ZIP with separate GPX files per trip/stay
-     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or "daily" (per day)
-     * @return the GPX file content or ZIP archive as bytes
+     * @param zipPerTrip if true, creates a ZIP with separate GPX files per
+     *                   trip/stay
+     * @param zipGroupBy grouping mode for ZIP: "individual" (per trip/stay) or
+     *                   "daily" (per day)
      * @throws IOException if an I/O error occurs
      */
-    public byte[] generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
+    public void generateGpxExport(ExportJob job, boolean zipPerTrip, String zipGroupBy) throws IOException {
         log.info("Generating GPX export for user {}, zipPerTrip={}, zipGroupBy={}",
                 job.getUserId(), zipPerTrip, zipGroupBy);
 
         job.updateProgress(5, "Initializing GPX export...");
 
         if (zipPerTrip) {
-            return generateGpxExportAsZip(job, zipGroupBy);
+            generateGpxExportAsZip(job, zipGroupBy);
         } else {
-            return generateSingleGpxFile(job);
+            generateSingleGpxFile(job);
         }
     }
 
@@ -112,29 +122,34 @@ public class GpxExportService {
      * This handles millions of GPS points without loading them all into memory.
      *
      * @param job the export job
-     * @return the GPX file as bytes
      * @throws IOException if an I/O error occurs
      */
-    private byte[] generateSingleGpxFile(ExportJob job) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    private void generateSingleGpxFile(ExportJob job) throws IOException {
+        // Create temp file
+        java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".gpx");
 
         job.updateProgress(10, "Starting GPX generation...");
 
-        try {
-            streamGpxFileToOutput(job, baos);
-            byte[] result = baos.toByteArray();
+        try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile)) {
+            streamGpxFileToOutput(job, os);
+
+            // Update job with file info
+            job.setTempFilePath(tempFile.toString());
+            job.setFileExtension(".gpx");
+            job.setContentType("application/gpx+xml");
+            job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
 
             job.updateProgress(95, "Finalizing GPX export...");
-            log.info("Generated streaming GPX export with {} bytes", result.length);
+            log.info("Generated streaming GPX export");
 
-            return result;
         } catch (XMLStreamException e) {
             throw new IOException("Failed to generate GPX export: " + e.getMessage(), e);
         }
     }
 
     /**
-     * Streams a complete GPX file to the output stream without loading all data into memory.
+     * Streams a complete GPX file to the output stream without loading all data
+     * into memory.
      * Uses XMLStreamWriter for memory-efficient export of millions of GPS points.
      *
      * @param job          the export job
@@ -142,7 +157,7 @@ public class GpxExportService {
      * @throws XMLStreamException if XML writing fails
      * @throws IOException        if data collection fails
      */
-    private void streamGpxFileToOutput(ExportJob job, ByteArrayOutputStream outputStream)
+    private void streamGpxFileToOutput(ExportJob job, java.io.OutputStream outputStream)
             throws XMLStreamException, IOException {
 
         XMLOutputFactory factory = XMLOutputFactory.newInstance();
@@ -195,7 +210,7 @@ public class GpxExportService {
     private void streamRawGpsTrack(ExportJob job, XMLStreamWriter xml)
             throws XMLStreamException {
 
-        final int BATCH_SIZE = 1000; // Process 1000 points at a time
+        int batchSize = settingsService.getInteger("export.batch-size");
         int page = 0;
         long totalPoints = 0;
         boolean trackStarted = false;
@@ -211,10 +226,9 @@ public class GpxExportService {
                     job.getDateRange().getStartDate(),
                     job.getDateRange().getEndDate(),
                     page,
-                    BATCH_SIZE,
+                    batchSize,
                     "timestamp",
-                    "asc"
-            );
+                    "asc");
 
             if (batch.isEmpty()) {
                 break;
@@ -279,7 +293,8 @@ public class GpxExportService {
     }
 
     /**
-     * Streams timeline trips as GPX tracks with ALL raw GPS points (not simplified paths).
+     * Streams timeline trips as GPX tracks with ALL raw GPS points (not simplified
+     * paths).
      * CRITICAL FIX: Fetches raw GPS data for each trip to prevent data loss.
      */
     private void streamTimelineTripTracks(ExportJob job, XMLStreamWriter xml)
@@ -297,8 +312,7 @@ public class GpxExportService {
             var tripGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
                     trip.getUser().getId(),
                     tripStart,
-                    tripEnd
-            );
+                    tripEnd);
 
             if (tripGpsPoints.isEmpty()) {
                 continue; // Skip trips with no GPS data
@@ -380,9 +394,7 @@ public class GpxExportService {
 
             long hours = stay.getStayDuration() / 3600;
             long minutes = (stay.getStayDuration() % 3600) / 60;
-            String durationStr = hours > 0 ?
-                    String.format("%dh %dm", hours, minutes) :
-                    String.format("%dm", minutes);
+            String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
 
             xml.writeStartElement("desc");
             xml.writeCharacters(String.format("Duration: %s", durationStr));
@@ -402,29 +414,32 @@ public class GpxExportService {
      * Generates a ZIP archive with separate GPX files for each trip and stay.
      *
      * @param job        the export job
-     * @param zipGroupBy grouping mode: "individual" (per trip/stay) or "daily" (per day)
-     * @return the ZIP archive as bytes
+     * @param zipGroupBy grouping mode: "individual" (per trip/stay) or "daily" (per
+     *                   day)
      * @throws IOException if an I/O error occurs
      */
-    private byte[] generateGpxExportAsZip(ExportJob job, String zipGroupBy) throws IOException {
+    private void generateGpxExportAsZip(ExportJob job, String zipGroupBy) throws IOException {
         if ("daily".equalsIgnoreCase(zipGroupBy)) {
-            return generateGpxExportAsZipGroupedByDay(job);
+            generateGpxExportAsZipGroupedByDay(job);
         } else {
             // Default to individual grouping (one file per trip/stay)
-            return generateGpxExportAsZipIndividual(job);
+            generateGpxExportAsZipIndividual(job);
         }
     }
 
     /**
-     * Generates a ZIP archive with separate GPX files for each trip and stay (individual mode).
+     * Generates a ZIP archive with separate GPX files for each trip and stay
+     * (individual mode).
      *
      * @param job the export job
-     * @return the ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
-    private byte[] generateGpxExportAsZipIndividual(ExportJob job) throws IOException {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             ZipOutputStream zos = new ZipOutputStream(baos)) {
+    private void generateGpxExportAsZipIndividual(ExportJob job) throws IOException {
+        // Create temp file
+        java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".zip");
+
+        try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
+                ZipOutputStream zos = new ZipOutputStream(os)) {
 
             job.updateProgress(10, "Loading trips and stays...");
 
@@ -457,7 +472,8 @@ public class GpxExportService {
                 processedItems++;
                 if (processedItems % 10 == 0 || processedItems == totalItems) {
                     int progress = 10 + (int) ((double) processedItems / totalItems * 80);
-                    job.updateProgress(progress, String.format("Exporting GPX files: %d / %d", processedItems, totalItems));
+                    job.updateProgress(progress,
+                            String.format("Exporting GPX files: %d / %d", processedItems, totalItems));
                 }
             }
 
@@ -479,7 +495,8 @@ public class GpxExportService {
                 processedItems++;
                 if (processedItems % 10 == 0 || processedItems == totalItems) {
                     int progress = 10 + (int) ((double) processedItems / totalItems * 80);
-                    job.updateProgress(progress, String.format("Exporting GPX files: %d / %d", processedItems, totalItems));
+                    job.updateProgress(progress,
+                            String.format("Exporting GPX files: %d / %d", processedItems, totalItems));
                 }
             }
 
@@ -487,24 +504,31 @@ public class GpxExportService {
 
             zos.finish();
 
+            // Update job with file info
+            job.setTempFilePath(tempFile.toString());
+            job.setFileExtension(".zip");
+            job.setContentType("application/zip");
+            job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
+
             job.updateProgress(95, "GPX ZIP export completed");
-            log.debug("Generated GPX zip with {} trips and {} stays, {} bytes total",
-                    trips.size(), stays.size(), baos.toByteArray().length);
-            return baos.toByteArray();
+            log.debug("Generated GPX zip with {} trips and {} stays", trips.size(), stays.size());
         }
     }
 
     /**
      * Generates a ZIP archive with GPX files grouped by day.
-     * Each day gets one GPX file containing all trips (as tracks) and stays (as waypoints) for that day.
+     * Each day gets one GPX file containing all trips (as tracks) and stays (as
+     * waypoints) for that day.
      *
      * @param job the export job
-     * @return the ZIP archive as bytes
      * @throws IOException if an I/O error occurs
      */
-    private byte[] generateGpxExportAsZipGroupedByDay(ExportJob job) throws IOException {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             ZipOutputStream zos = new ZipOutputStream(baos)) {
+    private void generateGpxExportAsZipGroupedByDay(ExportJob job) throws IOException {
+        // Create temp file
+        java.nio.file.Path tempFile = tempFileService.createTempFile(job.getJobId(), ".zip");
+
+        try (java.io.OutputStream os = java.nio.file.Files.newOutputStream(tempFile);
+                ZipOutputStream zos = new ZipOutputStream(os)) {
 
             job.updateProgress(10, "Loading trips and stays...");
 
@@ -556,7 +580,8 @@ public class GpxExportService {
                 dayCount++;
                 if (dayCount % 5 == 0 || dayCount == allDays.size()) {
                     int progress = 20 + (int) ((double) dayCount / allDays.size() * 70);
-                    job.updateProgress(progress, String.format("Created %d / %d daily GPX files", dayCount, allDays.size()));
+                    job.updateProgress(progress,
+                            String.format("Created %d / %d daily GPX files", dayCount, allDays.size()));
                 }
 
                 log.debug("Added {} with {} trips and {} stays", filename,
@@ -568,16 +593,22 @@ public class GpxExportService {
 
             zos.finish();
 
+            // Update job with file info
+            job.setTempFilePath(tempFile.toString());
+            job.setFileExtension(".zip");
+            job.setContentType("application/zip");
+            job.setFileSizeBytes(java.nio.file.Files.size(tempFile));
+
             job.updateProgress(95, "GPX ZIP export completed");
-            log.debug("Generated GPX zip with {} daily files, {} bytes total",
-                    allDays.size(), baos.toByteArray().length);
-            return baos.toByteArray();
+            log.debug("Generated GPX zip with {} daily files", allDays.size());
         }
     }
 
     /**
-     * Builds a GPX file for a single day with ALL raw GPS points organized by trips/stays.
-     * IMPORTANT: Each trip gets its own track with ALL GPS points (not simplified path)!
+     * Builds a GPX file for a single day with ALL raw GPS points organized by
+     * trips/stays.
+     * IMPORTANT: Each trip gets its own track with ALL GPS points (not simplified
+     * path)!
      *
      * @param day   the date
      * @param trips the trips for that day
@@ -585,7 +616,7 @@ public class GpxExportService {
      * @return the GPX file model
      */
     private GpxFile buildGpxFileForDay(java.time.LocalDate day, List<TimelineTripEntity> trips,
-                                       List<TimelineStayEntity> stays) {
+            List<TimelineStayEntity> stays) {
         GpxFile gpxFile = new GpxFile();
         gpxFile.setVersion("1.1");
         gpxFile.setCreator("GeoPulse");
@@ -609,8 +640,7 @@ public class GpxExportService {
             var tripGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
                     trip.getUser().getId(),
                     tripStart,
-                    tripEnd
-            );
+                    tripEnd);
 
             if (!tripGpsPoints.isEmpty()) {
                 String timeStr = tripStart.toString().substring(11, 16);
@@ -621,8 +651,7 @@ public class GpxExportService {
                         tripGpsPoints,
                         String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType),
                         String.format("%d GPS points, Duration: %d min, Distance: %s km",
-                                tripGpsPoints.size(), trip.getTripDuration() / 60, distanceKm)
-                );
+                                tripGpsPoints.size(), trip.getTripDuration() / 60, distanceKm));
 
                 if (track != null) {
                     tracks.add(track);
@@ -637,27 +666,27 @@ public class GpxExportService {
             GpxWaypoint waypoint = createWaypointFromStay(stay);
             waypoints.add(waypoint);
 
-            // Optionally add GPS track for stay period (if there are GPS points during stay)
+            // Optionally add GPS track for stay period (if there are GPS points during
+            // stay)
             java.time.Instant stayStart = stay.getTimestamp();
             java.time.Instant stayEnd = stayStart.plusSeconds(stay.getStayDuration());
 
             var stayGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
                     stay.getUser().getId(),
                     stayStart,
-                    stayEnd
-            );
+                    stayEnd);
 
             if (!stayGpsPoints.isEmpty()) {
                 long hours = stay.getStayDuration() / 3600;
                 long minutes = (stay.getStayDuration() % 3600) / 60;
-                String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
+                String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes)
+                        : String.format("%dm", minutes);
                 String locationName = stay.getLocationName() != null ? stay.getLocationName() : "Unknown";
 
                 GpxTrack stayTrack = convertGpsPointsToGpxTrack(
                         stayGpsPoints,
                         String.format("Stay: %s (%s)", locationName, durationStr),
-                        String.format("%d GPS points during stay", stayGpsPoints.size())
-                );
+                        String.format("%d GPS points during stay", stayGpsPoints.size()));
 
                 if (stayTrack != null) {
                     tracks.add(stayTrack);
@@ -718,7 +747,8 @@ public class GpxExportService {
         return xml.getBytes();
     }
 
-    // Old non-streaming methods removed - replaced by streamGpxFileToOutput() and streaming helpers
+    // Old non-streaming methods removed - replaced by streamGpxFileToOutput() and
+    // streaming helpers
 
     /**
      * Creates a GPX waypoint from a timeline stay.
@@ -736,9 +766,7 @@ public class GpxExportService {
         // Format duration nicely
         long hours = stay.getStayDuration() / 3600;
         long minutes = (stay.getStayDuration() % 3600) / 60;
-        String durationStr = hours > 0 ?
-                String.format("%dh %dm", hours, minutes) :
-                String.format("%dm", minutes);
+        String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
 
         waypoint.setDescription(String.format("Duration: %s", durationStr));
         waypoint.setSymbol("Flag");
@@ -748,7 +776,8 @@ public class GpxExportService {
 
     /**
      * Builds a GPX file for a single trip with ALL raw GPS points.
-     * IMPORTANT: Exports ALL GPS points from trip time range, not simplified timeline path!
+     * IMPORTANT: Exports ALL GPS points from trip time range, not simplified
+     * timeline path!
      *
      * @param trip the timeline trip entity
      * @return the GPX file model
@@ -763,13 +792,13 @@ public class GpxExportService {
         metadata.setTime(java.time.Instant.now());
         gpxFile.setMetadata(metadata);
 
-        // CRITICAL FIX: Export ALL raw GPS points for this trip, not simplified timeline path!
+        // CRITICAL FIX: Export ALL raw GPS points for this trip, not simplified
+        // timeline path!
         java.time.Instant endTime = trip.getTimestamp().plusSeconds(trip.getTripDuration());
         var gpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
                 trip.getUser().getId(),
                 trip.getTimestamp(),
-                endTime
-        );
+                endTime);
 
         String timeStr = trip.getTimestamp().toString().substring(11, 16);
         String movementType = trip.getMovementType() != null ? trip.getMovementType() : "Unknown";
@@ -779,12 +808,11 @@ public class GpxExportService {
                 gpsPoints,
                 String.format("Trip: %s (%s km, %s)", timeStr, distanceKm, movementType),
                 String.format("%d GPS points, Duration: %d min, Distance: %s km",
-                        gpsPoints.size(), trip.getTripDuration() / 60, distanceKm)
-        );
+                        gpsPoints.size(), trip.getTripDuration() / 60, distanceKm));
 
         if (track != null) {
             gpxFile.setTracks(List.of(track));
-            log.info("Exported {} raw GPS points for trip",gpsPoints.size());
+            log.info("Exported {} raw GPS points for trip", gpsPoints.size());
         } else {
             gpxFile.setTracks(List.of());
         }
@@ -814,8 +842,7 @@ public class GpxExportService {
     }
 
     /**
-     * Builds a GPX file for a single stay with ALL raw GPS points from the stay period.
-     * IMPORTANT: Exports ALL GPS points from stay time range to prevent data loss!
+     * Builds a GPX file for a single stay.
      *
      * @param stay the timeline stay entity
      * @return the GPX file model
@@ -830,34 +857,31 @@ public class GpxExportService {
         metadata.setTime(java.time.Instant.now());
         gpxFile.setMetadata(metadata);
 
-        // Create waypoint marker for the stay
-        GpxWaypoint waypoint = createWaypointFromStay(stay);
-        gpxFile.setWaypoints(List.of(waypoint));
+        var tracks = new ArrayList<GpxTrack>();
 
-        // CRITICAL FIX: Export ALL raw GPS points during the stay period
-        java.time.Instant endTime = stay.getTimestamp().plusSeconds(stay.getStayDuration());
-        var gpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
+        // Export GPS track for stay if available
+        java.time.Instant stayStart = stay.getTimestamp();
+        java.time.Instant stayEnd = stayStart.plusSeconds(stay.getStayDuration());
+
+        var stayGpsPoints = dataCollectorService.collectGpsPointsInTimeRange(
                 stay.getUser().getId(),
-                stay.getTimestamp(),
-                endTime
-        );
+                stayStart,
+                stayEnd);
 
-        long hours = stay.getStayDuration() / 3600;
-        long minutes = (stay.getStayDuration() % 3600) / 60;
-        String durationStr = hours > 0 ? String.format("%dh %dm", hours, minutes) : String.format("%dm", minutes);
+        if (!stayGpsPoints.isEmpty()) {
+            GpxTrack stayTrack = convertGpsPointsToGpxTrack(
+                    stayGpsPoints,
+                    "Stay GPS Track",
+                    String.format("%d GPS points during stay", stayGpsPoints.size()));
 
-        GpxTrack track = convertGpsPointsToGpxTrack(
-                gpsPoints,
-                String.format("Stay: %s (%s)", stay.getLocationName() != null ? stay.getLocationName() : "Unknown", durationStr),
-                String.format("%d GPS points during stay", gpsPoints.size())
-        );
-
-        if (track != null) {
-            gpxFile.setTracks(List.of(track));
-            log.info("Exported {} raw GPS points for stay (duration: {} seconds)", gpsPoints.size(), stay.getStayDuration());
-        } else {
-            gpxFile.setTracks(List.of());
+            if (stayTrack != null) {
+                tracks.add(stayTrack);
+            }
         }
+        gpxFile.setTracks(tracks);
+
+        // Add waypoint for the stay itself
+        gpxFile.setWaypoints(List.of(createWaypointFromStay(stay)));
 
         return gpxFile;
     }
