@@ -5,12 +5,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportJob;
 import org.github.tess1o.geopulse.export.model.ExportStatus;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -33,17 +32,11 @@ public class ExportJobManager {
     private final ConcurrentHashMap<UUID, ExportJob> activeJobs = new ConcurrentHashMap<>();
     private volatile boolean processing = false;
 
-    public ExportJob createExportJob(UUID userId, List<String> dataTypes,
-            org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
-            String format) {
+    public ExportJob createExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format) {
         return createExportJob(userId, dataTypes, dateRange, format, null);
     }
 
-    public ExportJob createExportJob(UUID userId, List<String> dataTypes,
-            org.github.tess1o.geopulse.export.model.ExportDateRange dateRange,
-            String format,
-            Map<String, Object> options) {
-
+    public ExportJob createExportJob(UUID userId, List<String> dataTypes, ExportDateRange dateRange, String format, Map<String, Object> options) {
         // Validate active jobs limit
         validateJobLimit(userId);
 
@@ -116,22 +109,23 @@ public class ExportJobManager {
         exportStrategies.put("owntracks", job -> exportDataGenerator.generateOwnTracksExport(job));
         exportStrategies.put("geojson", job -> exportDataGenerator.generateGeoJsonExport(job));
         exportStrategies.put("csv", job -> exportDataGenerator.generateCsvExport(job));
-        exportStrategies.put("gpx", job -> {
-            boolean zipPerTrip = false;
-            String zipGroupBy = "individual"; // default
+        exportStrategies.put("gpx", this::generateGpx);
+        exportStrategies.put("geopulse", job -> exportDataGenerator.generateGeoPulseNativeExport(job));
+    }
 
-            if (job.getOptions() != null) {
-                if (job.getOptions().containsKey("zipPerTrip")) {
-                    zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
-                }
-                if (job.getOptions().containsKey("zipGroupBy")) {
-                    zipGroupBy = job.getOptions().get("zipGroupBy").toString();
-                }
+    private void generateGpx(ExportJob job) throws IOException {
+        boolean zipPerTrip = false;
+        String zipGroupBy = "individual"; // default
+
+        if (job.getOptions() != null) {
+            if (job.getOptions().containsKey("zipPerTrip")) {
+                zipPerTrip = Boolean.parseBoolean(job.getOptions().get("zipPerTrip").toString());
             }
-            exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
-        });
-        // Default strategy (geopulse/zip) - can be explicit or fallback
-        exportStrategies.put("geopulse", job -> exportDataGenerator.generateExportZip(job));
+            if (job.getOptions().containsKey("zipGroupBy")) {
+                zipGroupBy = job.getOptions().get("zipGroupBy").toString();
+            }
+        }
+        exportDataGenerator.generateGpxExport(job, zipPerTrip, zipGroupBy);
     }
 
     @FunctionalInterface
@@ -141,7 +135,7 @@ public class ExportJobManager {
 
     // ... existing methods ...
 
-    @Scheduled(every = "2s")
+    @Scheduled(every = "{geopulse.export.scheduler-interval}")
     public void processExportJobs() {
         if (processing) {
             return;
@@ -166,22 +160,19 @@ public class ExportJobManager {
 
         for (ExportJob job : pendingJobs) {
             try {
-                log.debug("Processing export job {}", job.getJobId());
+                log.debug("Processing export job {} with format {}", job.getJobId(), job.getFormat());
 
+                // Get format-specific processor - fail fast if unsupported
                 ExportJobProcessor processor = exportStrategies.get(job.getFormat());
                 if (processor == null) {
-                    // Fallback to default (geopulse zip) if not found, or error?
-                    // Historic behavior suggests "else" block was for geopulse zip.
-                    // Let's assume blank or unknown format maps to default if we want to preserve
-                    // "else" behavior
-                    processor = exportStrategies.get("geopulse");
+                    throw new IllegalArgumentException(
+                            String.format("Unsupported export format: '%s'. Supported formats: %s",
+                                    job.getFormat(),
+                                    String.join(", ", exportStrategies.keySet()))
+                    );
                 }
 
-                if (processor != null) {
-                    processor.process(job);
-                } else {
-                    throw new IllegalArgumentException("Unsupported export format: " + job.getFormat());
-                }
+                processor.process(job);
 
                 // Status and progress are updated by the generator services,
                 // but we finalize it here to ensure consistency
@@ -228,21 +219,5 @@ public class ExportJobManager {
         if (!expiredJobs.isEmpty()) {
             log.info("Cleaned up {} expired export jobs", expiredJobs.size());
         }
-    }
-
-    public int getActiveJobCount() {
-        return activeJobs.size();
-    }
-
-    public void clearAllJobs() {
-        // Clean up temp files for all jobs
-        for (ExportJob job : activeJobs.values()) {
-            if (job.getTempFilePath() != null) {
-                tempFileService.deleteTempFile(job.getTempFilePath());
-            }
-        }
-        int count = activeJobs.size();
-        activeJobs.clear();
-        log.info("Cleared {} export jobs", count);
     }
 }

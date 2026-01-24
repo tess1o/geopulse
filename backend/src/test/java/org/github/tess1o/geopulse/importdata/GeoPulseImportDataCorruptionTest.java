@@ -97,7 +97,7 @@ public class GeoPulseImportDataCorruptionTest {
                 dateRange,
                 ExportImportConstants.Formats.JSON);
 
-        exportDataGenerator.generateExportZip(exportJob);
+        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
         exportData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
         assertNotNull(exportData);
         assertTrue(exportData.length > 0);

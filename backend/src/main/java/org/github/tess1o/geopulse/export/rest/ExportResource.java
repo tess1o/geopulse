@@ -49,67 +49,56 @@ public class ExportResource {
     @Inject
     SystemSettingsService settingsService;
 
+    /**
+     * @deprecated Use {@link #createExport(CreateExportRequest)} with format field instead.
+     * This endpoint is kept for backward compatibility.
+     */
+    @Deprecated
     @POST
     @jakarta.ws.rs.Path("/owntracks/create")
     public Response createOwnTracksExport(CreateExportRequest request) {
-        return handleExportCreation(request, "owntracks", List.of(ExportImportConstants.DataTypes.RAW_GPS), "OwnTracks",
-                null);
+        request.setFormat("owntracks");
+        request.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
+        return createExport(request);
     }
 
+    /**
+     * @deprecated Use {@link #createExport(CreateExportRequest)} with format field instead.
+     * This endpoint is kept for backward compatibility.
+     */
+    @Deprecated
     @POST
     @jakarta.ws.rs.Path("/geojson/create")
     public Response createGeoJsonExport(CreateExportRequest request) {
-        return handleExportCreation(request, "geojson", List.of(ExportImportConstants.DataTypes.RAW_GPS), "GeoJSON",
-                null);
+        request.setFormat("geojson");
+        request.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
+        return createExport(request);
     }
 
+    /**
+     * @deprecated Use {@link #createExport(CreateExportRequest)} with format field instead.
+     * This endpoint is kept for backward compatibility.
+     */
+    @Deprecated
     @POST
     @jakarta.ws.rs.Path("/gpx/create")
     public Response createGpxExport(CreateExportRequest request) {
-        // Get options from request
-        boolean zipPerTrip = false;
-        String zipGroupBy = "individual"; // default
-
-        if (request.getOptions() != null) {
-            if (request.getOptions().containsKey("zipPerTrip")) {
-                zipPerTrip = Boolean.parseBoolean(request.getOptions().get("zipPerTrip").toString());
-            }
-            if (request.getOptions().containsKey("zipGroupBy")) {
-                zipGroupBy = request.getOptions().get("zipGroupBy").toString();
-            }
-        }
-
-        Map<String, Object> options = new HashMap<>();
-        options.put("zipPerTrip", zipPerTrip);
-        options.put("zipGroupBy", zipGroupBy);
-
-        return handleExportCreation(request, "gpx", List.of(ExportImportConstants.DataTypes.RAW_GPS), "GPX", options);
+        request.setFormat("gpx");
+        request.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
+        return createExport(request);
     }
 
+    /**
+     * @deprecated Use {@link #createExport(CreateExportRequest)} with format field instead.
+     * This endpoint is kept for backward compatibility.
+     */
+    @Deprecated
     @POST
     @jakarta.ws.rs.Path("/csv/create")
     public Response createCsvExport(CreateExportRequest request) {
-        return handleExportCreation(request, "csv", List.of(ExportImportConstants.DataTypes.RAW_GPS), "CSV", null);
-    }
-
-    private Response handleExportCreation(CreateExportRequest request, String format, List<String> dataTypes,
-            String formatName, Map<String, Object> options) {
-        try {
-            var validationError = validateDateRange(request.getDateRange());
-            if (validationError.isPresent()) {
-                return validationError.get();
-            }
-
-            UUID userId = currentUserService.getCurrentUserId();
-            ExportJob job = exportJobManager.createExportJob(userId, dataTypes, request.getDateRange(), format,
-                    options);
-            return createExportJobSuccessResponse(job, formatName);
-
-        } catch (IllegalStateException e) {
-            return handleTooManyRequests(e);
-        } catch (Exception e) {
-            return handleExportCreationError(e, formatName);
-        }
+        request.setFormat("csv");
+        request.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
+        return createExport(request);
     }
 
     @GET
@@ -168,12 +157,17 @@ public class ExportResource {
         }
     }
 
+    /**
+     * Unified endpoint for creating export jobs.
+     * Replaces format-specific endpoints (/owntracks/create, /geojson/create, etc.)
+     *
+     * @param request Export request with format, dataTypes, dateRange, and optional options
+     * @return Export job response with job ID and status
+     */
     @POST
     @jakarta.ws.rs.Path("/create")
     public Response createExport(CreateExportRequest request) {
         try {
-            UUID userId = currentUserService.getCurrentUserId();
-
             // Validate request
             if (request.getDataTypes() == null || request.getDataTypes().isEmpty()) {
                 return Response.status(Response.Status.BAD_REQUEST)
@@ -181,47 +175,27 @@ public class ExportResource {
                         .build();
             }
 
-            if (request.getDateRange() == null ||
-                    request.getDateRange().getStartDate() == null ||
-                    request.getDateRange().getEndDate() == null) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("INVALID_REQUEST", "Date range is required"))
-                        .build();
+            // Validate date range using extracted helper
+            var validationError = validateDateRange(request.getDateRange());
+            if (validationError.isPresent()) {
+                return validationError.get();
             }
 
-            if (request.getDateRange().getStartDate().isAfter(Instant.now())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("INVALID_REQUEST", "Start date cannot be in the future"))
-                        .build();
+            // Validate format if provided
+            if (request.getFormat() == null || request.getFormat().isEmpty()) {
+                request.setFormat("geopulse"); // Default to native format
             }
 
-            if (request.getDateRange().getStartDate().isAfter(request.getDateRange().getEndDate())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(createErrorResponse("INVALID_REQUEST", "Start date must be before end date"))
-                        .build();
-            }
-
+            UUID userId = currentUserService.getCurrentUserId();
             ExportJob job = exportJobManager.createExportJob(userId, request.getDataTypes(),
-                    request.getDateRange(), request.getFormat());
+                    request.getDateRange(), request.getFormat(), request.getOptions());
 
-            ExportJobResponse response = new ExportJobResponse();
-            response.setSuccess(true);
-            response.setExportJobId(job.getJobId());
-            response.setStatus(job.getStatus().name().toLowerCase());
-            response.setMessage("Export job created successfully");
-            response.setEstimatedCompletionTime(Instant.now().plus(5, ChronoUnit.MINUTES));
-
-            return Response.ok(response).build();
+            return createExportJobSuccessResponse(job, request.getFormat().toUpperCase());
 
         } catch (IllegalStateException e) {
-            return Response.status(Response.Status.TOO_MANY_REQUESTS)
-                    .entity(createErrorResponse("RATE_LIMIT_EXCEEDED", e.getMessage()))
-                    .build();
+            return handleTooManyRequests(e);
         } catch (Exception e) {
-            log.error("Failed to create export job", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(createErrorResponse("INTERNAL_ERROR", "Failed to create export job"))
-                    .build();
+            return handleExportCreationError(e, request.getFormat());
         }
     }
 

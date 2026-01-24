@@ -2,10 +2,8 @@ package org.github.tess1o.geopulse.export;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.export.dto.*;
-import org.github.tess1o.geopulse.export.model.CreateExportRequest;
-import org.github.tess1o.geopulse.export.model.ExportDateRange;
-import org.github.tess1o.geopulse.export.model.ExportJobResponse;
-import org.github.tess1o.geopulse.export.model.ExportStatus;
+import org.github.tess1o.geopulse.export.model.*;
+import org.github.tess1o.geopulse.export.rest.ExportResource;
 
 @RegisterForReflection(targets = {
         ExportStatus.class,
@@ -23,6 +21,7 @@ import org.github.tess1o.geopulse.export.model.ExportStatus;
         ExportMetadataDto.class,
         FavoritesDataDto.class,
         ExportDateRange.class,
+        ExportResource.ListExportJobsResponse.class
 })
 public class ExportNativeConfig {
 }

@@ -157,7 +157,7 @@ class ExportImportIntegrationTest {
         timelineStayRepository.persist(testStay);
 
         // Create test timeline trip with LineString path
-        Coordinate[] pathCoordinates = new Coordinate[] {
+        Coordinate[] pathCoordinates = new Coordinate[]{
                 new Coordinate(-122.4194, 37.7749), // Start: San Francisco
                 new Coordinate(-122.4150, 37.7770), // Intermediate point 1
                 new Coordinate(-122.4120, 37.7800), // Intermediate point 2
@@ -281,18 +281,11 @@ class ExportImportIntegrationTest {
         ExportJob exportJob = new ExportJob(
                 testUser.getId(),
                 List.of(ExportImportConstants.DataTypes.TIMELINE, ExportImportConstants.DataTypes.RAW_GPS,
-                        ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES), // Note:
-                                                                                                                      // NOT
-                                                                                                                      // including
-                                                                                                                      // favorites
-                                                                                                                      // or
-                                                                                                                      // reverse
-                                                                                                                      // geocoding
-                                                                                                                      // explicitly
+                        ExportImportConstants.DataTypes.USER_INFO, ExportImportConstants.DataTypes.LOCATION_SOURCES),
                 dateRange,
                 ExportImportConstants.Formats.JSON);
 
-        exportDataGenerator.generateExportZip(exportJob);
+        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
 
         assertNotNull(exportJob.getTempFilePath());
         byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
@@ -432,7 +425,7 @@ class ExportImportIntegrationTest {
         exportJob.setUserId(testUser.getId());
         exportJob.setDataTypes(
                 List.of(ExportImportConstants.DataTypes.FAVORITES, ExportImportConstants.DataTypes.USER_INFO)); // No
-                                                                                                                // timeline
+        // timeline
         exportJob.setFormat(ExportImportConstants.Formats.JSON);
 
         ExportDateRange dateRange = new ExportDateRange();
@@ -440,7 +433,7 @@ class ExportImportIntegrationTest {
         dateRange.setEndDate(Instant.now().plus(1, ChronoUnit.DAYS));
         exportJob.setDateRange(dateRange);
 
-        exportDataGenerator.generateExportZip(exportJob);
+        exportDataGenerator.generateGeoPulseNativeExport(exportJob);
         byte[] exportedData = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
 
         // Validate that reverse geocoding is NOT auto-included

@@ -90,64 +90,6 @@ public class ExportTempFileService {
     }
 
     /**
-     * Get an output stream to write to a temp file.
-     *
-     * @param jobId the export job ID
-     * @param extension the file extension
-     * @return output stream to write export data
-     * @throws IOException if file creation fails
-     */
-    public OutputStream createOutputStream(UUID jobId, String extension) throws IOException {
-        Path tempFile = createTempFile(jobId, extension);
-        return Files.newOutputStream(tempFile);
-    }
-
-    /**
-     * Get the path to an existing temp file for an export job.
-     *
-     * @param jobId the export job ID
-     * @return Optional containing the path if found, empty otherwise
-     */
-    public Optional<Path> getTempFilePath(UUID jobId) {
-        try {
-            Path tempDir = Paths.get(tempDirectory);
-            if (!Files.exists(tempDir)) {
-                return Optional.empty();
-            }
-
-            try (Stream<Path> files = Files.list(tempDir)) {
-                return files
-                        .filter(Files::isRegularFile)
-                        .filter(f -> f.getFileName().toString().startsWith(jobId.toString()))
-                        .findFirst();
-            }
-        } catch (IOException e) {
-            log.warn("Failed to find temp file for job {}", jobId, e);
-            return Optional.empty();
-        }
-    }
-
-    /**
-     * Delete temp file for a completed/expired export job.
-     *
-     * @param jobId the export job ID
-     */
-    public void deleteTempFile(UUID jobId) {
-        getTempFilePath(jobId).ifPresent(tempFile -> {
-            try {
-                if (Files.exists(tempFile)) {
-                    long fileSize = Files.size(tempFile);
-                    Files.delete(tempFile);
-                    log.info("Deleted temp file for export job {}: {} ({} MB)",
-                            jobId, tempFile, fileSize / (1024 * 1024));
-                }
-            } catch (IOException e) {
-                log.warn("Failed to delete temp file for job {}: {}", jobId, tempFile, e);
-            }
-        });
-    }
-
-    /**
      * Delete temp file by path.
      *
      * @param tempFilePath the path to the temp file
@@ -167,41 +109,6 @@ public class ExportTempFileService {
         } catch (IOException e) {
             log.warn("Failed to delete temp file: {}", tempFilePath, e);
         }
-    }
-
-    /**
-     * Get the size of a temp file in bytes.
-     *
-     * @param tempFilePath the path to the temp file
-     * @return file size in bytes, or -1 if file doesn't exist
-     */
-    public long getFileSize(String tempFilePath) {
-        if (tempFilePath == null) {
-            return -1;
-        }
-
-        try {
-            Path tempFile = Paths.get(tempFilePath);
-            if (Files.exists(tempFile)) {
-                return Files.size(tempFile);
-            }
-        } catch (IOException e) {
-            log.warn("Failed to get file size: {}", tempFilePath, e);
-        }
-        return -1;
-    }
-
-    /**
-     * Check if a temp file exists.
-     *
-     * @param tempFilePath the path to the temp file
-     * @return true if file exists
-     */
-    public boolean exists(String tempFilePath) {
-        if (tempFilePath == null) {
-            return false;
-        }
-        return Files.exists(Paths.get(tempFilePath));
     }
 
     /**
@@ -285,13 +192,5 @@ public class ExportTempFileService {
         } catch (IOException e) {
             return false;
         }
-    }
-
-    public String getTempDirectory() {
-        return tempDirectory;
-    }
-
-    public int getRetentionHours() {
-        return settingsService.getInteger("export.temp-file-retention-hours");
     }
 }

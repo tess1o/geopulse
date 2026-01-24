@@ -150,7 +150,7 @@ class SequenceResetTest {
                     dateRange,
                     ExportImportConstants.Formats.JSON);
 
-            exportDataGenerator.generateExportZip(exportJob);
+            exportDataGenerator.generateGeoPulseNativeExport(exportJob);
             byte[] data = java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(exportJob.getTempFilePath()));
             log.info("Export completed with {} bytes", data.length);
             return data;

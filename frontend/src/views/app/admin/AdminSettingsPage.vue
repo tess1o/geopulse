@@ -374,7 +374,7 @@
           <div class="settings-section">
             <h3>Job Management</h3>
 
-            <div class="setting-item" v-for="setting in exportSettings.filter(s => ['export.max-jobs-per-user', 'export.job-expiry-hours', 'export.concurrent-jobs-limit', 'export.scheduler-interval-seconds'].includes(s.key))" :key="setting.key">
+            <div class="setting-item" v-for="setting in exportSettings.filter(s => ['export.max-jobs-per-user', 'export.job-expiry-hours', 'export.concurrent-jobs-limit'].includes(s.key))" :key="setting.key">
               <div class="setting-info">
                 <label>{{ setting.label }}</label>
                 <small class="text-muted">{{ setting.description }}</small>
@@ -732,10 +732,6 @@ const settingLabels = {
   'export.concurrent-jobs-limit': {
     label: 'Concurrent Jobs Limit',
     description: 'Maximum number of export jobs processed simultaneously'
-  },
-  'export.scheduler-interval-seconds': {
-    label: 'Scheduler Interval (Seconds)',
-    description: 'How often the export job processor runs'
   },
   'export.batch-size': {
     label: 'Batch Size',

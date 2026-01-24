@@ -130,8 +130,6 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.export.job-expiry-hours", "24", ValueType.INTEGER, "export", "Hours before export jobs expire"));
         SETTING_DEFINITIONS.put("export.concurrent-jobs-limit",
                 new SettingDefinition("geopulse.export.concurrent-jobs-limit", "3", ValueType.INTEGER, "export", "Maximum concurrent export jobs to process"));
-        SETTING_DEFINITIONS.put("export.scheduler-interval-seconds",
-                new SettingDefinition("geopulse.export.scheduler-interval-seconds", "2", ValueType.INTEGER, "export", "Export job processor interval (seconds)"));
         SETTING_DEFINITIONS.put("export.batch-size",
                 new SettingDefinition("geopulse.export.batch-size", "1000", ValueType.INTEGER, "export", "Default batch size for streaming exports"));
         SETTING_DEFINITIONS.put("export.trip-point-limit",
