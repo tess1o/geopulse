@@ -125,17 +125,6 @@
           @close="closeAddFavoriteArea"
         />
 
-        <!-- Edit Favorite Dialog -->
-        <EditFavoriteDialog
-          v-if="editFavoriteDialogVisible"
-          :visible="editFavoriteDialogVisible"
-          :header="'Edit Favorite'"
-          :favoriteLocation="selectedFavoriteLocation"
-          @edit-favorite="onEditFavoriteLocationSubmit"
-          @close="closeEditFavorite"
-          @delete-favorite="deleteFavoriteLocation"
-        />
-
         <!-- Photo Viewer Dialog -->
         <PhotoViewerDialog
           v-model:visible="photoViewerVisible"
@@ -144,13 +133,7 @@
           @close="closePhotoViewer"
         />
 
-        <!-- Timeline Regeneration Modal -->
-        <TimelineRegenerationModal
-          v-model:visible="timelineRegenerationVisible"
-          :type="timelineRegenerationType"
-          :job-id="currentJobId"
-          :job-progress="jobProgress"
-        />
+
       </template>
     </MapContainer>
   </div>
@@ -167,14 +150,8 @@ import ConfirmDialog from 'primevue/confirmdialog'
 // Map components
 import {FavoritesLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer} from '@/components/maps'
 
-// Dialog components
-import AddFavoriteDialog from '@/components/dialogs/AddFavoriteDialog.vue'
-import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
-import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
-
 import {useMapHighlights, useMapInteractions, useMapLayers, useRectangleDrawing} from '@/composables'
-import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 
 // Store imports
 import {useHighlightStore} from '@/stores/highlight'
@@ -228,7 +205,7 @@ const emit = defineEmits([
   'add-point-with-regeneration',
   'add-area-with-regeneration',
   'edit-favorite',
-  'delete-favorite-with-regeneration',
+  'delete-favorite',
   'highlighted-path-click',
   'timeline-marker-click'
 ])
@@ -248,14 +225,7 @@ const {
   toggleImmich
 } = useMapLayers()
 
-// Timeline regeneration composable
-const {
-  timelineRegenerationVisible,
-  timelineRegenerationType,
-  currentJobId,
-  jobProgress,
-  withTimelineRegeneration
-} = useTimelineRegeneration()
+
 
 // Store instances
 const favoritesStore = useFavoritesStore()
@@ -307,7 +277,6 @@ const favoriteContextMenuActive = ref(false)
 const dialogState = ref({
   addToFavoritesVisible: false,
   addAreaVisible: false,
-  editFavoriteVisible: false,
   selectedFavorite: null,
   addToFavoritesLatLng: null
 })
@@ -335,8 +304,6 @@ const photoViewerIndex = ref(0)
 // Computed getters for dialog state (for template compatibility)
 const addToFavoritesDialogVisible = computed(() => dialogState.value.addToFavoritesVisible)
 const addAreaShowDialog = computed(() => dialogState.value.addAreaVisible)
-const editFavoriteDialogVisible = computed(() => dialogState.value.editFavoriteVisible)
-const selectedFavoriteLocation = computed(() => dialogState.value.selectedFavorite)
 
 // Map configuration - start with null to avoid showing default location before data loads
 const mapCenter = computed(() => {
@@ -562,31 +529,13 @@ const handleImmichError = (event) => {
 
 
 const handleFavoriteEdit = (event) => {
-  dialogState.value.selectedFavorite = event.favorite || event
-  dialogState.value.editFavoriteVisible = true
+  const favorite = event.favorite || event
+  emit('edit-favorite', favorite)
 }
 
 const handleFavoriteDelete = (event) => {
   const favorite = event.favorite || event
-
-  // Confirm deletion
-  confirm.require({
-    message: 'Are you sure you want to delete this favorite location? This will also regenerate your timeline data.',
-    header: 'Delete Favorite',
-    icon: 'pi pi-exclamation-triangle',
-    accept: () => {
-      const action = () => favoritesStore.deleteFavorite(favorite.id)
-
-      withTimelineRegeneration(action, {
-        modalType: 'favorite-delete',
-        successMessage: 'Favorite deleted. Timeline is regenerating.',
-        errorMessage: 'Failed to delete favorite.',
-        onSuccess: () => {
-          toggleFavorites(true)
-        }
-      })
-    }
-  })
+  emit('delete-favorite', favorite)
 }
 
 const handleFavoriteContextMenu = (event) => {
@@ -740,10 +689,7 @@ const onFavoriteAreaSubmit = (favoriteData) => {
   })
 }
 
-const onEditFavoriteLocationSubmit = (updatedData) => {
-  emit('edit-favorite', updatedData)
-  closeEditFavorite()
-}
+
 
 const closeAddFavoritePoint = () => {
   dialogState.value.addToFavoritesVisible = false
@@ -762,17 +708,7 @@ const closeAddFavoriteArea = () => {
   cleanupTempLayer()
 }
 
-const closeEditFavorite = () => {
-  dialogState.value.editFavoriteVisible = false
-  dialogState.value.selectedFavorite = null
-}
 
-const deleteFavoriteLocation = (favorite) => {
-  // Close edit dialog first
-  closeEditFavorite()
-  // Use the same delete handling logic
-  handleFavoriteDelete({ favorite })
-}
 
 // Photo viewer handlers
 const closePhotoViewer = () => {

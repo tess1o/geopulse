@@ -240,11 +240,20 @@
 
       <!-- Edit Dialog -->
       <EditFavoriteDialog
+          v-if="selectedFavorite"
           :visible="showEditDialog"
           :header="'Edit Favorite Location'"
           :favorite-location="selectedFavorite"
-          @edit-favorite="handleEditSave"
-          @close="showEditDialog = false"
+          @edit-favorite="(data) => handleEditSave(data, { onSuccess: loadFavorites })"
+          @close="handleCloseEditDialog"
+      />
+
+      <!-- Edit Timeline Regeneration Modal -->
+      <TimelineRegenerationModal
+          v-model:visible="editTimelineVisible"
+          :type="editTimelineType"
+          :job-id="editJobId"
+          :job-progress="editJobProgress"
       />
 
       <!-- Reconcile Dialog -->
@@ -357,6 +366,7 @@ import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
 
 import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
+import {useFavoriteEditor} from '@/composables/useFavoriteEditor'
 
 // Store and utils
 const favoritesStore = useFavoritesStore()
@@ -365,7 +375,7 @@ const toast = useToast()
 const router = useRouter()
 const confirm = useConfirm()
 
-// Timeline regeneration composable
+// Timeline regeneration composable (for delete operations)
 const {
   timelineRegenerationVisible,
   timelineRegenerationType,
@@ -373,6 +383,19 @@ const {
   jobProgress,
   withTimelineRegeneration
 } = useTimelineRegeneration()
+
+// Favorite editor composable (for edit operations)
+const {
+  showDialog: showEditDialog,
+  selectedFavorite,
+  openEditor: openFavoriteEditor,
+  closeEditor: handleCloseEditDialog,
+  handleSave: handleEditSave,
+  timelineRegenerationVisible: editTimelineVisible,
+  timelineRegenerationType: editTimelineType,
+  currentJobId: editJobId,
+  jobProgress: editJobProgress
+} = useFavoriteEditor()
 
 // Reconciliation progress tracking
 const {
@@ -393,13 +416,11 @@ const isLoading = ref(false)
 const tableLoading = ref(false)
 
 // Dialog states
-const showEditDialog = ref(false)
+const showBulkEditDialog = ref(false)
+const selectedRows = ref([])
 const showAddDialog = ref(false)
 const showReconcileDialog = ref(false)
 const showBulkSaveDialog = ref(false)
-const showBulkEditDialog = ref(false)
-const selectedFavorite = ref(null)
-const selectedRows = ref([])
 const reconcileMode = ref('selected') // 'selected' | 'all'
 const enabledProviders = ref([])
 const addDialogHeader = ref('Add Point to Favorites')
@@ -625,8 +646,7 @@ const viewDetails = (favorite) => {
 }
 
 const editFavorite = (favorite) => {
-  selectedFavorite.value = favorite
-  showEditDialog.value = true
+  openFavoriteEditor(favorite)
 }
 
 const deleteFavorite = (favorite) => {
@@ -653,57 +673,6 @@ const deleteFavorite = (favorite) => {
   })
 }
 
-const handleEditSave = async (updatedData) => {
-  if (!selectedFavorite.value) return
-
-  try {
-    // Prepare bounds if it's an area favorite
-    const bounds = updatedData.type === 'AREA' ? {
-      northEastLat: updatedData.northEastLat,
-      northEastLon: updatedData.northEastLon,
-      southWestLat: updatedData.southWestLat,
-      southWestLon: updatedData.southWestLon
-    } : null
-
-    // Capture values to avoid closure issues
-    const favoriteId = updatedData.id
-    const favoriteName = updatedData.name
-    const city = updatedData.city
-    const country = updatedData.country
-
-    // Update favorite (with optional bounds)
-    const action = () => favoritesStore.editFavorite(
-      favoriteId,
-      favoriteName,
-      city,
-      country,
-      bounds
-    )
-
-    // Close dialog immediately
-    showEditDialog.value = false
-    selectedFavorite.value = null
-
-    // Use timeline regeneration composable (will only trigger if bounds changed on backend)
-    await withTimelineRegeneration(action, {
-      modalType: 'favorite',
-      successMessage: `Favorite "${favoriteName}" updated successfully.`,
-      errorMessage: 'Failed to update favorite location.',
-      onSuccess: () => {
-        // Refresh favorites list from the store
-        loadFavorites()
-      }
-    })
-  } catch (error) {
-    console.error('Error updating favorite:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Update Failed',
-      detail: getErrorMessage(error, 'Failed to update favorite location'),
-      life: 5000
-    })
-  }
-}
 
 const bulkEditSelected = () => {
   showBulkEditDialog.value = true
