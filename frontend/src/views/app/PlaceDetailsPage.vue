@@ -527,19 +527,25 @@ const goBack = () => {
 const handleOpenEditDialog = () => {
   console.log('Place Details: ', placeDetails.value)
   if (placeType.value === 'favorite') {
+    const geometryType = placeDetails.value?.geometry?.type.toUpperCase() || 'POINT'
+
     // Prepare data for EditFavoriteDialog via composable
     const favoriteData = {
       id: placeId.value,
       name: placeDetails.value?.locationName || '',
       city: placeDetails.value?.city || '',
       country: placeDetails.value?.country || '',
-      type: placeDetails.value?.geometry?.type.toUpperCase() || 'POINT',
-      // Include bounds if AREA favorite
-      northEastLat: placeDetails.value?.geometry?.northEast[0],
-      northEastLon: placeDetails.value?.geometry?.northEast[1],
-      southWestLat: placeDetails.value?.geometry?.southWest[0],
-      southWestLon: placeDetails.value?.geometry?.southWest[1]
+      type: geometryType
     }
+
+    // Include bounds only if AREA favorite (northEast/southWest are only populated for AREA type)
+    if (geometryType === 'AREA' && placeDetails.value?.geometry?.northEast && placeDetails.value?.geometry?.southWest) {
+      favoriteData.northEastLat = placeDetails.value.geometry.northEast[0]
+      favoriteData.northEastLon = placeDetails.value.geometry.northEast[1]
+      favoriteData.southWestLat = placeDetails.value.geometry.southWest[0]
+      favoriteData.southWestLon = placeDetails.value.geometry.southWest[1]
+    }
+
     openFavoriteEditor(favoriteData)
   } else if (placeType.value === 'geocoding') {
     // Prepare data for GeocodingEditDialog
