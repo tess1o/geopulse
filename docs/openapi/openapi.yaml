@@ -173,6 +173,18 @@ components:
       properties:
         message:
           type: string
+    ChunkedUploadInitRequest:
+      type: object
+      properties:
+        fileName:
+          type: string
+        fileSize:
+          format: int64
+          type: integer
+        importFormat:
+          type: string
+        options:
+          type: string
     City:
       type: object
       properties:
@@ -2350,6 +2362,7 @@ paths:
       - jwt: []
   /api/export/csv/create:
     post:
+      deprecated: true
       requestBody:
         content:
           application/json:
@@ -2428,6 +2441,7 @@ paths:
       - jwt: []
   /api/export/geojson/create:
     post:
+      deprecated: true
       requestBody:
         content:
           application/json:
@@ -2450,6 +2464,7 @@ paths:
       - jwt: []
   /api/export/gpx/create:
     post:
+      deprecated: true
       requestBody:
         content:
           application/json:
@@ -2561,6 +2576,7 @@ paths:
       - jwt: []
   /api/export/owntracks/create:
     post:
+      deprecated: true
       requestBody:
         content:
           application/json:
@@ -3739,35 +3755,6 @@ paths:
       summary: Handle HA
       tags:
       - Home Assistant Resource
-  /api/import/csv/upload:
-    post:
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  format: binary
-                  type: string
-                options:
-                  type: string
-            encoding:
-              options:
-                contentType: text/plain
-        required: true
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not Authorized
-        "403":
-          description: Not Allowed
-      summary: Upload Csv Import File
-      tags:
-      - Import Resource
-      security:
-      - jwt: []
   /api/import/debug/upload:
     post:
       requestBody:
@@ -3791,123 +3778,7 @@ paths:
           description: OK
       summary: Upload Debug Data
       tags:
-      - Debug Import Controller
-  /api/import/geojson/upload:
-    post:
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  format: binary
-                  type: string
-                options:
-                  type: string
-            encoding:
-              options:
-                contentType: text/plain
-        required: true
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not Authorized
-        "403":
-          description: Not Allowed
-      summary: Upload Geo Json Import File
-      tags:
-      - Import Resource
-      security:
-      - jwt: []
-  /api/import/geopulse/upload:
-    post:
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  format: binary
-                  type: string
-                options:
-                  type: string
-            encoding:
-              options:
-                contentType: text/plain
-        required: true
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not Authorized
-        "403":
-          description: Not Allowed
-      summary: Upload Geo Pulse Import File
-      tags:
-      - Import Resource
-      security:
-      - jwt: []
-  /api/import/google-timeline/upload:
-    post:
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  format: binary
-                  type: string
-                options:
-                  type: string
-            encoding:
-              options:
-                contentType: text/plain
-        required: true
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not Authorized
-        "403":
-          description: Not Allowed
-      summary: Upload Google Timeline Import File
-      tags:
-      - Import Resource
-      security:
-      - jwt: []
-  /api/import/gpx/upload:
-    post:
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  format: binary
-                  type: string
-                options:
-                  type: string
-            encoding:
-              options:
-                contentType: text/plain
-        required: true
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not Authorized
-        "403":
-          description: Not Allowed
-      summary: Upload Gpx Import File
-      tags:
-      - Import Resource
-      security:
-      - jwt: []
+      - Debug Import Resource
   /api/import/jobs:
     get:
       parameters:
@@ -3955,35 +3826,6 @@ paths:
       - Import Resource
       security:
       - jwt: []
-  /api/import/owntracks/upload:
-    post:
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  format: binary
-                  type: string
-                options:
-                  type: string
-            encoding:
-              options:
-                contentType: text/plain
-        required: true
-      responses:
-        "200":
-          description: OK
-        "401":
-          description: Not Authorized
-        "403":
-          description: Not Allowed
-      summary: Upload Own Tracks Import File
-      tags:
-      - Import Resource
-      security:
-      - jwt: []
   /api/import/status/{importJobId}:
     get:
       parameters:
@@ -4002,6 +3844,152 @@ paths:
       summary: Get Import Status
       tags:
       - Import Resource
+      security:
+      - jwt: []
+  /api/import/upload:
+    post:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  format: binary
+                  type: string
+                format:
+                  type: string
+                options:
+                  type: string
+            encoding:
+              options:
+                contentType: text/plain
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload File
+      tags:
+      - Unified Import Resource
+      security:
+      - jwt: []
+  /api/import/upload/init:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChunkedUploadInitRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Initialize Chunked Upload
+      tags:
+      - Unified Import Resource
+      security:
+      - jwt: []
+  /api/import/upload/{uploadId}:
+    delete:
+      parameters:
+      - name: uploadId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Abort Upload
+      tags:
+      - Unified Import Resource
+      security:
+      - jwt: []
+  /api/import/upload/{uploadId}/chunk:
+    post:
+      parameters:
+      - name: uploadId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                chunkIndex:
+                  format: int32
+                  type: integer
+                chunk:
+                  format: binary
+                  type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Upload Chunk
+      tags:
+      - Unified Import Resource
+      security:
+      - jwt: []
+  /api/import/upload/{uploadId}/complete:
+    post:
+      parameters:
+      - name: uploadId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Complete Chunked Upload
+      tags:
+      - Unified Import Resource
+      security:
+      - jwt: []
+  /api/import/upload/{uploadId}/status:
+    get:
+      parameters:
+      - name: uploadId
+        in: path
+        required: true
+        schema:
+          $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Upload Status
+      tags:
+      - Unified Import Resource
       security:
       - jwt: []
   /api/journey-insights:
@@ -5444,7 +5432,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.14.1
+  version: 1.15.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
