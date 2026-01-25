@@ -56,5 +56,9 @@ RUN chmod 777 /work /work/application \
 EXPOSE 8080
 USER 1001
 
-# Start native binary
-CMD ["./application", "-Dquarkus.http.host=0.0.0.0"]
+# These can be overridden via NATIVE_IMAGE_OPTS environment variable
+ENV GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT="-XX:MaximumHeapSizePercent=70 -XX:MaximumYoungGenerationSizePercent=15"
+
+# Start native binary with optimized GC settings
+# Use NATIVE_IMAGE_OPTS if provided, otherwise use defaults
+ENTRYPOINT ["sh", "-c", "./application -Dquarkus.http.host=0.0.0.0 ${NATIVE_IMAGE_OPTS:-$GEOPULSE_BACKEND_NATIVE_IMAGE_OPTS_DEFAULT}"]

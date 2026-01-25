@@ -35,10 +35,11 @@ public class BadgeCalculationJob {
     }
 
     /**
-     * Scheduled job to process badges for all users every 30 minutes.
+     * Scheduled job to process badges for all users.
      * Ensures all badge types exist for every user, then updates incomplete badges.
+     * The interval and delay are configurable via application properties.
      */
-    @Scheduled(every = "30m", delay = 0)
+    @Scheduled(every = "${geopulse.badges.calculation.interval}", delayed = "${geopulse.badges.calculation.delay}")
     public void processBadges() {
         if (!badgeCalculationEnabled) {
             log.debug("Badge calculation is disabled, skipping scheduled update");
