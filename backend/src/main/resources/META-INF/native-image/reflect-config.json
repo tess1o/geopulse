@@ -58,17 +58,5 @@
         ]
       }
     ]
-  },
-  {
-    "name": "dev.langchain4j.internal.JacksonJsonCodec",
-    "allDeclaredConstructors": true,
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
-  },
-  {
-    "name": "dev.langchain4j.internal.JacksonJsonCodec$*",
-    "allDeclaredConstructors": true,
-    "allDeclaredMethods": true,
-    "allDeclaredFields": true
   }
 ]

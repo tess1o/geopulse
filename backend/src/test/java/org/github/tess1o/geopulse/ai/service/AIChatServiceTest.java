@@ -11,7 +11,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.lang.reflect.Method;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,11 +19,10 @@ import static org.mockito.Mockito.when;
 /**
  * Test for AIChatService focusing on API key validation logic.
  * <p>
- * This test verifies the critical bug fix where Ollama (and other local LLM providers)
- * that don't require API keys were incorrectly rejected by the createChatModel() method.
+ * This test verifies that Ollama (and other local LLM providers)
+ * that don't require API keys are correctly handled by the validation logic.
  * <p>
- * The bug: createChatModel() always checked for API key existence, even when
- * settings.isApiKeyRequired() was false.
+ * The service should only enforce API key presence when settings.isApiKeyRequired() is true.
  */
 @QuarkusTest
 public class AIChatServiceTest {
@@ -109,11 +107,11 @@ public class AIChatServiceTest {
 
     /**
      * Test Case 3: Ollama WITHOUT API key (apiKeyRequired = false, key missing)
-     * Expected: Should NOT throw exception in createChatModel() - this is the critical bug fix test
+     * Expected: Should NOT fail validation (should pass API key validation check)
      *
      */
     @Test
-    public void testOllamaWithoutApiKey_ShouldNotFailValidation() throws Exception {
+    public void testOllamaWithoutApiKey_ShouldNotFailValidation() {
         UserAISettings ollamaSettings = UserAISettings.builder()
                 .enabled(true)
                 .openaiApiKey(null) // No API key
@@ -122,17 +120,15 @@ public class AIChatServiceTest {
                 .apiKeyRequired(false) // API key NOT required for Ollama
                 .build();
 
-        // Use reflection to test the private createChatModel() method directly
-        Method createChatModelMethod = AIChatService.class.getDeclaredMethod("createChatModel", UserAISettings.class);
-        createChatModelMethod.setAccessible(true);
+        when(mockAISettingsService.getAISettingsWithApiKey(TEST_USER_ID))
+                .thenReturn(ollamaSettings);
 
-        assertDoesNotThrow(() -> {
-            try {
-                createChatModelMethod.invoke(aiChatService, ollamaSettings);
-            } catch (java.lang.reflect.InvocationTargetException e) {
-                throw e.getCause();
-            }
-        }, "CRITICAL BUG: createChatModel() should not throw exception for Ollama (apiKeyRequired=false)!");
+        String result = aiChatService.chat("Hello");
+
+        // Should NOT return the "API key required" error message
+        assertNotEquals("API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.",
+                result,
+                "CRITICAL BUG: Ollama (apiKeyRequired=false) should not fail validation!");
     }
 
     /**

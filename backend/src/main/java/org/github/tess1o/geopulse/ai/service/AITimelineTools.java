@@ -1,7 +1,5 @@
 package org.github.tess1o.geopulse.ai.service;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.ai.model.*;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
@@ -17,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Simple AI Tools class without CDI proxying to work with LangChain4j reflection
+ * AI Tools class containing business logic for timeline queries
  */
 @Slf4j
 public class AITimelineTools {
@@ -34,8 +32,7 @@ public class AITimelineTools {
         this.routesAnalysisService = routesAnalysisService;
     }
 
-    @Tool("Gets complete timeline with all stays and trips in chronological order. Use when listing specific events or detailed activity.")
-    public AIMovementTimelineDTO queryTimeline(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
+    public AIMovementTimelineDTO queryTimeline(String startDate, String endDate) {
         log.info("🔧 AI TOOL EXECUTED: queryTimeline({}, {})", startDate, endDate);
         LocalDate start = LocalDate.parse(startDate);
         LocalDate end = LocalDate.parse(endDate);
@@ -44,8 +41,7 @@ public class AITimelineTools {
         return timeline;
     }
 
-    @Tool("Lists all places stayed at with timestamps. Use ONLY for listing specific places, NOT for counting. For counts use getStayStats.")
-    public java.util.List<AITimelineStayDTO> getVisitedLocations(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
+    public java.util.List<AITimelineStayDTO> getVisitedLocations(String startDate, String endDate) {
         log.info("🔧 AI TOOL EXECUTED: getVisitedLocations({}, {})", startDate, endDate);
         LocalDate start = LocalDate.parse(startDate);
         LocalDate end = LocalDate.parse(endDate);
@@ -54,8 +50,7 @@ public class AITimelineTools {
         return timeline.getStays();
     }
 
-    @Tool("Lists all individual trips with details. Use ONLY for listing specific trips, NOT for totals or distances. For aggregations use getTripStats.")
-    public java.util.List<AITimelineTripDTO> getTripMovements(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
+    public java.util.List<AITimelineTripDTO> getTripMovements(String startDate, String endDate) {
         log.info("🔧 AI TOOL EXECUTED: getTripMovements({}, {})", startDate, endDate);
         LocalDate start = LocalDate.parse(startDate);
         LocalDate end = LocalDate.parse(endDate);
@@ -78,11 +73,7 @@ public class AITimelineTools {
         return new AIMovementTimelineDTO();
     }
 
-    @Tool("Calculates aggregated stay statistics: total time, visit counts, number of unique cities/locations/countries. Use for counting cities, comparing time spent, and statistical analysis grouped by location, city, country, day, week, or month.")
-    public List<AIStayStatsDTO> getStayStats(
-            @P("Start date (YYYY-MM-DD)") String startDate,
-            @P("End date (YYYY-MM-DD)") String endDate,
-            @P("Group by: LOCATION_NAME, CITY, COUNTRY, DAY, WEEK, or MONTH") StayGroupBy groupBy) {
+    public List<AIStayStatsDTO> getStayStats(String startDate, String endDate, StayGroupBy groupBy) {
 
         log.info("🔧 AI TOOL EXECUTED: getStayStats({}, {}, {})", startDate, endDate, groupBy);
 
@@ -106,11 +97,7 @@ public class AITimelineTools {
         }
     }
 
-    @Tool("Calculates aggregated trip statistics: total distance, duration, trip counts by transportation mode. Use for comparing walking vs driving, analyzing travel patterns grouped by movement type, origin, destination, day, week, or month.")
-    public List<AITripStatsDTO> getTripStats(
-            @P("Start date (YYYY-MM-DD)") String startDate,
-            @P("End date (YYYY-MM-DD)") String endDate,
-            @P("Group by: MOVEMENT_TYPE, ORIGIN_LOCATION_NAME, DESTINATION_LOCATION_NAME, DAY, WEEK, or MONTH") TripGroupBy groupBy) {
+    public List<AITripStatsDTO> getTripStats(String startDate, String endDate, TripGroupBy groupBy) {
 
         log.info("🔧 AI TOOL EXECUTED: getTripStats({}, {}, {})", startDate, endDate, groupBy);
 
@@ -134,8 +121,7 @@ public class AITimelineTools {
         }
     }
 
-    @Tool("Analyzes route patterns: most common routes, unique route count, average/longest trip. Use for route frequency and travel diversity. NOT for transport modes or location visits.")
-    public RoutesStatistics getRoutePatterns(@P("Start date (YYYY-MM-DD)") String startDate, @P("End date (YYYY-MM-DD)") String endDate) {
+    public RoutesStatistics getRoutePatterns(String startDate, String endDate) {
         log.info("🔧 AI TOOL EXECUTED: getRoutePatterns({}, {})", startDate, endDate);
 
         LocalDate startLocalDate = LocalDate.parse(startDate);

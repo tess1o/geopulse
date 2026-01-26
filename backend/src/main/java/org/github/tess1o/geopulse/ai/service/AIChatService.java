@@ -1,30 +1,20 @@
 package org.github.tess1o.geopulse.ai.service;
 
-import dev.langchain4j.exception.RateLimitException;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.SystemMessage;
-import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
+import org.github.tess1o.geopulse.ai.client.exception.ContextLengthExceededException;
+import org.github.tess1o.geopulse.ai.client.exception.RateLimitException;
 import org.github.tess1o.geopulse.ai.model.UserAISettings;
+import org.github.tess1o.geopulse.ai.orchestration.AIChatOrchestrator;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
-import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
 
-import java.time.Duration;
 import java.util.UUID;
 
 @ApplicationScoped
 @Slf4j
 public class AIChatService {
-
-    // Singleton chat memory store to persist conversations across requests
-    private static final InMemoryChatMemoryStore CHAT_MEMORY_STORE = new InMemoryChatMemoryStore();
 
     /**
      * Default system message for AI assistant.
@@ -38,6 +28,12 @@ public class AIChatService {
             - Call tools immediately when asked about locations, cities, trips, distances, or time.
             - NEVER invent, guess, or fabricate data. Only answer based on tool results.
             - Do not explain what tool you're using. Just call it and provide results.
+
+            CONVERSATION CONTEXT:
+            - Before calling a tool, check if the answer is already in the conversation history.
+            - For follow-up questions (like "on what date?", "how long?"), look at your previous responses first.
+            - Only call tools if you need NEW data that isn't in the conversation history.
+            - Avoid calling tools with broad queries that return too much data.
 
             TOOL SELECTION GUIDE:
             Use getStayStats for questions about:
@@ -70,8 +66,6 @@ public class AIChatService {
             - Provide clear, conversational responses without markdown formatting
             - Be concise and direct
             """;
-    public static final String OPENAI_DEFAULT_URL = "https://api.openai.com/v1";
-    public static final int DEFAULT_TIMEOUT_SECONDS = 600;
 
     @Inject
     UserAISettingsService aiSettingsService;
@@ -80,17 +74,10 @@ public class AIChatService {
     CurrentUserService currentUserService;
 
     @Inject
-    StreamingTimelineAggregator streamingTimelineAggregator;
+    AIChatOrchestrator orchestrator;
 
     @Inject
-    RoutesAnalysisService routesAnalysisService;
-
-    @Inject
-    org.github.tess1o.geopulse.admin.service.SystemSettingsService systemSettingsService;
-
-    public interface Assistant {
-        String chat(String userMessage);
-    }
+    SystemSettingsService systemSettingsService;
 
     public String chat(String userMessage) {
         UUID userId = currentUserService.getCurrentUserId();
@@ -110,8 +97,6 @@ public class AIChatService {
                 return "API Key is required but it's not provided. Please add your OpenAI API key in your profile settings.";
             }
 
-            ChatModel model = createChatModel(settings);
-
             // Determine which system message to use (priority: user custom > global default > built-in default)
             String systemMessage;
             if (settings.getCustomSystemMessage() != null && !settings.getCustomSystemMessage().isBlank()) {
@@ -125,29 +110,16 @@ public class AIChatService {
                         : SYSTEM_MESSAGE;
             }
 
-            // Create simple tools instance without CDI proxy
-            AITimelineTools simpleTools = new AITimelineTools(streamingTimelineAggregator, currentUserService, routesAnalysisService);
-            ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                    .id(userId.toString()) // Use user-specific chat memory
-                    .maxMessages(10)
-                    .chatMemoryStore(CHAT_MEMORY_STORE) // Use singleton store to persist across requests
-                    .build();
-
-            // Inject system message into chat memory if it's a new conversation
-            if (chatMemory.messages().isEmpty()) {
-                chatMemory.add(dev.langchain4j.data.message.SystemMessage.from(systemMessage));
-            }
-
-            Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(model)
-                    .tools(simpleTools, new SimpleAITools())
-                    .chatMemory(chatMemory)
-                    .build();
-
             log.info("Processing AI chat request for user {}", userId);
-            String response = assistant.chat(userMessage);
-            log.info("AI chat response generated for user {}, response: {}", userId, response);
+            String response = orchestrator.chat(userId, userMessage, settings, systemMessage);
+            log.info("AI chat response generated for user {}", userId);
             return response;
+        } catch (ContextLengthExceededException e) {
+            log.warn("Context length exceeded for user {}: {}", userId, e.getMessage());
+            return "The conversation or data results are too large. Please try:\n" +
+                   "1. Ask a more specific question with a narrower date range\n" +
+                   "2. Clear your chat history and start a new conversation\n" +
+                   "3. Break your question into smaller parts";
         } catch (RateLimitException e) {
             log.warn("Rate limit exceeded for user {}: {}", userId, e.getMessage());
             return "I'm currently experiencing high demand and have reached my rate limit. Please wait a moment and try again, or consider upgrading your plan for higher limits.";
@@ -155,21 +127,6 @@ public class AIChatService {
             log.error("Error processing AI chat for user {}: {}", userId, e.getMessage(), e);
             return "I apologize, but I encountered an error while processing your request. Please check your AI settings and try again.";
         }
-    }
-
-    private ChatModel createChatModel(UserAISettings settings) {
-        if (isApiKeyInvalid(settings)) {
-            throw new IllegalArgumentException("OpenAI API key is required");
-        }
-
-        return OpenAiChatModel.builder()
-                .apiKey(settings.getOpenaiApiKey())
-                .baseUrl(settings.getOpenaiApiUrl() != null ? settings.getOpenaiApiUrl() : OPENAI_DEFAULT_URL)
-                .modelName(settings.getOpenaiModel() != null ? settings.getOpenaiModel() : "gpt-3.5-turbo")
-                .timeout(Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS))
-                .logResponses(true)
-                .logRequests(true)
-                .build();
     }
 
     /**

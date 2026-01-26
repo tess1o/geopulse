@@ -32,7 +32,6 @@
         <pmd.version>7.17.0</pmd.version>
         <maven-pmd-plugin.version>3.26.0</maven-pmd-plugin.version>
         <org.eclipse.paho.client.mqttv3.version>1.2.5</org.eclipse.paho.client.mqttv3.version>
-        <langchain4j.version>1.7.1</langchain4j.version>
         <hypersistence-utils-hibernate-71.version>3.11.0</hypersistence-utils-hibernate-71.version>
         <extra.native.build.args></extra.native.build.args>
     </properties>
@@ -291,23 +290,6 @@
             <artifactId>oauth2-oidc-sdk</artifactId>
             <version>11.9.1</version>
         </dependency>
-
-        <!-- AI - LangChain4j -->
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <version>${langchain4j.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
@@ -413,7 +395,6 @@
                 <quarkus.native.auto-service-loader-registration>true</quarkus.native.auto-service-loader-registration>
                 <quarkus.native.additional-build-args>
                     --initialize-at-run-time=org.github.tess1o.geopulse.admin.service.UserInvitationService,
-                    --initialize-at-run-time=dev.langchain4j.internal.RetryUtils,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.NetworkModuleService,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.TCPNetworkModuleFactory,
                     --initialize-at-run-time=org.eclipse.paho.client.mqttv3.internal.SSLNetworkModuleFactory,

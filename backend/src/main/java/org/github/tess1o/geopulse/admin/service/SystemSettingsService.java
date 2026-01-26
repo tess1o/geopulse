@@ -146,6 +146,12 @@ public class SystemSettingsService {
         // AI Assistant settings
         SETTING_DEFINITIONS.put("ai.default-system-message",
                 new SettingDefinition("geopulse.ai.default-system-message", "", ValueType.STRING, "ai", "Global default system message for AI assistant (empty = use built-in default)"));
+        SETTING_DEFINITIONS.put("ai.logging.enabled",
+                new SettingDefinition("geopulse.ai.logging.enabled", "false", ValueType.BOOLEAN, "ai", "Enable detailed AI request/response logging for debugging"));
+        SETTING_DEFINITIONS.put("ai.chat-memory.max-messages",
+                new SettingDefinition("geopulse.ai.chat-memory.max-messages", "10", ValueType.INTEGER, "ai", "Maximum number of messages to keep in conversation history per user"));
+        SETTING_DEFINITIONS.put("ai.tool-result.max-length",
+                new SettingDefinition("geopulse.ai.tool-result.max-length", "12000", ValueType.INTEGER, "ai", "Maximum characters in tool results (prevents token limit errors)"));
     }
 
     @Inject
@@ -196,7 +202,7 @@ public class SystemSettingsService {
                             entity.getValue(),
                             entity.getEncryptionKeyId()
                     );
-                    log.debug("Using decrypted DB value for setting: {}", key);
+                    log.trace("Using decrypted DB value for setting: {}", key);
                     return decrypted;
                 } catch (Exception e) {
                     log.error("Failed to decrypt setting {}: {}", key, e.getMessage());
@@ -204,7 +210,7 @@ public class SystemSettingsService {
                 }
             }
 
-            log.debug("Using DB value for setting: {}", key);
+            log.trace("Using DB value for setting: {}", key);
             return entity.getValue();
         }
 
@@ -213,7 +219,7 @@ public class SystemSettingsService {
         if (def != null) {
             String envValue = config.getOptionalValue(def.envVarName(), String.class)
                     .orElse(def.defaultValue());
-            log.debug("Using env/default value for setting {}: {}", key, envValue);
+            log.trace("Using env/default value for setting {}: {}", key, envValue);
             return envValue;
         }
 

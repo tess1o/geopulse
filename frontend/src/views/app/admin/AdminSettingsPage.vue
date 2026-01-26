@@ -174,6 +174,43 @@
           <div class="settings-section">
             <h3>AI Assistant Configuration</h3>
 
+            <div class="setting-item" v-for="setting in aiSettings.filter(s => s.key !== 'ai.default-system-message')" :key="setting.key">
+              <div class="setting-info">
+                <label>{{ setting.label }}</label>
+                <small class="text-muted">{{ setting.description }}</small>
+              </div>
+              <div class="setting-control">
+                <InputSwitch
+                    v-if="setting.valueType === 'BOOLEAN'"
+                    v-model="setting.currentValue"
+                    @change="updateSetting(setting)"
+                />
+                <InputNumber
+                    v-else-if="setting.valueType === 'INTEGER'"
+                    v-model="setting.currentValue"
+                    @update:modelValue="updateSetting(setting)"
+                    :min="1"
+                    :step="setting.key === 'ai.tool-result.max-length' ? 1000 : 1"
+                    style="width: 150px"
+                />
+                <div class="setting-status">
+                  <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+                  <Button
+                      v-else
+                      label="Reset"
+                      icon="pi pi-refresh"
+                      text
+                      size="small"
+                      @click="resetSetting(setting)"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>System Message</h3>
+
             <div class="ai-setting-description">
               <p class="text-muted">
                 Configure the global default system message for the AI assistant. This message defines the AI's behavior and will be used for all users unless they override it with their own custom message in their profile settings.
@@ -578,6 +615,7 @@ const handleTabChange = (event) => {
 
 const authSettings = ref([])
 const geocodingSettings = ref([])
+const aiSettings = ref([])
 const importSettings = ref([])
 const exportSettings = ref([])
 const aiSystemMessage = ref('')
@@ -618,6 +656,19 @@ const settingLabels = {
   'auth.admin-login-bypass.enabled': {
     label: 'Admin Login Bypass',
     description: 'Allow admins to bypass login restrictions (prevents lockout)'
+  },
+  // AI settings
+  'ai.logging.enabled': {
+    label: 'Enable AI Request/Response Logging',
+    description: 'Log detailed AI requests and responses for debugging (changes apply immediately)'
+  },
+  'ai.chat-memory.max-messages': {
+    label: 'Chat Memory Size',
+    description: 'Maximum number of messages to keep in conversation history per user'
+  },
+  'ai.tool-result.max-length': {
+    label: 'Tool Result Max Length',
+    description: 'Maximum characters in tool results to prevent token limit errors (12000 ≈ 3000 tokens)'
   },
   'geocoding.primary-provider': {
     label: 'Primary Provider',
@@ -991,6 +1042,30 @@ const resetSetting = async (setting) => {
   }
 }
 
+const loadAIConfigSettings = async () => {
+  try {
+    const response = await apiService.get('/admin/settings/ai')
+    aiSettings.value = response.map(setting => ({
+      ...setting,
+      label: settingLabels[setting.key]?.label || setting.key,
+      description: settingLabels[setting.key]?.description || setting.description,
+      currentValue: setting.valueType === 'BOOLEAN'
+          ? setting.value === 'true'
+          : setting.valueType === 'INTEGER'
+              ? parseInt(setting.value)
+              : setting.value
+    }))
+  } catch (error) {
+    console.error('Failed to load AI config settings:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load AI configuration settings',
+      life: 3000
+    })
+  }
+}
+
 const loadAISettings = async () => {
   try {
     const response = await apiService.get('/ai/default-system-message')
@@ -1059,6 +1134,7 @@ const saveAISystemMessage = async () => {
 onMounted(() => {
   loadAuthSettings()
   loadGeocodingSettings()
+  loadAIConfigSettings()
   loadImportSettings()
   loadExportSettings()
   loadAISettings()
