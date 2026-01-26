@@ -1,0 +1,212 @@
+/**
+ * Admin Settings Common Styles
+ * Shared styles for all admin settings tab components
+ */
+
+/* Settings Section */
+.settings-section {
+  padding: 1.5rem 0;
+}
+
+.settings-section:first-child {
+  padding-top: 0;
+}
+
+.settings-section h3 {
+  margin: 0 0 1.25rem 0;
+  padding: 0 1rem 0.75rem 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--gp-primary);
+  border-bottom: 2px solid var(--gp-border-light);
+  letter-spacing: 0.025em;
+}
+
+/* Setting Item */
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+.setting-item:last-child {
+  border-bottom: none;
+}
+
+.setting-info {
+  flex: 1;
+}
+
+.setting-info label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.setting-info small {
+  display: block;
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.setting-status {
+  min-width: 80px;
+  text-align: right;
+}
+
+/* Text Utilities */
+.text-muted {
+  color: var(--text-color-secondary);
+}
+
+/* Empty State Styling */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.empty-state-icon {
+  margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  border-bottom: none;
+  padding: 0;
+}
+
+.empty-state > .text-muted {
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.planned-features {
+  text-align: left;
+  background: var(--surface-ground);
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.planned-features h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  color: var(--gp-text-primary);
+  font-size: 1.125rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--gp-border-light);
+}
+
+.planned-features ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.planned-features li {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  color: var(--text-color-secondary);
+}
+
+.planned-features li:last-child {
+  margin-bottom: 0;
+}
+
+.planned-features strong {
+  color: var(--text-color);
+}
+
+.coming-soon-badge {
+  display: inline-block;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .settings-section {
+    padding: 1rem 0;
+  }
+
+  .settings-section h3 {
+    padding: 0 0.5rem 0.5rem 0.5rem;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .setting-info {
+    width: 100%;
+  }
+
+  .setting-control {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Only make text inputs full width */
+  .setting-control :deep(.p-inputtext),
+  .setting-control :deep(.p-password),
+  .setting-control :deep(.p-select),
+  .setting-control :deep(.p-inputnumber) {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  /* Keep switches and buttons at natural size */
+  .setting-control :deep(.p-inputswitch) {
+    flex-shrink: 0;
+  }
+
+  .setting-status {
+    flex-shrink: 0;
+    min-width: auto;
+  }
+
+  .empty-state {
+    padding: 1.5rem 0.5rem;
+  }
+
+  .empty-state h3 {
+    font-size: 1.25rem;
+  }
+
+  .planned-features {
+    padding: 1rem;
+  }
+
+  .planned-features h4 {
+    font-size: 1rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .settings-section h3 {
+    font-size: 0.95rem;
+  }
+
+  .setting-item {
+    padding: 0.75rem 0.25rem;
+  }
+}
