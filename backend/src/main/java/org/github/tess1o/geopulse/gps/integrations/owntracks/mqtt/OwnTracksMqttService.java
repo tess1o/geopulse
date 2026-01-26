@@ -22,7 +22,10 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * MQTT service for OwnTracks integration.
@@ -55,6 +58,14 @@ public class OwnTracksMqttService {
     OwnTracksTagService ownTracksTagService;
 
     private MqttClient mqttClient;
+    private MqttConnectOptions connectOptions;
+    private ScheduledExecutorService reconnectExecutor;
+    private AtomicInteger reconnectAttempts = new AtomicInteger(0);
+
+    // Reconnection configuration
+    private static final int INITIAL_RECONNECT_DELAY_SECONDS = 5;
+    private static final int MAX_RECONNECT_DELAY_SECONDS = 120;
+    private static final int MAX_RECONNECT_ATTEMPTS = 10_000; // Effectively unlimited with exponential backoff
 
     /**
      * Initialize MQTT connection on startup if enabled
@@ -64,6 +75,13 @@ public class OwnTracksMqttService {
             log.info("MQTT support is disabled - skipping MQTT client initialization");
             return;
         }
+
+        // Initialize reconnection executor
+        reconnectExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread t = new Thread(r, "mqtt-reconnect-thread");
+            t.setDaemon(true);
+            return t;
+        });
 
         try {
             initializeMqttClient();
@@ -77,6 +95,12 @@ public class OwnTracksMqttService {
      * Disconnect MQTT client on shutdown
      */
     void onStop(@Observes ShutdownEvent ev) {
+        // Shutdown reconnection executor
+        if (reconnectExecutor != null) {
+            reconnectExecutor.shutdownNow();
+            log.info("MQTT reconnection executor shutdown");
+        }
+
         if (mqttClient != null && mqttClient.isConnected()) {
             try {
                 mqttClient.disconnect();
@@ -90,49 +114,62 @@ public class OwnTracksMqttService {
 
     private void initializeMqttClient() throws MqttException {
         log.info("Initializing MQTT client for broker: {}", mqttConfig.getBrokerUrl());
+
+        // Using MemoryPersistence since we're running in containers
+        // cleanSession=false ensures broker queues messages when we're disconnected
         mqttClient = new MqttClient(mqttConfig.getBrokerUrl(), CLIENT_ID, new MemoryPersistence());
 
-        MqttConnectOptions options = new MqttConnectOptions();
-        options.setCleanSession(false);
-        options.setConnectionTimeout(30);
-        options.setKeepAliveInterval(60);
-        options.setAutomaticReconnect(true);
-        
+        connectOptions = new MqttConnectOptions();
+        connectOptions.setCleanSession(false); // Keep session state on broker side
+        connectOptions.setConnectionTimeout(30);
+        connectOptions.setKeepAliveInterval(60);
+        connectOptions.setAutomaticReconnect(false); // We handle reconnection manually
+
         // Additional resilience and stability settings
-        options.setMaxReconnectDelay(120000);    // Max 2 minutes between reconnect attempts
-        options.setExecutorServiceTimeout(5);    // 5 second timeout for operations
-        options.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1); // Force MQTT 3.1.1
-        options.setServerURIs(new String[]{mqttConfig.getBrokerUrl()}); // Explicit server URI list
-        options.setHttpsHostnameVerificationEnabled(false); // For internal networks
-        options.setMaxInflight(1000); // Max unacknowledged messages
+        connectOptions.setExecutorServiceTimeout(5);    // 5 second timeout for operations
+        connectOptions.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1); // Force MQTT 3.1.1
+        connectOptions.setServerURIs(new String[]{mqttConfig.getBrokerUrl()}); // Explicit server URI list
+        connectOptions.setHttpsHostnameVerificationEnabled(false); // For internal networks
+        connectOptions.setMaxInflight(1000); // Max unacknowledged messages
 
         if (mqttConfig.hasCredentials()) {
-            options.setUserName(mqttConfig.getUsername());
-            options.setPassword(mqttConfig.getPassword().toCharArray());
+            connectOptions.setUserName(mqttConfig.getUsername());
+            connectOptions.setPassword(mqttConfig.getPassword().toCharArray());
             log.debug("MQTT authentication configured for user: {}", mqttConfig.getUsername());
         }
 
-        // Set callback for message handling with reconnection support
+        // Set callback for message handling with manual reconnection
         mqttClient.setCallback(new MqttCallbackExtended() {
             @Override
             public void connectComplete(boolean reconnect, String serverURI) {
                 if (reconnect) {
-                    log.info("MQTT reconnected to: {}", serverURI);
+                    log.info("MQTT reconnected successfully to: {}. Session state preserved with cleanSession=false", serverURI);
+                    // Reset reconnect attempts counter on successful reconnection
+                    reconnectAttempts.set(0);
+
                     // Re-subscribe after reconnection
                     try {
                         mqttClient.subscribe(TOPIC_PATTERN, 1);
-                        log.info("MQTT re-subscribed to pattern: {} after reconnection", TOPIC_PATTERN);
+                        log.info("MQTT re-subscribed to pattern: {} (QoS 1) after reconnection. Processing queued messages...", TOPIC_PATTERN);
                     } catch (MqttException e) {
                         log.error("Failed to re-subscribe after reconnection", e);
                     }
                 } else {
-                    log.info("MQTT initial connection completed to: {}", serverURI);
+                    log.info("MQTT initial connection completed successfully to: {}. Ready to receive messages.", serverURI);
+                    reconnectAttempts.set(0);
                 }
             }
 
             @Override
             public void connectionLost(Throwable cause) {
-                log.warn("MQTT connection lost, automatic reconnect will be attempted", cause);
+                log.warn("MQTT connection lost. Manual reconnection will be attempted. " +
+                        "Reason: {} - {}",
+                        cause.getClass().getSimpleName(),
+                        cause.getMessage());
+                log.debug("MQTT connection lost - full stack trace:", cause);
+
+                // Schedule manual reconnection with exponential backoff
+                scheduleReconnect();
             }
 
             @Override
@@ -153,11 +190,63 @@ public class OwnTracksMqttService {
         });
 
         // Connect and subscribe
-        mqttClient.connect(options);
+        mqttClient.connect(connectOptions);
         log.info("MQTT client connected successfully");
 
         mqttClient.subscribe(TOPIC_PATTERN, 1); // QoS 1 for at-least-once delivery
         log.info("MQTT subscription completed for pattern: {} with QoS 1", TOPIC_PATTERN);
+    }
+
+    /**
+     * Schedule reconnection attempt with exponential backoff
+     */
+    private void scheduleReconnect() {
+        int currentAttempt = reconnectAttempts.incrementAndGet();
+
+        if (currentAttempt > MAX_RECONNECT_ATTEMPTS) {
+            log.error("Max reconnection attempts ({}) reached. Stopping reconnection attempts.", MAX_RECONNECT_ATTEMPTS);
+            return;
+        }
+
+        // Calculate delay with exponential backoff: initialDelay * 2^(attempt-1)
+        // Capped at MAX_RECONNECT_DELAY_SECONDS
+        int delaySeconds = Math.min(
+                INITIAL_RECONNECT_DELAY_SECONDS * (1 << (currentAttempt - 1)),
+                MAX_RECONNECT_DELAY_SECONDS
+        );
+
+        log.info("Scheduling MQTT reconnection attempt {} in {} seconds", currentAttempt, delaySeconds);
+
+        reconnectExecutor.schedule(() -> {
+            try {
+                if (mqttClient.isConnected()) {
+                    log.debug("MQTT client already connected, skipping reconnection attempt");
+                    reconnectAttempts.set(0);
+                    return;
+                }
+
+                log.info("Attempting MQTT reconnection (attempt {})...", currentAttempt);
+                mqttClient.connect(connectOptions);
+                log.info("MQTT reconnection successful");
+
+                // Re-subscribe after manual reconnection
+                mqttClient.subscribe(TOPIC_PATTERN, 1);
+                log.info("MQTT re-subscribed to pattern: {} (QoS 1). Processing queued messages...", TOPIC_PATTERN);
+
+                // Reset attempts counter on success
+                reconnectAttempts.set(0);
+
+            } catch (MqttException e) {
+                log.warn("MQTT reconnection attempt {} failed: {} - {}. Will retry...",
+                        currentAttempt,
+                        e.getClass().getSimpleName(),
+                        e.getMessage());
+                log.debug("Reconnection failure details:", e);
+
+                // Schedule next attempt
+                scheduleReconnect();
+            }
+        }, delaySeconds, TimeUnit.SECONDS);
     }
 
     /**
