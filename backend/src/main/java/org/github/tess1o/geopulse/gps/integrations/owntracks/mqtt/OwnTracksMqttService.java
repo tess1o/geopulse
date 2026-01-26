@@ -25,6 +25,7 @@ import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -61,6 +62,7 @@ public class OwnTracksMqttService {
     private MqttConnectOptions connectOptions;
     private ScheduledExecutorService reconnectExecutor;
     private AtomicInteger reconnectAttempts = new AtomicInteger(0);
+    private AtomicBoolean reconnecting = new AtomicBoolean(false);
 
     // Reconnection configuration
     private static final int INITIAL_RECONNECT_DELAY_SECONDS = 5;
@@ -126,7 +128,7 @@ public class OwnTracksMqttService {
         connectOptions.setAutomaticReconnect(false); // We handle reconnection manually
 
         // Additional resilience and stability settings
-        connectOptions.setExecutorServiceTimeout(5);    // 5 second timeout for operations
+        connectOptions.setExecutorServiceTimeout(30);    // 30 second timeout for operations
         connectOptions.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1); // Force MQTT 3.1.1
         connectOptions.setServerURIs(new String[]{mqttConfig.getBrokerUrl()}); // Explicit server URI list
         connectOptions.setHttpsHostnameVerificationEnabled(false); // For internal networks
@@ -201,10 +203,17 @@ public class OwnTracksMqttService {
      * Schedule reconnection attempt with exponential backoff
      */
     private void scheduleReconnect() {
+        // Prevent multiple overlapping reconnection attempts
+        if (!reconnecting.compareAndSet(false, true)) {
+            log.debug("Reconnection already in progress, skipping duplicate attempt");
+            return;
+        }
+
         int currentAttempt = reconnectAttempts.incrementAndGet();
 
         if (currentAttempt > MAX_RECONNECT_ATTEMPTS) {
             log.error("Max reconnection attempts ({}) reached. Stopping reconnection attempts.", MAX_RECONNECT_ATTEMPTS);
+            reconnecting.set(false);
             return;
         }
 
@@ -222,6 +231,7 @@ public class OwnTracksMqttService {
                 if (mqttClient.isConnected()) {
                     log.debug("MQTT client already connected, skipping reconnection attempt");
                     reconnectAttempts.set(0);
+                    reconnecting.set(false);
                     return;
                 }
 
@@ -233,8 +243,9 @@ public class OwnTracksMqttService {
                 mqttClient.subscribe(TOPIC_PATTERN, 1);
                 log.info("MQTT re-subscribed to pattern: {} (QoS 1). Processing queued messages...", TOPIC_PATTERN);
 
-                // Reset attempts counter on success
+                // Reset attempts counter and reconnecting flag on success
                 reconnectAttempts.set(0);
+                reconnecting.set(false);
 
             } catch (MqttException e) {
                 log.warn("MQTT reconnection attempt {} failed: {} - {}. Will retry...",
@@ -242,6 +253,9 @@ public class OwnTracksMqttService {
                         e.getClass().getSimpleName(),
                         e.getMessage());
                 log.debug("Reconnection failure details:", e);
+
+                // Reset reconnecting flag before scheduling next attempt
+                reconnecting.set(false);
 
                 // Schedule next attempt
                 scheduleReconnect();
