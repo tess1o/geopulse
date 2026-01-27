@@ -158,6 +158,7 @@
               placeholder="All Sources"
               display="chip"
               class="filter-input"
+              :showToggleAll="false"
             />
           </div>
         </div>
@@ -529,7 +530,8 @@ const sourceTypeOptions = ref([
   { label: 'GPX', value: 'GPX' },
   { label: 'Dawarich', value: 'DAWARICH' },
   { label: 'Home Assistant', value: 'HOME_ASSISTANT' },
-  { label: 'GeoJSON', value: 'GEOJSON' }
+  { label: 'GeoJSON', value: 'GEOJSON' },
+  { label: 'CSV', value: 'CSV' }
 ])
 
 // Page size options
