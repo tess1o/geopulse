@@ -133,6 +133,13 @@
           @close="closePhotoViewer"
         />
 
+        <!-- Timeline Regeneration Modal -->
+        <TimelineRegenerationModal
+          v-model:visible="timelineRegenerationVisible"
+          :type="timelineRegenerationType"
+          :job-id="currentJobId"
+          :job-progress="jobProgress"
+        />
 
       </template>
     </MapContainer>
@@ -146,11 +153,13 @@ import {useConfirm} from "primevue/useconfirm"
 import {useToast} from "primevue/usetoast"
 import ContextMenu from 'primevue/contextmenu'
 import ConfirmDialog from 'primevue/confirmdialog'
+import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 
 // Map components
 import {FavoritesLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer} from '@/components/maps'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
+import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import {useMapHighlights, useMapInteractions, useMapLayers, useRectangleDrawing} from '@/composables'
 
 // Store imports
@@ -225,6 +234,13 @@ const {
   toggleImmich
 } = useMapLayers()
 
+const {
+  timelineRegenerationVisible,
+  timelineRegenerationType,
+  currentJobId,
+  jobProgress,
+  withTimelineRegeneration
+} = useTimelineRegeneration()
 
 
 // Store instances
