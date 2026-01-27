@@ -257,6 +257,7 @@
         lazy
         @page="onPageChange"
         @sort="onSort"
+        @row-click="handleRowClick"
         v-model:sort-field="sortField"
         v-model:sort-order="sortOrder"
         data-key="id"
@@ -553,6 +554,9 @@ const showBulkDeleteDialog = ref(false)
 const bulkDeleteLoading = ref(false)
 const deleteLoading = ref(false)
 
+// Shift-click selection tracking
+const lastSelectedIndex = ref(null)
+
 // Computed properties
 const summaryStats = computed(() => technicalDataStore.summaryStats)
 const gpsPoints = computed(() => technicalDataStore.gpsPoints)
@@ -683,6 +687,7 @@ const handleDateChange = async () => {
   if (hasDateFilter.value) {
     currentPage.value = 0
     selectedRows.value = [] // Clear selection when date filter changes
+    lastSelectedIndex.value = null // Reset shift-click tracking
     await loadGPSPoints()
     await loadSummaryStats()
   }
@@ -692,6 +697,7 @@ const clearDateFilter = async () => {
   dateRange.value = null
   currentPage.value = 0
   selectedRows.value = [] // Clear selection when clearing filters
+  lastSelectedIndex.value = null // Reset shift-click tracking
   await loadGPSPoints()
   await loadSummaryStats()
 }
@@ -745,12 +751,14 @@ const clearAllFilters = async () => {
   }
   currentPage.value = 0
   selectedRows.value = [] // Clear selection when clearing all filters
+  lastSelectedIndex.value = null // Reset shift-click tracking
   await loadGPSPoints()
   await loadSummaryStats()
 }
 
 const onPageChange = async (event) => {
   currentPage.value = event.page
+  lastSelectedIndex.value = null // Reset shift-click tracking on page change
   await loadGPSPoints()
 }
 
@@ -967,28 +975,29 @@ const bulkDeleteGpsPoints = () => {
 
 const confirmBulkDelete = async () => {
   if (selectedRows.value.length === 0 || bulkDeleteLoading.value) return
-  
+
   bulkDeleteLoading.value = true
-  
+
   try {
     const pointIds = selectedRows.value.map(row => row.id)
     const result = await technicalDataStore.deleteGpsPoints(pointIds)
-    
+
     // Extract the correct count from the response
     const deletedCount = result?.data?.deletedCount || result?.deletedCount || pointIds.length
-    
+
     toast.add({
       severity: 'success',
       summary: 'GPS Points Deleted',
       detail: `Successfully deleted ${deletedCount} GPS point${deletedCount !== 1 ? 's' : ''}`,
       life: 3000
     })
-    
+
     // Clear selection and refresh data
     selectedRows.value = []
+    lastSelectedIndex.value = null // Reset shift-click tracking
     await loadGPSPoints()
     await loadSummaryStats()
-    
+
   } catch (error) {
     console.error('Error deleting GPS points:', error)
     const errorMessage = error.response?.data?.message || error.message || 'Failed to delete selected GPS points'
@@ -1002,6 +1011,40 @@ const confirmBulkDelete = async () => {
     bulkDeleteLoading.value = false
     showBulkDeleteDialog.value = false
   }
+}
+
+// Handle row click for shift-select functionality
+const handleRowClick = (event) => {
+  const clickedRow = event.data
+  const clickedIndex = gpsPoints.value.findIndex(row => row.id === clickedRow.id)
+
+  // If shift key is not pressed, just update the last selected index
+  if (!event.originalEvent.shiftKey) {
+    lastSelectedIndex.value = clickedIndex
+    return
+  }
+
+  // Shift key is pressed - select range
+  if (lastSelectedIndex.value !== null && clickedIndex !== -1) {
+    const start = Math.min(lastSelectedIndex.value, clickedIndex)
+    const end = Math.max(lastSelectedIndex.value, clickedIndex)
+
+    // Get all rows in the range
+    const rangeRows = gpsPoints.value.slice(start, end + 1)
+
+    // Create a set of currently selected IDs for faster lookup
+    const selectedIds = new Set(selectedRows.value.map(row => row.id))
+
+    // Add all rows in range to selection (avoid duplicates)
+    rangeRows.forEach(row => {
+      if (!selectedIds.has(row.id)) {
+        selectedRows.value.push(row)
+      }
+    })
+  }
+
+  // Update last selected index
+  lastSelectedIndex.value = clickedIndex
 }
 
 // Lifecycle
@@ -1029,6 +1072,7 @@ watch(pageSize, async () => {
 watch(filters, async () => {
   currentPage.value = 0
   selectedRows.value = [] // Clear selection when filters change
+  lastSelectedIndex.value = null // Reset shift-click tracking
   await loadGPSPoints()
   await loadSummaryStats()
 }, { deep: true })
