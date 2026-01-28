@@ -71,7 +71,7 @@ const toggleHelp = () => {
 }
 
 const openSettings = () => {
-  router.push('/app/timeline/preferences')
+  router.push('/app/timeline/preferences?tab=gpsgaps')
   emit('navigate-to-settings')
 }
 
