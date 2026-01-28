@@ -118,6 +118,10 @@ public class UpdateTimelinePreferencesRequest {
     @Max(value = 600, message = "Trip sustained stop min duration must be at most 600 seconds (10 minutes)")
     private Integer tripSustainedStopMinDurationSeconds;
 
+    @Min(value = 2, message = "Trip arrival min points must be at least 2")
+    @Max(value = 5, message = "Trip arrival min points must be at most 5")
+    private Integer tripArrivalMinPoints;
+
     // Optional Trip Types - Bicycle
     private Boolean bicycleEnabled;
 

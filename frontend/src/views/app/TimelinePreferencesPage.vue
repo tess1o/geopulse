@@ -722,6 +722,27 @@
                       />
                     </template>
                   </SettingCard>
+
+                  <!-- Trip Arrival Minimum Points -->
+                  <SettingCard
+                    title="Minimum Stop Points for Arrival Detection"
+                    description="Minimum number of GPS points required to detect arrival at destination"
+                    :details="{
+                      'Lower values (2)': 'Faster detection, ideal for infrequent GPS (10-15 min intervals)',
+                      'Higher values (3-4)': 'More reliable, ideal for frequent GPS (30-60 sec intervals)'
+                    }"
+                  >
+                    <template #control>
+                      <div class="control-value">{{ prefs.tripArrivalMinPoints }} points</div>
+                      <SliderControl
+                        v-if="prefs.tripArrivalMinPoints !== undefined"
+                        v-model="prefs.tripArrivalMinPoints"
+                        :min="2" :max="5" :step="1"
+                        :labels="['2 points (Fast)', '3 points (Balanced)', '5 points (Conservative)']"
+                        suffix=" points" :decimal-places="0"
+                      />
+                    </template>
+                  </SettingCard>
                 </div>
               </div>
           </div>
@@ -1368,7 +1389,8 @@ const hasStructuralParameters = (changes) => {
     'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
     'gapTripInferenceEnabled', 'gapTripInferenceMinDistanceMeters',
     'gapTripInferenceMinGapHours', 'gapTripInferenceMaxGapHours',
-    'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds'
+    'tripArrivalDetectionMinDurationSeconds', 'tripSustainedStopMinDurationSeconds',
+    'tripArrivalMinPoints'
   ]
   return structuralFields.some(field => field in changes)
 }

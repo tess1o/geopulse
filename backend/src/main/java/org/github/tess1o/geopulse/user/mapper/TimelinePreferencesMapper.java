@@ -108,6 +108,8 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "tripSustainedStopMinDurationSeconds",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "tripArrivalMinPoints",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     // Optional Trip Types - Bicycle
     @org.mapstruct.Mapping(target = "bicycleEnabled",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -190,6 +192,7 @@ public interface TimelinePreferencesMapper {
                     .shortDistanceKm(fromImport.getShortDistanceKm())
                     .tripArrivalDetectionMinDurationSeconds(fromImport.getTripArrivalDetectionMinDurationSeconds())
                     .tripSustainedStopMinDurationSeconds(fromImport.getTripSustainedStopMinDurationSeconds())
+                    .tripArrivalMinPoints(fromImport.getTripArrivalMinPoints())
                     // Optional Trip Types
                     .bicycleEnabled(fromImport.getBicycleEnabled())
                     .bicycleMinAvgSpeed(fromImport.getBicycleMinAvgSpeed())
@@ -242,6 +245,7 @@ public interface TimelinePreferencesMapper {
                 .shortDistanceKm(existing.getShortDistanceKm())
                 .tripArrivalDetectionMinDurationSeconds(existing.getTripArrivalDetectionMinDurationSeconds())
                 .tripSustainedStopMinDurationSeconds(existing.getTripSustainedStopMinDurationSeconds())
+                .tripArrivalMinPoints(existing.getTripArrivalMinPoints())
                 // Optional Trip Types
                 .bicycleEnabled(existing.getBicycleEnabled())
                 .bicycleMinAvgSpeed(existing.getBicycleMinAvgSpeed())

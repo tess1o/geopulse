@@ -71,7 +71,7 @@ The most critical part of trip detection is knowing when you've truly arrived. T
 This catches obvious arrivals where all signals agree:
 
 **Conditions (ALL must be true):**
-- At least 3 recent GPS points available
+- At least **N** recent GPS points available (N = **Minimum Stop Points**, default 3, configurable 2-5)
 - All points within stay radius of each other (spatially clustered)
 - All points have speed ≤ stop speed threshold
 - Duration of cluster ≥ **Arrival Detection Duration**
@@ -80,29 +80,36 @@ This catches obvious arrivals where all signals agree:
 - You've clearly stopped and parked
 - GPS shows zero or near-zero movement
 - You've been stationary for sufficient time
+- **Stay begins at the timestamp of the FIRST stopped point** (retroactive)
 
 ### Tier 2: Sustained Stop Detection
 
 This catches arrivals with less clear signals:
 
 **Conditions (ALL must be true):**
-- At least 2 recent GPS points available
+- At least **N** recent GPS points available (same configurable threshold as Tier 1)
 - All points have speed below stop threshold
 - Duration ≥ **Sustained Stop Duration**
 
 **When this triggers:**
-- GPS clustering might not be perfect
+- GPS clustering might not be perfect (points scattered beyond stay radius)
 - But speed consistently shows you're stopped
 - Acts as a fallback when Tier 1 doesn't match
+- **Stay begins at the timestamp of the FIRST stopped point** (retroactive)
 
 ### Why Two Tiers?
 
 **Problem:** Traffic lights and brief stops
 
-If the system only used speed to detect stops, every red light would end your trip. By requiring **both** spatial clustering **and** low speed **and** duration, the algorithm filters out:
-- Traffic light stops (short duration)
+If the system only used speed to detect stops, every red light would end your trip. By requiring **both** spatial clustering **and** low speed **and** duration (Tier 1), or consistent low speed with longer duration (Tier 2), the algorithm filters out:
+- Traffic light stops (short duration, typically < 90 seconds)
 - Traffic jams where you're technically moving slowly
 - Brief stops that resume shortly
+
+**Key Design Principles:**
+1. **Configurable sensitivity:** Minimum points threshold (default 3) adapts to GPS frequency
+2. **Retroactive timestamps:** Stay begins at FIRST stopped point, not detection point
+3. **Two-tier fallback:** Tier 1 for perfect conditions, Tier 2 when GPS clustering isn't ideal
 
 ---
 
@@ -164,23 +171,35 @@ You drive to a coffee shop:
 10:15 - Park car, GPS shows you stopped
 
 ARRIVAL DETECTION PHASE (during trip):
-  10:15:00 - First stationary point
+  10:15:00 - First stationary point (ACTUAL ARRIVAL)
   10:15:30 - Second stationary point
   10:16:00 - Third stationary point
   10:16:30 - 90 seconds elapsed with clustered, slow points
-  → Trip ENDS, enter POTENTIAL_STAY
+  → Arrival DETECTED (requires 3 points by default, configurable)
+  → Trip ENDS at 10:15:00, STAY BEGINS at 10:15:00
 
 STAY CONFIRMATION PHASE (after trip):
-  10:16:30 - Start of potential stay
-  10:17:00 - Still at location (30 sec)
-  10:20:00 - Still at location (3.5 min)
-  10:23:30 - 7 minutes elapsed
+  10:15:00 - Start of potential stay (RETROACTIVE to first stopped point)
+  10:16:30 - Still at location (90 sec)
+  10:20:00 - Still at location (5 min)
+  10:22:00 - 7 minutes elapsed since arrival
   → Stay CONFIRMED
 
 Timeline result:
-  - Trip: Home → Coffee Shop (10:00-10:16:30)
-  - Stay: Coffee Shop (10:16:30-...)
+  - Trip: Home → Coffee Shop (10:00-10:15:00)
+  - Stay: Coffee Shop (10:15:00-...)
 ```
+
+:::tip Retroactive Stay Timestamps
+**Important:** When arrival is detected, the stay start time is **retroactively set** to the timestamp of the **first stopped point**, not the detection time. This ensures accurate trip durations and stay times.
+
+- **Before fix (old behavior):** Stay started at 10:16:30 (detection time) → 90-second delay
+- **After fix (current):** Stay starts at 10:15:00 (actual arrival) → accurate timestamps
+:::
+
+:::info Configurable Detection Threshold
+The number of stopped points required for detection (default: 3) is now configurable via the **Minimum Stop Points** setting. Users with infrequent GPS (10-15 min intervals) should set this to **2 points** to avoid excessive delays.
+:::
 
 ### Why Separate Settings?
 
@@ -197,23 +216,29 @@ Timeline result:
 **Example of why both matter:**
 
 ```
-Scenario: Stop at ATM for 2 minutes
+Scenario: Stop at ATM for 2 minutes (with 3 points, 30-sec GPS)
 
-10:00 - Arrive at ATM
-10:01:30 - Arrival detected (90s elapsed) → Trip ends
+10:00:00 - Arrive at ATM (1st stopped point)
+10:00:30 - Still stopped (2nd point)
+10:01:00 - Still stopped (3rd point)
+10:01:30 - 90 seconds elapsed → Arrival detected
+          Trip ends at 10:00:00 (first stopped point - RETROACTIVE)
+          Stay begins at 10:00:00 (not 10:01:30)
 10:02:00 - Leave ATM → New trip starts
 
 Result: No stay created (2 min < 7 min minimum)
 The brief ATM stop correctly doesn't clutter your timeline.
+Note: Trip duration accurate (ended when you stopped, not when detected).
 ```
 
 ```
 Scenario: Traffic light for 3 minutes
 
-10:00 - Stop at red light
-10:01:30 - 90 seconds elapsed...
-  BUT: Light turns green at 10:02, you start moving
-  → Arrival detection resets, trip continues
+10:00:00 - Stop at red light (1st stopped point)
+10:00:30 - Still stopped (2nd point)
+10:01:00 - Still stopped (3rd point) - could trigger detection
+  BUT: Light turns green at 10:01:45, you start moving
+  → Duration check fails (< 90s minimum), trip continues
 
 Result: No trip split, continuous journey preserved.
 ```
@@ -283,6 +308,54 @@ Minimum duration of consistent slow movement for the fallback detection mechanis
 **Trade-offs:**
 - **Shorter duration:** More responsive but more false positives
 - **Longer duration:** More robust but may miss quick turnaround stops
+
+### Minimum Stop Points for Arrival Detection
+
+**Setting:** `Minimum Stop Points for Arrival Detection`
+**Default:** 3 points
+**Range:** 2-5 points
+
+Minimum number of GPS points required to detect arrival at a destination. Both arrival detection tiers (spatial clustering + speed, and speed-only fallback) use this value.
+
+| Value | Effect | Best For |
+|-------|--------|----------|
+| **2 points** | Faster detection | Infrequent GPS (10-15 min intervals) |
+| **3 points** | Balanced detection | Most users (30-60 sec intervals) |
+| **4-5 points** | Conservative detection | Very sensitive setups, high-frequency GPS |
+
+**Critical for Infrequent GPS Tracking:**
+
+If you use battery-saving automations with GPS updates every 10-15 minutes, set this to **2 points**:
+- With 3 points (default): 30-45 minute delay before arrival detection
+- With 2 points: 10-15 minute delay before arrival detection
+
+**Example Scenario:**
+```
+GPS Frequency: Every 15 minutes
+Arrival Time: 10:00 AM
+
+With 3 points (default):
+  10:00 - 1st stopped point
+  10:15 - 2nd stopped point
+  10:30 - 3rd stopped point → Arrival detected
+  Result: 30-minute delay, trip duration inflated
+
+With 2 points (configured):
+  10:00 - 1st stopped point
+  10:15 - 2nd stopped point → Arrival detected
+  Result: 15-minute delay, more accurate timeline
+```
+
+**Trade-offs:**
+- **Lower values (2):** Faster arrival detection but may increase false positives at long traffic lights
+- **Higher values (3-4):** More reliable detection but requires more GPS points, causing delays with infrequent tracking
+
+:::tip GPS Frequency Recommendation
+Match this setting to your GPS tracking frequency:
+- **High frequency (30-60s):** Use 3-4 points (default)
+- **Medium frequency (2-5 min):** Use 2-3 points
+- **Low frequency (10-15 min):** Use 2 points
+:::
 
 ### Stop Speed Threshold
 
@@ -513,20 +586,25 @@ Duration = Last point timestamp - First point timestamp
 ### Scenario 1: Drive to Work
 
 ```
-08:00 - Leave home (CONFIRMED_STAY → IN_TRIP)
-08:00-08:30 - Driving with traffic stops
-08:30 - Park at work, walk to building
-08:31 - Arrive at desk
+08:00:00 - Leave home (CONFIRMED_STAY → IN_TRIP)
+08:00-08:29 - Driving with traffic stops
+08:29:30 - Park at work (1st stopped point - ACTUAL ARRIVAL)
+08:30:00 - Walk to building (2nd stopped point)
+08:30:30 - Arrive at desk (3rd stopped point)
+08:31:00 - Detection: 3 points, 90 seconds, clustered → Arrival confirmed
+          Trip ends at 08:29:30 (RETROACTIVE to first stopped point)
+          Stay begins at 08:29:30 (not 08:31:00)
 
 Timeline:
-  - Stay: Home (until 08:00)
-  - Trip: 30 min drive (08:00-08:30)
-  - Stay: Work (from 08:31)
+  - Stay: Home (until 08:00:00)
+  - Trip: 29.5 min drive (08:00:00-08:29:30)
+  - Stay: Work (from 08:29:30)
 ```
 
-The 1-minute walk from car to desk is typically absorbed into the trip since:
-- Duration is too short for a separate stay
-- Arrival detection combines the stop + walk
+**Key Points:**
+- The 1.5-minute detection delay (08:29:30 → 08:31:00) does NOT inflate trip duration
+- Stay timestamp is **retroactive** to when you actually stopped (08:29:30)
+- Walk from car to desk absorbed into stay cluster (all points within stay radius)
 
 ### Scenario 2: Extended Traffic Stop
 
@@ -600,6 +678,7 @@ Trip Detection Algorithm: single
 ```
 Arrival Detection Duration: 60s (faster detection)
 Sustained Stop Duration: 45s (quicker arrivals)
+Minimum Stop Points: 2-3 (responsive detection)
 Minimum Stay Duration: 2-3 min (catch brief stops)
 ```
 
@@ -615,7 +694,19 @@ Minimum Stay Duration: 10-15 min (only significant stops)
 Trip Detection Algorithm: single (or multiple if you want detail)
 Enable Train, Bicycle as needed
 Arrival Detection Duration: 90s
+Minimum Stop Points: 3 (default)
 ```
+
+**Infrequent GPS / Battery Saving:**
+```
+Minimum Stop Points: 2 (CRITICAL for 10-15 min intervals)
+Arrival Detection Duration: 90-120s
+Sustained Stop Duration: 60s
+Minimum Stay Duration: 7-10 min
+```
+:::warning
+If using GPS automations with 10-15 minute intervals (e.g., iOS Shortcuts), **you must set Minimum Stop Points to 2**. The default value of 3 will cause 30-45 minute delays in arrival detection, making trip durations appear much longer than reality.
+:::
 
 ### For Different GPS Quality
 
@@ -639,6 +730,75 @@ Stay Detection Radius: 75-100m
 
 ---
 
+## Retroactive Stay Timestamps
+
+**Important Behavioral Change:** When arrival is detected, the stay start time is set **retroactively** to the timestamp of the **first stopped point**, not the detection time.
+
+### Why This Matters
+
+Previously, the system would:
+1. Detect arrival when N points met the criteria (e.g., 3 points at 10:00, 10:15, 10:30)
+2. Start the stay at the **detection time** (10:30 - the last point)
+3. This inflated trip durations by the detection delay
+
+**Example of the problem:**
+```
+User arrives at 10:00 AM (GPS every 15 min)
+Points: 10:00, 10:15, 10:30 (3rd point triggers detection)
+
+OLD BEHAVIOR (incorrect):
+  - Trip ends: 10:30 (detection time)
+  - Stay starts: 10:30 (detection time)
+  - Result: Trip appears 30 minutes longer than reality
+
+NEW BEHAVIOR (correct):
+  - Trip ends: 10:00 (first stopped point)
+  - Stay starts: 10:00 (first stopped point)
+  - Result: Accurate trip duration
+```
+
+### How It Works
+
+When the algorithm detects a sustained stop:
+
+1. **Identifies the stopped cluster:** The last N points that meet stop criteria (default N=3, configurable)
+2. **Splits the timeline:**
+   - **Trip points:** All points BEFORE the first stopped point
+   - **Stay points:** The stopped cluster (N points)
+3. **Finalizes retroactively:**
+   - Trip ends at timestamp of last moving point
+   - Stay begins at timestamp of first stopped point
+
+**Visual representation:**
+```
+Trip Points:     [P1] [P2] [P3] [P4] [P5]  |  [S1] [S2] [S3]
+                  ↑                    ↑       ↑           ↑
+               Moving              Moving  Stopped    Detected
+                                   (last)   (first)    (3rd)
+
+Trip ends at: P5 timestamp (last moving point)
+Stay starts at: S1 timestamp (first stopped point)
+NOT at: S3 timestamp (detection point) ❌
+```
+
+### Benefits
+
+✅ **Accurate trip durations:** No inflation from detection delays
+✅ **Accurate stay timestamps:** Reflects when you actually arrived
+✅ **Works with infrequent GPS:** Even with 15-min intervals, timestamps are correct
+✅ **Consistent timeline:** No gaps between trip end and stay start
+
+### Configuration Impact
+
+The **Minimum Stop Points** setting affects how many points form the stopped cluster:
+- **2 points:** Faster detection, shorter potential delay (suitable for infrequent GPS)
+- **3 points (default):** Balanced detection, filters most traffic lights
+- **4-5 points:** Very conservative, but longer detection delay
+
+Regardless of the setting, the stay **always** starts at the **first stopped point** in the cluster.
+
+---
+
 ## Troubleshooting
 
 ### Problem: Trips are split at traffic lights
@@ -657,11 +817,21 @@ Stay Detection Radius: 75-100m
 **Possible Causes:**
 - Detection thresholds too conservative
 - GPS not reporting zero speed when stopped
+- **Infrequent GPS tracking** (most common with battery-saving automations)
 
 **Solutions:**
-1. Decrease **Arrival Detection Duration** to 60 seconds
-2. Decrease **Sustained Stop Duration** to 45 seconds
-3. Check GPS source configuration for speed reporting
+1. **For Infrequent GPS (10-15 min intervals):** Decrease **Minimum Stop Points** to 2
+2. Decrease **Arrival Detection Duration** to 60 seconds
+3. Decrease **Sustained Stop Duration** to 45 seconds
+4. Check GPS source configuration for speed reporting
+
+**Example: Infrequent GPS Issue**
+```
+Symptom: Drive from work to home takes 10 minutes, but timeline shows 1.5 hours
+Cause: GPS updates every 15 minutes, need 3 points for detection (45 min delay)
+Solution: Set Minimum Stop Points to 2
+Result: Detection after 2 points (15 min delay instead of 45 min)
+```
 
 ### Problem: Walking between car and building creates extra trip
 
