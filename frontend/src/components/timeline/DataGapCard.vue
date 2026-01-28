@@ -25,6 +25,9 @@
           ⏱️ Duration:
           <span class="detail-value">{{ formatDuration(dataGapItem.durationSeconds) }}</span>
         </p>
+
+        <!-- Help section for gap configuration guidance -->
+        <DataGapHelpSection :duration-seconds="dataGapItem.durationSeconds" />
       </div>
     </template>
   </Card>
@@ -34,6 +37,7 @@
 import { computed } from 'vue'
 import { formatDuration } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
+import DataGapHelpSection from './DataGapHelpSection.vue'
 
 const props = defineProps({
   dataGapItem: {
