@@ -242,7 +242,7 @@ class GeocodingCopyOnWriteHandlerTest {
                     .formattedDisplayName("Location Name") // Same
                     .city("City") // Same
                     .country("Country") // Same
-                    .providerName("provider")
+                    .providerName("test_provider") // Same
                     .build();
 
             // When

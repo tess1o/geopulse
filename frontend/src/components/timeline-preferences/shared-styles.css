@@ -1,0 +1,65 @@
+/* Shared Timeline Preferences Styles */
+
+/* Control Value Display */
+.control-value {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: var(--gp-surface-light);
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-medium);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin-bottom: 1rem;
+  min-width: 120px;
+  text-align: center;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.toggle-control {
+  margin-top: 0.5rem;
+}
+
+/* Parameter Groups (within TransportTypeCard) */
+.parameter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.parameter-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin: 0;
+}
+
+.parameter-description {
+  font-size: 0.85rem;
+  color: var(--gp-text-secondary);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.4;
+}
+
+/* Responsive Styles */
+@media (max-width: 480px) {
+  .control-value {
+    min-width: 0;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.8rem;
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+  .parameter-label {
+    font-size: 0.9rem;
+  }
+
+  .parameter-description {
+    font-size: 0.8rem;
+  }
+}

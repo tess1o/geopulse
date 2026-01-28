@@ -137,6 +137,10 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String tripSustainedStopMinDurationSeconds;
 
+    @ConfigProperty(name = "geopulse.timeline.trip.arrival.min_points", defaultValue = "3")
+    @StaticInitSafe
+    String tripArrivalMinPoints;
+
     // Optional Trip Types - Bicycle
     @ConfigProperty(name = "geopulse.timeline.travel.classification.bicycle.enabled", defaultValue = "false")
     @StaticInitSafe

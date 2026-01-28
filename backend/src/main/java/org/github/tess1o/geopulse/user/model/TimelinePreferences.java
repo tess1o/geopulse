@@ -53,6 +53,7 @@ public class TimelinePreferences {
     // Trip Stop Detection Settings
     private Integer tripArrivalDetectionMinDurationSeconds;
     private Integer tripSustainedStopMinDurationSeconds;
+    private Integer tripArrivalMinPoints;
 
     // Optional Trip Types - Bicycle
     private Boolean bicycleEnabled;

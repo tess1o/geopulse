@@ -231,6 +231,13 @@ public class TimelineConfigFieldRegistry {
                         TimelineConfig::setTripSustainedStopMinDurationSeconds,
                         Integer::valueOf
                 ))
+                .register(new ConfigField<>(
+                        "geopulse.timeline.trip.arrival.min_points",
+                        properties.getTripArrivalMinPoints(),
+                        TimelineConfig::getTripArrivalMinPoints,
+                        TimelineConfig::setTripArrivalMinPoints,
+                        Integer::valueOf
+                ))
                 // Optional Trip Types - Bicycle
                 .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.bicycle.enabled",

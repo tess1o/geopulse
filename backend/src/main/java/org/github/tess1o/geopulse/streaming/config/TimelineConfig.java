@@ -250,6 +250,22 @@ public class TimelineConfig {
      */
     private Integer tripSustainedStopMinDurationSeconds;
 
+    /**
+     * Minimum number of GPS points required to detect arrival at destination during trips.
+     * Both arrival detection tiers (spatial clustering + speed, and speed-only fallback) use this value.
+     * Lower values enable faster detection but may increase false positives.
+     * Higher values provide more reliable detection but increase delay.
+     *
+     * Consider your GPS tracking frequency when configuring:
+     * - High frequency (30-60s intervals): Use 3-4 points
+     * - Medium frequency (2-5 min intervals): Use 2-3 points
+     * - Low frequency (10-15 min intervals): Use 2 points
+     *
+     * Default: 3 points
+     * Range: 2-5 points
+     */
+    private Integer tripArrivalMinPoints;
+
     // Optional Trip Types Configuration - Bicycle
     /**
      * Enable or disable bicycle trip type detection.

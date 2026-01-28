@@ -24,14 +24,19 @@
           ⏱️ On this day:
           <span class="duration-value"> {{ getOnThisDayText() }}</span>
         </p>
+
+        <!-- Help section for gap configuration guidance -->
+        <DataGapHelpSection :duration-seconds="gapDurationSeconds" />
       </div>
     </template>
   </Card>
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useTimezone } from '@/composables/useTimezone';
 import { formatDurationSmart } from '@/utils/calculationsHelpers';
+import DataGapHelpSection from './DataGapHelpSection.vue';
 
 const props = defineProps({
   dataGapItem: {
@@ -47,6 +52,13 @@ const props = defineProps({
 const emit = defineEmits(['click']);
 
 const timezone = useTimezone();
+
+// Computed properties
+const gapDurationSeconds = computed(() => {
+  const startTime = timezone.fromUtc(props.dataGapItem.startTime)
+  const endTime = timezone.fromUtc(props.dataGapItem.endTime)
+  return endTime.diff(startTime, 'second')
+})
 
 // Methods
 const getTimestampText = () => {

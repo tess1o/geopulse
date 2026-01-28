@@ -340,18 +340,45 @@ public class StreamingTimelineProcessor {
      */
     private ProcessingResult handleTripState(GPSPoint point, UserState userState, TimelineConfig config) {
         userState.addActivePoint(point);
-//
-        // Check for sustained stopping (multiple consecutive slow points over time)
-        if (isSustainedStopInTrip(userState, config)) {
-            // Finalize the trip up to where stopping began
-            TimelineEvent finalizedTrip = finalizationService.finalizeTrip(userState, config);
 
-            // Start new potential stay
+        // Check for sustained stopping (multiple consecutive slow points over time)
+        StopDetectionResult stopResult = detectSustainedStopInTrip(userState, config);
+
+        if (stopResult.stopDetected) {
+            // Split points: trip points (before stop) and stopped points (potential stay)
+            List<GPSPoint> allPoints = userState.copyActivePoints();
+
+            // Trip ends at the point BEFORE stopping began
+            List<GPSPoint> tripPoints = allPoints.subList(0, stopResult.stoppedClusterStartIndex);
+
+            // Stay starts at the FIRST stopped point (retroactive timestamp)
+            List<GPSPoint> stoppedPoints = allPoints.subList(stopResult.stoppedClusterStartIndex, allPoints.size());
+
+            TimelineEvent finalizedTrip = null;
+
+            // Only finalize trip if there were moving points before the stop
+            if (!tripPoints.isEmpty()) {
+                UserState tripState = new UserState();
+                tripState.setCurrentMode(ProcessorMode.IN_TRIP);
+                for (GPSPoint p : tripPoints) {
+                    tripState.addActivePoint(p);
+                }
+                finalizedTrip = finalizationService.finalizeTrip(tripState, config);
+            }
+
+            // Start new potential stay with the stopped points (retroactive to first stopped point)
             userState.setCurrentMode(ProcessorMode.POTENTIAL_STAY);
             userState.clearActivePoints();
-            userState.addActivePoint(point);
+            for (GPSPoint p : stoppedPoints) {
+                userState.addActivePoint(p);
+            }
 
-            return ProcessingResult.withSingleEvent(userState, finalizedTrip);
+            // Return trip event if one was created, otherwise just state change
+            if (finalizedTrip != null) {
+                return ProcessingResult.withSingleEvent(userState, finalizedTrip);
+            } else {
+                return ProcessingResult.withStateOnly(userState);
+            }
         }
 
         return ProcessingResult.withStateOnly(userState);
@@ -422,22 +449,52 @@ public class StreamingTimelineProcessor {
         return seconds != null ? Duration.ofSeconds(seconds) : Duration.ofSeconds(60);
     }
 
+    private int getTripArrivalMinPoints(TimelineConfig config) {
+        Integer minPoints = config.getTripArrivalMinPoints();
+        return minPoints != null ? minPoints : 3;
+    }
+
+    /**
+     * Result of sustained stop detection containing information about the stopped cluster.
+     */
+    private static class StopDetectionResult {
+        final boolean stopDetected;
+        final int stoppedClusterStartIndex;  // Index in activePoints where stopped cluster begins
+
+        StopDetectionResult(boolean stopDetected, int stoppedClusterStartIndex) {
+            this.stopDetected = stopDetected;
+            this.stoppedClusterStartIndex = stoppedClusterStartIndex;
+        }
+
+        static StopDetectionResult noStop() {
+            return new StopDetectionResult(false, -1);
+        }
+
+        static StopDetectionResult stopDetected(int startIndex) {
+            return new StopDetectionResult(true, startIndex);
+        }
+    }
+
     /**
      * Check for arrival/stopping during a trip using flexible criteria.
      * Handles both sustained stops (traffic avoidance) and immediate arrivals (destination reached).
+     * Returns information about where the stopped cluster begins for retroactive stay timestamp.
      */
-    private boolean isSustainedStopInTrip(UserState userState, TimelineConfig config) {
+    private StopDetectionResult detectSustainedStopInTrip(UserState userState, TimelineConfig config) {
         List<GPSPoint> activePoints = userState.copyActivePoints();
-        if (activePoints.size() < 3) {  // Need at least 3 points
-            return false;
+        int minPoints = getTripArrivalMinPoints(config);
+
+        if (activePoints.size() < minPoints) {
+            return StopDetectionResult.noStop();
         }
 
         double stopSpeedThreshold = getStopSpeedThreshold(config);
         double stayRadius = getStayRadius(config);
 
-        // Get recent points for analysis (last 3-4 points)
-        int recentPointsToCheck = Math.min(3, activePoints.size());
-        List<GPSPoint> recentPoints = activePoints.subList(activePoints.size() - recentPointsToCheck, activePoints.size());
+        // Get recent points for analysis based on configured minimum
+        int recentPointsToCheck = Math.min(minPoints, activePoints.size());
+        int stoppedClusterStartIndex = activePoints.size() - recentPointsToCheck;
+        List<GPSPoint> recentPoints = activePoints.subList(stoppedClusterStartIndex, activePoints.size());
 
         // Check 1: Arrival Detection - Are recent points spatially clustered with low speed?
         GPSPoint lastPoint = recentPoints.get(recentPoints.size() - 1);
@@ -450,7 +507,7 @@ public class StreamingTimelineProcessor {
             boolean isArrival = clusterDuration.compareTo(arrivalDetectionDuration) >= 0;
 
             if (isArrival) {
-                return true; // Clear arrival detected
+                return StopDetectionResult.stopDetected(stoppedClusterStartIndex);
             }
         }
 
@@ -465,11 +522,13 @@ public class StreamingTimelineProcessor {
                 Duration sustainedStopDuration = getSustainedStopDuration(config);
                 boolean sustainedStop = slowDuration.compareTo(sustainedStopDuration) >= 0;
 
-                return sustainedStop;
+                if (sustainedStop) {
+                    return StopDetectionResult.stopDetected(stoppedClusterStartIndex);
+                }
             }
         }
 
-        return false;
+        return StopDetectionResult.noStop();
     }
 
 

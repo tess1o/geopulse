@@ -43,33 +43,36 @@ Controls how movement is classified into different transportation modes based on
 
 ### Trip Detection Settings
 
-| Property                                                     | Default  | Description                                                                                                                 |
-|--------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM`                 | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                 |
+| Property                                                     | Default  | Description                                                                                                                |
+|--------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM`                 | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                |
 | `GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_DURATION_SECONDS`        | `90`     | Minimum duration (seconds) for arrival detection. GPS points must be clustered and slow for this duration to detect arrival |
-| `GEOPULSE_TIMELINE_TRIP_SUSTAINED_STOP_MIN_DURATION_SECONDS` | `60`     | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                        |
-| `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM`                        | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips         |
+| `GEOPULSE_TIMELINE_TRIP_SUSTAINED_STOP_MIN_DURATION_SECONDS` | `60`     | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                       |
+| `GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_POINTS`                  | `3`      | Minimum number of GPS points required to detect arrival at destination during trips.            |
+| `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM`                        | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips        |
 
 ### Walking Classification (Mandatory)
 
 Walking is a mandatory trip type that cannot be disabled.
 
-| Property                              | Default | Description                                                                                               |
-|---------------------------------------|---------|-----------------------------------------------------------------------------------------------------------|
+| Property                                  | Default | Description                                                                                               |
+|-------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------|
 | `GEOPULSE_TIMELINE_WALKING_MAX_AVG_SPEED` | `6.0`   | Maximum sustained speed (km/h) for walking classification. Trips above this are classified as non-walking |
 | `GEOPULSE_TIMELINE_WALKING_MAX_MAX_SPEED` | `8.0`   | Maximum instantaneous speed (km/h) for walking trips. Brief bursts above this reclassify the entire trip  |
 
 ### Car Classification (Mandatory)
 
-Car is a mandatory trip type that cannot be disabled. Covers all motorized transport including cars, buses, and motorcycles.
+Car is a mandatory trip type that cannot be disabled. Covers all motorized transport including cars, buses, and
+motorcycles.
 
-| Property                          | Default | Description                                                                                             |
-|-----------------------------------|---------|---------------------------------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED` | `8.0`   | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving |
+| Property                              | Default | Description                                                                                                               |
+|---------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_CAR_MIN_AVG_SPEED` | `8.0`   | Minimum sustained speed (km/h) required for car classification. Trips below this won't be classified as driving           |
 | `GEOPULSE_TIMELINE_CAR_MIN_MAX_SPEED` | `15.0`  | Minimum peak speed (km/h) required for car classification. Trips never reaching this speed won't be classified as driving |
 
 :::info
-Car classification uses **OR logic**: a trip is classified as CAR if **either** average speed ≥ `CAR_MIN_AVG_SPEED` **or** maximum speed ≥ `CAR_MIN_MAX_SPEED`.
+Car classification uses **OR logic**: a trip is classified as CAR if **either** average speed ≥ `CAR_MIN_AVG_SPEED` **or
+** maximum speed ≥ `CAR_MIN_MAX_SPEED`.
 :::
 
 ### Bicycle Classification (Optional)
@@ -77,61 +80,67 @@ Car classification uses **OR logic**: a trip is classified as CAR if **either** 
 Bicycle is an optional trip type for detecting cycling. **Disabled by default.**
 
 :::warning Classification Priority
-Bicycle must be checked **before** RUNNING and CAR in the classification algorithm because their speed ranges overlap. If disabled, trips in the cycling range will be classified as RUNNING (if enabled) or CAR.
+Bicycle must be checked **before** RUNNING and CAR in the classification algorithm because their speed ranges overlap.
+If disabled, trips in the cycling range will be classified as RUNNING (if enabled) or CAR.
 :::
 
-| Property                              | Default | Description                                                                       |
-|---------------------------------------|---------|-----------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_BICYCLE_ENABLED`       | `false` | Whether bicycle classification is enabled                                         |
-| `GEOPULSE_TIMELINE_BICYCLE_MIN_AVG_SPEED` | `8.0`   | Minimum average speed (km/h) for bicycle trips. Slower trips classify as running or walking  |
-| `GEOPULSE_TIMELINE_BICYCLE_MAX_AVG_SPEED` | `25.0`  | Maximum average speed (km/h) for bicycle trips. Faster trips classify as car      |
-| `GEOPULSE_TIMELINE_BICYCLE_MAX_MAX_SPEED` | `35.0`  | Maximum peak speed (km/h) for bicycle trips. Allows for downhill segments/e-bikes |
+| Property                                  | Default | Description                                                                                 |
+|-------------------------------------------|---------|---------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_BICYCLE_ENABLED`       | `false` | Whether bicycle classification is enabled                                                   |
+| `GEOPULSE_TIMELINE_BICYCLE_MIN_AVG_SPEED` | `8.0`   | Minimum average speed (km/h) for bicycle trips. Slower trips classify as running or walking |
+| `GEOPULSE_TIMELINE_BICYCLE_MAX_AVG_SPEED` | `25.0`  | Maximum average speed (km/h) for bicycle trips. Faster trips classify as car                |
+| `GEOPULSE_TIMELINE_BICYCLE_MAX_MAX_SPEED` | `35.0`  | Maximum peak speed (km/h) for bicycle trips. Allows for downhill segments/e-bikes           |
 
 ### Running Classification (Optional)
 
 Running is an optional trip type for detecting running and jogging. **Disabled by default.**
 
 :::warning Classification Priority
-Running must be checked **before** CAR in the classification algorithm because their speed ranges overlap (7-14 km/h). When disabled, running speeds are classified as BICYCLE (if enabled) or CAR.
+Running must be checked **before** CAR in the classification algorithm because their speed ranges overlap (7-14 km/h).
+When disabled, running speeds are classified as BICYCLE (if enabled) or CAR.
 :::
 
-| Property                              | Default | Description                                                                       |
-|---------------------------------------|---------|-----------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_RUNNING_ENABLED`       | `false` | Whether running classification is enabled                                         |
-| `GEOPULSE_TIMELINE_RUNNING_MIN_AVG_SPEED` | `7.0`   | Minimum average speed (km/h) for running trips. Slower trips classify as walking  |
+| Property                                  | Default | Description                                                                             |
+|-------------------------------------------|---------|-----------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_RUNNING_ENABLED`       | `false` | Whether running classification is enabled                                               |
+| `GEOPULSE_TIMELINE_RUNNING_MIN_AVG_SPEED` | `7.0`   | Minimum average speed (km/h) for running trips. Slower trips classify as walking        |
 | `GEOPULSE_TIMELINE_RUNNING_MAX_AVG_SPEED` | `14.0`  | Maximum average speed (km/h) for running trips. Faster trips classify as bicycle or car |
-| `GEOPULSE_TIMELINE_RUNNING_MAX_MAX_SPEED` | `18.0`  | Maximum peak speed (km/h) for running trips. Allows for sprint segments |
+| `GEOPULSE_TIMELINE_RUNNING_MAX_MAX_SPEED` | `18.0`  | Maximum peak speed (km/h) for running trips. Allows for sprint segments                 |
 
 ### Train Classification (Optional)
 
-Train is an optional trip type for detecting rail travel. Uses speed variance to distinguish from cars. **Disabled by default.**
+Train is an optional trip type for detecting rail travel. Uses speed variance to distinguish from cars. **Disabled by
+default.**
 
 :::tip Speed Variance
-Trains maintain consistent speeds (low variance < 15), while cars have variable speeds due to traffic and stops (high variance > 25). This is the key discriminator between train and car trips at similar speeds.
+Trains maintain consistent speeds (low variance < 15), while cars have variable speeds due to traffic and stops (high
+variance > 25). This is the key discriminator between train and car trips at similar speeds.
 :::
 
-| Property                              | Default  | Description                                                                 |
-|---------------------------------------|----------|-----------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_TRAIN_ENABLED`         | `false`  | Whether train classification is enabled                                     |
-| `GEOPULSE_TIMELINE_TRAIN_MIN_AVG_SPEED`   | `30.0`   | Minimum average speed (km/h) for train trips. Separates from cars in traffic |
-| `GEOPULSE_TIMELINE_TRAIN_MAX_AVG_SPEED`   | `150.0`  | Maximum average speed (km/h) for train trips. Covers regional and intercity trains |
-| `GEOPULSE_TIMELINE_TRAIN_MIN_MAX_SPEED`   | `80.0`   | Minimum peak speed (km/h) required. Filters out trips with only station waiting time |
-| `GEOPULSE_TIMELINE_TRAIN_MAX_MAX_SPEED`   | `180.0`  | Maximum peak speed (km/h) for train trips. Upper limit for rail speeds     |
-| `GEOPULSE_TIMELINE_TRAIN_MAX_SPEED_VARIANCE` | `15.0`   | Maximum speed variance allowed. Lower values require more consistent speeds |
+| Property                                     | Default | Description                                                                          |
+|----------------------------------------------|---------|--------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_TRAIN_ENABLED`            | `false` | Whether train classification is enabled                                              |
+| `GEOPULSE_TIMELINE_TRAIN_MIN_AVG_SPEED`      | `30.0`  | Minimum average speed (km/h) for train trips. Separates from cars in traffic         |
+| `GEOPULSE_TIMELINE_TRAIN_MAX_AVG_SPEED`      | `150.0` | Maximum average speed (km/h) for train trips. Covers regional and intercity trains   |
+| `GEOPULSE_TIMELINE_TRAIN_MIN_MAX_SPEED`      | `80.0`  | Minimum peak speed (km/h) required. Filters out trips with only station waiting time |
+| `GEOPULSE_TIMELINE_TRAIN_MAX_MAX_SPEED`      | `180.0` | Maximum peak speed (km/h) for train trips. Upper limit for rail speeds               |
+| `GEOPULSE_TIMELINE_TRAIN_MAX_SPEED_VARIANCE` | `15.0`  | Maximum speed variance allowed. Lower values require more consistent speeds          |
 
 ### Flight Classification (Optional)
 
 Flight is an optional trip type for detecting air travel. **Disabled by default.**
 
 :::info OR Logic for Flights
-Flight classification uses **OR logic**: a trip is classified as FLIGHT if **either** average speed ≥ `FLIGHT_MIN_AVG_SPEED` **or** maximum speed ≥ `FLIGHT_MIN_MAX_SPEED`. This handles flights with long taxi/boarding times that lower the overall average.
+Flight classification uses **OR logic**: a trip is classified as FLIGHT if **either** average speed ≥
+`FLIGHT_MIN_AVG_SPEED` **or** maximum speed ≥ `FLIGHT_MIN_MAX_SPEED`. This handles flights with long taxi/boarding times
+that lower the overall average.
 :::
 
-| Property                              | Default  | Description                                                                   |
-|---------------------------------------|----------|-------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_FLIGHT_ENABLED`        | `false`  | Whether flight classification is enabled                                      |
-| `GEOPULSE_TIMELINE_FLIGHT_MIN_AVG_SPEED`  | `400.0`  | Minimum average speed (km/h) for flight trips. Conservative default includes ground time |
-| `GEOPULSE_TIMELINE_FLIGHT_MIN_MAX_SPEED`  | `500.0`  | Minimum peak speed (km/h) for flight trips. Catches flights with long taxi time |
+| Property                                 | Default | Description                                                                              |
+|------------------------------------------|---------|------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_FLIGHT_ENABLED`       | `false` | Whether flight classification is enabled                                                 |
+| `GEOPULSE_TIMELINE_FLIGHT_MIN_AVG_SPEED` | `400.0` | Minimum average speed (km/h) for flight trips. Conservative default includes ground time |
+| `GEOPULSE_TIMELINE_FLIGHT_MIN_MAX_SPEED` | `500.0` | Minimum peak speed (km/h) for flight trips. Catches flights with long taxi time          |
 
 ### Classification Priority Order
 
@@ -146,7 +155,8 @@ The system evaluates trip types in this specific order:
 7. **UNKNOWN** - Fallback for edge cases
 
 :::danger Important
-The order is critical! BICYCLE and RUNNING must be checked before CAR because their speed ranges overlap. Changing the order will cause misclassification.
+The order is critical! BICYCLE and RUNNING must be checked before CAR because their speed ranges overlap. Changing the
+order will cause misclassification.
 :::
 
 ### GPS Noise Detection
@@ -158,7 +168,8 @@ The classification system includes automatic GPS noise detection:
 - **Adaptive Thresholds**: Different validation rules for low-speed vs. high-speed trips
 - **Smart Fallbacks**: Automatically switches to calculated speeds when GPS data is unreliable
 
-For more details on how travel classification works, see the [Travel Classification Guide](/docs/user-guide/timeline/travel_classification).
+For more details on how travel classification works, see
+the [Travel Classification Guide](/docs/user-guide/timeline/travel_classification).
 
 ## Staypoint Merging
 
@@ -196,15 +207,17 @@ Detects and handles gaps in GPS data that might indicate missing location inform
 
 Controls whether to infer continuous stays during data gaps when GPS resumes at the same location.
 
-| Property                                              | Default | Description                                                                         |
-|-------------------------------------------------------|---------|-------------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_ENABLED`        | `false` | Enable stay inference during gaps (e.g., overnight at home)                         |
-| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_MAX_GAP_HOURS`  | `24`    | Maximum gap duration (hours) for stay inference. Longer gaps create normal data gaps |
+| Property                                             | Default | Description                                                                          |
+|------------------------------------------------------|---------|--------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_ENABLED`       | `false` | Enable stay inference during gaps (e.g., overnight at home)                          |
+| `GEOPULSE_TIMELINE_GAP_STAY_INFERENCE_MAX_GAP_HOURS` | `24`    | Maximum gap duration (hours) for stay inference. Longer gaps create normal data gaps |
 
 **How it works:**
-When enabled and GPS resumes within the stay radius of the previous location, extends the stay across the gap instead of creating a data gap. Useful for overnight stays at home when GPS tracking stops.
+When enabled and GPS resumes within the stay radius of the previous location, extends the stay across the gap instead of
+creating a data gap. Useful for overnight stays at home when GPS tracking stops.
 
 **Example:**
+
 - Without inference: Stay (20:00-20:05) → Gap (20:05-08:00) → Stay (08:00-...)
 - With inference: Stay (20:00-08:00) continuous overnight
 
@@ -212,39 +225,46 @@ When enabled and GPS resumes within the stay radius of the previous location, ex
 
 Controls whether to infer trips during data gaps based on long-distance movement between GPS points.
 
-| Property                                                     | Default  | Description                                                                                   |
-|--------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_ENABLED`               | `false`  | Enable trip inference during gaps (e.g., flights, long-distance travel)                       |
-| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_DISTANCE_METERS`   | `100000` | Minimum distance (meters) between points to infer a trip (default: 100 km)                    |
-| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_GAP_HOURS`         | `1`      | Minimum gap duration (hours) for trip inference                                               |
-| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MAX_GAP_HOURS`         | `24`     | Maximum gap duration (hours) for trip inference. Longer gaps create normal data gaps          |
+| Property                                                   | Default  | Description                                                                          |
+|------------------------------------------------------------|----------|--------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_ENABLED`             | `false`  | Enable trip inference during gaps (e.g., flights, long-distance travel)              |
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_DISTANCE_METERS` | `100000` | Minimum distance (meters) between points to infer a trip (default: 100 km)           |
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MIN_GAP_HOURS`       | `1`      | Minimum gap duration (hours) for trip inference                                      |
+| `GEOPULSE_TIMELINE_GAP_TRIP_INFERENCE_MAX_GAP_HOURS`       | `24`     | Maximum gap duration (hours) for trip inference. Longer gaps create normal data gaps |
 
 **How it works:**
-When enabled and the distance between GPS points before/after a gap exceeds the minimum threshold, creates an inferred trip instead of a data gap. The trip is automatically classified (FLIGHT, TRAIN, CAR) based on distance and duration using intelligent heuristics.
+When enabled and the distance between GPS points before/after a gap exceeds the minimum threshold, creates an inferred
+trip instead of a data gap. The trip is automatically classified (FLIGHT, TRAIN, CAR) based on distance and duration
+using intelligent heuristics.
 
 **Example:**
+
 - Home (Country A) at 18:18 → [GPS off during flight] → Airport (Country B) at 05:25
 - Distance: 1,779 km > 100 km threshold
 - Result: Creates inferred FLIGHT trip instead of data gap
 
 **Distance-based classification heuristics:**
+
 - **>1000 km**: Almost certainly a flight
 - **>300 km + >100 km/h avg**: Clear flight signature
 - **>500 km + >80 km/h avg**: Likely flight with ground time
 - **100-800 km + 50-150 km/h**: Possibly train travel
 
 **Priority system:**
+
 1. Same location → Stay inference (if enabled)
 2. Long distance → Trip inference (if enabled)
 3. Neither applies → Normal data gap
 
 :::info User Preference Override
-These gap inference settings can be overridden per-user through the Timeline Preferences interface. Environment variables set the default values for new users.
+These gap inference settings can be overridden per-user through the Timeline Preferences interface. Environment
+variables set the default values for new users.
 :::
 
 ## Kubernetes / Helm Configuration
 
-Timeline configuration variables are **not included** in the default Helm chart values to keep it simple. Most users can configure timeline settings via the **Admin Panel UI**.
+Timeline configuration variables are **not included** in the default Helm chart values to keep it simple. Most users can
+configure timeline settings via the **Admin Panel UI**.
 
 If you need to override timeline defaults, use custom environment variables:
 
@@ -269,4 +289,5 @@ backend:
 
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
-For more details on adding custom environment variables, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#advanced-configuration-custom-environment-variables).
+For more details on adding custom environment variables, see
+the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#advanced-configuration-custom-environment-variables).
