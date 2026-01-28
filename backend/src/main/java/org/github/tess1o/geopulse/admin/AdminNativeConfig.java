@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.admin.model.*;
 @RegisterForReflection(
         targets = {
                 // DTOs
+                BulkUpdateRequest.class,
                 CreateOidcProviderRequest.class,
                 OidcProviderResponse.class,
                 OidcProviderResponse.ProviderSource.class,
