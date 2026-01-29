@@ -224,6 +224,17 @@
           }
         }
       },
+      "BulkUpdateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "settings" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/UpdateSettingRequest"
+            }
+          }
+        }
+      },
       "ChatRequest" : {
         "type" : "object",
         "properties" : {
@@ -1334,6 +1345,9 @@
       "UpdateSettingRequest" : {
         "type" : "object",
         "properties" : {
+          "key" : {
+            "type" : "string"
+          },
           "value" : {
             "type" : "string"
           }
@@ -1538,6 +1552,12 @@
             "format" : "int32",
             "maximum" : 600,
             "minimum" : 10,
+            "type" : "integer"
+          },
+          "tripArrivalMinPoints" : {
+            "format" : "int32",
+            "maximum" : 5,
+            "minimum" : 2,
             "type" : "integer"
           },
           "bicycleEnabled" : {
@@ -2234,6 +2254,52 @@
           }
         },
         "summary" : "Get All Settings",
+        "tags" : [ "Admin Settings Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/admin/settings/bulk" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "X-Forwarded-For",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "X-Real-IP",
+          "in" : "header",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BulkUpdateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Bulk Update Settings",
         "tags" : [ "Admin Settings Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -7627,7 +7693,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.15.0",
+    "version" : "1.16.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
