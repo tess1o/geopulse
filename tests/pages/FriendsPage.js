@@ -8,29 +8,17 @@ export class FriendsPage {
   // Selectors
   get selectors() {
     return {
-      // Page elements
-      pageTitle: 'h1:has-text("Friends & Connections")',
-      pageDescription: 'text="Connect with friends to share location data"',
-
-      // Status Overview Cards
-      statusCards: {
-        friends: '.status-card:has(.status-label:has-text("Friends"))',
-        sentInvites: '.status-card:has(.status-label:has-text("Sent Invites"))',
-        receivedInvites: '.status-card:has(.status-label:has-text("Received Invites"))'
-      },
-      statusNumber: '.status-number',
-      statusBadge: '.status-badge',
-
-      // Tabs
+      // Tabs - Using PrimeVue TabMenu component
       tabs: {
-        friends: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("My Friends"))',
-        map: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Friends Map"))',
+        live: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Live"))',
+        timeline: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Timeline"))',
+        friends: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Friends"))',
         invites: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Invitations"))'
       },
       activeTab: '.p-tabmenu-item.p-tabmenu-item-active',
       tabBadge: '.p-badge',
 
-      // Friends List (My Friends Tab)
+      // Friends List Tab (All friends with permission toggles)
       friendsContent: '.friends-content',
       friendsGrid: '.friends-grid',
       friendCard: '.friend-card',
@@ -42,8 +30,21 @@ export class FriendsPage {
       friendLocation: '.friend-location',
       friendAvatar: '.friend-avatar',
 
+      // Friend Sharing Status (What friend shares with you - read-only)
+      friendSharingStatus: '.friend-sharing-status',
+      sharingStatusItems: '.sharing-status-items',
+      statusItem: '.status-item',
+
+      // Friend Permissions (What you share with friend - editable)
+      friendPermissions: '.friend-permissions',
+      permissionItem: '.permission-item',
+      permissionSwitch: '.permission-switch',
+      liveLocationSwitch: '.permission-item:has-text("Live Location") .permission-switch',
+      timelineSwitch: '.permission-item:has-text("Timeline History") .permission-switch',
+
       // Friend Actions
-      showOnMapButton: 'button:has([class*="pi-map-marker"])',
+      liveButton: 'button:has-text("Live")',
+      timelineButton: 'button:has-text("Timeline")',
       removeFriendButton: 'button:has([class*="pi-trash"])',
 
       // Invitations Tab
@@ -71,19 +72,15 @@ export class FriendsPage {
       cancelButton: 'button:has-text("Cancel")',
       pendingBadge: '.p-badge:has-text("Pending")',
 
-      // Invite Friend Dialog
-      inviteDialog: '.invite-dialog',
+      // Invite Friend Dialog - uses AutoComplete now
+      inviteDialog: '.p-dialog',
       inviteDialogHeader: '.p-dialog-header:has-text("Invite Friend")',
-      friendEmailInput: '#friendEmail',
+      friendEmailInput: '#friendEmail input[type="text"]',
+      friendEmailAutocomplete: '#friendEmail',
       sendInvitationButton: 'button:has-text("Send Invitation")',
       cancelDialogButton: 'button:has-text("Cancel")',
       inviteFriendButton: 'button:has-text("Invite Friend")',
-      errorMessage: '.error-message',
-
-      // Friends Map Tab
-      mapContent: '.friends-map',
-      mapCard: '.map-card',
-      mapContainer: '.map-container',
+      errorMessage: '.p-error',
 
       // Empty States
       emptyState: '.empty-state',
@@ -97,14 +94,31 @@ export class FriendsPage {
       // Confirm Dialog
       confirmDialog: '.p-confirmdialog',
       confirmDialogMessage: '.p-confirmdialog-message',
-      confirmDialogAccept: '.p-confirmdialog-accept',
-      confirmDialogReject: '.p-confirmdialog-reject',
+      confirmDialogAccept: '.p-confirmdialog-accept-button',
+      confirmDialogReject: '.p-confirmdialog-reject-button',
 
       // Toast Notifications
       toast: '.p-toast',
       toastMessage: '.p-toast-message',
       toastSummary: '.p-toast-summary',
-      toastDetail: '.p-toast-detail'
+      toastDetail: '.p-toast-detail',
+
+      // Friends Timeline Tab
+      friendsTimelineTab: '.friends-timeline-tab',
+      dateRangePicker: '.date-range-picker',
+      timelineDatePicker: '.p-datepicker',
+      timelineDatePickerInput: '.p-datepicker-input',
+      userSelectionPanel: '.user-selection-panel',
+      userItem: '.user-item',
+      userCheckbox: '.p-checkbox',
+      selectAllButton: 'button:has-text("All")',
+      deselectAllButton: 'button:has-text("None")',
+      mergedTimelineList: '.merged-timeline-list',
+      timelineItem: '.friend-timeline-card',
+      timelineStayItem: '.friend-timeline-card--stay',
+      timelineTripItem: '.friend-timeline-card--trip',
+      timelineMap: '.friends-timeline-map',
+      emptyTimelineMessage: '.empty-state-card'
     };
   }
 
@@ -118,8 +132,7 @@ export class FriendsPage {
   async isOnFriendsPage() {
     try {
       const url = this.page.url();
-      const hasTitle = await this.page.locator(this.selectors.pageTitle).isVisible().catch(() => false);
-      return url.includes('/app/friends') || hasTitle;
+      return url.includes('/app/friends');
     } catch {
       return false;
     }
@@ -137,61 +150,6 @@ export class FriendsPage {
       console.log('Loading spinner not found or disappeared quickly');
     }
     await this.page.waitForLoadState('networkidle');
-  }
-
-  /**
-   * Status Cards Methods
-   */
-  async getFriendsCount() {
-    const card = this.page.locator(this.selectors.statusCards.friends);
-    const number = await card.locator(this.selectors.statusNumber).textContent();
-    return parseInt(number.trim());
-  }
-
-  async getSentInvitesCount() {
-    const card = this.page.locator(this.selectors.statusCards.sentInvites);
-    const number = await card.locator(this.selectors.statusNumber).textContent();
-    return parseInt(number.trim());
-  }
-
-  async getReceivedInvitesCount() {
-    const card = this.page.locator(this.selectors.statusCards.receivedInvites);
-    const number = await card.locator(this.selectors.statusNumber).textContent();
-    return parseInt(number.trim());
-  }
-
-  async clickStatusCard(cardType) {
-    await this.page.locator(this.selectors.statusCards[cardType]).click();
-  }
-
-  /**
-   * Wait for status counts to update
-   */
-  async waitForCountUpdate(countGetter, expectedValue, timeout = 5000) {
-    const startTime = Date.now();
-    let currentValue;
-
-    while (Date.now() - startTime < timeout) {
-      currentValue = await countGetter();
-      if (currentValue === expectedValue) {
-        return true;
-      }
-      await this.page.waitForTimeout(200);
-    }
-
-    throw new Error(`Count did not update to ${expectedValue}. Current value: ${currentValue}`);
-  }
-
-  async waitForSentInvitesCount(expectedCount) {
-    await this.waitForCountUpdate(() => this.getSentInvitesCount(), expectedCount);
-  }
-
-  async waitForReceivedInvitesCount(expectedCount) {
-    await this.waitForCountUpdate(() => this.getReceivedInvitesCount(), expectedCount);
-  }
-
-  async waitForFriendsCount(expectedCount) {
-    await this.waitForCountUpdate(() => this.getFriendsCount(), expectedCount);
   }
 
   /**
@@ -215,6 +173,14 @@ export class FriendsPage {
       return await badge.textContent();
     }
     return null;
+  }
+
+  async isInvitesTabVisible() {
+    try {
+      return await this.page.locator(this.selectors.tabs.invites).isVisible({ timeout: 1000 });
+    } catch {
+      return false;
+    }
   }
 
   /**
@@ -275,13 +241,27 @@ export class FriendsPage {
     throw new Error(`Friend with email ${friendEmail} not found`);
   }
 
-  async showFriendOnMap(friendEmail) {
+  async showFriendOnLiveMap(friendEmail) {
     const friendCards = await this.page.locator(this.selectors.friendCard).all();
 
     for (const card of friendCards) {
       const cardEmail = await card.locator(this.selectors.friendEmail).textContent();
       if (cardEmail.trim() === friendEmail) {
-        await card.locator(this.selectors.showOnMapButton).click();
+        await card.locator(this.selectors.liveButton).click();
+        return;
+      }
+    }
+
+    throw new Error(`Friend with email ${friendEmail} not found`);
+  }
+
+  async showFriendTimeline(friendEmail) {
+    const friendCards = await this.page.locator(this.selectors.friendCard).all();
+
+    for (const card of friendCards) {
+      const cardEmail = await card.locator(this.selectors.friendEmail).textContent();
+      if (cardEmail.trim() === friendEmail) {
+        await card.locator(this.selectors.timelineButton).click();
         return;
       }
     }
@@ -291,6 +271,37 @@ export class FriendsPage {
 
   async hasEmptyFriendsState() {
     return await this.page.locator(this.selectors.emptyState).isVisible();
+  }
+
+  /**
+   * Friend Permission Methods
+   */
+  async toggleLiveLocationPermission(friendEmail) {
+    const friendCards = await this.page.locator(this.selectors.friendCard).all();
+
+    for (const card of friendCards) {
+      const cardEmail = await card.locator(this.selectors.friendEmail).textContent();
+      if (cardEmail.trim() === friendEmail) {
+        await card.locator(this.selectors.liveLocationSwitch).locator('input').click();
+        return;
+      }
+    }
+
+    throw new Error(`Friend with email ${friendEmail} not found`);
+  }
+
+  async toggleTimelinePermission(friendEmail) {
+    const friendCards = await this.page.locator(this.selectors.friendCard).all();
+
+    for (const card of friendCards) {
+      const cardEmail = await card.locator(this.selectors.friendEmail).textContent();
+      if (cardEmail.trim() === friendEmail) {
+        await card.locator(this.selectors.timelineSwitch).locator('input').click();
+        return;
+      }
+    }
+
+    throw new Error(`Friend with email ${friendEmail} not found`);
   }
 
   /**
@@ -345,12 +356,13 @@ export class FriendsPage {
 
     const invitations = [];
     for (const item of inviteItems) {
-      const email = await item.locator(this.selectors.inviteEmail).textContent();
+      // Backend currently returns email in the name field
+      const displayedName = await item.locator(this.selectors.inviteEmail).textContent();
       const date = await item.locator(this.selectors.inviteDate).textContent();
 
       invitations.push({
-        name: email.trim(),
-        email: email.trim(),
+        name: displayedName.trim(),
+        email: displayedName.trim(), // Same as name since backend returns email
         date: date.trim()
       });
     }
@@ -364,12 +376,13 @@ export class FriendsPage {
 
     const invitations = [];
     for (const item of inviteItems) {
-      const email = await item.locator(this.selectors.inviteEmail).textContent();
+      // Backend currently returns email in the name field
+      const displayedName = await item.locator(this.selectors.inviteEmail).textContent();
       const date = await item.locator(this.selectors.inviteDate).textContent();
 
       invitations.push({
-        name: email.trim(),
-        email: email.trim(),
+        name: displayedName.trim(),
+        email: displayedName.trim(), // Same as name since backend returns email
         date: date.trim()
       });
     }
@@ -377,49 +390,55 @@ export class FriendsPage {
     return invitations;
   }
 
-  async acceptInvitation(senderEmail) {
+  async acceptInvitation(senderNameOrEmail) {
     const inviteItems = await this.page.locator(this.selectors.receivedInvitesList)
       .locator(this.selectors.inviteItem).all();
 
     for (const item of inviteItems) {
-      const email = await item.locator(this.selectors.inviteEmail).textContent();
-      if (email.trim() === senderEmail) {
+      // Note: Despite the CSS class name, this displays what the backend sends as senderName
+      // Currently the backend returns email address here
+      const displayedText = await item.locator(this.selectors.inviteEmail).textContent();
+      if (displayedText.trim() === senderNameOrEmail) {
         await item.locator(this.selectors.acceptButton).click();
         return;
       }
     }
 
-    throw new Error(`Invitation from ${senderEmail} not found`);
+    throw new Error(`Invitation from ${senderNameOrEmail} not found`);
   }
 
-  async rejectInvitation(senderEmail) {
+  async rejectInvitation(senderNameOrEmail) {
     const inviteItems = await this.page.locator(this.selectors.receivedInvitesList)
       .locator(this.selectors.inviteItem).all();
 
     for (const item of inviteItems) {
-      const email = await item.locator(this.selectors.inviteEmail).textContent();
-      if (email.trim() === senderEmail) {
+      // Note: Despite the CSS class name, this displays what the backend sends as senderName
+      // Currently the backend returns email address here
+      const displayedText = await item.locator(this.selectors.inviteEmail).textContent();
+      if (displayedText.trim() === senderNameOrEmail) {
         await item.locator(this.selectors.rejectButton).click();
         return;
       }
     }
 
-    throw new Error(`Invitation from ${senderEmail} not found`);
+    throw new Error(`Invitation from ${senderNameOrEmail} not found`);
   }
 
-  async cancelSentInvitation(receiverEmail) {
+  async cancelSentInvitation(receiverNameOrEmail) {
     const inviteItems = await this.page.locator(this.selectors.sentInvitesList)
       .locator(this.selectors.inviteItem).all();
 
     for (const item of inviteItems) {
-      const email = await item.locator(this.selectors.inviteEmail).textContent();
-      if (email.trim() === receiverEmail) {
+      // Note: Despite the CSS class name, this displays what the backend sends as receiverName
+      // Currently the backend returns email address here
+      const displayedText = await item.locator(this.selectors.inviteEmail).textContent();
+      if (displayedText.trim() === receiverNameOrEmail) {
         await item.locator(this.selectors.cancelButton).click();
         return;
       }
     }
 
-    throw new Error(`Sent invitation to ${receiverEmail} not found`);
+    throw new Error(`Sent invitation to ${receiverNameOrEmail} not found`);
   }
 
   async acceptAllInvitations() {
@@ -467,9 +486,15 @@ export class FriendsPage {
     await this.page.locator('.p-confirmdialog button:has-text("Remove")').click();
   }
 
+  async confirmPermissionChange() {
+    await this.page.waitForSelector(this.selectors.confirmDialog, { state: 'visible' });
+    // Permission dialog uses different button text
+    await this.page.locator(this.selectors.confirmDialogAccept).click();
+  }
+
   async cancelAction() {
     await this.page.waitForSelector(this.selectors.confirmDialog, { state: 'visible' });
-    await this.page.locator('.p-confirmdialog button:has-text("Cancel")').click();
+    await this.page.locator(this.selectors.confirmDialogReject).click();
   }
 
   /**
@@ -505,14 +530,44 @@ export class FriendsPage {
   }
 
   /**
-   * Friends Map Methods
+   * Timeline Tab Methods
    */
-  async isFriendsMapVisible() {
-    return await this.page.locator(this.selectors.mapContainer).isVisible();
+  async isTimelineMapVisible() {
+    return await this.page.locator('.friends-timeline-map .leaflet-container').isVisible();
   }
 
-  async hasMapEmptyState() {
-    return await this.page.locator(this.selectors.emptyState).isVisible();
+  async getTimelineItemsCount() {
+    return await this.page.locator('.friend-timeline-card').count();
+  }
+
+  async selectAllTimelineFriends() {
+    const selectAllButton = this.page.locator('button:has-text("All")');
+    if (await selectAllButton.isVisible()) {
+      await selectAllButton.click();
+    }
+  }
+
+  async deselectAllTimelineFriends() {
+    const deselectAllButton = this.page.locator('button:has-text("None")');
+    if (await deselectAllButton.isVisible()) {
+      await deselectAllButton.click();
+    }
+  }
+
+  async openDatePicker() {
+    const dateInput = this.page.locator('.p-datepicker-input').first();
+    if (await dateInput.isVisible()) {
+      await dateInput.click();
+      await this.page.waitForTimeout(500);
+    }
+  }
+
+  async isDatePickerVisible() {
+    return await this.page.locator('.p-datepicker').isVisible();
+  }
+
+  async getUserSelectionPanelCount() {
+    return await this.page.locator('.user-item').count();
   }
 
   /**

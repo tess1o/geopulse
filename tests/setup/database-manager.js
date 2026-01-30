@@ -39,6 +39,7 @@ export class DatabaseManager {
             'TRUNCATE TABLE reverse_geocoding_location CASCADE',
             'TRUNCATE TABLE favorite_locations CASCADE',
             'TRUNCATE TABLE shared_link CASCADE',
+            'TRUNCATE TABLE user_friend_permissions CASCADE',
             'TRUNCATE TABLE user_friends CASCADE',
             'TRUNCATE TABLE gps_source_config CASCADE',
             'TRUNCATE TABLE friend_invitations CASCADE',
