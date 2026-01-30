@@ -1,3 +1,5 @@
+import {GeocodingFactory} from '../utils/geocoding-factory.js';
+
 export class DataExportImportPage {
   constructor(page) {
     this.page = page;
@@ -688,11 +690,13 @@ export class DataExportImportPage {
       const coordsString = `POINT(${roundedLon} ${roundedLat})`;
 
       // Insert reverse geocoding location for this specific point to avoid API calls
-      await dbManager.client.query(`
-        INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-        VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', 'Kyiv', 'Ukraine', NOW(), NOW())
-        ON CONFLICT DO NOTHING
-      `, [coordsString, `Test Location ${i + 1}, Kyiv, Ukraine`]);
+      await GeocodingFactory.insertOrGetGeocodingLocation(
+        dbManager,
+        coordsString,
+        `Test Location ${i + 1}, Kyiv, Ukraine`,
+        'Kyiv',
+        'Ukraine'
+      );
 
       // Insert GPS point
       const query = `
@@ -785,17 +789,13 @@ export class DataExportImportPage {
       const coordsString = `POINT(${location.lon} ${location.lat})`;
 
       try {
-        await dbManager.client.query(`
-          INSERT INTO reverse_geocoding_location (
-            id, request_coordinates, result_coordinates, display_name,
-            provider_name, city, country, created_at, last_accessed_at
-          )
-          VALUES (
-            nextval('reverse_geocoding_location_seq'), $1, $1, $2,
-            'test', 'Kyiv', 'Ukraine', NOW(), NOW()
-          )
-          ON CONFLICT DO NOTHING
-        `, [coordsString, location.name]);
+        await GeocodingFactory.insertOrGetGeocodingLocation(
+          dbManager,
+          coordsString,
+          location.name,
+          'Kyiv',
+          'Ukraine'
+        );
       } catch (error) {
         // Ignore conflicts - data already exists
       }

@@ -4,6 +4,7 @@ import {TimeDigestPage} from '../pages/TimeDigestPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
+import {GeocodingFactory} from '../utils/geocoding-factory.js';
 
 test.describe('Time Digest', () => {
 
@@ -598,15 +599,7 @@ async function insertMonthlyDigestTestData(dbManager, userId, year, month) {
     { coords: 'POINT(2.3522 48.8566)', name: 'Coffee Shop, Paris, France', city: 'Paris', country: 'France' }
   ];
 
-  const geocodingIds = [];
-  for (const location of locations) {
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', $3, $4, NOW(), NOW())
-      RETURNING id
-    `, [location.coords, location.name, location.city, location.country]);
-    geocodingIds.push(result.rows[0].id);
-  }
+  const geocodingIds = await GeocodingFactory.insertOrGetGeocodingLocations(dbManager, locations);
 
   // Insert stays and trips throughout the month
   for (let day = 1; day <= Math.min(15, daysInMonth); day++) {
@@ -660,14 +653,11 @@ async function insertMonthlyDigestTestDataWithPlaces(dbManager, userId, year, mo
 
   const startDate = new Date(year, month - 1, 1);
 
-  for (const location of additionalLocations) {
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', $3, $4, NOW(), NOW())
-      RETURNING id
-    `, [location.coords, location.name, location.city, location.country]);
+  const additionalGeocodingIds = await GeocodingFactory.insertOrGetGeocodingLocations(dbManager, additionalLocations);
 
-    const geocodingId = result.rows[0].id;
+  for (let idx = 0; idx < additionalLocations.length; idx++) {
+    const location = additionalLocations[idx];
+    const geocodingId = additionalGeocodingIds[idx];
     const locationName = location.name.split(',')[0];
 
     // Add multiple visits to each place

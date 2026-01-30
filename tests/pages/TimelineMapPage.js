@@ -664,7 +664,7 @@ export class TimelineMapPage {
     await this.waitForTimelineRegenerationModalToClose();
     
     // Wait for success notification
-    await this.waitForSuccessToast('favorite');
+    await this.waitForSuccessToast('Favorite point added');
   }
 
   /**
@@ -707,7 +707,7 @@ export class TimelineMapPage {
     await this.submitEditFavoriteDialog(newName);
     
     // Wait for success notification
-    await this.waitForSuccessToast('renamed');
+    await this.waitForSuccessToast('updated successfully');
   }
 
   /**

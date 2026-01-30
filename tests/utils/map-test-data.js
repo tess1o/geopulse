@@ -1,5 +1,6 @@
 // Map-specific test data helpers for e2e testing
 // These helpers create timeline data with predictable coordinates for map testing
+import {GeocodingFactory} from './geocoding-factory.js';
 
 /**
  * Insert timeline data with known coordinates for map testing
@@ -59,13 +60,13 @@ export async function insertMapTestStaysData(dbManager, userId) {
     await dbManager.client.query(gpsQuery, gpsValues);
 
     // Create reverse geocoding location
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', 'New York', 'United States', NOW(), NOW())
-      RETURNING id
-    `, [`POINT(${location.lon} ${location.lat})`, `${location.name}, New York, NY`]);
-    
-    const geocodingId = result.rows[0].id;
+    const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+      dbManager,
+      `POINT(${location.lon} ${location.lat})`,
+      `${location.name}, New York, NY`,
+      'New York',
+      'United States'
+    );
     
     // Insert stay
     await dbManager.client.query(`
