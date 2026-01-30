@@ -1,0 +1,384 @@
+name: Pre-Release Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'Target version for release (e.g., 1.17.0)'
+        required: false
+        type: string
+
+concurrency:
+  group: pre-release-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel pre-release validations
+
+jobs:
+  # Stage 1: Full Unit Test Suite (Parallel)
+  backend-full-tests:
+    name: Backend Full Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_DB: geopulse_test
+          POSTGRES_USER: geopulse_test
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U geopulse_test -d geopulse_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run all backend tests
+        run: ./mvnw -pl backend clean test
+        env:
+          QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/geopulse_test
+          QUARKUS_DATASOURCE_USERNAME: geopulse_test
+          QUARKUS_DATASOURCE_PASSWORD: testpass
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-full-test-results
+          path: backend/target/surefire-reports/
+          retention-days: 30
+
+  frontend-full-tests:
+    name: Frontend Full Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Run all frontend tests
+        run: |
+          cd frontend
+          npm run test:run
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-full-test-results
+          path: frontend/coverage/
+          retention-days: 30
+
+  code-quality-full:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run PMD analysis
+        run: ./mvnw -pl backend pmd:check
+        continue-on-error: true
+
+      - name: Upload PMD report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmd-full-report
+          path: backend/target/pmd.xml
+          retention-days: 30
+
+  # Stage 2: Build Validation (Parallel)
+  build-backend-multiarch:
+    name: Build Backend Multi-Arch
+    runs-on: ubuntu-latest
+    needs: [backend-full-tests]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend JVM multi-arch
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: geopulse/backend:pre-release
+          cache-from: type=gha,scope=backend-jvm-multiarch
+          cache-to: type=gha,mode=max,scope=backend-jvm-multiarch
+
+  build-frontend-multiarch:
+    name: Build Frontend Multi-Arch
+    runs-on: ubuntu-latest
+    needs: [frontend-full-tests]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend multi-arch
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: geopulse/frontend:pre-release
+          cache-from: type=gha,scope=frontend-multiarch
+          cache-to: type=gha,mode=max,scope=frontend-multiarch
+
+  # Stage 3: Full E2E Suite
+  full-e2e-tests:
+    name: Full E2E Test Suite
+    runs-on: ubuntu-latest
+    needs: [build-backend-multiarch, build-frontend-multiarch]
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start E2E environment
+        run: |
+          docker compose -f tests/docker-compose.e2e.yml up -d geopulse-postgres-e2e geopulse-backend-e2e geopulse-ui-e2e
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for backend to be ready..."
+          timeout 120 bash -c 'until curl -f http://localhost:8081/q/health/ready; do echo "Waiting..."; sleep 5; done'
+
+          echo "Waiting for frontend to be ready..."
+          timeout 60 bash -c 'until curl -f http://localhost:5556; do echo "Waiting..."; sleep 5; done'
+
+          echo "All services are ready!"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install Playwright dependencies
+        run: |
+          cd tests
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run full E2E test suite
+        run: |
+          cd tests
+          npm run test:e2e
+        env:
+          BASE_URL: http://localhost:5556
+          CI: true
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-full-report
+          path: tests/playwright-report/
+          retention-days: 30
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-full-results
+          path: tests/test-results/
+          retention-days: 30
+
+      - name: Upload test videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-videos
+          path: tests/test-results/**/*.webm
+          retention-days: 30
+
+      - name: Upload test screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: tests/test-results/**/*.png
+          retention-days: 30
+
+      - name: Show environment logs on failure
+        if: failure()
+        run: |
+          echo "=== Backend logs ==="
+          docker logs geopulse-backend-e2e || true
+          echo ""
+          echo "=== Frontend logs ==="
+          docker logs geopulse-ui-e2e || true
+          echo ""
+          echo "=== Database logs ==="
+          docker logs geopulse-postgres-e2e || true
+
+      - name: Cleanup
+        if: always()
+        run: docker compose -f tests/docker-compose.e2e.yml down -v
+
+  # Stage 4: Infrastructure Validation
+  helm-validation:
+    name: Helm Chart Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'latest'
+
+      - name: Lint Helm charts
+        run: |
+          helm lint helm/geopulse
+
+      - name: Verify Helm templates
+        run: |
+          helm template test-release helm/geopulse --debug > /dev/null
+          echo "✅ Helm templates are valid"
+
+  docker-compose-validation:
+    name: Docker Compose Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose files
+        run: |
+          docker compose -f tests/docker-compose.e2e.yml config > /dev/null
+          echo "✅ Docker Compose configuration is valid"
+
+  # Success marker job
+  validation-success:
+    name: Pre-Release Validation Success
+    runs-on: ubuntu-latest
+    needs:
+      - backend-full-tests
+      - frontend-full-tests
+      - build-backend-multiarch
+      - build-frontend-multiarch
+      - full-e2e-tests
+      - helm-validation
+      - docker-compose-validation
+    if: success()
+
+    steps:
+      - name: Mark validation successful
+        run: |
+          echo "✅ Pre-release validation passed for SHA: ${{ github.sha }}"
+          echo "✅ Target version: ${{ inputs.target_version || 'not specified' }}"
+          echo ""
+          echo "Safe to create release tag!"
+          echo ""
+          echo "Next steps:"
+          echo "1. git tag -a v${{ inputs.target_version || 'X.Y.Z' }} -m \"Release ${{ inputs.target_version || 'X.Y.Z' }}\""
+          echo "2. git push origin v${{ inputs.target_version || 'X.Y.Z' }}"
+
+  # Summary job
+  validation-summary:
+    name: Pre-Release Summary
+    runs-on: ubuntu-latest
+    needs:
+      - backend-full-tests
+      - frontend-full-tests
+      - build-backend-multiarch
+      - build-frontend-multiarch
+      - full-e2e-tests
+      - helm-validation
+      - docker-compose-validation
+    if: always()
+
+    steps:
+      - name: Check validation status
+        run: |
+          echo "=== Pre-Release Validation Summary ==="
+          echo "Backend Tests: ${{ needs.backend-full-tests.result }}"
+          echo "Frontend Tests: ${{ needs.frontend-full-tests.result }}"
+          echo "Backend Build: ${{ needs.build-backend-multiarch.result }}"
+          echo "Frontend Build: ${{ needs.build-frontend-multiarch.result }}"
+          echo "E2E Tests: ${{ needs.full-e2e-tests.result }}"
+          echo "Helm Validation: ${{ needs.helm-validation.result }}"
+          echo "Docker Compose: ${{ needs.docker-compose-validation.result }}"
+          echo ""
+
+          if [[ "${{ needs.backend-full-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.frontend-full-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.build-backend-multiarch.result }}" != "success" ]] || \
+             [[ "${{ needs.build-frontend-multiarch.result }}" != "success" ]] || \
+             [[ "${{ needs.full-e2e-tests.result }}" != "success" ]] || \
+             [[ "${{ needs.helm-validation.result }}" != "success" ]] || \
+             [[ "${{ needs.docker-compose-validation.result }}" != "success" ]]; then
+            echo "❌ Pre-release validation FAILED"
+            echo ""
+            echo "DO NOT create release tag!"
+            echo "Fix the issues and re-run this workflow."
+            exit 1
+          fi
+
+          echo "✅ All validation checks passed!"
