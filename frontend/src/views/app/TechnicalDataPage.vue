@@ -316,7 +316,15 @@
         </template>
 
         <!-- Selection Column -->
-        <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col"></Column>
+        <Column selectionMode="multiple" headerStyle="width: 3rem" class="selection-col">
+          <template #body="slotProps">
+            <Checkbox
+              :model-value="isRowSelected(slotProps.data)"
+              @click="handleCheckboxClick($event, slotProps.data)"
+              binary
+            />
+          </template>
+        </Column>
 
         <Column field="timestamp" header="Date" sortable class="timestamp-col">
           <template #body="slotProps">
@@ -498,6 +506,7 @@ import InputNumber from 'primevue/inputnumber'
 import Chip from 'primevue/chip'
 import Badge from 'primevue/badge'
 import Dropdown from 'primevue/dropdown'
+import Checkbox from 'primevue/checkbox'
 import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
@@ -1013,18 +1022,13 @@ const confirmBulkDelete = async () => {
   }
 }
 
-// Handle row click for shift-select functionality
-const handleRowClick = (event) => {
-  const clickedRow = event.data
-  const clickedIndex = gpsPoints.value.findIndex(row => row.id === clickedRow.id)
+// Check if a row is selected
+const isRowSelected = (row) => {
+  return selectedRows.value.some(selectedRow => selectedRow.id === row.id)
+}
 
-  // If shift key is not pressed, just update the last selected index
-  if (!event.originalEvent.shiftKey) {
-    lastSelectedIndex.value = clickedIndex
-    return
-  }
-
-  // Shift key is pressed - select range
+// Shared shift-select logic
+const selectRange = (clickedIndex) => {
   if (lastSelectedIndex.value !== null && clickedIndex !== -1) {
     const start = Math.min(lastSelectedIndex.value, clickedIndex)
     const end = Math.max(lastSelectedIndex.value, clickedIndex)
@@ -1041,6 +1045,40 @@ const handleRowClick = (event) => {
         selectedRows.value.push(row)
       }
     })
+  }
+}
+
+// Handle checkbox click with shift-select functionality
+const handleCheckboxClick = (event, clickedRow) => {
+  const clickedIndex = gpsPoints.value.findIndex(row => row.id === clickedRow.id)
+
+  // If shift key is pressed and we have a previous selection
+  if (event.shiftKey && lastSelectedIndex.value !== null) {
+    // Prevent default checkbox behavior
+    event.preventDefault()
+    selectRange(clickedIndex)
+  } else {
+    // Normal click - toggle the checkbox
+    const isSelected = isRowSelected(clickedRow)
+    if (isSelected) {
+      selectedRows.value = selectedRows.value.filter(row => row.id !== clickedRow.id)
+    } else {
+      selectedRows.value.push(clickedRow)
+    }
+  }
+
+  // Update last selected index
+  lastSelectedIndex.value = clickedIndex
+}
+
+// Handle row click for shift-select functionality
+const handleRowClick = (event) => {
+  const clickedRow = event.data
+  const clickedIndex = gpsPoints.value.findIndex(row => row.id === clickedRow.id)
+
+  // If shift key is pressed, select range
+  if (event.originalEvent.shiftKey) {
+    selectRange(clickedIndex)
   }
 
   // Update last selected index
