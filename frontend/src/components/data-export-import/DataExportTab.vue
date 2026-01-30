@@ -533,7 +533,7 @@ const startExport = async () => {
       await exportImportStore.createExportJob(
           selectedDataTypes.value,
           dateRange,
-          'json' // Always JSON for GeoPulse format
+          'geopulse' // Always JSON for GeoPulse format
       )
     }
 
