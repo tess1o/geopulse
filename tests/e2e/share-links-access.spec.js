@@ -5,7 +5,10 @@ import {SharedLocationPage} from '../pages/SharedLocationPage.js';
 import {SharedTimelinePage} from '../pages/SharedTimelinePage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
+import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../utils/timeline-test-data.js';
+import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import {UserFactory} from '../utils/user-factory.js';
+import * as TimelineTestData from "../utils/timeline-test-data.js";
 
 test.describe('Shared Links Public Access', () => {
 
@@ -334,6 +337,9 @@ test.describe('Shared Links Public Access', () => {
       // Verify status
       const status = await sharedTimelinePage.getStatus();
       expect(status).toBe('Active');
+      expect(await sharedTimelinePage.getTimelineName()).toBe('Public Timeline');
+      expect(await sharedTimelinePage.getHeader()).toContain(testUser.fullName);
+      expect(await sharedTimelinePage.getStatusSeverity()).toBe('success');
     });
 
     test('should show upcoming timeline message', async ({page, dbManager, context}) => {
@@ -475,6 +481,8 @@ test.describe('Shared Links Public Access', () => {
 
       // Verify error
       expect(await sharedTimelinePage.hasPasswordError()).toBe(true);
+      const passwordError = await sharedTimelinePage.getPasswordError();
+      expect(passwordError).toContain('Invalid password');
 
       // View count should NOT increment
       const viewCount = await SharedTimelinePage.getViewCount(dbManager, link.id);
@@ -622,6 +630,132 @@ test.describe('Shared Links Public Access', () => {
       if (status === 'Active') {
         expect(await sharedTimelinePage.hasRefreshButton()).toBe(true);
       }
+    });
+
+    test('should filter timeline data by date', async ({page, dbManager, context}) => {
+      const loginPage = new LoginPage(page);
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const testUser = TestData.users.existing;
+
+      // Helper to insert a stay
+      const insertStay = async (date, name) => {
+        const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+          dbManager, `POINT(-74.0060 40.7128)`, `${name}, New York, NY`, 'New York', 'United States'
+        );
+
+        // Insert GPS point
+        const gpsQuery = `
+          INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `;
+        const gpsValues = [
+          'test-device', user.id, `POINT(-74.0060 40.7128)`, date, 10.0, 100, 0.0, 20.0, 'OVERLAND', date
+        ];
+        await dbManager.client.query(gpsQuery, gpsValues);
+        
+        // Insert stay
+        await dbManager.client.query(`
+          INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
+          VALUES ($1, $2, 3600, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326), $3, $4, $5, $6)
+        `, [user.id, date, name, geocodingId, new Date(date).toISOString(), new Date(date).toISOString()]);
+      };
+
+      // Setup
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      // Insert data for two different days
+      await insertStay('2025-09-20T10:00:00Z', 'Visit 1');
+      await insertStay('2025-09-20T14:00:00Z', 'Visit 2');
+      await insertStay('2025-09-21T11:00:00Z', 'Visit 3');
+
+      // Create share link covering both days
+      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+        id: 'eeeeeeee-eeee-eeee-eeee-111111111111',
+        user_id: user.id,
+        name: 'Filterable Timeline',
+        start_date: '2025-09-20T00:00:00Z',
+        end_date: '2025-09-21T23:59:59Z',
+        expires_at: new Date(Date.now() + 86400000).toISOString()
+      });
+
+      await context.clearCookies();
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await page.waitForTimeout(1000);
+
+      expect(await sharedTimelinePage.hasDateFilter()).toBe(true);
+      const initialItemCount = await sharedTimelinePage.getTimelineItemCount();
+      expect(initialItemCount).toBe(3);
+
+      // Apply date filter for the first day
+      await sharedTimelinePage.setDateRange(new Date('2025-09-20'), new Date('2025-09-20'));
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await page.waitForTimeout(500);
+
+      const filteredItemCount = await sharedTimelinePage.getTimelineItemCount();
+      expect(filteredItemCount).toBe(2);
+      expect(await sharedTimelinePage.isDateFilterActive()).toBe(true);
+
+      // Clear filter
+      await sharedTimelinePage.clearDateFilter();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await page.waitForTimeout(500);
+
+      const restoredItemCount = await sharedTimelinePage.getTimelineItemCount();
+      expect(restoredItemCount).toBe(3);
+      expect(await sharedTimelinePage.isDateFilterActive()).toBe(false);
+    });
+
+    test('should display timeline data and map correctly', async ({page, dbManager, context}) => {
+      const loginPage = new LoginPage(page);
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const testUser = TestData.users.existing;
+
+      // Setup
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await TimelineTestData.insertRegularStaysTestData(dbManager, user.id); // This inserts GPS points and stays
+      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 2);
+
+      const startDate = new Date('2025-09-20T00:00:00Z');
+      const endDate = new Date('2025-09-22T23:59:59Z');
+
+      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+        id: 'eeeeeeee-eeee-eeee-eeee-222222222222',
+        user_id: user.id,
+        name: 'Data-rich Timeline',
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        expires_at: new Date(Date.now() + 86400000).toISOString(), // 1 day
+        show_current_location: true
+      });
+
+      await context.clearCookies();
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await sharedTimelinePage.waitForMapReady();
+
+      // Verify timeline and map are displayed
+      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
+
+      // Verify timeline has data
+      const itemCount = await sharedTimelinePage.getTimelineItemCount();
+      expect(itemCount).toBe(3);
+
+      // Verify map has data
+      expect(await sharedTimelinePage.isMapDisplayed()).toBe(true);
+      expect(await sharedTimelinePage.hasPathLayer()).toBe(true); // Should have path as GPS points are inserted
     });
   });
 
