@@ -478,30 +478,49 @@ export class ShareLinksPage {
 
   /**
    * Fill a date picker in the timeline dialog
+   * Timeline calendars have inputmode="none" so we must use the calendar UI, not type
    */
   async fillTimelineDatePicker(fieldId, date) {
-    const datePicker = this.page.locator(`#${fieldId}`);
-    const input = datePicker.locator('input.p-datepicker-input');
+    const wrapper = this.page.locator(`#${fieldId}`);
 
-    // Click to focus and open calendar
-    await input.click();
-    await this.page.waitForTimeout(300);
+    // Click the calendar dropdown button to open the picker
+    const dropdownButton = wrapper.locator('button.p-datepicker-dropdown');
+    await dropdownButton.click();
 
-    // Clear existing value
-    await input.press('Control+A');
-    await input.press('Backspace');
+    // Wait for calendar to open
+    await this.page.waitForSelector('.p-datepicker', { state: 'visible', timeout: 2000 });
 
-    // Format date as MM/DD/YY
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
+    // Navigate to the correct month if needed
+    const now = new Date();
+    const targetMonth = date.getMonth();
+    const targetYear = date.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-    // Type the date
-    await input.fill(`${month}/${day}/${year}`);
+    const monthsDiff = (targetYear - currentYear) * 12 + (targetMonth - currentMonth);
 
-    // Press Escape to close calendar without losing focus
-    await input.press('Escape');
-    await this.page.waitForTimeout(300);
+    if (monthsDiff < 0) {
+      // Need to go backwards (previous months)
+      const prevButton = this.page.locator('.p-datepicker-prev-button');
+      for (let i = 0; i < Math.abs(monthsDiff); i++) {
+        await prevButton.click();
+        await this.page.waitForTimeout(200);
+      }
+    } else if (monthsDiff > 0) {
+      // Need to go forwards (future months)
+      const nextButton = this.page.locator('.p-datepicker-next-button');
+      for (let i = 0; i < monthsDiff; i++) {
+        await nextButton.click();
+        await this.page.waitForTimeout(200);
+      }
+    }
+
+    // Click the day in the calendar (using has-text to find the day number)
+    const dayNumber = date.getDate();
+    await this.page.locator(`.p-datepicker-calendar td:not(.p-datepicker-other-month):has-text("${dayNumber}")`).first().click();
+
+    // Wait for calendar to close
+    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -530,42 +549,48 @@ export class ShareLinksPage {
 
     // Show current location checkbox (default is checked)
     if (showCurrent !== undefined) {
-      const checkbox = this.page.locator(this.selectors.showCurrentCheckbox);
-      const isChecked = await checkbox.isChecked();
+      const checkboxWrapper = this.page.locator(this.selectors.showCurrentCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
       if (showCurrent !== isChecked) {
-        await checkbox.click();
+        await checkboxWrapper.click();
       }
     }
 
     // Show photos checkbox
     if (showPhotos !== undefined) {
-      const checkbox = this.page.locator(this.selectors.showPhotosCheckbox);
-      const isChecked = await checkbox.isChecked();
+      const checkboxWrapper = this.page.locator(this.selectors.showPhotosCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
       if (showPhotos !== isChecked) {
-        await checkbox.click();
+        await checkboxWrapper.click();
       }
     }
 
     // Password protection
     if (hasPassword !== undefined) {
-      const checkbox = this.page.locator(this.selectors.timelinePasswordCheckbox);
-      const isChecked = await checkbox.isChecked();
+      const checkboxWrapper = this.page.locator(this.selectors.timelinePasswordCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
       if (hasPassword !== isChecked) {
-        await checkbox.click();
+        await checkboxWrapper.click();
         await this.page.waitForTimeout(300);
       }
     }
 
     if (password !== undefined && hasPassword) {
-      await this.page.locator(this.selectors.timelinePasswordInput).fill(password);
+      // PrimeVue Password component - find input inside wrapper
+      const passwordInput = this.page.locator(`${this.selectors.timelinePasswordInput} input`);
+      await passwordInput.fill(password);
     }
 
     // Custom tiles
     if (useCustomTiles !== undefined) {
-      const checkbox = this.page.locator(this.selectors.timelineCustomTilesCheckbox);
-      const isChecked = await checkbox.isChecked();
+      const checkboxWrapper = this.page.locator(this.selectors.timelineCustomTilesCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
       if (useCustomTiles !== isChecked) {
-        await checkbox.click();
+        await checkboxWrapper.click();
         await this.page.waitForTimeout(300);
       }
     }
@@ -579,8 +604,9 @@ export class ShareLinksPage {
    * Submit timeline share form
    */
   async submitTimelineShareForm() {
-    // Look for the Create/Update button in the dialog footer
-    const submitButton = this.page.locator('.p-dialog-footer button:has-text("Create")');
+    // The submit button is the second button in the footer (first is Cancel)
+    // It has a check icon, vs Cancel which has an X icon
+    const submitButton = this.page.locator('.p-dialog-footer button:has(.pi-check)');
     await submitButton.click();
   }
 

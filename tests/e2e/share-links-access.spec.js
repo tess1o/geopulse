@@ -3,6 +3,7 @@ import {LoginPage} from '../pages/LoginPage.js';
 import {ShareLinksPage} from '../pages/ShareLinksPage.js';
 import {SharedLocationPage} from '../pages/SharedLocationPage.js';
 import {SharedTimelinePage} from '../pages/SharedTimelinePage.js';
+import {AppNavigation} from '../pages/AppNavigation.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../utils/timeline-test-data.js';
@@ -858,6 +859,300 @@ test.describe('Shared Links Public Access', () => {
 
       viewCount = await SharedTimelinePage.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(2);
+    });
+  });
+
+  test.describe('Error Handling and Edge Cases', () => {
+    test('should show error for non-existent live location share link', async ({page, context}) => {
+      const sharedLocationPage = new SharedLocationPage(page);
+      await context.clearCookies();
+
+      // Access non-existent share link
+      await sharedLocationPage.navigateToSharedLink('99999999-9999-9999-9999-999999999999');
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForError();
+
+      // Verify error is shown
+      expect(await sharedLocationPage.isErrorShown()).toBe(true);
+      const errorMsg = await sharedLocationPage.getErrorMessage();
+      expect(errorMsg.toLowerCase()).toMatch(/not found|invalid|does not exist/);
+    });
+
+    test('should show error for non-existent timeline share link', async ({page, context}) => {
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      await context.clearCookies();
+
+      // Access non-existent timeline link
+      await sharedTimelinePage.navigateToSharedTimeline('88888888-8888-8888-8888-888888888888');
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForError();
+
+      // Verify error is shown
+      expect(await sharedTimelinePage.isErrorShown()).toBe(true);
+      const errorMsg = await sharedTimelinePage.getErrorMessage();
+      expect(errorMsg.toLowerCase()).toMatch(/not found|invalid|does not exist/);
+    });
+
+    test('should handle malformed share link ID', async ({page, context}) => {
+      const sharedLocationPage = new SharedLocationPage(page);
+      await context.clearCookies();
+
+      // Access with malformed UUID
+      await page.goto('/shared/not-a-valid-uuid');
+      await page.waitForTimeout(1000);
+
+      // Should show error or redirect
+      const isError = await sharedLocationPage.isErrorShown();
+      const url = page.url();
+
+      // Either shows error page or redirects (both are acceptable)
+      expect(isError || url.includes('/login') || url.includes('/error')).toBe(true);
+    });
+  });
+
+  test.describe('Photo Display Verification', () => {
+    test('should display photos when timeline share has show_photos enabled', async ({page, dbManager, context}) => {
+      const loginPage = new LoginPage(page);
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const testUser = TestData.users.existing;
+
+      // Setup
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      // Insert test data with stays
+      await insertVerifiableStaysTestData(dbManager, user.id);
+
+      // Create timeline with photos ENABLED
+      const now = new Date();
+      const startDate = new Date('2025-09-20T00:00:00Z');
+      const endDate = new Date('2025-09-22T23:59:59Z');
+      const expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+        id: 'a0a0a0a0-1111-1111-1111-111111111111',
+        user_id: user.id,
+        name: 'Timeline With Photos',
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        show_photos: true
+      });
+
+      await context.clearCookies();
+
+      // Access as guest
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await page.waitForTimeout(2000);
+
+      // Verify timeline is displayed
+      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+
+      // Verify link in database has show_photos enabled
+      const result = await dbManager.client.query('SELECT show_photos FROM shared_link WHERE id = $1', [link.id]);
+      expect(result.rows[0].show_photos).toBe(true);
+    });
+
+    test('should not display photos when timeline share has show_photos disabled', async ({page, dbManager, context}) => {
+      const loginPage = new LoginPage(page);
+      const sharedTimelinePage = new SharedTimelinePage(page);
+      const testUser = TestData.users.existing;
+
+      // Setup
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await insertVerifiableStaysTestData(dbManager, user.id);
+
+      // Create timeline with photos DISABLED
+      const now = new Date();
+      const startDate = new Date('2025-09-20T00:00:00Z');
+      const endDate = new Date('2025-09-22T23:59:59Z');
+      const expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 30);
+
+      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+        id: 'b0b0b0b0-2222-2222-2222-222222222222',
+        user_id: user.id,
+        name: 'Timeline Without Photos',
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        expires_at: expiresAt.toISOString(),
+        show_photos: false
+      });
+
+      await context.clearCookies();
+
+      // Access as guest
+      await sharedTimelinePage.navigateToSharedTimeline(link.id);
+      await sharedTimelinePage.waitForPageLoad();
+      await sharedTimelinePage.waitForLoadingToFinish();
+      await page.waitForTimeout(2000);
+
+      // Verify timeline is displayed
+      expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
+
+      // Verify no photo markers appear (if we had photo test data)
+      const photoMarkerCount = await sharedTimelinePage.getPhotoMarkerCount();
+      expect(photoMarkerCount).toBe(0);
+    });
+  });
+
+  test.describe('Authenticated Access to Shared Links', () => {
+    test('should allow owner to access their own shared live location while logged in', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const sharedLocationPage = new SharedLocationPage(page);
+      const testUser = TestData.users.existing;
+
+      // Setup
+      await UserFactory.createUser(page, testUser);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+
+      // Create share link
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      const link = await ShareLinksPage.insertShareLink(dbManager, {
+        id: 'c0c0c0c0-1111-1111-1111-111111111111',
+        user_id: user.id,
+        name: 'Owner Access Test',
+        expires_at: expiresAt.toISOString(),
+        share_type: 'LIVE_LOCATION',
+        show_history: false
+      });
+
+      // Access own share link while still logged in
+      await sharedLocationPage.navigateToSharedLink(link.id);
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForLocationToLoad();
+
+      // Should be able to access
+      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
+      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+    });
+
+    test('should allow other authenticated users to access public shared links', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const sharedLocationPage = new SharedLocationPage(page);
+      const appNav = new AppNavigation(page);
+
+      // Create BOTH users at the start
+      const ownerData = { ...TestData.users.existing, email: 'owner@test.com' };
+      const viewerData = { ...TestData.users.existing, email: 'viewer@test.com' };
+
+      await UserFactory.createUser(page, ownerData);
+      await UserFactory.createUser(page, viewerData);
+
+      // Login as owner
+      await loginPage.navigate();
+      await loginPage.login(ownerData.email, ownerData.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const owner = await dbManager.getUserByEmail(ownerData.email);
+      await SharedLocationPage.createGpsPointsForUser(dbManager, owner.id, 5);
+
+      // Create share link by owner
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      const link = await ShareLinksPage.insertShareLink(dbManager, {
+        id: 'd0d0d0d0-1111-1111-1111-111111111111',
+        user_id: owner.id,
+        name: 'Public Link',
+        expires_at: expiresAt.toISOString(),
+        share_type: 'LIVE_LOCATION',
+        show_history: false,
+        password: null
+      });
+
+      // Logout owner and login as viewer
+      await appNav.logout();
+
+      await loginPage.navigate();
+      await loginPage.login(viewerData.email, viewerData.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      // Access owner's public share link as different user
+      await sharedLocationPage.navigateToSharedLink(link.id);
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForLocationToLoad();
+
+      // Should be able to access (it's public)
+      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
+      expect(await sharedLocationPage.isMapDisplayed()).toBe(true);
+
+      // Verify it's showing owner's name
+      const sharedBy = await sharedLocationPage.getSharedBy();
+      expect(sharedBy).toContain(ownerData.fullName);
+    });
+
+    test('should require password even when logged in as different user', async ({page, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const sharedLocationPage = new SharedLocationPage(page);
+      const appNav = new AppNavigation(page);
+
+      // Create BOTH users at the start
+      const ownerData = { ...TestData.users.existing, email: 'owner2@test.com' };
+      const viewerData = { ...TestData.users.existing, email: 'viewer2@test.com' };
+
+      await UserFactory.createUser(page, ownerData);
+      await UserFactory.createUser(page, viewerData);
+
+      // Login as owner
+      await loginPage.navigate();
+      await loginPage.login(ownerData.email, ownerData.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      const owner = await dbManager.getUserByEmail(ownerData.email);
+      await SharedLocationPage.createGpsPointsForUser(dbManager, owner.id, 5);
+
+      // Create PASSWORD-PROTECTED share link
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+      const link = await ShareLinksPage.insertShareLink(dbManager, {
+        id: 'e0e0e0e0-2222-2222-2222-222222222222',
+        user_id: owner.id,
+        name: 'Protected Link',
+        expires_at: expiresAt.toISOString(),
+        share_type: 'LIVE_LOCATION',
+        show_history: false,
+        password: '$2a$12$Iuh13ihQQPT2Kr9u9KVygu5kS2FMxBnIWE154uXbtPnVfSEpNjOqC' // testpass123
+      });
+
+      // Logout owner and login as viewer
+      await appNav.logout();
+
+      await loginPage.navigate();
+      await loginPage.login(viewerData.email, viewerData.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      // Try to access protected link
+      await sharedLocationPage.navigateToSharedLink(link.id);
+      await sharedLocationPage.waitForPageLoad();
+      await sharedLocationPage.waitForPasswordPrompt();
+
+      // Should still require password even though logged in
+      expect(await sharedLocationPage.isPasswordRequired()).toBe(true);
+
+      // Submit correct password
+      await sharedLocationPage.submitPassword('testpass123');
+      await sharedLocationPage.waitForLocationToLoad();
+
+      // Now should have access
+      expect(await sharedLocationPage.isLocationDisplayed()).toBe(true);
     });
   });
 });

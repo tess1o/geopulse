@@ -52,7 +52,7 @@
       <div class="field">
         <label for="expires-at">Link Expiration</label>
         <Calendar id="expires-at" v-model="formData.expires_at"
-                  dateFormat="yy-mm-dd" showIcon showButtonBar showTime hourFormat="24"
+                  dateFormat="yy-mm-dd" showIcon showButtonBar
                   class="w-full"
                   placeholder="Leave empty for no expiration" />
         <small class="p-text-secondary">When the link becomes inaccessible</small>
@@ -332,7 +332,6 @@ async function handleSubmit() {
 
     if (isEditMode.value) {
       const updatedShare = await shareLinksStore.updateShareLink(props.editingShare.id, payload)
-      toast.add({ severity: 'success', summary: 'Success', detail: 'Timeline share updated', life: 3000 })
       emit('updated', updatedShare)
       dialogVisible.value = false
     } else {
