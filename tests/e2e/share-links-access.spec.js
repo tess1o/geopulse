@@ -1,48 +1,32 @@
 import {test, expect} from '../fixtures/database-fixture.js';
-import {LoginPage} from '../pages/LoginPage.js';
-import {ShareLinksPage} from '../pages/ShareLinksPage.js';
 import {SharedLocationPage} from '../pages/SharedLocationPage.js';
 import {SharedTimelinePage} from '../pages/SharedTimelinePage.js';
 import {AppNavigation} from '../pages/AppNavigation.js';
-import {TestHelpers} from '../utils/test-helpers.js';
+import {TestSetupHelper} from '../utils/test-setup-helper.js';
+import {DateFactory} from '../utils/date-factory.js';
+import {ShareLinkFactory} from '../utils/share-link-factory.js';
+import {GpsDataFactory} from '../utils/gps-data-factory.js';
+import {TestConstants} from '../fixtures/test-constants.js';
 import {TestData} from '../fixtures/test-data.js';
-import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../utils/timeline-test-data.js';
+import {insertVerifiableStaysTestData} from '../utils/timeline-test-data.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
-import {UserFactory} from '../utils/user-factory.js';
 import * as TimelineTestData from "../utils/timeline-test-data.js";
 
 test.describe('Shared Links Public Access', () => {
 
   test.describe('Live Location Share - Public Access', () => {
     test('should access public live location share with current location only', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup: Create user and GPS data
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL
+      );
 
       // Create public share link
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: '11111111-1111-1111-1111-111111111111',
-        user_id: user.id,
-        name: 'Public Current Location',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false,
-        password: null
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_1,
+        name: 'Public Current Location'
       });
-
-      // Logout to simulate guest access
-      await context.clearCookies();
 
       // Access shared link as guest
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -66,39 +50,23 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedLocationPage.hasPathLayer()).toBe(false);
 
       // Verify view count
-      await page.waitForTimeout(1000);
-      const viewCount = await SharedLocationPage.getViewCount(dbManager, link.id);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
+      const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
     });
 
     test('should access public live location share with history', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 10);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM
+      );
 
       // Create link with history
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: '22222222-2222-2222-2222-222222222222',
-        user_id: user.id,
-        name: 'Public With History',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: true,
-        history_hours: 24
+      const link = await ShareLinkFactory.createLiveLocationWithHistory(dbManager, user.id, 24, {
+        id: TestConstants.TEST_UUIDS.LINK_2,
+        name: 'Public With History'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -116,35 +84,17 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should require password for protected live location share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const shareLinksPage = new ShareLinksPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL
+      );
 
       // Create password-protected link
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: '33333333-3333-3333-3333-333333333333',
-        user_id: user.id,
-        name: 'Protected Live',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false,
-        password: '$2a$12$Iuh13ihQQPT2Kr9u9KVygu5kS2FMxBnIWE154uXbtPnVfSEpNjOqC'
+      const link = await ShareLinkFactory.createProtectedLiveLocation(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_3,
+        name: 'Protected Live'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -156,7 +106,7 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedLocationPage.isLocationDisplayed()).toBe(false);
 
       // Submit correct password
-      await sharedLocationPage.submitPassword('testpass123');
+      await sharedLocationPage.submitPassword(TestConstants.PASSWORDS.testpass123);
       await sharedLocationPage.waitForLocationToLoad();
 
       // Verify access granted
@@ -165,76 +115,45 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should reject incorrect password for live location share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL
+      );
 
       // Create protected link
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: '44444444-4444-4444-4444-444444444444',
-        user_id: user.id,
-        name: 'Wrong Pass Test',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false,
-        password: '$2a$12$Iuh13ihQQPT2Kr9u9KVygu5kS2FMxBnIWE154uXbtPnVfSEpNjOqC'
+      const link = await ShareLinkFactory.createProtectedLiveLocation(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_4,
+        name: 'Wrong Pass Test'
       });
-
-      await context.clearCookies();
 
       // Access and submit wrong password
       await sharedLocationPage.navigateToSharedLink(link.id);
       await sharedLocationPage.waitForPageLoad();
       await sharedLocationPage.waitForPasswordPrompt();
       await sharedLocationPage.submitPassword('wrongpass');
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
       // Verify error shown
       expect(await sharedLocationPage.isErrorShown()).toBe(true);
 
       // View count should NOT increment
-      const viewCount = await SharedLocationPage.getViewCount(dbManager, link.id);
+      const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(0);
     });
 
     test('should show error for expired live location share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL
+      );
 
       // Create EXPIRED link
-      const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() - 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: '55555555-5555-5555-5555-555555555555',
-        user_id: user.id,
-        name: 'Expired Link',
-        expires_at: expiredDate.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false
+      const link = await ShareLinkFactory.createExpiredLiveLocation(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_5,
+        name: 'Expired Link'
       });
-
-      await context.clearCookies();
 
       // Try to access expired link
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -248,36 +167,21 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should show no data message when user has no GPS points', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup WITHOUT GPS data
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      // Setup WITHOUT GPS data (gpsPointCount = 0)
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Create link (no GPS data)
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: '66666666-6666-6666-6666-666666666666',
-        user_id: user.id,
-        name: 'No Data Link',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_6,
+        name: 'No Data Link'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedLocationPage.navigateToSharedLink(link.id);
       await sharedLocationPage.waitForPageLoad();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Should show no data message
       expect(await sharedLocationPage.isNoDataShown()).toBe(true);
@@ -286,40 +190,19 @@ test.describe('Shared Links Public Access', () => {
 
   test.describe('Timeline Share - Public Access', () => {
     test('should access public timeline share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
       const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 10);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM
+      );
 
       // Create active timeline share
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 7);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: '77777777-7777-7777-7777-777777777777',
-        user_id: user.id,
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_7,
         name: 'Public Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        show_current_location: true,
         show_photos: false
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
@@ -330,7 +213,7 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedTimelinePage.isPasswordRequired()).toBe(false);
 
       // Wait for timeline to load
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify timeline display
       expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
@@ -344,37 +227,15 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should show upcoming timeline message', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Create UPCOMING timeline (starts in future)
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() + 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 14);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: '88888888-8888-8888-8888-888888888888',
-        user_id: user.id,
-        name: 'Upcoming Trip',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString()
+      const link = await ShareLinkFactory.createUpcomingTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_8,
+        name: 'Upcoming Trip'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
@@ -389,39 +250,17 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should access password-protected timeline share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 10);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM
+      );
 
       // Create protected timeline
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 7);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: '99999999-9999-9999-9999-999999999999',
-        user_id: user.id,
-        name: 'Protected Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        password: '$2a$12$pe7F7dhlJC3OE7gp9lqiW.i2H/er3W0U7G357gqsj3pQJHrXifZCK'
+      const link = await ShareLinkFactory.createProtectedTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_9,
+        name: 'Protected Timeline'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
@@ -432,53 +271,30 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedTimelinePage.isPasswordRequired()).toBe(true);
 
       // Submit password
-      await sharedTimelinePage.verifyPassword('timelinepass');
-      await page.waitForTimeout(2000);
+      await sharedTimelinePage.verifyPassword(TestConstants.PASSWORDS.timelinepass);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify access granted
       expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
     });
 
     test('should reject incorrect password for timeline share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Create protected timeline
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 7);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-        user_id: user.id,
-        name: 'Wrong Pass Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        password: '$2a$12$pe7F7dhlJC3OE7gp9lqiW.i2H/er3W0U7G357gqsj3pQJHrXifZCK'
+      const link = await ShareLinkFactory.createProtectedTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_A,
+        name: 'Wrong Pass Timeline'
       });
-
-      await context.clearCookies();
 
       // Access and submit wrong password
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForPasswordPrompt();
       await sharedTimelinePage.verifyPassword('wrongpass');
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
       // Verify error
       expect(await sharedTimelinePage.hasPasswordError()).toBe(true);
@@ -486,42 +302,20 @@ test.describe('Shared Links Public Access', () => {
       expect(passwordError).toContain('Invalid password');
 
       // View count should NOT increment
-      const viewCount = await SharedTimelinePage.getViewCount(dbManager, link.id);
+      const viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(0);
     });
 
     test('should show error for expired timeline share', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Create EXPIRED timeline
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 30);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() - 14);
-      const expiredDate = new Date(now);
-      expiredDate.setDate(expiredDate.getDate() - 7);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-        user_id: user.id,
-        name: 'Expired Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiredDate.toISOString()
+      const link = await ShareLinkFactory.createExpiredTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_B,
+        name: 'Expired Timeline'
       });
-
-      await context.clearCookies();
 
       // Try to access
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
@@ -535,43 +329,22 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should show empty timeline message when no data', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
       // Setup WITHOUT timeline data
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Create timeline (no data)
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 7);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-        user_id: user.id,
-        name: 'Empty Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString()
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_C,
+        name: 'Empty Timeline'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify timeline view is shown but empty
       expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
@@ -587,44 +360,23 @@ test.describe('Shared Links Public Access', () => {
 
   test.describe('Timeline Share - Advanced Features', () => {
     test('should show refresh button on active timeline', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 10);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM
+      );
 
       // Create active timeline
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 7);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-        user_id: user.id,
-        name: 'Active Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString()
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_D,
+        name: 'Active Timeline'
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify refresh button appears for active timelines
       const status = await sharedTimelinePage.getStatus();
@@ -634,9 +386,9 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should filter timeline data by date', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
+
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Helper to insert a stay
       const insertStay = async (date, name) => {
@@ -645,15 +397,13 @@ test.describe('Shared Links Public Access', () => {
         );
 
         // Insert GPS point
-        const gpsQuery = `
-          INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        `;
-        const gpsValues = [
-          'test-device', user.id, `POINT(-74.0060 40.7128)`, date, 10.0, 100, 0.0, 20.0, 'OVERLAND', date
-        ];
-        await dbManager.client.query(gpsQuery, gpsValues);
-        
+        await GpsDataFactory.insertGpsPoint(dbManager, {
+          user_id: user.id,
+          latitude: 40.7128,
+          longitude: -74.0060,
+          timestamp: date
+        });
+
         // Insert stay
         await dbManager.client.query(`
           INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
@@ -661,33 +411,26 @@ test.describe('Shared Links Public Access', () => {
         `, [user.id, date, name, geocodingId, new Date(date).toISOString(), new Date(date).toISOString()]);
       };
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      const user = await dbManager.getUserByEmail(testUser.email);
-
       // Insert data for two different days
       await insertStay('2025-09-20T10:00:00Z', 'Visit 1');
       await insertStay('2025-09-20T14:00:00Z', 'Visit 2');
       await insertStay('2025-09-21T11:00:00Z', 'Visit 3');
 
       // Create share link covering both days
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+      const link = await ShareLinkFactory.createTimeline(dbManager, user.id, {
         id: 'eeeeeeee-eeee-eeee-eeee-111111111111',
-        user_id: user.id,
         name: 'Filterable Timeline',
-        start_date: '2025-09-20T00:00:00Z',
-        end_date: '2025-09-21T23:59:59Z',
-        expires_at: new Date(Date.now() + 86400000).toISOString()
+        dateRange: {
+          startDate: new Date('2025-09-20T00:00:00Z'),
+          endDate: new Date('2025-09-21T23:59:59Z'),
+          expiresAt: DateFactory.futureDate(1)
+        }
       });
 
-      await context.clearCookies();
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
       expect(await sharedTimelinePage.hasDateFilter()).toBe(true);
       const initialItemCount = await sharedTimelinePage.getTimelineItemCount();
@@ -696,7 +439,7 @@ test.describe('Shared Links Public Access', () => {
       // Apply date filter for the first day
       await sharedTimelinePage.setDateRange(new Date('2025-09-20'), new Date('2025-09-20'));
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
 
       const filteredItemCount = await sharedTimelinePage.getTimelineItemCount();
       expect(filteredItemCount).toBe(2);
@@ -705,7 +448,7 @@ test.describe('Shared Links Public Access', () => {
       // Clear filter
       await sharedTimelinePage.clearDateFilter();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
 
       const restoredItemCount = await sharedTimelinePage.getTimelineItemCount();
       expect(restoredItemCount).toBe(3);
@@ -713,34 +456,25 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should display timeline data and map correctly', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL
+      );
 
-      const user = await dbManager.getUserByEmail(testUser.email);
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id); // This inserts GPS points and stays
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 2);
 
-      const startDate = new Date('2025-09-20T00:00:00Z');
-      const endDate = new Date('2025-09-22T23:59:59Z');
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+      const link = await ShareLinkFactory.createTimeline(dbManager, user.id, {
         id: 'eeeeeeee-eeee-eeee-eeee-222222222222',
-        user_id: user.id,
         name: 'Data-rich Timeline',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: new Date(Date.now() + 86400000).toISOString(), // 1 day
+        dateRange: {
+          startDate: new Date('2025-09-20T00:00:00Z'),
+          endDate: new Date('2025-09-22T23:59:59Z'),
+          expiresAt: DateFactory.futureDate(1)
+        },
         show_current_location: true
       });
 
-      await context.clearCookies();
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
@@ -762,102 +496,64 @@ test.describe('Shared Links Public Access', () => {
 
   test.describe('View Count Tracking', () => {
     test('should increment view count on live location access', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL
+      );
 
       // Create link
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
-        id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-        user_id: user.id,
-        name: 'View Count Test',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false,
-        view_count: 0
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_E,
+        name: 'View Count Test'
       });
-
-      await context.clearCookies();
 
       // First access
       await sharedLocationPage.navigateToSharedLink(link.id);
       await sharedLocationPage.waitForPageLoad();
       await sharedLocationPage.waitForLocationToLoad();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      let viewCount = await SharedLocationPage.getViewCount(dbManager, link.id);
+      let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
 
       // Second access (reload)
       await page.reload();
       await sharedLocationPage.waitForLocationToLoad();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      viewCount = await SharedLocationPage.getViewCount(dbManager, link.id);
+      viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(2);
     });
 
     test('should increment view count on timeline access', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 10);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(
+        page, dbManager, context, TestConstants.DATA_COUNTS.GPS_POINTS_MEDIUM
+      );
 
       // Create timeline
-      const now = new Date();
-      const startDate = new Date(now);
-      startDate.setDate(startDate.getDate() - 7);
-      const endDate = new Date(now);
-      endDate.setDate(endDate.getDate() + 7);
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
-        id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
-        user_id: user.id,
-        name: 'Timeline View Count',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        view_count: 0
+      const link = await ShareLinkFactory.createActiveTimeline(dbManager, user.id, {
+        id: TestConstants.TEST_UUIDS.LINK_F,
+        name: 'Timeline View Count'
       });
-
-      await context.clearCookies();
 
       // First access
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      let viewCount = await SharedTimelinePage.getViewCount(dbManager, link.id);
+      let viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(1);
 
       // Second access
       await page.reload();
       await sharedTimelinePage.waitForPageLoad();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
-      viewCount = await SharedTimelinePage.getViewCount(dbManager, link.id);
+      viewCount = await ShareLinkFactory.getViewCount(dbManager, link.id);
       expect(viewCount).toBe(2);
     });
   });
@@ -912,45 +608,29 @@ test.describe('Shared Links Public Access', () => {
 
   test.describe('Photo Display Verification', () => {
     test('should display photos when timeline share has show_photos enabled', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
 
       // Insert test data with stays
       await insertVerifiableStaysTestData(dbManager, user.id);
 
       // Create timeline with photos ENABLED
-      const now = new Date();
-      const startDate = new Date('2025-09-20T00:00:00Z');
-      const endDate = new Date('2025-09-22T23:59:59Z');
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+      const link = await ShareLinkFactory.createTimelineWithPhotos(dbManager, user.id, {
         id: 'a0a0a0a0-1111-1111-1111-111111111111',
-        user_id: user.id,
         name: 'Timeline With Photos',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        show_photos: true
+        dateRange: {
+          startDate: new Date('2025-09-20T00:00:00Z'),
+          endDate: new Date('2025-09-22T23:59:59Z'),
+          expiresAt: DateFactory.futureDate(30)
+        }
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify timeline is displayed
       expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
@@ -961,43 +641,28 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should not display photos when timeline share has show_photos disabled', async ({page, dbManager, context}) => {
-      const loginPage = new LoginPage(page);
       const sharedTimelinePage = new SharedTimelinePage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
+      const { user } = await TestSetupHelper.setupPublicShareAccess(page, dbManager, context, 0);
       await insertVerifiableStaysTestData(dbManager, user.id);
 
       // Create timeline with photos DISABLED
-      const now = new Date();
-      const startDate = new Date('2025-09-20T00:00:00Z');
-      const endDate = new Date('2025-09-22T23:59:59Z');
-      const expiresAt = new Date(now);
-      expiresAt.setDate(expiresAt.getDate() + 30);
-
-      const link = await SharedTimelinePage.insertTimelineShareLink(dbManager, {
+      const link = await ShareLinkFactory.createTimeline(dbManager, user.id, {
         id: 'b0b0b0b0-2222-2222-2222-222222222222',
-        user_id: user.id,
         name: 'Timeline Without Photos',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-        expires_at: expiresAt.toISOString(),
+        dateRange: {
+          startDate: new Date('2025-09-20T00:00:00Z'),
+          endDate: new Date('2025-09-22T23:59:59Z'),
+          expiresAt: DateFactory.futureDate(30)
+        },
         show_photos: false
       });
-
-      await context.clearCookies();
 
       // Access as guest
       await sharedTimelinePage.navigateToSharedTimeline(link.id);
       await sharedTimelinePage.waitForPageLoad();
       await sharedTimelinePage.waitForLoadingToFinish();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(TestConstants.TIMEOUTS.LONG);
 
       // Verify timeline is displayed
       expect(await sharedTimelinePage.isTimelineDisplayed()).toBe(true);
@@ -1010,29 +675,15 @@ test.describe('Shared Links Public Access', () => {
 
   test.describe('Authenticated Access to Shared Links', () => {
     test('should allow owner to access their own shared live location while logged in', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
-      const testUser = TestData.users.existing;
 
-      // Setup
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, user.id, 5);
+      const { user } = await TestSetupHelper.createAndLoginUser(page, dbManager);
+      await GpsDataFactory.createGpsPointsForUser(dbManager, user.id, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL);
 
       // Create share link
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
         id: 'c0c0c0c0-1111-1111-1111-111111111111',
-        user_id: user.id,
-        name: 'Owner Access Test',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false
+        name: 'Owner Access Test'
       });
 
       // Access own share link while still logged in
@@ -1046,44 +697,22 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should allow other authenticated users to access public shared links', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
       const appNav = new AppNavigation(page);
 
-      // Create BOTH users at the start
-      const ownerData = { ...TestData.users.existing, email: 'owner@test.com' };
-      const viewerData = { ...TestData.users.existing, email: 'viewer@test.com' };
+      // Create both users and login as owner
+      const { ownerData, viewerData, owner } = await TestSetupHelper.setupMultiUserShareTest(page, dbManager);
 
-      await UserFactory.createUser(page, ownerData);
-      await UserFactory.createUser(page, viewerData);
-
-      // Login as owner
-      await loginPage.navigate();
-      await loginPage.login(ownerData.email, ownerData.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const owner = await dbManager.getUserByEmail(ownerData.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, owner.id, 5);
+      await GpsDataFactory.createGpsPointsForUser(dbManager, owner.id, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL);
 
       // Create share link by owner
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
+      const link = await ShareLinkFactory.createLiveLocation(dbManager, owner.id, {
         id: 'd0d0d0d0-1111-1111-1111-111111111111',
-        user_id: owner.id,
-        name: 'Public Link',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false,
-        password: null
+        name: 'Public Link'
       });
 
-      // Logout owner and login as viewer
-      await appNav.logout();
-
-      await loginPage.navigate();
-      await loginPage.login(viewerData.email, viewerData.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      // Switch to viewer
+      await TestSetupHelper.switchUser(page, appNav, viewerData);
 
       // Access owner's public share link as different user
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -1100,44 +729,24 @@ test.describe('Shared Links Public Access', () => {
     });
 
     test('should require password even when logged in as different user', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
       const sharedLocationPage = new SharedLocationPage(page);
       const appNav = new AppNavigation(page);
 
-      // Create BOTH users at the start
-      const ownerData = { ...TestData.users.existing, email: 'owner2@test.com' };
-      const viewerData = { ...TestData.users.existing, email: 'viewer2@test.com' };
+      // Create both users and login as owner
+      const { viewerData, owner } = await TestSetupHelper.setupMultiUserShareTest(
+        page, dbManager, 'owner2@test.com', 'viewer2@test.com'
+      );
 
-      await UserFactory.createUser(page, ownerData);
-      await UserFactory.createUser(page, viewerData);
-
-      // Login as owner
-      await loginPage.navigate();
-      await loginPage.login(ownerData.email, ownerData.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      const owner = await dbManager.getUserByEmail(ownerData.email);
-      await SharedLocationPage.createGpsPointsForUser(dbManager, owner.id, 5);
+      await GpsDataFactory.createGpsPointsForUser(dbManager, owner.id, TestConstants.DATA_COUNTS.GPS_POINTS_SMALL);
 
       // Create PASSWORD-PROTECTED share link
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7);
-      const link = await ShareLinksPage.insertShareLink(dbManager, {
+      const link = await ShareLinkFactory.createProtectedLiveLocation(dbManager, owner.id, {
         id: 'e0e0e0e0-2222-2222-2222-222222222222',
-        user_id: owner.id,
-        name: 'Protected Link',
-        expires_at: expiresAt.toISOString(),
-        share_type: 'LIVE_LOCATION',
-        show_history: false,
-        password: '$2a$12$Iuh13ihQQPT2Kr9u9KVygu5kS2FMxBnIWE154uXbtPnVfSEpNjOqC' // testpass123
+        name: 'Protected Link'
       });
 
-      // Logout owner and login as viewer
-      await appNav.logout();
-
-      await loginPage.navigate();
-      await loginPage.login(viewerData.email, viewerData.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      // Switch to viewer
+      await TestSetupHelper.switchUser(page, appNav, viewerData);
 
       // Try to access protected link
       await sharedLocationPage.navigateToSharedLink(link.id);
@@ -1148,7 +757,7 @@ test.describe('Shared Links Public Access', () => {
       expect(await sharedLocationPage.isPasswordRequired()).toBe(true);
 
       // Submit correct password
-      await sharedLocationPage.submitPassword('testpass123');
+      await sharedLocationPage.submitPassword(TestConstants.PASSWORDS.testpass123);
       await sharedLocationPage.waitForLocationToLoad();
 
       // Now should have access

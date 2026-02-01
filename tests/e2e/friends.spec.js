@@ -1397,8 +1397,18 @@ test.describe('Friends Page', () => {
         // Click previous month button multiple times
         const prevButton = page.locator('.p-datepicker-prev-button');
 
-        // From Jan 2026, go back 4 months to Sept 2025
-        for (let i = 0; i < 4; i++) {
+        // Calculate how many months back from current month to September 2025
+        const now = new Date();
+        const targetMonth = 8; // September (0-indexed, so January = 0, September = 8)
+        const targetYear = 2025;
+
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const monthsBack = (currentYear - targetYear) * 12 + (currentMonth - targetMonth);
+
+        // Navigate backwards to September 2025
+        for (let i = 0; i < monthsBack; i++) {
           await prevButton.click();
           await page.waitForTimeout(200);
         }

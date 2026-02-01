@@ -305,8 +305,8 @@ export class GpsDataFactory {
    */
   static async getGpsPoints(dbManager, userId, startDate = null, endDate = null, limit = null) {
     let query = `
-      SELECT id, device_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type 
-      FROM gps_points 
+      SELECT id, device_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type
+      FROM gps_points
       WHERE user_id = $1
     `;
     const params = [userId];
@@ -330,5 +330,79 @@ export class GpsDataFactory {
 
     const result = await dbManager.client.query(query, params);
     return result.rows;
+  }
+
+  /**
+   * Simple GPS point creation for share link tests
+   * Consolidates methods from SharedLocationPage
+   */
+
+  /**
+   * Insert a single GPS point (simple version)
+   */
+  static async insertGpsPoint(dbManager, pointData) {
+    const gpsQuery = `
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `;
+
+    const gpsValues = [
+      pointData.device_id || 'test-device',
+      pointData.user_id,
+      `POINT(${pointData.longitude} ${pointData.latitude})`, // PostGIS POINT format: lon, lat
+      pointData.timestamp,
+      pointData.accuracy || 10.0,
+      pointData.battery || 100,
+      pointData.velocity || 0.0,
+      pointData.altitude || 20.0,
+      pointData.source_type || 'OWNTRACKS',
+      pointData.created_at || pointData.timestamp
+    ];
+
+    const result = await dbManager.client.query(gpsQuery, gpsValues);
+    return result.rows[0];
+  }
+
+  /**
+   * Insert multiple GPS points (simple array)
+   */
+  static async insertMultipleGpsPoints(dbManager, points) {
+    const results = [];
+    for (const point of points) {
+      const result = await this.insertGpsPoint(dbManager, point);
+      results.push(result);
+    }
+    return results;
+  }
+
+  /**
+   * Create GPS points for a user (common pattern in share link tests)
+   * Creates points spread over time around London
+   * @deprecated Use createGpsPointsForUser instead
+   */
+  static async createGpsPointsForUser(dbManager, userId, count = 5) {
+    const now = new Date();
+    const points = [];
+
+    for (let i = 0; i < count; i++) {
+      const timestamp = new Date(now.getTime() - (count - i) * 60000); // 1 minute apart
+      const point = {
+        user_id: userId,
+        device_id: 'test-device',
+        latitude: 51.5074 + (Math.random() - 0.5) * 0.01, // London area
+        longitude: -0.1278 + (Math.random() - 0.5) * 0.01,
+        timestamp: timestamp.toISOString(),
+        accuracy: 10.0,
+        battery: 100 - i,
+        velocity: i === count - 1 ? 0.0 : 5.0, // Last point is stationary
+        altitude: 20.0,
+        source_type: 'OWNTRACKS',
+        created_at: timestamp.toISOString()
+      };
+      points.push(point);
+    }
+
+    return await this.insertMultipleGpsPoints(dbManager, points);
   }
 }

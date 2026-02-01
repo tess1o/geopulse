@@ -1,47 +1,26 @@
 import {test, expect} from '../fixtures/database-fixture.js';
-import {LoginPage} from '../pages/LoginPage.js';
 import {ShareLinksPage} from '../pages/ShareLinksPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
+import {TestSetupHelper} from '../utils/test-setup-helper.js';
+import {DateFactory} from '../utils/date-factory.js';
+import {ShareLinkFactory} from '../utils/share-link-factory.js';
+import {TestConstants} from '../fixtures/test-constants.js';
 
 test.describe('Share Links Management', () => {
 
     test.describe('Initial State and Empty State', () => {
         test('should show empty state when no share links exist', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
             await shareLinksPage.waitForLoadingComplete();
 
             // Verify empty state
             expect(await shareLinksPage.hasEmptyState()).toBe(true);
 
             // Verify database has no share links
-            const user = await dbManager.getUserByEmail(testUser.email);
-            expect(await ShareLinksPage.countShareLinks(dbManager, user.id)).toBe(0);
+            expect(await ShareLinkFactory.countByUserId(dbManager, user.id)).toBe(0);
         });
 
         test('should show create button with menu in empty state', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Click create button to open menu (waits for menu to open)
             await shareLinksPage.clickCreateFirstLink();
@@ -57,19 +36,7 @@ test.describe('Share Links Management', () => {
 
     test.describe('Create Live Location Shares', () => {
         test('should create basic live location share with current location only', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Open menu and select Live Location
             await shareLinksPage.clickCreateFirstLink();
@@ -77,13 +44,10 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForDialogToOpen();
 
             // Fill form
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
-
             await shareLinksPage.fillLinkForm({
                 name: 'Current Location Only',
                 showHistory: false,
-                expiresAt: expiresAt,
+                expiresAt: DateFactory.futureDate(7),
                 hasPassword: false
             });
 
@@ -96,11 +60,11 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             expect(links.length).toBe(1);
             expect(links[0].name).toBe('Current Location Only');
             expect(links[0].show_history).toBe(false);
-            expect(links[0].share_type).toBe('LIVE_LOCATION');
+            expect(links[0].share_type).toBe(TestConstants.SHARE_TYPES.LIVE_LOCATION);
 
             // Verify UI
             expect(await shareLinksPage.hasLiveLocationSharesSection()).toBe(true);
@@ -108,26 +72,13 @@ test.describe('Share Links Management', () => {
         });
 
         test('should create live location share with history and hours', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();
             await shareLinksPage.waitForDialogToOpen();
 
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 14);
+            const expiresAt = DateFactory.futureDate(14);
 
             // Fill form with history enabled
             await page.locator(shareLinksPage.selectors.nameInput).fill('With 48h History');
@@ -150,7 +101,7 @@ test.describe('Share Links Management', () => {
 
             await calendarInput.fill(`${month}/${day}/${year} ${hours}:${minutes}`);
             await calendarInput.press('Tab');
-            await page.waitForTimeout(300);
+            await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
 
             await shareLinksPage.submitCreateForm();
             await shareLinksPage.waitForSuccessToast('created');
@@ -161,7 +112,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             const createdLink = links.find(l => l.name === 'With 48h History');
             expect(createdLink).toBeTruthy();
             expect(createdLink.show_history).toBe(true);
@@ -173,33 +124,18 @@ test.describe('Share Links Management', () => {
         });
 
         test('should create password-protected live location share', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();
             await shareLinksPage.waitForDialogToOpen();
 
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
-
             await shareLinksPage.fillLinkForm({
                 name: 'Protected Live Location',
                 showHistory: false,
-                expiresAt: expiresAt,
+                expiresAt: DateFactory.futureDate(7),
                 hasPassword: true,
-                password: 'secret123'
+                password: TestConstants.PASSWORDS.secret123
             });
 
             await shareLinksPage.submitCreateForm();
@@ -211,7 +147,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             const protectedLink = links.find(l => l.name === 'Protected Live Location');
             expect(protectedLink.password).toBeTruthy();
 
@@ -222,17 +158,7 @@ test.describe('Share Links Management', () => {
 
     test.describe('Create Timeline Shares', () => {
         test('should open timeline share dialog with correct fields', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectTimelineShare();
@@ -254,38 +180,19 @@ test.describe('Share Links Management', () => {
 
             // Close dialog
             await page.locator('.p-dialog-close-button').click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
         });
 
         test('should display timeline shares created via database', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Create timeline share via database
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
 
-            await ShareLinksPage.insertTimelineShareLink(dbManager, {
+            await ShareLinkFactory.createTimeline(dbManager, user.id, {
                 id: '12341234-1234-1234-1234-123412341234',
-                user_id: user.id,
                 name: 'Database Timeline',
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                expires_at: expiresAt.toISOString(),
-                show_current_location: true,
+                dateRange: { startDate, endDate, expiresAt },
                 show_photos: false
             });
 
@@ -301,32 +208,14 @@ test.describe('Share Links Management', () => {
         });
 
         test('should create timeline share via UI', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Create timeline share
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectTimelineShare();
             await shareLinksPage.waitForTimelineDialogToOpen();
 
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
 
             await shareLinksPage.fillTimelineShareForm({
                 name: 'UI Created Timeline',
@@ -341,17 +230,17 @@ test.describe('Share Links Management', () => {
 
             // Wait for dialog to close (indicating success)
             await shareLinksPage.waitForTimelineDialogToClose();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
             // Reload to see the new link
             await page.reload();
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             const createdLink = links.find(l => l.name === 'UI Created Timeline');
             expect(createdLink).toBeTruthy();
-            expect(createdLink.share_type).toBe('TIMELINE');
+            expect(createdLink.share_type).toBe(TestConstants.SHARE_TYPES.TIMELINE);
             expect(createdLink.show_current_location).toBe(true);
             expect(createdLink.show_photos).toBe(false);
 
@@ -362,31 +251,13 @@ test.describe('Share Links Management', () => {
         });
 
         test('should create password-protected timeline share via UI', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectTimelineShare();
             await shareLinksPage.waitForTimelineDialogToOpen();
 
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
 
             await shareLinksPage.fillTimelineShareForm({
                 name: 'Protected Timeline Share',
@@ -403,14 +274,14 @@ test.describe('Share Links Management', () => {
 
             // Wait for dialog to close (indicating success)
             await shareLinksPage.waitForTimelineDialogToClose();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
             // Reload
             await page.reload();
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             const protectedLink = links.find(l => l.name === 'Protected Timeline Share');
             expect(protectedLink).toBeTruthy();
             expect(protectedLink.password).toBeTruthy();
@@ -423,42 +294,20 @@ test.describe('Share Links Management', () => {
 
     test.describe('Display and Organization', () => {
         test('should display timeline and live location shares in separate sections', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert both types of shares
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 30);
-
-            await ShareLinksPage.insertShareLink(dbManager, {
-                id: '11111111-1111-1111-1111-111111111111',
-                user_id: user.id,
+            await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_1,
                 name: 'Live Location Link',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.futureDate(30).toISOString()
             });
 
-            const timelineStart = new Date();
-            timelineStart.setDate(timelineStart.getDate() - 7);
-            const timelineEnd = new Date();
-            timelineEnd.setDate(timelineEnd.getDate() + 7);
-
-            await ShareLinksPage.insertTimelineShareLink(dbManager, {
-                id: '22222222-2222-2222-2222-222222222222',
-                user_id: user.id,
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
+            await ShareLinkFactory.createTimeline(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_2,
                 name: 'Timeline Share',
-                start_date: timelineStart.toISOString(),
-                end_date: timelineEnd.toISOString(),
-                expires_at: expiresAt.toISOString()
+                dateRange: { startDate, endDate, expiresAt }
             });
 
             await shareLinksPage.navigate();
@@ -477,39 +326,20 @@ test.describe('Share Links Management', () => {
         });
 
         test('should separate active and expired links within each section', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert active live location
-            const activeExpiry = new Date();
-            activeExpiry.setDate(activeExpiry.getDate() + 10);
-            await ShareLinksPage.insertShareLink(dbManager, {
-                id: '33333333-3333-3333-3333-333333333333',
-                user_id: user.id,
+            await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_3,
                 name: 'Active Live',
-                expires_at: activeExpiry.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.futureDate(10).toISOString()
             });
 
             // Insert expired live location
-            const expiredDate = new Date();
-            expiredDate.setDate(expiredDate.getDate() - 5);
-            await ShareLinksPage.insertShareLink(dbManager, {
-                id: '44444444-4444-4444-4444-444444444444',
-                user_id: user.id,
+            await ShareLinkFactory.createExpiredLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_4,
                 name: 'Expired Live',
-                expires_at: expiredDate.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.pastDate(5).toISOString()
             });
 
             await shareLinksPage.navigate();
@@ -523,27 +353,13 @@ test.describe('Share Links Management', () => {
 
     test.describe('Edit Share Links', () => {
         test('should edit live location share name and settings', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert link
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 15);
-            const insertedLink = await ShareLinksPage.insertShareLink(dbManager, {
-                id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-                user_id: user.id,
+            const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_A,
                 name: 'Original Name',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.futureDate(15).toISOString()
             });
 
             await shareLinksPage.navigate();
@@ -567,39 +383,19 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const updatedLink = await ShareLinksPage.getShareLinkById(dbManager, insertedLink.id);
+            const updatedLink = await ShareLinkFactory.getById(dbManager, insertedLink.id);
             expect(updatedLink.name).toBe('Updated Name');
         });
 
         test('should edit timeline share name and dates', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert timeline share
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
-
-            const insertedLink = await ShareLinksPage.insertTimelineShareLink(dbManager, {
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
+            const insertedLink = await ShareLinkFactory.createTimeline(dbManager, user.id, {
                 id: 'f0f0f0f0-1111-1111-1111-111111111111',
-                user_id: user.id,
                 name: 'Original Timeline',
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                expires_at: expiresAt.toISOString(),
-                show_current_location: true,
+                dateRange: { startDate, endDate, expiresAt },
                 show_photos: false
             });
 
@@ -611,10 +407,8 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForTimelineDialogToOpen();
 
             // Change name and settings
-            const newStartDate = new Date(now);
-            newStartDate.setDate(newStartDate.getDate() - 14);
-            const newEndDate = new Date(now);
-            newEndDate.setDate(newEndDate.getDate() + 14);
+            const newStartDate = DateFactory.pastDate(14);
+            const newEndDate = DateFactory.futureDate(14);
 
             await shareLinksPage.fillTimelineShareForm({
                 name: 'Updated Timeline',
@@ -632,7 +426,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const updatedLink = await ShareLinksPage.getShareLinkById(dbManager, insertedLink.id);
+            const updatedLink = await ShareLinkFactory.getById(dbManager, insertedLink.id);
             expect(updatedLink.name).toBe('Updated Timeline');
             expect(updatedLink.show_photos).toBe(true);
 
@@ -642,27 +436,13 @@ test.describe('Share Links Management', () => {
         });
 
         test('should edit live location to add password protection', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert link without password
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 15);
-            const insertedLink = await ShareLinksPage.insertShareLink(dbManager, {
+            const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
                 id: 'a1a1a1a1-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-                user_id: user.id,
                 name: 'Add Password Test',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false,
+                expires_at: DateFactory.futureDate(15).toISOString(),
                 password: null
             });
 
@@ -678,7 +458,7 @@ test.describe('Share Links Management', () => {
 
             await shareLinksPage.fillLinkForm({
                 hasPassword: true,
-                password: 'newpass123'
+                password: TestConstants.PASSWORDS.newpass123
             });
 
             await shareLinksPage.submitUpdateForm();
@@ -690,7 +470,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const updatedLink = await ShareLinksPage.getShareLinkById(dbManager, insertedLink.id);
+            const updatedLink = await ShareLinkFactory.getById(dbManager, insertedLink.id);
             expect(updatedLink.password).toBeTruthy();
 
             // Verify UI
@@ -698,26 +478,13 @@ test.describe('Share Links Management', () => {
         });
 
         test('should edit live location to enable history', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert link without history
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 15);
-            const insertedLink = await ShareLinksPage.insertShareLink(dbManager, {
+            const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
                 id: 'b1b1b1b1-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-                user_id: user.id,
                 name: 'Enable History Test',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
+                expires_at: DateFactory.futureDate(15).toISOString(),
                 show_history: false
             });
 
@@ -741,7 +508,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify database
-            const updatedLink = await ShareLinksPage.getShareLinkById(dbManager, insertedLink.id);
+            const updatedLink = await ShareLinkFactory.getById(dbManager, insertedLink.id);
             expect(updatedLink.show_history).toBe(true);
             expect(updatedLink.history_hours).toBe(72);
 
@@ -753,27 +520,13 @@ test.describe('Share Links Management', () => {
 
     test.describe('Delete Share Links', () => {
         test('should delete live location share', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert link
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 15);
-            const insertedLink = await ShareLinksPage.insertShareLink(dbManager, {
-                id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-                user_id: user.id,
+            const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_B,
                 name: 'Delete Me',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.futureDate(15).toISOString()
             });
 
             await shareLinksPage.navigate();
@@ -792,38 +545,19 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify deletion
-            const afterDelete = await ShareLinksPage.getShareLinkById(dbManager, insertedLink.id);
+            const afterDelete = await ShareLinkFactory.getById(dbManager, insertedLink.id);
             expect(afterDelete).toBeNull();
         });
 
         test('should delete timeline share', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert timeline share
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
-
-            const insertedLink = await ShareLinksPage.insertTimelineShareLink(dbManager, {
-                id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-                user_id: user.id,
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
+            const insertedLink = await ShareLinkFactory.createTimeline(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_C,
                 name: 'Delete Timeline',
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                expires_at: expiresAt.toISOString()
+                dateRange: { startDate, endDate, expiresAt }
             });
 
             await shareLinksPage.navigate();
@@ -839,32 +573,18 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify deletion
-            const afterDelete = await ShareLinksPage.getShareLinkById(dbManager, insertedLink.id);
+            const afterDelete = await ShareLinkFactory.getById(dbManager, insertedLink.id);
             expect(afterDelete).toBeNull();
         });
 
         test('should show confirmation dialog before deleting', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert link
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 15);
-            await ShareLinksPage.insertShareLink(dbManager, {
-                id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
-                user_id: user.id,
+            await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_D,
                 name: 'Confirm Delete',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.futureDate(15).toISOString()
             });
 
             await shareLinksPage.navigate();
@@ -889,29 +609,15 @@ test.describe('Share Links Management', () => {
 
     test.describe('Copy to Clipboard', () => {
         test('should copy live location share URL', async ({page, dbManager, context}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
             await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert link
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 15);
-            await ShareLinksPage.insertShareLink(dbManager, {
-                id: 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee',
-                user_id: user.id,
+            await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_E,
                 name: 'Copy Test',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                expires_at: DateFactory.futureDate(15).toISOString()
             });
 
             await shareLinksPage.navigate();
@@ -925,35 +631,16 @@ test.describe('Share Links Management', () => {
         });
 
         test('should copy timeline share URL', async ({page, dbManager, context}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
             await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // Insert timeline share
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
-
-            await ShareLinksPage.insertTimelineShareLink(dbManager, {
-                id: 'ffffffff-ffff-ffff-ffff-ffffffffffff',
-                user_id: user.id,
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
+            await ShareLinkFactory.createTimeline(dbManager, user.id, {
+                id: TestConstants.TEST_UUIDS.LINK_F,
                 name: 'Timeline Copy Test',
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                expires_at: expiresAt.toISOString()
+                dateRange: { startDate, endDate, expiresAt }
             });
 
             await shareLinksPage.navigate();
@@ -976,32 +663,17 @@ test.describe('Share Links Management', () => {
                                                                                                           page,
                                                                                                           dbManager
                                                                                                       }) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // STEP 1: CREATE
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();
             await shareLinksPage.waitForDialogToOpen();
 
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
-
             await shareLinksPage.fillLinkForm({
                 name: 'Lifecycle Test Link',
                 showHistory: false,
-                expiresAt: expiresAt,
+                expiresAt: DateFactory.futureDate(7),
                 hasPassword: false
             });
 
@@ -1013,7 +685,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify creation
-            let links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            let links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             let createdLink = links.find(l => l.name === 'Lifecycle Test Link');
             expect(createdLink).toBeTruthy();
             expect(createdLink.show_history).toBe(false);
@@ -1038,7 +710,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify edit
-            const updatedLink = await ShareLinksPage.getShareLinkById(dbManager, createdLink.id);
+            const updatedLink = await ShareLinkFactory.getById(dbManager, createdLink.id);
             expect(updatedLink.name).toBe('Updated Lifecycle Link');
             expect(updatedLink.show_history).toBe(true);
             expect(updatedLink.history_hours).toBe(48);
@@ -1052,7 +724,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify deletion
-            const deletedLink = await ShareLinksPage.getShareLinkById(dbManager, createdLink.id);
+            const deletedLink = await ShareLinkFactory.getById(dbManager, createdLink.id);
             expect(deletedLink).toBeNull();
 
             // Verify UI shows empty state
@@ -1060,32 +732,14 @@ test.describe('Share Links Management', () => {
         });
 
         test('should complete full lifecycle for timeline share: create → edit → delete', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             // STEP 1: CREATE
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectTimelineShare();
             await shareLinksPage.waitForTimelineDialogToOpen();
 
-            const now = new Date();
-            const startDate = new Date(now);
-            startDate.setDate(startDate.getDate() - 7);
-            const endDate = new Date(now);
-            endDate.setDate(endDate.getDate() + 7);
-            const expiresAt = new Date(now);
-            expiresAt.setDate(expiresAt.getDate() + 30);
+            const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
 
             await shareLinksPage.fillTimelineShareForm({
                 name: 'Timeline Lifecycle',
@@ -1098,16 +752,16 @@ test.describe('Share Links Management', () => {
 
             await shareLinksPage.submitTimelineShareForm();
             await shareLinksPage.waitForTimelineDialogToClose();
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
 
             await page.reload();
             await shareLinksPage.waitForPageLoad();
 
             // Verify creation
-            let links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            let links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             let createdLink = links.find(l => l.name === 'Timeline Lifecycle');
             expect(createdLink).toBeTruthy();
-            expect(createdLink.share_type).toBe('TIMELINE');
+            expect(createdLink.share_type).toBe(TestConstants.SHARE_TYPES.TIMELINE);
             expect(createdLink.show_photos).toBe(false);
 
             // STEP 2: EDIT
@@ -1127,7 +781,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify edit
-            const updatedLink = await ShareLinksPage.getShareLinkById(dbManager, createdLink.id);
+            const updatedLink = await ShareLinkFactory.getById(dbManager, createdLink.id);
             expect(updatedLink.name).toBe('Updated Timeline Lifecycle');
             expect(updatedLink.show_photos).toBe(true);
 
@@ -1140,7 +794,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify deletion
-            const deletedLink = await ShareLinksPage.getShareLinkById(dbManager, createdLink.id);
+            const deletedLink = await ShareLinkFactory.getById(dbManager, createdLink.id);
             expect(deletedLink).toBeNull();
         });
     });
@@ -1151,51 +805,32 @@ test.describe('Share Links Management', () => {
             await page.goto('/app/share-links');
 
             // Should redirect to login
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(TestConstants.TIMEOUTS.MEDIUM);
             const url = page.url();
             expect(url).toContain('/login');
         });
 
         test('should only show own share links when logged in', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
             const shareLinksPage = new ShareLinksPage(page);
 
             // Create two users
-            const user1Data = {...TestData.users.existing, email: 'user1@test.com'};
-            const user2Data = {...TestData.users.existing, email: 'user2@test.com'};
-
-            await UserFactory.createUser(page, user1Data);
-            const user1 = await dbManager.getUserByEmail(user1Data.email);
-
-            await UserFactory.createUser(page, user2Data);
-            const user2 = await dbManager.getUserByEmail(user2Data.email);
+            const { ownerData, owner, viewer } =
+                await TestSetupHelper.createTwoUsers(page, dbManager, 'user1@test.com', 'user2@test.com');
 
             // Create share link for user1
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
-            await ShareLinksPage.insertShareLink(dbManager, {
+            await ShareLinkFactory.createLiveLocation(dbManager, owner.id, {
                 id: 'c1c1c1c1-1111-1111-1111-111111111111',
-                user_id: user1.id,
-                name: 'User 1 Link',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                name: 'User 1 Link'
             });
 
             // Create share link for user2
-            await ShareLinksPage.insertShareLink(dbManager, {
+            await ShareLinkFactory.createLiveLocation(dbManager, viewer.id, {
                 id: 'd1d1d1d1-2222-2222-2222-222222222222',
-                user_id: user2.id,
-                name: 'User 2 Link',
-                expires_at: expiresAt.toISOString(),
-                share_type: 'LIVE_LOCATION',
-                show_history: false
+                name: 'User 2 Link'
             });
 
             // Login as user1
-            await loginPage.navigate();
-            await loginPage.login(user1Data.email, user1Data.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+            await TestSetupHelper.loginExistingUser(page, ownerData);
 
             await shareLinksPage.navigate();
             await shareLinksPage.waitForPageLoad();
@@ -1212,26 +847,11 @@ test.describe('Share Links Management', () => {
 
     test.describe('Edge Cases and Validation', () => {
         test('should handle very long share names gracefully', async ({page, dbManager}) => {
-            const loginPage = new LoginPage(page);
-            const shareLinksPage = new ShareLinksPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
-            await loginPage.navigate();
-            await loginPage.login(testUser.email, testUser.password);
-            await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-            const user = await dbManager.getUserByEmail(testUser.email);
-
-            await shareLinksPage.navigate();
-            await shareLinksPage.waitForPageLoad();
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();
             await shareLinksPage.waitForDialogToOpen();
-
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 7);
 
             // Very long name (200 characters)
             const longName = 'A'.repeat(200);
@@ -1239,7 +859,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.fillLinkForm({
                 name: longName,
                 showHistory: false,
-                expiresAt: expiresAt,
+                expiresAt: DateFactory.futureDate(7),
                 hasPassword: false
             });
 
@@ -1251,7 +871,7 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForPageLoad();
 
             // Verify creation (name should be truncated in DB if there's a limit)
-            const links = await ShareLinksPage.getShareLinksByUserId(dbManager, user.id);
+            const links = await ShareLinkFactory.getByUserId(dbManager, user.id);
             expect(links.length).toBeGreaterThan(0);
             expect(links[0].name.length).toBeGreaterThan(0);
         });
