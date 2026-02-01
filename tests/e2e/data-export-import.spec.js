@@ -994,22 +994,25 @@ test.describe('Data Export & Import', () => {
             expect(gpsCount).toBeGreaterThanOrEqual(39);
             expect(gpsCount).toBeLessThanOrEqual(41); // Should be ~40, allowing for boundary cases
 
-            // Verify the imported data is within the February range
+            // Verify the imported data is within the date range used for import
+            // Import filter was '2024-02-01' to '2024-03-01', so verify same range
             const febGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId, {
                 startDate: '2024-02-01',
-                endDate: '2024-02-29' // Feb 29 doesn't exist in 2024, but ensures we get all of Feb
+                endDate: '2024-03-01' // Match the import filter range
             });
-            expect(febGpsCount).toBe(gpsCount); // All imported points should be in February
+            expect(febGpsCount).toBe(gpsCount); // All imported points should be within the filter range
 
-            // Verify no January or March data exists
+            // Verify no January data exists (before filter start)
             const janGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId, {
                 startDate: '2024-01-01',
                 endDate: '2024-01-31'
             });
             expect(janGpsCount).toBe(0);
 
+            // Verify no data after March 1st exists (after filter end)
+            // Note: March 1st itself may have data due to filter being '2024-03-01' (inclusive)
             const marGpsCount = await DataExportImportPage.getRawGpsPointsCount(dbManager, userId, {
-                startDate: '2024-03-01',
+                startDate: '2024-03-02',  // Start from March 2 to exclude March 1
                 endDate: '2024-03-31'
             });
             expect(marGpsCount).toBe(0);
