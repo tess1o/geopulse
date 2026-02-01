@@ -1,7 +1,5 @@
 import { useMeasureUnit } from '@/composables/useMeasureUnit';
 
-const { getMeasureUnit } = useMeasureUnit();
-
 /**
  * Convert kilometers to the display unit (km or miles) as a numeric value
  * Used for chart data that's already in kilometers from the backend
@@ -9,7 +7,7 @@ const { getMeasureUnit } = useMeasureUnit();
  * @returns {number} - Distance in km (metric) or miles (imperial)
  */
 export function convertKilometersToDisplayUnit(kilometers) {
-    const unit = getMeasureUnit();
+    const unit = useMeasureUnit().getMeasureUnit();
     if (unit === 'IMPERIAL') {
         // Convert kilometers to miles
         return kilometers * 0.621371;
@@ -24,7 +22,7 @@ export function convertKilometersToDisplayUnit(kilometers) {
  * @returns {string} - Formatted string with unit suffix
  */
 export function formatDistanceValue(value) {
-    const unit = getMeasureUnit();
+    const unit = useMeasureUnit().getMeasureUnit();
     if (unit === 'IMPERIAL') {
         return `${value.toFixed(2)} mi`;
     }
@@ -36,12 +34,12 @@ export function formatDistanceValue(value) {
  * @returns {string} - 'km' or 'mi'
  */
 export function getDistanceUnitLabel() {
-    const unit = getMeasureUnit();
+    const unit = useMeasureUnit().getMeasureUnit();
     return unit === 'IMPERIAL' ? 'mi' : 'km';
 }
 
 export function formatDistance(meters) {
-    const unit = getMeasureUnit();
+    const unit = useMeasureUnit().getMeasureUnit();
 
     if (unit === 'IMPERIAL') {
         const feet = meters * 3.28084;
@@ -63,7 +61,7 @@ export function formatDistance(meters) {
 }
 
 export function formatDistanceRounded(meters) {
-    const unit = getMeasureUnit();
+    const unit = useMeasureUnit().getMeasureUnit();
 
     if (unit === 'IMPERIAL') {
         const feet = meters * 3.28084;
@@ -113,7 +111,7 @@ export function formatDuration(seconds) {
 }
 
 export function formatSpeed(speedKmH) {
-    const unit = getMeasureUnit();
+    const unit = useMeasureUnit().getMeasureUnit();
     const speed = Number(speedKmH);
 
     if (isNaN(speed)) {
