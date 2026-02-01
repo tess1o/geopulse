@@ -5,39 +5,19 @@ import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../utils/timeline-test-data.js';
+import {TestSetupHelper} from "../utils/test-setup-helper.js";
 
 test.describe('Friends Page', () => {
 
   test.describe('Tab Navigation and Structure', () => {
     test('should default to Live tab on page load', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
-
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
       // Should be on Live tab by default
       expect(await friendsPage.isTabActive('live')).toBe(true);
     });
 
     test('should switch between tabs correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
 
       // Default should be Live tab
       expect(await friendsPage.isTabActive('live')).toBe(true);
@@ -56,17 +36,7 @@ test.describe('Friends Page', () => {
     });
 
     test('should not show Invitations tab when no invites exist', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
 
       // Invitations tab should not be visible
       expect(await friendsPage.isInvitesTabVisible()).toBe(false);
@@ -171,17 +141,7 @@ test.describe('Friends Page', () => {
     });
 
     test('should show validation error for invalid email', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -198,17 +158,7 @@ test.describe('Friends Page', () => {
     });
 
     test('should show validation error for empty email', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -224,17 +174,7 @@ test.describe('Friends Page', () => {
     });
 
     test('should handle invitation to non-existent user', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -247,18 +187,7 @@ test.describe('Friends Page', () => {
     });
 
     test('should handle invitation to yourself', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
-
+      const {friendsPage, testUser} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
       // Open invite dialog
       await friendsPage.openInviteDialog();
 

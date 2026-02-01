@@ -4,6 +4,7 @@ import { TestHelpers } from './test-helpers.js';
 import { TestData } from '../fixtures/test-data.js';
 import { UserFactory } from './user-factory.js';
 import { GpsDataFactory } from './gps-data-factory.js';
+import {FriendsPage} from "../pages/FriendsPage.js";
 
 /**
  * Centralized test setup utilities to eliminate duplication
@@ -25,6 +26,14 @@ export class TestSetupHelper {
     const user = await dbManager.getUserByEmail(testUser.email);
 
     return { loginPage, user, testUser };
+  }
+
+  static async createAndLoginUserAndNavigateToFriendsPage(page, dbManager, userData = null) {
+    const {testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const friendsPage = new FriendsPage(page);
+    await friendsPage.navigate();
+    await friendsPage.waitForPageLoad();
+    return {friendsPage, testUser};
   }
 
   /**
