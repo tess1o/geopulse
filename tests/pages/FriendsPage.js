@@ -129,27 +129,9 @@ export class FriendsPage {
     await this.page.goto('/app/friends');
   }
 
-  async isOnFriendsPage() {
-    try {
-      const url = this.page.url();
-      return url.includes('/app/friends');
-    } catch {
-      return false;
-    }
-  }
-
   async waitForPageLoad() {
     await this.page.waitForLoadState('networkidle');
     await this.page.waitForTimeout(1000);
-  }
-
-  async waitForLoadingComplete() {
-    try {
-      await this.page.waitForSelector(this.selectors.loadingSpinner, { state: 'hidden', timeout: 10000 });
-    } catch {
-      console.log('Loading spinner not found or disappeared quickly');
-    }
-    await this.page.waitForLoadState('networkidle');
   }
 
   /**
@@ -220,11 +202,6 @@ export class FriendsPage {
     }
 
     return friends;
-  }
-
-  async getFriendByEmail(email) {
-    const friends = await this.getFriendsList();
-    return friends.find(f => f.email === email);
   }
 
   async removeFriend(friendEmail) {
@@ -325,10 +302,6 @@ export class FriendsPage {
     await this.page.locator(this.selectors.sendInvitationButton).click();
   }
 
-  async closeInviteDialog() {
-    await this.page.locator(this.selectors.cancelDialogButton).click();
-  }
-
   async getInviteEmailError() {
     const errorElement = this.page.locator(this.selectors.errorMessage);
     if (await errorElement.isVisible()) {
@@ -340,15 +313,6 @@ export class FriendsPage {
   /**
    * Invitations Tab Methods
    */
-  async getReceivedInvitationsCount() {
-    const invites = this.page.locator(this.selectors.receivedInvitesList).locator(this.selectors.inviteItem);
-    return await invites.count();
-  }
-
-  async getSentInvitationsCount() {
-    const invites = this.page.locator(this.selectors.sentInvitesList).locator(this.selectors.inviteItem);
-    return await invites.count();
-  }
 
   async getReceivedInvitationsList() {
     const inviteItems = await this.page.locator(this.selectors.receivedInvitesList)
@@ -461,24 +425,11 @@ export class FriendsPage {
     return await this.page.locator(this.selectors.sentInvitesSection).isVisible();
   }
 
-  async hasEmptyInvitationsState() {
-    const hasEmptyState = await this.page.locator(this.selectors.emptyState).isVisible();
-    const hasReceivedSection = await this.hasReceivedInvitesSection();
-    const hasSentSection = await this.hasSentInvitesSection();
-
-    return hasEmptyState && !hasReceivedSection && !hasSentSection;
-  }
-
   /**
    * Confirmation Dialog Methods
    */
   async isConfirmDialogVisible() {
     return await this.page.locator(this.selectors.confirmDialog).isVisible();
-  }
-
-  async getConfirmDialogMessage() {
-    await this.page.waitForSelector(this.selectors.confirmDialog, { state: 'visible' });
-    return await this.page.locator(this.selectors.confirmDialogMessage).textContent();
   }
 
   async confirmAction() {
@@ -527,47 +478,6 @@ export class FriendsPage {
     }
     // Add small delay to ensure toast animations complete
     await this.page.waitForTimeout(300);
-  }
-
-  /**
-   * Timeline Tab Methods
-   */
-  async isTimelineMapVisible() {
-    return await this.page.locator('.friends-timeline-map .leaflet-container').isVisible();
-  }
-
-  async getTimelineItemsCount() {
-    return await this.page.locator('.friend-timeline-card').count();
-  }
-
-  async selectAllTimelineFriends() {
-    const selectAllButton = this.page.locator('button:has-text("All")');
-    if (await selectAllButton.isVisible()) {
-      await selectAllButton.click();
-    }
-  }
-
-  async deselectAllTimelineFriends() {
-    const deselectAllButton = this.page.locator('button:has-text("None")');
-    if (await deselectAllButton.isVisible()) {
-      await deselectAllButton.click();
-    }
-  }
-
-  async openDatePicker() {
-    const dateInput = this.page.locator('.p-datepicker-input').first();
-    if (await dateInput.isVisible()) {
-      await dateInput.click();
-      await this.page.waitForTimeout(500);
-    }
-  }
-
-  async isDatePickerVisible() {
-    return await this.page.locator('.p-datepicker').isVisible();
-  }
-
-  async getUserSelectionPanelCount() {
-    return await this.page.locator('.user-item').count();
   }
 
   /**
@@ -633,32 +543,6 @@ export class FriendsPage {
     `, [senderId, receiverId]);
 
     return result.rows[0] || null;
-  }
-
-  static async countFriends(dbManager, userId) {
-    const result = await dbManager.client.query(`
-      SELECT COUNT(*) as count FROM user_friends WHERE user_id = $1
-    `, [userId]);
-
-    return parseInt(result.rows[0].count);
-  }
-
-  static async countReceivedInvitations(dbManager, userId, status = 'PENDING') {
-    const result = await dbManager.client.query(`
-      SELECT COUNT(*) as count FROM friend_invitations
-      WHERE receiver_id = $1 AND status = $2
-    `, [userId, status]);
-
-    return parseInt(result.rows[0].count);
-  }
-
-  static async countSentInvitations(dbManager, userId, status = 'PENDING') {
-    const result = await dbManager.client.query(`
-      SELECT COUNT(*) as count FROM friend_invitations
-      WHERE sender_id = $1 AND status = $2
-    `, [userId, status]);
-
-    return parseInt(result.rows[0].count);
   }
 
   static async insertFriendWithLocation(dbManager, userId, friendId, latitude, longitude) {

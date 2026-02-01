@@ -1,9 +1,5 @@
 import {test, expect} from '../fixtures/database-fixture.js';
-import {LoginPage} from '../pages/LoginPage.js';
 import {FriendsPage} from '../pages/FriendsPage.js';
-import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../utils/timeline-test-data.js';
 import {TestSetupHelper} from "../utils/test-setup-helper.js";
 
@@ -43,52 +39,17 @@ test.describe('Friends Page', () => {
     });
 
     test('should show Invitations tab when invites exist', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      // Insert invitation in database
-      const receiver = await dbManager.getUserByEmail(testUser.email);
-      const sender = await dbManager.getUserByEmail(friendUser.email);
-      await FriendsPage.insertInvitation(dbManager, sender.id, receiver.id);
-
-      // Login as receiver
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.setupInvitationTest(page, dbManager);
 
       // Invitations tab should be visible
       expect(await friendsPage.isInvitesTabVisible()).toBe(true);
     });
 
     test('should show tab badges with correct counts', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
+      const {user, friend, friendsPage} = await TestSetupHelper.setupTwoUserFriendsTestWithLogin(page, dbManager);
 
       // Create friendship
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
       // Friends tab should show badge with count 1
       const friendsBadge = await friendsPage.getTabBadgeValue('friends');
@@ -100,21 +61,8 @@ test.describe('Friends Page', () => {
 
   test.describe('Sending Friend Invitations', () => {
     test('should send invitation with valid email', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      // Create both users
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {testUser, friendUser, user, friend, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTestWithLogin(page, dbManager);
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -128,9 +76,7 @@ test.describe('Friends Page', () => {
       await friendsPage.waitForToastToDisappear();
 
       // Verify database
-      const sender = await dbManager.getUserByEmail(testUser.email);
-      const receiver = await dbManager.getUserByEmail(friendUser.email);
-      const invitation = await FriendsPage.getInvitationBySenderAndReceiver(dbManager, sender.id, receiver.id);
+      const invitation = await FriendsPage.getInvitationBySenderAndReceiver(dbManager, user.id, friend.id);
 
       expect(invitation).toBeTruthy();
       expect(invitation.status).toBe('PENDING');
@@ -199,20 +145,8 @@ test.describe('Friends Page', () => {
     });
 
     test('should show sent invitation in Invitations tab', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendUser, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTestWithLogin(page, dbManager);
 
       // Send invitation
       await friendsPage.openInviteDialog();
@@ -233,26 +167,7 @@ test.describe('Friends Page', () => {
 
   test.describe('Receiving and Managing Invitations', () => {
     test('should display received invitations correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      // Insert invitation in database
-      const receiver = await dbManager.getUserByEmail(testUser.email);
-      const sender = await dbManager.getUserByEmail(friendUser.email);
-      await FriendsPage.insertInvitation(dbManager, sender.id, receiver.id);
-
-      // Login as receiver
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.setupInvitationTest(page, dbManager);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -265,31 +180,15 @@ test.describe('Friends Page', () => {
     });
 
     test('should accept individual invitation', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      const receiver = await dbManager.getUserByEmail(testUser.email);
-      const sender = await dbManager.getUserByEmail(friendUser.email);
-      const invitationId = await FriendsPage.insertInvitation(dbManager, sender.id, receiver.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {sender, receiver, senderData, invitationId, friendsPage} =
+        await TestSetupHelper.setupInvitationTest(page, dbManager);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
       await page.waitForTimeout(1000);
 
       // Accept invitation (using email since that's what's displayed)
-      await friendsPage.acceptInvitation(friendUser.email);
+      await friendsPage.acceptInvitation(senderData.email);
 
       // Wait for success toast
       await friendsPage.waitForSuccessToast('friends');
@@ -314,35 +213,19 @@ test.describe('Friends Page', () => {
 
       expect(await friendsPage.getFriendsListCount()).toBe(1);
       const friends = await friendsPage.getFriendsList();
-      expect(friends[0].email).toBe(friendUser.email);
+      expect(friends[0].email).toBe(senderData.email);
     });
 
     test('should reject individual invitation', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
-
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
-
-      const receiver = await dbManager.getUserByEmail(testUser.email);
-      const sender = await dbManager.getUserByEmail(friendUser.email);
-      const invitationId = await FriendsPage.insertInvitation(dbManager, sender.id, receiver.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {sender, receiver, senderData, invitationId, friendsPage} =
+        await TestSetupHelper.setupInvitationTest(page, dbManager);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
       await page.waitForTimeout(1000);
 
       // Reject invitation (using email since that's what's displayed)
-      await friendsPage.rejectInvitation(friendUser.email);
+      await friendsPage.rejectInvitation(senderData.email);
 
       // Wait for success toast
       await friendsPage.waitForSuccessToast('rejected');
@@ -361,29 +244,15 @@ test.describe('Friends Page', () => {
     });
 
     test('should accept multiple invitations (bulk action)', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another};
-      const friend2 = TestData.generateUserWithEmail('friend2');
+      const {testUser, user, friends, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
+      // Create invitations from both friends BEFORE logging in
+      await FriendsPage.insertInvitation(dbManager, friends[0].dbUser.id, user.id);
+      await FriendsPage.insertInvitation(dbManager, friends[1].dbUser.id, user.id);
 
-      const receiver = await dbManager.getUserByEmail(testUser.email);
-      const sender1 = await dbManager.getUserByEmail(friend1.email);
-      const sender2 = await dbManager.getUserByEmail(friend2.email);
-
-      await FriendsPage.insertInvitation(dbManager, sender1.id, receiver.id);
-      await FriendsPage.insertInvitation(dbManager, sender2.id, receiver.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -398,8 +267,8 @@ test.describe('Friends Page', () => {
       await page.waitForTimeout(1500);
 
       // Verify friendships created
-      expect(await FriendsPage.verifyFriendshipExists(dbManager, receiver.id, sender1.id)).toBe(true);
-      expect(await FriendsPage.verifyFriendshipExists(dbManager, receiver.id, sender2.id)).toBe(true);
+      expect(await FriendsPage.verifyFriendshipExists(dbManager, user.id, friends[0].dbUser.id)).toBe(true);
+      expect(await FriendsPage.verifyFriendshipExists(dbManager, user.id, friends[1].dbUser.id)).toBe(true);
 
       // Invitations tab should no longer be visible
       expect(await friendsPage.isInvitesTabVisible()).toBe(false);
@@ -411,29 +280,15 @@ test.describe('Friends Page', () => {
     });
 
     test('should reject multiple invitations (bulk action)', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another};
-      const friend2 = TestData.generateUserWithEmail('friend2');
+      const {testUser, user, friends, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
+      // Create invitations from both friends BEFORE logging in
+      await FriendsPage.insertInvitation(dbManager, friends[0].dbUser.id, user.id);
+      await FriendsPage.insertInvitation(dbManager, friends[1].dbUser.id, user.id);
 
-      const receiver = await dbManager.getUserByEmail(testUser.email);
-      const sender1 = await dbManager.getUserByEmail(friend1.email);
-      const sender2 = await dbManager.getUserByEmail(friend2.email);
-
-      await FriendsPage.insertInvitation(dbManager, sender1.id, receiver.id);
-      await FriendsPage.insertInvitation(dbManager, sender2.id, receiver.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -448,8 +303,8 @@ test.describe('Friends Page', () => {
       await page.waitForTimeout(1500);
 
       // Verify no friendships created
-      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, receiver.id, sender1.id)).toBe(true);
-      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, receiver.id, sender2.id)).toBe(true);
+      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friends[0].dbUser.id)).toBe(true);
+      expect(await FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friends[1].dbUser.id)).toBe(true);
 
       // Invitations tab should no longer be visible
       expect(await friendsPage.isInvitesTabVisible()).toBe(false);
@@ -458,24 +313,14 @@ test.describe('Friends Page', () => {
 
   test.describe('Canceling Sent Invitations', () => {
     test('should cancel individual sent invitation', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create invitation BEFORE logging in
+      const invitationId = await FriendsPage.insertInvitation(dbManager, user.id, friend.id);
 
-      const sender = await dbManager.getUserByEmail(testUser.email);
-      const receiver = await dbManager.getUserByEmail(friendUser.email);
-      const invitationId = await FriendsPage.insertInvitation(dbManager, sender.id, receiver.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -498,29 +343,15 @@ test.describe('Friends Page', () => {
     });
 
     test('should cancel multiple sent invitations (bulk action)', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another};
-      const friend2 = TestData.generateUserWithEmail('friend2');
+      const {testUser, user, friends, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
+      // Create invitations BEFORE logging in
+      const invitation1Id = await FriendsPage.insertInvitation(dbManager, user.id, friends[0].dbUser.id);
+      const invitation2Id = await FriendsPage.insertInvitation(dbManager, user.id, friends[1].dbUser.id);
 
-      const sender = await dbManager.getUserByEmail(testUser.email);
-      const receiver1 = await dbManager.getUserByEmail(friend1.email);
-      const receiver2 = await dbManager.getUserByEmail(friend2.email);
-
-      const invitation1Id = await FriendsPage.insertInvitation(dbManager, sender.id, receiver1.id);
-      const invitation2Id = await FriendsPage.insertInvitation(dbManager, sender.id, receiver2.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -548,26 +379,14 @@ test.describe('Friends Page', () => {
 
   test.describe('Friends List Display and Management', () => {
     test('should display friends with correct information', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      // Create friendship
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -581,61 +400,33 @@ test.describe('Friends Page', () => {
     });
 
     test('should display multiple friends correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another};
-      const friend2 = TestData.generateUserWithEmail('friend2');
-      const friend3 = TestData.generateUserWithEmail('friend3');
+      const {testUser, user, friends, friendsData, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 3, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
-      await UserFactory.createUser(page, friend3);
+      // Create friendships BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id);
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[1].dbUser.id);
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[2].dbUser.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friendUser1 = await dbManager.getUserByEmail(friend1.email);
-      const friendUser2 = await dbManager.getUserByEmail(friend2.email);
-      const friendUser3 = await dbManager.getUserByEmail(friend3.email);
-
-      // Create friendships
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser1.id);
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser2.id);
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser3.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
       await page.waitForTimeout(1000);
 
       // Verify all friends are displayed
-      const friends = await friendsPage.getFriendsList();
-      expect(friends.length).toBe(3);
+      const friendsList = await friendsPage.getFriendsList();
+      expect(friendsList.length).toBe(3);
 
-      const emails = friends.map(f => f.email);
-      expect(emails).toContain(friend1.email);
-      expect(emails).toContain(friend2.email);
-      expect(emails).toContain(friend3.email);
+      const emails = friendsList.map(f => f.email);
+      expect(emails).toContain(friendsData[0].email);
+      expect(emails).toContain(friendsData[1].email);
+      expect(emails).toContain(friendsData[2].email);
     });
 
     test('should show empty state when no friends exist', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -646,25 +437,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should remove friend on confirmation', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -691,34 +471,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should navigate to live map when clicking Live button', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship with location and friend shares live location permission BEFORE logging in
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, true);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      // Create friendship with location
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234);
-
-      // IMPORTANT: Friend must share live location permission for Live button to be enabled
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = true
-      `, [friend.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -733,25 +493,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should navigate to timeline when clicking Timeline button', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -766,33 +515,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should disable Live button when friend does not share live location', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship with location but WITHOUT live location permission BEFORE logging in
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, false);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      // Create friendship with location but WITHOUT live location permission
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, false, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = false
-      `, [friend.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -820,33 +550,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should enable Live button when friend shares live location', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship with location AND live location permission BEFORE logging in
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, true);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      // Create friendship with location AND live location permission
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = true
-      `, [friend.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -871,25 +582,14 @@ test.describe('Friends Page', () => {
 
   test.describe('Friend Permission Management', () => {
     test('should toggle live location permission with confirmation', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -911,25 +611,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should toggle timeline permission with confirmation', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -951,25 +640,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should cancel permission change when dialog is rejected', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, friendUser, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -992,25 +670,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should display sharing status sections', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -1036,58 +703,16 @@ test.describe('Friends Page', () => {
 
   test.describe('Filtered Friend Lists by Permissions', () => {
     test('should show only friends with live location permission on Live tab', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another}; // Will share live location
-      const friend2 = TestData.generateUserWithEmail('friend2'); // Will NOT share live location
-      const friend3 = TestData.generateUserWithEmail('friend3'); // Will share live location
+      const {testUser, user, friends, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 3, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
-      await UserFactory.createUser(page, friend3);
+      // Create friendships WITH GPS locations for all friends BEFORE logging in
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[0].dbUser.id, 50.4501, 30.5234, true); // Kyiv - shares live
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[1].dbUser.id, 40.7128, -74.0060, false); // New York - does NOT share
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[2].dbUser.id, 51.5074, -0.1278, true); // London - shares live
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friendUser1 = await dbManager.getUserByEmail(friend1.email);
-      const friendUser2 = await dbManager.getUserByEmail(friend2.email);
-      const friendUser3 = await dbManager.getUserByEmail(friend3.email);
-
-      // Create friendships WITH GPS locations for all friends
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friendUser1.id, 50.4501, 30.5234); // Kyiv
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friendUser2.id, 40.7128, -74.0060); // New York
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friendUser3.id, 51.5074, -0.1278); // London
-
-      // Set permissions: friend1 and friend3 share live location with user
-      // friend2 does NOT share live location
-      // Note: user_id is the one GRANTING permission, friend_id is the one RECEIVING permission
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = true
-      `, [friendUser1.id, user.id]);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, false, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = false
-      `, [friendUser2.id, user.id]);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = true
-      `, [friendUser3.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Should default to Live tab
       expect(await friendsPage.isTabActive('live')).toBe(true);
@@ -1124,57 +749,22 @@ test.describe('Friends Page', () => {
     });
 
     test('should show only friends with timeline permission on Timeline tab', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another}; // Will share timeline
-      const friend2 = TestData.generateUserWithEmail('friend2'); // Will NOT share timeline
-      const friend3 = TestData.generateUserWithEmail('friend3'); // Will share timeline
+      const {testUser, user, friends, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 3, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
-      await UserFactory.createUser(page, friend3);
+      // Create friendships with timeline permissions BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id, {
+        friendToUser: { shareLive: false, shareTimeline: true } // friend1 shares timeline
+      });
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[1].dbUser.id, {
+        friendToUser: { shareLive: false, shareTimeline: false } // friend2 does NOT share timeline
+      });
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[2].dbUser.id, {
+        friendToUser: { shareLive: false, shareTimeline: true } // friend3 shares timeline
+      });
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friendUser1 = await dbManager.getUserByEmail(friend1.email);
-      const friendUser2 = await dbManager.getUserByEmail(friend2.email);
-      const friendUser3 = await dbManager.getUserByEmail(friend3.email);
-
-      // Create friendships
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser1.id);
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser2.id);
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser3.id);
-
-      // Set permissions: friend1 and friend3 share timeline with user
-      // friend2 does NOT share timeline
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_timeline, share_live_location)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_timeline = true
-      `, [friendUser1.id, user.id]);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_timeline, share_live_location)
-        VALUES ($1, $2, false, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_timeline = false
-      `, [friendUser2.id, user.id]);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_timeline, share_live_location)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_timeline = true
-      `, [friendUser3.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
@@ -1209,52 +799,26 @@ test.describe('Friends Page', () => {
     });
 
     test('should display friend timeline data with date range selection', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friend1 = {...TestData.users.another};
-      const friend2 = TestData.generateUserWithEmail('friend2');
+      const {testUser, user, friends, loginPage, friendsPage} =
+        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friend1);
-      await UserFactory.createUser(page, friend2);
-
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friendUser1 = await dbManager.getUserByEmail(friend1.email);
-      const friendUser2 = await dbManager.getUserByEmail(friend2.email);
-
-      // Create friendships
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser1.id);
-      await FriendsPage.insertFriendship(dbManager, user.id, friendUser2.id);
+      // Create friendships with timeline permissions BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id, {
+        friendToUser: { shareLive: false, shareTimeline: true }
+      });
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friends[1].dbUser.id, {
+        friendToUser: { shareLive: false, shareTimeline: true }
+      });
 
       // Insert timeline data for both friends
       // NOTE: Data is inserted for September 21, 2025 (fixed date in test data helper)
-      await insertVerifiableStaysTestData(dbManager, friendUser1.id);
-      await insertVerifiableTripsTestData(dbManager, friendUser1.id);
-      await insertVerifiableStaysTestData(dbManager, friendUser2.id);
-      await insertVerifiableTripsTestData(dbManager, friendUser2.id);
+      await insertVerifiableStaysTestData(dbManager, friends[0].dbUser.id);
+      await insertVerifiableTripsTestData(dbManager, friends[0].dbUser.id);
+      await insertVerifiableStaysTestData(dbManager, friends[1].dbUser.id);
+      await insertVerifiableTripsTestData(dbManager, friends[1].dbUser.id);
 
-      // Set permissions: both friends share timeline with user
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_timeline, share_live_location)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_timeline = true
-      `, [friendUser1.id, user.id]);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_timeline, share_live_location)
-        VALUES ($1, $2, true, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_timeline = true
-      `, [friendUser2.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
@@ -1388,33 +952,14 @@ test.describe('Friends Page', () => {
     });
 
     test('should show no badge on Live tab when no friends share live location', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship with GPS location but don't share live location permission BEFORE logging in
+      await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, false);
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      // Create friendship with GPS location but don't share live location permission
-      await FriendsPage.insertFriendWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_live_location, share_timeline)
-        VALUES ($1, $2, false, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_live_location = false
-      `, [friend.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Should default to Live tab
       expect(await friendsPage.isTabActive('live')).toBe(true);
@@ -1440,33 +985,16 @@ test.describe('Friends Page', () => {
     });
 
     test('should show no badge on Timeline tab when no friends share timeline', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const testUser = TestData.users.existing;
-      const friendUser = TestData.users.another;
+      const {testUser, user, friend, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      await UserFactory.createUser(page, friendUser);
+      // Create friendship but don't share timeline permission BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id, {
+        friendToUser: { shareLive: false, shareTimeline: false }
+      });
 
-      const user = await dbManager.getUserByEmail(testUser.email);
-      const friend = await dbManager.getUserByEmail(friendUser.email);
-
-      // Create friendship but don't share timeline permission
-      await FriendsPage.insertFriendship(dbManager, user.id, friend.id);
-
-      await dbManager.client.query(`
-        INSERT INTO user_friend_permissions (user_id, friend_id, share_timeline, share_live_location)
-        VALUES ($1, $2, false, false)
-        ON CONFLICT (user_id, friend_id)
-        DO UPDATE SET share_timeline = false
-      `, [friend.id, user.id]);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, testUser, friendsPage);
 
       // Switch to Timeline tab
       await friendsPage.switchToTab('timeline');
@@ -1495,27 +1023,14 @@ test.describe('Friends Page', () => {
 
   test.describe('Data Consistency', () => {
     test('should verify friendship is bidirectional', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const friendsPage = new FriendsPage(page);
-      const user1 = TestData.users.existing;
-      const user2 = TestData.users.another;
+      const {testUser: user1, friendUser: user2, user: dbUser1, friend: dbUser2, loginPage, friendsPage} =
+        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
 
-      await UserFactory.createUser(page, user1);
-      await UserFactory.createUser(page, user2);
+      // Create friendship BEFORE logging in
+      await TestSetupHelper.setupFriendship(dbManager, dbUser1.id, dbUser2.id);
 
-      const dbUser1 = await dbManager.getUserByEmail(user1.email);
-      const dbUser2 = await dbManager.getUserByEmail(user2.email);
-
-      // Create friendship
-      await FriendsPage.insertFriendship(dbManager, dbUser1.id, dbUser2.id);
-
-      // Login as user1
-      await loginPage.navigate();
-      await loginPage.login(user1.email, user1.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await friendsPage.navigate();
-      await friendsPage.waitForPageLoad();
+      // Now login and navigate to friends page
+      await TestSetupHelper.loginAndNavigateToFriendsPage(page, user1, friendsPage);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -1528,11 +1043,7 @@ test.describe('Friends Page', () => {
 
       // Logout and login as user2
       const appNav = await import('../pages/AppNavigation.js').then(m => new m.AppNavigation(page));
-      await appNav.logout();
-
-      await loginPage.navigate();
-      await loginPage.login(user2.email, user2.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+      await TestSetupHelper.switchUser(page, appNav, user2);
 
       await friendsPage.navigate();
       await friendsPage.waitForPageLoad();
