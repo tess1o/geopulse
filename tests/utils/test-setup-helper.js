@@ -5,6 +5,7 @@ import { TestData } from '../fixtures/test-data.js';
 import { UserFactory } from './user-factory.js';
 import { GpsDataFactory } from './gps-data-factory.js';
 import {FriendsPage} from "../pages/FriendsPage.js";
+import {UserProfilePage} from "../pages/UserProfilePage.js";
 
 /**
  * Centralized test setup utilities to eliminate duplication
@@ -105,6 +106,14 @@ export class TestSetupHelper {
     await this.loginExistingUser(page, userData);
     await friendsPage.navigate();
     await friendsPage.waitForPageLoad();
+  }
+
+  static async loginAndNavigateToUserProfilePage(page, dbManager, userData) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const profilePage = new UserProfilePage(page);
+    await profilePage.navigate();
+    await profilePage.waitForPageLoad();
+    return {profilePage, user, testUser};
   }
 
   /**

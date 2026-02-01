@@ -5,26 +5,14 @@ import {TestHelpers} from '../utils/test-helpers.js';
 import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
+import {TestSetupHelper} from "../utils/test-setup-helper.js";
 
 test.describe('User Profile Management', () => {
   
   test.describe('Profile Information Tab', () => {
     test('should display user profile information correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      // Login to the app
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      // Navigate to profile page
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Verify we're on the profile page
       expect(await profilePage.isOnProfilePage()).toBe(true);
       
@@ -42,21 +30,10 @@ test.describe('User Profile Management', () => {
     });
 
     test('should allow updating profile information', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-      const newFullName = 'Updated Test User';
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Update full name
+      const newFullName = 'Updated Test User';
       await profilePage.fillProfileForm(newFullName);
       
       // Select a different avatar
@@ -78,20 +55,9 @@ test.describe('User Profile Management', () => {
       expect(toastMessage).toContain('updated successfully');
     });
 
-    test('should validate profile form inputs', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should validate profile form inputs', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Try to save with empty full name
       await profilePage.fillProfileForm('');
       await profilePage.saveProfile();
@@ -110,20 +76,9 @@ test.describe('User Profile Management', () => {
       expect(shortNameError).toContain('at least 2 characters');
     });
 
-    test('should allow resetting profile form', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should allow resetting profile form', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       const originalName = await profilePage.getFullNameValue();
       const originalAvatarIndex = await profilePage.getSelectedAvatarIndex();
       
@@ -143,20 +98,9 @@ test.describe('User Profile Management', () => {
 
   test.describe('Timezone Management', () => {
     test('should display default timezone correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      // Explicitly set timezone to UTC to ensure consistent test behavior
-      testUser.timezone = 'UTC';
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const userToCreate = TestData.users.existing;
+      userToCreate.timezone = 'UTC';
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager,userToCreate);
       
       // Wait for timezone to load completely
       await page.waitForTimeout(1000);
@@ -171,21 +115,10 @@ test.describe('User Profile Management', () => {
     });
 
     test('should update timezone and save to database and localStorage', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       const newTimezone = 'Europe/London GMT+0';
       const expectedTimezoneValue = 'Europe/London';
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Change timezone
       await profilePage.selectTimezone(newTimezone);
       
@@ -218,21 +151,11 @@ test.describe('User Profile Management', () => {
     });
 
     test('should handle timezone normalization (Europe/Kiev -> Europe/Kyiv)', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
       const kiyvTimezone = 'Europe/Kyiv GMT+2';
       const expectedTimezoneValue = 'Europe/Kyiv';
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Select Kyiv timezone (which should be normalized properly)
       await profilePage.selectTimezone(kiyvTimezone);
       await profilePage.saveProfile();
@@ -256,7 +179,7 @@ test.describe('User Profile Management', () => {
       const testUser = TestData.users.existing;
 
       await UserFactory.createUser(page, testUser);
-      
+
       // Mock browser timezone detection to simulate different timezone
       await page.addInitScript(() => {
         // Mock Intl.DateTimeFormat to return a specific timezone
@@ -297,20 +220,8 @@ test.describe('User Profile Management', () => {
     });
 
     test('should reset timezone when form is reset', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       const newTimezone = 'Europe/Paris GMT+1';
-
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       const originalTimezone = await profilePage.getSelectedTimezone();
       
       // Change timezone but don't save
@@ -334,19 +245,8 @@ test.describe('User Profile Management', () => {
     });
 
     test('should validate timezone dropdown has expected options', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Open timezone dropdown
       await page.click(profilePage.selectors.profile.timezoneLabel);
       await page.waitForSelector(profilePage.selectors.profile.timezoneOptions, { timeout: 10000 });
@@ -374,20 +274,9 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Security Tab', () => {
-    test('should switch to security tab correctly', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should switch to security tab correctly', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Switch to security tab
       await profilePage.switchToSecurityTab();
       
@@ -402,21 +291,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isChangePasswordButtonEnabled()).toBe(false);
     });
 
-    test('should validate password change form', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+    test('should validate password change form', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       await profilePage.switchToSecurityTab();
-      
       // Verify button is disabled with empty form
       expect(await profilePage.isChangePasswordButtonEnabled()).toBe(false);
       
@@ -446,22 +323,11 @@ test.describe('User Profile Management', () => {
       expect(errorMessage).toContain('do not match');
     });
 
-    test('should successfully change password with valid inputs', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-      const newPassword = 'NewPassword123!';
-
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+    test('should successfully change password with valid inputs', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       await profilePage.switchToSecurityTab();
-      
+
+      const newPassword = 'NewPassword123!';
       // Fill password form with valid data
       await profilePage.fillPasswordForm(testUser.password, newPassword, newPassword);
       
@@ -480,19 +346,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isPasswordFormEmpty()).toBe(true);
     });
 
-    test('should cancel password change', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should cancel password change', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
       await profilePage.switchToSecurityTab();
       
       // Fill password form
@@ -507,20 +363,9 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Immich Integration Tab', () => {
-    test('should switch to immich tab correctly', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should switch to immich tab correctly', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Switch to immich tab
       await profilePage.switchToImmichTab();
       
@@ -535,19 +380,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.areImmichFieldsDisabled()).toBe(true);
     });
 
-    test('should enable immich integration and enable fields', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should enable immich integration and enable fields', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
       await profilePage.switchToImmichTab();
       
       // Enable immich integration
@@ -563,19 +398,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isImmichSaveButtonEnabled()).toBe(true);
     });
 
-    test('should validate immich configuration form', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should validate immich configuration form', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
       await profilePage.switchToImmichTab();
       
       // Enable integration
@@ -605,23 +430,13 @@ test.describe('User Profile Management', () => {
       expect(errorMessage).toContain('API Key is required');
     });
 
-    test('should successfully save immich configuration', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should successfully save immich configuration', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      await profilePage.switchToImmichTab();
+
       const serverUrl = 'https://photos.example.com';
       const apiKey = 'test-api-key-12345';
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      await profilePage.switchToImmichTab();
-      
       // Enable integration and fill valid config
       await profilePage.toggleImmichIntegration();
       await profilePage.fillImmichForm(serverUrl, apiKey);
@@ -638,19 +453,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getImmichServerUrl()).toBe(serverUrl);
     });
 
-    test('should reset immich form', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should reset immich form', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
       await profilePage.switchToImmichTab();
       
       // Make some changes
@@ -666,19 +471,9 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getImmichServerUrl()).toBe('');
     });
 
-    test('should disable fields when integration is toggled off', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should disable fields when integration is toggled off', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
       await profilePage.switchToImmichTab();
       
       // Enable integration first
@@ -695,20 +490,9 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Tab Navigation', () => {
-    test('should navigate between all tabs correctly', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should navigate between all tabs correctly', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Should start on profile tab
       expect(await profilePage.isProfileTabActive()).toBe(true);
       
@@ -728,21 +512,10 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isImmichTabActive()).toBe(false);
     });
 
-    test('should preserve form data when switching between tabs', async ({page}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+    test('should preserve form data when switching between tabs', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       const testName = 'Modified Name';
 
-      await UserFactory.createUser(page, testUser);
-      
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-      
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
-      
       // Make changes in profile tab
       await profilePage.fillProfileForm(testName);
       
@@ -770,17 +543,7 @@ test.describe('User Profile Management', () => {
 
   test.describe('AI Assistant Tab', () => {
     test('should display AI Assistant settings correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -794,17 +557,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should allow enabling and configuring AI Assistant', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -833,17 +586,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should allow using custom OpenAI-compatible API endpoint', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -868,17 +611,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should allow disabling AI Assistant', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -914,17 +647,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should preserve API key when updating other settings', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -952,17 +675,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should switch between AI Assistant and other tabs', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Default tab should be Profile
       expect(await profilePage.isProfileTabActive()).toBe(true);
@@ -990,18 +703,7 @@ test.describe('User Profile Management', () => {
 
   test.describe('Default Redirect URL', () => {
     test('should display default redirect URL dropdown correctly', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Verify default redirect URL dropdown is present
       const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
@@ -1010,21 +712,10 @@ test.describe('User Profile Management', () => {
     });
 
     test('should allow selecting predefined default redirect URL', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-      const redirectOption = 'Dashboard';
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Select Dashboard from dropdown
+      const redirectOption = 'Dashboard';
       await profilePage.selectDefaultRedirectUrl(redirectOption);
 
       // Verify dropdown shows selected option
@@ -1048,18 +739,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should show custom URL input when "Custom URL..." is selected', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Initially custom input should not be visible
       expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(false);
@@ -1072,19 +752,9 @@ test.describe('User Profile Management', () => {
     });
 
     test('should save and use custom redirect URL', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
       const customUrl = '/app/journey-insights';
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
 
       // Select custom URL option
       await profilePage.selectDefaultRedirectUrl('Custom URL...');
@@ -1103,19 +773,9 @@ test.describe('User Profile Management', () => {
     });
 
     test('should validate custom redirect URL - must start with /', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
       const invalidUrl = 'app/dashboard'; // Missing leading /
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
 
       // Select custom URL option
       await profilePage.selectDefaultRedirectUrl('Custom URL...');
@@ -1133,19 +793,9 @@ test.describe('User Profile Management', () => {
     });
 
     test('should validate custom redirect URL - no path traversal', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
       const invalidUrl = '/app/../../../etc/passwd';
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
 
       // Select custom URL option
       await profilePage.selectDefaultRedirectUrl('Custom URL...');
@@ -1163,20 +813,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should redirect to default URL after login', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-      const redirectUrl = '/app/dashboard';
-
-      await UserFactory.createUser(page, testUser);
-
-      // First login to set up default redirect URL
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Set default redirect URL to Dashboard
       await profilePage.selectDefaultRedirectUrl('Dashboard');
@@ -1189,6 +826,7 @@ test.describe('User Profile Management', () => {
       await page.context().clearCookies();
 
       // Login again
+      const loginPage = new LoginPage(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
 
@@ -1198,19 +836,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should redirect to default URL when visiting homepage', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-
-      // Login and set default redirect URL
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Set default redirect URL to Journey Insights
       await profilePage.selectDefaultRedirectUrl('Journey Insights');
@@ -1249,19 +875,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should redirect authenticated user from login page to default URL', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-
-      // Login and set default redirect URL
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       // Set default redirect URL to Friends
       await profilePage.selectDefaultRedirectUrl('Friends');
@@ -1277,19 +891,8 @@ test.describe('User Profile Management', () => {
     });
 
     test('should preserve custom URL after reload when matches predefined option', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       const customUrl = '/app/rewind';
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
 
       // Use custom URL option to enter a URL that matches a predefined option
       await profilePage.selectDefaultRedirectUrl('Custom URL...');
@@ -1307,19 +910,8 @@ test.describe('User Profile Management', () => {
     });
 
     test('should preserve truly custom URL after reload', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
       const customUrl = '/app/my-custom-page';
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
 
       // Use custom URL option with truly custom URL
       await profilePage.selectDefaultRedirectUrl('Custom URL...');
@@ -1342,9 +934,7 @@ test.describe('User Profile Management', () => {
     });
 
     test('should handle all predefined redirect options', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
 
       const redirectOptions = [
         { label: 'Timeline', url: '/app/timeline' },
@@ -1355,15 +945,6 @@ test.describe('User Profile Management', () => {
         { label: 'GPS Data', url: '/app/gps-data' },
         { label: 'Location Sources', url: '/app/location-sources' }
       ];
-
-      await UserFactory.createUser(page, testUser);
-
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      await profilePage.navigate();
-      await profilePage.waitForPageLoad();
 
       // Test each predefined option
       for (const option of redirectOptions) {
