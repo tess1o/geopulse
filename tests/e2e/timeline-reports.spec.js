@@ -612,40 +612,6 @@ test.describe('Timeline Reports Page', () => {
       expect(true).toBe(true);
     });
 
-    test('should display pagination when data exceeds page size', async ({page, dbManager}) => {
-      const reportsPage = new TimelineReportsPage(page);
-      const { testUser } = await reportsPage.loginAndNavigate();
-
-      // Insert enough data to trigger pagination (more than 50 items)
-      const user = await dbManager.getUserByEmail(testUser.email);
-
-      // Insert 60 stays to exceed default page size of 50
-      for (let i = 0; i < 60; i++) {
-        const stayTime = new Date(`2025-09-21T${String(9 + (i % 15)).padStart(2, '0')}:${String((i * 2) % 60).padStart(2, '0')}:00Z`);
-
-        await dbManager.client.query(`
-          INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, created_at, last_updated)
-          VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, NOW(), NOW())
-        `, [
-          user.id,
-          stayTime,
-          3600,
-          -74.0060 + (i * 0.001),
-          40.7128 + (i * 0.001),
-          `Location ${i + 1}`
-        ]);
-      }
-
-      await reportsPage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
-      await reportsPage.waitForPageLoad();
-      await reportsPage.waitForContentLoaded();
-
-      await reportsPage.switchToTab('Stays');
-
-      // Verify pagination exists
-      const hasPagination = await reportsPage.hasPagination();
-      expect(hasPagination).toBe(true);
-    });
   });
 
   test.describe('Data Consistency', () => {

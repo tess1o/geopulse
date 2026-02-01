@@ -6,6 +6,7 @@ import {TestData} from '../fixtures/test-data.js';
 import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
+import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import {randomUUID} from 'crypto';
 
 test.describe('Journey Insights', () => {
@@ -450,29 +451,29 @@ test.describe('Journey Insights', () => {
 // Helper functions for inserting test data
 async function insertTestTimelineData(dbManager, userId) {
   // First, insert reverse geocoding locations for city/country data using sequence
-  const geocodingResult1 = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES 
-      (nextval('reverse_geocoding_location_seq'), 'POINT(-74.0060 40.7128)', 'POINT(-74.0060 40.7128)', 'Home, New York, NY, USA', 'test', 'New York', 'United States', NOW(), NOW())
-    RETURNING id
-  `);
-  const geocodingId1 = geocodingResult1.rows[0].id;
+  const geocodingId1 = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(-74.0060 40.7128)',
+    'Home, New York, NY, USA',
+    'New York',
+    'United States'
+  );
 
-  const geocodingResult2 = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES 
-      (nextval('reverse_geocoding_location_seq'), 'POINT(-73.9851 40.7589)', 'POINT(-73.9851 40.7589)', 'Office, New York, NY, USA', 'test', 'New York', 'United States', NOW(), NOW())
-    RETURNING id
-  `);
-  const geocodingId2 = geocodingResult2.rows[0].id;
+  const geocodingId2 = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(-73.9851 40.7589)',
+    'Office, New York, NY, USA',
+    'New York',
+    'United States'
+  );
 
-  const geocodingResult3 = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES 
-      (nextval('reverse_geocoding_location_seq'), 'POINT(2.3522 48.8566)', 'POINT(2.3522 48.8566)', 'Restaurant, Paris, France', 'test', 'Paris', 'France', NOW(), NOW())
-    RETURNING id
-  `);
-  const geocodingId3 = geocodingResult3.rows[0].id;
+  const geocodingId3 = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(2.3522 48.8566)',
+    'Restaurant, Paris, France',
+    'Paris',
+    'France'
+  );
 
   // Insert sample stays data with geocoding references
   await dbManager.client.query(`
@@ -517,15 +518,7 @@ async function insertComprehensiveTestData(dbManager, userId) {
     { coords: 'POINT(139.6503 35.6762)', name: 'Park, Tokyo, Japan', city: 'Tokyo', country: 'Japan' }
   ];
 
-  const geocodingIds = [];
-  for (const location of locations) {
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', $3, $4, NOW(), NOW())
-      RETURNING id
-    `, [location.coords, location.name, location.city, location.country]);
-    geocodingIds.push(result.rows[0].id);
-  }
+  const geocodingIds = await GeocodingFactory.insertOrGetGeocodingLocations(dbManager, locations);
 
   // Insert diverse geographical stays data
   await dbManager.client.query(`

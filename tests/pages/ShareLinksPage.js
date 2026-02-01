@@ -13,8 +13,12 @@ export class ShareLinksPage {
       pageDescription: 'text="Create and manage shareable links to your location data"',
 
       // Header actions
-      createLinkButton: 'button:has-text("Create New Link")',
+      createLinkButton: 'button:has-text("Create New")',
       createFirstLinkButton: 'button:has-text("Create Your First Link")',
+      createMenu: '#create_menu',
+      liveLocationMenuItem: '.p-menu-item[aria-label="Live Location Share"]',
+      timelineMenuItem: '.p-menu-item[aria-label="Timeline Share"]',
+      menuItemLink: '.p-menu-item-link',
 
       // Loading state
       loadingSpinner: '.p-progress-spinner',
@@ -28,15 +32,25 @@ export class ShareLinksPage {
       emptyIcon: '.empty-icon',
       emptyStateTitle: '.empty-state h3:has-text("No share links yet")',
 
+      // Share type sections
+      shareTypeSection: '.share-type-section',
+      timelineShareSection: '.share-type-section:has(.type-title:has-text("Timeline Shares"))',
+      liveLocationShareSection: '.share-type-section:has(.type-title:has-text("Live Location Shares"))',
+      typeTitle: '.type-title',
+
       // Links sections
-      activeLinksSection: '.links-section:has(.section-title:has-text("Active Links"))',
-      expiredLinksSection: '.links-section:has(.section-title:has-text("Expired Links"))',
+      linksSection: '.links-section',
+      activeLinksSection: '.links-section:has(.section-subtitle:has-text("Active"))',
+      expiredLinksSection: '.links-section:has(.section-subtitle:has-text("Expired"))',
       sectionTitle: '.section-title',
+      sectionSubtitle: '.section-subtitle',
 
       // Link cards
       linkCard: '.link-card',
       activeLinkCard: '.link-card.active',
       expiredLinkCard: '.link-card.expired',
+      timelineLinkCard: '.timeline-card',
+      liveLocationLinkCard: '.live-location-card',
       linkTitle: '.link-title',
       linkMeta: '.link-meta',
       linkDate: '.link-date',
@@ -58,23 +72,47 @@ export class ShareLinksPage {
       settingLabel: '.setting-label',
       settingValue: '.setting-value',
 
+      // Timeline-specific info
+      timelineInfo: '.timeline-info',
+      timelineStatus: '.timeline-info .p-tag',
+
       // Link actions
       editButton: 'button:has-text("Edit")',
       deleteButton: 'button:has-text("Delete")',
 
-      // Create/Edit Dialog
-      shareDialog: '.share-link-dialog',
+      // Create/Edit Dialog - Live Location
+      shareDialog: '.p-dialog',
       dialogHeader: '.p-dialog-header',
       createDialogHeader: '.p-dialog-header:has-text("Create Share Link")',
       editDialogHeader: '.p-dialog-header:has-text("Edit Share Link")',
 
-      // Form fields
+      // Timeline Dialog
+      timelineDialog: '.p-dialog:has(.p-dialog-header:has-text("Timeline"))',
+      createTimelineDialogHeader: '.p-dialog-header:has-text("Create Timeline Share")',
+      editTimelineDialogHeader: '.p-dialog-header:has-text("Edit Timeline Share")',
+
+      // Form fields - Live Location
       nameInput: '#name',
       currentOnlyRadio: '#current-only',
       withHistoryRadio: '#with-history',
+      historyHoursInput: '#history-hours',
       expiresAtCalendar: '#expires_at',
       hasPasswordCheckbox: '#has_password',
       passwordInput: '#password',
+      useCustomTilesCheckbox: '#use_custom_tiles',
+      customTileUrlInput: '#custom-tile-url',
+
+      // Form fields - Timeline (TimelineShareDialog uses simple IDs)
+      timelineNameInput: '.p-dialog:has(.p-dialog-header:has-text("Timeline")) #name',
+      startDateCalendar: '#start-date',
+      endDateCalendar: '#end-date',
+      timelineExpiresAtCalendar: '#expires-at',
+      showCurrentCheckbox: '#show-current',
+      showPhotosCheckbox: '#show-photos',
+      timelinePasswordCheckbox: '#has-password',
+      timelinePasswordInput: '#password',
+      timelineCustomTilesCheckbox: '#use-custom-tiles',
+      timelineCustomTileUrlInput: '#custom-tile-url',
 
       // Form actions
       cancelButton: 'button:has-text("Cancel")',
@@ -139,6 +177,11 @@ export class ShareLinksPage {
 
   async clickCreateFirstLink() {
     await this.page.locator(this.selectors.createFirstLinkButton).click();
+    await this.waitForMenuToOpen();
+  }
+
+  async waitForMenuToOpen() {
+    await this.page.waitForSelector(this.selectors.createMenu, { state: 'visible', timeout: 2000 });
   }
 
   /**
@@ -387,6 +430,259 @@ export class ShareLinksPage {
   }
 
   /**
+   * Create Menu Methods
+   */
+  async clickCreateButton() {
+    await this.page.locator(this.selectors.createLinkButton).click();
+    await this.waitForMenuToOpen();
+  }
+
+  async selectLiveLocationShare() {
+    // Click on the menu item - target the link inside the menu item
+    const menuItem = this.page.locator(this.selectors.liveLocationMenuItem);
+    await menuItem.locator(this.selectors.menuItemLink).click();
+  }
+
+  async selectTimelineShare() {
+    // Click on the menu item - target the link inside the menu item
+    const menuItem = this.page.locator(this.selectors.timelineMenuItem);
+    await menuItem.locator(this.selectors.menuItemLink).click();
+  }
+
+  async createLiveLocationShare() {
+    await this.clickCreateButton();
+    await this.selectLiveLocationShare();
+    await this.waitForDialogToOpen();
+  }
+
+  async createTimelineShare() {
+    await this.clickCreateButton();
+    await this.selectTimelineShare();
+    await this.waitForTimelineDialogToOpen();
+  }
+
+  /**
+   * Timeline Dialog Methods
+   */
+  async isTimelineDialogVisible() {
+    return await this.page.locator(this.selectors.timelineDialog).isVisible();
+  }
+
+  async waitForTimelineDialogToOpen() {
+    await this.page.waitForSelector(this.selectors.timelineDialog, { state: 'visible', timeout: 5000 });
+  }
+
+  async waitForTimelineDialogToClose() {
+    await this.page.waitForSelector(this.selectors.timelineDialog, { state: 'hidden', timeout: 5000 });
+  }
+
+  /**
+   * Fill a date picker in the timeline dialog
+   * Timeline calendars have inputmode="none" so we must use the calendar UI, not type
+   */
+  async fillTimelineDatePicker(fieldId, date) {
+    const wrapper = this.page.locator(`#${fieldId}`);
+
+    // Click the calendar dropdown button to open the picker
+    const dropdownButton = wrapper.locator('button.p-datepicker-dropdown');
+    await dropdownButton.click();
+
+    // Wait for calendar to open
+    await this.page.waitForSelector('.p-datepicker', { state: 'visible', timeout: 2000 });
+
+    // Navigate to the correct month if needed
+    const now = new Date();
+    const targetMonth = date.getMonth();
+    const targetYear = date.getFullYear();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthsDiff = (targetYear - currentYear) * 12 + (targetMonth - currentMonth);
+
+    if (monthsDiff < 0) {
+      // Need to go backwards (previous months)
+      const prevButton = this.page.locator('.p-datepicker-prev-button');
+      for (let i = 0; i < Math.abs(monthsDiff); i++) {
+        await prevButton.click();
+        await this.page.waitForTimeout(200);
+      }
+    } else if (monthsDiff > 0) {
+      // Need to go forwards (future months)
+      const nextButton = this.page.locator('.p-datepicker-next-button');
+      for (let i = 0; i < monthsDiff; i++) {
+        await nextButton.click();
+        await this.page.waitForTimeout(200);
+      }
+    }
+
+    // Click the day in the calendar (using has-text to find the day number)
+    const dayNumber = date.getDate();
+    await this.page.locator(`.p-datepicker-calendar td:not(.p-datepicker-other-month):has-text("${dayNumber}")`).first().click();
+
+    // Wait for calendar to close
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
+   * Fill timeline share form
+   */
+  async fillTimelineShareForm({ name, startDate, endDate, expiresAt, showCurrent, showPhotos, hasPassword, password, useCustomTiles, customTileUrl }) {
+    // Fill name (optional)
+    if (name !== undefined) {
+      await this.page.locator(this.selectors.timelineNameInput).fill(name);
+    }
+
+    // Fill start date (required)
+    if (startDate) {
+      await this.fillTimelineDatePicker('start-date', startDate);
+    }
+
+    // Fill end date (required)
+    if (endDate) {
+      await this.fillTimelineDatePicker('end-date', endDate);
+    }
+
+    // Fill expiration date (optional)
+    if (expiresAt) {
+      await this.fillTimelineDatePicker('expires-at', expiresAt);
+    }
+
+    // Show current location checkbox (default is checked)
+    if (showCurrent !== undefined) {
+      const checkboxWrapper = this.page.locator(this.selectors.showCurrentCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
+      if (showCurrent !== isChecked) {
+        await checkboxWrapper.click();
+      }
+    }
+
+    // Show photos checkbox
+    if (showPhotos !== undefined) {
+      const checkboxWrapper = this.page.locator(this.selectors.showPhotosCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
+      if (showPhotos !== isChecked) {
+        await checkboxWrapper.click();
+      }
+    }
+
+    // Password protection
+    if (hasPassword !== undefined) {
+      const checkboxWrapper = this.page.locator(this.selectors.timelinePasswordCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
+      if (hasPassword !== isChecked) {
+        await checkboxWrapper.click();
+        await this.page.waitForTimeout(300);
+      }
+    }
+
+    if (password !== undefined && hasPassword) {
+      // PrimeVue Password component - find input inside wrapper
+      const passwordInput = this.page.locator(`${this.selectors.timelinePasswordInput} input`);
+      await passwordInput.fill(password);
+    }
+
+    // Custom tiles
+    if (useCustomTiles !== undefined) {
+      const checkboxWrapper = this.page.locator(this.selectors.timelineCustomTilesCheckbox);
+      const checkboxInput = checkboxWrapper.locator('input[type="checkbox"]');
+      const isChecked = await checkboxInput.isChecked();
+      if (useCustomTiles !== isChecked) {
+        await checkboxWrapper.click();
+        await this.page.waitForTimeout(300);
+      }
+    }
+
+    if (customTileUrl !== undefined && useCustomTiles) {
+      await this.page.locator(this.selectors.timelineCustomTileUrlInput).fill(customTileUrl);
+    }
+  }
+
+  /**
+   * Submit timeline share form
+   */
+  async submitTimelineShareForm() {
+    // The submit button is the second button in the footer (first is Cancel)
+    // It has a check icon, vs Cancel which has an X icon
+    const submitButton = this.page.locator('.p-dialog-footer button:has(.pi-check)');
+    await submitButton.click();
+  }
+
+  /**
+   * Create a timeline share via UI
+   */
+  async createTimelineShareViaUI(formData) {
+    await this.clickCreateButton();
+    await this.selectTimelineShare();
+    await this.waitForTimelineDialogToOpen();
+    await this.fillTimelineShareForm(formData);
+    await this.submitTimelineShareForm();
+  }
+
+  /**
+   * Share Type Section Methods
+   */
+  async hasTimelineSharesSection() {
+    return await this.page.locator(this.selectors.timelineShareSection).isVisible();
+  }
+
+  async hasLiveLocationSharesSection() {
+    return await this.page.locator(this.selectors.liveLocationShareSection).isVisible();
+  }
+
+  async getTimelineSharesCount() {
+    const section = this.page.locator(this.selectors.timelineShareSection);
+    return await section.locator(this.selectors.linkCard).count();
+  }
+
+  async getLiveLocationSharesCount() {
+    const section = this.page.locator(this.selectors.liveLocationShareSection);
+    return await section.locator(this.selectors.linkCard).count();
+  }
+
+  /**
+   * Timeline-Specific Link Details Methods
+   */
+  async getTimelineStatus(linkName) {
+    const card = await this.getLinkCardByName(linkName);
+    const statusTag = card.locator(this.selectors.timelineStatus);
+    return await statusTag.textContent();
+  }
+
+  async getTimelineDateRange(linkName) {
+    const dateRangeValue = await this.getLinkSetting(linkName, 'Date Range');
+    return dateRangeValue;
+  }
+
+  async showsCurrentLocation(linkName) {
+    const card = await this.getLinkCardByName(linkName);
+    const showCurrentSetting = card.locator('.setting-item').filter({
+      has: this.page.locator('.setting-label:has-text("Show Current Location")')
+    });
+
+    if (await showCurrentSetting.count() > 0) {
+      const value = await showCurrentSetting.locator(this.selectors.settingValue).textContent();
+      return value.trim() === 'Yes';
+    }
+    return false;
+  }
+
+  async showsPhotos(linkName) {
+    const card = await this.getLinkCardByName(linkName);
+    const showPhotosSetting = card.locator('.setting-item').filter({
+      has: this.page.locator('.setting-label:has-text("Show Photos")')
+    });
+
+    if (await showPhotosSetting.count() > 0) {
+      const value = await showPhotosSetting.locator(this.selectors.settingValue).textContent();
+      return value.trim() === 'Yes';
+    }
+    return false;
+  }
+
+  /**
    * Toast Notification Methods
    */
   async waitForSuccessToast(expectedText = null) {
@@ -421,58 +717,5 @@ export class ShareLinksPage {
   async waitForUIUpdate() {
     await this.page.waitForTimeout(1000);
     await this.page.waitForLoadState('networkidle');
-  }
-
-  /**
-   * Database Helper Methods
-   */
-  static async getShareLinkById(dbManager, linkId) {
-    const result = await dbManager.client.query(
-      'SELECT * FROM shared_link WHERE id = $1',
-      [linkId]
-    );
-    return result.rows[0] || null;
-  }
-
-  static async getShareLinksByUserId(dbManager, userId) {
-    const result = await dbManager.client.query(
-      'SELECT * FROM shared_link WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
-    return result.rows;
-  }
-
-  static async countShareLinks(dbManager, userId) {
-    const result = await dbManager.client.query(
-      'SELECT COUNT(*) as count FROM shared_link WHERE user_id = $1',
-      [userId]
-    );
-    return parseInt(result.rows[0].count);
-  }
-
-  static async insertShareLink(dbManager, linkData) {
-    const id = linkData.id || '00000000-0000-0000-0000-000000000001';
-    const result = await dbManager.client.query(`
-      INSERT INTO shared_link (id, name, expires_at, password, show_history, user_id, created_at, view_count)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-    `, [
-      id,
-      linkData.name || 'Test Link',
-      linkData.expires_at,
-      linkData.password || null,
-      linkData.show_history || false,
-      linkData.user_id,
-      linkData.created_at || new Date().toISOString(),
-      linkData.view_count || 0
-    ]);
-    return result.rows[0];
-  }
-
-  static async deleteAllShareLinks(dbManager, userId) {
-    await dbManager.client.query(
-      'DELETE FROM shared_link WHERE user_id = $1',
-      [userId]
-    );
   }
 }

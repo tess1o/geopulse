@@ -1,4 +1,5 @@
 // Timeline test data helper functions
+import {GeocodingFactory} from './geocoding-factory.js';
 
 // Verifiable test data functions that return expected values for verification
 export async function insertVerifiableStaysTestData(dbManager, userId) {
@@ -19,13 +20,13 @@ export async function insertVerifiableStaysTestData(dbManager, userId) {
     console.log(`Inserting stay ${i + 1} of ${stayData.length}... at ${stayTime}`);
 
     // Create reverse geocoding location
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', 'New York', 'United States', NOW(), NOW())
-      RETURNING id
-    `, [`POINT(${stay.lon} ${stay.lat})`, `${stay.name}, New York, NY`]);
-    
-    const geocodingId = result.rows[0].id;
+    const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+      dbManager,
+      `POINT(${stay.lon} ${stay.lat})`,
+      `${stay.name}, New York, NY`,
+      'New York',
+      'United States'
+    );
     
     // Insert stay
     await dbManager.client.query(`
@@ -143,13 +144,13 @@ export async function insertVerifiableOvernightStaysTestData(dbManager, userId) 
     const stayStartTime = new Date(yesterday.getTime() + stay.startOffset * 1000); // Use specific offset
     
     // Create reverse geocoding location
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.0060 40.7128)', 'POINT(-74.0060 40.7128)', $1, 'test', 'New York', 'United States', NOW(), NOW())
-      RETURNING id
-    `, [`${stay.name}, New York, NY`]);
-    
-    const geocodingId = result.rows[0].id;
+    const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+      dbManager,
+      'POINT(-74.0060 40.7128)',
+      `${stay.name}, New York, NY`,
+      'New York',
+      'United States'
+    );
     
     // Insert overnight stay (use same structure as working version)
     await dbManager.client.query(`
@@ -198,14 +199,16 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
 
   // Realistic sequence: stay -> overnight trip -> stay
   
-  // 1. Initial stay (6 PM yesterday for 2 hours) 
+  // 1. Initial stay (6 PM yesterday for 2 hours)
   const initialStayTime = new Date(yesterday.getTime());
-  const initialStayResult = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.0060 40.7128)', 'POINT(-74.0060 40.7128)', 'Starting Location, New York, NY', 'test', 'New York', 'United States', NOW(), NOW())
-    RETURNING id
-  `);
-  
+  const initialStayGeocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(-74.0060 40.7128)',
+    'Starting Location, New York, NY',
+    'New York',
+    'United States'
+  );
+
   await dbManager.client.query(`
     INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
@@ -216,7 +219,7 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
     -74.0060,
     40.7128,
     'Starting Location',
-    initialStayResult.rows[0].id
+    initialStayGeocodingId
   ]);
 
   // 2. Overnight trip (starts at 20:00 UTC on Sept 20 = 23:00 Kyiv, duration 10 hours, ends 06:00 UTC on Sept 21 = 09:00 Kyiv)  
@@ -243,12 +246,14 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
 
   // 3. Final stay (08:00 UTC today for 4 hours)
   const finalStayTime = new Date(tripStartTime.getTime() + (10 * 60 * 60 * 1000)); // After trip ends
-  const finalStayResult = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.5000 41.0000)', 'POINT(-74.5000 41.0000)', 'Destination Location, NY', 'test', 'New York', 'United States', NOW(), NOW())
-    RETURNING id
-  `);
-  
+  const finalStayGeocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(-74.5000 41.0000)',
+    'Destination Location, NY',
+    'New York',
+    'United States'
+  );
+
   await dbManager.client.query(`
     INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
@@ -259,7 +264,7 @@ export async function insertVerifiableOvernightTripsTestData(dbManager, userId) 
     -74.5000,
     41.0000,
     'Destination Location',
-    finalStayResult.rows[0].id
+    finalStayGeocodingId
   ]);
 
   return results; // Return only the trip data for verification
@@ -273,14 +278,16 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
 
   // Realistic sequence: stay -> overnight data gap -> stay
   
-  // 1. Initial stay (6 PM yesterday for 3 hours) 
+  // 1. Initial stay (6 PM yesterday for 3 hours)
   const initialStayTime = new Date(yesterday.getTime());
-  const initialStayResult = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.0060 40.7128)', 'POINT(-74.0060 40.7128)', 'Home Location, New York, NY', 'test', 'New York', 'United States', NOW(), NOW())
-    RETURNING id
-  `);
-  
+  const initialStayGeocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(-74.0060 40.7128)',
+    'Home Location, New York, NY',
+    'New York',
+    'United States'
+  );
+
   await dbManager.client.query(`
     INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
@@ -291,7 +298,7 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
     -74.0060,
     40.7128,
     'Home Location',
-    initialStayResult.rows[0].id
+    initialStayGeocodingId
   ]);
 
   // 2. Overnight data gap (9 PM yesterday to 8 AM today = 11 hours)
@@ -318,12 +325,14 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
 
   // 3. Final stay (10 AM today for 4 hours)
   const finalStayTime = new Date('2025-09-21T10:00:00Z'); // 10 AM today UTC (2 hours after gap ends)
-  const finalStayResult = await dbManager.client.query(`
-    INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-    VALUES (nextval('reverse_geocoding_location_seq'), 'POINT(-74.0100 40.7200)', 'POINT(-74.0100 40.7200)', 'Work Location, New York, NY', 'test', 'New York', 'United States', NOW(), NOW())
-    RETURNING id
-  `);
-  
+  const finalStayGeocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+    dbManager,
+    'POINT(-74.0100 40.7200)',
+    'Work Location, New York, NY',
+    'New York',
+    'United States'
+  );
+
   await dbManager.client.query(`
     INSERT INTO timeline_stays (user_id, timestamp, stay_duration, location, location_name, geocoding_id, created_at, last_updated)
     VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW())
@@ -334,7 +343,7 @@ export async function insertVerifiableOvernightDataGapsTestData(dbManager, userI
     -74.0100,
     40.7200,
     'Work Location',
-    finalStayResult.rows[0].id
+    finalStayGeocodingId
   ]);
 
   return results; // Return only the data gap for verification
@@ -374,15 +383,15 @@ export async function insertRegularStaysTestData(dbManager, userId) {
     ];
 
     await dbManager.client.query(gpsQuery, gpsValues);
-    
+
     // Create reverse geocoding location
-    const result = await dbManager.client.query(`
-      INSERT INTO reverse_geocoding_location (id, request_coordinates, result_coordinates, display_name, provider_name, city, country, created_at, last_accessed_at)
-      VALUES (nextval('reverse_geocoding_location_seq'), $1, $1, $2, 'test', 'New York', 'United States', NOW(), NOW())
-      RETURNING id
-    `, [`POINT(${location.lon} ${location.lat})`, `${location.name}, New York, NY`]);
-    
-    const geocodingId = result.rows[0].id;
+    const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
+      dbManager,
+      `POINT(${location.lon} ${location.lat})`,
+      `${location.name}, New York, NY`,
+      'New York',
+      'United States'
+    );
     
     // Insert timeline stay
     await dbManager.client.query(`

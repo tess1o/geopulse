@@ -359,8 +359,14 @@ export class GpsDataPage {
    * Check if date filter is applied
    */
   async hasDateFilter() {
-    const tableSubtitle = this.page.locator(this.selectors.tableSubtitle);
-    return await tableSubtitle.isVisible();
+    // Check if the date filter chip is visible (only shown when filter is active)
+    const dateFilterChip = this.page.locator('.active-filter-chips .p-chip').filter({ hasText: 'Date:' });
+    const chipVisible = await dateFilterChip.isVisible().catch(() => false);
+    if (chipVisible) return true;
+
+    // Alternative: check if the "Clear" button next to date picker is visible
+    const clearButton = this.page.locator('.filter-controls button:has-text("Clear")');
+    return await clearButton.isVisible().catch(() => false);
   }
 
   /**

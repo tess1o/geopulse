@@ -10,7 +10,6 @@ export class SharedLocationPage {
     return {
       // Page elements
       logo: '.logo',
-      appTitle: '.app-title',
       themeToggle: '.large-theme-toggle',
 
       // Loading state
@@ -25,7 +24,6 @@ export class SharedLocationPage {
       errorMessage: '.error-message',
       errorTitle: '.error-message h3',
       errorText: '.error-message p',
-      retryButton: 'button:has-text("Try Again")',
 
       // Password required state
       passwordState: '.password-state',
@@ -50,34 +48,20 @@ export class SharedLocationPage {
       infoValue: '.info-value',
 
       // Specific info items
-      sharedByInfo: '.info-item:has(.info-label:has-text("Shared by"))',
-      lastSeenInfo: '.info-item:has(.info-label:has-text("Last seen"))',
       expiresInfo: '.info-item:has(.info-label:has-text("Expires"))',
-      scopeInfo: '.info-item:has(.info-label:has-text("Scope"))',
 
       // Map
-      mapCard: '.map-card',
-      mapHeader: '.map-header',
-      mapTitle: '.map-title',
       refreshButton: 'button:has(.pi-refresh)',
-      mapContainer: '.map-container',
       leafletMap: '.leaflet-container',
 
-      // Map markers and layers
-      locationMarker: '.leaflet-marker-icon',
-      pathLayer: '.leaflet-overlay-pane path',
 
       // No data state
       noDataState: '.no-data-state',
-      noDataCard: '.no-data-card',
       noDataIcon: '.no-data-icon',
-      noDataTitle: '.no-data-content h3',
       noDataMessage: '.no-data-content p',
 
       // Footer
       footer: '.shared-footer',
-      footerText: '.footer-text',
-      getAppButton: 'button:has-text("Get GeoPulse")'
     };
   }
 
@@ -88,15 +72,6 @@ export class SharedLocationPage {
     await this.page.goto(`/shared/${linkId}`);
   }
 
-  async isOnSharedLocationPage() {
-    try {
-      const url = this.page.url();
-      return url.includes('/shared/');
-    } catch {
-      return false;
-    }
-  }
-
   async waitForPageLoad() {
     await this.page.waitForLoadState('networkidle');
     await this.page.waitForTimeout(500);
@@ -105,9 +80,6 @@ export class SharedLocationPage {
   /**
    * State Check Methods
    */
-  async isLoading() {
-    return await this.page.locator(this.selectors.loadingState).isVisible();
-  }
 
   async isErrorShown() {
     return await this.page.locator(this.selectors.errorState).isVisible();
@@ -133,10 +105,6 @@ export class SharedLocationPage {
     return errorText.trim();
   }
 
-  async clickRetry() {
-    await this.page.locator(this.selectors.retryButton).click();
-  }
-
   /**
    * Password Methods
    */
@@ -160,14 +128,6 @@ export class SharedLocationPage {
   /**
    * Location Info Methods
    */
-  async getShareTitle() {
-    return await this.page.locator(this.selectors.shareTitle).textContent();
-  }
-
-  async getShareDescription() {
-    const desc = await this.page.locator(this.selectors.shareDescription).textContent();
-    return desc ? desc.trim() : null;
-  }
 
   async getInfoValue(label) {
     const infoItem = this.page.locator(`.info-item:has(.info-label:has-text("${label}"))`);
@@ -177,14 +137,6 @@ export class SharedLocationPage {
 
   async getSharedBy() {
     return await this.getInfoValue('Shared by');
-  }
-
-  async getLastSeen() {
-    return await this.getInfoValue('Last seen');
-  }
-
-  async getExpires() {
-    return await this.getInfoValue('Expires');
   }
 
   async getScope() {
@@ -208,10 +160,6 @@ export class SharedLocationPage {
     await this.page.waitForSelector(this.selectors.leafletMap, { state: 'visible', timeout: 10000 });
     // Wait for map tiles to load
     await this.page.waitForTimeout(1000);
-  }
-
-  async getMapTitle() {
-    return await this.page.locator(this.selectors.mapTitle).textContent();
   }
 
   async hasLocationMarker() {
@@ -254,19 +202,6 @@ export class SharedLocationPage {
     return hasPolyline;
   }
 
-  async getMarkerCount() {
-    return await this.page.locator(this.selectors.locationMarker).count();
-  }
-
-  async clickRefreshButton() {
-    await this.page.locator(this.selectors.refreshButton).click();
-  }
-
-  async waitForRefresh() {
-    // Wait for refresh to complete
-    await this.page.waitForTimeout(1000);
-  }
-
   /**
    * Wait Methods
    */
@@ -276,77 +211,5 @@ export class SharedLocationPage {
 
   async waitForError() {
     await this.page.waitForSelector(this.selectors.errorState, { state: 'visible', timeout: 5000 });
-  }
-
-  /**
-   * Database Helper Methods
-   */
-  static async insertGpsPoint(dbManager, pointData) {
-    const gpsQuery = `
-      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    `;
-
-    const gpsValues = [
-      pointData.device_id || 'test-device',
-      pointData.user_id,
-      `POINT(${pointData.longitude} ${pointData.latitude})`, // PostGIS POINT format: lon, lat
-      pointData.timestamp,
-      pointData.accuracy || 10.0,
-      pointData.battery || 100,
-      pointData.velocity || 0.0,
-      pointData.altitude || 20.0,
-      pointData.source_type || 'OWNTRACKS',
-      pointData.created_at || pointData.timestamp
-    ];
-
-    await dbManager.client.query(gpsQuery, gpsValues);
-  }
-
-  static async insertMultipleGpsPoints(dbManager, points) {
-    for (const point of points) {
-      await this.insertGpsPoint(dbManager, point);
-    }
-  }
-
-  static async createGpsPointsForUser(dbManager, userId, count = 5) {
-    const now = new Date();
-    const points = [];
-
-    for (let i = 0; i < count; i++) {
-      const timestamp = new Date(now.getTime() - (count - i) * 60000); // 1 minute apart
-      const point = {
-        user_id: userId,
-        device_id: 'test-device',
-        latitude: 51.5074 + (Math.random() - 0.5) * 0.01, // London area
-        longitude: -0.1278 + (Math.random() - 0.5) * 0.01,
-        timestamp: timestamp.toISOString(),
-        accuracy: 10.0,
-        battery: 100 - i,
-        velocity: i === count - 1 ? 0.0 : 5.0, // Last point is stationary
-        altitude: 20.0,
-        source_type: 'OWNTRACKS',
-        created_at: timestamp.toISOString()
-      };
-      points.push(point);
-    }
-
-    await this.insertMultipleGpsPoints(dbManager, points);
-    return points;
-  }
-
-  static async getViewCount(dbManager, linkId) {
-    const result = await dbManager.client.query(
-      'SELECT view_count FROM shared_link WHERE id = $1',
-      [linkId]
-    );
-    return result.rows[0] ? parseInt(result.rows[0].view_count) : 0;
-  }
-
-  static async updateLinkViewCount(dbManager, linkId, viewCount) {
-    await dbManager.client.query(
-      'UPDATE shared_link SET view_count = $1 WHERE id = $2',
-      [viewCount, linkId]
-    );
   }
 }
