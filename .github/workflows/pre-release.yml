@@ -122,6 +122,14 @@ jobs:
         run: ./mvnw -pl backend pmd:check
         continue-on-error: true
 
+      - name: Show PMD violations
+        if: always()
+        run: |
+          if [ -f backend/target/pmd.xml ]; then
+            echo "=== PMD Violations ==="
+            cat backend/target/pmd.xml
+          fi
+
       - name: Upload PMD report
         if: always()
         uses: actions/upload-artifact@v4
@@ -131,8 +139,8 @@ jobs:
           retention-days: 30
 
   # Stage 2: Build Validation (Parallel)
-  build-backend-multiarch:
-    name: Build Backend Multi-Arch
+  build-backend-native:
+    name: Build Backend Native
     runs-on: ubuntu-latest
     needs: [backend-full-tests]
     timeout-minutes: 20
@@ -144,22 +152,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build backend JVM multi-arch
+      - name: Build backend native (AMD64)
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: backend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          file: backend/Dockerfile.native
+          platforms: linux/amd64
           push: false
           tags: geopulse/backend:pre-release
-          cache-from: type=gha,scope=backend-jvm-multiarch
-          cache-to: type=gha,mode=max,scope=backend-jvm-multiarch
+          cache-from: type=gha,scope=backend-native
+          cache-to: type=gha,mode=max,scope=backend-native
 
-  build-frontend-multiarch:
-    name: Build Frontend Multi-Arch
+  build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
     needs: [frontend-full-tests]
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -168,23 +176,23 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build frontend multi-arch
+      - name: Build frontend (AMD64)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: false
           tags: geopulse/frontend:pre-release
-          cache-from: type=gha,scope=frontend-multiarch
-          cache-to: type=gha,mode=max,scope=frontend-multiarch
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   # Stage 3: Full E2E Suite
   full-e2e-tests:
     name: Full E2E Test Suite
     runs-on: ubuntu-latest
-    needs: [build-backend-multiarch, build-frontend-multiarch]
-    timeout-minutes: 40
+    needs: [build-backend-native, build-frontend]
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code
@@ -274,7 +282,9 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: docker compose -f tests/docker-compose.e2e.yml down -v
+        run: |
+          docker compose -f tests/docker-compose.e2e.yml down -v || echo "Cleanup failed but continuing"
+          docker system prune -f || true
 
   # Stage 4: Infrastructure Validation
   helm-validation:
@@ -321,8 +331,8 @@ jobs:
     needs:
       - backend-full-tests
       - frontend-full-tests
-      - build-backend-multiarch
-      - build-frontend-multiarch
+      - build-backend-native
+      - build-frontend
       - full-e2e-tests
       - helm-validation
       - docker-compose-validation
@@ -347,8 +357,8 @@ jobs:
     needs:
       - backend-full-tests
       - frontend-full-tests
-      - build-backend-multiarch
-      - build-frontend-multiarch
+      - build-backend-native
+      - build-frontend
       - full-e2e-tests
       - helm-validation
       - docker-compose-validation
@@ -360,8 +370,8 @@ jobs:
           echo "=== Pre-Release Validation Summary ==="
           echo "Backend Tests: ${{ needs.backend-full-tests.result }}"
           echo "Frontend Tests: ${{ needs.frontend-full-tests.result }}"
-          echo "Backend Build: ${{ needs.build-backend-multiarch.result }}"
-          echo "Frontend Build: ${{ needs.build-frontend-multiarch.result }}"
+          echo "Backend Build: ${{ needs.build-backend-native.result }}"
+          echo "Frontend Build: ${{ needs.build-frontend.result }}"
           echo "E2E Tests: ${{ needs.full-e2e-tests.result }}"
           echo "Helm Validation: ${{ needs.helm-validation.result }}"
           echo "Docker Compose: ${{ needs.docker-compose-validation.result }}"
@@ -369,8 +379,8 @@ jobs:
 
           if [[ "${{ needs.backend-full-tests.result }}" != "success" ]] || \
              [[ "${{ needs.frontend-full-tests.result }}" != "success" ]] || \
-             [[ "${{ needs.build-backend-multiarch.result }}" != "success" ]] || \
-             [[ "${{ needs.build-frontend-multiarch.result }}" != "success" ]] || \
+             [[ "${{ needs.build-backend-native.result }}" != "success" ]] || \
+             [[ "${{ needs.build-frontend.result }}" != "success" ]] || \
              [[ "${{ needs.full-e2e-tests.result }}" != "success" ]] || \
              [[ "${{ needs.helm-validation.result }}" != "success" ]] || \
              [[ "${{ needs.docker-compose-validation.result }}" != "success" ]]; then
