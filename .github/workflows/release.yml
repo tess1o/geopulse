@@ -16,6 +16,13 @@ permissions:
   packages: write
 
 jobs:
+  # If this workflow fails:
+  # 1. Immediately delete the tag:
+  #    git tag -d v1.X.Y && git push origin :refs/tags/v1.X.Y
+  # 2. Fix the issue in main branch
+  # 3. Run pre-release validation workflow
+  # 4. Re-create tag with same version after validation passes
+
   # Extract version from tag (remove 'v' prefix)
   prepare:
     runs-on: ubuntu-latest
@@ -29,9 +36,46 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
+  # Verify pre-release validation was run for this commit
+  verify-prerelease:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pre-release validation
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: workflows } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'pre-release.yml',
+              status: 'success',
+              per_page: 20
+            });
+
+            const tagCommitSha = context.sha;
+            const validatedRun = workflows.workflow_runs.find(run =>
+              run.head_sha === tagCommitSha
+            );
+
+            if (!validatedRun) {
+              core.setFailed(
+                `❌ Pre-release validation not found for commit ${tagCommitSha}\n\n` +
+                `Required: Run pre-release workflow before creating release tag.\n\n` +
+                `Action required:\n` +
+                `1. Delete this tag: git tag -d ${context.ref.replace('refs/tags/', '')} && git push origin :${context.ref}\n` +
+                `2. Run pre-release validation workflow from GitHub Actions UI\n` +
+                `3. After validation passes, re-create tag: git tag -a ${context.ref.replace('refs/tags/', '')} -m "Release ${context.ref.replace('refs/tags/', '')}"\n` +
+                `4. Push tag: git push origin ${context.ref.replace('refs/tags/', '')}`
+              );
+            } else {
+              console.log(`✅ Pre-release validation passed on ${validatedRun.updated_at}`);
+              console.log(`   Run ID: ${validatedRun.id}`);
+              console.log(`   Commit: ${validatedRun.head_sha}`);
+            }
+
   # Build Backend JVM AMD64
   build-backend-jvm-amd64:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -72,7 +116,7 @@ jobs:
 
   # Build Backend JVM ARM64
   build-backend-jvm-arm64:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
@@ -113,7 +157,7 @@ jobs:
 
   # Build Backend Native AMD64
   build-backend-native-amd64:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -155,7 +199,7 @@ jobs:
 
   # Build Backend Native ARM64
   build-backend-native-arm64:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
@@ -197,7 +241,7 @@ jobs:
 
   # Build Backend Native AMD64 Compatible (x86-64-v2 for old CPUs)
   build-backend-native-amd64-compat:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -239,7 +283,7 @@ jobs:
 
   # Build Backend Native ARM64 Compatible (armv8-a+nolse for Raspberry Pi)
   build-backend-native-arm64-compat:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
@@ -281,7 +325,7 @@ jobs:
 
   # Build Frontend (multi-arch)
   build-frontend:
-    needs: prepare
+    needs: [prepare, verify-prerelease]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
