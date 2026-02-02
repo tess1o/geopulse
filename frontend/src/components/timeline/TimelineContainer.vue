@@ -124,7 +124,7 @@
 </template>
 
 <script setup>
-import { computed, ref, defineAsyncComponent, watch, onMounted } from 'vue'
+import { computed, ref, defineAsyncComponent, watch } from 'vue'
 import Timeline from 'primevue/timeline'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
@@ -363,15 +363,10 @@ const loadPeriodTags = async () => {
   }
 }
 
-// Lifecycle
-onMounted(() => {
-  loadPeriodTags()
-})
-
 // Watch for date range changes
 watch(() => props.dateRange, () => {
   loadPeriodTags()
-}, { deep: true })
+}, { deep: true, immediate: true })
 </script>
 
 <style scoped>

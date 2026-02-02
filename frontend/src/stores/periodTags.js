@@ -120,6 +120,7 @@ export const usePeriodTagsStore = defineStore('periodTags', {
                         endDate: endDateEpochMillis
                     }
                 })
+                this.periodTags = response.data || []
                 return response.data || []
             } catch (error) {
                 this.error = error.message

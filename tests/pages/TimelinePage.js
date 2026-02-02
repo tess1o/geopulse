@@ -100,6 +100,16 @@ export class TimelinePage {
   }
 
   /**
+   * Wait for timeline container to be ready (without requiring timeline data)
+   * Useful for testing period tags or other timeline features that don't depend on timeline data
+   */
+  async waitForTimelineContainerReady() {
+    await this.page.waitForSelector('.timeline-container', { timeout: 10000 });
+    // Wait for loading spinner to disappear
+    await this.page.waitForSelector('.p-progressspinner', { state: 'detached', timeout: 15000 });
+  }
+
+  /**
    * Wait for loading to complete and no data message to appear
    */
   async waitForNoDataMessage() {

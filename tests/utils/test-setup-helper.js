@@ -9,6 +9,7 @@ import {FriendsPage} from "../pages/FriendsPage.js";
 import {UserProfilePage} from "../pages/UserProfilePage.js";
 import {FavoritesManagementPage} from "../pages/FavoritesManagementPage.js";
 import {GeocodingManagementPage} from "../pages/GeocodingManagementPage.js";
+import {PeriodTagsManagementPage} from "../pages/PeriodTagsManagementPage.js";
 
 /**
  * Centralized test setup utilities to eliminate duplication
@@ -770,5 +771,641 @@ export class TestSetupHelper {
     );
 
     return result.rows[0].id;
+  }
+
+  // ==================== PERIOD TAGS TEST HELPERS ====================
+
+  /**
+   * Login user and navigate to Period Tags Management page
+   * @returns {Promise<{periodTagsPage, user, testUser}>}
+   */
+  static async loginAndNavigateToPeriodTagsPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const periodTagsPage = new PeriodTagsManagementPage(page);
+    await periodTagsPage.navigate();
+    await periodTagsPage.waitForPageLoad();
+    return {periodTagsPage, user, testUser};
+  }
+
+  /**
+   * Create a period tag for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} options - Period tag options
+   * @param {string} options.tagName - Tag name
+   * @param {Date} options.startTime - Start time
+   * @param {Date} options.endTime - End time (optional, null for active tags)
+   * @param {string} options.source - Source ('manual' or 'owntracks')
+   * @param {boolean} options.isActive - Whether the tag is active (default: false)
+   * @returns {Promise<number>} - Period tag ID
+   */
+  static async createPeriodTag(dbManager, userId, options) {
+    const {
+      tagName,
+      startTime,
+      endTime = null,
+      source = 'manual',
+      isActive = false
+    } = options;
+
+    const result = await dbManager.client.query(`
+      INSERT INTO period_tags (user_id, tag_name, start_time, end_time, source, is_active, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      RETURNING id
+    `, [userId, tagName, startTime, endTime, source, isActive]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create multiple period tags for testing
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {number} count - Number of period tags to create
+   * @param {string} source - Source ('manual' or 'owntracks')
+   * @returns {Promise<Array<number>>} - Array of period tag IDs
+   */
+  static async createMultiplePeriodTags(dbManager, userId, count = 3, source = 'manual') {
+    const tagIds = [];
+    const baseDate = new Date('2024-01-01T00:00:00Z');
+
+    for (let i = 0; i < count; i++) {
+      const startTime = new Date(baseDate);
+      startTime.setDate(baseDate.getDate() + (i * 7)); // 1 week apart
+
+      const endTime = new Date(startTime);
+      endTime.setDate(startTime.getDate() + 3); // 3-day duration
+
+      const tagId = await this.createPeriodTag(dbManager, userId, {
+        tagName: `Test Tag ${i + 1}`,
+        startTime,
+        endTime,
+        source
+      });
+      tagIds.push(tagId);
+    }
+
+    return tagIds;
+  }
+
+  /**
+   * Create an active period tag (no end time)
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} options - Period tag options
+   * @returns {Promise<number>} - Period tag ID
+   */
+  static async createActivePeriodTag(dbManager, userId, options = {}) {
+    const {
+      tagName = 'Active Tag',
+      startTime = new Date(Date.now() - 86400000), // 1 day ago
+      source = 'owntracks'
+    } = options;
+
+    return await this.createPeriodTag(dbManager, userId, {
+      tagName,
+      startTime,
+      endTime: null,
+      source,
+      isActive: true  // Active tags must have isActive = true
+    });
+  }
+
+  /**
+   * Get period tag by ID
+   * @param {Object} dbManager - Database manager
+   * @param {number} tagId - Period tag ID
+   * @returns {Promise<Object>} - Period tag data
+   */
+  static async getPeriodTagById(dbManager, tagId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, tag_name, start_time, end_time, source, created_at
+      FROM period_tags
+      WHERE id = $1
+    `, [tagId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get all period tags for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Array<Object>>} - Array of period tags
+   */
+  static async getPeriodTagsByUser(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, tag_name, start_time, end_time, source, created_at
+      FROM period_tags
+      WHERE user_id = $1
+      ORDER BY start_time DESC
+    `, [userId]);
+
+    return result.rows;
+  }
+
+  /**
+   * Count period tags for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {string} source - Optional source filter ('manual' or 'owntracks')
+   * @returns {Promise<number>}
+   */
+  static async countPeriodTags(dbManager, userId, source = null) {
+    let query = 'SELECT COUNT(*) as count FROM period_tags WHERE user_id = $1';
+    const params = [userId];
+
+    if (source) {
+      query += ' AND source = $2';
+      params.push(source);
+    }
+
+    const result = await dbManager.client.query(query, params);
+    return parseInt(result.rows[0].count);
+  }
+
+  /**
+   * Get active period tag for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} - Active period tag or null
+   */
+  static async getActivePeriodTag(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, tag_name, start_time, end_time, source, created_at
+      FROM period_tags
+      WHERE user_id = $1 AND end_time IS NULL
+      ORDER BY start_time DESC
+      LIMIT 1
+    `, [userId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Update period tag
+   * @param {Object} dbManager - Database manager
+   * @param {number} tagId - Period tag ID
+   * @param {Object} updates - Fields to update
+   * @returns {Promise<void>}
+   */
+  static async updatePeriodTag(dbManager, tagId, updates) {
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (updates.tagName !== undefined) {
+      fields.push(`tag_name = $${paramIndex++}`);
+      values.push(updates.tagName);
+    }
+    if (updates.startTime !== undefined) {
+      fields.push(`start_time = $${paramIndex++}`);
+      values.push(updates.startTime);
+    }
+    if (updates.endTime !== undefined) {
+      fields.push(`end_time = $${paramIndex++}`);
+      values.push(updates.endTime);
+    }
+
+    if (fields.length === 0) return;
+
+    values.push(tagId);
+    const query = `UPDATE period_tags SET ${fields.join(', ')} WHERE id = $${paramIndex}`;
+    await dbManager.client.query(query, values);
+  }
+
+  /**
+   * Delete period tag
+   * @param {Object} dbManager - Database manager
+   * @param {number} tagId - Period tag ID
+   * @returns {Promise<void>}
+   */
+  static async deletePeriodTag(dbManager, tagId) {
+    await dbManager.client.query('DELETE FROM period_tags WHERE id = $1', [tagId]);
+  }
+
+  /**
+   * Delete all period tags for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<void>}
+   */
+  static async deleteAllPeriodTags(dbManager, userId) {
+    await dbManager.client.query('DELETE FROM period_tags WHERE user_id = $1', [userId]);
+  }
+
+  /**
+   * Setup timeline with period tag: login, create timeline data, create period tag, navigate to date range
+   * @param {Object} page - Playwright page object
+   * @param {Object} dbManager - Database manager
+   * @param {Object} options - Setup options
+   * @param {Object} options.userData - User data (optional, uses TestData.users.existing by default)
+   * @param {Function} options.timelineDataFn - Function to insert timeline data (e.g., TimelineTestData.insertRegularStaysTestData)
+   * @param {Object} options.periodTag - Period tag options {tagName, startTime, endTime, source}
+   * @param {Date} options.startDate - Start date for navigation
+   * @param {Date} options.endDate - End date for navigation
+   * @param {boolean} options.skipNavigation - Skip navigation to timeline (default: false)
+   * @returns {Promise<{timelinePage, user, testUser, periodTagId}>}
+   */
+  static async setupTimelineWithPeriodTag(page, dbManager, options) {
+    const TimelinePage = (await import('../pages/TimelinePage.js')).TimelinePage;
+    const TestData = (await import('../fixtures/test-data.js')).TestData;
+
+    const {
+      userData = TestData.users.existing,
+      timelineDataFn = null,
+      periodTag,
+      startDate,
+      endDate,
+      skipNavigation = false
+    } = options;
+
+    // Login and navigate
+    const timelinePage = new TimelinePage(page);
+    const { testUser } = await timelinePage.loginAndNavigate(userData);
+
+    // Get user from DB
+    const user = await dbManager.getUserByEmail(testUser.email);
+
+    // Insert timeline data if provided
+    if (timelineDataFn) {
+      await timelineDataFn(dbManager, user.id);
+    }
+
+    // Create period tag if provided
+    let periodTagId = null;
+    if (periodTag) {
+      periodTagId = await this.createPeriodTag(dbManager, user.id, periodTag);
+    }
+
+    // Navigate to date range if not skipped
+    if (!skipNavigation && startDate && endDate) {
+      await timelinePage.navigateWithDateRange(startDate, endDate);
+      await timelinePage.waitForPageLoad();
+      await timelinePage.waitForTimelineContent();
+    }
+
+    return { timelinePage, user, testUser, periodTagId };
+  }
+
+  /**
+   * Check if period tag is visible on timeline
+   * @param {Object} page - Playwright page object
+   * @param {string} tagName - Tag name to check
+   * @returns {Promise<boolean>} - True if visible
+   */
+  static async isPeriodTagVisible(page, tagName) {
+    const periodTagBanner = page.locator(`.gp-period-badge:has-text("${tagName}"), .p-message:has-text("${tagName}")`);
+    return await periodTagBanner.isVisible();
+  }
+
+  /**
+   * Assert period tag visibility on timeline
+   * @param {Object} page - Playwright page object
+   * @param {string} tagName - Tag name to check
+   * @param {boolean} shouldBeVisible - Expected visibility (default: true)
+   * @param {Object} expect - Playwright expect object
+   * @returns {Promise<void>}
+   */
+  static async assertPeriodTagVisibility(page, tagName, shouldBeVisible = true, expect) {
+    const periodTagBanner = page.locator(`.gp-period-badge:has-text("${tagName}"), .p-message:has-text("${tagName}")`);
+    expect(await periodTagBanner.isVisible()).toBe(shouldBeVisible);
+  }
+
+  /**
+   * Create multiple period tags for timeline testing
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Array<Object>} periodTags - Array of period tag options
+   * @returns {Promise<Array<number>>} - Array of period tag IDs
+   */
+  static async createMultiplePeriodTagsForTimeline(dbManager, userId, periodTags) {
+    const tagIds = [];
+    for (const periodTag of periodTags) {
+      const tagId = await this.createPeriodTag(dbManager, userId, periodTag);
+      tagIds.push(tagId);
+    }
+    return tagIds;
+  }
+
+  // ==================== LOCATION ANALYTICS TEST HELPERS ====================
+
+  /**
+   * Login user and navigate to Location Analytics page
+   * @returns {Promise<{locationAnalyticsPage, user, testUser}>}
+   */
+  static async loginAndNavigateToLocationAnalyticsPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const LocationAnalyticsPage = (await import('../pages/LocationAnalyticsPage.js')).LocationAnalyticsPage;
+    const locationAnalyticsPage = new LocationAnalyticsPage(page);
+    await locationAnalyticsPage.navigate();
+    await locationAnalyticsPage.waitForPageLoad();
+    return {locationAnalyticsPage, user, testUser};
+  }
+
+  /**
+   * Create timeline stays for location analytics testing
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Array<Object>} locations - Array of location data
+   * @returns {Promise<Array<number>>} - Array of timeline stay IDs
+   *
+   * Example location object:
+   * {
+   *   city: 'New York',
+   *   country: 'USA',
+   *   latitude: 40.7128,
+   *   longitude: -74.0060,
+   *   visitCount: 3,
+   *   locationName: 'Times Square'
+   * }
+   */
+  static async createLocationAnalyticsData(dbManager, userId, locations) {
+    const stayIds = [];
+
+    for (const location of locations) {
+      const {
+        city,
+        country,
+        latitude,
+        longitude,
+        visitCount = 1,
+        locationName = 'Test Location'
+      } = location;
+
+      // First, create or get geocoding result
+      const geocodingId = await this.createGeocodingResult(dbManager, userId, {
+        coords: `POINT(${longitude} ${latitude})`,
+        displayName: locationName,
+        city,
+        country,
+        providerName: 'Nominatim'
+      });
+
+      // Create multiple timeline stays for this location
+      for (let i = 0; i < visitCount; i++) {
+        const hoursAgo = (i + 1) * 24; // Space out visits by days
+        const stayId = await this.createTimelineStay(dbManager, userId, {
+          geocodingId,
+          coords: `POINT(${longitude} ${latitude})`,
+          locationName,
+          durationSeconds: 3600, // 1 hour
+          timestampOffset: `${hoursAgo} hours`
+        });
+        stayIds.push(stayId);
+      }
+    }
+
+    return stayIds;
+  }
+
+  /**
+   * Create diverse location analytics test data with cities and countries
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Object>} - Object with cityCount, countryCount, stayIds
+   */
+  static async createDiverseLocationAnalyticsData(dbManager, userId) {
+    const locations = [
+      // USA cities
+      {
+        city: 'New York',
+        country: 'USA',
+        latitude: 40.7128,
+        longitude: -74.0060,
+        visitCount: 5,
+        locationName: 'Times Square'
+      },
+      {
+        city: 'Los Angeles',
+        country: 'USA',
+        latitude: 34.0522,
+        longitude: -118.2437,
+        visitCount: 3,
+        locationName: 'Hollywood'
+      },
+      {
+        city: 'San Francisco',
+        country: 'USA',
+        latitude: 37.7749,
+        longitude: -122.4194,
+        visitCount: 4,
+        locationName: 'Golden Gate Bridge'
+      },
+
+      // UK cities
+      {
+        city: 'London',
+        country: 'United Kingdom',
+        latitude: 51.5074,
+        longitude: -0.1278,
+        visitCount: 6,
+        locationName: 'Big Ben'
+      },
+      {
+        city: 'Manchester',
+        country: 'United Kingdom',
+        latitude: 53.4808,
+        longitude: -2.2426,
+        visitCount: 2,
+        locationName: 'Old Trafford'
+      },
+
+      // France cities
+      {
+        city: 'Paris',
+        country: 'France',
+        latitude: 48.8566,
+        longitude: 2.3522,
+        visitCount: 7,
+        locationName: 'Eiffel Tower'
+      },
+
+      // Japan cities
+      {
+        city: 'Tokyo',
+        country: 'Japan',
+        latitude: 35.6762,
+        longitude: 139.6503,
+        visitCount: 4,
+        locationName: 'Shibuya Crossing'
+      }
+    ];
+
+    const stayIds = await this.createLocationAnalyticsData(dbManager, userId, locations);
+
+    return {
+      cityCount: locations.length,
+      countryCount: 4, // USA, UK, France, Japan
+      stayIds
+    };
+  }
+
+  /**
+   * Create location analytics data for a single city with multiple places
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} options - City options
+   * @returns {Promise<Object>} - Object with cityData and stayIds
+   */
+  static async createSingleCityAnalyticsData(dbManager, userId, options = {}) {
+    const {
+      city = 'New York',
+      country = 'USA',
+      placeCount = 3,
+      visitsPerPlace = 2
+    } = options;
+
+    const locations = [];
+    const baseLatitude = 40.7128;
+    const baseLongitude = -74.0060;
+
+    for (let i = 0; i < placeCount; i++) {
+      locations.push({
+        city,
+        country,
+        latitude: baseLatitude + (i * 0.01),
+        longitude: baseLongitude + (i * 0.01),
+        visitCount: visitsPerPlace,
+        locationName: `Place ${i + 1} in ${city}`
+      });
+    }
+
+    const stayIds = await this.createLocationAnalyticsData(dbManager, userId, locations);
+
+    return {
+      cityData: { city, country, placeCount, totalVisits: placeCount * visitsPerPlace },
+      stayIds
+    };
+  }
+
+  /**
+   * Create location analytics data for a single country with multiple cities
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} options - Country options
+   * @returns {Promise<Object>} - Object with countryData and stayIds
+   */
+  static async createSingleCountryAnalyticsData(dbManager, userId, options = {}) {
+    const {
+      country = 'USA',
+      cityCount = 3,
+      visitsPerCity = 2
+    } = options;
+
+    const cities = [
+      { name: 'New York', lat: 40.7128, lon: -74.0060 },
+      { name: 'Los Angeles', lat: 34.0522, lon: -118.2437 },
+      { name: 'Chicago', lat: 41.8781, lon: -87.6298 },
+      { name: 'Houston', lat: 29.7604, lon: -95.3698 },
+      { name: 'Phoenix', lat: 33.4484, lon: -112.0740 }
+    ];
+
+    const locations = [];
+    for (let i = 0; i < Math.min(cityCount, cities.length); i++) {
+      const city = cities[i];
+      locations.push({
+        city: city.name,
+        country,
+        latitude: city.lat,
+        longitude: city.lon,
+        visitCount: visitsPerCity,
+        locationName: `Location in ${city.name}`
+      });
+    }
+
+    const stayIds = await this.createLocationAnalyticsData(dbManager, userId, locations);
+
+    return {
+      countryData: { country, cityCount, totalVisits: cityCount * visitsPerCity },
+      stayIds
+    };
+  }
+
+  /**
+   * Get city statistics from database
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {string} cityName - City name
+   * @returns {Promise<Object>} - City statistics
+   */
+  static async getCityStatistics(dbManager, userId, cityName) {
+    const result = await dbManager.client.query(`
+      SELECT
+        COUNT(*) as visit_count,
+        COUNT(DISTINCT rgl.id) as unique_places
+      FROM timeline_stays ts
+      JOIN reverse_geocoding_location rgl ON ts.geocoding_id = rgl.id
+      WHERE ts.user_id = $1 AND rgl.city = $2
+    `, [userId, cityName]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get country statistics from database
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {string} countryName - Country name
+   * @returns {Promise<Object>} - Country statistics
+   */
+  static async getCountryStatistics(dbManager, userId, countryName) {
+    const result = await dbManager.client.query(`
+      SELECT
+        COUNT(*) as visit_count,
+        COUNT(DISTINCT rgl.city) as city_count,
+        COUNT(DISTINCT rgl.id) as unique_places
+      FROM timeline_stays ts
+      JOIN reverse_geocoding_location rgl ON ts.geocoding_id = rgl.id
+      WHERE ts.user_id = $1 AND rgl.country = $2
+    `, [userId, countryName]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get all cities with visit counts for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} - Array of cities with visit counts
+   */
+  static async getAllCitiesForUser(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT
+        rgl.city,
+        rgl.country,
+        COUNT(*) as visit_count,
+        COUNT(DISTINCT rgl.id) as unique_places
+      FROM timeline_stays ts
+      JOIN reverse_geocoding_location rgl ON ts.geocoding_id = rgl.id
+      WHERE ts.user_id = $1 AND rgl.city IS NOT NULL
+      GROUP BY rgl.city, rgl.country
+      ORDER BY visit_count DESC
+    `, [userId]);
+
+    return result.rows;
+  }
+
+  /**
+   * Get all countries with visit counts for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Array>} - Array of countries with visit counts
+   */
+  static async getAllCountriesForUser(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT
+        rgl.country,
+        COUNT(*) as visit_count,
+        COUNT(DISTINCT rgl.city) as city_count,
+        COUNT(DISTINCT rgl.id) as unique_places
+      FROM timeline_stays ts
+      JOIN reverse_geocoding_location rgl ON ts.geocoding_id = rgl.id
+      WHERE ts.user_id = $1 AND rgl.country IS NOT NULL
+      GROUP BY rgl.country
+      ORDER BY visit_count DESC
+    `, [userId]);
+
+    return result.rows;
   }
 }
