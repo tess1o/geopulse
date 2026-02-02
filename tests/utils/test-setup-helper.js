@@ -6,6 +6,7 @@ import { UserFactory } from './user-factory.js';
 import { GpsDataFactory } from './gps-data-factory.js';
 import {FriendsPage} from "../pages/FriendsPage.js";
 import {UserProfilePage} from "../pages/UserProfilePage.js";
+import {FavoritesManagementPage} from "../pages/FavoritesManagementPage.js";
 
 /**
  * Centralized test setup utilities to eliminate duplication
@@ -312,5 +313,155 @@ export class TestSetupHelper {
       loginPage,
       friendsPage
     };
+  }
+
+  // ==================== FAVORITES TEST HELPERS ====================
+
+  /**
+   * Login user and navigate to Favorites Management page
+   * @returns {Promise<{favoritesPage, user, testUser}>}
+   */
+  static async loginAndNavigateToFavoritesPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const favoritesPage = new FavoritesManagementPage(page);
+    await favoritesPage.navigate();
+    await favoritesPage.waitForPageLoad();
+    return {favoritesPage, user, testUser};
+  }
+
+  /**
+   * Create a favorite point location for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} favorite - Favorite data {name, city, country, latitude, longitude}
+   * @returns {Promise<number>} - Favorite ID
+   */
+  static async createFavoritePoint(dbManager, userId, favorite) {
+    const result = await dbManager.client.query(`
+      INSERT INTO favorite_locations
+      (user_id, name, city, country, type, geometry)
+      VALUES ($1, $2, $3, $4, 'POINT', ST_GeomFromText($5, 4326))
+      RETURNING id
+    `, [
+      userId,
+      favorite.name,
+      favorite.city || null,
+      favorite.country || null,
+      `POINT(${favorite.longitude} ${favorite.latitude})`
+    ]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create a favorite area location for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} favorite - Favorite data {name, city, country, southWestLat, southWestLon, northEastLat, northEastLon}
+   * @returns {Promise<number>} - Favorite ID
+   */
+  static async createFavoriteArea(dbManager, userId, favorite) {
+    const result = await dbManager.client.query(`
+      INSERT INTO favorite_locations
+      (user_id, name, city, country, type, geometry)
+      VALUES ($1, $2, $3, $4, 'AREA', ST_GeomFromText($5, 4326))
+      RETURNING id
+    `, [
+      userId,
+      favorite.name,
+      favorite.city || null,
+      favorite.country || null,
+      `POLYGON((${favorite.southWestLon} ${favorite.southWestLat}, ${favorite.northEastLon} ${favorite.southWestLat}, ${favorite.northEastLon} ${favorite.northEastLat}, ${favorite.southWestLon} ${favorite.northEastLat}, ${favorite.southWestLon} ${favorite.southWestLat}))`
+    ]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create multiple favorite locations for testing
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {number} pointCount - Number of point favorites to create
+   * @param {number} areaCount - Number of area favorites to create
+   * @returns {Promise<{points: Array, areas: Array}>}
+   */
+  static async createMultipleFavorites(dbManager, userId, pointCount = 3, areaCount = 2) {
+    const points = [];
+    const areas = [];
+
+    // Create point favorites
+    for (let i = 0; i < pointCount; i++) {
+      const favoriteId = await this.createFavoritePoint(dbManager, userId, {
+        name: `Test Point ${i + 1}`,
+        city: `City ${i + 1}`,
+        country: `Country ${i + 1}`,
+        latitude: 40.7128 + (i * 0.01),
+        longitude: -74.0060 + (i * 0.01)
+      });
+      points.push(favoriteId);
+    }
+
+    // Create area favorites
+    for (let i = 0; i < areaCount; i++) {
+      const favoriteId = await this.createFavoriteArea(dbManager, userId, {
+        name: `Test Area ${i + 1}`,
+        city: `City ${i + 1}`,
+        country: `Country ${i + 1}`,
+        southWestLat: 40.0 + (i * 0.1),
+        southWestLon: -74.0 + (i * 0.1),
+        northEastLat: 40.1 + (i * 0.1),
+        northEastLon: -73.9 + (i * 0.1)
+      });
+      areas.push(favoriteId);
+    }
+
+    return { points, areas };
+  }
+
+  /**
+   * Get favorite location by ID
+   * @param {Object} dbManager - Database manager
+   * @param {number} favoriteId - Favorite ID
+   * @returns {Promise<Object>} - Favorite data
+   */
+  static async getFavoriteById(dbManager, favoriteId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, name, city, country, type,
+             ST_X(geometry) as longitude,
+             ST_Y(geometry) as latitude
+      FROM favorite_locations
+      WHERE id = $1
+    `, [favoriteId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Count favorites for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {string} type - Optional type filter ('POINT' or 'AREA')
+   * @returns {Promise<number>}
+   */
+  static async countFavorites(dbManager, userId, type = null) {
+    let query = 'SELECT COUNT(*) as count FROM favorite_locations WHERE user_id = $1';
+    const params = [userId];
+
+    if (type) {
+      query += ' AND type = $2';
+      params.push(type);
+    }
+
+    const result = await dbManager.client.query(query, params);
+    return parseInt(result.rows[0].count);
+  }
+
+  /**
+   * Delete all favorites for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   */
+  static async deleteAllFavorites(dbManager, userId) {
+    await dbManager.client.query('DELETE FROM favorite_locations WHERE user_id = $1', [userId]);
   }
 }
