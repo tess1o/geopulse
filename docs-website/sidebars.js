@@ -154,6 +154,11 @@ const sidebars = {
                 },
             ],
         },
+        {
+            type: 'doc',
+            id: 'faq',
+            label: 'FAQ',
+        },
     ],
 };
 

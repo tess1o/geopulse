@@ -259,6 +259,12 @@ const accountItems = computed(() => [
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',
     key: 'preferences'
+  },
+  {
+    label: 'Help & Support',
+    icon: 'pi pi-question-circle',
+    to: '/app/help',
+    key: 'help'
   }
 ])
 
