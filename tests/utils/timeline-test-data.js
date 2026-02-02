@@ -17,8 +17,6 @@ export async function insertVerifiableStaysTestData(dbManager, userId) {
     // Use specific hours: 09:00, 10:00, 11:00 of Sept 21, 2025
     const stayTime = new Date(`2025-09-21T${(9 + i).toString().padStart(2, '0')}:00:00Z`);
 
-    console.log(`Inserting stay ${i + 1} of ${stayData.length}... at ${stayTime}`);
-
     // Create reverse geocoding location
     const geocodingId = await GeocodingFactory.insertOrGetGeocodingLocation(
       dbManager,

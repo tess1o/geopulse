@@ -31,7 +31,6 @@ export class UserFactory {
             data: requestData
         });
 
-        console.log(`Creating user via API: ${userData.email} with timezone: ${requestData.timezone || 'empty'}`);
         expect(response.ok()).toBeTruthy();
         return response;
     }

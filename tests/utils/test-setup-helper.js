@@ -4,9 +4,11 @@ import { TestHelpers } from './test-helpers.js';
 import { TestData } from '../fixtures/test-data.js';
 import { UserFactory } from './user-factory.js';
 import { GpsDataFactory } from './gps-data-factory.js';
+import { GeocodingFactory } from './geocoding-factory.js';
 import {FriendsPage} from "../pages/FriendsPage.js";
 import {UserProfilePage} from "../pages/UserProfilePage.js";
 import {FavoritesManagementPage} from "../pages/FavoritesManagementPage.js";
+import {GeocodingManagementPage} from "../pages/GeocodingManagementPage.js";
 
 /**
  * Centralized test setup utilities to eliminate duplication
@@ -463,5 +465,310 @@ export class TestSetupHelper {
    */
   static async deleteAllFavorites(dbManager, userId) {
     await dbManager.client.query('DELETE FROM favorite_locations WHERE user_id = $1', [userId]);
+  }
+
+  // ==================== GEOCODING TEST HELPERS ====================
+
+  /**
+   * Login user and navigate to Geocoding Management page
+   * @returns {Promise<{geocodingPage, user, testUser}>}
+   */
+  static async loginAndNavigateToGeocodingPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const geocodingPage = new GeocodingManagementPage(page);
+    await geocodingPage.navigate();
+    await geocodingPage.waitForPageLoad();
+    return {geocodingPage, user, testUser};
+  }
+
+  /**
+   * Create a geocoding result for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID (can be null for original locations)
+   * @param {Object} geocoding - Geocoding data {coords, displayName, city, country, providerName}
+   * @returns {Promise<number>} - Geocoding result ID
+   */
+  static async createGeocodingResult(dbManager, userId, geocoding) {
+    const coords = geocoding.coords || 'POINT(-74.0060 40.7128)';
+    const displayName = geocoding.displayName || 'Test Location';
+    const city = geocoding.city || 'New York';
+    const country = geocoding.country || 'USA';
+    const providerName = geocoding.providerName || 'Nominatim';
+
+    const result = await dbManager.client.query(`
+      INSERT INTO reverse_geocoding_location
+      (id, request_coordinates, result_coordinates, display_name, city, country, provider_name, user_id, created_at, last_accessed_at)
+      VALUES (
+        nextval('reverse_geocoding_location_seq'),
+        ST_GeomFromText($1, 4326),
+        ST_GeomFromText($1, 4326),
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        NOW(),
+        NOW()
+      )
+      RETURNING id
+    `, [coords, displayName, city, country, providerName, userId]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create multiple geocoding results for testing
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID (can be null for original locations)
+   * @param {number} count - Number of geocoding results to create
+   * @param {string} providerName - Provider name (optional)
+   * @returns {Promise<Array<number>>} - Array of geocoding result IDs
+   */
+  static async createMultipleGeocodingResults(dbManager, userId, count = 3, providerName = null) {
+    const resultIds = [];
+
+    for (let i = 0; i < count; i++) {
+      const resultId = await this.createGeocodingResult(dbManager, userId, {
+        coords: `POINT(${-74.0060 + (i * 0.01)} ${40.7128 + (i * 0.01)})`,
+        displayName: `Test Location ${i + 1}`,
+        city: `City ${i + 1}`,
+        country: `Country ${i + 1}`,
+        providerName: providerName || 'Nominatim'
+      });
+      resultIds.push(resultId);
+    }
+
+    return resultIds;
+  }
+
+  /**
+   * Create geocoding results with different providers
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID (can be null for original locations)
+   * @returns {Promise<Object>} - Object with provider names as keys and result IDs as values
+   */
+  static async createGeocodingResultsWithDifferentProviders(dbManager, userId) {
+    const providers = ['Nominatim', 'GoogleMaps', 'Mapbox', 'Photon'];
+    const results = {};
+
+    for (let i = 0; i < providers.length; i++) {
+      const provider = providers[i];
+      const resultId = await this.createGeocodingResult(dbManager, userId, {
+        coords: `POINT(${-74.0060 + (i * 0.01)} ${40.7128 + (i * 0.01)})`,
+        displayName: `${provider} Location`,
+        city: 'New York',
+        country: 'USA',
+        providerName: provider
+      });
+      results[provider] = resultId;
+    }
+
+    return results;
+  }
+
+  /**
+   * Get geocoding result by ID
+   * @param {Object} dbManager - Database manager
+   * @param {number} geocodingId - Geocoding result ID
+   * @returns {Promise<Object>} - Geocoding result data
+   */
+  static async getGeocodingResultById(dbManager, geocodingId) {
+    const result = await dbManager.client.query(`
+      SELECT id, display_name, city, country, provider_name,
+             ST_X(request_coordinates) as longitude,
+             ST_Y(request_coordinates) as latitude,
+             user_id, created_at, last_accessed_at
+      FROM reverse_geocoding_location
+      WHERE id = $1
+    `, [geocodingId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Count geocoding results for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID (can be null for original locations)
+   * @param {string} providerName - Optional provider name filter
+   * @returns {Promise<number>}
+   */
+  static async countGeocodingResults(dbManager, userId = null, providerName = null) {
+    let query = 'SELECT COUNT(*) as count FROM reverse_geocoding_location WHERE 1=1';
+    const params = [];
+    let paramIndex = 1;
+
+    if (userId !== undefined) {
+      if (userId === null) {
+        query += ' AND user_id IS NULL';
+      } else {
+        query += ` AND user_id = $${paramIndex}`;
+        params.push(userId);
+        paramIndex++;
+      }
+    }
+
+    if (providerName) {
+      query += ` AND provider_name = $${paramIndex}`;
+      params.push(providerName);
+    }
+
+    const result = await dbManager.client.query(query, params);
+    return parseInt(result.rows[0].count);
+  }
+
+  /**
+   * Delete all geocoding results for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID (can be null for original locations)
+   */
+  static async deleteAllGeocodingResults(dbManager, userId = null) {
+    if (userId === null) {
+      await dbManager.client.query('DELETE FROM reverse_geocoding_location WHERE user_id IS NULL');
+    } else {
+      await dbManager.client.query('DELETE FROM reverse_geocoding_location WHERE user_id = $1', [userId]);
+    }
+  }
+
+  /**
+   * Update geocoding result last accessed time
+   * @param {Object} dbManager - Database manager
+   * @param {number} geocodingId - Geocoding result ID
+   * @param {Date} lastAccessedAt - Last accessed timestamp
+   */
+  static async updateGeocodingLastAccessed(dbManager, geocodingId, lastAccessedAt) {
+    await dbManager.client.query(`
+      UPDATE reverse_geocoding_location
+      SET last_accessed_at = $1
+      WHERE id = $2
+    `, [lastAccessedAt, geocodingId]);
+  }
+
+  // ==================== TIMELINE STAY TEST HELPERS ====================
+
+  /**
+   * Create a timeline stay for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Object} options - Timeline stay options
+   * @param {number} options.geocodingId - Geocoding result ID
+   * @param {string} options.coords - Point coordinates (e.g., 'POINT(-74.0060 40.7128)')
+   * @param {string} options.locationName - Location name
+   * @param {number} options.durationSeconds - Duration in seconds (default: 3600 = 1 hour)
+   * @param {string} options.timestampOffset - Timestamp offset (e.g., '2 hours', '4 hours')
+   * @returns {Promise<number>} - Timeline stay ID
+   */
+  static async createTimelineStay(dbManager, userId, options) {
+    const {
+      geocodingId,
+      coords = 'POINT(-74.0060 40.7128)',
+      locationName = 'Test Location',
+      durationSeconds = 3600,
+      timestampOffset = '2 hours'
+    } = options;
+
+    const result = await dbManager.client.query(`
+      INSERT INTO timeline_stays (
+        user_id, geocoding_id, timestamp, stay_duration,
+        location, location_name, location_source,
+        created_at, last_updated
+      )
+      VALUES (
+        $1, $2, NOW() - INTERVAL '${timestampOffset}', $3,
+        ST_GeomFromText($4, 4326), $5, 'GEOCODING',
+        NOW(), NOW()
+      )
+      RETURNING id
+    `, [userId, geocodingId, durationSeconds, coords, locationName]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create multiple timeline stays for a user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @param {Array<Object>} staysData - Array of timeline stay options
+   * @returns {Promise<Array<number>>} - Array of timeline stay IDs
+   */
+  static async createMultipleTimelineStays(dbManager, userId, staysData) {
+    const stayIds = [];
+    for (const stayData of staysData) {
+      const stayId = await this.createTimelineStay(dbManager, userId, stayData);
+      stayIds.push(stayId);
+    }
+    return stayIds;
+  }
+
+  /**
+   * Get timeline stay by ID
+   * @param {Object} dbManager - Database manager
+   * @param {number} stayId - Timeline stay ID
+   * @returns {Promise<Object>} - Timeline stay data
+   */
+  static async getTimelineStayById(dbManager, stayId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, geocoding_id, timestamp, stay_duration,
+             location_name, location_source
+      FROM timeline_stays
+      WHERE id = $1
+    `, [stayId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get timeline stays by user
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Array<Object>>} - Array of timeline stays
+   */
+  static async getTimelineStaysByUser(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, geocoding_id, timestamp, stay_duration,
+             location_name, location_source
+      FROM timeline_stays
+      WHERE user_id = $1
+      ORDER BY timestamp DESC
+    `, [userId]);
+
+    return result.rows;
+  }
+
+  /**
+   * Get distinct geocoding IDs used in user's timeline stays
+   * @param {Object} dbManager - Database manager
+   * @param {string} userId - User ID
+   * @returns {Promise<Array<number>>} - Array of distinct geocoding IDs
+   */
+  static async getDistinctGeocodingIdsForUser(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT DISTINCT geocoding_id
+      FROM timeline_stays
+      WHERE user_id = $1 AND geocoding_id IS NOT NULL
+    `, [userId]);
+
+    return result.rows.map(row => row.geocoding_id);
+  }
+
+  // ==================== USER TEST HELPERS ====================
+
+  /**
+   * Create an additional test user (for multi-user scenarios)
+   * @param {Object} dbManager - Database manager
+   * @param {string} email - User email
+   * @returns {Promise<string>} - User ID
+   */
+  static async createAdditionalUser(dbManager, email) {
+    await dbManager.client.query(`
+      INSERT INTO users (id, email, password_hash, emailverified, created_at, updated_at)
+      VALUES (gen_random_uuid(), $1, 'hash', true, NOW(), NOW())
+    `, [email]);
+
+    const result = await dbManager.client.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    return result.rows[0].id;
   }
 }

@@ -223,8 +223,6 @@ test.describe('Timeline Page', () => {
 
         // Each card should show a time
         expect(cardText).toMatch(/\d{2}:\d{2}/);
-
-        console.log(`Overnight Stay Card ${i}: Location="${locationText.trim()}", partial text="${cardText.slice(0, 150)}..."`);
       }
 
       // Verify moon icons and date groups exist
@@ -342,8 +340,6 @@ test.describe('Timeline Page', () => {
           expect(cardText).toMatch(/00:00\s*-\s*09:00/);
           expect(cardText).toMatch(/9h/);
         }
-        
-        console.log(`Overnight Trip Card ${i}: "${cardText.slice(0, 300)}..."`);
       }
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
@@ -405,8 +401,6 @@ test.describe('Timeline Page', () => {
           expect(cardText).toMatch(/00:00\s*-\s*11:00/);
           expect(cardText).toMatch(/11h/);
         }
-        
-        console.log(`Overnight Data Gap Card ${i}: "${cardText.slice(0, 300)}..."`);
       }
       
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
@@ -439,8 +433,6 @@ test.describe('Timeline Page', () => {
       
       const moonIconCount = await timelinePage.getMoonIconsCount();
       expect(moonIconCount).toBeGreaterThan(0);
-      
-      console.log(`Multi-day overnight test: ${dateGroupCount} date groups, ${overnightCardCount} overnight cards, ${moonIconCount} moon icons`);
     });
   });
 
@@ -554,11 +546,6 @@ test.describe('Timeline Page', () => {
       
       const uiStayCount = await stayCards.count();
       
-      console.log('UI vs DB comparison:', {
-        dbStays: testData.length,
-        uiStays: uiStayCount
-      });
-      
       expect(uiStayCount).toBeGreaterThanOrEqual(testData.length);
     });
   });
@@ -602,16 +589,12 @@ test.describe('Timeline Page', () => {
       const kyivTotalCards = await overnightStayCards.count();
       expect(kyivTotalCards).toBeGreaterThan(0);
 
-      console.log(`Kyiv timezone: ${kyivTotalCards} overnight stay cards`);
-
       // Get locations visible in Kyiv timezone
       const kyivLocations = [];
       for (let i = 0; i < kyivTotalCards; i++) {
         const locationText = await overnightStayCards.nth(i).locator('.location-name').textContent();
         kyivLocations.push(locationText.trim());
       }
-      console.log(`Kyiv locations: ${kyivLocations.join(', ')}`);
-
       // Change user timezone to New York
       await switchUserTimezone(page, timelinePage, 'America/New_York');
 
