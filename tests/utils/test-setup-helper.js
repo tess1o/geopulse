@@ -651,35 +651,42 @@ export class TestSetupHelper {
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
    * @param {Object} options - Timeline stay options
-   * @param {number} options.geocodingId - Geocoding result ID
+   * @param {number} options.geocodingId - Geocoding result ID (optional)
+   * @param {number} options.favoriteId - Favorite location ID (optional)
    * @param {string} options.coords - Point coordinates (e.g., 'POINT(-74.0060 40.7128)')
    * @param {string} options.locationName - Location name
    * @param {number} options.durationSeconds - Duration in seconds (default: 3600 = 1 hour)
    * @param {string} options.timestampOffset - Timestamp offset (e.g., '2 hours', '4 hours')
+   * @param {string} options.locationSource - Location source ('FAVORITE', 'GEOCODING', or 'HISTORICAL', default: auto-detect)
    * @returns {Promise<number>} - Timeline stay ID
    */
   static async createTimelineStay(dbManager, userId, options) {
     const {
-      geocodingId,
+      geocodingId = null,
+      favoriteId = null,
       coords = 'POINT(-74.0060 40.7128)',
       locationName = 'Test Location',
       durationSeconds = 3600,
-      timestampOffset = '2 hours'
+      timestampOffset = '2 hours',
+      locationSource = null
     } = options;
+
+    // Auto-detect location source if not provided
+    const source = locationSource || (favoriteId ? 'FAVORITE' : 'GEOCODING');
 
     const result = await dbManager.client.query(`
       INSERT INTO timeline_stays (
-        user_id, geocoding_id, timestamp, stay_duration,
+        user_id, geocoding_id, favorite_id, timestamp, stay_duration,
         location, location_name, location_source,
         created_at, last_updated
       )
       VALUES (
-        $1, $2, NOW() - INTERVAL '${timestampOffset}', $3,
-        ST_GeomFromText($4, 4326), $5, 'GEOCODING',
+        $1, $2, $3, NOW() - INTERVAL '${timestampOffset}', $4,
+        ST_GeomFromText($5, 4326), $6, $7,
         NOW(), NOW()
       )
       RETURNING id
-    `, [userId, geocodingId, durationSeconds, coords, locationName]);
+    `, [userId, geocodingId, favoriteId, durationSeconds, coords, locationName, source]);
 
     return result.rows[0].id;
   }
