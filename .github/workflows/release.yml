@@ -513,7 +513,7 @@ jobs:
 
   # Extract artifacts for non-Docker deployments (Proxmox VMs, bare metal, etc.)
   extract-artifacts-amd64:
-    needs: [prepare]
+    needs: [prepare, build-frontend, build-backend-jvm-amd64, build-backend-native-amd64, build-backend-native-amd64-compat]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -522,28 +522,46 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create artifacts directory
         run: mkdir -p artifacts
 
-      - name: Extract frontend static files
+      - name: Extract frontend static files from image
         run: |
-          echo "📦 Extracting frontend static files..."
-          docker build --target build \
-            --output type=local,dest=./temp-frontend \
-            -f frontend/Dockerfile .
+          echo "📦 Extracting frontend from built image..."
 
-          echo "Verifying extracted frontend structure:"
-          ls -la temp-frontend/app/dist/
+          # Pull the frontend image we just built
+          docker pull ${{ env.GHCR_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}
 
+          # Create container without running it
+          CONTAINER_ID=$(docker create ${{ env.GHCR_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }})
+
+          # Copy static files from nginx html directory
+          docker cp $CONTAINER_ID:/usr/share/nginx/html ./temp-frontend
+
+          # Remove container
+          docker rm $CONTAINER_ID
+
+          # Create tarball
           tar -czf artifacts/geopulse-frontend-${{ needs.prepare.outputs.version }}.tar.gz \
-            -C temp-frontend/app/dist .
+            -C temp-frontend .
 
           echo "✅ Frontend: $(du -h artifacts/geopulse-frontend-${{ needs.prepare.outputs.version }}.tar.gz | cut -f1)"
 
-      - name: Extract backend JVM artifacts
+      - name: Extract backend JVM artifacts from image
         run: |
-          echo "📦 Extracting backend JVM artifacts..."
+          echo "📦 Extracting JVM backend from built image..."
+
+          # We need to extract from the BUILD stage, so we do need to rebuild
+          # But we can use cache from the previous build
           docker build --target build \
+            --cache-from type=gha,scope=jvm-amd64 \
             --output type=local,dest=./temp-backend-jvm \
             -f backend/Dockerfile .
 
@@ -557,54 +575,42 @@ jobs:
 
       - name: Extract backend native AMD64 (optimized)
         run: |
-          echo "📦 Extracting backend native AMD64 (x86-64-v3)..."
-          docker build --target build \
-            --platform linux/amd64 \
-            --build-arg VERSION=${{ needs.prepare.outputs.version }}-native \
-            --build-arg QUARKUS_NATIVE_BUILD_ARGS= \
-            --output type=local,dest=./temp-native-amd64 \
-            -f backend/Dockerfile.native .
+          echo "📦 Extracting native AMD64 backend from built image..."
 
-          RUNNER=$(find temp-native-amd64/app/backend/target/ -name "*-runner" -type f | head -n 1)
+          # Pull the native image we just built
+          docker pull ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64
 
-          if [ -z "$RUNNER" ]; then
-            echo "❌ Error: Native runner binary not found!"
-            exit 1
-          fi
+          # Create container without running it
+          CONTAINER_ID=$(docker create ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64)
 
-          if [ ! -f "$RUNNER" ]; then
-            echo "❌ Error: Runner file does not exist: $RUNNER"
-            exit 1
-          fi
+          # Copy the native binary from /work/application
+          docker cp $CONTAINER_ID:/work/application ./artifacts/geopulse-backend-native-amd64-${{ needs.prepare.outputs.version }}
 
-          cp "$RUNNER" artifacts/geopulse-backend-native-amd64-${{ needs.prepare.outputs.version }}
+          # Remove container
+          docker rm $CONTAINER_ID
+
+          # Ensure executable
           chmod +x artifacts/geopulse-backend-native-amd64-${{ needs.prepare.outputs.version }}
 
           echo "✅ Backend Native AMD64: $(du -h artifacts/geopulse-backend-native-amd64-${{ needs.prepare.outputs.version }} | cut -f1)"
 
       - name: Extract backend native AMD64 compatible (x86-64-v2)
         run: |
-          echo "📦 Extracting backend native AMD64 compatible (x86-64-v2)..."
-          docker build --target build \
-            --platform linux/amd64 \
-            --build-arg VERSION=${{ needs.prepare.outputs.version }}-native \
-            --build-arg QUARKUS_NATIVE_BUILD_ARGS=",-march=x86-64-v2" \
-            --output type=local,dest=./temp-native-amd64-compat \
-            -f backend/Dockerfile.native .
+          echo "📦 Extracting native AMD64 compatible backend from built image..."
 
-          RUNNER=$(find temp-native-amd64-compat/app/backend/target/ -name "*-runner" -type f | head -n 1)
+          # Pull the native compat image we just built
+          docker pull ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64-compat
 
-          if [ -z "$RUNNER" ]; then
-            echo "❌ Error: Native runner binary not found!"
-            exit 1
-          fi
+          # Create container without running it
+          CONTAINER_ID=$(docker create ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-amd64-compat)
 
-          if [ ! -f "$RUNNER" ]; then
-            echo "❌ Error: Runner file does not exist: $RUNNER"
-            exit 1
-          fi
+          # Copy the native binary from /work/application
+          docker cp $CONTAINER_ID:/work/application ./artifacts/geopulse-backend-native-amd64-compat-${{ needs.prepare.outputs.version }}
 
-          cp "$RUNNER" artifacts/geopulse-backend-native-amd64-compat-${{ needs.prepare.outputs.version }}
+          # Remove container
+          docker rm $CONTAINER_ID
+
+          # Ensure executable
           chmod +x artifacts/geopulse-backend-native-amd64-compat-${{ needs.prepare.outputs.version }}
 
           echo "✅ Backend Native AMD64 Compat: $(du -h artifacts/geopulse-backend-native-amd64-compat-${{ needs.prepare.outputs.version }} | cut -f1)"
@@ -651,70 +657,59 @@ jobs:
         run: |
           rm -rf temp-*
 
-  # Extract ARM64 native binaries on ARM64 runner
+  # Extract ARM64 native binaries from already-built images
   extract-artifacts-arm64:
-    needs: [prepare]
+    needs: [prepare, build-backend-native-arm64, build-backend-native-arm64-compat]
     runs-on: ubuntu-24.04-arm
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create artifacts directory
         run: mkdir -p artifacts
 
       - name: Extract backend native ARM64 (optimized)
         run: |
-          echo "📦 Extracting backend native ARM64 (armv8-a)..."
-          docker build --target build \
-            --platform linux/arm64 \
-            --build-arg VERSION=${{ needs.prepare.outputs.version }}-native \
-            --build-arg QUARKUS_NATIVE_BUILD_ARGS= \
-            --output type=local,dest=./temp-native-arm64 \
-            -f backend/Dockerfile.native .
+          echo "📦 Extracting native ARM64 backend from built image..."
 
-          RUNNER=$(find temp-native-arm64/app/backend/target/ -name "*-runner" -type f | head -n 1)
+          # Pull the native image we just built
+          docker pull ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64
 
-          if [ -z "$RUNNER" ]; then
-            echo "❌ Error: Native runner binary not found!"
-            exit 1
-          fi
+          # Create container without running it
+          CONTAINER_ID=$(docker create ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64)
 
-          if [ ! -f "$RUNNER" ]; then
-            echo "❌ Error: Runner file does not exist: $RUNNER"
-            exit 1
-          fi
+          # Copy the native binary from /work/application
+          docker cp $CONTAINER_ID:/work/application ./artifacts/geopulse-backend-native-arm64-${{ needs.prepare.outputs.version }}
 
-          cp "$RUNNER" artifacts/geopulse-backend-native-arm64-${{ needs.prepare.outputs.version }}
+          # Remove container
+          docker rm $CONTAINER_ID
+
+          # Ensure executable
           chmod +x artifacts/geopulse-backend-native-arm64-${{ needs.prepare.outputs.version }}
 
           echo "✅ Backend Native ARM64: $(du -h artifacts/geopulse-backend-native-arm64-${{ needs.prepare.outputs.version }} | cut -f1)"
 
       - name: Extract backend native ARM64 compatible (Raspberry Pi)
         run: |
-          echo "📦 Extracting backend native ARM64 compatible (armv8-a+nolse)..."
-          docker build --target build \
-            --platform linux/arm64 \
-            --build-arg VERSION=${{ needs.prepare.outputs.version }}-native \
-            --build-arg QUARKUS_NATIVE_BUILD_ARGS=",-march=armv8-a+nolse" \
-            --output type=local,dest=./temp-native-arm64-compat \
-            -f backend/Dockerfile.native .
+          echo "📦 Extracting native ARM64 compatible backend from built image..."
 
-          RUNNER=$(find temp-native-arm64-compat/app/backend/target/ -name "*-runner" -type f | head -n 1)
+          # Pull the native compat image we just built
+          docker pull ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64-compat
 
-          if [ -z "$RUNNER" ]; then
-            echo "❌ Error: Native runner binary not found!"
-            exit 1
-          fi
+          # Create container without running it
+          CONTAINER_ID=$(docker create ${{ env.GHCR_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-arm64-compat)
 
-          if [ ! -f "$RUNNER" ]; then
-            echo "❌ Error: Runner file does not exist: $RUNNER"
-            exit 1
-          fi
+          # Copy the native binary from /work/application
+          docker cp $CONTAINER_ID:/work/application ./artifacts/geopulse-backend-native-arm64-compat-${{ needs.prepare.outputs.version }}
 
-          cp "$RUNNER" artifacts/geopulse-backend-native-arm64-compat-${{ needs.prepare.outputs.version }}
+          # Remove container
+          docker rm $CONTAINER_ID
+
+          # Ensure executable
           chmod +x artifacts/geopulse-backend-native-arm64-compat-${{ needs.prepare.outputs.version }}
 
           echo "✅ Backend Native ARM64 Compat: $(du -h artifacts/geopulse-backend-native-arm64-compat-${{ needs.prepare.outputs.version }} | cut -f1)"
@@ -753,11 +748,6 @@ jobs:
           name: release-artifacts-arm64
           path: artifacts/
           retention-days: 30
-
-      - name: Cleanup temporary directories
-        if: always()
-        run: |
-          rm -rf temp-*
 
   # Create GitHub Release with all artifacts
   create-github-release:
@@ -818,14 +808,15 @@ jobs:
 
           ### Backend Images
           ```bash
-          # JVM (Multi-arch: AMD64, ARM64)
-          docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
 
           # Native (Multi-arch: AMD64, ARM64) - Optimized for modern CPUs
           docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native
 
           # Native Compatible (Multi-arch) - For older CPUs and Raspberry Pi
           docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-compat
+          
+          # JVM (Multi-arch: AMD64, ARM64)
+          docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
           ```
 
           ### Frontend Image
@@ -835,12 +826,6 @@ jobs:
           ```
 
           ## 📦 Bare Metal / Proxmox Deployment (No Docker)
-
-          ### Quick Installation
-
-          ```bash
-          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/deploy-geopulse.sh | sudo bash -s -- ${{ needs.prepare.outputs.version }}
-          ```
 
           ### Manual Installation
 
@@ -863,29 +848,6 @@ jobs:
 
           **Option 2: JVM Backend** (Requires Java 25+)
           - [`geopulse-backend-jvm-${{ needs.prepare.outputs.version }}.tar.gz`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-backend-jvm-${{ needs.prepare.outputs.version }}.tar.gz) - Works on any platform with Java
-
-          ### System Requirements
-
-          **Minimum (Native Backend)**:
-          - 512 MB RAM (backend only)
-          - 2 GB RAM (with PostgreSQL + PostGIS)
-          - PostgreSQL 12+ with PostGIS extension
-          - Nginx or Apache
-
-          **Minimum (JVM Backend)**:
-          - 1 GB RAM (backend only)
-          - 2.5 GB RAM (with PostgreSQL + PostGIS)
-          - Java 25+ runtime
-          - PostgreSQL 12+ with PostGIS extension
-          - Nginx or Apache
-
-          ### Upgrade from Previous Version
-
-          ```bash
-          curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/scripts/upgrade-geopulse.sh -o upgrade-geopulse.sh
-          chmod +x upgrade-geopulse.sh
-          sudo ./upgrade-geopulse.sh ${{ needs.prepare.outputs.version }}
-          ```
 
           ## ☸️ Kubernetes / Helm
 
@@ -910,10 +872,6 @@ jobs:
           ```
 
           ## 📝 What's Changed
-
-          <!-- Add your release notes here -->
-
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/v{previous}...v${{ needs.prepare.outputs.version }}
           EOF
 
       - name: Validate all artifacts before release
