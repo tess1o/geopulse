@@ -41,6 +41,10 @@ public class TimelineConfigurationProvider {
      * Get the effective timeline configuration for a user.
      * Merges global defaults with user-specific preferences.
      *
+     * NOTE: Path simplification settings are now read from dedicated user columns
+     * (timeline_display_path_*) instead of timeline_preferences JSONB, as they are
+     * display-only settings that don't affect timeline generation.
+     *
      * @param userId the user identifier
      * @return effective timeline configuration
      */
@@ -58,6 +62,21 @@ public class TimelineConfigurationProvider {
         if (user.timelinePreferences != null) {
             TimelineConfig userPrefsAsConfig = convertPreferencesToConfig(user.timelinePreferences);
             fieldRegistry.getRegistry().mergeUserPreferences(baseConfig, userPrefsAsConfig);
+        }
+
+        // Override path simplification settings from dedicated display preference columns
+        // These are display-only settings stored outside of timeline_preferences JSONB
+        if (user.getTimelineDisplayPathSimplificationEnabled() != null) {
+            baseConfig.setPathSimplificationEnabled(user.getTimelineDisplayPathSimplificationEnabled());
+        }
+        if (user.getTimelineDisplayPathSimplificationTolerance() != null) {
+            baseConfig.setPathSimplificationTolerance(user.getTimelineDisplayPathSimplificationTolerance());
+        }
+        if (user.getTimelineDisplayPathMaxPoints() != null) {
+            baseConfig.setPathMaxPoints(user.getTimelineDisplayPathMaxPoints());
+        }
+        if (user.getTimelineDisplayPathAdaptiveSimplification() != null) {
+            baseConfig.setPathAdaptiveSimplification(user.getTimelineDisplayPathAdaptiveSimplification());
         }
 
         return baseConfig;

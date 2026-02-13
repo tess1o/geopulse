@@ -46,19 +46,6 @@ public class UpdateTimelinePreferencesRequest {
     @Min(value = 1, message = "Merge max time gap must be at least 1 minute")
     @Max(value = 720, message = "Merge max time gap must be at most 720 minutes (12 hours)")
     private Integer mergeMaxTimeGapMinutes;
-    
-    // GPS Path Simplification Settings
-    private Boolean pathSimplificationEnabled;
-    
-    @DecimalMin(value = "1.0", message = "Path simplification tolerance must be at least 1.0 meters")
-    @DecimalMax(value = "100.0", message = "Path simplification tolerance must be at most 100.0 meters")
-    private Double pathSimplificationTolerance;
-    
-    @Min(value = 10, message = "Path max points must be at least 10")
-    @Max(value = 1000, message = "Path max points must be at most 1000")
-    private Integer pathMaxPoints;
-    
-    private Boolean pathAdaptiveSimplification;
 
     @Min(value = 1, message = "Data Gap threshold (seconds) must be positive")
     private Integer dataGapThresholdSeconds;

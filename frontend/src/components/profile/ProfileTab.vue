@@ -79,26 +79,6 @@
           </div>
 
           <div class="form-field">
-            <label for="customMapTileUrl" class="form-label">
-              Custom Map Tile URL
-              <i class="pi pi-info-circle" v-tooltip.right="'Optional: Use custom map tiles from providers like MapTiler, Mapbox, etc. Tiles are proxied through GeoPulse to avoid CORS issues.'"></i>
-            </label>
-            <InputText
-              id="customMapTileUrl"
-              v-model="form.customMapTileUrl"
-              placeholder="https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=YOUR_KEY"
-              :invalid="!!errors.customMapTileUrl"
-              class="w-full"
-            />
-            <small v-if="errors.customMapTileUrl" class="error-message">
-              {{ errors.customMapTileUrl }}
-            </small>
-            <small v-else class="help-text">
-              Leave empty to use default OpenStreetMap tiles. URL must contain {z}, {x}, and {y} placeholders.
-            </small>
-          </div>
-
-          <div class="form-field">
             <label for="measureUnit" class="form-label">
               Measurement Unit
               <i class="pi pi-info-circle" v-tooltip.right="'Choose your preferred unit for distance and speed.'"></i>
@@ -203,10 +183,6 @@ const props = defineProps({
     type: String,
     required: true
   },
-  userCustomMapTileUrl: {
-    type: String,
-    default: ''
-  },
   userMeasureUnit: {
     type: String,
     default: 'METRIC'
@@ -226,7 +202,6 @@ const localAvatar = ref('')
 const form = ref({
   fullName: '',
   timezone: '',
-  customMapTileUrl: '',
   measureUnit: 'METRIC', // Default value
   defaultRedirectUrl: '',
   customRedirectUrl: ''
@@ -350,7 +325,6 @@ const hasChanges = computed(() => {
   return form.value.fullName !== props.userName ||
          localAvatar.value !== props.userAvatar ||
          form.value.timezone !== props.userTimezone ||
-         form.value.customMapTileUrl !== props.userCustomMapTileUrl ||
          form.value.measureUnit !== props.userMeasureUnit ||
          effectiveRedirectUrl !== props.userDefaultRedirectUrl
 })
@@ -363,19 +337,6 @@ const validate = () => {
     errors.value.fullName = 'Full name is required'
   } else if (form.value.fullName.trim().length < 2) {
     errors.value.fullName = 'Full name must be at least 2 characters'
-  }
-
-  // Validate custom map tile URL if provided
-  if (form.value.customMapTileUrl && form.value.customMapTileUrl.trim()) {
-    const url = form.value.customMapTileUrl.trim()
-
-    if (!url.toLowerCase().startsWith('http://') && !url.toLowerCase().startsWith('https://')) {
-      errors.value.customMapTileUrl = 'URL must start with http:// or https://'
-    } else if (!url.includes('{z}') || !url.includes('{x}') || !url.includes('{y}')) {
-      errors.value.customMapTileUrl = 'URL must contain {z}, {x}, and {y} placeholders'
-    } else if (url.length > 1000) {
-      errors.value.customMapTileUrl = 'URL is too long (max 1000 characters)'
-    }
   }
 
   // Validate custom redirect URL if "custom" option is selected
@@ -413,7 +374,6 @@ const handleSubmit = async () => {
       fullName: form.value.fullName.trim(),
       avatar: localAvatar.value,
       timezone: form.value.timezone,
-      customMapTileUrl: form.value.customMapTileUrl?.trim() || '',
       measureUnit: form.value.measureUnit,
       defaultRedirectUrl: effectiveRedirectUrl
     })
@@ -425,7 +385,6 @@ const handleSubmit = async () => {
 const handleReset = () => {
   form.value.fullName = props.userName || ''
   form.value.timezone = props.userTimezone || 'UTC'
-  form.value.customMapTileUrl = props.userCustomMapTileUrl || ''
   form.value.measureUnit = props.userMeasureUnit || 'METRIC'
 
   // Check if the stored URL matches any predefined option
@@ -462,7 +421,7 @@ onMounted(() => {
 })
 
 // Watch props changes
-watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userCustomMapTileUrl, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
+watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userMeasureUnit, props.userDefaultRedirectUrl], () => {
   handleReset()
 })
 </script>
