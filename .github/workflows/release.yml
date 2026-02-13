@@ -801,77 +801,9 @@ jobs:
         run: |
           cat > RELEASE_NOTES.md << 'EOF'
           # GeoPulse ${{ needs.prepare.outputs.version }}
-
-          ## 🐳 Docker Images
-
-          All images are multi-architecture (AMD64/ARM64) and available on Docker Hub and GitHub Container Registry.
-
-          ### Backend Images
-          ```bash
-
-          # Native (Multi-arch: AMD64, ARM64) - Optimized for modern CPUs
-          docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native
-
-          # Native Compatible (Multi-arch) - For older CPUs and Raspberry Pi
-          docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-native-compat
           
-          # JVM (Multi-arch: AMD64, ARM64)
-          docker pull ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ needs.prepare.outputs.version }}-jvm
-          ```
-
-          ### Frontend Image
-          ```bash
-          # Multi-arch: AMD64, ARM64
-          docker pull ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ needs.prepare.outputs.version }}
-          ```
-
-          ## 📦 Bare Metal / Proxmox Deployment (No Docker)
-
-          ### Manual Installation
-
-          Download artifacts for your platform:
-
-          #### Frontend (Required, platform-independent)
-          - [`geopulse-frontend-${{ needs.prepare.outputs.version }}.tar.gz`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-frontend-${{ needs.prepare.outputs.version }}.tar.gz) - Static HTML/CSS/JS files
-
-          #### Backend (Choose ONE)
-
-          **Option 1: Native Backend** (Recommended - No Java required, lower memory, faster startup)
-
-          AMD64 (Intel/AMD):
-          - Modern CPUs (x86-64-v3): [`geopulse-backend-native-amd64-${{ needs.prepare.outputs.version }}`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-backend-native-amd64-${{ needs.prepare.outputs.version }})
-          - Older CPUs (x86-64-v2): [`geopulse-backend-native-amd64-compat-${{ needs.prepare.outputs.version }}`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-backend-native-amd64-compat-${{ needs.prepare.outputs.version }})
-
-          ARM64:
-          - Modern ARM64: [`geopulse-backend-native-arm64-${{ needs.prepare.outputs.version }}`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-backend-native-arm64-${{ needs.prepare.outputs.version }})
-          - Raspberry Pi 3/4: [`geopulse-backend-native-arm64-compat-${{ needs.prepare.outputs.version }}`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-backend-native-arm64-compat-${{ needs.prepare.outputs.version }})
-
-          **Option 2: JVM Backend** (Requires Java 25+)
-          - [`geopulse-backend-jvm-${{ needs.prepare.outputs.version }}.tar.gz`](../../releases/download/v${{ needs.prepare.outputs.version }}/geopulse-backend-jvm-${{ needs.prepare.outputs.version }}.tar.gz) - Works on any platform with Java
-
-          ## ☸️ Kubernetes / Helm
-
-          ```bash
-          helm repo add geopulse https://tess1o.github.io/geopulse/charts
-          helm repo update
-          helm install geopulse geopulse/geopulse --version ${{ needs.prepare.outputs.version }}
-          ```
-
-          ## 📚 Documentation
-
-          - [Full Documentation](https://tess1o.github.io/geopulse/)
-          - [Installation Guide](https://tess1o.github.io/geopulse/docs/getting-started/installation)
-          - [Configuration](https://tess1o.github.io/geopulse/docs/system-administration/configuration)
-
-          ## ✅ Verification
-
-          All artifacts include SHA256 checksums. Download [`SHA256SUMS`](../../releases/download/v${{ needs.prepare.outputs.version }}/SHA256SUMS) and verify:
-
-          ```bash
-          sha256sum -c SHA256SUMS
-          ```
-
           ## 📝 What's Changed
+          
           EOF
 
       - name: Validate all artifacts before release
