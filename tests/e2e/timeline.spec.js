@@ -78,8 +78,12 @@ test.describe('Timeline Page', () => {
         await timelinePage.waitForNoDataMessage();
       }
 
-      // Wait a bit more to catch any delayed duplicate calls
-      await page.waitForTimeout(1500);
+      // Wait for network to be completely idle - longer in CI environments
+      await page.waitForLoadState('networkidle');
+
+      // Wait a bit more to catch any delayed duplicate calls (longer in CI)
+      const waitTime = process.env.CI ? 3000 : 1500;
+      await page.waitForTimeout(waitTime);
 
       // Verify each API endpoint was called exactly once
       console.log('=== API Call Summary ===');
@@ -148,8 +152,12 @@ test.describe('Timeline Page', () => {
         await timelinePage.waitForNoDataMessage();
       }
 
-      // Wait to catch any delayed duplicate calls
-      await page.waitForTimeout(1500);
+      // Wait for network to be completely idle - longer in CI environments
+      await page.waitForLoadState('networkidle');
+
+      // Wait to catch any delayed duplicate calls (longer in CI)
+      const waitTime = process.env.CI ? 3000 : 1500;
+      await page.waitForTimeout(waitTime);
 
       // Verify each API endpoint was called exactly once
       console.log('=== API Call Summary (After Redirect) ===');
