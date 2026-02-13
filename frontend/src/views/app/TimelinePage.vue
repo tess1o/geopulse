@@ -143,6 +143,7 @@ const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
 const geolocationError = ref(null)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
+const pendingFetchKey = ref(null) // Track the currently pending fetch
 
 // Large dataset warning state
 const showLargeDatasetWarning = ref(false)
@@ -413,20 +414,33 @@ watch(dateRange, async (newValue) => {
   if (!newValue || !timezone.isValidDataRange(newValue)) return
 
   const [startDate, endDate] = newValue
-  const rangeKey = `${startDate}-${endDate}`
+
+  // Normalize dates to ensure consistent comparison
+  const normalizedStart = new Date(startDate).toISOString()
+  const normalizedEnd = new Date(endDate).toISOString()
+  const rangeKey = `${normalizedStart}-${normalizedEnd}`
 
   // Skip if we've already fetched this range
   if (lastFetchedRange.value === rangeKey && !forceLoadLargeDataset.value) {
+    console.log('Skipping fetch - range already fetched:', rangeKey)
     return
   }
 
-  // Skip if a fetch is already in progress
+  // Skip if the same fetch is already in progress
+  if (isFetching.value && pendingFetchKey.value === rangeKey) {
+    console.warn('Fetch already in progress for range:', rangeKey)
+    return
+  }
+
+  // Skip if ANY fetch is in progress (more conservative)
   if (isFetching.value) {
+    console.warn('Different fetch in progress, skipping:', rangeKey)
     return
   }
 
   // Mark as fetching and set the range before starting async operation
   isFetching.value = true
+  pendingFetchKey.value = rangeKey
   lastFetchedRange.value = rangeKey
 
   try {
@@ -446,6 +460,7 @@ watch(dateRange, async (newValue) => {
     ])
   } finally {
     isFetching.value = false
+    pendingFetchKey.value = null
   }
 }, { immediate: true })
 
