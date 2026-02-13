@@ -130,7 +130,7 @@ public class TimelineConfig {
      * while shorter trips maintain higher accuracy with lower tolerance.
      */
     private Boolean pathAdaptiveSimplification;
-    
+
     /**
      * Maximum time gap in seconds allowed between GPS points before considering it a data gap.
      * When the time difference between two consecutive GPS points exceeds this threshold,

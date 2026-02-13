@@ -8,6 +8,7 @@ export class UserProfilePage {
       securityTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Security"))',
       aiAssistantTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("AI Assistant"))',
       immichTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Immich"))',
+      displayTab: '.p-tabmenu-item:has(.p-tabmenu-item-label:has-text("Display"))',
       
       // Profile Information tab selectors
       profile: {
@@ -26,6 +27,15 @@ export class UserProfilePage {
         avatarOptions: '.avatar-option',
         selectedAvatar: '.avatar-option.active',
         userAvatar: '.user-avatar',
+        errorMessage: '.error-message'
+      },
+
+      // Display tab selectors
+      display: {
+        customMapTileUrlInput: '#customMapTileUrl',
+        pathSimplificationToggle: '.setting-card:has-text("Enable Path Simplification") .p-toggleswitch',
+        saveButton: 'button[type="submit"]:has-text("Save Changes")',
+        resetButton: 'button:has-text("Reset to Defaults")',
         errorMessage: '.error-message'
       },
       
@@ -136,6 +146,14 @@ export class UserProfilePage {
   }
 
   /**
+   * Switch to Display tab
+   */
+  async switchToDisplayTab() {
+    await this.page.locator(this.selectors.displayTab).click();
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
    * Check if Profile Information tab is active
    */
   async isProfileTabActive() {
@@ -167,6 +185,15 @@ export class UserProfilePage {
    */
   async isImmichTabActive() {
     const tabItem = this.page.locator(this.selectors.immichTab);
+    const classes = await tabItem.getAttribute('class');
+    return classes && classes.includes('p-tabmenu-item-active');
+  }
+
+  /**
+   * Check if Display tab is active
+   */
+  async isDisplayTabActive() {
+    const tabItem = this.page.locator(this.selectors.displayTab);
     const classes = await tabItem.getAttribute('class');
     return classes && classes.includes('p-tabmenu-item-active');
   }
@@ -678,6 +705,76 @@ export class UserProfilePage {
   async isImmichConnected() {
     const status = await this.getImmichConnectionStatus();
     return status && status.includes('Connected');
+  }
+
+  // =============================================================================
+  // DISPLAY TAB
+  // =============================================================================
+
+  /**
+   * Fill custom map tile URL
+   */
+  async fillCustomMapTileUrl(url) {
+    await this.page.fill(this.selectors.display.customMapTileUrlInput, url);
+  }
+
+  /**
+   * Get custom map tile URL value
+   */
+  async getCustomMapTileUrl() {
+    return await this.page.inputValue(this.selectors.display.customMapTileUrlInput);
+  }
+
+  /**
+   * Toggle path simplification
+   */
+  async togglePathSimplification() {
+    await this.page.click(this.selectors.display.pathSimplificationToggle);
+  }
+
+  /**
+   * Check if path simplification is enabled
+   */
+  async isPathSimplificationEnabled() {
+    const toggle = this.page.locator(this.selectors.display.pathSimplificationToggle);
+    const classes = await toggle.getAttribute('class');
+    return classes && classes.includes('p-toggleswitch-checked');
+  }
+
+  /**
+   * Save display settings
+   */
+  async saveDisplaySettings() {
+    await this.page.click(this.selectors.display.saveButton);
+  }
+
+  /**
+   * Reset display settings
+   */
+  async resetDisplaySettings() {
+    await this.page.click(this.selectors.display.resetButton);
+  }
+
+  /**
+   * Get display validation error message
+   */
+  async getDisplayErrorMessage() {
+    try {
+      const errorElement = this.page.locator(this.selectors.display.errorMessage).first();
+      if (await errorElement.isVisible({ timeout: 2000 })) {
+        return await errorElement.textContent();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Check if Save button is enabled on Display tab
+   */
+  async isDisplaySaveButtonEnabled() {
+    return !await this.page.isDisabled(this.selectors.display.saveButton);
   }
 
   // =============================================================================

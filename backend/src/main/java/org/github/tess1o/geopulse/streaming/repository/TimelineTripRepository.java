@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.ai.model.AITimelineTripDTO;
 import org.github.tess1o.geopulse.ai.model.AITripStatsDTO;
 import org.github.tess1o.geopulse.ai.model.TripGroupBy;
+import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 
@@ -357,5 +358,41 @@ public class TimelineTripRepository implements PanacheRepository<TimelineTripEnt
 
     public void deleteByUserId(UUID userId) {
         delete("user.id = ?1", userId);
+    }
+
+    /**
+     * Find lightweight trip segment boundaries for GPS path simplification.
+     * Returns only timestamp and duration data, not full trip entities.
+     *
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @return list of trip segment boundaries ordered by timestamp
+     */
+    public List<TimelineSegmentBoundary> findTripSegmentBoundaries(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+                SELECT t.timestamp, t.tripDuration
+                FROM TimelineTripEntity t
+                WHERE t.user.id = ?1 AND (
+                    (t.timestamp >= ?2 AND t.timestamp <= ?3) OR
+                    (t.timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, t.tripDuration, t.timestamp) > ?2)
+                )
+                ORDER BY t.timestamp
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+
+        return results.stream()
+                .map(row -> new TimelineSegmentBoundary(
+                        TimestampUtils.getInstantSafe(row[0]),
+                        (Long) row[1],
+                        TimelineSegmentBoundary.SegmentType.TRIP
+                ))
+                .toList();
     }
 }
