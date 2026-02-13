@@ -106,12 +106,12 @@ const requireAdmin = async (to, from, next) => {
 const routes = [
     {
         path: '/app',
-        component: MainAppPage, // New layout with AppLayout and new components
+        component: MainAppPage,
         children: [
             {path: '', redirect: '/app/timeline'},
-            {path: 'timeline', component: TimelinePage},
-            {path: 'timeline-reports', component: TimelineReportsPage},
-            {path: 'dashboard', component: DashboardPage},
+            {path: 'timeline', component: TimelinePage, meta: {title: 'Timeline'}},
+            {path: 'timeline-reports', component: TimelineReportsPage, meta: {title: 'Timeline Reports'}},
+            {path: 'dashboard', component: DashboardPage, meta: {title: 'Dashboard'}},
         ],
         beforeEnter: requireAuth,
     },
@@ -120,6 +120,7 @@ const routes = [
         path: '/',
         name: 'Home',
         component: Home,
+        meta: {title: 'Home'},
         beforeEnter: async (to, from, next) => {
             const authStore = useAuthStore()
 
@@ -146,170 +147,199 @@ const routes = [
         path: '/login',
         name: 'Login',
         component: LoginPage,
+        meta: {title: 'Login'},
         beforeEnter: requireGuest
     },
     {
         path: '/register',
         name: 'Register',
         component: RegisterPage,
+        meta: {title: 'Register'},
         beforeEnter: requireGuest
     },
     {
         path: '/register/invite/:token',
         name: 'Invitation Register',
-        component: () => import('@/views/InvitationRegisterPage.vue')
+        component: () => import('@/views/InvitationRegisterPage.vue'),
+        meta: {title: 'Complete Registration'}
     },
     {
         path: '/oidc/callback',
         name: 'OidcCallback',
-        component: () => import('@/views/OidcCallback.vue')
+        component: () => import('@/views/OidcCallback.vue'),
+        meta: {title: 'Authenticating...'}
     },
     {
         path: '/app/friends/:tab?',
         name: 'Friends',
         component: FriendsPage,
+        meta: {title: 'Friends'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/profile',
         name: 'User Profile',
         component: UserProfilePage,
+        meta: {title: 'Profile'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/location-sources',
         name: 'Location Sources',
         component: LocationSourcesPage,
+        meta: {title: 'Location Sources'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/timeline/preferences',
         name: 'Timeline Preferences',
         component: TimelinePreferencesPage,
+        meta: {title: 'Timeline Preferences'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/timeline/jobs',
         name: 'Timeline Jobs',
         component: () => import('@/views/app/TimelineJobsListPage.vue'),
+        meta: {title: 'Timeline Jobs'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/timeline/jobs/:jobId',
         name: 'Timeline Job Details',
         component: () => import('@/views/app/TimelineJobDetailsPage.vue'),
+        meta: {title: 'Job Details'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/share-links',
         name: 'Share Links',
         component: ShareLinksPage,
+        meta: {title: 'Share Links'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/data-export-import',
         name: 'Data Export & Import',
         component: DataExportImportPage,
+        meta: {title: 'Data Export & Import'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/debug-export',
         name: 'Debug Export',
         component: DebugExportPage,
+        meta: {title: 'Debug Export'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/debug-import',
         name: 'Debug Import',
         component: DebugImportPage,
+        meta: {title: 'Debug Import'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/help',
         name: 'Help & Support',
         component: HelpPage,
+        meta: {title: 'Help & Support'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/journey-insights',
         name: 'Journey Insights',
         component: JourneyInsights,
+        meta: {title: 'Journey Insights'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/rewind',
         name: 'Rewind',
         component: TimeDigestPage,
+        meta: {title: 'Rewind'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/gps-data',
         name: 'GPS Data',
         component: TechnicalDataPage,
+        meta: {title: 'GPS Data'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/geocoding-management',
         name: 'Geocoding Management',
         component: GeocodingManagementPage,
+        meta: {title: 'Geocoding Management'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/favorites-management',
         name: 'Favorites Management',
         component: FavoritesManagementPage,
+        meta: {title: 'Favorites'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/period-tags',
         name: 'Period Tags',
         component: PeriodTagsManagementPage,
+        meta: {title: 'Period Tags'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/ai/chat',
         name: 'AI Assistant',
         component: AIChatPage,
+        meta: {title: 'AI Assistant'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/place-details/:type/:id',
         name: 'Place Details',
         component: PlaceDetailsPage,
+        meta: {title: 'Place Details'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/location-analytics',
         name: 'Location Analytics',
         component: () => import('@/views/app/LocationAnalyticsPage.vue'),
+        meta: {title: 'Location Analytics'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/location-analytics/city/:name',
         name: 'City Details',
         component: () => import('@/views/app/CityDetailsPage.vue'),
+        meta: {title: 'City Details'},
         beforeEnter: requireAuth
     },
     {
         path: '/app/location-analytics/country/:name',
         name: 'Country Details',
         component: () => import('@/views/app/CountryDetailsPage.vue'),
+        meta: {title: 'Country Details'},
         beforeEnter: requireAuth
     },
     {
         path: '/shared/:linkId',
         name: 'Shared Location',
-        component: SharedLocationPage
+        component: SharedLocationPage,
+        meta: {title: 'Shared Location'}
     },
     {
         path: '/shared-timeline/:linkId',
         name: 'Shared Timeline',
-        component: SharedTimelinePage
+        component: SharedTimelinePage,
+        meta: {title: 'Shared Timeline'}
     },
     {
         path: '/error',
         name: 'Error',
         component: ErrorPage,
+        meta: {title: 'Error'},
         props: route => ({
           errorType: route.query.type || 'generic',
           title: route.query.title,
@@ -322,54 +352,69 @@ const routes = [
         path: '/app/admin',
         name: 'Admin Dashboard',
         component: () => import('@/views/app/admin/AdminDashboardPage.vue'),
+        meta: {title: 'Admin Dashboard'},
         beforeEnter: requireAdmin
     },
     {
         path: '/app/admin/settings',
         name: 'Admin Settings',
         component: () => import('@/views/app/admin/AdminSettingsPage.vue'),
+        meta: {title: 'Admin Settings'},
         beforeEnter: requireAdmin
     },
     {
         path: '/app/admin/users',
         name: 'Admin Users',
         component: () => import('@/views/app/admin/AdminUsersPage.vue'),
+        meta: {title: 'Admin Users'},
         beforeEnter: requireAdmin
     },
     {
         path: '/app/admin/users/:id',
         name: 'Admin User Details',
         component: () => import('@/views/app/admin/AdminUserDetailsPage.vue'),
+        meta: {title: 'User Details'},
         beforeEnter: requireAdmin
     },
     {
         path: '/app/admin/invitations',
         name: 'Admin Invitations',
         component: () => import('@/views/app/admin/AdminInvitationsPage.vue'),
+        meta: {title: 'Admin Invitations'},
         beforeEnter: requireAdmin
     },
     {
         path: '/app/admin/oidc-providers',
         name: 'Admin OIDC Providers',
         component: () => import('@/views/app/admin/AdminOidcProvidersPage.vue'),
+        meta: {title: 'OIDC Providers'},
         beforeEnter: requireAdmin
     },
     {
         path: '/app/admin/audit-logs',
         name: 'Admin Audit Logs',
         component: () => import('@/views/app/admin/AdminAuditLogsPage.vue'),
+        meta: {title: 'Audit Logs'},
         beforeEnter: requireAdmin
     },
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
-        component: NotFoundPage
+        component: NotFoundPage,
+        meta: {title: 'Page Not Found'}
     }
 ]
 
 const router = createRouter({
     history: createWebHistory('/'),
     routes
+})
+
+// Update document title based on route meta
+router.afterEach((to) => {
+    const baseTitle = 'GeoPulse'
+    const pageTitle = to.meta.title
+    document.title = pageTitle ? `${pageTitle} - ${baseTitle}` : baseTitle
 })
 
 export default router
