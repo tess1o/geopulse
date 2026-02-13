@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.simplification.PathSimplificationService;
+import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
@@ -22,14 +23,12 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -85,8 +84,24 @@ public class GpsPointResource {
             Instant end = endTime != null ? Instant.parse(endTime) : Instant.now();
             GpsPointPathDTO path = gpsPointService.getGpsPointPath(user.getId(), start, end);
             TimelineConfig config = configurationProvider.getConfigurationForUser(user.getId());
-            List<? extends GpsPoint> simplifyPath = pathSimplificationService.simplify(path.getPoints(), config);
-            path.setPoints(simplifyPath);
+
+            // Apply segment-aware GPS path simplification
+            List<TimelineSegmentBoundary> segments =
+                    pathSimplificationService.getTimelineSegments(user.getId(), start, end);
+
+            List<? extends GpsPoint> simplifiedPath;
+            if (!segments.isEmpty()) {
+                // Use segment-aware simplification with per-segment minimum point guarantees
+                log.debug("Using segment-aware simplification with {} segments", segments.size());
+                simplifiedPath = pathSimplificationService.simplifyWithSegments(
+                        path.getPoints(), segments, config);
+            } else {
+                // Fallback to legacy simplification if no timeline segments found
+                log.debug("No timeline segments found, falling back to legacy simplification");
+                simplifiedPath = pathSimplificationService.simplify(path.getPoints(), config);
+            }
+
+            path.setPoints(simplifiedPath);
             return Response.ok(ApiResponse.success(path)).build();
         } catch (DateTimeParseException e) {
             return Response.status(Response.Status.BAD_REQUEST)

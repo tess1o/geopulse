@@ -165,6 +165,44 @@ public class UserResource {
     }
 
     /**
+     * Update timeline display preferences.
+     * These settings affect ONLY how timelines are rendered in the UI.
+     * Changing these settings does NOT trigger timeline regeneration.
+     *
+     * @param request the display preferences update request
+     * @return 204 No Content on success
+     */
+    @PUT
+    @RolesAllowed({"USER", "ADMIN"})
+    @Path("/preferences/timeline/display")
+    public Response updateTimelineDisplayPreferences(@Valid UpdateTimelineDisplayPreferencesRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Updating timeline display preferences for user {}", userId);
+        log.debug("Timeline display preferences: {}", request);
+
+        userService.updateTimelineDisplayPreferences(userId, request);
+
+        // No job created - these are display-only settings
+        return Response.noContent().build();
+    }
+
+    /**
+     * Get timeline display preferences for the current user.
+     *
+     * @return the user's timeline display preferences
+     */
+    @GET
+    @RolesAllowed({"USER", "ADMIN"})
+    @Path("/preferences/timeline/display")
+    public Response getTimelineDisplayPreferences() {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.debug("Getting timeline display preferences for user {}", userId);
+
+        TimelineDisplayPreferences preferences = userService.getTimelineDisplayPreferences(userId);
+        return Response.ok(ApiResponse.success(preferences)).build();
+    }
+
+    /**
      * Get current user profile information.
      *
      * @return The current user's profile data

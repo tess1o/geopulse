@@ -66,15 +66,7 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "mergeMaxDistanceMeters", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "mergeMaxTimeGapMinutes", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "pathSimplificationEnabled", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "pathSimplificationTolerance", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "pathMaxPoints", 
-                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @org.mapstruct.Mapping(target = "pathAdaptiveSimplification", 
+    @org.mapstruct.Mapping(target = "mergeMaxTimeGapMinutes",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "dataGapThresholdSeconds",
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -173,10 +165,6 @@ public interface TimelinePreferencesMapper {
                     .isMergeEnabled(fromImport.getIsMergeEnabled())
                     .mergeMaxDistanceMeters(fromImport.getMergeMaxDistanceMeters())
                     .mergeMaxTimeGapMinutes(fromImport.getMergeMaxTimeGapMinutes())
-                    .pathSimplificationEnabled(fromImport.getPathSimplificationEnabled())
-                    .pathSimplificationTolerance(fromImport.getPathSimplificationTolerance())
-                    .pathMaxPoints(fromImport.getPathMaxPoints())
-                    .pathAdaptiveSimplification(fromImport.getPathAdaptiveSimplification())
                     .dataGapThresholdSeconds(fromImport.getDataGapThresholdSeconds())
                     .dataGapMinDurationSeconds(fromImport.getDataGapMinDurationSeconds())
                     .gapStayInferenceEnabled(fromImport.getGapStayInferenceEnabled())
@@ -226,10 +214,6 @@ public interface TimelinePreferencesMapper {
                 .isMergeEnabled(existing.getIsMergeEnabled())
                 .mergeMaxDistanceMeters(existing.getMergeMaxDistanceMeters())
                 .mergeMaxTimeGapMinutes(existing.getMergeMaxTimeGapMinutes())
-                .pathSimplificationEnabled(existing.getPathSimplificationEnabled())
-                .pathSimplificationTolerance(existing.getPathSimplificationTolerance())
-                .pathMaxPoints(existing.getPathMaxPoints())
-                .pathAdaptiveSimplification(existing.getPathAdaptiveSimplification())
                 .dataGapThresholdSeconds(existing.getDataGapThresholdSeconds())
                 .dataGapMinDurationSeconds(existing.getDataGapMinDurationSeconds())
                 .gapStayInferenceEnabled(existing.getGapStayInferenceEnabled())

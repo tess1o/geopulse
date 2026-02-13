@@ -510,6 +510,10 @@ public class UserService {
 
     /**
      * Check if the update contains structural timeline parameters.
+     *
+     * NOTE: Path simplification settings have been removed from this check as they are now
+     * display-only settings that don't affect timeline generation. They are stored in separate
+     * columns and updated via updateTimelineDisplayPreferences() method.
      */
     private boolean hasStructuralParameters(UpdateTimelinePreferencesRequest update) {
         return update.getStaypointVelocityThreshold() != null ||
@@ -522,10 +526,6 @@ public class UserService {
                 update.getIsMergeEnabled() != null ||
                 update.getMergeMaxDistanceMeters() != null ||
                 update.getMergeMaxTimeGapMinutes() != null ||
-                update.getPathSimplificationEnabled() != null ||
-                update.getPathSimplificationTolerance() != null ||
-                update.getPathMaxPoints() != null ||
-                update.getPathAdaptiveSimplification() != null ||
                 update.getDataGapThresholdSeconds() != null ||
                 update.getDataGapMinDurationSeconds() != null ||
                 update.getGapStayInferenceEnabled() != null ||
@@ -536,5 +536,69 @@ public class UserService {
                 update.getGapTripInferenceMaxGapHours() != null ||
                 update.getGapTripInferenceMinDistanceMeters() != null ||
                 update.getGapTripInferenceMinGapHours() != null;
+    }
+
+    /**
+     * Update timeline display preferences.
+     * These settings affect ONLY how timelines are rendered in the UI.
+     * Changing these settings does NOT trigger timeline regeneration.
+     *
+     * @param userId the user ID
+     * @param request the display preferences update request
+     */
+    @Transactional
+    public void updateTimelineDisplayPreferences(UUID userId, UpdateTimelineDisplayPreferencesRequest request) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new UserNotFoundException("User not found");
+        }
+
+        // Update custom map tile URL if provided
+        if (request.getCustomMapTileUrl() != null) {
+            validateCustomMapTileUrl(request.getCustomMapTileUrl());
+            user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
+            log.debug("Updated custom map tile URL for user {}", userId);
+        }
+
+        // Update display preference columns (no event firing, no regeneration)
+        if (request.getPathSimplificationEnabled() != null) {
+            user.setTimelineDisplayPathSimplificationEnabled(request.getPathSimplificationEnabled());
+        }
+        if (request.getPathSimplificationTolerance() != null) {
+            user.setTimelineDisplayPathSimplificationTolerance(request.getPathSimplificationTolerance());
+        }
+        if (request.getPathMaxPoints() != null) {
+            user.setTimelineDisplayPathMaxPoints(request.getPathMaxPoints());
+        }
+        if (request.getPathAdaptiveSimplification() != null) {
+            user.setTimelineDisplayPathAdaptiveSimplification(request.getPathAdaptiveSimplification());
+        }
+
+        log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
+    }
+
+    /**
+     * Get timeline display preferences for a user.
+     *
+     * @param userId the user ID
+     * @return the user's timeline display preferences with defaults applied for null values
+     */
+    public TimelineDisplayPreferences getTimelineDisplayPreferences(UUID userId) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new UserNotFoundException("User not found");
+        }
+
+        return TimelineDisplayPreferences.builder()
+                .customMapTileUrl(user.getCustomMapTileUrl())
+                .pathSimplificationEnabled(user.getTimelineDisplayPathSimplificationEnabled() != null
+                        ? user.getTimelineDisplayPathSimplificationEnabled() : true)
+                .pathSimplificationTolerance(user.getTimelineDisplayPathSimplificationTolerance() != null
+                        ? user.getTimelineDisplayPathSimplificationTolerance() : 15.0)
+                .pathMaxPoints(user.getTimelineDisplayPathMaxPoints() != null
+                        ? user.getTimelineDisplayPathMaxPoints() : 0)
+                .pathAdaptiveSimplification(user.getTimelineDisplayPathAdaptiveSimplification() != null
+                        ? user.getTimelineDisplayPathAdaptiveSimplification() : true)
+                .build();
     }
 }

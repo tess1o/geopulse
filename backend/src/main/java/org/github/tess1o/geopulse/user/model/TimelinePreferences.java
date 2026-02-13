@@ -22,13 +22,7 @@ public class TimelinePreferences {
     private Boolean isMergeEnabled;
     private Integer mergeMaxDistanceMeters;
     private Integer mergeMaxTimeGapMinutes;
-    
-    // GPS Path Simplification Settings
-    private Boolean pathSimplificationEnabled;
-    private Double pathSimplificationTolerance;
-    private Integer pathMaxPoints;
-    private Boolean pathAdaptiveSimplification;
-    
+
     // Data Gap Detection Settings
     private Integer dataGapThresholdSeconds;
     private Integer dataGapMinDurationSeconds;

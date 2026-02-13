@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.github.tess1o.geopulse.ai.model.AIStayStatsDTO;
 import org.github.tess1o.geopulse.ai.model.AITimelineStayDTO;
 import org.github.tess1o.geopulse.ai.model.StayGroupBy;
+import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 
@@ -1356,5 +1357,41 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
                 .getSingleResult();
 
         return new Object[]{visitsThisWeek, visitsThisMonth, visitsThisYear};
+    }
+
+    /**
+     * Find lightweight stay segment boundaries for GPS path simplification.
+     * Returns only timestamp and duration data, not full stay entities.
+     *
+     * @param userId    user ID
+     * @param startTime start of time range
+     * @param endTime   end of time range
+     * @return list of stay segment boundaries ordered by timestamp
+     */
+    public List<TimelineSegmentBoundary> findStaySegmentBoundaries(UUID userId, Instant startTime, Instant endTime) {
+        String query = """
+                SELECT s.timestamp, s.stayDuration
+                FROM TimelineStayEntity s
+                WHERE s.user.id = ?1 AND (
+                    (s.timestamp >= ?2 AND s.timestamp <= ?3) OR
+                    (s.timestamp < ?2 AND FUNCTION('TIMESTAMPADD', SECOND, s.stayDuration, s.timestamp) > ?2)
+                )
+                ORDER BY s.timestamp
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = getEntityManager().createQuery(query)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+
+        return results.stream()
+                .map(row -> new TimelineSegmentBoundary(
+                        TimestampUtils.getInstantSafe(row[0]),
+                        (Long) row[1],
+                        TimelineSegmentBoundary.SegmentType.STAY
+                ))
+                .toList();
     }
 }

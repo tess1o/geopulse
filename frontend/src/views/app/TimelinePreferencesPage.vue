@@ -124,12 +124,6 @@
             v-if="activeTab === 'merging'"
             v-model="prefs"
           />
-
-          <!-- GPS Path Simplification Tab -->
-          <GpsPathSimplificationTab
-            v-if="activeTab === 'pathsimplification'"
-            v-model="prefs"
-          />
         </TabContainer>
 
         <!-- Confirm Dialog -->
@@ -165,7 +159,6 @@ import StayPointDetectionTab from '@/components/timeline-preferences/StayPointDe
 import TripClassificationTab from '@/components/timeline-preferences/TripClassificationTab.vue'
 import GpsGapsDetectionTab from '@/components/timeline-preferences/GpsGapsDetectionTab.vue'
 import StayPointMergingTab from '@/components/timeline-preferences/StayPointMergingTab.vue'
-import GpsPathSimplificationTab from '@/components/timeline-preferences/GpsPathSimplificationTab.vue'
 
 // Custom components
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -227,11 +220,6 @@ const tabItems = ref([
     label: 'Stay Point Merging',
     icon: 'pi pi-sitemap',
     key: 'merging'
-  },
-  {
-    label: 'GPS Path Simplification',
-    icon: 'pi pi-share-alt',
-    key: 'pathsimplification'
   }
 ])
 
@@ -370,14 +358,17 @@ const hasClassificationParameters = (changes) => {
   return classificationFields.some(field => field in changes)
 }
 
+/**
+ * Check if changes contain structural parameters that require timeline regeneration.
+ * NOTE: Path simplification fields removed - they are now display-only settings
+ * managed via User Profile > Timeline Display tab.
+ */
 const hasStructuralParameters = (changes) => {
   const structuralFields = [
     'staypointVelocityThreshold', 'staypointRadiusMeters',
     'staypointMinDurationMinutes', 'tripDetectionAlgorithm',
     'useVelocityAccuracy', 'staypointMaxAccuracyThreshold', 'staypointMinAccuracyRatio',
     'isMergeEnabled', 'mergeMaxDistanceMeters', 'mergeMaxTimeGapMinutes',
-    'pathSimplificationEnabled', 'pathSimplificationTolerance',
-    'pathMaxPoints', 'pathAdaptiveSimplification',
     'dataGapThresholdSeconds', 'dataGapMinDurationSeconds',
     'gapStayInferenceEnabled', 'gapStayInferenceMaxGapHours',
     'gapTripInferenceEnabled', 'gapTripInferenceMinDistanceMeters',

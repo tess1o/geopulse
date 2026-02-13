@@ -100,6 +100,20 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "default_redirect_url", length = 1000)
     private String defaultRedirectUrl;
 
+    // Timeline Display Preferences - affect ONLY UI rendering, not timeline generation
+    // Timeline Display Preferences - affect ONLY UI rendering, not timeline generation
+    @Column(name = "timeline_display_path_simplification_enabled")
+    private Boolean timelineDisplayPathSimplificationEnabled;
+
+    @Column(name = "timeline_display_path_simplification_tolerance")
+    private Double timelineDisplayPathSimplificationTolerance;
+
+    @Column(name = "timeline_display_path_max_points")
+    private Integer timelineDisplayPathMaxPoints;
+
+    @Column(name = "timeline_display_path_adaptive_simplification")
+    private Boolean timelineDisplayPathAdaptiveSimplification;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

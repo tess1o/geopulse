@@ -22,6 +22,7 @@ import org.github.tess1o.geopulse.gps.integrations.owntracks.model.Configuration
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.StatusMessage;
 import org.github.tess1o.geopulse.gps.model.*;
+import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 
 @RegisterForReflection(targets = {
         GpsPointEntity.class,
@@ -84,6 +85,8 @@ import org.github.tess1o.geopulse.gps.model.*;
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonPoint.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonLineString.class,
         org.github.tess1o.geopulse.gps.integrations.geojson.model.GeoJsonProperties.class,
+        TimelineSegmentBoundary.class,
+        TimelineSegmentBoundary.SegmentType.class
 })
 public class GpsNativeConfig {
 }

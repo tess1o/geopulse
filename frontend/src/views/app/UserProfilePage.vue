@@ -50,6 +50,7 @@ import ProfileTab from '@/components/profile/ProfileTab.vue'
 import SecurityTab from '@/components/profile/SecurityTab.vue'
 import AIAssistantTab from '@/components/profile/AIAssistantTab.vue'
 import ImmichTab from '@/components/profile/ImmichTab.vue'
+import TimelineDisplayTab from '@/components/profile/TimelineDisplayTab.vue'
 
 // Store
 import { useAuthStore } from '@/stores/auth'
@@ -79,6 +80,14 @@ const aiSettings = ref({
   customSystemMessage: null,
 })
 
+// Timeline Display Preferences state
+const timelineDisplayPrefs = ref({
+  pathSimplificationEnabled: true,
+  pathSimplificationTolerance: 15.0,
+  pathMaxPoints: 0,
+  pathAdaptiveSimplification: true
+})
+
 // Tab configuration
 const tabItems = ref([
   {
@@ -90,6 +99,11 @@ const tabItems = ref([
     label: 'Security',
     icon: 'pi pi-shield',
     key: 'security'
+  },
+  {
+    label: 'Display',
+    icon: 'pi pi-eye',
+    key: 'timelineDisplay'
   },
   {
     label: 'AI Assistant',
@@ -116,7 +130,6 @@ const currentTabComponent = computed(() => {
         userEmail: userEmail.value,
         userAvatar: userAvatar.value,
         userTimezone: userTimezone.value,
-        userCustomMapTileUrl: customMapTileUrl.value || '',
         userMeasureUnit: measureUnit.value || 'METRIC',
         userDefaultRedirectUrl: defaultRedirectUrl.value || ''
       },
@@ -131,6 +144,15 @@ const currentTabComponent = computed(() => {
       },
       handlers: {
         onSave: handlePasswordSave
+      }
+    },
+    timelineDisplay: {
+      component: TimelineDisplayTab,
+      props: {
+        initialPreferences: timelineDisplayPrefs.value
+      },
+      handlers: {
+        onSave: handleTimelineDisplaySave
       }
     },
     ai: {
@@ -191,7 +213,7 @@ const handleProfileSave = async (data) => {
       data.fullName,
       data.avatar,
       data.timezone,
-      data.customMapTileUrl,
+      null, // customMapTileUrl - now handled in Timeline Display tab
       data.measureUnit,
       data.defaultRedirectUrl,
       userId.value
@@ -211,6 +233,45 @@ const handleProfileSave = async (data) => {
       life: 5000
     })
     throw error // Re-throw to let component handle loading state
+  }
+}
+
+// Timeline Display Save Handler
+const handleTimelineDisplaySave = async (displayPrefs) => {
+  try {
+    await apiService.put('/users/preferences/timeline/display', displayPrefs)
+
+    // Update local state
+    timelineDisplayPrefs.value = { ...displayPrefs }
+
+    // Update custom map tile URL in auth store if it changed
+    if (displayPrefs.customMapTileUrl !== undefined) {
+      // Update the store directly to reflect the change in UI
+      if (authStore.user) {
+        authStore.user.customMapTileUrl = displayPrefs.customMapTileUrl
+      }
+      // Also update localStorage
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      userInfo.customMapTileUrl = displayPrefs.customMapTileUrl
+      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Display Settings Updated',
+      detail: 'Your timeline display preferences have been saved. Changes are visible immediately.',
+      life: 3000
+    })
+
+    return true // Success
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: getErrorMessage(error),
+      life: 5000
+    })
+    return false // Failure
   }
 }
 
@@ -324,6 +385,26 @@ const loadAISettings = async () => {
   }
 }
 
+// Load Timeline Display Preferences
+const loadTimelineDisplayPreferences = async () => {
+  try {
+    const response = await apiService.get('/users/preferences/timeline/display')
+    const data = response.data || response
+
+    if (data) {
+      timelineDisplayPrefs.value = {
+        customMapTileUrl: data.customMapTileUrl || '',
+        pathSimplificationEnabled: data.pathSimplificationEnabled ?? true,
+        pathSimplificationTolerance: data.pathSimplificationTolerance ?? 15.0,
+        pathMaxPoints: data.pathMaxPoints ?? 0,
+        pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load timeline display preferences:', error)
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   // Fetch fresh profile data from backend first
@@ -350,9 +431,12 @@ onMounted(async () => {
   // Load AI settings
   await loadAISettings()
 
+  // Load Timeline Display Preferences
+  await loadTimelineDisplayPreferences()
+
   // Handle tab query parameter
   const tabParam = route.query.tab
-  if (tabParam && ['profile', 'security', 'ai', 'immich'].includes(tabParam)) {
+  if (tabParam && ['profile', 'security', 'timelineDisplay', 'ai', 'immich'].includes(tabParam)) {
     activeTab.value = tabParam
   }
 })

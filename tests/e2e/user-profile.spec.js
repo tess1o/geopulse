@@ -495,21 +495,31 @@ test.describe('User Profile Management', () => {
 
       // Should start on profile tab
       expect(await profilePage.isProfileTabActive()).toBe(true);
-      
+
       // Switch to security tab
       await profilePage.switchToSecurityTab();
       expect(await profilePage.isSecurityTabActive()).toBe(true);
       expect(await profilePage.isProfileTabActive()).toBe(false);
-      
+
+      // Switch to AI Assistant tab
+      await profilePage.switchToAiAssistantTab();
+      expect(await profilePage.isAiAssistantTabActive()).toBe(true);
+      expect(await profilePage.isSecurityTabActive()).toBe(false);
+
       // Switch to immich tab
       await profilePage.switchToImmichTab();
       expect(await profilePage.isImmichTabActive()).toBe(true);
-      expect(await profilePage.isSecurityTabActive()).toBe(false);
-      
+      expect(await profilePage.isAiAssistantTabActive()).toBe(false);
+
+      // Switch to display tab
+      await profilePage.switchToDisplayTab();
+      expect(await profilePage.isDisplayTabActive()).toBe(true);
+      expect(await profilePage.isImmichTabActive()).toBe(false);
+
       // Switch back to profile tab
       await profilePage.switchToProfileTab();
       expect(await profilePage.isProfileTabActive()).toBe(true);
-      expect(await profilePage.isImmichTabActive()).toBe(false);
+      expect(await profilePage.isDisplayTabActive()).toBe(false);
     });
 
     test('should preserve form data when switching between tabs', async ({page, dbManager}) => {
@@ -518,26 +528,361 @@ test.describe('User Profile Management', () => {
 
       // Make changes in profile tab
       await profilePage.fillProfileForm(testName);
-      
+
       // Switch to security tab and back
       await profilePage.switchToSecurityTab();
       await profilePage.switchToProfileTab();
-      
+
       // Verify profile data is preserved
       expect(await profilePage.getFullNameValue()).toBe(testName);
-      
+
       // Switch to immich tab
       await profilePage.switchToImmichTab();
       await profilePage.toggleImmichIntegration();
       await profilePage.fillImmichForm('https://test.com', 'test-key');
-      
+
       // Switch to profile and back to immich
       await profilePage.switchToProfileTab();
       await profilePage.switchToImmichTab();
-      
+
       // Verify immich data is preserved
       expect(await profilePage.isImmichIntegrationEnabled()).toBe(true);
       expect(await profilePage.getImmichServerUrl()).toBe('https://test.com');
+    });
+  });
+
+  test.describe('Display Tab', () => {
+    test('should switch to display tab correctly', async ({page, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+      // Switch to display tab
+      await profilePage.switchToDisplayTab();
+
+      // Verify display tab is active
+      expect(await profilePage.isDisplayTabActive()).toBe(true);
+      expect(await profilePage.isProfileTabActive()).toBe(false);
+
+      // Verify info banner is displayed
+      const infoBanner = page.locator('.info-banner');
+      expect(await infoBanner.isVisible()).toBe(true);
+      expect(await infoBanner.textContent()).toContain('Display Settings Only');
+    });
+
+    test.describe('Custom Map Tile URL', () => {
+      test('should display custom map tile URL input', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // Verify custom map tile URL input is present and empty by default
+        const customMapTileUrl = await profilePage.getCustomMapTileUrl();
+        expect(customMapTileUrl).toBe('');
+      });
+
+      test('should allow setting valid custom map tile URL', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        const validUrl = 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=YOUR_KEY';
+
+        // Fill custom map tile URL
+        await profilePage.fillCustomMapTileUrl(validUrl);
+
+        // Save settings
+        await profilePage.saveDisplaySettings();
+        await profilePage.waitForSuccessToast();
+
+        // Verify URL is saved
+        expect(await profilePage.getCustomMapTileUrl()).toBe(validUrl);
+
+        // Reload and verify persistence
+        await page.reload();
+        await profilePage.waitForPageLoad();
+        await profilePage.switchToDisplayTab();
+
+        expect(await profilePage.getCustomMapTileUrl()).toBe(validUrl);
+      });
+
+      test('should validate URL must contain {z}, {x}, {y} placeholders', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        const invalidUrl = 'https://api.maptiler.com/maps/streets/tile.png';
+
+        // Fill invalid URL (missing placeholders)
+        await profilePage.fillCustomMapTileUrl(invalidUrl);
+
+        // Try to save
+        await profilePage.saveDisplaySettings();
+
+        // Should show validation error
+        const errorMessage = await profilePage.getDisplayErrorMessage();
+        expect(errorMessage).toBeTruthy();
+        expect(errorMessage).toContain('must contain {z}, {x}, and {y} placeholders');
+      });
+
+      test('should validate URL must use HTTP or HTTPS protocol', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        const invalidUrl = 'ftp://example.com/tiles/{z}/{x}/{y}.png';
+
+        // Fill invalid URL (wrong protocol)
+        await profilePage.fillCustomMapTileUrl(invalidUrl);
+
+        // Try to save
+        await profilePage.saveDisplaySettings();
+
+        // Should show validation error
+        const errorMessage = await profilePage.getDisplayErrorMessage();
+        expect(errorMessage).toBeTruthy();
+        expect(errorMessage).toContain('must use HTTP or HTTPS protocol');
+      });
+
+      test('should reject dangerous protocols (javascript:, data:, file:)', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        const dangerousUrls = [
+          'javascript:alert("xss")/{z}/{x}/{y}',
+          'data:text/html,<script>alert("xss")</script>/{z}/{x}/{y}',
+          'file:///etc/passwd/{z}/{x}/{y}'
+        ];
+
+        for (const dangerousUrl of dangerousUrls) {
+          await profilePage.fillCustomMapTileUrl(dangerousUrl);
+          await profilePage.saveDisplaySettings();
+
+          const errorMessage = await profilePage.getDisplayErrorMessage();
+          expect(errorMessage).toBeTruthy();
+          // These URLs don't start with http:// or https:// so they fail the protocol check first
+          expect(errorMessage).toContain('URL must use HTTP or HTTPS protocol');
+        }
+      });
+
+      test('should reject URLs with path traversal', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        const pathTraversalUrl = 'https://example.com/../../../etc/passwd/{z}/{x}/{y}';
+
+        // Fill URL with path traversal
+        await profilePage.fillCustomMapTileUrl(pathTraversalUrl);
+
+        // Try to save
+        await profilePage.saveDisplaySettings();
+
+        // Should show validation error
+        const errorMessage = await profilePage.getDisplayErrorMessage();
+        expect(errorMessage).toBeTruthy();
+        expect(errorMessage).toContain('Invalid URL format');
+      });
+
+      test('should allow clearing custom map tile URL', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // First set a URL
+        const validUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        await profilePage.fillCustomMapTileUrl(validUrl);
+        await profilePage.saveDisplaySettings();
+        await profilePage.waitForSuccessToast();
+
+        // Clear the URL
+        await profilePage.fillCustomMapTileUrl('');
+        await profilePage.saveDisplaySettings();
+        await profilePage.waitForSuccessToast();
+
+        // Verify URL is cleared
+        expect(await profilePage.getCustomMapTileUrl()).toBe('');
+      });
+    });
+
+    test.describe('GPS Path Simplification', () => {
+      test('should display path simplification settings', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // Verify GPS Path Simplification section is present
+        const section = page.locator('text=GPS Path Simplification');
+        expect(await section.isVisible()).toBe(true);
+
+        // Verify path simplification toggle is present
+        const toggleCard = page.locator('text=Enable Path Simplification');
+        expect(await toggleCard.isVisible()).toBe(true);
+      });
+
+      test('should enable and disable path simplification', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // Path simplification should be enabled by default
+        const initialState = await profilePage.isPathSimplificationEnabled();
+        expect(initialState).toBe(true);
+
+        // Disable path simplification
+        await profilePage.togglePathSimplification();
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(false);
+
+        // Enable it again
+        await profilePage.togglePathSimplification();
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(true);
+      });
+
+      test('should show/hide additional settings when toggling path simplification', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // When enabled, additional settings should be visible
+        const toleranceCard = page.locator('text=Simplification Tolerance');
+        const maxPointsCard = page.locator('text=Maximum Points');
+        const adaptiveCard = page.locator('text=Adaptive Simplification');
+
+        // Should be visible by default (enabled)
+        expect(await toleranceCard.isVisible()).toBe(true);
+        expect(await maxPointsCard.isVisible()).toBe(true);
+        expect(await adaptiveCard.isVisible()).toBe(true);
+
+        // Disable path simplification
+        await profilePage.togglePathSimplification();
+
+        // Additional settings should be hidden
+        expect(await toleranceCard.isVisible()).toBe(false);
+        expect(await maxPointsCard.isVisible()).toBe(false);
+        expect(await adaptiveCard.isVisible()).toBe(false);
+      });
+
+      test('should save path simplification settings', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // Toggle path simplification off
+        await profilePage.togglePathSimplification();
+
+        // Save settings
+        await profilePage.saveDisplaySettings();
+        await profilePage.waitForSuccessToast();
+
+        // Reload and verify persistence
+        await page.reload();
+        await profilePage.waitForPageLoad();
+        await profilePage.switchToDisplayTab();
+
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(false);
+      });
+
+      test('should reset display settings to defaults', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // Make some changes
+        const customUrl = 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=TEST';
+        await profilePage.fillCustomMapTileUrl(customUrl);
+        await profilePage.togglePathSimplification(); // Disable it
+
+        // Verify changes
+        expect(await profilePage.getCustomMapTileUrl()).toBe(customUrl);
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(false);
+
+        // Reset to defaults
+        await profilePage.resetDisplaySettings();
+
+        // Verify defaults are restored
+        expect(await profilePage.getCustomMapTileUrl()).toBe('');
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(true);
+      });
+
+      test('should persist all settings after save and reload', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        await profilePage.switchToDisplayTab();
+
+        // Set custom map tile URL
+        const customUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+        await profilePage.fillCustomMapTileUrl(customUrl);
+
+        // Keep path simplification enabled (default)
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(true);
+
+        // Save settings
+        await profilePage.saveDisplaySettings();
+        await profilePage.waitForSuccessToast();
+
+        // Reload page
+        await page.reload();
+        await profilePage.waitForPageLoad();
+        await profilePage.switchToDisplayTab();
+
+        // Verify all settings persisted
+        expect(await profilePage.getCustomMapTileUrl()).toBe(customUrl);
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(true);
+      });
+    });
+
+    test.describe('Tab Navigation', () => {
+      test('should navigate between Display tab and other tabs', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        // Default tab should be Profile
+        expect(await profilePage.isProfileTabActive()).toBe(true);
+
+        // Switch to Display tab
+        await profilePage.switchToDisplayTab();
+        expect(await profilePage.isDisplayTabActive()).toBe(true);
+        expect(await profilePage.isProfileTabActive()).toBe(false);
+
+        // Switch to Security tab
+        await profilePage.switchToSecurityTab();
+        expect(await profilePage.isSecurityTabActive()).toBe(true);
+        expect(await profilePage.isDisplayTabActive()).toBe(false);
+
+        // Switch back to Display
+        await profilePage.switchToDisplayTab();
+        expect(await profilePage.isDisplayTabActive()).toBe(true);
+        expect(await profilePage.isSecurityTabActive()).toBe(false);
+
+        // Switch to AI Assistant tab
+        await profilePage.switchToAiAssistantTab();
+        expect(await profilePage.isAiAssistantTabActive()).toBe(true);
+        expect(await profilePage.isDisplayTabActive()).toBe(false);
+
+        // Switch back to Display
+        await profilePage.switchToDisplayTab();
+        expect(await profilePage.isDisplayTabActive()).toBe(true);
+      });
+
+      test('should preserve Display tab changes when navigating tabs', async ({page, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+
+        // Switch to Display tab
+        await profilePage.switchToDisplayTab();
+
+        // Make changes
+        const customUrl = 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=TEST';
+        await profilePage.fillCustomMapTileUrl(customUrl);
+        await profilePage.togglePathSimplification();
+
+        // Switch to another tab
+        await profilePage.switchToSecurityTab();
+
+        // Switch back to Display
+        await profilePage.switchToDisplayTab();
+
+        // Verify changes are preserved
+        expect(await profilePage.getCustomMapTileUrl()).toBe(customUrl);
+        expect(await profilePage.isPathSimplificationEnabled()).toBe(false);
+      });
     });
   });
 
@@ -701,265 +1046,4 @@ test.describe('User Profile Management', () => {
     });
   });
 
-  test.describe('Default Redirect URL', () => {
-    test('should display default redirect URL dropdown correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      // Verify default redirect URL dropdown is present
-      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
-      // Should be null or empty initially
-      expect(selectedValue === null || selectedValue === '' || selectedValue === 'Select your default page').toBe(true);
-    });
-
-    test('should allow selecting predefined default redirect URL', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      // Select Dashboard from dropdown
-      const redirectOption = 'Dashboard';
-      await profilePage.selectDefaultRedirectUrl(redirectOption);
-
-      // Verify dropdown shows selected option
-      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
-      expect(selectedValue).toBe(redirectOption);
-
-      // Save changes
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Verify localStorage is updated
-      const localStorageValue = await profilePage.getDefaultRedirectUrlFromLocalStorage();
-      expect(localStorageValue).toBe('/app/dashboard');
-
-      // Reload and verify persistence
-      await page.reload();
-      await profilePage.waitForPageLoad();
-
-      const reloadedValue = await profilePage.getSelectedDefaultRedirectUrl();
-      expect(reloadedValue).toBe(redirectOption);
-    });
-
-    test('should show custom URL input when "Custom URL..." is selected', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      // Initially custom input should not be visible
-      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(false);
-
-      // Select "Custom URL..." option
-      await profilePage.selectDefaultRedirectUrl('Custom URL...');
-
-      // Now custom input should be visible
-      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(true);
-    });
-
-    test('should save and use custom redirect URL', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      const customUrl = '/app/journey-insights';
-
-      // Select custom URL option
-      await profilePage.selectDefaultRedirectUrl('Custom URL...');
-      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(true);
-
-      // Fill custom URL
-      await profilePage.fillCustomRedirectUrl(customUrl);
-
-      // Save changes
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Verify localStorage is updated with custom URL
-      const localStorageValue = await profilePage.getDefaultRedirectUrlFromLocalStorage();
-      expect(localStorageValue).toBe(customUrl);
-    });
-
-    test('should validate custom redirect URL - must start with /', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      const invalidUrl = 'app/dashboard'; // Missing leading /
-
-      // Select custom URL option
-      await profilePage.selectDefaultRedirectUrl('Custom URL...');
-
-      // Fill invalid custom URL
-      await profilePage.fillCustomRedirectUrl(invalidUrl);
-
-      // Try to save
-      await profilePage.saveProfile();
-
-      // Should show validation error
-      const errorMessage = await profilePage.getProfileErrorMessage();
-      expect(errorMessage).toBeTruthy();
-      expect(errorMessage).toContain('must be an internal path starting with /');
-    });
-
-    test('should validate custom redirect URL - no path traversal', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      const invalidUrl = '/app/../../../etc/passwd';
-
-      // Select custom URL option
-      await profilePage.selectDefaultRedirectUrl('Custom URL...');
-
-      // Fill URL with path traversal
-      await profilePage.fillCustomRedirectUrl(invalidUrl);
-
-      // Try to save
-      await profilePage.saveProfile();
-
-      // Should show validation error
-      const errorMessage = await profilePage.getProfileErrorMessage();
-      expect(errorMessage).toBeTruthy();
-      expect(errorMessage).toContain('Invalid URL format');
-    });
-
-    test('should redirect to default URL after login', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      // Set default redirect URL to Dashboard
-      await profilePage.selectDefaultRedirectUrl('Dashboard');
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Logout
-      await page.goto('/');
-      await page.evaluate(() => localStorage.clear());
-      await page.context().clearCookies();
-
-      // Login again
-      const loginPage = new LoginPage(page);
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-
-      // Should redirect to dashboard instead of timeline
-      await page.waitForURL('**/app/dashboard', { timeout: 10000 });
-      expect(page.url()).toContain('/app/dashboard');
-    });
-
-    test('should redirect to default URL when visiting homepage', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      // Set default redirect URL to Journey Insights
-      await profilePage.selectDefaultRedirectUrl('Journey Insights');
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Navigate to homepage
-      await page.goto('/');
-
-      // Should redirect to journey insights
-      await page.waitForURL('**/app/journey-insights', { timeout: 10000 });
-      expect(page.url()).toContain('/app/journey-insights');
-    });
-
-    test('should show home page if no default redirect URL is set', async ({page, dbManager}) => {
-      const loginPage = new LoginPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
-
-      // Login without setting default redirect URL
-      await loginPage.navigate();
-      await loginPage.login(testUser.email, testUser.password);
-      await TestHelpers.waitForNavigation(page, '**/app/timeline');
-
-      // Navigate to homepage
-      await page.goto('/');
-
-      // Should stay on home page or show default timeline redirect
-      await page.waitForTimeout(2000);
-
-      // URL should be either home page or still showing authenticated state
-      const url = page.url();
-      const isValidState = url.includes('/') || url.includes('/app/timeline');
-      expect(isValidState).toBe(true);
-    });
-
-    test('should redirect authenticated user from login page to default URL', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      // Set default redirect URL to Friends
-      await profilePage.selectDefaultRedirectUrl('Friends');
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Try to visit login page while authenticated
-      await page.goto('/login');
-
-      // Should redirect to friends page
-      await page.waitForURL('**/app/friends/live', { timeout: 10000 });
-      expect(page.url()).toContain('/app/friends');
-    });
-
-    test('should preserve custom URL after reload when matches predefined option', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-      const customUrl = '/app/rewind';
-
-      // Use custom URL option to enter a URL that matches a predefined option
-      await profilePage.selectDefaultRedirectUrl('Custom URL...');
-      await profilePage.fillCustomRedirectUrl(customUrl);
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Reload page
-      await page.reload();
-      await profilePage.waitForPageLoad();
-
-      // Should show the predefined option that matches the URL
-      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
-      expect(selectedValue).toBe('Rewind');
-    });
-
-    test('should preserve truly custom URL after reload', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-      const customUrl = '/app/my-custom-page';
-
-      // Use custom URL option with truly custom URL
-      await profilePage.selectDefaultRedirectUrl('Custom URL...');
-      await profilePage.fillCustomRedirectUrl(customUrl);
-      await profilePage.saveProfile();
-      await profilePage.waitForSuccessToast();
-
-      // Reload page
-      await page.reload();
-      await profilePage.waitForPageLoad();
-
-      // Should show "Custom URL..." selected
-      const selectedValue = await profilePage.getSelectedDefaultRedirectUrl();
-      expect(selectedValue).toBe('Custom URL...');
-
-      // Custom input should be visible with the URL
-      expect(await profilePage.isCustomRedirectUrlInputVisible()).toBe(true);
-      const customValue = await profilePage.getCustomRedirectUrlValue();
-      expect(customValue).toBe(customUrl);
-    });
-
-    test('should handle all predefined redirect options', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
-
-      const redirectOptions = [
-        { label: 'Timeline', url: '/app/timeline' },
-        { label: 'Dashboard', url: '/app/dashboard' },
-        { label: 'Journey Insights', url: '/app/journey-insights' },
-        { label: 'Friends', url: '/app/friends' },
-        { label: 'Rewind', url: '/app/rewind' },
-        { label: 'GPS Data', url: '/app/gps-data' },
-        { label: 'Location Sources', url: '/app/location-sources' }
-      ];
-
-      // Test each predefined option
-      for (const option of redirectOptions) {
-        // Select the option
-        await profilePage.selectDefaultRedirectUrl(option.label);
-
-        // Save
-        await profilePage.saveProfile();
-        await profilePage.waitForSuccessToast();
-        await page.waitForTimeout(500);
-
-        // Verify localStorage
-        const localStorageValue = await profilePage.getDefaultRedirectUrlFromLocalStorage();
-        expect(localStorageValue).toBe(option.url);
-      }
-    });
-  });
 });
