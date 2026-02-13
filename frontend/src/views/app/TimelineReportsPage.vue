@@ -336,14 +336,6 @@ watch(dateRange, async (newValue) => {
     await fetchTimelineData()
   }
 }, { immediate: true })
-
-// Lifecycle
-onMounted(async () => {
-  // Load data if we already have a date range
-  if (dateRange.value && isValidRange.value) {
-    await fetchTimelineData()
-  }
-})
 </script>
 
 <style scoped>

@@ -28,6 +28,7 @@ const sidebars = {
                         'getting-started/deployment/docker-compose',
                         'getting-started/deployment/kubernetes-helm',
                         'getting-started/deployment/helm-deployment',
+                        'getting-started/deployment/manual-installation',
                     ],
                 },
             ],

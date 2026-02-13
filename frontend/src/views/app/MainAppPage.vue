@@ -24,14 +24,18 @@
       :activeIndex="activeIndex"
       @tab-change="onTabChange"
     >
-      <router-view :key="route.path" />
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" :key="route.path" />
+        </keep-alive>
+      </router-view>
     </TabContainer>
 
   </AppLayout>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed, provide } from 'vue'
+import { ref, watch, onMounted, computed, provide, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useTimezone } from '@/composables/useTimezone'
@@ -58,6 +62,7 @@ const { dateRange: dates } = storeToRefs(dateRangeStore)
 // Reactive state
 const activeIndex = ref(0)
 const shareDialogVisible = ref(false)
+const isUpdatingUrl = ref(false)
 
 const tabItems = ref([
   {
@@ -137,13 +142,23 @@ watch(() => route.path, (path) => {
 
 // Watch for query parameter changes to update date range
 watch(() => route.query, (newQuery, oldQuery) => {
+  // Skip if we just updated the URL ourselves
+  if (isUpdatingUrl.value) return
+
   // Only update if start or end changed
   if (newQuery.start !== oldQuery?.start || newQuery.end !== oldQuery?.end) {
     const startFromQuery = timezone.parseUrlDate(newQuery.start, false)
     const endFromQuery = timezone.parseUrlDate(newQuery.end, true)
 
     if (timezone.isValidDate(startFromQuery) && timezone.isValidDate(endFromQuery)) {
-      dateRangeStore.setDateRange([startFromQuery, endFromQuery])
+      // Check if these dates are different from current store values to prevent circular updates
+      const currentStart = dateRangeStore.startDate
+      const currentEnd = dateRangeStore.endDate
+
+      // Only update if actually different
+      if (startFromQuery !== currentStart || endFromQuery !== currentEnd) {
+        dateRangeStore.setDateRange([startFromQuery, endFromQuery])
+      }
     }
   }
 }, { deep: true })
@@ -157,6 +172,7 @@ watch(dates, (newValue) => {
     const newEnd = timezone.formatDateUS(newEndDate);
 
     if (route.query.start !== newStart || route.query.end !== newEnd) {
+      isUpdatingUrl.value = true
       router.replace({
         query: {
           ...route.query,
@@ -164,6 +180,9 @@ watch(dates, (newValue) => {
           end: newEnd,
         },
       });
+      nextTick(() => {
+        isUpdatingUrl.value = false
+      })
     }
   }
 }, { deep: true });

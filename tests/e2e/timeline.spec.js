@@ -6,12 +6,160 @@ import {TestDates} from '../fixtures/test-dates.js';
 import * as TimelineTestData from '../utils/timeline-test-data.js';
 
 test.describe('Timeline Page', () => {
-  
+
   // Date range for static test data (Sept 21, 2025)
   const testDateRange = {
     startDate: new Date('2025-09-21'),
     endDate: new Date('2025-09-21')
   };
+
+  test.describe('API Request Optimization', () => {
+    test('should not make duplicate API calls when loading timeline page', async ({page, dbManager}) => {
+      // First, log in and set up data (don't count these API calls)
+      const timelinePage = new TimelinePage(page);
+      const { testUser } = await timelinePage.loginAndNavigate();
+
+      // Insert some test data
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
+
+      // NOW set up request listener to track only the test navigation API calls
+      const apiCalls = {
+        streamingTimeline: [],
+        streamingTimelineCount: [],
+        periodTags: []
+      };
+
+      page.on('request', request => {
+        const url = request.url();
+
+        // Track streaming timeline requests (exclude count)
+        if (url.includes('/api/streaming-timeline') && !url.includes('/count')) {
+          apiCalls.streamingTimeline.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST] Streaming Timeline:', url);
+        }
+
+        // Track count requests
+        if (url.includes('/api/streaming-timeline/count')) {
+          apiCalls.streamingTimelineCount.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST] Streaming Timeline Count:', url);
+        }
+
+        // Track period tags requests
+        if (url.includes('/api/period-tags/for-timerange')) {
+          apiCalls.periodTags.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST] Period Tags:', url);
+        }
+      });
+
+      // Navigate to timeline page with test date range
+      await timelinePage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
+
+      // Wait for the page to load completely
+      await timelinePage.waitForPageLoad();
+
+      // Wait for timeline content or no data message
+      try {
+        await timelinePage.waitForTimelineContent();
+      } catch {
+        // If no content, check for no data message
+        await timelinePage.waitForNoDataMessage();
+      }
+
+      // Wait a bit more to catch any delayed duplicate calls
+      await page.waitForTimeout(1500);
+
+      // Verify each API endpoint was called exactly once
+      console.log('=== API Call Summary ===');
+      console.log('Streaming Timeline calls:', apiCalls.streamingTimeline.length);
+      console.log('Streaming Timeline Count calls:', apiCalls.streamingTimelineCount.length);
+      console.log('Period Tags calls:', apiCalls.periodTags.length);
+
+      expect(apiCalls.streamingTimeline.length).toBe(1);
+      expect(apiCalls.streamingTimelineCount.length).toBe(1);
+      // Period tags may or may not be called depending on whether there are tags
+      expect(apiCalls.periodTags.length).toBeLessThanOrEqual(1);
+    });
+
+    test('should not make duplicate API calls when redirecting to timeline with query params', async ({page, dbManager}) => {
+      // Log in first (don't count these API calls)
+      const timelinePage = new TimelinePage(page);
+      const { testUser } = await timelinePage.loginAndNavigate();
+
+      // Insert some test data
+      const user = await dbManager.getUserByEmail(testUser.email);
+      await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
+
+      // NOW set up request listener to track only the test navigation API calls
+      const apiCalls = {
+        streamingTimeline: [],
+        streamingTimelineCount: []
+      };
+
+      page.on('request', request => {
+        const url = request.url();
+
+        // Track streaming timeline requests (exclude count)
+        if (url.includes('/api/streaming-timeline') && !url.includes('/count')) {
+          apiCalls.streamingTimeline.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST] Streaming Timeline:', url);
+        }
+
+        // Track count requests
+        if (url.includes('/api/streaming-timeline/count')) {
+          apiCalls.streamingTimelineCount.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST] Streaming Timeline Count:', url);
+        }
+      });
+
+      // Navigate directly to /app/timeline without query params (simulates the reported issue)
+      await page.goto('/app/timeline');
+
+      // Wait for redirect to complete (should add query params)
+      await page.waitForURL(/\/app\/timeline\?start=.*&end=.*/);
+
+      // Wait for the page to load completely
+      await timelinePage.waitForPageLoad();
+
+      // Wait for timeline content or no data message
+      try {
+        await timelinePage.waitForTimelineContent();
+      } catch {
+        await timelinePage.waitForNoDataMessage();
+      }
+
+      // Wait to catch any delayed duplicate calls
+      await page.waitForTimeout(1500);
+
+      // Verify each API endpoint was called exactly once
+      console.log('=== API Call Summary (After Redirect) ===');
+      console.log('Streaming Timeline calls:', apiCalls.streamingTimeline.length);
+      console.log('Streaming Timeline Count calls:', apiCalls.streamingTimelineCount.length);
+
+      expect(apiCalls.streamingTimeline.length).toBe(1);
+      expect(apiCalls.streamingTimelineCount.length).toBe(1);
+    });
+  });
   
   test.describe('Initial State and Empty Data', () => {
     test('should show empty state when no timeline data exists', async ({page, dbManager}) => {

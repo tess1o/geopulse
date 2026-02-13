@@ -142,6 +142,7 @@ const lastHighlightedPath = ref(null)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
 const geolocationError = ref(null)
+const isFetching = ref(false) // Flag to prevent concurrent fetches
 
 // Large dataset warning state
 const showLargeDatasetWarning = ref(false)
@@ -365,9 +366,7 @@ const handleTagClicked = (tag) => {
 
 // Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    favoritesStore.fetchFavoritePlaces(),
-  ])
+  await favoritesStore.fetchFavoritePlaces()
 })
 
 // Watchers
@@ -411,35 +410,42 @@ const isToday = computed(() => {
 })
 
 watch(dateRange, async (newValue) => {
-  if (newValue && timezone.isValidDataRange(newValue)) {
-    const [startDate, endDate] = newValue
+  if (!newValue || !timezone.isValidDataRange(newValue)) return
 
-    // Create a range key to detect if we've already fetched this exact range
-    const rangeKey = `${startDate}-${endDate}`
+  const [startDate, endDate] = newValue
+  const rangeKey = `${startDate}-${endDate}`
 
-    // Skip if we've already fetched this exact range
-    if (lastFetchedRange.value === rangeKey && !forceLoadLargeDataset.value) {
-      return
-    }
+  // Skip if we've already fetched this range
+  if (lastFetchedRange.value === rangeKey && !forceLoadLargeDataset.value) {
+    return
+  }
 
-    // Check dataset size before fetching
+  // Skip if a fetch is already in progress
+  if (isFetching.value) {
+    return
+  }
+
+  // Mark as fetching and set the range before starting async operation
+  isFetching.value = true
+  lastFetchedRange.value = rangeKey
+
+  try {
     const shouldProceed = await checkDatasetSize(startDate, endDate)
 
     if (!shouldProceed) {
-      // Dataset is too large, warning is shown
-      // Reset loading states since we're not proceeding
       mapDataLoading.value = false
       timelineDataLoading.value = false
       return
     }
 
-    lastFetchedRange.value = rangeKey
-    forceLoadLargeDataset.value = false // Reset force load flag
+    forceLoadLargeDataset.value = false
 
     await Promise.all([
       fetchLocationData(startDate, endDate),
       fetchTimelineData(startDate, endDate),
     ])
+  } finally {
+    isFetching.value = false
   }
 }, { immediate: true })
 

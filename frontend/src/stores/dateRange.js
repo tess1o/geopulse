@@ -62,6 +62,15 @@ export const useDateRangeStore = defineStore('dateRange', {
             start = timezone.isValidDate(start) ? start : timezone.toUtc(start).toISOString();
             end = timezone.isValidDate(end) ? end : timezone.toUtc(end).toISOString();
 
+            // Check if the new range is the same as the current range to prevent unnecessary updates
+            if (this.dateRange && this.dateRange.length === 2) {
+                const [currentStart, currentEnd] = this.dateRange
+                if (currentStart === start && currentEnd === end) {
+                    // Same range, no need to update
+                    return
+                }
+            }
+
             // Ensure start is before end
             if (timezone.isAfter(start, end)) {
                 this.dateRange = [end, start]
