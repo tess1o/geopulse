@@ -15,6 +15,31 @@ This guide provides step-by-step instructions for manually deploying GeoPulse on
 - Internet connection
 - Basic command-line knowledge
 
+:::tip Running in Containers or as Root
+If you're running in a minimal container (LXC, Docker, etc.) or already operating as root:
+
+- **Skip `sudo`**: If you're root, run commands without `sudo` prefix
+  ```bash
+  # Instead of: sudo apt-get install ...
+  # Use: apt-get install ...
+  ```
+
+- **PostgreSQL commands**: Replace `sudo -u postgres` with one of these:
+  ```bash
+  # Option 1: Switch user (then run psql commands)
+  su - postgres
+
+  # Option 2: Use runuser (from root, single command)
+  runuser -u postgres -- psql -d geopulse -c "SELECT 1;"
+  ```
+
+- **Install sudo (optional)**: For consistency with these instructions:
+  ```bash
+  apt-get install -y sudo  # Debian/Ubuntu
+  dnf install -y sudo      # RHEL/Rocky/Fedora
+  ```
+:::
+
 ---
 
 ## Table of Contents
@@ -140,8 +165,8 @@ cat /proc/cpuinfo | grep -i "raspberry\|bcm" && echo "Raspberry Pi - use compat 
 # Update package list
 sudo apt-get update
 
-# Install core dependencies (including timezone data)
-sudo apt-get install -y curl wget tar openssl ca-certificates tzdata
+# Install core dependencies (including timezone data and lsb-release for repository setup)
+sudo apt-get install -y curl wget tar openssl ca-certificates tzdata lsb-release
 
 # Configure timezone (required for PostgreSQL)
 sudo ln -sf /usr/share/zoneinfo/UTC /etc/localtime
@@ -162,9 +187,17 @@ If PostgreSQL 17 is not available in your distribution's repositories, you can u
 :::
 
 ```bash
-# Add PostgreSQL APT repository
-sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+# Ensure lsb-release is installed (needed for release detection)
+sudo apt-get install -y lsb-release
+
+# Add PostgreSQL APT repository key (modern method)
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
+  sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
+
+# Add PostgreSQL repository with signed-by keyring
+sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+
+# Update package lists
 sudo apt-get update
 
 # Install PostgreSQL 17
