@@ -24,6 +24,7 @@ files_to_update=(
     "backend/src/main/resources/application.properties"
     "docs-website/docs/getting-started/deployment/helm.md"
     "docs-website/docs/getting-started/deployment/docker-compose.md"
+    "docs-website/docs/getting-started/deployment/manual-installation.md"
     "frontend/pom.xml"
     "frontend/nginx.conf"
     "pom.xml"
@@ -54,6 +55,7 @@ for file in "${files_to_update[@]}"; do
             *.md)
                 # For Markdown: replace version references but avoid IPs
                 # Match patterns like: ":1.8.0", "tag/1.8.0", "/1.8.0/", "`1.8.0`", "| 1.8.0 |"
+                # Also: "VERSION=1.8.0", "-1.8.0.tar.gz", "-1.8.0:"
                 sed -i '' -E \
                     -e "s/(:)$CURRENT_VERSION/\1$NEW_VERSION/g" \
                     -e "s|(/)$CURRENT_VERSION(/)|\\1$NEW_VERSION\\2|g" \
@@ -63,6 +65,9 @@ for file in "${files_to_update[@]}"; do
                     -e "s|$CURRENT_VERSION(\`)|$NEW_VERSION\\1|g" \
                     -e "s/(\\| )$CURRENT_VERSION( \\|)/\\1$NEW_VERSION\\2/g" \
                     -e "s|$CURRENT_VERSION(-native)|$NEW_VERSION\\1|g" \
+                    -e "s|(VERSION=)$CURRENT_VERSION|\\1$NEW_VERSION|g" \
+                    -e "s|(-)$CURRENT_VERSION(\\.tar\\.gz)|\\1$NEW_VERSION\\2|g" \
+                    -e "s|(-)$CURRENT_VERSION(:)|\\1$NEW_VERSION\\2|g" \
                     "$file"
                 ;;
             .env.example)
