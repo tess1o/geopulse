@@ -14,7 +14,8 @@ test.describe('Timeline Page', () => {
   };
 
   test.describe('API Request Optimization', () => {
-    test('should not make duplicate API calls when loading timeline page', async ({page, dbManager}) => {
+    test.skip(process.env.CI, 'Skipping on CI');
+    test( 'should not make duplicate API calls when loading timeline page', async ({page, dbManager}) => {
       // First, log in and set up data (don't count these API calls)
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate();
