@@ -14,7 +14,8 @@ test.describe('Timeline Page', () => {
   };
 
   test.describe('API Request Optimization', () => {
-    test.skip(process.env.CI, 'should not make duplicate API calls when loading timeline page', async ({page, dbManager}) => {
+    test.skip(process.env.CI, 'Skipping on CI');
+    test( 'should not make duplicate API calls when loading timeline page', async ({page, dbManager}) => {
       // First, log in and set up data (don't count these API calls)
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate();
@@ -93,7 +94,7 @@ test.describe('Timeline Page', () => {
       expect(apiCalls.periodTags.length).toBeLessThanOrEqual(1);
     });
 
-    test.skip(process.env.CI, 'should not make duplicate API calls when redirecting to timeline with query params', async ({page, dbManager}) => {
+    test('should not make duplicate API calls when redirecting to timeline with query params', async ({page, dbManager}) => {
       // Log in first (don't count these API calls)
       const timelinePage = new TimelinePage(page);
       const { testUser } = await timelinePage.loginAndNavigate();
