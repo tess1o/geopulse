@@ -919,9 +919,6 @@ test.describe('Friends Page', () => {
         // Close the calendar
         await page.keyboard.press('Escape');
         await page.waitForTimeout(2000); // Wait for timeline to reload with new date range
-      } else {
-        // Fallback: If calendar doesn't open, skip date selection for this test
-        console.log('Date picker calendar did not open, skipping date selection');
       }
 
       // PHASE 3: Verify timeline items now appear
@@ -931,8 +928,6 @@ test.describe('Friends Page', () => {
       // Each friend has 3 stays and 3 trips = 6 items per friend = 12 total
       // Should now show timeline items for September 21, 2025
       expect(itemCount).toBeGreaterThan(0);
-      console.log(`Timeline items found: ${itemCount}`);
-
       // Verify timeline map is visible
       const timelineMap = page.locator('.leaflet-container');
       expect(await timelineMap.isVisible()).toBe(true);

@@ -46,10 +46,6 @@ test.describe('Time Digest', () => {
       // Check what's displayed - empty state OR digest content with no data
       const hasEmptyState = await digestPage.hasEmptyState();
       const hasContent = await digestPage.hasDigestContent();
-
-      console.log('Has empty state:', hasEmptyState);
-      console.log('Has digest content:', hasContent);
-
       // Must show either empty state or content (not 404)
       expect(hasEmptyState || hasContent).toBe(true);
     });
@@ -113,8 +109,6 @@ test.describe('Time Digest', () => {
 
       // Get metrics from UI
       const metrics = await digestPage.getMetricValues();
-      console.log('Digest metrics:', metrics);
-
       // Verify we have some metrics
       expect(metrics.length).toBeGreaterThan(0);
 
@@ -126,12 +120,6 @@ test.describe('Time Digest', () => {
       const dbActiveDays = await TimeDigestPage.getActiveDaysFromDb(dbManager, user.id, startDate, endDate);
       const dbTripCount = await TimeDigestPage.getTripCountFromDb(dbManager, user.id, startDate, endDate);
 
-      console.log('Database metrics:', {
-        totalDistance: dbTotalDistance,
-        activeDays: dbActiveDays,
-        tripCount: dbTripCount
-      });
-
       // Verify database has data
       expect(dbTotalDistance).toBeGreaterThan(0);
       expect(dbActiveDays).toBeGreaterThan(0);
@@ -140,14 +128,11 @@ test.describe('Time Digest', () => {
       // Find distance metric in UI
       const distanceMetric = await digestPage.getMetricByLabel('distance');
       if (distanceMetric) {
-        console.log('Distance metric from UI:', distanceMetric);
-        // Distance should be displayed in km
         expect(distanceMetric.value).toMatch(/\d+/);
       }
 
       // Check for metrics title showing the period
       const metricsTitle = await digestPage.getMetricsTitle();
-      console.log('Metrics title:', metricsTitle);
       expect(metricsTitle).toBeTruthy();
     });
 
@@ -177,12 +162,10 @@ test.describe('Time Digest', () => {
 
       // Verify highlights section - it may or may not be visible depending on data
       const hasHighlights = await digestPage.hasHighlights();
-      console.log('Has highlights section:', hasHighlights);
 
       if (hasHighlights) {
         // If highlights are shown, verify they have content
         const highlights = await digestPage.getHighlights();
-        console.log('Highlights:', highlights);
         expect(highlights.length).toBeGreaterThan(0);
       }
     });
@@ -218,9 +201,6 @@ test.describe('Time Digest', () => {
       const placeNames = await digestPage.getPlaceNames();
       const placesCount = await digestPage.getPlacesCount();
 
-      console.log('Places from UI:', placeNames);
-      console.log('Places count:', placesCount);
-
       // Verify we have places
       expect(placesCount).toBeGreaterThan(0);
 
@@ -230,8 +210,6 @@ test.describe('Time Digest', () => {
 
       const dbPlaces = await TimeDigestPage.getTopPlacesFromDb(dbManager, user.id, startDate, endDate, 10);
       const dbPlaceNames = dbPlaces.map(p => p.name);
-
-      console.log('Places from DB:', dbPlaceNames);
 
       // UI should show up to 10 places
       expect(placesCount).toBeLessThanOrEqual(10);
@@ -268,11 +246,9 @@ test.describe('Time Digest', () => {
 
       // Check if milestones section is visible (may or may not be depending on backend logic)
       const hasMilestones = await digestPage.hasMilestones();
-      console.log('Has milestones section:', hasMilestones);
 
       if (hasMilestones) {
         const milestones = await digestPage.getMilestones();
-        console.log('Milestones:', milestones);
 
         // If milestones are shown, verify they have content
         expect(milestones.length).toBeGreaterThan(0);
@@ -316,10 +292,6 @@ test.describe('Time Digest', () => {
       // So we just verify the section exists and either shows BarChart or placeholder
       const hasBarChart = await page.locator('.digest-trends .bar-chart').isVisible();
       const hasPlaceholder = await page.locator('.digest-trends .no-trends-placeholder').isVisible();
-
-      console.log('Has bar chart:', hasBarChart);
-      console.log('Has placeholder:', hasPlaceholder);
-
       // Must show either bar chart OR placeholder (not both, not neither)
       expect(hasBarChart || hasPlaceholder).toBe(true);
       expect(hasBarChart && hasPlaceholder).toBe(false);
@@ -357,8 +329,6 @@ test.describe('Time Digest', () => {
 
       // Get metrics from UI
       const metrics = await digestPage.getMetricValues();
-      console.log('Yearly digest metrics:', metrics);
-
       // Verify we have metrics
       expect(metrics.length).toBeGreaterThan(0);
 
@@ -370,12 +340,6 @@ test.describe('Time Digest', () => {
       const dbActiveDays = await TimeDigestPage.getActiveDaysFromDb(dbManager, user.id, startDate, endDate);
       const dbTripCount = await TimeDigestPage.getTripCountFromDb(dbManager, user.id, startDate, endDate);
 
-      console.log('Database yearly metrics:', {
-        totalDistance: dbTotalDistance,
-        activeDays: dbActiveDays,
-        tripCount: dbTripCount
-      });
-
       // Verify database has data
       expect(dbTotalDistance).toBeGreaterThan(0);
       expect(dbActiveDays).toBeGreaterThan(0);
@@ -383,7 +347,6 @@ test.describe('Time Digest', () => {
 
       // Check for metrics title showing the year
       const metricsTitle = await digestPage.getMetricsTitle();
-      console.log('Yearly metrics title:', metricsTitle);
       expect(metricsTitle).toBeTruthy();
       expect(metricsTitle).toContain('2024');
     });
@@ -416,16 +379,13 @@ test.describe('Time Digest', () => {
       expect(await digestPage.hasPlaces()).toBe(true);
 
       const placesCount = await digestPage.getPlacesCount();
-      console.log('Yearly places count:', placesCount);
       expect(placesCount).toBeGreaterThan(0);
 
       // Verify highlights (may or may not be present)
       const hasHighlights = await digestPage.hasHighlights();
-      console.log('Has yearly highlights:', hasHighlights);
 
       if (hasHighlights) {
         const highlights = await digestPage.getHighlights();
-        console.log('Yearly highlights:', highlights);
         expect(highlights.length).toBeGreaterThan(0);
       }
     });
@@ -465,8 +425,6 @@ test.describe('Time Digest', () => {
       const metrics = await digestPage.getMetricValues();
       const places = await digestPage.getPlaceNames();
 
-      console.log('Comprehensive digest data:', { metrics, places });
-
       // All sections should show data
       expect(metrics.length).toBeGreaterThan(0);
       expect(places.length).toBeGreaterThan(0);
@@ -499,7 +457,6 @@ test.describe('Time Digest', () => {
 
       // Get comparison text if available
       const comparisonText = await digestPage.getComparisonText();
-      console.log('Comparison text:', comparisonText);
 
       // Comparison might not always be shown depending on backend logic
       if (comparisonText) {
@@ -579,7 +536,6 @@ test.describe('Time Digest', () => {
 
       // Metrics title should reflect the year
       const metricsTitle = await digestPage.getMetricsTitle();
-      console.log('Yearly view metrics title:', metricsTitle);
       expect(metricsTitle).toBeTruthy();
     });
   });

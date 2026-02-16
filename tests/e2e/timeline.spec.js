@@ -361,8 +361,6 @@ test.describe('Timeline Page', () => {
       const totalCards = await overnightStayCards.count();
       expect(totalCards).toBeGreaterThan(0);
 
-      console.log(`Found ${totalCards} overnight stay cards (timezone-dependent)`);
-
       // Verify that overnight stay cards have the correct structure
       // Don't assume specific locations or counts (timezone-dependent)
       for (let i = 0; i < totalCards; i++) {
@@ -416,9 +414,7 @@ test.describe('Timeline Page', () => {
       // Get the first overnight stay card
       const firstStayCard = overnightStayCards.nth(0);
       const cardText = await firstStayCard.textContent();
-      
-      console.log('Browser timezone mismatch test - Card text:', cardText);
-      
+
       // The "on this day" calculation should still work correctly despite browser timezone mismatch
       // It should show the start time as 00:00 (midnight) in Europe/London, NOT affected by browser timezone
       expect(cardText).toMatch(/on this day|this day/i);

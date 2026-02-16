@@ -346,7 +346,6 @@ test.describe('Data Export & Import', () => {
                     const currentProgress = await exportImportPage.getExportJobProgress();
                     if (currentProgress !== previousProgress) {
                         progressUpdated = true;
-                        console.log(`Export progress: ${currentProgress}%`);
                         previousProgress = currentProgress;
                     }
                 } catch (e) {
@@ -358,9 +357,6 @@ test.describe('Data Export & Import', () => {
 
             // Wait for completion
             await exportImportPage.waitForExportJobStatus('Completed');
-
-            // Progress was tracked (or completed too fast to catch)
-            console.log(`Progress updates detected: ${progressUpdated}`);
         });
 
         test('should disable export button when required fields are missing', async ({page, dbManager}) => {
@@ -1050,7 +1046,6 @@ test.describe('Data Export & Import', () => {
             `, [userId]);
 
             const originalVelocities = originalPoints.rows.map(p => ({id: p.id, velocity: parseFloat(p.velocity)}));
-            console.log('Original velocities:', originalVelocities);
 
             // Export this data
             await loginPage.navigate();
@@ -1096,7 +1091,6 @@ test.describe('Data Export & Import', () => {
             `, [userId]);
 
             const modifiedVelocities = modifiedPoints.rows.map(p => ({id: p.id, velocity: parseFloat(p.velocity)}));
-            console.log('Modified velocities:', modifiedVelocities);
 
             // All should be 999.99 now
             expect(modifiedVelocities.every(p => p.velocity === 999.99)).toBe(true);
@@ -1126,7 +1120,6 @@ test.describe('Data Export & Import', () => {
             `, [userId]);
 
             const restoredVelocities = restoredPoints.rows.map(p => ({id: p.id, velocity: parseFloat(p.velocity)}));
-            console.log('Restored velocities:', restoredVelocities);
 
             // Velocities should be back to original values (not 999.99 anymore)
             expect(restoredVelocities.every(p => p.velocity === 999.99)).toBe(false);

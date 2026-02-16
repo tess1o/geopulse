@@ -85,8 +85,6 @@ test.describe('Authentication Flow', () => {
                 const errorMessage = await ValidationHelpers.getPageErrorMessage(page, loginPage.getErrorSelector());
                 expect(errorMessage).toBeTruthy();
             } catch {
-                // Error handling might not be implemented yet
-                console.log('Login error message handling not yet implemented');
             }
         });
 

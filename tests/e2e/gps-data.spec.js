@@ -251,7 +251,6 @@ test.describe('GPS Data Page', () => {
             // 2. The test data is for a fixed date (2025-08-20) but "today" is when test runs
             // So we'll verify that points today is a reasonable number (0 or more)
             expect(stats.pointsToday).toBeGreaterThanOrEqual(0);
-            console.log('Points today:', stats.pointsToday, '(depends on when test runs vs test data dates)');
 
             // Database verification - check that our test data was inserted correctly
             const testDataDbCount = await GpsDataFactory.getGpsPointsCount(
@@ -262,7 +261,6 @@ test.describe('GPS Data Page', () => {
             );
 
             expect(testDataDbCount).toBe(5);
-            console.log('Test data for 2025-08-20:', testDataDbCount, 'points inserted correctly');
         });
 
         test('should handle timezone correctly for points today count - GMT+3 scenario', async ({page, dbManager}) => {
@@ -737,7 +735,6 @@ test.describe('GPS Data Page', () => {
                 const url = route.request().url();
                 if (url.includes('startTime') && url.includes('endTime')) {
                     apiRequest = route.request();
-                    console.log('Captured API request:', url);
                 }
                 route.continue();
             });
@@ -755,9 +752,6 @@ test.describe('GPS Data Page', () => {
             const url = new URL(apiRequest.url());
             const startTime = url.searchParams.get('startTime');
             const endTime = url.searchParams.get('endTime');
-
-            console.log(`Selected date: 09/22/2025 in America/New_York timezone`);
-            console.log(`API Request - startTime: ${startTime}, endTime: ${endTime}`);
 
             // Expected for America/New_York (EDT = UTC-4 in September):
             // 09/22/2025 00:00:00 EDT = 2025-09-22T04:00:00.000Z
@@ -779,7 +773,6 @@ test.describe('GPS Data Page', () => {
                 day: '2-digit'
             });
             
-            console.log(`Start time ${startTime} represents ${startDateInNY} in NY timezone`);
             expect(startDateInNY).toBe('09/22/2025'); // The start time should represent 09/22 in NY timezone
         });
 
@@ -828,9 +821,6 @@ test.describe('GPS Data Page', () => {
             const url = new URL(apiRequest.url());
             const startTime = url.searchParams.get('startTime');
             const endTime = url.searchParams.get('endTime');
-
-            console.log(`Selected date: 09/22/2025 in Europe/London timezone`);
-            console.log(`API Request - startTime: ${startTime}, endTime: ${endTime}`);
 
             // Expected for Europe/London (BST = UTC+1 in September):
             // 09/22/2025 00:00:00 BST = 2025-09-21T23:00:00.000Z
@@ -912,9 +902,6 @@ test.describe('GPS Data Page', () => {
 
             const utcStartTime = utcRequest.searchParams.get('startTime');
             const nyStartTime = nyRequest.searchParams.get('startTime');
-
-            console.log(`UTC request startTime: ${utcStartTime}`);
-            console.log(`NY request startTime: ${nyStartTime}`);
 
             // Times should be different due to timezone offset
             expect(utcStartTime).not.toBe(nyStartTime);

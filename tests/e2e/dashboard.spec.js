@@ -37,22 +37,18 @@ test.describe('Dashboard', () => {
       
       // Check what's actually displayed
       const hasEmptyState = await dashboardPage.hasEmptyState();
-      console.log('Has empty state:', hasEmptyState);
-      
+
       // If not empty state, check if regular sections are there with zero data
       if (!hasEmptyState) {
-        console.log('No empty state, checking for regular sections with zero data');
         // Verify main sections exist but show no meaningful data
         const hasSections = await dashboardPage.hasDashboardSections();
-        console.log('Has dashboard sections:', hasSections);
-        
+
         if (hasSections) {
           // Check if activity cards show zero values
           const hasActivityCards = await dashboardPage.hasActivitySummaryCards();
           if (hasActivityCards) {
             // Values might be "0 km", "0 min", etc. for empty data
             const totalDistance = await dashboardPage.getSelectedPeriodTotalDistance();
-            console.log('Total distance displayed:', totalDistance);
           }
         }
       } else {
@@ -133,13 +129,6 @@ test.describe('Dashboard', () => {
       const totalDistanceNum = parseFloat(totalDistance.replace(/[^\d.]/g, ''));
       expect(totalDistanceNum).toBeGreaterThan(0);
       
-      console.log('Dashboard metrics:', {
-        totalDistance,
-        timeMoving,
-        dailyAverage,
-        averageSpeed
-      });
-      
       // Verify against database calculations
       // The "Selected Period Summary" shows data for TODAY only (default date range)
       const now = new Date();
@@ -148,15 +137,6 @@ test.describe('Dashboard', () => {
       
       const dbTotalDistance = await DashboardPage.getTotalDistanceFromDb(dbManager, user.id, todayStart, todayEnd);
       const expectedTotalKm = Math.round(dbTotalDistance / 1000);
-      
-      console.log('Database vs UI comparison (TODAY ONLY):', {
-        todayStart: todayStart.toISOString(),
-        todayEnd: todayEnd.toISOString(),
-        dbTotalDistance: dbTotalDistance,
-        expectedTotalKm: expectedTotalKm,
-        totalDistanceNum: totalDistanceNum,
-        difference: Math.abs(totalDistanceNum - expectedTotalKm)
-      });
       
       // Verify the UI shows data consistent with database for today
       // Allow tolerance for formatting differences and different calculation methods
@@ -245,9 +225,7 @@ test.describe('Dashboard', () => {
       
       // Get route statistics - this might be empty if the route analysis card doesn't have expected structure
       const routeStats = await dashboardPage.getRouteStats('selectedPeriod');
-      
-      console.log('Route statistics:', routeStats);
-      
+
       // Route analysis cards are visible, but the content structure might be different
       // Just verify the cards exist and are functional
       if (routeStats.length > 0) {
@@ -255,7 +233,6 @@ test.describe('Dashboard', () => {
         expect(hasNumericData).toBe(true);
       } else {
         // Cards exist but might not have the expected content structure
-        console.log('Route analysis cards are present but no stats extracted - this is acceptable for this test');
         expect(true).toBe(true); // Pass the test as cards are visible
       }
     });
@@ -283,12 +260,6 @@ test.describe('Dashboard', () => {
       const sevenDaysRange = await dashboardPage.getSevenDaysRange();
       const thirtyDaysRange = await dashboardPage.getThirtyDaysRange();
       
-      console.log('Date ranges:', {
-        selectedPeriod: selectedPeriodRange,
-        sevenDays: sevenDaysRange,
-        thirtyDays: thirtyDaysRange
-      });
-      
       // Verify date ranges follow expected format (MM/DD - MM/DD)
       const dateRangePattern = /\d{2}\/\d{2}\s*-\s*\d{2}\/\d{2}/;
       
@@ -299,9 +270,6 @@ test.describe('Dashboard', () => {
       if (thirtyDaysRange) {
         expect(dateRangePattern.test(thirtyDaysRange)).toBe(true);
       }
-      
-      // Selected period range might be different format depending on date selection
-      console.log('Date range validation passed');
     });
     
     test('should display date ranges in user timezone format', async ({page, dbManager}) => {
@@ -339,12 +307,6 @@ test.describe('Dashboard', () => {
       const sevenDaysRange = await dashboardPage.getSevenDaysRange();
       const thirtyDaysRange = await dashboardPage.getThirtyDaysRange();
       
-      console.log('Date ranges with America/Los_Angeles timezone:', {
-        selectedPeriod: selectedPeriodRange,
-        sevenDays: sevenDaysRange,
-        thirtyDays: thirtyDaysRange
-      });
-      
       // Verify date ranges are displayed (format may vary but should exist)
       if (sevenDaysRange) {
         expect(sevenDaysRange.length).toBeGreaterThan(0);
@@ -356,10 +318,6 @@ test.describe('Dashboard', () => {
         expect(thirtyDaysRange.length).toBeGreaterThan(0);
         expect(thirtyDaysRange).toMatch(/\d{2}\/\d{2}/);
       }
-      
-      // Verify the dashboard is calculating dates in the user's timezone
-      // (the actual date values should reflect the user's timezone)
-      console.log('Date range timezone validation passed');
     });
   });
 
@@ -407,7 +365,6 @@ test.describe('Dashboard', () => {
       
       // Verify charts might be displayed (optional)
       const hasCharts = await dashboardPage.hasCharts();
-      console.log('Charts displayed:', hasCharts);
     });
 
     test('should handle different date ranges correctly', async ({page, dbManager}) => {
@@ -432,12 +389,6 @@ test.describe('Dashboard', () => {
       const sevenDaysDistance = await dashboardPage.getSelectedPeriodTotalDistance();
       const thirtyDaysDistance = await dashboardPage.getThirtyDaysDailyAverage();
       
-      // Verify different periods show different values (since we have different data amounts)
-      console.log('Period comparisons:', {
-        sevenDays: sevenDaysDistance,
-        thirtyDays: thirtyDaysDistance
-      });
-      
       // Both should show some data
       expect(sevenDaysDistance).not.toBe('0 km');
       expect(thirtyDaysDistance).not.toBe('0 km');
@@ -449,11 +400,6 @@ test.describe('Dashboard', () => {
       
       const dbSevenDaysDistance = await DashboardPage.getTotalDistanceFromDb(dbManager, user.id, sevenDaysAgo, now);
       const dbThirtyDaysDistance = await DashboardPage.getTotalDistanceFromDb(dbManager, user.id, thirtyDaysAgo, now);
-      
-      console.log('Database distances:', {
-        sevenDays: dbSevenDaysDistance,
-        thirtyDays: dbThirtyDaysDistance
-      });
       
       expect(dbSevenDaysDistance).toBeGreaterThan(0);
       expect(dbThirtyDaysDistance).toBeGreaterThanOrEqual(dbSevenDaysDistance); // 30 days should have >= 7 days data
@@ -479,8 +425,7 @@ test.describe('Dashboard', () => {
       
       // Get average speed from UI
       const uiAverageSpeed = await dashboardPage.getAverageSpeed();
-      console.log('UI Average Speed:', uiAverageSpeed);
-      
+
       expect(uiAverageSpeed).toContain('km/h');
       
       // Extract numeric value
@@ -492,8 +437,7 @@ test.describe('Dashboard', () => {
       const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
       
       const dbAverageSpeed = await DashboardPage.getAverageSpeedFromDb(dbManager, user.id, thirtyDaysAgo, now);
-      console.log('DB Average Speed vs UI Speed:', { dbAverageSpeed, uiSpeedNum });
-      
+
       // For now, just verify reasonable speed is shown
       // The backend may use different calculation periods or methods
       expect(uiSpeedNum).toBeGreaterThan(0);
@@ -526,8 +470,7 @@ test.describe('Dashboard', () => {
       
       // Some metrics might be zero, but should be formatted properly
       const totalDistance = await dashboardPage.getSelectedPeriodTotalDistance();
-      console.log('Distance with minimal data:', totalDistance);
-      
+
       // Should show 0 m or 0 km rather than error - both are valid for zero distance
       expect(totalDistance).toMatch(/\d+.*(m|km)/);
     });

@@ -126,8 +126,6 @@ export class TimelineMapPage {
       await this.page.waitForTimeout(1000);
       
     } catch (error) {
-      console.log('Right-click approach 1 failed, trying alternative...');
-      
       // Approach 2: Use dispatchEvent for contextmenu
       await this.page.evaluate((coords) => {
         const container = document.querySelector('.leaflet-container');

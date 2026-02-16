@@ -117,7 +117,6 @@ export class LocationSourcesPage {
    * Select source type in dialog
    */
   async selectSourceType(sourceType) {
-    console.log('Selecting source type: ' + sourceType);
     const selector = this.selectors.dialog.sourceTypeOptions[sourceType.toLowerCase()];
 
     await this.page.locator(selector).click();
@@ -408,7 +407,6 @@ export class LocationSourcesPage {
       }
       actualCount = await this.getGpsSourceCountFromDb(dbManager, userId);
       attempts++;
-      console.log(`DB count check attempt ${attempts}: expected=${expectedCount}, actual=${actualCount}`);
     } while (actualCount !== expectedCount && attempts < maxAttempts);
     
     return actualCount;
@@ -427,7 +425,6 @@ export class LocationSourcesPage {
       }
       source = await this.getGpsSourceFromDb(dbManager, userId, sourceType, identifier);
       attempts++;
-      console.log(`DB deletion check attempt ${attempts}: source exists=${source !== null}`);
     } while (source !== null && attempts < maxAttempts);
     
     return source;

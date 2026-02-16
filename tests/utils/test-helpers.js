@@ -32,7 +32,6 @@ export class TestHelpers {
   }
 
   static async isHomePage(page) {
-    console.log('URL: ', await page.url());
     return await page.url().includes('/app');
   }
 }

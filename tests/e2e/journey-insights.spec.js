@@ -37,18 +37,15 @@ test.describe('Journey Insights', () => {
       
       // Check what's actually displayed
       const hasEmptyState = await journeyInsightsPage.hasEmptyState();
-      console.log('Has empty state:', hasEmptyState);
-      
+
       // If not empty state, check if regular sections are there with zero data
       if (!hasEmptyState) {
-        console.log('No empty state, checking for regular sections with zero data');
         // Verify main sections exist but show no data
         expect(await journeyInsightsPage.getCountriesCount()).toBe(0);
         expect(await journeyInsightsPage.getCitiesCount()).toBe(0);
         
         // Check if the page shows sections at all
         const hasAllSections = await journeyInsightsPage.hasAllSections();
-        console.log('Has all sections:', hasAllSections);
       } else {
         // Verify empty state is properly shown
         expect(hasEmptyState).toBe(true);
@@ -146,7 +143,6 @@ test.describe('Journey Insights', () => {
         await page.waitForTimeout(2000);
         const hasFlags = await journeyInsightsPage.hasCountryFlags();
         // Flags might not load immediately or at all due to network, so we don't assert true
-        console.log('Country flags loaded:', hasFlags);
       }
     });
 
@@ -244,7 +240,6 @@ test.describe('Journey Insights', () => {
       // The localMostActiveTime computed property should format time in 12-hour format with AM/PM
       const timePattern = /\d{1,2}:\d{2}\s*(AM|PM)/i;
       expect(timePattern.test(mostActiveTime)).toBe(true);
-      console.log('Most active time format test:', mostActiveTime, 'matches pattern:', timePattern.test(mostActiveTime));
     });
 
     test('should properly use Vue computed properties for time display', async ({page, dbManager}) => {
@@ -271,8 +266,7 @@ test.describe('Journey Insights', () => {
       await expect(timePatternCard).toBeVisible();
       
       const timeValue = await timePatternCard.locator('.pattern-value').textContent();
-      console.log('Displayed time value:', timeValue);
-      
+
       // Verify the time is in the correct format (12-hour with AM/PM)
       const timeFormatRegex = /\d{1,2}:\d{2}\s*(AM|PM)/i;
       expect(timeFormatRegex.test(timeValue)).toBe(true);
@@ -392,8 +386,7 @@ test.describe('Journey Insights', () => {
       
       // Check what state is shown - might not be empty if backend returns empty data structure
       const hasEmptyState = await journeyInsightsPage.hasEmptyState();
-      console.log('Initial visit - Has empty state:', hasEmptyState);
-      
+
       // If not showing empty state, verify there's no meaningful data
       if (!hasEmptyState) {
         expect(await journeyInsightsPage.getCountriesCount()).toBe(0);
@@ -402,14 +395,12 @@ test.describe('Journey Insights', () => {
       
       // Navigate away
       await page.goto('/app/profile');
-      console.log('Navigated away from page to ' + page.url());
       // Use more flexible URL pattern that matches query parameters
       await TestHelpers.waitForNavigation(page, '**/app/profile');
       
       // Add data while away
       await insertTestTimelineData(dbManager, user.id);
-      console.log('Inserted timeline data while away from journey insights page');
-      
+
       // Navigate back to journey insights
       await journeyInsightsPage.navigate();
       await journeyInsightsPage.waitForPageLoad();
@@ -418,15 +409,10 @@ test.describe('Journey Insights', () => {
       // Verify we're back on the journey insights page
       expect(await journeyInsightsPage.isOnJourneyInsightsPage()).toBe(true);
       
-      // Now verify that the page shows the new data we inserted
-      console.log('Checking if new data is reflected on the page');
-      
       // The page should now show data instead of empty state
       const countriesCount = await journeyInsightsPage.getCountriesCount();
       const citiesCount = await journeyInsightsPage.getCitiesCount();
-      
-      console.log(`After navigation back: Countries=${countriesCount}, Cities=${citiesCount}`);
-      
+
       // Verify the new data is displayed (insertTestTimelineData creates 3 countries and cities)
       expect(countriesCount).toBeGreaterThan(0);
       expect(citiesCount).toBeGreaterThan(0);
