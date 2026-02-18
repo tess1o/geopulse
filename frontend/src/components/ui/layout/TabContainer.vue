@@ -50,6 +50,10 @@ const props = defineProps({
   fullHeight: {
     type: Boolean,
     default: false
+  },
+  equalWidth: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -62,7 +66,8 @@ const containerClasses = computed(() => ({
 }))
 
 const tabMenuClasses = computed(() => ({
-  [`gp-tab-menu--${props.variant}`]: props.variant !== 'default'
+  [`gp-tab-menu--${props.variant}`]: props.variant !== 'default',
+  'gp-tab-menu--equal-width': props.equalWidth,
 }))
 
 const contentClasses = computed(() => ({
@@ -81,17 +86,32 @@ const handleTabClick = (index) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 /* Tab Content */
 .gp-tab-content {
   flex: 1;
+  /* Explicit width prevents any child (e.g. SettingCard) from pushing the container wider */
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
   padding: var(--gp-spacing-xl) 0;
   overflow: visible;
   background: var(--gp-surface-white);
   border: 1px solid var(--gp-border-light);
   border-top: none;
   border-radius: 0 0 var(--gp-radius-large) var(--gp-radius-large);
+}
+
+/* Ensure every direct child (tab card) fills width and can't exceed it */
+.gp-tab-content > * {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 /* Padding Variants */
@@ -177,15 +197,6 @@ const handleTabClick = (index) => {
   overflow: hidden;
 }
 
-/* Override overflow for mobile/tablet */
-@media (max-width: 1024px) {
-  .gp-tab-menu .p-tabmenu-tablist {
-    overflow: visible;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-}
-
 .gp-tab-menu .p-tabmenu-item {
   margin: 0;
   flex-shrink: 0;
@@ -204,6 +215,33 @@ const handleTabClick = (index) => {
   position: relative;
   top: 1px;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* Equal-width variant: tabs fill the full tab bar width evenly */
+.gp-tab-menu--equal-width .p-tabmenu-tablist {
+  padding: 0;
+  gap: 2px;
+}
+
+.gp-tab-menu--equal-width .p-tabmenu-item {
+  flex: 1;
+}
+
+.gp-tab-menu--equal-width .p-tabmenu-item .p-tabmenu-item-link {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Outer corners match container border-radius for equal-width tabs */
+.gp-tab-menu--equal-width .p-tabmenu-item:first-child .p-tabmenu-item-link {
+  border-top-left-radius: var(--gp-radius-large);
+}
+
+.gp-tab-menu--equal-width .p-tabmenu-item:last-child .p-tabmenu-item-link {
+  border-top-right-radius: var(--gp-radius-large);
 }
 
 .gp-tab-menu .p-tabmenu-item:not(.p-tabmenu-item-active) .p-tabmenu-item-link:hover {
@@ -249,6 +287,10 @@ const handleTabClick = (index) => {
 
 .p-tabmenu-item-badge {
   margin-left: var(--gp-spacing-sm);
+}
+
+.p-tabmenu-tablist {
+  border-radius: var(--gp-radius-large) var(--gp-radius-large) 0 0;
 }
 
 /* Compact Variant */
@@ -298,7 +340,7 @@ const handleTabClick = (index) => {
 /* Dark Mode styles are handled globally in style.css */
 
 /* Responsive */
-/* Tablet and mobile - prevent wrapping, allow horizontal scroll if needed */
+/* Tablet and mobile */
 @media (max-width: 1024px) {
   .gp-tab-menu .p-tabmenu-tablist {
     padding: 0 var(--gp-spacing-md);
@@ -307,11 +349,11 @@ const handleTabClick = (index) => {
     align-items: center;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: none;
   }
 
   .gp-tab-menu .p-tabmenu-tablist::-webkit-scrollbar {
-    display: none; /* Chrome, Safari */
+    display: none;
   }
 
   .gp-tab-menu .p-tabmenu-item {
@@ -324,12 +366,28 @@ const handleTabClick = (index) => {
     min-width: auto;
     padding: var(--gp-spacing-sm) var(--gp-spacing-md);
   }
+
+  /* Equal-width: no scroll needed, tabs fill evenly */
+  .gp-tab-menu--equal-width .p-tabmenu-tablist {
+    overflow-x: hidden;
+    padding: 0;
+    gap: 2px;
+  }
+
+  .gp-tab-menu--equal-width .p-tabmenu-item {
+    flex: 1;
+  }
 }
 
 @media (max-width: 768px) {
   .gp-tab-menu .p-tabmenu-tablist {
     padding: 0 var(--gp-spacing-md);
     gap: 0.25rem;
+  }
+
+  .gp-tab-menu--equal-width .p-tabmenu-tablist {
+    padding: 0;
+    gap: 1px;
   }
 
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
@@ -355,6 +413,20 @@ const handleTabClick = (index) => {
     gap: 0.25rem;
   }
 
+  .gp-tab-menu--equal-width .p-tabmenu-tablist {
+    padding: 0;
+    gap: 1px;
+  }
+
+  /* Equal-width: reset outer corners since container has no border-radius at mobile */
+  .gp-tab-menu--equal-width .p-tabmenu-item:first-child .p-tabmenu-item-link {
+    border-top-left-radius: var(--gp-radius-medium);
+  }
+
+  .gp-tab-menu--equal-width .p-tabmenu-item:last-child .p-tabmenu-item-link {
+    border-top-right-radius: var(--gp-radius-medium);
+  }
+
   .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
     padding: 0.5rem 0.625rem;
     font-size: 0.75rem;
@@ -370,19 +442,6 @@ const handleTabClick = (index) => {
   }
 
   .gp-tab-menu .p-tabmenu-item-label {
-    font-size: 0.75rem;
-  }
-}
-
-/* iPhone 16 Pro Max and similar large phones - keep compact to fit in one row */
-@media (max-width: 480px) and (min-width: 430px) {
-  .gp-tab-menu .p-tabmenu-item .p-tabmenu-item-link {
-    padding: 0.5rem 0.625rem;
-    font-size: 0.75rem;
-    min-height: 40px;
-  }
-
-  .gp-tab-menu .p-tabmenu-item-icon {
     font-size: 0.75rem;
   }
 }

@@ -2,12 +2,14 @@
   <Card class="timeline-display-card">
     <template #content>
       <form @submit.prevent="handleSubmit" class="timeline-display-form">
-        <!-- Info Banner -->
-        <div class="info-banner">
-          <i class="pi pi-info-circle"></i>
-          <div class="banner-content">
-            <p class="banner-title">Display Settings Only</p>
-            <p class="banner-text">
+        <!-- Section Header -->
+        <div class="display-header">
+          <div class="display-icon">
+            <i class="pi pi-eye"></i>
+          </div>
+          <div class="display-info">
+            <h3 class="display-title">Display Settings</h3>
+            <p class="display-description">
               These settings affect only how your timeline is displayed in the UI.
               Changes take effect immediately and do not require timeline regeneration.
             </p>
@@ -166,11 +168,9 @@ const props = defineProps({
     type: Object,
     required: true
   },
-  onSave: {
-    type: Function,
-    required: true
-  }
 })
+
+const emit = defineEmits(['save'])
 
 // Form state
 const form = ref({
@@ -253,7 +253,7 @@ const handleSubmit = async () => {
 
   try {
     // Save all display preferences including custom map tile URL
-    await props.onSave({
+    emit('save', {
       customMapTileUrl: form.value.customMapTileUrl,
       pathSimplificationEnabled: form.value.pathSimplificationEnabled,
       pathSimplificationTolerance: form.value.pathSimplificationTolerance,
@@ -291,39 +291,46 @@ const handleReset = () => {
   gap: 2rem;
 }
 
-/* Info Banner */
-.info-banner {
+/* Section Header — matches Security / Immich / AI tab header pattern */
+.display-header {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
   padding: 1rem;
-  background-color: var(--gp-primary-50);
-  border: 1px solid var(--gp-primary-200);
-  border-radius: var(--gp-border-radius);
-  color: var(--gp-primary-700);
+  background: var(--gp-surface-light);
+  border-radius: var(--gp-radius-medium);
 }
 
-.info-banner .pi {
+.display-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  background: var(--gp-primary);
+  color: white;
+  border-radius: 50%;
   font-size: 1.25rem;
-  margin-top: 0.125rem;
   flex-shrink: 0;
 }
 
-.banner-content {
+.display-info {
   flex: 1;
 }
 
-.banner-title {
+.display-title {
+  font-size: 1.1rem;
   font-weight: 600;
+  color: var(--gp-text-primary);
   margin: 0 0 0.25rem 0;
-  font-size: 0.95rem;
 }
 
-.banner-text {
+.display-description {
+  font-size: 0.9rem;
+  color: var(--gp-text-secondary);
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--gp-primary-600);
+  line-height: 1.4;
 }
 
 /* Section */
@@ -374,7 +381,7 @@ const handleReset = () => {
 }
 
 .error-message {
-  color: var(--gp-error);
+  color: var(--gp-danger);
   font-size: 0.875rem;
 }
 
@@ -401,6 +408,12 @@ const handleReset = () => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .display-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 1rem;
+  }
+
   .form-actions {
     flex-direction: column-reverse;
   }

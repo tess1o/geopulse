@@ -4,7 +4,7 @@
       <form @submit.prevent="handleSubmit" class="ai-settings-form">
         <div class="ai-header">
           <div class="ai-icon">
-            <i class="pi pi-sparkles text-4xl text-blue-600"></i>
+            <i class="pi pi-sparkles"></i>
           </div>
           <div class="ai-info">
             <h3 class="ai-title">AI Assistant Configuration</h3>
@@ -80,7 +80,7 @@
             </div>
             <div class="form-group">
               <label for="openai-model" class="form-label">Model</label>
-              <div class="flex gap-2">
+              <div class="model-select-row">
                 <Dropdown
                   id="openai-model"
                   v-model="form.openaiModel"
@@ -297,15 +297,13 @@ watch(() => props.initialSettings, () => {
   border: 1px solid var(--gp-border-light);
   box-shadow: var(--gp-shadow-light);
   width: 100%;
-  max-width: 1200px;
   box-sizing: border-box;
-  margin: 0 auto;
 }
 
 .ai-settings-card :deep(.p-card-content) {
   width: 100%;
   box-sizing: border-box;
-  padding: 2rem;
+  padding: 1.5rem;
 }
 
 .ai-settings-form {
@@ -328,7 +326,7 @@ watch(() => props.initialSettings, () => {
   justify-content: center;
   width: 3rem;
   height: 3rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gp-primary);
   color: white;
   border-radius: 50%;
   font-size: 1.25rem;
@@ -391,6 +389,11 @@ watch(() => props.initialSettings, () => {
 .text-secondary {
   color: var(--gp-text-secondary);
   font-size: 0.8rem;
+}
+
+.model-select-row {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .form-actions {
@@ -511,12 +514,6 @@ watch(() => props.initialSettings, () => {
 }
 
 /* Responsive Design */
-@media (max-width: 1280px) {
-  .ai-settings-card {
-    max-width: 100%;
-  }
-}
-
 @media (max-width: 768px) {
   .ai-header {
     flex-direction: column;

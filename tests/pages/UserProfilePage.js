@@ -63,7 +63,7 @@ export class UserProfilePage {
       
       // Immich Integration tab selectors
       immich: {
-        enableToggle: '.p-togglebutton',
+        enableToggle: '.p-toggleswitch',
         serverUrlInput: '#immichServerUrl',
         apiKeyInput: '#immichApiKey input',
         saveButton: 'button[type="submit"]:has-text("Save Settings")',
@@ -617,7 +617,7 @@ export class UserProfilePage {
   async isImmichIntegrationEnabled() {
     const toggle = this.page.locator(this.selectors.immich.enableToggle);
     const classes = await toggle.getAttribute('class');
-    return classes.includes('p-highlight') || classes.includes('p-togglebutton-checked');
+    return classes && classes.includes('p-toggleswitch-checked');
   }
 
   /**

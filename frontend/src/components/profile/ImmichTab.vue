@@ -17,20 +17,12 @@
         <div class="form-section">
           <!-- Enable/Disable Toggle -->
           <div class="form-field">
-            <div class="toggle-field">
-              <ToggleButton
-                v-model="form.enabled"
-                onLabel="Enabled"
-                offLabel="Disabled"
-                :disabled="loading || saveLoading"
-              />
-              <div class="toggle-info">
-                <span class="toggle-label">Enable Immich Integration</span>
-                <span class="toggle-description">
-                  Turn on to sync photos from your Immich server
-                </span>
-              </div>
-            </div>
+            <label class="form-label">Enable Immich Integration</label>
+            <ToggleSwitch
+              v-model="form.enabled"
+              :disabled="loading || saveLoading"
+            />
+            <small class="help-text">Turn on to sync photos from your Immich server</small>
           </div>
 
           <!-- Server URL Field -->
@@ -384,33 +376,6 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-.toggle-field {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: var(--gp-surface-light);
-  border-radius: var(--gp-radius-medium);
-}
-
-.toggle-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.toggle-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  font-size: 0.9rem;
-}
-
-.toggle-description {
-  font-size: 0.8rem;
-  color: var(--gp-text-secondary);
-  line-height: 1.4;
-}
 
 .test-connection-btn {
   width: 100%;
@@ -496,7 +461,6 @@ onMounted(() => {
 .help-text {
   color: var(--gp-text-secondary);
   font-size: 0.8rem;
-  font-style: italic;
 }
 
 .error-message {
@@ -593,13 +557,7 @@ onMounted(() => {
     gap: 1rem;
   }
 
-  .toggle-field {
-    flex-direction: column;
-    text-align: center;
-    gap: 1rem;
-  }
-
-  .form-actions {
+.form-actions {
     flex-direction: column;
   }
 }

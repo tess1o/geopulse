@@ -562,10 +562,10 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isDisplayTabActive()).toBe(true);
       expect(await profilePage.isProfileTabActive()).toBe(false);
 
-      // Verify info banner is displayed
-      const infoBanner = page.locator('.info-banner');
-      expect(await infoBanner.isVisible()).toBe(true);
-      expect(await infoBanner.textContent()).toContain('Display Settings Only');
+      // Verify display header is displayed
+      const displayHeader = page.locator('.display-header');
+      expect(await displayHeader.isVisible()).toBe(true);
+      expect(await displayHeader.textContent()).toContain('Display Settings');
     });
 
     test.describe('Custom Map Tile URL', () => {

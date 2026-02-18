@@ -19,11 +19,16 @@
           <TabContainer
             :tabs="tabItems"
             :activeIndex="activeTabIndex"
+            :equalWidth="true"
             @tab-change="handleTabChange"
             class="profile-tabs"
           >
             <keep-alive>
-              <component :is="currentTabComponent" :key="activeTab" />
+              <component
+                :is="currentTabComponent"
+                v-bind="currentTabProps"
+                v-on="currentTabHandlers"
+              />
             </keep-alive>
           </TabContainer>
         </div>
@@ -35,10 +40,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 // Layout components
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
@@ -60,6 +65,7 @@ import apiService from "@/utils/apiService"
 // Composables
 const toast = useToast()
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
@@ -121,65 +127,53 @@ const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
 })
 
-const currentTabComponent = computed(() => {
-  const components = {
+// Stable map from key → component definition so keep-alive can cache by component name
+const tabComponents = {
+  profile: ProfileTab,
+  security: SecurityTab,
+  timelineDisplay: TimelineDisplayTab,
+  ai: AIAssistantTab,
+  immich: ImmichTab,
+}
+
+const currentTabComponent = computed(() => tabComponents[activeTab.value] || null)
+
+const currentTabProps = computed(() => {
+  const allProps = {
     profile: {
-      component: ProfileTab,
-      props: {
-        userName: userName.value,
-        userEmail: userEmail.value,
-        userAvatar: userAvatar.value,
-        userTimezone: userTimezone.value,
-        userMeasureUnit: measureUnit.value || 'METRIC',
-        userDefaultRedirectUrl: defaultRedirectUrl.value || ''
-      },
-      handlers: {
-        onSave: handleProfileSave
-      }
+      userName: userName.value,
+      userEmail: userEmail.value,
+      userAvatar: userAvatar.value,
+      userTimezone: userTimezone.value,
+      userMeasureUnit: measureUnit.value || 'METRIC',
+      userDefaultRedirectUrl: defaultRedirectUrl.value || '',
     },
     security: {
-      component: SecurityTab,
-      props: {
-        hasPassword: hasPassword.value
-      },
-      handlers: {
-        onSave: handlePasswordSave
-      }
+      hasPassword: hasPassword.value,
     },
     timelineDisplay: {
-      component: TimelineDisplayTab,
-      props: {
-        initialPreferences: timelineDisplayPrefs.value
-      },
-      handlers: {
-        onSave: handleTimelineDisplaySave
-      }
+      initialPreferences: timelineDisplayPrefs.value,
     },
     ai: {
-      component: AIAssistantTab,
-      props: {
-        initialSettings: aiSettings.value
-      },
-      handlers: {
-        onSave: handleAISave
-      }
+      initialSettings: aiSettings.value,
     },
     immich: {
-      component: ImmichTab,
-      props: {
-        config: immichConfig.value,
-        loading: immichLoading.value
-      },
-      handlers: {
-        onSave: handleImmichSave
-      }
-    }
+      config: immichConfig.value,
+      loading: immichLoading.value,
+    },
   }
+  return allProps[activeTab.value] || {}
+})
 
-  const tabConfig = components[activeTab.value]
-  if (!tabConfig) return null
-
-  return h(tabConfig.component, { ...tabConfig.props, ...tabConfig.handlers })
+const currentTabHandlers = computed(() => {
+  const handlers = {
+    profile: { save: handleProfileSave },
+    security: { save: handlePasswordSave },
+    timelineDisplay: { save: handleTimelineDisplaySave },
+    ai: { save: handleAISave },
+    immich: { save: handleImmichSave },
+  }
+  return handlers[activeTab.value] || {}
 })
 
 // Methods
@@ -187,6 +181,7 @@ const handleTabChange = (event) => {
   const selectedTab = tabItems.value[event.index]
   if (selectedTab) {
     activeTab.value = selectedTab.key
+    router.replace({ query: { ...route.query, tab: selectedTab.key } })
   }
 }
 
@@ -444,9 +439,9 @@ onMounted(async () => {
 
 <style scoped>
 .user-profile-page {
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
   padding: 0 1rem;
+  box-sizing: border-box;
 }
 
 /* Page Header */
@@ -488,33 +483,6 @@ onMounted(async () => {
   width: 100%;
 }
 
-/* Fixed width tabs for consistent appearance */
-.profile-tabs :deep(.p-tabmenu-item) {
-  flex: 1;
-  min-width: 120px;
-}
-
-.profile-tabs :deep(.p-tabmenu-item .p-tabmenu-item-link) {
-  justify-content: center;
-  text-align: center;
-  width: 100%;
-  min-width: 120px;
-  padding: var(--gp-spacing-md) var(--gp-spacing-sm);
-}
-
-/* Ensure all tab content areas have consistent width */
-.profile-tabs :deep(.gp-tab-content) {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.profile-tabs :deep(.gp-tab-content > div) {
-  width: 100% !important;
-  max-width: 100% !important;
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -554,16 +522,4 @@ onMounted(async () => {
   }
 }
 
-/* iPhone 16 Pro Max and similar large phones */
-@media (max-width: 480px) and (min-width: 430px) {
-  .user-profile-page {
-    padding: 0;
-    max-width: 100%;
-  }
-
-  .profile-tabs :deep(.gp-tab-content > div) {
-    width: 100% !important;
-    max-width: none !important;
-  }
-}
 </style>

@@ -539,7 +539,6 @@ watch(() => [props.userName, props.userAvatar, props.userTimezone, props.userMea
 .help-text {
   color: var(--gp-text-secondary);
   font-size: 0.8rem;
-  font-style: italic;
 }
 
 .error-message {
