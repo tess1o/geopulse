@@ -390,7 +390,7 @@ Set your desired version (check [GitHub Releases](https://github.com/tess1o/geop
 :::
 
 ```bash
-VERSION=1.16.1
+VERSION=1.16.2
 ```
 
 Create a temporary download directory:
@@ -458,8 +458,8 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 You should see:
 ```
-geopulse-frontend-1.16.1.tar.gz: OK
-geopulse-backend-native-amd64-1.16.1: OK
+geopulse-frontend-1.16.2.tar.gz: OK
+geopulse-backend-native-amd64-1.16.2: OK
 ```
 
 :::caution Checksum Verification

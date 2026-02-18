@@ -1399,6 +1399,33 @@
           }
         }
       },
+      "UpdateTimelineDisplayPreferencesRequest" : {
+        "type" : "object",
+        "properties" : {
+          "customMapTileUrl" : {
+            "maxLength" : 1000,
+            "type" : "string"
+          },
+          "pathSimplificationEnabled" : {
+            "type" : "boolean"
+          },
+          "pathSimplificationTolerance" : {
+            "format" : "double",
+            "maximum" : 100.0,
+            "minimum" : 1.0,
+            "type" : "number"
+          },
+          "pathMaxPoints" : {
+            "format" : "int32",
+            "maximum" : 1000,
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "pathAdaptiveSimplification" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "UpdateTimelinePreferencesRequest" : {
         "type" : "object",
         "properties" : {
@@ -1453,24 +1480,6 @@
             "maximum" : 720,
             "minimum" : 1,
             "type" : "integer"
-          },
-          "pathSimplificationEnabled" : {
-            "type" : "boolean"
-          },
-          "pathSimplificationTolerance" : {
-            "format" : "double",
-            "maximum" : 100.0,
-            "minimum" : 1.0,
-            "type" : "number"
-          },
-          "pathMaxPoints" : {
-            "format" : "int32",
-            "maximum" : 1000,
-            "minimum" : 10,
-            "type" : "integer"
-          },
-          "pathAdaptiveSimplification" : {
-            "type" : "boolean"
           },
           "dataGapThresholdSeconds" : {
             "format" : "int32",
@@ -7371,6 +7380,57 @@
         } ]
       }
     },
+    "/api/users/preferences/timeline/display" : {
+      "put" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTimelineDisplayPreferencesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Timeline Display Preferences",
+        "tags" : [ "User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Timeline Display Preferences",
+        "tags" : [ "User Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/users/register" : {
       "post" : {
         "requestBody" : {
@@ -7693,7 +7753,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.16.1",
+    "version" : "1.16.2",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
