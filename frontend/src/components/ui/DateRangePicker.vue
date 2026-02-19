@@ -19,12 +19,13 @@
       >
         <template #footer>
           <Select
-              :options="presets"
+              :options="presetOptions"
               optionLabel="label"
               optionValue="value"
               :placeholder="presetPlaceholder"
               v-model="selectedPreset"
               @change="setPresetRange"
+              v-bind="selectGroupProps"
           />
         </template>
       </DatePicker>
@@ -50,12 +51,13 @@
     >
       <template #footer>
         <Select
-            :options="presets"
+            :options="presetOptions"
             optionLabel="label"
             optionValue="value"
             :placeholder="presetPlaceholder"
             v-model="selectedPreset"
             @change="setPresetRange"
+            v-bind="selectGroupProps"
         />
       </template>
     </DatePicker>
@@ -69,9 +71,10 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useDateRangeStore } from '@/stores/dateRange'
+import { usePeriodTagsStore } from '@/stores/periodTags'
 import { useTimezone } from '@/composables/useTimezone'
 import DatePicker from 'primevue/datepicker'
 import FloatLabel from 'primevue/floatlabel'
@@ -139,6 +142,7 @@ const emit = defineEmits(['date-change', 'validation-error'])
 
 const timezone = useTimezone()
 const dateRangeStore = useDateRangeStore()
+const periodTagsStore = usePeriodTagsStore()
 const { dateRange: storeDateRange } = storeToRefs(dateRangeStore)
 
 const selectedPreset = ref()
@@ -147,6 +151,50 @@ const validationMessage = ref('')
 const variantClass = computed(() => `date-range-picker--${props.variant}`)
 
 const maxDate = computed(() => new Date())
+const periodPresetPrefix = 'period:'
+const maxPresetNameLength = 32
+
+const periodTagById = computed(() => {
+  const map = new Map()
+  for (const tag of periodTagsStore.periodTags || []) {
+    if (tag && tag.id !== null && tag.id !== undefined) {
+      map.set(String(tag.id), tag)
+    }
+  }
+  return map
+})
+
+const periodPresets = computed(() => {
+  const tags = periodTagsStore.periodTags || []
+  if (!tags.length) return []
+
+  const sorted = [...tags]
+      .filter((tag) => tag && tag.startTime)
+      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+
+  return sorted.map((tag) => ({
+    label: formatPeriodPresetLabel(tag),
+    value: `${periodPresetPrefix}${tag.id}`
+  }))
+})
+
+const useGroupedPresets = computed(() => periodPresets.value.length > 0)
+
+const presetOptions = computed(() => {
+  if (!useGroupedPresets.value) return props.presets
+  return [
+    { label: 'Periods', items: periodPresets.value },
+    { label: 'Presets', items: props.presets }
+  ]
+})
+
+const selectGroupProps = computed(() => {
+  if (!useGroupedPresets.value) return {}
+  return {
+    optionGroupLabel: 'label',
+    optionGroupChildren: 'items'
+  }
+})
 
 // Two-way binding with DatePicker
 const dateRange = computed({
@@ -197,6 +245,17 @@ function setPresetByValue(presetValue) {
   validationMessage.value = ''
   selectedPreset.value = presetValue
 
+  if (typeof presetValue === 'string' && presetValue.startsWith(periodPresetPrefix)) {
+    const periodId = presetValue.slice(periodPresetPrefix.length)
+    const tag = periodTagById.value.get(periodId)
+    if (tag) {
+      const { start, end } = getPeriodDateRange(tag)
+      dateRangeStore.setDateRange([start, end])
+      emit('date-change', [start, end])
+    }
+    return
+  }
+
   switch (presetValue) {
     case 'today':
       const today = timezone.getTodayRangeUtc()
@@ -220,6 +279,46 @@ function setPresetByValue(presetValue) {
       break
   }
 }
+
+function getPeriodDateRange(tag) {
+  const start = timezone.fromUtc(tag.startTime).startOf('day').utc().toISOString()
+  const endBase = tag.endTime ? timezone.fromUtc(tag.endTime) : timezone.now()
+  const end = endBase.endOf('day').utc().toISOString()
+  return { start, end }
+}
+
+function formatPeriodPresetLabel(tag) {
+  const start = timezone.fromUtc(tag.startTime)
+  const endBase = tag.endTime ? timezone.fromUtc(tag.endTime) : timezone.now()
+  const isActive = !tag.endTime || tag.isActive
+  const nowYear = timezone.now().year()
+  const includeYear = start.year() !== endBase.year() || start.year() !== nowYear
+  const format = includeYear ? 'MMM D, YYYY' : 'MMM D'
+
+  const tagName = truncatePresetName(tag.tagName || 'Period')
+  const startText = start.format(format)
+  const endText = isActive ? 'Today' : endBase.format(format)
+
+  if (start.isSame(endBase, 'day')) {
+    const singleText = isActive ? 'Today' : startText
+    return `${tagName} (${singleText})`
+  }
+
+  return `${tagName} (${startText} - ${endText})`
+}
+
+function truncatePresetName(name) {
+  if (name.length <= maxPresetNameLength) return name
+  return `${name.slice(0, maxPresetNameLength - 3)}...`
+}
+
+onMounted(async () => {
+  try {
+    await periodTagsStore.fetchPeriodTags()
+  } catch (error) {
+    console.warn('Failed to load period tags for presets:', error)
+  }
+})
 </script>
 
 <style scoped>
