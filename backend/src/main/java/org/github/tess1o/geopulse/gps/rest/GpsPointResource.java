@@ -492,6 +492,32 @@ public class GpsPointResource {
     }
 
     /**
+     * Delete ALL GPS points and timeline data for the authenticated user.
+     * Uses efficient bulk SQL deletion - suitable for millions of records.
+     * Also deletes timeline_stays, timeline_trips, and timeline_data_gaps.
+     *
+     * @return 200 OK if successful
+     */
+    @DELETE
+    @Path("/all")
+    @Produces(MediaType.APPLICATION_JSON)
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response deleteAllGpsData() {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Received request to delete ALL GPS data for user {}", userId);
+
+        try {
+            gpsPointService.deleteAllGpsData(userId);
+            return Response.ok(ApiResponse.success(Map.of("message", "All GPS data deleted successfully"))).build();
+        } catch (Exception e) {
+            log.error("Failed to delete all GPS data for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to delete all GPS data: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
      * Delete a GPS point.
      * This endpoint requires authentication.
      *

@@ -149,6 +149,17 @@ export const useTechnicalDataStore = defineStore('technicalData', {
                 console.error('Error deleting GPS points:', error)
                 throw error
             }
+        },
+
+        async deleteAllGpsData() {
+            try {
+                await apiService.delete('/gps/all')
+                this.clearData()
+                return true
+            } catch (error) {
+                console.error('Error deleting all GPS data:', error)
+                throw error
+            }
         }
     }
 })

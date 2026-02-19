@@ -496,4 +496,35 @@ public class GpsPointService {
                                          int batchSize, Consumer<List<GpsPointEntity>> consumer) {
         gpsPointRepository.streamByUserAndFilters(userId, filters, batchSize, consumer);
     }
+
+    /**
+     * Delete ALL GPS points and timeline data for a user.
+     * Uses native SQL for maximum efficiency with large datasets (millions of records).
+     * Does not trigger timeline regeneration since everything is being deleted.
+     *
+     * @param userId The ID of the user whose data to delete
+     */
+    @Transactional
+    public void deleteAllGpsData(UUID userId) {
+        log.info("Deleting ALL GPS and timeline data for user {}", userId);
+
+        // Delete timeline data first (before GPS points)
+        em.createNativeQuery("DELETE FROM timeline_stays WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        em.createNativeQuery("DELETE FROM timeline_trips WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        em.createNativeQuery("DELETE FROM timeline_data_gaps WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        em.createNativeQuery("DELETE FROM gps_points WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        log.info("Successfully deleted all GPS and timeline data for user {}", userId);
+    }
 }
