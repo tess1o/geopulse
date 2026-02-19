@@ -32,7 +32,7 @@
 
           <!-- File Upload -->
           <div class="form-section">
-            <h3 class="form-section-title">Select Export File</h3>
+            <h3 class="form-section-title">Select Import File</h3>
             <div class="file-upload-container">
               <FileUpload
                   ref="fileUpload"
@@ -40,7 +40,7 @@
                   :accept="getCurrentFormatConfig().acceptedFormats"
                   @select="onFileSelect"
                   @clear="onFileClear"
-                  chooseLabel="Choose Export File"
+                  chooseLabel="Choose Import File"
                   class="file-uploader"
                   :auto="false"
               />
@@ -526,7 +526,7 @@ const importFormatOptions = ref([
   {
     label: 'GeoPulse',
     value: 'geopulse',
-    description: 'Import from GeoPulse export file',
+    description: 'Import from GeoPulse file',
     fileExtensions: ['.zip'],
     acceptedFormats: '.zip',
     uploadFunction: 'uploadImportFile',
@@ -535,7 +535,7 @@ const importFormatOptions = ref([
   {
     label: 'OwnTracks',
     value: 'owntracks',
-    description: 'Import from OwnTracks export file',
+    description: 'Import from OwnTracks file',
     fileExtensions: ['.json'],
     acceptedFormats: '.json',
     uploadFunction: 'uploadOwnTracksImportFile',
@@ -562,7 +562,7 @@ const importFormatOptions = ref([
   {
     label: 'GeoJSON',
     value: 'geojson',
-    description: 'Import from GeoJSON files (Point or LineString features)',
+    description: 'Import from GeoJSON file (Point or LineString features)',
     fileExtensions: ['.json', '.geojson'],
     acceptedFormats: '.json,.geojson',
     uploadFunction: 'uploadGeoJsonImportFile',
@@ -571,7 +571,7 @@ const importFormatOptions = ref([
   {
     label: 'CSV',
     value: 'csv',
-    description: 'Import GPS data from CSV file',
+    description: 'Import from CSV file',
     fileExtensions: ['.csv'],
     acceptedFormats: '.csv',
     uploadFunction: 'uploadCsvImportFile',
