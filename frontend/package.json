@@ -19,6 +19,7 @@
     "chart.js": "^4.4.9",
     "dayjs": "^1.11.18",
     "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
     "leaflet.markercluster": "^1.5.3",
     "pinia": "^3.0.3",
     "postcss": "^8.4.31",

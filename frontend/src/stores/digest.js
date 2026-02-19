@@ -7,7 +7,11 @@ export const useDigestStore = defineStore('digest', {
         yearlyDigests: {}, // Cache by "YYYY"
         currentDigest: null,
         loading: false,
-        error: null
+        error: null,
+        // Heatmap cache (separate from digest so it loads independently)
+        heatmapData: {},       // Cache by "YYYY" or "YYYY-MM"
+        heatmapLoading: false,
+        heatmapError: null,
     }),
 
     getters: {
@@ -132,6 +136,54 @@ export const useDigestStore = defineStore('digest', {
 
         invalidateYearlyDigest(year) {
             delete this.yearlyDigests[year]
+        },
+
+        // ---------- Heatmap ----------
+
+        /**
+         * Fetch heatmap data for the given period.
+         * viewMode: 'monthly' | 'yearly'
+         */
+        async fetchHeatmapData(viewMode, year, month = null, layer = 'combined') {
+            const key = viewMode === 'monthly'
+                ? `${year}-${String(month).padStart(2, '0')}-${layer}`
+                : `${year}-${layer}`
+
+            // Return cached data immediately
+            if (this.heatmapData[key]) {
+                return this.heatmapData[key]
+            }
+
+            try {
+                this.heatmapLoading = true
+                this.heatmapError = null
+
+                const params = viewMode === 'monthly'
+                    ? { year, month, layer }
+                    : { year, layer }
+
+                const endpoint = viewMode === 'monthly'
+                    ? '/digest/heatmap/monthly'
+                    : '/digest/heatmap/yearly'
+
+                const response = await apiService.get(endpoint, params)
+                const data = response.data || response
+                this.heatmapData[key] = data
+                return data
+            } catch (error) {
+                console.error('Error fetching heatmap data:', error)
+                this.heatmapError = error.message || 'Failed to fetch heatmap data'
+                return []
+            } finally {
+                this.heatmapLoading = false
+            }
+        },
+
+        invalidateHeatmap(viewMode, year, month = null, layer = 'combined') {
+            const key = viewMode === 'monthly'
+                ? `${year}-${String(month).padStart(2, '0')}-${layer}`
+                : `${year}-${layer}`
+            delete this.heatmapData[key]
         }
     }
 })

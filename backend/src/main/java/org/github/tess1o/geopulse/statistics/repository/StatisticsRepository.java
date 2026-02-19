@@ -12,7 +12,8 @@ import java.util.UUID;
 
 /**
  * Repository for statistics calculations using native SQL queries.
- * This replaces in-memory stream operations with database aggregations for better performance and memory efficiency.
+ * This replaces in-memory stream operations with database aggregations for
+ * better performance and memory efficiency.
  */
 @ApplicationScoped
 @Slf4j
@@ -25,37 +26,38 @@ public class StatisticsRepository {
     }
 
     /**
-     * Get trip aggregations: total distance, total duration, and daily average distance.
+     * Get trip aggregations: total distance, total duration, and daily average
+     * distance.
      */
     public TripAggregationResult getTripAggregations(UUID userId, Instant startTime, Instant endTime) {
         String sql = """
-            WITH daily_distances AS (
-                SELECT DATE(timestamp) as day,
-                       SUM(distance_meters) as day_distance
-                FROM timeline_trips
-                WHERE user_id = ?
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-                GROUP BY DATE(timestamp)
-            ),
-            trip_totals AS (
+                WITH daily_distances AS (
+                    SELECT DATE(timestamp) as day,
+                           SUM(distance_meters) as day_distance
+                    FROM timeline_trips
+                    WHERE user_id = ?
+                      AND timestamp >= ?
+                      AND timestamp <= ?
+                    GROUP BY DATE(timestamp)
+                ),
+                trip_totals AS (
+                    SELECT
+                        COALESCE(SUM(distance_meters), 0.0) as total_distance,
+                        COALESCE(SUM(trip_duration), 0) as total_duration
+                    FROM timeline_trips
+                    WHERE user_id = ?
+                      AND timestamp >= ?
+                      AND timestamp <= ?
+                )
                 SELECT
-                    COALESCE(SUM(distance_meters), 0.0) as total_distance,
-                    COALESCE(SUM(trip_duration), 0) as total_duration
-                FROM timeline_trips
-                WHERE user_id = ?
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-            )
-            SELECT
-                tt.total_distance,
-                tt.total_duration,
-                COALESCE(AVG(dd.day_distance), 0.0) as daily_avg_distance,
-                COUNT(DISTINCT dd.day) as days_with_trips
-            FROM trip_totals tt
-            LEFT JOIN daily_distances dd ON 1=1
-            GROUP BY tt.total_distance, tt.total_duration
-            """;
+                    tt.total_distance,
+                    tt.total_duration,
+                    COALESCE(AVG(dd.day_distance), 0.0) as daily_avg_distance,
+                    COUNT(DISTINCT dd.day) as days_with_trips
+                FROM trip_totals tt
+                LEFT JOIN daily_distances dd ON 1=1
+                GROUP BY tt.total_distance, tt.total_duration
+                """;
 
         try {
             Object[] result = (Object[]) entityManager.createNativeQuery(sql)
@@ -71,8 +73,7 @@ public class StatisticsRepository {
                     ((Number) result[0]).doubleValue(),
                     ((Number) result[1]).longValue(),
                     ((Number) result[2]).doubleValue(),
-                    ((Number) result[3]).longValue()
-            );
+                    ((Number) result[3]).longValue());
         } catch (NoResultException e) {
             log.debug("No trip data found for user {}", userId);
             return new TripAggregationResult(0.0, 0L, 0.0, 0L);
@@ -84,13 +85,13 @@ public class StatisticsRepository {
      */
     public long getUniqueLocationsCount(UUID userId, Instant startTime, Instant endTime) {
         String sql = """
-            SELECT COUNT(DISTINCT location_name)
-            FROM timeline_stays
-            WHERE user_id = ?
-              AND timestamp >= ?
-              AND timestamp <= ?
-              AND location_name IS NOT NULL
-            """;
+                SELECT COUNT(DISTINCT location_name)
+                FROM timeline_stays
+                WHERE user_id = ?
+                  AND timestamp >= ?
+                  AND timestamp <= ?
+                  AND location_name IS NOT NULL
+                """;
 
         try {
             Number result = (Number) entityManager.createNativeQuery(sql)
@@ -105,25 +106,152 @@ public class StatisticsRepository {
     }
 
     /**
+     * Get all visited locations with coordinates and duration for heatmap
+     * rendering.
+     * Unlike {@link #getTopPlaces} this has no row limit so the caller gets the
+     * full
+     * picture of where the user spent time during the period.
+     *
+     * @param userId    User ID
+     * @param startTime Period start (inclusive)
+     * @param endTime   Period end (inclusive)
+     * @return All named locations with coordinates, visit count and total duration
+     */
+    public List<HeatmapPlace> getHeatmapPlaces(UUID userId, Instant startTime, Instant endTime) {
+        String sql = """
+                SELECT
+                    COALESCE(AVG(ST_Y(s.location::geometry)), 0) as latitude,
+                    COALESCE(AVG(ST_X(s.location::geometry)), 0) as longitude,
+                    COALESCE(SUM(s.stay_duration), 0)            as total_duration,
+                    COUNT(*)                                     as visits,
+                    s.location_name
+                FROM timeline_stays s
+                WHERE s.user_id = ?
+                  AND s.timestamp >= ?
+                  AND s.timestamp <= ?
+                  AND s.location_name IS NOT NULL
+                  AND s.location IS NOT NULL
+                GROUP BY s.location_name
+                ORDER BY total_duration DESC
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = entityManager.createNativeQuery(sql)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .getResultList();
+
+        return results.stream()
+                .map(row -> HeatmapPlace.builder()
+                        .latitude(((Number) row[0]).doubleValue())
+                        .longitude(((Number) row[1]).doubleValue())
+                        .durationSeconds(((Number) row[2]).longValue())
+                        .visits(((Number) row[3]).longValue())
+                        .name((String) row[4])
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Get movement heatmap points based on GPS points that fall within trip
+     * segments. Points are aggregated into a fixed-size grid in meters to keep
+     * the dataset compact. Intensity is derived from the time delta between
+     * consecutive GPS points, clamped to maxGapSeconds.
+     *
+     * @param userId        User ID
+     * @param startTime     Period start (inclusive)
+     * @param endTime       Period end (inclusive)
+     * @param gridSizeMeters Grid size in meters for aggregation
+     * @param maxGapSeconds Max seconds between points to count toward intensity
+     * @return Movement heatmap points (no location names)
+     */
+    public List<HeatmapPlace> getTripHeatmapPlaces(UUID userId,
+                                                   Instant startTime,
+                                                   Instant endTime,
+                                                   int gridSizeMeters,
+                                                   int maxGapSeconds) {
+        String sql = """
+                WITH trip_points AS (
+                    SELECT
+                        gp.coordinates AS coordinates,
+                        gp.timestamp   AS ts,
+                        t.id           AS trip_id,
+                        LEAD(gp.timestamp) OVER (PARTITION BY t.id ORDER BY gp.timestamp) AS next_ts
+                    FROM gps_points gp
+                    JOIN timeline_trips t
+                      ON gp.user_id = t.user_id
+                     AND gp.timestamp >= t.timestamp
+                     AND gp.timestamp <= (t.timestamp + (t.trip_duration || ' seconds')::interval)
+                    WHERE gp.user_id = ?
+                      AND gp.timestamp >= ?
+                      AND gp.timestamp <= ?
+                      AND gp.coordinates IS NOT NULL
+                ),
+                weighted AS (
+                    SELECT
+                        ST_SnapToGrid(ST_Transform(coordinates, 3857), ?) AS cell,
+                        GREATEST(0, LEAST(EXTRACT(EPOCH FROM (next_ts - ts)), ?)) AS dt
+                    FROM trip_points
+                    WHERE next_ts IS NOT NULL
+                ),
+                aggregated AS (
+                    SELECT
+                        ST_Transform(ST_Centroid(cell), 4326) AS center,
+                        SUM(dt) AS total_duration,
+                        COUNT(*) AS visits
+                    FROM weighted
+                    GROUP BY cell
+                )
+                SELECT
+                    ST_Y(center) AS latitude,
+                    ST_X(center) AS longitude,
+                    COALESCE(total_duration, 0) AS total_duration,
+                    COALESCE(visits, 0) AS visits
+                FROM aggregated
+                ORDER BY total_duration DESC
+                """;
+
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = entityManager.createNativeQuery(sql)
+                .setParameter(1, userId)
+                .setParameter(2, startTime)
+                .setParameter(3, endTime)
+                .setParameter(4, gridSizeMeters)
+                .setParameter(5, maxGapSeconds)
+                .getResultList();
+
+        return results.stream()
+                .map(row -> HeatmapPlace.builder()
+                        .latitude(((Number) row[0]).doubleValue())
+                        .longitude(((Number) row[1]).doubleValue())
+                        .durationSeconds(((Number) row[2]).longValue())
+                        .visits(((Number) row[3]).longValue())
+                        .name(null)
+                        .build())
+                .toList();
+    }
+
+    /**
      * Get top places by visit count and duration.
      */
     public List<TopPlace> getTopPlaces(UUID userId, Instant startTime, Instant endTime, int limit) {
         String sql = """
-            SELECT
-                s.location_name,
-                COUNT(*) as visits,
-                SUM(s.stay_duration) as total_duration,
-                AVG(ST_Y(s.location::geometry)) as latitude,
-                AVG(ST_X(s.location::geometry)) as longitude
-            FROM timeline_stays s
-            WHERE s.user_id = ?
-              AND s.timestamp >= ?
-              AND s.timestamp <= ?
-              AND s.location_name IS NOT NULL
-            GROUP BY s.location_name
-            ORDER BY visits DESC, total_duration DESC
-            LIMIT ?
-            """;
+                SELECT
+                    s.location_name,
+                    COUNT(*) as visits,
+                    SUM(s.stay_duration) as total_duration,
+                    AVG(ST_Y(s.location::geometry)) as latitude,
+                    AVG(ST_X(s.location::geometry)) as longitude
+                FROM timeline_stays s
+                WHERE s.user_id = ?
+                  AND s.timestamp >= ?
+                  AND s.timestamp <= ?
+                  AND s.location_name IS NOT NULL
+                GROUP BY s.location_name
+                ORDER BY visits DESC, total_duration DESC
+                LIMIT ?
+                """;
 
         @SuppressWarnings("unchecked")
         List<Object[]> results = entityManager.createNativeQuery(sql)
@@ -138,7 +266,7 @@ public class StatisticsRepository {
                         .name((String) row[0])
                         .visits(((Number) row[1]).intValue())
                         .duration(((Number) row[2]).longValue())
-                        .coordinates(new double[]{
+                        .coordinates(new double[] {
                                 ((Number) row[3]).doubleValue(),
                                 ((Number) row[4]).doubleValue()
                         })
@@ -152,29 +280,29 @@ public class StatisticsRepository {
      */
     public MostActiveDayDto getMostActiveDay(UUID userId, Instant startTime, Instant endTime) {
         String sql = """
-            WITH daily_stats AS (
+                WITH daily_stats AS (
+                    SELECT
+                        DATE(t.timestamp) as day,
+                        SUM(t.distance_meters) / 1000.0 as distance_km,
+                        SUM(t.trip_duration) as total_trip_duration,
+                        COUNT(DISTINCT s.location_name) as locations_visited
+                    FROM timeline_trips t
+                    LEFT JOIN timeline_stays s ON s.user_id = t.user_id AND DATE(s.timestamp) = DATE(t.timestamp)
+                    WHERE t.user_id = ?
+                      AND t.timestamp >= ?
+                      AND t.timestamp <= ?
+                    GROUP BY DATE(t.timestamp)
+                    ORDER BY distance_km DESC
+                    LIMIT 1
+                )
                 SELECT
-                    DATE(t.timestamp) as day,
-                    SUM(t.distance_meters) / 1000.0 as distance_km,
-                    SUM(t.trip_duration) as total_trip_duration,
-                    COUNT(DISTINCT s.location_name) as locations_visited
-                FROM timeline_trips t
-                LEFT JOIN timeline_stays s ON s.user_id = t.user_id AND DATE(s.timestamp) = DATE(t.timestamp)
-                WHERE t.user_id = ?
-                  AND t.timestamp >= ?
-                  AND t.timestamp <= ?
-                GROUP BY DATE(t.timestamp)
-                ORDER BY distance_km DESC
-                LIMIT 1
-            )
-            SELECT
-                TO_CHAR(day, 'MM/DD') as date_formatted,
-                TO_CHAR(day, 'Day') as day_name,
-                distance_km,
-                total_trip_duration,
-                locations_visited
-            FROM daily_stats
-            """;
+                    TO_CHAR(day, 'MM/DD') as date_formatted,
+                    TO_CHAR(day, 'Day') as day_name,
+                    distance_km,
+                    total_trip_duration,
+                    locations_visited
+                FROM daily_stats
+                """;
 
         try {
             Object[] result = (Object[]) entityManager.createNativeQuery(sql)
@@ -199,19 +327,20 @@ public class StatisticsRepository {
     /**
      * Get chart data grouped by days.
      */
-    public List<ChartDataPoint> getChartDataByDays(UUID userId, Instant startTime, Instant endTime, String movementType) {
+    public List<ChartDataPoint> getChartDataByDays(UUID userId, Instant startTime, Instant endTime,
+            String movementType) {
         String sql = """
-            SELECT
-                UPPER(TO_CHAR(DATE(timestamp), 'Dy')) as day_label,
-                SUM(distance_meters) / 1000.0 as distance_km
-            FROM timeline_trips
-            WHERE user_id = ?
-              AND timestamp >= ?
-              AND timestamp <= ?
-              AND (CAST(? AS VARCHAR) IS NULL OR movement_type = ? OR movement_type IS NULL OR movement_type = '')
-            GROUP BY DATE(timestamp), day_label
-            ORDER BY DATE(timestamp)
-            """;
+                SELECT
+                    UPPER(TO_CHAR(DATE(timestamp), 'Dy')) as day_label,
+                    SUM(distance_meters) / 1000.0 as distance_km
+                FROM timeline_trips
+                WHERE user_id = ?
+                  AND timestamp >= ?
+                  AND timestamp <= ?
+                  AND (CAST(? AS VARCHAR) IS NULL OR movement_type = ? OR movement_type IS NULL OR movement_type = '')
+                GROUP BY DATE(timestamp), day_label
+                ORDER BY DATE(timestamp)
+                """;
 
         @SuppressWarnings("unchecked")
         List<Object[]> results = entityManager.createNativeQuery(sql)
@@ -225,27 +354,27 @@ public class StatisticsRepository {
         return results.stream()
                 .map(row -> new ChartDataPoint(
                         (String) row[0],
-                        ((Number) row[1]).doubleValue()
-                ))
+                        ((Number) row[1]).doubleValue()))
                 .toList();
     }
 
     /**
      * Get chart data grouped by weeks (start of week = Monday).
      */
-    public List<ChartDataPoint> getChartDataByWeeks(UUID userId, Instant startTime, Instant endTime, String movementType) {
+    public List<ChartDataPoint> getChartDataByWeeks(UUID userId, Instant startTime, Instant endTime,
+            String movementType) {
         String sql = """
-            SELECT
-                TO_CHAR(DATE_TRUNC('week', timestamp::date), 'MM/DD') as week_label,
-                SUM(distance_meters) / 1000.0 as distance_km
-            FROM timeline_trips
-            WHERE user_id = ?
-              AND timestamp >= ?
-              AND timestamp <= ?
-              AND (CAST(? AS VARCHAR) IS NULL OR movement_type = ? OR movement_type IS NULL OR movement_type = '')
-            GROUP BY DATE_TRUNC('week', timestamp::date)
-            ORDER BY DATE_TRUNC('week', timestamp::date)
-            """;
+                SELECT
+                    TO_CHAR(DATE_TRUNC('week', timestamp::date), 'MM/DD') as week_label,
+                    SUM(distance_meters) / 1000.0 as distance_km
+                FROM timeline_trips
+                WHERE user_id = ?
+                  AND timestamp >= ?
+                  AND timestamp <= ?
+                  AND (CAST(? AS VARCHAR) IS NULL OR movement_type = ? OR movement_type IS NULL OR movement_type = '')
+                GROUP BY DATE_TRUNC('week', timestamp::date)
+                ORDER BY DATE_TRUNC('week', timestamp::date)
+                """;
 
         @SuppressWarnings("unchecked")
         List<Object[]> results = entityManager.createNativeQuery(sql)
@@ -259,8 +388,7 @@ public class StatisticsRepository {
         return results.stream()
                 .map(row -> new ChartDataPoint(
                         (String) row[0],
-                        ((Number) row[1]).doubleValue()
-                ))
+                        ((Number) row[1]).doubleValue()))
                 .toList();
     }
 
@@ -269,27 +397,27 @@ public class StatisticsRepository {
      */
     public List<RouteFrequencyResult> getRouteFrequencies(UUID userId, Instant startTime, Instant endTime) {
         String sql = """
-            WITH ordered_stays AS (
+                WITH ordered_stays AS (
+                    SELECT
+                        location_name,
+                        timestamp,
+                        ROW_NUMBER() OVER (ORDER BY timestamp) as rn
+                    FROM timeline_stays
+                    WHERE user_id = ?
+                      AND timestamp >= ?
+                      AND timestamp <= ?
+                      AND location_name IS NOT NULL
+                )
                 SELECT
-                    location_name,
-                    timestamp,
-                    ROW_NUMBER() OVER (ORDER BY timestamp) as rn
-                FROM timeline_stays
-                WHERE user_id = ?
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-                  AND location_name IS NOT NULL
-            )
-            SELECT
-                s1.location_name as from_location,
-                s2.location_name as to_location,
-                COUNT(*) as frequency
-            FROM ordered_stays s1
-            JOIN ordered_stays s2 ON s2.rn = s1.rn + 1
-            GROUP BY s1.location_name, s2.location_name
-            ORDER BY frequency DESC
-            LIMIT 1
-            """;
+                    s1.location_name as from_location,
+                    s2.location_name as to_location,
+                    COUNT(*) as frequency
+                FROM ordered_stays s1
+                JOIN ordered_stays s2 ON s2.rn = s1.rn + 1
+                GROUP BY s1.location_name, s2.location_name
+                ORDER BY frequency DESC
+                LIMIT 1
+                """;
 
         @SuppressWarnings("unchecked")
         List<Object[]> results = entityManager.createNativeQuery(sql)
@@ -302,8 +430,7 @@ public class StatisticsRepository {
                 .map(row -> new RouteFrequencyResult(
                         (String) row[0],
                         (String) row[1],
-                        ((Number) row[2]).longValue()
-                ))
+                        ((Number) row[2]).longValue()))
                 .toList();
     }
 
@@ -313,15 +440,15 @@ public class StatisticsRepository {
     public RoutesStatistics getRoutesStatistics(UUID userId, Instant startTime, Instant endTime) {
         // Get basic trip statistics
         String tripStatsSql = """
-            SELECT
-                AVG(trip_duration) as avg_duration,
-                MAX(trip_duration) as max_duration,
-                MAX(distance_meters) as max_distance
-            FROM timeline_trips
-            WHERE user_id = ?
-              AND timestamp >= ?
-              AND timestamp <= ?
-            """;
+                SELECT
+                    AVG(trip_duration) as avg_duration,
+                    MAX(trip_duration) as max_duration,
+                    MAX(distance_meters) as max_distance
+                FROM timeline_trips
+                WHERE user_id = ?
+                  AND timestamp >= ?
+                  AND timestamp <= ?
+                """;
 
         Object[] tripStats = (Object[]) entityManager.createNativeQuery(tripStatsSql)
                 .setParameter(1, userId)
@@ -331,20 +458,20 @@ public class StatisticsRepository {
 
         // Get unique routes count
         String uniqueRoutesSql = """
-            WITH ordered_stays AS (
-                SELECT
-                    location_name,
-                    ROW_NUMBER() OVER (ORDER BY timestamp) as rn
-                FROM timeline_stays
-                WHERE user_id = ?
-                  AND timestamp >= ?
-                  AND timestamp <= ?
-                  AND location_name IS NOT NULL
-            )
-            SELECT COUNT(DISTINCT (s1.location_name || ' -> ' || s2.location_name))
-            FROM ordered_stays s1
-            JOIN ordered_stays s2 ON s2.rn = s1.rn + 1
-            """;
+                WITH ordered_stays AS (
+                    SELECT
+                        location_name,
+                        ROW_NUMBER() OVER (ORDER BY timestamp) as rn
+                    FROM timeline_stays
+                    WHERE user_id = ?
+                      AND timestamp >= ?
+                      AND timestamp <= ?
+                      AND location_name IS NOT NULL
+                )
+                SELECT COUNT(DISTINCT (s1.location_name || ' -> ' || s2.location_name))
+                FROM ordered_stays s1
+                JOIN ordered_stays s2 ON s2.rn = s1.rn + 1
+                """;
 
         Number uniqueRoutesCount = (Number) entityManager.createNativeQuery(uniqueRoutesSql)
                 .setParameter(1, userId)
@@ -358,8 +485,7 @@ public class StatisticsRepository {
                 ? new MostCommonRoute("", 0)
                 : new MostCommonRoute(
                         mostCommonRoutes.get(0).getFromLocation() + " -> " + mostCommonRoutes.get(0).getToLocation(),
-                        mostCommonRoutes.get(0).getFrequency().intValue()
-                );
+                        mostCommonRoutes.get(0).getFrequency().intValue());
 
         return RoutesStatistics.builder()
                 .avgTripDurationSeconds(tripStats[0] != null ? ((Number) tripStats[0]).doubleValue() : 0.0)

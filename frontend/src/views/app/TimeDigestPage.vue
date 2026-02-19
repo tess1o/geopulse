@@ -68,6 +68,13 @@
           :chartData="currentDigest.activityChart"
           :viewMode="viewMode"
         />
+
+        <!-- Location Heatmap -->
+        <DigestHeatmap
+          :viewMode="viewMode"
+          :year="selectedYear"
+          :month="selectedMonth"
+        />
       </div>
 
       <!-- Empty State -->
@@ -107,6 +114,7 @@ import DigestHighlights from '@/components/digest/DigestHighlights.vue'
 import DigestPlaces from '@/components/digest/DigestPlaces.vue'
 import DigestTrends from '@/components/digest/DigestTrends.vue'
 import DigestMilestones from '@/components/digest/DigestMilestones.vue'
+import DigestHeatmap from '@/components/digest/DigestHeatmap.vue'
 
 // Store and Composables
 import { useDigestStore } from '@/stores/digest'
