@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.statistics.model.*;
         RoutesStatistics.class,
         BarChartData.class,
         MostCommonRoute.class,
+        HeatmapPlace.class,
 })
 public class StatisticsNativeConfig {
 }

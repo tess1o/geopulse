@@ -34,6 +34,16 @@
           :loading="exportLoading"
           :disabled="!hasData || totalRecords === 0"
         />
+        <Button
+          v-if="hasData"
+          label="Delete All Data"
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          size="small"
+          @click="showDeleteAllDialog = true"
+          class="delete-all-button"
+        />
       </div>
     </template>
 
@@ -468,6 +478,41 @@
       </template>
     </Dialog>
 
+    <!-- Delete All GPS Data Confirmation Dialog -->
+    <Dialog
+      v-model:visible="showDeleteAllDialog"
+      header="Delete All GPS Data"
+      :modal="true"
+      :style="{ width: '32rem' }"
+    >
+      <div class="confirm-dialog-content">
+        <i class="pi pi-exclamation-triangle confirm-icon confirm-icon--large"></i>
+        <div>
+          <p class="delete-all-warning-title">This will permanently delete:</p>
+          <ul class="delete-all-warning-list">
+            <li>All <strong>{{ summaryStats.totalPoints.toLocaleString() }}</strong> GPS points</li>
+            <li>All timeline stays, trips and data gaps</li>
+          </ul>
+          <p class="delete-all-warning-note">Your settings and favorite locations will <strong>not</strong> be affected. This action cannot be undone.</p>
+        </div>
+      </div>
+      <template #footer>
+        <Button
+          label="Cancel"
+          severity="secondary"
+          @click="showDeleteAllDialog = false"
+          autofocus
+          :disabled="deleteAllLoading"
+        />
+        <Button
+          label="Delete Everything"
+          severity="danger"
+          @click="confirmDeleteAll"
+          :loading="deleteAllLoading"
+        />
+      </template>
+    </Dialog>
+
     <!-- Edit GPS Point Dialog -->
     <GpsPointEditDialog 
       :visible="showEditDialog"
@@ -562,6 +607,10 @@ const selectedRows = ref([])
 const showBulkDeleteDialog = ref(false)
 const bulkDeleteLoading = ref(false)
 const deleteLoading = ref(false)
+
+// Delete all states
+const showDeleteAllDialog = ref(false)
+const deleteAllLoading = ref(false)
 
 // Shift-click selection tracking
 const lastSelectedIndex = ref(null)
@@ -1019,6 +1068,42 @@ const confirmBulkDelete = async () => {
   } finally {
     bulkDeleteLoading.value = false
     showBulkDeleteDialog.value = false
+  }
+}
+
+const confirmDeleteAll = async () => {
+  if (deleteAllLoading.value) return
+
+  deleteAllLoading.value = true
+
+  try {
+    await technicalDataStore.deleteAllGpsData()
+
+    toast.add({
+      severity: 'success',
+      summary: 'All Data Deleted',
+      detail: 'All GPS points and timeline data have been successfully deleted',
+      life: 4000
+    })
+
+    selectedRows.value = []
+    lastSelectedIndex.value = null
+    currentPage.value = 0
+
+    await Promise.all([loadSummaryStats(), loadGPSPoints()])
+
+  } catch (error) {
+    console.error('Error deleting all GPS data:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to delete all GPS data'
+    toast.add({
+      severity: 'error',
+      summary: 'Delete Failed',
+      detail: errorMessage,
+      life: 5000
+    })
+  } finally {
+    deleteAllLoading.value = false
+    showDeleteAllDialog.value = false
   }
 }
 
@@ -1987,6 +2072,32 @@ watch(filters, async () => {
     max-width: 120px;
     order: 2;
   }
+}
+
+/* Delete All Warning Dialog */
+.confirm-icon--large {
+  font-size: 2rem;
+  align-self: flex-start;
+  margin-top: 0.1rem;
+}
+
+.delete-all-warning-title {
+  font-weight: 600;
+  margin: 0 0 var(--gp-spacing-sm);
+  color: var(--gp-text-primary);
+}
+
+.delete-all-warning-list {
+  margin: 0 0 var(--gp-spacing-md);
+  padding-left: 1.25rem;
+  color: var(--gp-text-primary);
+  line-height: 1.8;
+}
+
+.delete-all-warning-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--gp-text-secondary);
 }
 
 /* Filter Enhancements */

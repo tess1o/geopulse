@@ -737,21 +737,27 @@ const closePhotoViewer = () => {
 
 // Computed data from stores and props
 const processedPathData = computed(() => {
-  // Handle both object format {userId, points, pointCount} and direct array format
+  // Handle both object format {userId, segments, points, pointCount} and direct array format
   const pathData = props.pathData || locationStore.pathData
-  
+
   if (!pathData) return []
-  
-  // If it's an object with points property, extract the points array
+
+  // Prefer backend-computed segments (each segment is a contiguous recorded track,
+  // so PathLayer draws separate polylines with no phantom lines between them)
+  if (pathData.segments && Array.isArray(pathData.segments) && pathData.segments.length > 0) {
+    return pathData.segments
+  }
+
+  // Fallback: flat points array wrapped as a single segment
   if (pathData && typeof pathData === 'object' && pathData.points) {
     return Array.isArray(pathData.points) ? [pathData.points] : []
   }
-  
-  // If it's already an array, return as is
+
+  // Already an array (e.g. passed directly as prop)
   if (Array.isArray(pathData)) {
     return pathData
   }
-  
+
   return []
 })
 
