@@ -207,6 +207,44 @@ Click **Start Import** to begin. The system will:
 3. **Process** - Parse and import data using streaming parser
 4. **Generate Timeline** - Automatically create timeline items from GPS data
 
+### Drop Folder Imports (Server-Side)
+
+GeoPulse also supports a server-side **drop folder** for automated imports. This is useful for headless workflows or automated pipelines.
+
+**How it works:**
+- The server watches a configurable drop folder.
+- The admin must create a subfolder for each user, named exactly like the user's email (case-insensitive matching is used).
+- Files placed there are picked up and imported automatically.
+- Only one import runs per user at a time; additional files wait.
+
+**Example folder structure:**
+```
+/data/geopulse-import/
+  user@example.com/
+    google-timeline-2024.json
+    gpx-tracks.zip
+    .failed/
+      bad-file.json
+      bad-file.json.error.json
+```
+
+**What happens on success/failure:**
+- ✅ **Success:** file is deleted after the import finishes.
+- ❌ **Failure:** file is moved to `.failed/` and an `.error.json` file is written with details.
+
+**File type detection:**
+- The system uses filename hints first (e.g., `timeline`, `owntracks`, `geopulse`).
+- If needed, it tries parsers based on file extension:
+  - `.json`: OwnTracks → Google Timeline → GeoJSON (first successful parser wins)
+  - `.zip`: GeoPulse → GPX ZIP
+  - `.gpx`, `.geojson`, `.csv`: direct matching
+- For large GeoPulse ZIPs, a size cap applies **only for drop-folder imports** (default 200MB). Regular uploads are not affected.
+
+**Notes:**
+- Files must be stable (unchanged) for a short period before import begins.
+- Configure the drop folder path and timing in the admin settings or via environment variables.
+- See [Import Configuration](/docs/system-administration/configuration/import) for details.
+
 ### Monitoring Import Progress
 
 The import process provides detailed progress tracking across multiple phases:

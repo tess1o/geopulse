@@ -13,6 +13,7 @@ The import system supports:
 - **Streaming parsers** - Process files of any size with minimal memory usage
 - **Chunked uploads** - Bypass CDN upload limits (e.g., Cloudflare's 100MB limit) by splitting large files
 - **Temporary file storage** - Handle large files without loading them entirely into memory
+- **Drop folder imports** - Automatically pick up files placed on a server-side folder
 
 ## Environment Variables
 
@@ -50,6 +51,34 @@ Chunked uploads allow importing files larger than CDN limits (e.g., Cloudflare's
 | `GEOPULSE_IMPORT_UPLOAD_CLEANUP_MINUTES` | `15` | Interval for cleaning up expired upload sessions |
 | `GEOPULSE_IMPORT_CHUNKS_DIR` | `/tmp/geopulse/chunks` | Directory for storing upload chunks during assembly |
 
+### Drop Folder Imports
+
+The drop folder lets you import files by placing them into a server-side directory. The admin must create a subfolder for each user, named exactly like the user's email (case-insensitive matching is used).
+Settings can also be managed in the Admin Panel (Import settings); environment variables provide defaults.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GEOPULSE_IMPORT_DROP_FOLDER_ENABLED` | `false` | Enable drop folder imports |
+| `GEOPULSE_IMPORT_DROP_FOLDER_PATH` | `/data/geopulse-import` | Base path for drop folder imports |
+| `GEOPULSE_IMPORT_DROP_FOLDER_POLL_INTERVAL_SECONDS` | `10` | How often to scan for new files |
+| `GEOPULSE_IMPORT_DROP_FOLDER_STABLE_AGE_SECONDS` | `10` | Minimum file age before import begins |
+| `GEOPULSE_IMPORT_DROP_FOLDER_GEOPULSE_MAX_SIZE_MB` | `200` | Max GeoPulse ZIP size for drop imports |
+
+**Behavior:**
+- ✅ Success: file is deleted after import completes
+- ❌ Failure: file is moved to `.failed/` and an `.error.json` is written
+- Only one import runs per user at a time
+
+**Folder layout example:**
+```
+/data/geopulse-import/
+  user@example.com/
+    import.json
+    .failed/
+      bad-file.json
+      bad-file.json.error.json
+```
+
 ## Configuration Examples
 
 ### Docker Compose
@@ -70,6 +99,12 @@ services:
       # Custom temp directories (useful for persistent storage)
       GEOPULSE_IMPORT_TEMP_DIR: /data/geopulse/imports
       GEOPULSE_IMPORT_CHUNKS_DIR: /data/geopulse/chunks
+
+      # Drop folder imports
+      GEOPULSE_IMPORT_DROP_FOLDER_ENABLED: "true"
+      GEOPULSE_IMPORT_DROP_FOLDER_PATH: /data/geopulse-import
+    volumes:
+      - ./import-drop:/data/geopulse-import
 ```
 
 ### Kubernetes / Helm

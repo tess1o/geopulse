@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.model.UserSearchDTO;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,6 +28,16 @@ public class UserRepository implements PanacheRepositoryBase<UserEntity, UUID> {
      */
     public Optional<UserEntity> findByEmail(String email) {
         return find("email = ?1", email).firstResultOptional();
+    }
+
+    /**
+     * Find a single user by email (case-insensitive)
+     */
+    public Optional<UserEntity> findByEmailIgnoreCase(String email) {
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+        return find("LOWER(email) = ?1", email.toLowerCase(Locale.ENGLISH)).firstResultOptional();
     }
 
     /**

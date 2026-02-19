@@ -98,6 +98,26 @@ public class ImportTempFileService {
     }
 
     /**
+     * Copy a file to our temp directory and return the path.
+     * Used for drop-folder imports where the original file should be preserved on failure.
+     */
+    public String copyFileToTemp(Path sourceFile, UUID jobId, String originalFileName) throws IOException {
+        String extension = getFileExtension(originalFileName);
+        String safeFileName = jobId + extension;
+
+        Path targetPath = Paths.get(tempDirectory, safeFileName);
+
+        log.debug("Copying file to temp storage: {} -> {}", sourceFile, targetPath);
+
+        Files.copy(sourceFile, targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        log.info("Copied file to temp storage: {} ({} bytes)",
+                targetPath, Files.size(targetPath));
+
+        return targetPath.toString();
+    }
+
+    /**
      * Delete temp file for a completed/failed import job
      */
     public void cleanupTempFile(ImportJob job) {

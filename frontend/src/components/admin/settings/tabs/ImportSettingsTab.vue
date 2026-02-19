@@ -55,6 +55,36 @@
       </SettingItem>
     </SettingSection>
 
+    <SettingSection title="Drop Folder Import">
+      <SettingItem
+        v-for="setting in dropFolderSettings"
+        :key="setting.key"
+        :setting="setting"
+        @reset="handleReset(setting)"
+      >
+        <template #control="{ setting }">
+          <InputSwitch
+            v-if="setting.valueType === 'BOOLEAN'"
+            v-model="setting.currentValue"
+            @change="handleUpdate(setting)"
+          />
+          <InputText
+            v-else-if="setting.valueType === 'STRING'"
+            v-model="setting.currentValue"
+            @change="handleUpdate(setting)"
+            style="width: 300px"
+          />
+          <InputNumber
+            v-else
+            v-model="setting.currentValue"
+            @update:modelValue="handleUpdate(setting)"
+            :min="1"
+            style="width: 150px"
+          />
+        </template>
+      </SettingItem>
+    </SettingSection>
+
     <SettingSection title="Streaming Parser Batch Sizes">
       <SettingItem
         v-for="setting in streamingSettings"
@@ -79,6 +109,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import InputNumber from 'primevue/inputnumber'
+import InputSwitch from 'primevue/inputswitch'
+import InputText from 'primevue/inputtext'
 import SettingSection from '../SettingSection.vue'
 import SettingItem from '../SettingItem.vue'
 import { useAdminSettings } from '@/composables/useAdminSettings'
@@ -101,6 +133,18 @@ const batchSettings = computed(() =>
 const tempFileSettings = computed(() =>
   importSettings.value.filter(s =>
     ['import.large-file-threshold-mb', 'import.temp-file-retention-hours'].includes(s.key)
+  )
+)
+
+const dropFolderSettings = computed(() =>
+  importSettings.value.filter(s =>
+    [
+      'import.drop-folder.enabled',
+      'import.drop-folder.path',
+      'import.drop-folder.poll-interval-seconds',
+      'import.drop-folder.stable-age-seconds',
+      'import.drop-folder.geopulse-max-size-mb'
+    ].includes(s.key)
   )
 )
 

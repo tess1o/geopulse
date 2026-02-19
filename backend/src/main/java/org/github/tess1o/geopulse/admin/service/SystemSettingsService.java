@@ -102,6 +102,16 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.import.large-file-threshold-mb", "100", ValueType.INTEGER, "import", "Large file threshold (MB)"));
         SETTING_DEFINITIONS.put("import.temp-file-retention-hours",
                 new SettingDefinition("geopulse.import.temp-file-retention-hours", "24", ValueType.INTEGER, "import", "Temp file retention (hours)"));
+        SETTING_DEFINITIONS.put("import.drop-folder.enabled",
+                new SettingDefinition("geopulse.import.drop-folder.enabled", "false", ValueType.BOOLEAN, "import", "Enable drop folder imports (requires restart)"));
+        SETTING_DEFINITIONS.put("import.drop-folder.path",
+                new SettingDefinition("geopulse.import.drop-folder.path", "/data/geopulse-import", ValueType.STRING, "import", "Drop folder path (requires restart)"));
+        SETTING_DEFINITIONS.put("import.drop-folder.poll-interval-seconds",
+                new SettingDefinition("geopulse.import.drop-folder.poll-interval-seconds", "10", ValueType.INTEGER, "import", "Drop folder scan interval (seconds, requires restart)"));
+        SETTING_DEFINITIONS.put("import.drop-folder.stable-age-seconds",
+                new SettingDefinition("geopulse.import.drop-folder.stable-age-seconds", "10", ValueType.INTEGER, "import", "Min file age before import (seconds, requires restart)"));
+        SETTING_DEFINITIONS.put("import.drop-folder.geopulse-max-size-mb",
+                new SettingDefinition("geopulse.import.drop-folder.geopulse-max-size-mb", "200", ValueType.INTEGER, "import", "Max GeoPulse ZIP size for drop imports (MB, requires restart)"));
 
         // Chunked upload settings
         SETTING_DEFINITIONS.put("import.chunk-size-mb",

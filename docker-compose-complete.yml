@@ -24,6 +24,7 @@ services:
       - GEOPULSE_POSTGRES_URL=jdbc:postgresql://${GEOPULSE_POSTGRES_HOST}:${GEOPULSE_POSTGRES_PORT}/${GEOPULSE_POSTGRES_DB}
     volumes:
       - ./keys:/app/keys
+      - ./import-drop:/data/geopulse-import
     depends_on:
       geopulse-keygen:
         condition: service_completed_successfully

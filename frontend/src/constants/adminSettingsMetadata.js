@@ -123,6 +123,26 @@ export const SETTING_METADATA = {
     label: 'Temp File Retention (Hours)',
     description: 'How long to keep temporary import files before cleanup'
   },
+  'import.drop-folder.enabled': {
+    label: 'Drop Folder Enabled',
+    description: 'Enable drop folder imports'
+  },
+  'import.drop-folder.path': {
+    label: 'Drop Folder Path',
+    description: 'Filesystem path for drop folder imports'
+  },
+  'import.drop-folder.poll-interval-seconds': {
+    label: 'Drop Scan Interval (Seconds)',
+    description: 'How often to scan the drop folder'
+  },
+  'import.drop-folder.stable-age-seconds': {
+    label: 'Drop File Stable Age (Seconds)',
+    description: 'Minimum file age before import begins'
+  },
+  'import.drop-folder.geopulse-max-size-mb': {
+    label: 'Drop GeoPulse Max Size (MB)',
+    description: 'Max GeoPulse ZIP size for drop imports'
+  },
   'import.chunk-size-mb': {
     label: 'Chunk Size (MB)',
     description: 'Size of each upload chunk for large file uploads'
