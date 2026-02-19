@@ -85,23 +85,9 @@ public class GpsPointResource {
             GpsPointPathDTO path = gpsPointService.getGpsPointPath(user.getId(), start, end);
             TimelineConfig config = configurationProvider.getConfigurationForUser(user.getId());
 
-            // Apply segment-aware GPS path simplification
-            List<TimelineSegmentBoundary> segments =
-                    pathSimplificationService.getTimelineSegments(user.getId(), start, end);
-
-            List<? extends GpsPoint> simplifiedPath;
-            if (!segments.isEmpty()) {
-                // Use segment-aware simplification with per-segment minimum point guarantees
-                log.debug("Using segment-aware simplification with {} segments", segments.size());
-                simplifiedPath = pathSimplificationService.simplifyWithSegments(
-                        path.getPoints(), segments, config);
-            } else {
-                // Fallback to legacy simplification if no timeline segments found
-                log.debug("No timeline segments found, falling back to legacy simplification");
-                simplifiedPath = pathSimplificationService.simplify(path.getPoints(), config);
+            if (config.getPathSimplificationEnabled()) {
+                path.setPoints(simplifyPath(user.getId(), start, end, path.getPoints(), config));
             }
-
-            path.setPoints(simplifiedPath);
             return Response.ok(ApiResponse.success(path)).build();
         } catch (DateTimeParseException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -112,6 +98,23 @@ public class GpsPointResource {
                     .entity(ApiResponse.error("Failed to retrieve GPS point path: " + e.getMessage()))
                     .build();
         }
+    }
+
+    private List<? extends GpsPoint> simplifyPath(UUID userId, Instant start, Instant end, List<? extends GpsPoint> points, TimelineConfig config) {
+        // Apply segment-aware GPS path simplification
+        List<TimelineSegmentBoundary> segments = pathSimplificationService.getTimelineSegments(userId, start, end);
+
+        List<? extends GpsPoint> simplifiedPath;
+        if (segments.isEmpty()) {
+            // Fallback to legacy simplification if no timeline segments found
+            log.debug("No timeline segments found, falling back to legacy simplification");
+            simplifiedPath = pathSimplificationService.simplify(points, config);
+        } else {
+            // Use segment-aware simplification with per-segment minimum point guarantees
+            log.debug("Using segment-aware simplification with {} segments", segments.size());
+            simplifiedPath = pathSimplificationService.simplifyWithSegments(points, segments, config);
+        }
+        return simplifiedPath;
     }
 
     /**
