@@ -79,6 +79,7 @@ frontend:
   service:
     type: ClusterIP
     port: 80  # External port - keep at 80 for backward compatibility with Ingress
+    nodePort: null  # Optional fixed NodePort (only used when type=NodePort)
 
   # Nginx configuration
   nginx:

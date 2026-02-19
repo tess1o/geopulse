@@ -190,30 +190,37 @@ Replace `<server-ip>` with your k3s host LAN IP:
 hostname -I | awk '{print $1}'
 ```
 
-### Option 2 — Change service type to NodePort (persistent)
+### Option 2 — Use NodePort (persistent)
+
+Create a values file to switch the service type and (optionally) pin a fixed port:
 
 ```bash
-kubectl edit svc geopulse-frontend -n default
+cat > values-nodeport.yaml <<EOF
+frontend:
+  service:
+    type: NodePort
+    nodePort: 30555  # Optional; omit to auto-assign
+EOF
 ```
 
-Change:
-```yaml
-type: ClusterIP
-```
+Apply it with Helm:
 
-to:
-```yaml
-type: NodePort
-```
-
-Save and get the assigned NodePort:
 ```bash
-kubectl get svc -n default
+# If installed from source:
+helm upgrade geopulse ./helm/geopulse -f values-nodeport.yaml
+
+# If installed from Helm repository:
+helm upgrade my-geopulse geopulse/geopulse -f values-nodeport.yaml
 ```
 
 Access the UI from a network machine:
 ```
-http://<server-ip>:<node-port>
+http://<server-ip>:30555
+```
+
+If you omitted `nodePort`, get the assigned port:
+```bash
+kubectl get svc -n default
 ```
 
 ---

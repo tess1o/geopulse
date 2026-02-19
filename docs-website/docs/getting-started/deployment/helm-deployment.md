@@ -605,6 +605,7 @@ serviceMonitor:
 | `frontend.replicaCount`     | Number of frontend replicas | `1`                  |
 | `frontend.service.type`     | Frontend service type       | `ClusterIP`          |
 | `frontend.service.port`     | Frontend service port       | `80`                 |
+| `frontend.service.nodePort` | Fixed NodePort (optional)   | `null`               |
 
 ### PostgreSQL Parameters
 
