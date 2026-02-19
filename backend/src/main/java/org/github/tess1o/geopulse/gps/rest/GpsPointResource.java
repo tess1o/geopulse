@@ -25,10 +25,12 @@ import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +90,12 @@ public class GpsPointResource {
             if (config.getPathSimplificationEnabled()) {
                 path.setPoints(simplifyPath(user.getId(), start, end, path.getPoints(), config));
             }
+
+            int gapThreshold = (config.getDataGapThresholdSeconds() != null && config.getDataGapThresholdSeconds() > 0)
+                    ? config.getDataGapThresholdSeconds()
+                    : 10800;
+            path.setSegments(segmentPath(path.getPoints(), gapThreshold));
+
             return Response.ok(ApiResponse.success(path)).build();
         } catch (DateTimeParseException e) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -98,6 +106,36 @@ public class GpsPointResource {
                     .entity(ApiResponse.error("Failed to retrieve GPS point path: " + e.getMessage()))
                     .build();
         }
+    }
+
+    /**
+     * Splits a flat list of GPS points into contiguous segments by breaking wherever
+     * two consecutive points are separated by more than {@code gapThresholdSeconds}.
+     * Each segment is rendered as a separate polyline on the map, preventing phantom
+     * lines across unrecorded periods (e.g. between two separate GPX imports).
+     */
+    private List<List<GpsPoint>> segmentPath(List<? extends GpsPoint> points, int gapThresholdSeconds) {
+        if (points == null || points.isEmpty()) return List.of();
+
+        List<List<GpsPoint>> segments = new ArrayList<>();
+        List<GpsPoint> current = new ArrayList<>();
+
+        for (int i = 0; i < points.size(); i++) {
+            GpsPoint p = points.get(i);
+            if (i > 0) {
+                GpsPoint prev = points.get(i - 1);
+                if (prev.getTimestamp() != null && p.getTimestamp() != null) {
+                    long gapSeconds = Duration.between(prev.getTimestamp(), p.getTimestamp()).getSeconds();
+                    if (gapSeconds > gapThresholdSeconds) {
+                        segments.add(current);
+                        current = new ArrayList<>();
+                    }
+                }
+            }
+            current.add(p);
+        }
+        if (!current.isEmpty()) segments.add(current);
+        return segments;
     }
 
     private List<? extends GpsPoint> simplifyPath(UUID userId, Instant start, Instant end, List<? extends GpsPoint> points, TimelineConfig config) {

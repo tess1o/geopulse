@@ -10,7 +10,8 @@ import java.util.UUID;
 
 /**
  * DTO representing a complete GPS point path.
- * Contains a list of GPS points and metadata about the path.
+ * Contains a list of GPS points (flat) and a segmented view where each inner list
+ * is a contiguous recorded segment with no large time gaps between them.
  */
 @Data
 @NoArgsConstructor
@@ -19,6 +20,10 @@ public class GpsPointPathDTO {
     private UUID userId;
     private List<? extends GpsPoint> points;
     private int pointCount;
+    /** Path split into contiguous segments. Consecutive points within a segment have
+     *  no large time gap. The frontend should render each segment as a separate polyline
+     *  to avoid drawing phantom lines across unrecorded periods. */
+    private List<List<GpsPoint>> segments;
     
     /**
      * Constructor that automatically sets the point count.
