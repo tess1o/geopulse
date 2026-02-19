@@ -74,6 +74,8 @@ mosquitto:
 
 # JWT key generation
 keygen:
+  job:
+    enabled: false
   persistence:
     enabled: true
     storageClass: "standard"

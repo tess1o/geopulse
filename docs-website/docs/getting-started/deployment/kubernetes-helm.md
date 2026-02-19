@@ -90,6 +90,13 @@ If the interactive installer does not cover your needs, you can bypass it and us
 
 For a complete list of all available parameters, consult the **[Helm Deployment Guide](helm-deployment.md)**.
 
+## JWT Key Generation Notes
+
+GeoPulse generates JWT and AI encryption keys in a backend initContainer and stores them in a PVC (`geopulse-keys`) by default.
+
+- Single backend pod: default `ReadWriteOnce` works out of the box.
+- Multiple backend replicas across nodes: use a storage class that supports `ReadWriteMany`, or pin backend pods to the same node.
+
 
 ## GeoPulse Installation Troubleshooting
 

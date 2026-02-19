@@ -91,6 +91,7 @@ data:
     echo ""
     echo "🎉 Key generation completed successfully!"
 ---
+{{- if .Values.keygen.job.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -137,3 +138,4 @@ spec:
           configMap:
             name: {{ include "geopulse.fullname" . }}-keygen-script
             defaultMode: 0755
+{{- end }}

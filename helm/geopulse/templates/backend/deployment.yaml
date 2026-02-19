@@ -25,6 +25,20 @@ spec:
       securityContext:
         {{- toYaml .Values.backend.securityContext | nindent 8 }}
       initContainers:
+        # Generate JWT and AI encryption keys
+        - name: generate-keys
+          image: {{ include "geopulse.keygen.image" . }}
+          imagePullPolicy: {{ .Values.keygen.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - /scripts/generate-keys.sh
+          volumeMounts:
+            - name: keys
+              mountPath: /keys
+            - name: keygen-script
+              mountPath: /scripts
+          resources:
+            {{- toYaml .Values.keygen.resources | nindent 12 }}
         # Wait for PostgreSQL to be ready
         - name: wait-for-postgres
           image: busybox:1.36
@@ -38,22 +52,6 @@ spec:
                 sleep 2
               done
               echo "PostgreSQL is up - continuing"
-        # Wait for keygen job to complete
-        - name: wait-for-keys
-          image: busybox:1.36
-          command:
-            - sh
-            - -c
-            - |
-              echo "Waiting for JWT keys to be generated..."
-              while [ ! -f /app/keys/jwt-private-key.pem ] || [ ! -f /app/keys/jwt-public-key.pem ] || [ ! -f /app/keys/ai-encryption-key.txt ]; do
-                echo "Keys not found - sleeping"
-                sleep 2
-              done
-              echo "Keys found - continuing"
-          volumeMounts:
-            - name: keys
-              mountPath: /app/keys
       containers:
         - name: backend
           image: {{ include "geopulse.backend.image" . }}
@@ -100,8 +98,16 @@ spec:
             {{- toYaml .Values.backend.resources | nindent 12 }}
       volumes:
         - name: keys
+          {{- if .Values.keygen.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "geopulse.fullname" . }}-keys
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: keygen-script
+          configMap:
+            name: {{ include "geopulse.fullname" . }}-keygen-script
+            defaultMode: 0755
       {{- with .Values.backend.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

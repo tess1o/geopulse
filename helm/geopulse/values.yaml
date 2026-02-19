@@ -298,12 +298,16 @@ mosquitto:
   # Affinity
   affinity: {}
 
-# Key generation job
+# Key generation
 keygen:
   image:
     repository: alpine
     tag: latest
     pullPolicy: IfNotPresent
+
+  # Standalone keygen Job (deprecated by default)
+  job:
+    enabled: false
 
   # Persistence for generated keys
   persistence:
