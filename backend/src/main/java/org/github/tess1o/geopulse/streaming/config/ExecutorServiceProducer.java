@@ -18,4 +18,13 @@ public class ExecutorServiceProducer {
                 Thread.ofVirtual().name("timeline-", 0).factory()
         );
     }
+
+    @Produces
+    @ApplicationScoped
+    @Identifier("coverage-processing")
+    public ExecutorService coverageProcessingExecutor() {
+        return Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual().name("coverage-", 0).factory()
+        );
+    }
 }

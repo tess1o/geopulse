@@ -20,6 +20,7 @@ import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
 import FavoritesManagementPage from "@/views/app/FavoritesManagementPage.vue";
 import PeriodTagsManagementPage from "@/views/app/PeriodTagsManagementPage.vue";
+import CoverageExplorerPage from "@/views/app/CoverageExplorerPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
 import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
 import PlaceDetailsPage from "@/views/app/PlaceDetailsPage.vue";
@@ -307,6 +308,13 @@ const routes = [
         name: 'Location Analytics',
         component: () => import('@/views/app/LocationAnalyticsPage.vue'),
         meta: {title: 'Location Analytics'},
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/coverage',
+        name: 'Coverage Explorer',
+        component: CoverageExplorerPage,
+        meta: {title: 'Coverage Explorer'},
         beforeEnter: requireAuth
     },
     {

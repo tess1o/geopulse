@@ -184,6 +184,12 @@ const mainItems = computed(() => [
     key: 'location-analytics'
   },
   {
+    label: 'Coverage Explorer',
+    icon: 'pi pi-globe',
+    to: '/app/coverage',
+    key: 'coverage-explorer'
+  },
+  {
     label: 'Rewind',
     icon: 'pi pi-calendar-clock',
     to: '/app/rewind',

@@ -309,6 +309,7 @@ const defaultRedirectUrlOptions = [
   { label: 'Timeline', value: '/app/timeline' },
   { label: 'Dashboard', value: '/app/dashboard' },
   { label: 'Journey Insights', value: '/app/journey-insights' },
+  { label: 'Coverage Explorer', value: '/app/coverage' },
   { label: 'Friends', value: '/app/friends' },
   { label: 'Rewind', value: '/app/rewind' },
   { label: 'GPS Data', value: '/app/gps-data' },
