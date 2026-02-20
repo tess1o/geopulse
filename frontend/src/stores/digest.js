@@ -144,10 +144,11 @@ export const useDigestStore = defineStore('digest', {
          * Fetch heatmap data for the given period.
          * viewMode: 'monthly' | 'yearly'
          */
-        async fetchHeatmapData(viewMode, year, month = null, layer = 'combined') {
+        async fetchHeatmapData(viewMode, year, month = null, layer = 'combined', options = {}) {
             const key = viewMode === 'monthly'
                 ? `${year}-${String(month).padStart(2, '0')}-${layer}`
                 : `${year}-${layer}`
+            const silent = options?.silent === true
 
             // Return cached data immediately
             if (this.heatmapData[key]) {
@@ -155,8 +156,10 @@ export const useDigestStore = defineStore('digest', {
             }
 
             try {
-                this.heatmapLoading = true
-                this.heatmapError = null
+                if (!silent) {
+                    this.heatmapLoading = true
+                    this.heatmapError = null
+                }
 
                 const params = viewMode === 'monthly'
                     ? { year, month, layer }
@@ -172,10 +175,14 @@ export const useDigestStore = defineStore('digest', {
                 return data
             } catch (error) {
                 console.error('Error fetching heatmap data:', error)
-                this.heatmapError = error.message || 'Failed to fetch heatmap data'
+                if (!silent) {
+                    this.heatmapError = error.message || 'Failed to fetch heatmap data'
+                }
                 return []
             } finally {
-                this.heatmapLoading = false
+                if (!silent) {
+                    this.heatmapLoading = false
+                }
             }
         },
 
@@ -184,6 +191,45 @@ export const useDigestStore = defineStore('digest', {
                 ? `${year}-${String(month).padStart(2, '0')}-${layer}`
                 : `${year}-${layer}`
             delete this.heatmapData[key]
+        },
+
+        /**
+         * Fetch heatmap data for a custom date range.
+         */
+        async fetchHeatmapRangeData(startTime, endTime, layer = 'combined', options = {}) {
+            if (!startTime || !endTime) return []
+
+            const key = `range:${startTime}:${endTime}:${layer}`
+            if (this.heatmapData[key]) {
+                return this.heatmapData[key]
+            }
+            const silent = options?.silent === true
+
+            try {
+                if (!silent) {
+                    this.heatmapLoading = true
+                    this.heatmapError = null
+                }
+
+                const response = await apiService.get('/digest/heatmap/range', {
+                    startTime,
+                    endTime,
+                    layer
+                })
+                const data = response.data || response
+                this.heatmapData[key] = data
+                return data
+            } catch (error) {
+                console.error('Error fetching heatmap range data:', error)
+                if (!silent) {
+                    this.heatmapError = error.message || 'Failed to fetch heatmap data'
+                }
+                return []
+            } finally {
+                if (!silent) {
+                    this.heatmapLoading = false
+                }
+            }
         }
     }
 })

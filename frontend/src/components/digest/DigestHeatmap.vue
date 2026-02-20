@@ -68,6 +68,20 @@
         width="100%"
         @map-ready="onMapReady"
       />
+      <HeatmapLayer
+        v-if="mapInstance && hasData"
+        :map="mapInstance"
+        :points="heatPoints"
+        :value-key="valueKey"
+        :min-weight="scaleConfig.minWeight"
+        :gamma="scaleConfig.gamma"
+        :radius="heatStyle.radius"
+        :blur="heatStyle.blur"
+        :min-opacity="heatStyle.minOpacity"
+        :max="heatStyle.max"
+        :gradient="heatGradient"
+        :enabled="true"
+      />
       <!-- Legend -->
       <div class="heatmap-legend">
         <span class="legend-label">Low</span>
@@ -80,11 +94,11 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onUnmounted, nextTick } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import L from 'leaflet'
-import 'leaflet.heat'
 import BaseMap from '@/components/maps/BaseMap.vue'
+import HeatmapLayer from '@/components/maps/layers/HeatmapLayer.vue'
 import { useDigestStore } from '@/stores/digest'
 
 const props = defineProps({
@@ -105,8 +119,6 @@ const intensityMode = ref('duration') // 'duration' | 'visits'
 const layerMode = ref('stays') // 'stays' | 'trips'
 const lastNonTripIntensity = ref('duration')
 const heatPoints    = ref([])
-let   heatLayer     = null
-let   zoomHandler   = null
 
 const hasError = computed(() => !!heatmapError.value)
 const hasData  = computed(() => heatPoints.value.length > 0)
@@ -116,6 +128,34 @@ const legendHint = computed(() => {
   }
   return 'Visit count'
 })
+
+const valueKey = computed(() => {
+  return intensityMode.value === 'duration' ? 'durationSeconds' : 'visits'
+})
+
+const scaleConfig = computed(() => {
+  return {
+    combined: { minWeight: 0.04, gamma: 0.6 },
+    stays: { minWeight: 0.05, gamma: 0.6 },
+    trips: { minWeight: 0.02, gamma: 1.0 }
+  }[layerMode.value] || { minWeight: 0.04, gamma: 0.6 }
+})
+
+const heatStyle = computed(() => {
+  return {
+    combined: { radius: 32, blur: 24, minOpacity: 0.25, max: 1.0 },
+    stays: { radius: 40, blur: 28, minOpacity: 0.3, max: 1.0 },
+    trips: { radius: 18, blur: 12, minOpacity: 0.2, max: 1.0 }
+  }[layerMode.value] || { radius: 32, blur: 24, minOpacity: 0.25, max: 1.0 }
+})
+
+const heatGradient = {
+  0.0: '#2563eb',
+  0.35: '#22c55e',
+  0.6: '#eab308',
+  0.8: '#f97316',
+  1.0: '#dc2626',
+}
 
 // ─── Data loading ────────────────────────────────────────────────────────────
 
@@ -134,7 +174,8 @@ const loadHeatmap = async () => {
     props.viewMode,
     props.year,
     props.month,
-    prefetchLayer
+    prefetchLayer,
+    { silent: true }
   ).catch(() => {})
 
   const data = await dataPromise
@@ -142,118 +183,6 @@ const loadHeatmap = async () => {
   if (baseMapRef.value) {
     await nextTick()
     fitMap()
-    renderHeatLayer()
-  }
-}
-
-// ─── Heatmap rendering ───────────────────────────────────────────────────────
-
-/**
- * Safely detach the heat layer from the Leaflet map.
- * Must be called BEFORE BaseMap destroys the Leaflet instance; otherwise
- * leaflet.heat's internal _reset listener fires on a null map reference,
- * causing: "Cannot read properties of null (reading 'containerPointToLayerPoint')"
- */
-const removeHeatLayer = () => {
-  if (!heatLayer) return
-  try {
-    if (mapInstance.value) {
-      if (zoomHandler) {
-        mapInstance.value.off('zoomend', zoomHandler)
-        zoomHandler = null
-      }
-      mapInstance.value.removeLayer(heatLayer)
-    }
-  } catch (e) {
-    // ignore – map may already be gone
-  }
-  heatLayer = null
-}
-
-const buildLeafletPoints = () => {
-  if (!heatPoints.value.length) return []
-
-  // Compute max value for normalisation
-  const getValue = (p) => intensityMode.value === 'duration' ? p.durationSeconds : p.visits
-  const values = heatPoints.value
-    .map(getValue)
-    .filter((v) => Number.isFinite(v) && v > 0)
-
-  const scaleConfig = {
-    combined: { minWeight: 0.04, gamma: 0.6 },
-    stays: { minWeight: 0.05, gamma: 0.6 },
-    trips: { minWeight: 0.02, gamma: 1.0 }
-  }[layerMode.value] || { minWeight: 0.04, gamma: 0.6 }
-
-  const maxVal = Math.max(...values, 1)
-  const minWeight = scaleConfig.minWeight
-  const gamma = scaleConfig.gamma
-
-  const points = heatPoints.value.map(p => {
-    const raw = getValue(p)
-    const linear = Math.min(1, raw / maxVal)
-    const weight = Math.max(minWeight, Math.pow(linear, gamma))
-    return [Number(p.lat), Number(p.lng), weight]
-  })
-
-  return points
-}
-
-const renderHeatLayer = () => {
-  const map = mapInstance.value
-  if (!map) return
-
-  try {
-    // Detach existing layer safely before adding a new one
-    removeHeatLayer()
-
-    const points = buildLeafletPoints()
-    if (!points.length) return
-
-    if (!L?.heatLayer) {
-      console.warn('DigestHeatmap: leaflet.heat not available')
-      return
-    }
-
-    if (!map._loaded) {
-      const first = heatPoints.value[0]
-      if (first) {
-        map.setView([Number(first.lat), Number(first.lng)], 12)
-      }
-    }
-
-    const zoom = map.getZoom()
-    const heatStyle = {
-      combined: { radius: 32, blur: 24, minOpacity: 0.25, max: 1.0 },
-      stays: { radius: 40, blur: 28, minOpacity: 0.3, max: 1.0 },
-      trips: { radius: 18, blur: 12, minOpacity: 0.2, max: 1.0 }
-    }[layerMode.value] || { radius: 32, blur: 24, minOpacity: 0.25, max: 1.0 }
-
-    heatLayer = L.heatLayer(points, {
-      radius:   heatStyle.radius,
-      blur:     heatStyle.blur,
-      // lock intensity scaling to current zoom (prevents color shifting)
-      maxZoom:  zoom,
-      max:      heatStyle.max,
-      minOpacity: heatStyle.minOpacity,
-      gradient: {
-        0.0: '#2563eb',   // blue  – low
-        0.35: '#22c55e',  // green
-        0.6: '#eab308',   // yellow
-        0.8: '#f97316',   // orange
-        1.0: '#dc2626',   // red   – high
-      }
-    }).addTo(map)
-
-    // Keep intensity stable across zoom changes
-    zoomHandler = () => {
-      if (!heatLayer) return
-      heatLayer.setOptions({ maxZoom: map.getZoom() })
-      heatLayer.redraw()
-    }
-    map.on('zoomend', zoomHandler)
-  } catch (e) {
-    console.warn('DigestHeatmap: could not render heat layer', e)
   }
 }
 
@@ -273,14 +202,8 @@ const onMapReady = async (map) => {
   await nextTick()
   if (heatPoints.value.length) {
     fitMap()
-    renderHeatLayer()
   }
 }
-
-// Re-render when intensity mode switches
-watch(intensityMode, () => {
-  if (mapInstance.value) renderHeatLayer()
-})
 
 watch(layerMode, (nextLayer, prevLayer) => {
   if (prevLayer !== 'trips') {
@@ -300,11 +223,6 @@ watch(
   () => loadHeatmap(),
   { immediate: true }
 )
-
-// Cleanup
-onUnmounted(() => {
-  removeHeatLayer()
-})
 </script>
 
 <style scoped>

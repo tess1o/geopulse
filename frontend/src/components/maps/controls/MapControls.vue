@@ -32,6 +32,54 @@
         <i class="pi pi-map"></i>
       </button>
 
+      <div
+        v-if="showHeatmap"
+        ref="heatmapControlRef"
+        class="heatmap-control"
+      >
+        <button
+          @click="toggleHeatmapPopover"
+          :class="{ active: heatmapEnabled }"
+          :title="heatmapButtonTitle"
+          class="control-button"
+          :disabled="!map || !heatmapAvailable"
+        >
+          <i class="pi pi-globe"></i>
+        </button>
+
+        <div
+          v-if="heatmapPopoverOpen"
+          class="heatmap-popover"
+          @click.stop
+        >
+          <div class="heatmap-popover-title">Heatmap</div>
+          <button
+            class="heatmap-popover-option"
+            :class="{ active: heatmapEnabled && heatmapLayer === 'stays' }"
+            @click="selectHeatmapLayer('stays')"
+          >
+            <i class="pi pi-home"></i>
+            Stays
+          </button>
+          <button
+            class="heatmap-popover-option"
+            :class="{ active: heatmapEnabled && heatmapLayer === 'trips' }"
+            @click="selectHeatmapLayer('trips')"
+          >
+            <i class="pi pi-directions"></i>
+            Trips
+          </button>
+          <button
+            v-if="heatmapEnabled"
+            class="heatmap-popover-option heatmap-popover-off"
+            @click="disableHeatmap"
+          >
+            <i class="pi pi-times"></i>
+            Turn off
+          </button>
+        </div>
+      </div>
+
       <button
         v-if="showImmichButton"
         @click="handleToggleImmich"
@@ -63,7 +111,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 const props = defineProps({
   map: {
@@ -86,6 +134,22 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  showHeatmap: {
+    type: Boolean,
+    default: false
+  },
+  heatmapEnabled: {
+    type: Boolean,
+    default: false
+  },
+  heatmapLayer: {
+    type: String,
+    default: 'stays'
+  },
+  heatmapAvailable: {
+    type: Boolean,
+    default: true
+  },
   showZoomControls: {
     type: Boolean,
     default: true
@@ -105,6 +169,8 @@ const emit = defineEmits([
   'toggle-timeline',
   'toggle-path',
   'toggle-immich',
+  'toggle-heatmap',
+  'heatmap-layer-change',
   'zoom-to-data'
 ])
 
@@ -128,9 +194,55 @@ const handleZoomToData = () => {
   emit('zoom-to-data')
 }
 
+const heatmapControlRef = ref(null)
+const heatmapPopoverOpen = ref(false)
+
+const toggleHeatmapPopover = () => {
+  if (!props.heatmapAvailable || !props.map) return
+  heatmapPopoverOpen.value = !heatmapPopoverOpen.value
+}
+
+const selectHeatmapLayer = (layer) => {
+  emit('heatmap-layer-change', layer)
+  emit('toggle-heatmap', true)
+  heatmapPopoverOpen.value = false
+}
+
+const disableHeatmap = () => {
+  emit('toggle-heatmap', false)
+  heatmapPopoverOpen.value = false
+}
+
+const closeHeatmapPopover = () => {
+  heatmapPopoverOpen.value = false
+}
+
 // Computed properties
 const showImmichButton = computed(() => {
   return props.immichConfigured
+})
+
+const heatmapButtonTitle = computed(() => {
+  if (!props.heatmapAvailable) return 'Select a date range to enable heatmap'
+  if (props.heatmapEnabled) return 'Heatmap enabled'
+  return 'Show heatmap'
+})
+
+const handleDocumentClick = (event) => {
+  if (!heatmapPopoverOpen.value) return
+  const target = event.target
+  const root = heatmapControlRef.value
+  if (root && target && !root.contains(target)) {
+    closeHeatmapPopover()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick)
 })
 </script>
 
@@ -198,6 +310,65 @@ const showImmichButton = computed(() => {
   box-shadow: 0 0 0 2px var(--gp-primary, #1a56db);
 }
 
+.heatmap-control {
+  position: relative;
+}
+
+.heatmap-popover {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  min-width: 140px;
+  background: var(--gp-surface-white, #fff);
+  border: 1px solid var(--gp-border-light, rgba(0, 0, 0, 0.1));
+  border-radius: var(--gp-radius-medium, 8px);
+  box-shadow: var(--gp-shadow-medium, 0 8px 20px rgba(0, 0, 0, 0.12));
+  padding: 8px;
+  z-index: 1100;
+}
+
+.heatmap-popover-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gp-text-secondary, #64748b);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.heatmap-popover-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gp-text-primary, #0f172a);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.heatmap-popover-option + .heatmap-popover-option {
+  margin-top: 4px;
+}
+
+.heatmap-popover-option:hover {
+  background: var(--gp-surface-light, #f8fafc);
+}
+
+.heatmap-popover-option.active {
+  background: rgba(26, 86, 219, 0.12);
+  border-color: rgba(26, 86, 219, 0.2);
+  color: var(--gp-primary, #1a56db);
+}
+
+.heatmap-popover-off {
+  color: var(--gp-text-secondary, #64748b);
+}
+
 /* Dark mode */
 .p-dark .control-group {
   background: var(--gp-surface-dark, #1e293b);
@@ -211,6 +382,21 @@ const showImmichButton = computed(() => {
 .p-dark .control-button:hover:not(:disabled) {
   background-color: var(--gp-surface-darker, #0f172a);
   color: var(--gp-primary-light, #3b82f6);
+}
+
+.p-dark .heatmap-popover {
+  background: var(--gp-surface-dark, #1e293b);
+  border-color: var(--gp-border-dark, rgba(255, 255, 255, 0.1));
+}
+
+.p-dark .heatmap-popover-option {
+  color: var(--gp-text-secondary, #cbd5e1);
+}
+
+.p-dark .heatmap-popover-option.active {
+  color: var(--gp-primary-light, #3b82f6);
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(59, 130, 246, 0.35);
 }
 
 /* Immich button specific styles */
@@ -254,6 +440,11 @@ const showImmichButton = computed(() => {
 
   .control-group {
     flex-direction: row;
+  }
+
+  .heatmap-popover {
+    right: 0;
+    top: calc(100% + 8px);
   }
 
   .control-button {

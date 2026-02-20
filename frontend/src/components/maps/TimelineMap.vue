@@ -24,12 +24,18 @@
           :show-timeline="showTimeline"
           :show-path="showPath"
           :show-immich="showImmich"
+          :show-heatmap="!props.isPublicView"
+          :heatmap-enabled="heatmapEnabled"
+          :heatmap-layer="heatmapLayer"
+          :heatmap-available="heatmapAvailable"
           :immich-configured="immichConfigured"
           :immich-loading="immichLoading"
           @toggle-favorites="toggleFavorites"
           @toggle-timeline="toggleTimeline"
           @toggle-path="togglePath"
           @toggle-immich="toggleImmich"
+          @toggle-heatmap="handleToggleHeatmap"
+          @heatmap-layer-change="handleHeatmapLayerChange"
           @zoom-to-data="handleZoomToData"
           class="map-controls"
         />
@@ -37,6 +43,22 @@
 
       <!-- Map Layers -->
       <template #overlays="{ map, isReady }">
+        <!-- Heatmap Layer -->
+        <HeatmapLayer
+          v-if="map && isReady"
+          :map="map"
+          :points="heatmapPoints"
+          :value-key="'durationSeconds'"
+          :min-weight="heatmapScale.minWeight"
+          :gamma="heatmapScale.gamma"
+          :radius="heatmapStyle.radius"
+          :blur="heatmapStyle.blur"
+          :min-opacity="heatmapStyle.minOpacity"
+          :max="heatmapStyle.max"
+          :gradient="heatmapGradient"
+          :enabled="heatmapEnabled"
+        />
+
         <!-- Path Layer -->
         <PathLayer
           v-if="map && isReady"
@@ -156,7 +178,7 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import {useTimelineRegeneration} from '@/composables/useTimelineRegeneration'
 
 // Map components
-import {FavoritesLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer} from '@/components/maps'
+import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer} from '@/components/maps'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -168,6 +190,8 @@ import {useFavoritesStore} from '@/stores/favorites'
 import {useLocationStore} from '@/stores/location'
 import {useTimelineStore} from '@/stores/timeline'
 import {useImmichStore} from '@/stores/immich'
+import {useDigestStore} from '@/stores/digest'
+import {useDateRangeStore} from '@/stores/dateRange'
 
 // Props
 const props = defineProps({
@@ -248,6 +272,8 @@ const favoritesStore = useFavoritesStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const immichStore = useImmichStore()
+const digestStore = useDigestStore()
+const dateRangeStore = useDateRangeStore()
 
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
@@ -288,6 +314,11 @@ const toast = useToast()
 // Local state
 const map = ref(null)
 const favoriteContextMenuActive = ref(false)
+const heatmapEnabled = ref(false)
+const heatmapLayer = ref('stays')
+const heatmapPoints = ref([])
+let heatmapRequestId = 0
+const heatmapPrefetches = new Map()
 
 // Dialog state
 const dialogState = ref({
@@ -347,6 +378,30 @@ const shouldShowImmich = computed(() => {
   }
   return true // For non-public views, always allow (controlled by toggle)
 })
+
+const heatmapAvailable = computed(() => {
+  return !props.isPublicView && dateRangeStore.hasDateRange && dateRangeStore.isValidRange
+})
+
+const heatmapScale = computed(() => {
+  return heatmapLayer.value === 'trips'
+    ? { minWeight: 0.02, gamma: 1.0 }
+    : { minWeight: 0.05, gamma: 0.6 }
+})
+
+const heatmapStyle = computed(() => {
+  return heatmapLayer.value === 'trips'
+    ? { radius: 14, blur: 10, minOpacity: 0.2, max: 1.0 }
+    : { radius: 32, blur: 24, minOpacity: 0.3, max: 1.0 }
+})
+
+const heatmapGradient = {
+  0.0: '#2563eb',
+  0.35: '#22c55e',
+  0.6: '#eab308',
+  0.8: '#f97316',
+  1.0: '#dc2626',
+}
 
 // Context menu items
 const mapMenuItems = ref([
@@ -605,6 +660,17 @@ const handleZoomToData = () => {
   }
 }
 
+const handleToggleHeatmap = (enabled) => {
+  if (!heatmapAvailable.value && enabled) {
+    return
+  }
+  heatmapEnabled.value = enabled
+}
+
+const handleHeatmapLayerChange = (layer) => {
+  heatmapLayer.value = layer
+}
+
 // Area drawing control (for escape key handling)
 
 const initAreaDrawControl = () => {
@@ -731,6 +797,68 @@ const closePhotoViewer = () => {
   photoViewerVisible.value = false
   photoViewerPhotos.value = []
   photoViewerIndex.value = 0
+}
+
+
+
+// ─── Heatmap logic ───────────────────────────────────────────────────────────
+
+const getHeatmapRangeKey = (startTime, endTime, layer) => {
+  return `range:${startTime}:${endTime}:${layer}`
+}
+
+const loadHeatmap = async () => {
+  if (!heatmapEnabled.value || !heatmapAvailable.value) {
+    heatmapPoints.value = []
+    return
+  }
+
+  const range = dateRangeStore.getCurrentDateRange
+  if (!range || range.length !== 2) return
+  const [startTime, endTime] = range
+  const key = getHeatmapRangeKey(startTime, endTime, heatmapLayer.value)
+
+  const cached = digestStore.heatmapData?.[key]
+  if (cached) {
+    heatmapPoints.value = Array.isArray(cached) ? cached : []
+    return
+  }
+
+  const requestId = ++heatmapRequestId
+  const inFlight = heatmapPrefetches.get(key)
+  const data = inFlight
+    ? await inFlight
+    : await digestStore.fetchHeatmapRangeData(
+      startTime,
+      endTime,
+      heatmapLayer.value,
+      { silent: true }
+    )
+  if (requestId !== heatmapRequestId) return
+
+  heatmapPoints.value = Array.isArray(data) ? data : []
+}
+
+const prefetchHeatmapRange = () => {
+  if (!heatmapAvailable.value) return
+  const range = dateRangeStore.getCurrentDateRange
+  if (!range || range.length !== 2) return
+  const [startTime, endTime] = range
+
+  const layers = ['stays', 'trips']
+  layers.forEach((layer) => {
+    const key = getHeatmapRangeKey(startTime, endTime, layer)
+    if (digestStore.heatmapData?.[key] || heatmapPrefetches.has(key)) return
+
+    const promise = digestStore.fetchHeatmapRangeData(
+      startTime,
+      endTime,
+      layer,
+      { silent: true }
+    )
+      .finally(() => heatmapPrefetches.delete(key))
+    heatmapPrefetches.set(key, promise)
+  })
 }
 
 
@@ -866,6 +994,29 @@ watch(dataBounds, (newBounds) => {
     }
   }
 }, { immediate: true })
+
+watch(heatmapEnabled, (enabled) => {
+  if (enabled) {
+    loadHeatmap()
+  }
+})
+
+watch(heatmapLayer, () => {
+  if (heatmapEnabled.value) {
+    loadHeatmap()
+  }
+})
+
+watch(
+  () => dateRangeStore.getCurrentDateRange,
+  () => {
+    prefetchHeatmapRange()
+    if (heatmapEnabled.value) {
+      loadHeatmap()
+    }
+  },
+  { immediate: true }
+)
 
 // Lifecycle
 onMounted(() => {

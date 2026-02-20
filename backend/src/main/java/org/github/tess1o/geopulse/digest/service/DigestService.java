@@ -5,6 +5,7 @@ import org.github.tess1o.geopulse.digest.model.HeatmapLayer;
 import org.github.tess1o.geopulse.digest.model.TimeDigest;
 
 import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
 
 public interface DigestService {
@@ -19,4 +20,6 @@ public interface DigestService {
     List<HeatmapDataPoint> getMonthlyHeatmap(UUID userId, int year, int month, String timezone, HeatmapLayer layer);
 
     List<HeatmapDataPoint> getYearlyHeatmap(UUID userId, int year, String timezone, HeatmapLayer layer);
+
+    List<HeatmapDataPoint> getHeatmapForRange(UUID userId, Instant start, Instant end, HeatmapLayer layer);
 }

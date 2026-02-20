@@ -12,6 +12,8 @@ import org.github.tess1o.geopulse.digest.model.HeatmapLayer;
 import org.github.tess1o.geopulse.digest.service.DigestService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 
@@ -115,6 +117,63 @@ public class DigestHeatmapResource {
             return Response.ok(ApiResponse.success(points)).build();
         } catch (Exception e) {
             log.error("Failed to generate yearly heatmap for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to generate heatmap: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get heatmap data for a custom time range.
+     * <p>
+     * Query params: {@code startTime} (required, ISO-8601), {@code endTime} (required, ISO-8601)
+     */
+    @GET
+    @Path("/range")
+    public Response getRangeHeatmap(@QueryParam("startTime") String startTime,
+                                    @QueryParam("endTime") String endTime,
+                                    @QueryParam("layer") String layer) {
+
+        var user = currentUserService.getCurrentUser();
+        UUID userId = user.getId();
+
+        if (startTime == null || startTime.isBlank() || endTime == null || endTime.isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("startTime and endTime are required"))
+                    .build();
+        }
+
+        Instant start;
+        Instant end;
+        try {
+            start = Instant.parse(startTime);
+            end = Instant.parse(endTime);
+        } catch (DateTimeParseException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("startTime and endTime must be valid ISO-8601 timestamps"))
+                    .build();
+        }
+
+        if (end.isBefore(start)) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("endTime must be after startTime"))
+                    .build();
+        }
+
+        HeatmapLayer heatmapLayer = HeatmapLayer.fromString(layer);
+        if (heatmapLayer == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid layer. Must be one of: stays, trips, combined"))
+                    .build();
+        }
+
+        log.info("Received request for range heatmap: user={}, start={}, end={}", userId, start, end);
+
+        try {
+            List<HeatmapDataPoint> points = digestService.getHeatmapForRange(userId, start, end, heatmapLayer);
+            return Response.ok(ApiResponse.success(points)).build();
+        } catch (Exception e) {
+            log.error("Failed to generate range heatmap for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to generate heatmap: " + e.getMessage()))
                     .build();

@@ -161,6 +161,12 @@ public class DigestServiceImpl implements DigestService {
         return buildHeatmapPoints(userId, start, end, layer);
     }
 
+    @Override
+    public List<HeatmapDataPoint> getHeatmapForRange(UUID userId, Instant start, Instant end, HeatmapLayer layer) {
+        log.info("Generating range heatmap for user {} - {} to {}", userId, start, end);
+        return buildHeatmapPoints(userId, start, end, layer);
+    }
+
     private List<HeatmapDataPoint> buildHeatmapPoints(UUID userId, Instant start, Instant end, HeatmapLayer layer) {
         java.util.stream.Stream<HeatmapPlace> stream;
         if (layer == HeatmapLayer.STAYS) {
