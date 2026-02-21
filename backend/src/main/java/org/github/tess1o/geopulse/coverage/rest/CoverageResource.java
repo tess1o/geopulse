@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.coverage.rest;
 
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
@@ -30,14 +31,18 @@ import java.util.UUID;
 @RolesAllowed({ "USER", "ADMIN" })
 public class CoverageResource {
 
-    @Inject
-    CoverageService coverageService;
+    private final CoverageService coverageService;
+    private final CoverageProcessingService processingService;
+    private final CurrentUserService currentUserService;
 
     @Inject
-    CoverageProcessingService processingService;
-
-    @Inject
-    CurrentUserService currentUserService;
+    public CoverageResource(CoverageService coverageService,
+                            CoverageProcessingService processingService,
+                            CurrentUserService currentUserService) {
+        this.coverageService = coverageService;
+        this.processingService = processingService;
+        this.currentUserService = currentUserService;
+    }
 
     @GET
     @Path("/status")
@@ -50,14 +55,14 @@ public class CoverageResource {
     @PUT
     @Path("/settings")
     public Response updateCoverageSettings(CoverageSettingsRequest request) {
-        if (request == null || request.getEnabled() == null) {
+        if (request == null || request.enabled() == null) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error("enabled is required"))
                     .build();
         }
 
         UUID userId = currentUserService.getCurrentUserId();
-        boolean enable = request.getEnabled();
+        boolean enable = request.enabled();
 
         coverageService.setUserCoverageEnabled(userId, enable);
 
@@ -72,7 +77,8 @@ public class CoverageResource {
     @GET
     @Path("/cells")
     public Response getCoverageCells(@QueryParam("bbox") String bbox,
-                                     @QueryParam("grid") Integer gridMeters) {
+                                     @QueryParam("grid") Integer gridMeters,
+                                     @QueryParam("limit") @Min(1) Integer limit) {
         UserEntity user = currentUserService.getCurrentUser();
         if (!user.isCoverageEnabled()) {
             return Response.status(Response.Status.FORBIDDEN)
@@ -101,6 +107,15 @@ public class CoverageResource {
                     .entity(ApiResponse.error("Unsupported grid size"))
                     .build();
         }
+        int cellLimit = CoverageDefaults.DEFAULT_CELLS_PER_VIEW;
+        if (limit != null) {
+            if (limit < 1) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("limit must be greater than 0"))
+                        .build();
+            }
+            cellLimit = Math.min(limit, CoverageDefaults.MAX_CELLS_PER_VIEW);
+        }
 
         UUID userId = user.getId();
 
@@ -115,7 +130,8 @@ public class CoverageResource {
                 minLat,
                 maxLon,
                 maxLat,
-                grid
+                grid,
+                cellLimit
         );
 
         return Response.ok(ApiResponse.success(cells)).build();
@@ -154,6 +170,9 @@ public class CoverageResource {
         double[] bounds = new double[4];
         for (int i = 0; i < 4; i++) {
             bounds[i] = Double.parseDouble(parts[i].trim());
+            if (!Double.isFinite(bounds[i])) {
+                throw new IllegalArgumentException("bbox values must be finite numbers");
+            }
         }
 
         if (bounds[0] < -180 || bounds[0] > 180 || bounds[2] < -180 || bounds[2] > 180) {

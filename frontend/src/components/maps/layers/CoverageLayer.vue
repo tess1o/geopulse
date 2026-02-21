@@ -40,19 +40,23 @@ const props = defineProps({
 })
 
 let coverageLayer = null
+let currentMap = null
+const cellLayers = new Map()
 
 const removeLayer = () => {
   if (!coverageLayer) return
   try {
-    const currentMap = coverageLayer._map || props.map
-    if (currentMap) {
+    const layerMap = coverageLayer._map || currentMap || props.map
+    if (layerMap) {
       coverageLayer.clearLayers()
-      currentMap.removeLayer(coverageLayer)
+      layerMap.removeLayer(coverageLayer)
     }
   } catch (e) {
     // ignore cleanup errors
   }
+  cellLayers.clear()
   coverageLayer = null
+  currentMap = null
 }
 
 const getOpacity = (count, maxCount) => {
@@ -69,23 +73,30 @@ const renderCells = () => {
   }
 
   if (!props.visible) {
-    if (coverageLayer) {
-      coverageLayer.clearLayers()
-    }
+    removeLayer()
     return
+  }
+
+  if (currentMap && currentMap !== props.map) {
+    removeLayer()
   }
 
   if (!coverageLayer) {
     coverageLayer = L.layerGroup().addTo(props.map)
-  } else {
-    coverageLayer.clearLayers()
+    currentMap = props.map
   }
-
-  if (!props.cells?.length) return
 
   const maxCells = props.maxCellsToRender > 0
     ? props.cells.slice(0, props.maxCellsToRender)
     : props.cells
+
+  if (!maxCells?.length) {
+    if (cellLayers.size > 0) {
+      coverageLayer.clearLayers()
+      cellLayers.clear()
+    }
+    return
+  }
 
   const maxCount = maxCells.reduce((max, cell) => {
     const value = Number(cell?.seenCount ?? 0)
@@ -94,11 +105,15 @@ const renderCells = () => {
 
   const half = props.gridMeters / 2
   const crs = props.map?.options?.crs || L.CRS.EPSG3857
+  const visibleKeys = new Set()
 
   maxCells.forEach((cell) => {
     const lat = Number(cell?.latitude)
     const lon = Number(cell?.longitude)
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return
+
+    const key = `${lat.toFixed(6)}:${lon.toFixed(6)}`
+    visibleKeys.add(key)
 
     const center = L.latLng(lat, lon)
     const centerPoint = crs.project(center)
@@ -109,14 +124,29 @@ const renderCells = () => {
     const bounds = L.latLngBounds(sw, ne)
 
     const opacity = getOpacity(Number(cell?.seenCount ?? 0), maxCount)
-    L.rectangle(bounds, {
+    const style = {
       color: props.fillColor,
       weight: 0,
       fillColor: props.fillColor,
       fillOpacity: opacity,
       interactive: false
-    }).addTo(coverageLayer)
+    }
+
+    const existing = cellLayers.get(key)
+    if (existing) {
+      existing.setBounds(bounds)
+      existing.setStyle(style)
+    } else {
+      const rectangle = L.rectangle(bounds, style).addTo(coverageLayer)
+      cellLayers.set(key, rectangle)
+    }
   })
+
+  for (const [key, rectangle] of cellLayers.entries()) {
+    if (visibleKeys.has(key)) continue
+    coverageLayer.removeLayer(rectangle)
+    cellLayers.delete(key)
+  }
 }
 
 watch(

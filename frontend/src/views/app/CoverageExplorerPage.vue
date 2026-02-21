@@ -9,22 +9,26 @@
       <template #actions>
         <div class="action-controls">
           <div class="grid-control">
-            <span class="control-label">Grid</span>
+            <label for="coverage-grid" class="control-label">Grid</label>
             <Dropdown
+                input-id="coverage-grid"
                 v-model="selectedGrid"
                 :options="gridOptions"
                 optionLabel="label"
                 optionValue="value"
                 class="grid-dropdown"
+                aria-label="Coverage grid resolution"
             />
           </div>
           <div class="coverage-toggle">
-            <span class="control-label">Coverage</span>
+            <label for="coverage-toggle" class="control-label">Coverage</label>
             <div class="toggle-row">
               <InputSwitch
+                inputId="coverage-toggle"
                 v-model="userCoverageEnabled"
                 :disabled="!canToggleCoverage"
                 @change="handleCoverageToggle"
+                aria-label="Enable or disable coverage processing"
               />
               <span class="toggle-text">{{ coverageToggleLabel }}</span>
             </div>
@@ -35,7 +39,7 @@
       <div class="coverage-page">
 
       <div class="coverage-stats">
-        <BaseCard title="Seen Area">
+        <BaseCard title="Seen Area" class="coverage-stat-card">
           <div class="stat-value">
             <span v-if="summaryLoading">Loading...</span>
             <span v-else>{{ formattedArea }}</span>
@@ -43,34 +47,36 @@
           <div class="stat-subtext">
             <span v-if="summaryLoading">Calculating from covered cells</span>
             <span v-else-if="!coverageAllowed">Enable coverage to calculate</span>
-            <span v-else>{{ formattedCells }} (50 m grid)</span>
+            <span v-else>{{ formattedCells }} ({{ summaryGrid }} m grid)</span>
           </div>
         </BaseCard>
-        <BaseCard title="Resolution">
+        <BaseCard title="Resolution" class="coverage-stat-card">
           <div class="stat-value">{{ effectiveGrid }} m</div>
           <div class="stat-subtext">{{ gridModeLabel }}</div>
         </BaseCard>
-        <BaseCard title="Coverage Style">
+        <BaseCard title="Coverage Style" class="coverage-stat-card">
           <div class="stat-value">{{ radiusLabel }}</div>
           <div class="stat-subtext">Road corridor radius</div>
         </BaseCard>
       </div>
 
-      <div class="coverage-map-card">
+        <div class="coverage-map-card">
         <div class="map-header">
           <div class="map-title">Coverage Map</div>
           <div class="map-meta">
             <span v-if="statusLoading">Checking status...</span>
+            <span v-else-if="statusErrorMessage">{{ statusErrorMessage }}</span>
             <span v-else-if="!userEnabled">Coverage not enabled</span>
             <span v-else-if="processing">Calculating...</span>
-            <span v-else-if="coverageLoading">Updating...</span>
-            <span v-else-if="coverageCells.length === 0">No coverage cells yet</span>
-            <span v-else>{{ coverageCells.length.toLocaleString() }} cells loaded</span>
+            <span v-else-if="cellsErrorMessage">{{ cellsErrorMessage }}</span>
+            <span v-else-if="showCoverageUpdatingMeta">Updating...</span>
+            <span v-else-if="showNoCoverageDataYet">No coverage data yet</span>
+            <span v-else-if="showNoCoverageInView">No coverage in current view</span>
+            <span v-else>{{ coverageCells.length.toLocaleString() }} cells in current view</span>
           </div>
         </div>
         <div class="map-container">
           <MapContainer
-              ref="mapContainerRef"
               map-id="coverage-map"
               :center="mapCenter"
               :zoom="mapZoom"
@@ -89,33 +95,60 @@
           </MapContainer>
 
           <div v-if="statusLoading" class="map-overlay">
-            <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
-            <span>Checking coverage status</span>
+            <div class="map-overlay-content">
+              <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
+              <span>Checking coverage status</span>
+            </div>
           </div>
 
           <div v-else-if="!userEnabled" class="map-overlay map-empty">
-            <i class="pi pi-power-off empty-icon"></i>
-            <div>
-              <strong>Coverage is off</strong>
-              <p>Enable coverage to start building your exploration map.</p>
+            <div class="map-overlay-content">
+              <i class="pi pi-power-off empty-icon"></i>
+              <div>
+                <strong>Coverage is off</strong>
+                <p>Enable coverage to start building your exploration map.</p>
+              </div>
+              <Button
+                label="Enable Coverage"
+                icon="pi pi-power-off"
+                class="overlay-enable-button"
+                :disabled="!canToggleCoverage || settingsUpdating"
+                @click="enableCoverageFromOverlay"
+              />
             </div>
           </div>
 
           <div v-else-if="processing" class="map-overlay">
-            <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
-            <span>Calculating coverage</span>
+            <div class="map-overlay-content">
+              <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
+              <span>Calculating coverage</span>
+            </div>
           </div>
 
-          <div v-else-if="coverageLoading" class="map-overlay">
-            <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
-            <span>Loading coverage</span>
+          <div v-else-if="showCoverageLoadingOverlay" class="map-overlay">
+            <div class="map-overlay-content">
+              <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4"/>
+              <span>Loading coverage</span>
+            </div>
           </div>
 
-          <div v-else-if="coverageCells.length === 0" class="map-overlay map-empty">
-            <i class="pi pi-map empty-icon"></i>
-            <div>
-              <strong>No coverage data yet</strong>
-              <p>Coverage will appear once the background job processes your GPS points.</p>
+          <div v-else-if="showNoCoverageDataYet" class="map-overlay map-empty">
+            <div class="map-overlay-content">
+              <i class="pi pi-map empty-icon"></i>
+              <div>
+                <strong>No coverage data yet</strong>
+                <p>Coverage will appear once the background job processes your GPS points.</p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="showNoCoverageInView" class="map-overlay map-empty">
+            <div class="map-overlay-content">
+              <i class="pi pi-map empty-icon"></i>
+              <div>
+                <strong>No coverage in current view</strong>
+                <p>Try panning or zooming to an area you have already explored.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -132,10 +165,10 @@
 <script setup>
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {storeToRefs} from 'pinia'
+import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import InputSwitch from 'primevue/inputswitch'
 import ProgressSpinner from 'primevue/progressspinner'
-import {useToast} from 'primevue/usetoast'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import {MapContainer, CoverageLayer} from '@/components/maps'
 import {useCoverageStore} from '@/stores/coverage'
@@ -146,15 +179,14 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 
 const coverageStore = useCoverageStore()
 const locationStore = useLocationStore()
-const toast = useToast()
 
-const mapContainerRef = ref(null)
 const mapInstance = ref(null)
 const mapCenter = ref([51.505, -0.09])
 const mapZoom = ref(10)
 
 const gridOptions = [
   {label: 'Auto (based on zoom)', value: 'auto'},
+  {label: '20 m grid (street)', value: 20},
   {label: '50 m grid (local)', value: 50},
   {label: '250 m grid (city)', value: 250},
   {label: '1 km grid (regional)', value: 1000},
@@ -178,14 +210,17 @@ const coverageLoading = computed(() => loadingCells.value)
 const coverageStatus = computed(() => status.value)
 const userEnabled = computed(() => coverageStatus.value?.userEnabled ?? false)
 const processing = computed(() => coverageStatus.value?.processing ?? false)
+const hasCoverageHistory = computed(() => coverageStatus.value?.hasCells ?? false)
 const statusReady = computed(() => status.value !== null)
 const coverageAllowed = computed(() => userEnabled.value)
+const statusErrorMessage = computed(() => statusError.value ? 'Coverage status unavailable' : '')
+const cellsErrorMessage = computed(() => cellsError.value ? 'Failed to refresh current view' : '')
 
 const userCoverageEnabled = ref(false)
 
 const summary = ref(null)
 const summaryLoading = ref(false)
-const summaryGrid = 50
+const summaryGrid = 20
 
 const radiusLabel = computed(() => '20 m')
 const gridModeLabel = computed(() => selectedGrid.value === 'auto'
@@ -206,7 +241,8 @@ const getGridForZoom = (zoom) => {
   if (zoom <= 7) return 5000
   if (zoom <= 10) return 1000
   if (zoom <= 12) return 250
-  return 50
+  if (zoom <= 14) return 50
+  return 20
 }
 
 const effectiveGrid = computed(() => {
@@ -219,6 +255,28 @@ const effectiveGrid = computed(() => {
 let fetchTimer = null
 let mapMoveHandler = null
 let lastRequestKey = ''
+let fetchRequestId = 0
+let coverageOverlayTimer = null
+let coverageMetaTimer = null
+let summaryRefreshTimer = null
+const showCoverageLoadingOverlay = ref(false)
+const showCoverageUpdatingMeta = ref(false)
+
+const showNoCoverageDataYet = computed(() =>
+  coverageAllowed.value
+  && !processing.value
+  && !coverageLoading.value
+  && coverageCells.value.length === 0
+  && !hasCoverageHistory.value
+)
+
+const showNoCoverageInView = computed(() =>
+  coverageAllowed.value
+  && !processing.value
+  && !coverageLoading.value
+  && coverageCells.value.length === 0
+  && hasCoverageHistory.value
+)
 
 const formatNumber = (value, digits = 1) => {
   if (!Number.isFinite(value)) return '0'
@@ -276,7 +334,13 @@ const fetchCoverage = async () => {
   if (requestKey === lastRequestKey) return
   lastRequestKey = requestKey
 
-  await coverageStore.fetchCoverageCells(bbox, effectiveGrid.value)
+  const requestId = ++fetchRequestId
+  const cells = await coverageStore.fetchCoverageCells(bbox, effectiveGrid.value)
+  if (requestId !== fetchRequestId) return
+  if (cells === null) {
+    lastRequestKey = ''
+    return
+  }
 }
 
 const scheduleFetch = () => {
@@ -300,7 +364,10 @@ const startStatusPolling = () => {
   if (statusPollTimer) return
   statusPollTimer = setInterval(async () => {
     const data = await coverageStore.fetchCoverageStatus({silent: true})
-    if (!data?.processing) {
+    if (!data) {
+      return
+    }
+    if (!data.processing) {
       stopStatusPolling()
       if (coverageAllowed.value) {
         coverageStore.invalidateSummary(summaryGrid)
@@ -318,6 +385,23 @@ const stopStatusPolling = () => {
   statusPollTimer = null
 }
 
+const startSummaryRefresh = () => {
+  if (summaryRefreshTimer) return
+  summaryRefreshTimer = setInterval(() => {
+    if (!coverageAllowed.value || processing.value || summaryLoading.value) {
+      return
+    }
+    coverageStore.invalidateSummary(summaryGrid)
+    loadSummary()
+  }, 60000)
+}
+
+const stopSummaryRefresh = () => {
+  if (!summaryRefreshTimer) return
+  clearInterval(summaryRefreshTimer)
+  summaryRefreshTimer = null
+}
+
 const handleCoverageToggle = async () => {
   if (!statusReady.value || settingsUpdating.value) {
     return
@@ -328,10 +412,14 @@ const handleCoverageToggle = async () => {
     if (!updated) return
 
     if (!desired) {
+      stopStatusPolling()
+      stopSummaryRefresh()
+      coverageStore.cancelCoverageCellsRequests()
       coverageStore.clearCells()
       coverageStore.invalidateSummary(summaryGrid)
       summary.value = null
       lastRequestKey = ''
+      fetchRequestId += 1
       return
     }
 
@@ -342,17 +430,21 @@ const handleCoverageToggle = async () => {
 
     coverageStore.invalidateSummary(summaryGrid)
     await loadSummary()
+    startSummaryRefresh()
     lastRequestKey = ''
     scheduleFetch()
   } catch (error) {
     userCoverageEnabled.value = !desired
-    toast.add({
-      severity: 'error',
-      summary: 'Coverage error',
-      detail: error?.response?.data?.message || error.message || 'Failed to update coverage settings',
-      life: 4000
-    })
+    console.error('Failed to update coverage settings:', error)
   }
+}
+
+const enableCoverageFromOverlay = async () => {
+  if (!canToggleCoverage.value || userCoverageEnabled.value) {
+    return
+  }
+  userCoverageEnabled.value = true
+  await handleCoverageToggle()
 }
 
 const loadSummary = async () => {
@@ -399,49 +491,82 @@ watch(status, (value) => {
 
 watch(coverageAllowed, (allowed) => {
   if (!allowed) {
+    stopSummaryRefresh()
+    coverageStore.cancelCoverageCellsRequests()
     coverageStore.clearCells()
     coverageStore.invalidateSummary(summaryGrid)
     summary.value = null
     summaryLoading.value = false
     lastRequestKey = ''
+    fetchRequestId += 1
     return
   }
   loadSummary()
+  startSummaryRefresh()
   scheduleFetch()
 })
 
 watch(processing, (isProcessing) => {
   if (isProcessing) {
+    stopSummaryRefresh()
     startStatusPolling()
   } else {
     stopStatusPolling()
+    if (coverageAllowed.value) {
+      startSummaryRefresh()
+    }
   }
 })
 
-watch(cellsError, (error) => {
-  if (!error) return
-  toast.add({
-    severity: 'error',
-    summary: 'Coverage error',
-    detail: error,
-    life: 4000
-  })
-})
+watch(() => [coverageLoading.value, coverageCells.value.length], ([isLoading, cellCount]) => {
+  if (!isLoading) {
+    if (coverageOverlayTimer) {
+      clearTimeout(coverageOverlayTimer)
+      coverageOverlayTimer = null
+    }
+    if (coverageMetaTimer) {
+      clearTimeout(coverageMetaTimer)
+      coverageMetaTimer = null
+    }
+    showCoverageLoadingOverlay.value = false
+    showCoverageUpdatingMeta.value = false
+    return
+  }
 
-watch(statusError, (error) => {
-  if (!error) return
-  toast.add({
-    severity: 'error',
-    summary: 'Coverage status error',
-    detail: error,
-    life: 4000
-  })
+  // Keep existing cells visible while refreshing to avoid map flicker.
+  if (cellCount > 0) {
+    if (coverageOverlayTimer) {
+      clearTimeout(coverageOverlayTimer)
+      coverageOverlayTimer = null
+    }
+    showCoverageLoadingOverlay.value = false
+    if (coverageMetaTimer) {
+      clearTimeout(coverageMetaTimer)
+    }
+    coverageMetaTimer = setTimeout(() => {
+      if (coverageLoading.value && coverageCells.value.length > 0) {
+        showCoverageUpdatingMeta.value = true
+      }
+    }, 250)
+    return
+  }
+
+  if (coverageOverlayTimer) {
+    clearTimeout(coverageOverlayTimer)
+  }
+  coverageOverlayTimer = setTimeout(() => {
+    if (coverageLoading.value && coverageCells.value.length === 0) {
+      showCoverageLoadingOverlay.value = true
+    }
+  }, 300)
+  showCoverageUpdatingMeta.value = false
 })
 
 onMounted(() => {
   loadStatus().then(() => {
     if (coverageAllowed.value) {
       loadSummary()
+      startSummaryRefresh()
     }
   })
 })
@@ -451,6 +576,19 @@ onBeforeUnmount(() => {
     clearTimeout(fetchTimer)
     fetchTimer = null
   }
+  if (coverageOverlayTimer) {
+    clearTimeout(coverageOverlayTimer)
+    coverageOverlayTimer = null
+  }
+  if (coverageMetaTimer) {
+    clearTimeout(coverageMetaTimer)
+    coverageMetaTimer = null
+  }
+  showCoverageLoadingOverlay.value = false
+  showCoverageUpdatingMeta.value = false
+  stopSummaryRefresh()
+  coverageStore.cancelCoverageCellsRequests()
+  fetchRequestId += 1
   stopStatusPolling()
   if (mapInstance.value && mapMoveHandler) {
     mapInstance.value.off('moveend', mapMoveHandler)
@@ -573,11 +711,25 @@ onBeforeUnmount(() => {
   gap: 0.5rem;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.85);
-  color: var(--gp-text-secondary);
+  background: rgba(255, 255, 255, 0.78);
+  color: #0f172a;
   font-weight: 500;
   z-index: 500;
   pointer-events: none;
+}
+
+.map-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+  max-width: min(92%, 520px);
+  pointer-events: auto;
 }
 
 .map-overlay.map-empty {
@@ -587,11 +739,45 @@ onBeforeUnmount(() => {
 
 .map-overlay .empty-icon {
   font-size: 2rem;
-  color: var(--gp-text-muted);
+  color: #334155;
 }
 
 .map-overlay p {
   margin: 0.35rem 0 0;
+  color: #334155;
+}
+
+.map-overlay strong {
+  color: #0f172a;
+}
+
+:global(.p-dark) .map-overlay {
+  background: rgba(2, 6, 23, 0.74);
+  color: #f8fafc;
+}
+
+:global(.p-dark) .map-overlay-content {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+:global(.p-dark) .map-overlay .empty-icon {
+  color: #cbd5e1;
+}
+
+:global(.p-dark) .map-overlay p {
+  color: #cbd5e1;
+}
+
+:global(.p-dark) .map-overlay strong,
+:global(.p-dark) .map-overlay span {
+  color: #f8fafc;
+}
+
+.overlay-enable-button {
+  margin-top: 0.5rem;
+  min-width: 190px;
 }
 
 .map-legend {
@@ -615,6 +801,14 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 900px) {
+  .action-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+    width: 100%;
+  }
+
   .grid-dropdown {
     min-width: 100%;
   }
@@ -622,12 +816,79 @@ onBeforeUnmount(() => {
   .grid-control,
   .coverage-toggle {
     width: 100%;
+    min-width: 0;
   }
 }
 
 @media (max-width: 600px) {
+  .coverage-page {
+    gap: 1rem;
+  }
+
+  .coverage-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin: 0;
+  }
+
+  .coverage-stat-card {
+    min-width: 0;
+  }
+
+  .coverage-stat-card :deep(.gp-card-header) {
+    padding: 0.4rem 0.55rem;
+  }
+
+  .coverage-stat-card :deep(.gp-card-content) {
+    padding: 0.55rem;
+  }
+
+  .coverage-stat-card :deep(.gp-card-title) {
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+
+  .stat-value {
+    font-size: clamp(0.95rem, 4.2vw, 1.1rem);
+    line-height: 1.1;
+  }
+
+  .stat-subtext {
+    margin-top: 0.2rem;
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .map-header {
+    padding: 0.75rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .map-meta {
+    font-size: 0.8rem;
+  }
+
   .map-container {
-    height: 60vh;
+    height: 52vh;
+    min-height: 300px;
+  }
+
+  .map-legend {
+    padding: 0.65rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .action-controls {
+    gap: 0.6rem;
+  }
+
+  .toggle-text {
+    font-size: 0.8rem;
   }
 }
 </style>

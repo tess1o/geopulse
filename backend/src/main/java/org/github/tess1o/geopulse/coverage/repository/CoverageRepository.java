@@ -6,10 +6,10 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
-import org.github.tess1o.geopulse.coverage.model.CoverageProcessingState;
+import org.github.tess1o.geopulse.coverage.model.CoverageProcessingCursor;
+import org.github.tess1o.geopulse.coverage.model.CoverageStatusSnapshot;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,31 +23,36 @@ public class CoverageRepository {
         this.entityManager = entityManager;
     }
 
-    public Instant findLastProcessed(UUID userId) {
+    public CoverageProcessingCursor findProcessingCursor(UUID userId) {
         try {
-            Object result = entityManager.createNativeQuery(
-                            "SELECT last_processed FROM coverage_state WHERE user_id = :userId")
+            Object[] result = (Object[]) entityManager.createNativeQuery(
+                            "SELECT last_processed, last_processed_point_id FROM coverage_state WHERE user_id = :userId")
                     .setParameter("userId", userId)
                     .getSingleResult();
-            return TimestampUtils.getInstantSafe(result);
+            return new CoverageProcessingCursor(
+                    TimestampUtils.getInstantSafe(result[0]),
+                    result[1] == null ? null : ((Number) result[1]).longValue()
+            );
         } catch (NoResultException e) {
             return null;
         }
     }
 
-    public void upsertLastProcessed(UUID userId, Instant lastProcessed) {
+    public void upsertLastProcessed(UUID userId, CoverageProcessingCursor cursor) {
         entityManager.createNativeQuery(
-                        "INSERT INTO coverage_state (user_id, last_processed, updated_at) " +
-                                "VALUES (:userId, :lastProcessed, NOW()) " +
+                        "INSERT INTO coverage_state (user_id, last_processed, last_processed_point_id, updated_at) " +
+                                "VALUES (:userId, :lastProcessed, :lastProcessedPointId, NOW()) " +
                                 "ON CONFLICT (user_id) DO UPDATE SET " +
                                 "last_processed = EXCLUDED.last_processed, " +
+                                "last_processed_point_id = EXCLUDED.last_processed_point_id, " +
                                 "updated_at = NOW()")
                 .setParameter("userId", userId)
-                .setParameter("lastProcessed", lastProcessed)
+                .setParameter("lastProcessed", cursor.timestamp())
+                .setParameter("lastProcessedPointId", cursor.pointId())
                 .executeUpdate();
     }
 
-    public List<UUID> findUsersWithNewCoverage(double maxAccuracyMeters) {
+    public List<UUID> findUsersWithNewCoverage(double maxAccuracyMeters, int staleTimeoutSeconds) {
         @SuppressWarnings("unchecked")
         List<Object> results = entityManager.createNativeQuery(
                         "SELECT DISTINCT gp.user_id " +
@@ -55,10 +60,16 @@ public class CoverageRepository {
                                 "JOIN users u ON u.id = gp.user_id AND u.is_active = true AND u.coverage_enabled = true " +
                                 "LEFT JOIN coverage_state cs ON cs.user_id = gp.user_id " +
                                 "WHERE gp.coordinates IS NOT NULL " +
+                                "  AND gp.timestamp IS NOT NULL " +
                                 "  AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy) " +
-                                "  AND (cs.last_processed IS NULL OR gp.timestamp > cs.last_processed) " +
-                                "  AND (cs.processing IS NULL OR cs.processing = false)")
+                                "  AND (cs.last_processed IS NULL " +
+                                "       OR gp.timestamp > cs.last_processed " +
+                                "       OR (gp.timestamp = cs.last_processed AND gp.id > COALESCE(cs.last_processed_point_id, -1))) " +
+                                "  AND (cs.processing IS NULL OR cs.processing = false " +
+                                "       OR cs.processing_started_at IS NULL " +
+                                "       OR cs.processing_started_at < NOW() - (:staleTimeoutSeconds * INTERVAL '1 second'))")
                 .setParameter("maxAccuracy", maxAccuracyMeters)
+                .setParameter("staleTimeoutSeconds", staleTimeoutSeconds)
                 .getResultList();
 
         return results.stream()
@@ -66,48 +77,47 @@ public class CoverageRepository {
                 .toList();
     }
 
-    public CoverageProcessingState findProcessingState(UUID userId) {
+    public CoverageStatusSnapshot findCoverageStatusSnapshot(UUID userId) {
         try {
             Object[] result = (Object[]) entityManager.createNativeQuery(
-                            "SELECT processing, last_processed, processing_started_at " +
-                                    "FROM coverage_state " +
-                                    "WHERE user_id = :userId")
+                            "SELECT u.coverage_enabled, " +
+                                    "COALESCE(cs.processing, false), " +
+                                    "EXISTS (SELECT 1 FROM coverage_cells cc WHERE cc.user_id = u.id), " +
+                                    "cs.last_processed, " +
+                                    "cs.processing_started_at " +
+                                    "FROM users u " +
+                                    "LEFT JOIN coverage_state cs ON cs.user_id = u.id " +
+                                    "WHERE u.id = :userId")
                     .setParameter("userId", userId)
                     .getSingleResult();
 
-            return CoverageProcessingState.builder()
-                    .processing(result[0] != null && (Boolean) result[0])
-                    .lastProcessed(TimestampUtils.getInstantSafe(result[1]))
-                    .processingStartedAt(TimestampUtils.getInstantSafe(result[2]))
-                    .build();
+            return new CoverageStatusSnapshot(
+                    result[0] != null && (Boolean) result[0],
+                    result[1] != null && (Boolean) result[1],
+                    result[2] != null && (Boolean) result[2],
+                    TimestampUtils.getInstantSafe(result[3]),
+                    TimestampUtils.getInstantSafe(result[4])
+            );
         } catch (NoResultException e) {
-            return CoverageProcessingState.builder()
-                    .processing(false)
-                    .build();
+            return new CoverageStatusSnapshot(false, false, false, null, null);
         }
     }
 
-    public boolean hasCoverageCells(UUID userId) {
-        Object result = entityManager.createNativeQuery(
-                        "SELECT EXISTS (SELECT 1 FROM coverage_cells WHERE user_id = :userId)")
-                .setParameter("userId", userId)
-                .getSingleResult();
-
-        return result != null && (Boolean) result;
-    }
-
     @Transactional
-    public boolean tryStartProcessing(UUID userId) {
+    public boolean tryStartProcessing(UUID userId, int staleTimeoutSeconds) {
         int updated = entityManager.createNativeQuery(
                         "INSERT INTO coverage_state " +
-                                "(user_id, last_processed, updated_at, processing, processing_started_at) " +
-                                "VALUES (:userId, NULL, NOW(), true, NOW()) " +
+                                "(user_id, last_processed, last_processed_point_id, updated_at, processing, processing_started_at) " +
+                                "VALUES (:userId, NULL, NULL, NOW(), true, NOW()) " +
                                 "ON CONFLICT (user_id) DO UPDATE SET " +
                                 "processing = true, " +
                                 "processing_started_at = NOW(), " +
                                 "updated_at = NOW() " +
-                                "WHERE coverage_state.processing = false OR coverage_state.processing IS NULL")
+                                "WHERE coverage_state.processing = false OR coverage_state.processing IS NULL " +
+                                "   OR coverage_state.processing_started_at IS NULL " +
+                                "   OR coverage_state.processing_started_at < NOW() - (:staleTimeoutSeconds * INTERVAL '1 second')")
                 .setParameter("userId", userId)
+                .setParameter("staleTimeoutSeconds", staleTimeoutSeconds)
                 .executeUpdate();
 
         return updated > 0;
@@ -125,24 +135,43 @@ public class CoverageRepository {
                 .executeUpdate();
     }
 
-    public Instant findMaxGpsTimestamp(UUID userId, Instant since, double maxAccuracyMeters) {
-        Object result = entityManager.createNativeQuery(
-                        "SELECT MAX(gp.timestamp) " +
+    public CoverageProcessingCursor findProcessingUpperBound(UUID userId,
+                                                             CoverageProcessingCursor lowerBound,
+                                                             double maxAccuracyMeters) {
+        @SuppressWarnings("unchecked")
+        List<Object[]> results = entityManager.createNativeQuery(
+                        "SELECT gp.timestamp, gp.id " +
                                 "FROM gps_points gp " +
                                 "WHERE gp.user_id = :userId " +
-                                "  AND gp.timestamp > COALESCE(CAST(:since AS timestamp), to_timestamp(0)) " +
                                 "  AND gp.coordinates IS NOT NULL " +
-                                "  AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy)")
+                                "  AND gp.timestamp IS NOT NULL " +
+                                "  AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy) " +
+                                "  AND (CAST(:lowerTs AS timestamp) IS NULL " +
+                                "       OR gp.timestamp > CAST(:lowerTs AS timestamp) " +
+                                "       OR (gp.timestamp = CAST(:lowerTs AS timestamp) " +
+                                "           AND gp.id > COALESCE(CAST(:lowerPointId AS bigint), -1))) " +
+                                "ORDER BY gp.timestamp DESC, gp.id DESC " +
+                                "LIMIT 1")
                 .setParameter("userId", userId)
-                .setParameter("since", since)
                 .setParameter("maxAccuracy", maxAccuracyMeters)
-                .getSingleResult();
+                .setParameter("lowerTs", lowerBound == null ? null : lowerBound.timestamp())
+                .setParameter("lowerPointId", lowerBound == null ? null : lowerBound.pointId())
+                .getResultList();
 
-        return TimestampUtils.getInstantSafe(result);
+        if (results.isEmpty()) {
+            return null;
+        }
+
+        Object[] row = results.get(0);
+        return new CoverageProcessingCursor(
+                TimestampUtils.getInstantSafe(row[0]),
+                row[1] == null ? null : ((Number) row[1]).longValue()
+        );
     }
 
     public int upsertCoverageCells(UUID userId,
-                                   Instant since,
+                                   CoverageProcessingCursor lowerBound,
+                                   CoverageProcessingCursor upperBound,
                                    int gridMeters,
                                    int radiusMeters,
                                    int segmentizeMeters,
@@ -151,34 +180,48 @@ public class CoverageRepository {
                                    double maxAccuracyMeters) {
         String sql = """
                 WITH anchor AS (
-                    SELECT gp.timestamp, gp.coordinates
+                    SELECT gp.timestamp, gp.id, gp.coordinates
                     FROM gps_points gp
                     WHERE gp.user_id = :userId
-                      AND CAST(:since AS timestamp) IS NOT NULL
-                      AND gp.timestamp <= CAST(:since AS timestamp)
-                    ORDER BY gp.timestamp DESC
+                      AND gp.coordinates IS NOT NULL
+                      AND gp.timestamp IS NOT NULL
+                      AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy)
+                      AND CAST(:lowerTs AS timestamp) IS NOT NULL
+                      AND (gp.timestamp < CAST(:lowerTs AS timestamp)
+                           OR (gp.timestamp = CAST(:lowerTs AS timestamp)
+                               AND gp.id <= COALESCE(CAST(:lowerPointId AS bigint), 9223372036854775807)))
+                    ORDER BY gp.timestamp DESC, gp.id DESC
                     LIMIT 1
                 ),
                 new_points AS (
                     SELECT gp.timestamp,
+                           gp.id,
                            ST_Transform(gp.coordinates, 3857) AS geom
                     FROM gps_points gp
                     WHERE gp.user_id = :userId
-                      AND gp.timestamp > COALESCE(CAST(:since AS timestamp), to_timestamp(0))
+                      AND gp.timestamp IS NOT NULL
+                      AND (CAST(:lowerTs AS timestamp) IS NULL
+                           OR gp.timestamp > CAST(:lowerTs AS timestamp)
+                           OR (gp.timestamp = CAST(:lowerTs AS timestamp)
+                               AND gp.id > COALESCE(CAST(:lowerPointId AS bigint), -1)))
+                      AND (gp.timestamp < CAST(:upperTs AS timestamp)
+                           OR (gp.timestamp = CAST(:upperTs AS timestamp)
+                               AND gp.id <= CAST(:upperPointId AS bigint)))
                       AND gp.coordinates IS NOT NULL
                       AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy)
                 ),
                 points_for_segments AS (
-                    SELECT timestamp, geom FROM new_points
+                    SELECT timestamp, id, geom FROM new_points
                     UNION ALL
-                    SELECT a.timestamp, ST_Transform(a.coordinates, 3857) AS geom FROM anchor a
+                    SELECT a.timestamp, a.id, ST_Transform(a.coordinates, 3857) AS geom FROM anchor a
                 ),
                 ordered AS (
                     SELECT
                         timestamp,
+                        id,
                         geom,
-                        LEAD(timestamp) OVER (ORDER BY timestamp) AS next_ts,
-                        LEAD(geom) OVER (ORDER BY timestamp) AS next_geom
+                        LEAD(timestamp) OVER (ORDER BY timestamp, id) AS next_ts,
+                        LEAD(geom) OVER (ORDER BY timestamp, id) AS next_geom
                     FROM points_for_segments
                 ),
                 segments AS (
@@ -261,7 +304,10 @@ public class CoverageRepository {
 
         return entityManager.createNativeQuery(sql)
                 .setParameter("userId", userId)
-                .setParameter("since", since)
+                .setParameter("lowerTs", lowerBound == null ? null : lowerBound.timestamp())
+                .setParameter("lowerPointId", lowerBound == null ? null : lowerBound.pointId())
+                .setParameter("upperTs", upperBound.timestamp())
+                .setParameter("upperPointId", upperBound.pointId())
                 .setParameter("gridMeters", gridMeters)
                 .setParameter("radiusMeters", radiusMeters)
                 .setParameter("segmentizeMeters", segmentizeMeters)
@@ -276,7 +322,8 @@ public class CoverageRepository {
                                                 double minLat,
                                                 double maxLon,
                                                 double maxLat,
-                                                int gridMeters) {
+                                                int gridMeters,
+                                                int limit) {
         String sql = """
                 WITH bounds AS (
                     SELECT
@@ -296,6 +343,8 @@ public class CoverageRepository {
                     ST_Y(ST_Transform(ST_SetSRID(ST_MakePoint((f.cell_x + 0.5) * :gridMeters, (f.cell_y + 0.5) * :gridMeters), 3857), 4326)) AS latitude,
                     ST_X(ST_Transform(ST_SetSRID(ST_MakePoint((f.cell_x + 0.5) * :gridMeters, (f.cell_y + 0.5) * :gridMeters), 3857), 4326)) AS longitude
                 FROM filtered f
+                ORDER BY f.seen_count DESC, f.cell_x ASC, f.cell_y ASC
+                LIMIT :limit
                 """;
 
         @SuppressWarnings("unchecked")
@@ -306,16 +355,28 @@ public class CoverageRepository {
                 .setParameter("minLat", minLat)
                 .setParameter("maxLon", maxLon)
                 .setParameter("maxLat", maxLat)
+                .setParameter("limit", limit)
                 .getResultList();
 
         return results.stream()
-                .map(row -> CoverageCell.builder()
-                        .seenCount(((Number) row[0]).longValue())
-                        .latitude(((Number) row[1]).doubleValue())
-                        .longitude(((Number) row[2]).doubleValue())
-                        .gridMeters(gridMeters)
-                        .build())
+                .map(row -> new CoverageCell(
+                        ((Number) row[1]).doubleValue(),
+                        ((Number) row[2]).doubleValue(),
+                        gridMeters,
+                        ((Number) row[0]).longValue()
+                ))
                 .toList();
+    }
+
+    @Transactional
+    public int resetStuckProcessingStates() {
+        return entityManager.createNativeQuery(
+                        "UPDATE coverage_state " +
+                                "SET processing = false, " +
+                                "processing_started_at = NULL, " +
+                                "updated_at = NOW() " +
+                                "WHERE processing = true")
+                .executeUpdate();
     }
 
     public long countCoverageCells(UUID userId, int gridMeters) {

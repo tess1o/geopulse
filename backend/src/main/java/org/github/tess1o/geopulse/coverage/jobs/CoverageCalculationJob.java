@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 
 @ApplicationScoped
@@ -34,6 +35,11 @@ public class CoverageCalculationJob {
     @ConfigProperty(name = "geopulse.coverage.processing.max-concurrent-tasks", defaultValue = "2")
     @StaticInitSafe
     int maxConcurrentTasks;
+
+    @ConfigProperty(name = "geopulse.coverage.processing.stale-timeout-seconds",
+            defaultValue = "" + CoverageDefaults.PROCESSING_STALE_TIMEOUT_SECONDS)
+    @StaticInitSafe
+    int processingStaleTimeoutSeconds;
 
     private Semaphore semaphore;
 
@@ -62,7 +68,8 @@ public class CoverageCalculationJob {
     @Blocking
     public void processCoverage() {
         List<UUID> usersToProcess = coverageRepository.findUsersWithNewCoverage(
-                CoverageDefaults.MAX_ACCURACY_METERS
+                CoverageDefaults.MAX_ACCURACY_METERS,
+                processingStaleTimeoutSeconds
         );
 
         if (usersToProcess.isEmpty()) {
@@ -72,25 +79,34 @@ public class CoverageCalculationJob {
         log.info("Starting coverage update for {} users", usersToProcess.size());
 
         for (UUID userId : usersToProcess) {
-            CompletableFuture.runAsync(() -> {
-                try {
-                    semaphore.acquire();
-                    log.info("Updating coverage for user {}", userId);
-                    processingService.processUserCoverage(userId);
-                    log.info("Finished updating coverage for user {}", userId);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Interrupted while waiting for semaphore for user {}", userId);
-                } catch (Exception e) {
-                    log.error("Failed to update coverage for user {}: {}", userId, e.getMessage(), e);
-                } finally {
-                    semaphore.release();
-                }
-            }, executorService)
-                    .exceptionally(throwable -> {
-                        log.error("Failed to process coverage for user {}: {}", userId, throwable.getMessage(), throwable);
-                        return null;
-                    });
+            try {
+                semaphore.acquire();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while waiting to schedule coverage processing for user {}", userId);
+                break;
+            }
+
+            try {
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        log.info("Updating coverage for user {}", userId);
+                        processingService.processUserCoverage(userId);
+                        log.info("Finished updating coverage for user {}", userId);
+                    } catch (Exception e) {
+                        log.error("Failed to update coverage for user {}: {}", userId, e.getMessage(), e);
+                    } finally {
+                        semaphore.release();
+                    }
+                }, executorService)
+                        .exceptionally(throwable -> {
+                            log.error("Failed to process coverage for user {}: {}", userId, throwable.getMessage(), throwable);
+                            return null;
+                        });
+            } catch (RejectedExecutionException e) {
+                semaphore.release();
+                log.error("Failed to submit coverage task for user {}: {}", userId, e.getMessage(), e);
+            }
         }
     }
 }

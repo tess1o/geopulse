@@ -6,6 +6,7 @@ export const useCoverageStore = defineStore('coverage', {
     cells: [],
     loadingCells: false,
     cellsError: null,
+    cellsRequestSeq: 0,
     summaryByGrid: {},
     summaryLoading: false,
     summaryError: null,
@@ -33,6 +34,11 @@ export const useCoverageStore = defineStore('coverage', {
       this.cells = []
     },
 
+    cancelCoverageCellsRequests() {
+      this.cellsRequestSeq += 1
+      this.loadingCells = false
+    },
+
     async fetchCoverageStatus(options = {}) {
       const silent = options?.silent === true
 
@@ -45,13 +51,14 @@ export const useCoverageStore = defineStore('coverage', {
         const response = await apiService.get('/coverage/status')
         const data = response?.data ?? response ?? null
         this.status = data
+        this.statusError = null
         return data
       } catch (error) {
         console.error('Error fetching coverage status:', error)
         if (!silent) {
           this.statusError = error.message || 'Failed to fetch coverage status'
         }
-        return null
+        return silent ? this.status : null
       } finally {
         if (!silent) {
           this.statusLoading = false
@@ -80,6 +87,7 @@ export const useCoverageStore = defineStore('coverage', {
 
     async fetchCoverageCells(bbox, grid, options = {}) {
       const silent = options?.silent === true
+      const requestSeq = ++this.cellsRequestSeq
 
       try {
         if (!silent) {
@@ -93,16 +101,20 @@ export const useCoverageStore = defineStore('coverage', {
         })
 
         const data = response?.data ?? response ?? []
+        if (requestSeq !== this.cellsRequestSeq) {
+          return null
+        }
+
         this.cells = Array.isArray(data) ? data : []
         return this.cells
       } catch (error) {
         console.error('Error fetching coverage cells:', error)
-        if (!silent) {
+        if (!silent && requestSeq === this.cellsRequestSeq) {
           this.cellsError = error.message || 'Failed to fetch coverage cells'
         }
-        return []
+        return null
       } finally {
-        if (!silent) {
+        if (!silent && requestSeq === this.cellsRequestSeq) {
           this.loadingCells = false
         }
       }

@@ -4,6 +4,8 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
 
 import java.util.UUID;
@@ -18,6 +20,10 @@ public class CoverageProcessingService {
     private final CoverageService coverageService;
     private final ExecutorService executorService;
 
+    @ConfigProperty(name = "geopulse.coverage.processing.stale-timeout-seconds",
+            defaultValue = "" + CoverageDefaults.PROCESSING_STALE_TIMEOUT_SECONDS)
+    int processingStaleTimeoutSeconds;
+
     @Inject
     public CoverageProcessingService(CoverageRepository coverageRepository,
                                      CoverageService coverageService,
@@ -28,21 +34,27 @@ public class CoverageProcessingService {
     }
 
     public boolean startProcessingAsync(UUID userId) {
-        if (!coverageRepository.tryStartProcessing(userId)) {
+        if (!coverageRepository.tryStartProcessing(userId, processingStaleTimeoutSeconds)) {
             return false;
         }
 
-        CompletableFuture.runAsync(() -> runProcessing(userId), executorService)
-                .exceptionally(throwable -> {
-                    log.error("Failed to process coverage for user {}: {}", userId, throwable.getMessage(), throwable);
-                    return null;
-                });
+        try {
+            CompletableFuture.runAsync(() -> runProcessing(userId), executorService)
+                    .exceptionally(throwable -> {
+                        log.error("Failed to process coverage for user {}: {}", userId, throwable.getMessage(), throwable);
+                        return null;
+                    });
+        } catch (RuntimeException e) {
+            coverageRepository.finishProcessing(userId);
+            log.error("Failed to submit coverage processing task for user {}: {}", userId, e.getMessage(), e);
+            return false;
+        }
 
         return true;
     }
 
     public void processUserCoverage(UUID userId) {
-        if (!coverageRepository.tryStartProcessing(userId)) {
+        if (!coverageRepository.tryStartProcessing(userId, processingStaleTimeoutSeconds)) {
             return;
         }
         runProcessing(userId);
