@@ -92,6 +92,10 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     Optional<String> adminEmail;
 
+    @ConfigProperty(name = "geopulse.coverage.enabled-by-default", defaultValue = "false")
+    @StaticInitSafe
+    boolean coverageEnabledByDefault;
+
     // Atomic cache entry to prevent split-brain state between JWKS data and timestamp
     private record CachedJwks(JWKSet jwkSet, Instant cachedAt) {}
 
@@ -385,6 +389,7 @@ public class OidcAuthenticationService {
                 .emailVerified(true) // OIDC emails are considered verified
                 .passwordHash(null) // NULL password hash for OIDC-only users
                 .measureUnit(MeasureUnit.METRIC)
+                .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
         userService.persist(user);

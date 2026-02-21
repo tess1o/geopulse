@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
-import org.github.tess1o.geopulse.coverage.service.CoverageService;
+import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 
 import java.util.List;
 import java.util.UUID;
@@ -25,7 +25,7 @@ import java.util.concurrent.Semaphore;
 public class CoverageCalculationJob {
 
     private final CoverageRepository coverageRepository;
-    private final CoverageService coverageService;
+    private final CoverageProcessingService processingService;
 
     @Inject
     @Identifier("coverage-processing")
@@ -39,9 +39,9 @@ public class CoverageCalculationJob {
 
     @Inject
     public CoverageCalculationJob(CoverageRepository coverageRepository,
-                                  CoverageService coverageService) {
+                                  CoverageProcessingService processingService) {
         this.coverageRepository = coverageRepository;
-        this.coverageService = coverageService;
+        this.processingService = processingService;
     }
 
     @PostConstruct
@@ -58,7 +58,7 @@ public class CoverageCalculationJob {
         }
     }
 
-    @Scheduled(every = CoverageDefaults.SCHEDULE_EVERY, delayed = CoverageDefaults.SCHEDULE_DELAYED)
+    @Scheduled(every = "${geopulse.coverage.job.interval:2h}", delayed = "${geopulse.coverage.job.delay:0m}")
     @Blocking
     public void processCoverage() {
         List<UUID> usersToProcess = coverageRepository.findUsersWithNewCoverage(
@@ -76,7 +76,7 @@ public class CoverageCalculationJob {
                 try {
                     semaphore.acquire();
                     log.info("Updating coverage for user {}", userId);
-                    coverageService.processUserCoverage(userId);
+                    processingService.processUserCoverage(userId);
                     log.info("Finished updating coverage for user {}", userId);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();

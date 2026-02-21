@@ -3,23 +3,30 @@ package org.github.tess1o.geopulse.coverage.rest;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
+import org.github.tess1o.geopulse.coverage.model.CoverageSettingsRequest;
 import org.github.tess1o.geopulse.coverage.model.CoverageSummary;
+import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
+import org.github.tess1o.geopulse.coverage.service.CoverageProcessingService;
 import org.github.tess1o.geopulse.coverage.service.CoverageService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.List;
 import java.util.UUID;
 
 @Path("/api/coverage")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 @RolesAllowed({ "USER", "ADMIN" })
 public class CoverageResource {
 
@@ -27,12 +34,52 @@ public class CoverageResource {
     CoverageService coverageService;
 
     @Inject
+    CoverageProcessingService processingService;
+
+    @Inject
     CurrentUserService currentUserService;
+
+    @GET
+    @Path("/status")
+    public Response getCoverageStatus() {
+        UUID userId = currentUserService.getCurrentUserId();
+        CoverageStatus status = coverageService.getCoverageStatus(userId);
+        return Response.ok(ApiResponse.success(status)).build();
+    }
+
+    @PUT
+    @Path("/settings")
+    public Response updateCoverageSettings(CoverageSettingsRequest request) {
+        if (request == null || request.getEnabled() == null) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("enabled is required"))
+                    .build();
+        }
+
+        UUID userId = currentUserService.getCurrentUserId();
+        boolean enable = request.getEnabled();
+
+        coverageService.setUserCoverageEnabled(userId, enable);
+
+        if (enable) {
+            processingService.startProcessingAsync(userId);
+        }
+
+        CoverageStatus status = coverageService.getCoverageStatus(userId);
+        return Response.ok(ApiResponse.success(status)).build();
+    }
 
     @GET
     @Path("/cells")
     public Response getCoverageCells(@QueryParam("bbox") String bbox,
                                      @QueryParam("grid") Integer gridMeters) {
+        UserEntity user = currentUserService.getCurrentUser();
+        if (!user.isCoverageEnabled()) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Coverage is not enabled for this user"))
+                    .build();
+        }
+
         if (bbox == null || bbox.isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity(ApiResponse.error("bbox is required (minLon,minLat,maxLon,maxLat)"))
@@ -55,7 +102,6 @@ public class CoverageResource {
                     .build();
         }
 
-        var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
 
         double minLon = Math.min(bounds[0], bounds[2]);
@@ -78,6 +124,13 @@ public class CoverageResource {
     @GET
     @Path("/summary")
     public Response getCoverageSummary(@QueryParam("grid") Integer gridMeters) {
+        UserEntity user = currentUserService.getCurrentUser();
+        if (!user.isCoverageEnabled()) {
+            return Response.status(Response.Status.FORBIDDEN)
+                    .entity(ApiResponse.error("Coverage is not enabled for this user"))
+                    .build();
+        }
+
         int grid = gridMeters == null ? CoverageDefaults.DEFAULT_GRID_METERS : gridMeters;
         if (!coverageService.isGridSupported(grid)) {
             return Response.status(Response.Status.BAD_REQUEST)
@@ -85,12 +138,12 @@ public class CoverageResource {
                     .build();
         }
 
-        var user = currentUserService.getCurrentUser();
         UUID userId = user.getId();
 
         CoverageSummary summary = coverageService.getCoverageSummary(userId, grid);
         return Response.ok(ApiResponse.success(summary)).build();
     }
+
 
     private double[] parseBbox(String bbox) {
         String[] parts = bbox.split(",");

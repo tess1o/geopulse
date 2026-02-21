@@ -8,7 +8,11 @@ export const useCoverageStore = defineStore('coverage', {
     cellsError: null,
     summaryByGrid: {},
     summaryLoading: false,
-    summaryError: null
+    summaryError: null,
+    status: null,
+    statusLoading: false,
+    statusError: null,
+    settingsUpdating: false
   }),
 
   getters: {
@@ -17,12 +21,61 @@ export const useCoverageStore = defineStore('coverage', {
     getCellsError: (state) => state.cellsError,
     getSummaryByGrid: (state) => (grid) => state.summaryByGrid[grid] || null,
     isSummaryLoading: (state) => state.summaryLoading,
-    getSummaryError: (state) => state.summaryError
+    getSummaryError: (state) => state.summaryError,
+    getStatus: (state) => state.status,
+    isStatusLoading: (state) => state.statusLoading,
+    getStatusError: (state) => state.statusError,
+    isSettingsUpdating: (state) => state.settingsUpdating
   },
 
   actions: {
     clearCells() {
       this.cells = []
+    },
+
+    async fetchCoverageStatus(options = {}) {
+      const silent = options?.silent === true
+
+      try {
+        if (!silent) {
+          this.statusLoading = true
+          this.statusError = null
+        }
+
+        const response = await apiService.get('/coverage/status')
+        const data = response?.data ?? response ?? null
+        this.status = data
+        return data
+      } catch (error) {
+        console.error('Error fetching coverage status:', error)
+        if (!silent) {
+          this.statusError = error.message || 'Failed to fetch coverage status'
+        }
+        return null
+      } finally {
+        if (!silent) {
+          this.statusLoading = false
+        }
+      }
+    },
+
+    async updateCoverageSettings(enabled) {
+      this.settingsUpdating = true
+      this.statusError = null
+      try {
+        const response = await apiService.put('/coverage/settings', { enabled })
+        const data = response?.data ?? response ?? null
+        if (data) {
+          this.status = data
+        }
+        return data
+      } catch (error) {
+        console.error('Error updating coverage settings:', error)
+        this.statusError = error.message || 'Failed to update coverage settings'
+        throw error
+      } finally {
+        this.settingsUpdating = false
+      }
     },
 
     async fetchCoverageCells(bbox, grid, options = {}) {

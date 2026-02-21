@@ -100,7 +100,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "default_redirect_url", length = 1000)
     private String defaultRedirectUrl;
 
-    // Timeline Display Preferences - affect ONLY UI rendering, not timeline generation
+    @Column(name = "coverage_enabled", nullable = false)
+    @Builder.Default
+    private boolean coverageEnabled = false;
+
     // Timeline Display Preferences - affect ONLY UI rendering, not timeline generation
     @Column(name = "timeline_display_path_simplification_enabled")
     private Boolean timelineDisplayPathSimplificationEnabled;

@@ -41,6 +41,9 @@ public class UserService {
     @ConfigProperty(name = "geopulse.admin.email")
     Optional<String> adminEmail;
 
+    @ConfigProperty(name = "geopulse.coverage.enabled-by-default", defaultValue = "false")
+    boolean coverageEnabledByDefault;
+
     // Regex pattern for validating avatar paths - only allows /avatars/avatar{1-20}.png
     private static final Pattern VALID_AVATAR_PATTERN = Pattern.compile("^/avatars/avatar(1[0-9]|20|[1-9])\\.png$");
 
@@ -108,6 +111,7 @@ public class UserService {
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
                 .measureUnit(MeasureUnit.METRIC)
+                .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
         userRepository.persist(user);
@@ -157,6 +161,7 @@ public class UserService {
                 .passwordHash(securePasswordUtils.hashPassword(password))
                 .timezone(validatedTimezone)
                 .measureUnit(MeasureUnit.METRIC)
+                .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
         userRepository.persist(user);

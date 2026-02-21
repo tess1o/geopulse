@@ -5,8 +5,12 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.coverage.CoverageDefaults;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
+import org.github.tess1o.geopulse.coverage.model.CoverageProcessingState;
 import org.github.tess1o.geopulse.coverage.model.CoverageSummary;
+import org.github.tess1o.geopulse.coverage.model.CoverageStatus;
 import org.github.tess1o.geopulse.coverage.repository.CoverageRepository;
+import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -17,10 +21,13 @@ import java.util.UUID;
 public class CoverageService {
 
     private final CoverageRepository coverageRepository;
+    private final UserRepository userRepository;
 
     @Inject
-    public CoverageService(CoverageRepository coverageRepository) {
+    public CoverageService(CoverageRepository coverageRepository,
+                           UserRepository userRepository) {
         this.coverageRepository = coverageRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -76,6 +83,34 @@ public class CoverageService {
 
     public boolean isGridSupported(int gridMeters) {
         return Arrays.stream(CoverageDefaults.GRID_SIZES_METERS).anyMatch(value -> value == gridMeters);
+    }
+
+    public boolean isUserCoverageEnabled(UUID userId) {
+        UserEntity user = userRepository.findById(userId);
+        return user != null && user.isCoverageEnabled();
+    }
+
+    @Transactional
+    public void setUserCoverageEnabled(UUID userId, boolean enabled) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found");
+        }
+        user.setCoverageEnabled(enabled);
+    }
+
+    public CoverageStatus getCoverageStatus(UUID userId) {
+        boolean userEnabled = isUserCoverageEnabled(userId);
+        CoverageProcessingState processingState = coverageRepository.findProcessingState(userId);
+        boolean hasCells = coverageRepository.hasCoverageCells(userId);
+
+        return CoverageStatus.builder()
+                .userEnabled(userEnabled)
+                .processing(processingState.isProcessing())
+                .hasCells(hasCells)
+                .lastProcessed(processingState.getLastProcessed())
+                .processingStartedAt(processingState.getProcessingStartedAt())
+                .build();
     }
 
     private void ensureGridSupported(int gridMeters) {

@@ -10,9 +10,6 @@ public final class CoverageDefaults {
     public static final double MAX_SPEED_MPS = 60.0;
     public static final double MAX_ACCURACY_METERS = 50.0;
 
-    public static final String SCHEDULE_EVERY = "2h";
-    public static final String SCHEDULE_DELAYED = "0m";
-
     private CoverageDefaults() {
     }
 }

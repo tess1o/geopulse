@@ -4,7 +4,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
+import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.coverage.model.CoverageCell;
+import org.github.tess1o.geopulse.coverage.model.CoverageProcessingState;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
 import java.time.Instant;
@@ -50,17 +52,77 @@ public class CoverageRepository {
         List<Object> results = entityManager.createNativeQuery(
                         "SELECT DISTINCT gp.user_id " +
                                 "FROM gps_points gp " +
-                                "JOIN users u ON u.id = gp.user_id AND u.is_active = true " +
+                                "JOIN users u ON u.id = gp.user_id AND u.is_active = true AND u.coverage_enabled = true " +
                                 "LEFT JOIN coverage_state cs ON cs.user_id = gp.user_id " +
                                 "WHERE gp.coordinates IS NOT NULL " +
                                 "  AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy) " +
-                                "  AND (cs.last_processed IS NULL OR gp.timestamp > cs.last_processed)")
+                                "  AND (cs.last_processed IS NULL OR gp.timestamp > cs.last_processed) " +
+                                "  AND (cs.processing IS NULL OR cs.processing = false)")
                 .setParameter("maxAccuracy", maxAccuracyMeters)
                 .getResultList();
 
         return results.stream()
                 .map(row -> UUID.fromString(row.toString()))
                 .toList();
+    }
+
+    public CoverageProcessingState findProcessingState(UUID userId) {
+        try {
+            Object[] result = (Object[]) entityManager.createNativeQuery(
+                            "SELECT processing, last_processed, processing_started_at " +
+                                    "FROM coverage_state " +
+                                    "WHERE user_id = :userId")
+                    .setParameter("userId", userId)
+                    .getSingleResult();
+
+            return CoverageProcessingState.builder()
+                    .processing(result[0] != null && (Boolean) result[0])
+                    .lastProcessed(TimestampUtils.getInstantSafe(result[1]))
+                    .processingStartedAt(TimestampUtils.getInstantSafe(result[2]))
+                    .build();
+        } catch (NoResultException e) {
+            return CoverageProcessingState.builder()
+                    .processing(false)
+                    .build();
+        }
+    }
+
+    public boolean hasCoverageCells(UUID userId) {
+        Object result = entityManager.createNativeQuery(
+                        "SELECT EXISTS (SELECT 1 FROM coverage_cells WHERE user_id = :userId)")
+                .setParameter("userId", userId)
+                .getSingleResult();
+
+        return result != null && (Boolean) result;
+    }
+
+    @Transactional
+    public boolean tryStartProcessing(UUID userId) {
+        int updated = entityManager.createNativeQuery(
+                        "INSERT INTO coverage_state " +
+                                "(user_id, last_processed, updated_at, processing, processing_started_at) " +
+                                "VALUES (:userId, NULL, NOW(), true, NOW()) " +
+                                "ON CONFLICT (user_id) DO UPDATE SET " +
+                                "processing = true, " +
+                                "processing_started_at = NOW(), " +
+                                "updated_at = NOW() " +
+                                "WHERE coverage_state.processing = false OR coverage_state.processing IS NULL")
+                .setParameter("userId", userId)
+                .executeUpdate();
+
+        return updated > 0;
+    }
+
+    @Transactional
+    public void finishProcessing(UUID userId) {
+        entityManager.createNativeQuery(
+                        "UPDATE coverage_state " +
+                                "SET processing = false, " +
+                                "processing_started_at = NULL, " +
+                                "updated_at = NOW() " +
+                                "WHERE user_id = :userId")
+                .setParameter("userId", userId)
+                .executeUpdate();
     }
 
     public Instant findMaxGpsTimestamp(UUID userId, Instant since, double maxAccuracyMeters) {

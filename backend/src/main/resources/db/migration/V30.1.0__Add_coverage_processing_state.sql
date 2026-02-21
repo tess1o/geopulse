@@ -1,0 +1,5 @@
+ALTER TABLE coverage_state
+    ADD COLUMN IF NOT EXISTS processing BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE coverage_state
+    ADD COLUMN IF NOT EXISTS processing_started_at TIMESTAMP WITHOUT TIME ZONE;
