@@ -229,8 +229,8 @@ GeoPulse also supports a server-side **drop folder** for automated imports. This
 ```
 
 **What happens on success/failure:**
-- ✅ **Success:** file is deleted after the import finishes.
-- ❌ **Failure:** file is moved to `.failed/` and an `.error.json` file is written with details.
+- **Success:** file is deleted after the import finishes.
+- **Failure:** file is moved to `.failed/` and an `.error.json` file is written with details.
 
 **File type detection:**
 - The system uses filename hints first (e.g., `timeline`, `owntracks`, `geopulse`).
@@ -239,6 +239,49 @@ GeoPulse also supports a server-side **drop folder** for automated imports. This
   - `.zip`: GeoPulse → GPX ZIP
   - `.gpx`, `.geojson`, `.csv`: direct matching
 - For large GeoPulse ZIPs, a size cap applies **only for drop-folder imports** (default 200MB). Regular uploads are not affected.
+
+#### Drop Folder Permissions
+
+The drop folder is typically mounted from the host filesystem into the GeoPulse container. Because GeoPulse runs as a **non-root container user**, correct permissions must be set up on the folder before importing will work.
+
+GeoPulse needs to read uploaded files, delete them after a successful import, move failed files into `.failed/`, and write `.error.json` error reports. This means user directories inside the drop folder must be writable and uploaded files must be readable by the GeoPulse container user (UID `1001` by default).
+
+##### Recommended Setup
+
+###### Option 1 — Run uploader services with the same UID
+
+If you use FileBrowser or another containerized upload tool, run it with the same UID as GeoPulse. This avoids cross-user permission issues entirely.
+
+```yaml title="docker-compose.yml"
+filebrowser:
+  image: filebrowser/filebrowser
+  user: "1001:1001"
+```
+
+###### Option 2 — Relax directory permissions
+
+Create the drop folder with open permissions so any service can read and write freely.
+
+```bash
+mkdir -p import-drop/user@example.com
+chmod -R 777 import-drop
+```
+
+:::caution
+`chmod 777` grants full access to all local users. Only use this in trusted, single-node environments.
+:::
+
+###### Option 3 — Use ACLs
+
+Grant GeoPulse access without changing file ownership. New files will automatically inherit the correct permissions.
+
+```bash
+# Grant UID 1001 access to existing files
+setfacl -R -m u:1001:rwX import-drop
+
+# Ensure future files inherit the same permissions
+setfacl -R -d -m u:1001:rwX import-drop
+````
 
 **Notes:**
 - Files must be stable (unchanged) for a short period before import begins.
