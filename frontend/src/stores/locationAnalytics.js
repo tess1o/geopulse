@@ -6,6 +6,10 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
         // Search
         searchResults: [],
         searchLoading: false,
+        
+        // Map places
+        mapPlaces: [],
+        mapPlacesLoading: false,
 
         // Cities
         cities: [],
@@ -40,6 +44,10 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
         // Search getters
         getSearchResults: (state) => state.searchResults,
         isSearching: (state) => state.searchLoading,
+        
+        // Map getters
+        getMapPlaces: (state) => state.mapPlaces,
+        isMapPlacesLoading: (state) => state.mapPlacesLoading,
 
         // City getters
         getAllCities: (state) => state.cities,
@@ -87,6 +95,47 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
                 throw error
             } finally {
                 this.searchLoading = false
+            }
+        },
+        
+        /**
+         * Fetch map-ready aggregated places.
+         * @param {Object} options
+         * @param {string|null} options.from - ISO-8601 start timestamp
+         * @param {string|null} options.to - ISO-8601 end timestamp
+         * @param {number|null} options.minLat
+         * @param {number|null} options.maxLat
+         * @param {number|null} options.minLon
+         * @param {number|null} options.maxLon
+         * @param {number} options.minVisits
+         * @param {number} options.limit
+         */
+        async fetchMapPlaces(options = {}) {
+            this.mapPlacesLoading = true
+            this.error = null
+
+            try {
+                const params = {
+                    minVisits: options.minVisits ?? 1,
+                    limit: options.limit ?? 3000
+                }
+
+                if (options.from) params.from = options.from
+                if (options.to) params.to = options.to
+                if (typeof options.minLat === 'number') params.minLat = options.minLat
+                if (typeof options.maxLat === 'number') params.maxLat = options.maxLat
+                if (typeof options.minLon === 'number') params.minLon = options.minLon
+                if (typeof options.maxLon === 'number') params.maxLon = options.maxLon
+
+                const response = await apiService.get('/location-analytics/map/places', params)
+                this.mapPlaces = response.data || []
+                return response
+            } catch (error) {
+                console.error('Failed to fetch map places:', error)
+                this.error = error.message || 'Failed to fetch map places'
+                throw error
+            } finally {
+                this.mapPlacesLoading = false
             }
         },
 
@@ -288,6 +337,7 @@ export const useLocationAnalyticsStore = defineStore('locationAnalytics', {
          */
         clearAllData() {
             this.searchResults = []
+            this.mapPlaces = []
             this.cities = []
             this.countries = []
             this.clearCityData()

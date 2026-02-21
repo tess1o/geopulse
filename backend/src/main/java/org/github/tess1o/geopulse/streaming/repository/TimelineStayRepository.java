@@ -10,7 +10,9 @@ import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -857,6 +859,111 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
         return getEntityManager().createQuery(query)
                 .setParameter(1, userId)
                 .getResultList();
+    }
+
+    /**
+     * Get aggregated places for map visualization.
+     * Results are grouped by place identity and sorted by last visit time descending.
+     *
+     * @param userId    user ID
+     * @param startTime optional start timestamp (inclusive)
+     * @param endTime   optional end timestamp (inclusive)
+     * @param minLat    optional viewport minimum latitude
+     * @param maxLat    optional viewport maximum latitude
+     * @param minLon    optional viewport minimum longitude
+     * @param maxLon    optional viewport maximum longitude
+     * @param minVisits minimum number of visits required
+     * @param limit     maximum number of rows to return
+     * @return list of Object[] rows:
+     * [type, placeId, locationName, visitCount, lastVisit, latitude, longitude, city, country]
+     */
+    public List<Object[]> findMapPlaces(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            Double minLat,
+            Double maxLat,
+            Double minLon,
+            Double maxLon,
+            int minVisits,
+            int limit
+    ) {
+        StringBuilder sql = new StringBuilder("""
+                SELECT
+                    CASE WHEN s.favorite_id IS NOT NULL THEN 'favorite' ELSE 'geocoding' END AS type,
+                    COALESCE(s.favorite_id, s.geocoding_id) AS placeId,
+                    MAX(s.location_name) AS locationName,
+                    COUNT(s.id) AS visitCount,
+                    MAX(s.timestamp) AS lastVisit,
+                    AVG(ST_Y(s.location)) AS latitude,
+                    AVG(ST_X(s.location)) AS longitude,
+                    MAX(COALESCE(f.city, g.city)) AS city,
+                    MAX(COALESCE(f.country, g.country)) AS country
+                FROM timeline_stays s
+                LEFT JOIN favorite_locations f ON s.favorite_id = f.id
+                LEFT JOIN reverse_geocoding_location g ON s.geocoding_id = g.id
+                WHERE s.user_id = :userId
+                  AND s.location IS NOT NULL
+                  AND (s.favorite_id IS NOT NULL OR s.geocoding_id IS NOT NULL)
+                """);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("userId", userId);
+
+        if (startTime != null) {
+            sql.append(" AND s.timestamp >= :startTime");
+            params.put("startTime", startTime);
+        }
+        if (endTime != null) {
+            sql.append(" AND s.timestamp <= :endTime");
+            params.put("endTime", endTime);
+        }
+
+        boolean hasViewport = minLat != null && maxLat != null && minLon != null && maxLon != null;
+        if (hasViewport) {
+            sql.append(" AND ST_Y(s.location) BETWEEN :minLat AND :maxLat");
+            params.put("minLat", minLat);
+            params.put("maxLat", maxLat);
+
+            // Leaflet bounds can exceed [-180, 180] due to world wrapping.
+            // Normalize and support both world-spanning and antimeridian-crossing views.
+            double lonSpan = maxLon - minLon;
+            if (lonSpan < 360.0d) {
+                double normalizedMinLon = normalizeLongitude(minLon);
+                double normalizedMaxLon = normalizeLongitude(maxLon);
+
+                if (normalizedMinLon <= normalizedMaxLon) {
+                    sql.append(" AND ST_X(s.location) BETWEEN :minLon AND :maxLon");
+                    params.put("minLon", normalizedMinLon);
+                    params.put("maxLon", normalizedMaxLon);
+                } else {
+                    sql.append(" AND (ST_X(s.location) >= :minLon OR ST_X(s.location) <= :maxLon)");
+                    params.put("minLon", normalizedMinLon);
+                    params.put("maxLon", normalizedMaxLon);
+                }
+            }
+        }
+
+        sql.append("""
+                
+                GROUP BY
+                    CASE WHEN s.favorite_id IS NOT NULL THEN 'favorite' ELSE 'geocoding' END,
+                    COALESCE(s.favorite_id, s.geocoding_id)
+                HAVING COUNT(s.id) >= :minVisits
+                ORDER BY lastVisit DESC
+                LIMIT :limit
+                """);
+
+        params.put("minVisits", Math.max(1, minVisits));
+        params.put("limit", Math.max(1, limit));
+
+        var query = getEntityManager().createNativeQuery(sql.toString());
+        params.forEach(query::setParameter);
+        return query.getResultList();
+    }
+
+    private double normalizeLongitude(double longitude) {
+        return ((longitude + 180.0d) % 360.0d + 360.0d) % 360.0d - 180.0d;
     }
 
     /**
