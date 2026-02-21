@@ -7,7 +7,8 @@
     <div class="setting-control">
       <slot name="control" :setting="setting" />
       <div class="setting-status">
-        <Tag v-if="setting.isDefault" severity="secondary" value="Default" />
+        <Tag v-if="setting.readOnly" severity="info" value="Read-only" />
+        <Tag v-else-if="setting.isDefault" severity="secondary" value="Default" />
         <Button
           v-else
           label="Reset"

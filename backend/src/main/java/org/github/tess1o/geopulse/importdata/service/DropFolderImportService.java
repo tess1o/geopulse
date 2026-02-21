@@ -14,11 +14,14 @@ import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.model.ImportStatus;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
@@ -37,6 +40,7 @@ public class DropFolderImportService {
     private static final String SETTING_POLL_INTERVAL_SECONDS = "import.drop-folder.poll-interval-seconds";
     private static final String SETTING_STABLE_AGE_SECONDS = "import.drop-folder.stable-age-seconds";
     private static final String SETTING_GEOPULSE_MAX_SIZE_MB = "import.drop-folder.geopulse-max-size-mb";
+    private static final Duration BLOCKED_FILE_COOLDOWN = Duration.ofMinutes(5);
 
     private static final String FAILED_FOLDER_NAME = ".failed";
     private static final String ERROR_FILE_SUFFIX = ".error.json";
@@ -69,6 +73,7 @@ public class DropFolderImportService {
 
     private final Map<UUID, TrackedDropImport> trackedJobs = new ConcurrentHashMap<>();
     private final Set<Path> claimedFiles = ConcurrentHashMap.newKeySet();
+    private final Map<Path, Instant> blockedFiles = new ConcurrentHashMap<>();
 
     @PostConstruct
     void init() {
@@ -116,16 +121,19 @@ public class DropFolderImportService {
 
         try {
             Files.createDirectories(dropRoot);
-            if (!Files.isWritable(dropRoot)) {
-                throw new IllegalStateException("Drop folder is not writable: " + dropRoot);
+            if (!Files.isReadable(dropRoot) || !Files.isWritable(dropRoot) || !Files.isExecutable(dropRoot)) {
+                throw new IllegalStateException("Drop folder is not accessible (read/write/execute required): " + dropRoot);
             }
             if (logOnChange && changed) {
                 log.info("Drop folder import enabled: path={}, pollInterval={}s, stableAge={}s",
                         dropRoot, pollIntervalSeconds, stableAgeSeconds);
+                log.info("Drop folder process identity: {}", ProcessIdentity.describe());
             }
         } catch (Exception e) {
             if (logOnChange && changed) {
                 log.error("Failed to initialize drop folder {}: {}", dropRoot, e.getMessage(), e);
+                logPathPermissions(dropRoot, "Drop folder permissions");
+                log.warn("Drop folder process identity: {}", ProcessIdentity.describe());
             }
             enabled = false;
         }
@@ -180,6 +188,9 @@ public class DropFolderImportService {
         }
 
         UUID userId = userOpt.get().getId();
+        if (!ensureDirectoryAccess(userDir, "Drop folder user directory")) {
+            return;
+        }
         if (importJobService.hasActiveImportJob(userId)) {
             return;
         }
@@ -203,6 +214,10 @@ public class DropFolderImportService {
                     .filter(this::isCandidateFile)
                     .sorted(Comparator.comparing(this::getLastModifiedSafe))
                     .collect(Collectors.toList());
+        } catch (AccessDeniedException e) {
+            log.warn("Permission denied listing files in {}: {}", userDir, e.getMessage());
+            logPathPermissions(userDir, "Drop folder user directory permissions");
+            return List.of();
         } catch (IOException e) {
             log.error("Failed to list files in {}: {}", userDir, e.getMessage(), e);
             return List.of();
@@ -229,6 +244,26 @@ public class DropFolderImportService {
     }
 
     private boolean processFile(UUID userId, Path userDir, Path file) {
+        if (!Files.exists(file)) {
+            blockedFiles.remove(file);
+            return false;
+        }
+
+        if (isInCooldown(file)) {
+            return false;
+        }
+
+        PreflightResult preflight = preflightFileAccess(userDir, file);
+        if (!preflight.ok) {
+            if (preflight.canMoveToFailed) {
+                moveToFailed(userDir, file, preflight.message, null);
+                return true;
+            }
+            log.warn("Drop file blocked: {} - {}", file, preflight.message);
+            markBlocked(file);
+            return false;
+        }
+
         if (!isFileStable(file)) {
             return false;
         }
@@ -264,6 +299,11 @@ public class DropFolderImportService {
                     job.getJobId(), userId, detection.format.getValue(), file.getFileName());
 
             return true;
+        } catch (AccessDeniedException e) {
+            String message = "Permission denied processing file " + file.getFileName() + ". " + permissionHint(file);
+            log.warn("Failed to process drop file {}: {}", file, message, e);
+            moveToFailed(userDir, file, message, e);
+            return true;
         } catch (Exception e) {
             log.error("Failed to process drop file {}: {}", file, e.getMessage(), e);
             moveToFailed(userDir, file, e.getMessage(), e);
@@ -285,6 +325,16 @@ public class DropFolderImportService {
     }
 
     private DetectionResult detectFormat(Path file, long fileSize) {
+        if (!Files.exists(file)) {
+            log.debug("Drop file disappeared before processing: {}", file);
+            return null;
+        }
+        if (!Files.isReadable(file)) {
+            log.warn("Drop file is not readable: {}", file);
+            logPathPermissions(file, "Drop file permissions");
+            return DetectionResult.error("Drop file is not readable by GeoPulse. " + permissionHint(file));
+        }
+
         String fileName = file.getFileName().toString();
         String lowerName = fileName.toLowerCase(Locale.ENGLISH);
 
@@ -333,6 +383,10 @@ public class DropFolderImportService {
             ImportJob probeJob = buildProbeJob(format, file, fileName, fileSize);
             strategy.validateAndDetectDataTypes(probeJob);
             return new DetectionResult(format, probeJob.getFileData());
+        } catch (AccessDeniedException e) {
+            log.warn("Permission denied reading drop file {}: {}", fileName, e.getMessage());
+            logPathPermissions(file, "Drop file permissions");
+            return DetectionResult.error("Permission denied reading file: " + fileName + ". " + permissionHint(file));
         } catch (Exception e) {
             log.debug("Format detection failed for {} with {}: {}", fileName, format.getValue(), e.getMessage());
             return null;
@@ -448,6 +502,8 @@ public class DropFolderImportService {
             log.warn("Moved drop import file to failed: {} -> {}", file, target);
         } catch (IOException e) {
             log.error("Failed to move file {} to failed folder: {}", file, e.getMessage(), e);
+            logPathPermissions(userDir, "Drop folder user directory permissions");
+            logPathPermissions(file, "Drop file permissions");
         }
     }
 
@@ -482,6 +538,111 @@ public class DropFolderImportService {
             objectMapper.writeValue(errorFile.toFile(), errorInfo);
         } catch (IOException e) {
             log.warn("Failed to write error file {}: {}", errorFile, e.getMessage());
+        }
+    }
+
+    private PreflightResult preflightFileAccess(Path userDir, Path file) {
+        if (!Files.exists(file)) {
+            return PreflightResult.failure("Drop file disappeared before processing", false);
+        }
+
+        boolean readable = Files.isReadable(file);
+        boolean userDirWritable = Files.isWritable(userDir) && Files.isExecutable(userDir);
+
+        Path failedDir = userDir.resolve(FAILED_FOLDER_NAME);
+        boolean failedDirWritable = !Files.exists(failedDir)
+                ? userDirWritable
+                : Files.isWritable(failedDir) && Files.isExecutable(failedDir);
+
+        boolean canMove = userDirWritable && failedDirWritable;
+
+        if (!readable) {
+            logPathPermissions(file, "Drop file permissions");
+            return PreflightResult.failure("Drop file is not readable. " + permissionHint(file), canMove);
+        }
+        if (!userDirWritable) {
+            logPathPermissions(userDir, "Drop folder user directory permissions");
+            return PreflightResult.failure("Drop folder user directory is not writable. " + permissionHint(userDir), false);
+        }
+        if (Files.exists(failedDir) && !failedDirWritable) {
+            logPathPermissions(failedDir, "Drop folder failed directory permissions");
+            return PreflightResult.failure("Failed folder is not writable. " + permissionHint(failedDir), false);
+        }
+
+        return PreflightResult.ok();
+    }
+
+    private String permissionHint(Path path) {
+        Path hintRoot = dropRoot != null ? dropRoot : path;
+        String target = hintRoot != null ? hintRoot.toString() : "<drop folder>";
+        return "Fix permissions for " + target + " (e.g., chown -R 1001:0 " + target
+                + " && chmod -R g+rwX " + target + " or setfacl -R -m u:1001:rwX " + target + ").";
+    }
+
+    private boolean ensureDirectoryAccess(Path dir, String context) {
+        boolean readable = Files.isReadable(dir);
+        boolean writable = Files.isWritable(dir);
+        boolean executable = Files.isExecutable(dir);
+        if (!readable || !writable || !executable) {
+            log.warn("{} is not accessible (readable={}, writable={}, executable={}): {}", context, readable, writable, executable, dir);
+            logPathPermissions(dir, context + " permissions");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isInCooldown(Path file) {
+        Instant lastFailure = blockedFiles.get(file);
+        if (lastFailure == null) {
+            return false;
+        }
+        if (Instant.now().isAfter(lastFailure.plus(BLOCKED_FILE_COOLDOWN))) {
+            blockedFiles.remove(file, lastFailure);
+            return false;
+        }
+        return true;
+    }
+
+    private void markBlocked(Path file) {
+        blockedFiles.put(file, Instant.now());
+    }
+
+    private void logPathPermissions(Path path, String context) {
+        if (path == null) {
+            return;
+        }
+        try {
+            if (!Files.exists(path)) {
+                log.warn("{}: path does not exist: {}", context, path);
+                return;
+            }
+            PosixFileAttributes attrs = Files.readAttributes(path, PosixFileAttributes.class);
+            String perms = PosixFilePermissions.toString(attrs.permissions());
+            log.warn("{}: path={} owner={} group={} perms={}", context, path, attrs.owner().getName(), attrs.group().getName(), perms);
+        } catch (UnsupportedOperationException e) {
+            log.warn("{}: path={} (POSIX attributes not supported)", context, path);
+        } catch (Exception e) {
+            log.warn("{}: path={} (failed to read permissions: {})", context, path, e.getMessage());
+        }
+    }
+
+    private static final class PreflightResult {
+        private final boolean ok;
+        private final boolean canMoveToFailed;
+        private final String message;
+
+        private PreflightResult(boolean ok, boolean canMoveToFailed, String message) {
+            this.ok = ok;
+            this.canMoveToFailed = canMoveToFailed;
+            this.message = message;
+        }
+
+        private static PreflightResult ok() {
+            return new PreflightResult(true, true, null);
+        }
+
+        private static PreflightResult failure(String message, boolean canMoveToFailed) {
+            return new PreflightResult(false, canMoveToFailed, message);
         }
     }
 

@@ -143,6 +143,11 @@ export const SETTING_METADATA = {
     label: 'Drop GeoPulse Max Size (MB)',
     description: 'Max GeoPulse ZIP size for drop imports'
   },
+  'import.drop-folder.runtime-identity': {
+    label: 'Drop Folder Process Identity',
+    description: 'Effective user/group running the backend process (read-only)',
+    readOnly: true
+  },
   'import.chunk-size-mb': {
     label: 'Chunk Size (MB)',
     description: 'Size of each upload chunk for large file uploads'
