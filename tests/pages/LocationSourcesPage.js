@@ -9,30 +9,36 @@ export class LocationSourcesPage {
       addSourceBtn: '[data-tour="add-source-btn"]',
       quickSetupButtons: {
         owntracks: 'button:has-text("Setup OwnTracks")',
+        gpslogger: 'button:has-text("Setup GPSLogger")',
         overland: 'button:has-text("Setup Overland")',
-        dawarich: 'button:has-text("Setup Dawarich")'
+        dawarich: 'button:has-text("Setup Dawarich")',
+        home_assistant: 'button:has-text("Setup Home Assistant")'
       },
       dialog: {
         container: '.source-dialog',
         header: '.p-dialog-header',
         sourceTypeOptions: {
           owntracks: '.source-type-option:has-text("OwnTracks")',
+          gpslogger: '.source-type-option:has-text("GPSLogger")',
           overland: '.source-type-option:has-text("Overland")',
           dawarich: '.source-type-option:has-text("Dawarich")',
-          homeassistant: '.source-type-option:has-text("Home Assistant")'
+          home_assistant: '.source-type-option:has-text("Home Assistant")'
         },
         connectionTypeOptions: {
           http: '.connection-type-option:has-text("HTTP")',
           mqtt: '.connection-type-option:has-text("MQTT")'
         },
         fields: {
-          username: '#username',
-          password: '#password input',
-          token: '#token',
-          apiKey: '#apiKey'
+          username: '#location-source-username',
+          password: '#location-source-password input',
+          overlandToken: '#location-source-token-overland',
+          dawarichApiKey: '#location-source-token-dawarich',
+          homeAssistantToken: '#location-source-token-ha'
         },
         buttons: {
           cancel: 'button:has-text("Cancel")',
+          continue: 'button:has-text("Continue")',
+          back: 'button:has-text("Back")',
           save: 'button:has-text("Add Source")',
           saveEdit: 'button:has-text("Save Changes")'
         }
@@ -117,9 +123,32 @@ export class LocationSourcesPage {
    * Select source type in dialog
    */
   async selectSourceType(sourceType) {
-    const selector = this.selectors.dialog.sourceTypeOptions[sourceType.toLowerCase()];
+    const sourceTypeKey = sourceType.toLowerCase();
+    const sourceLabels = {
+      owntracks: 'OwnTracks',
+      gpslogger: 'GPSLogger',
+      overland: 'Overland',
+      dawarich: 'Dawarich',
+      home_assistant: 'Home Assistant'
+    };
+    const label = sourceLabels[sourceTypeKey];
 
-    await this.page.locator(selector).click();
+    if (!label) {
+      throw new Error(`Unsupported source type for selection: ${sourceType}`);
+    }
+
+    const option = this.page
+      .locator('.source-type-option')
+      .filter({ has: this.page.locator('.type-name', { hasText: label }) });
+
+    await option.click();
+
+    // Add dialog now uses a 2-step wizard. Keep tests backward-compatible by
+    // advancing to the Configure step automatically when the Continue button exists.
+    const continueButton = this.page.locator(this.selectors.dialog.buttons.continue);
+    if (await continueButton.isVisible().catch(() => false)) {
+      await continueButton.click();
+    }
   }
 
   /**
@@ -143,14 +172,21 @@ export class LocationSourcesPage {
    * Fill Overland form fields
    */
   async fillOverlandForm(token) {
-    await this.page.fill(this.selectors.dialog.fields.token, token);
+    await this.page.fill(this.selectors.dialog.fields.overlandToken, token);
   }
 
   /**
    * Fill Dawarich form fields
    */
   async fillDawarichForm(apiKey) {
-    await this.page.fill(this.selectors.dialog.fields.apiKey, apiKey);
+    await this.page.fill(this.selectors.dialog.fields.dawarichApiKey, apiKey);
+  }
+
+  /**
+   * Fill Home Assistant form fields
+   */
+  async fillHomeAssistantForm(token) {
+    await this.page.fill(this.selectors.dialog.fields.homeAssistantToken, token);
   }
 
   /**
@@ -332,8 +368,8 @@ export class LocationSourcesPage {
   async createHomeAssistantSource(token) {
     await this.clickAddNewSource();
     await this.waitForDialog();
-    await this.selectSourceType('HOMEASSISTANT');
-    await this.fillOverlandForm(token);
+    await this.selectSourceType('HOME_ASSISTANT');
+    await this.fillHomeAssistantForm(token);
     await this.clickSave();
     await this.waitForSuccessToast();
     await this.waitForDialogClose();

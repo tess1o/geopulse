@@ -292,7 +292,7 @@ test.describe('Location Sources Management', () => {
       expect(await locationSourcesPage.isDialogVisible()).toBe(true);
       
       // Update the username
-      await page.fill('#username', 'updateduser');
+      await page.fill('#location-source-username', 'updateduser');
       await locationSourcesPage.clickSaveEdit();
       
       await locationSourcesPage.waitForSuccessToast();
@@ -333,7 +333,7 @@ test.describe('Location Sources Management', () => {
       await locationSourcesPage.waitForDialog();
       
       // Update the token
-      await page.fill('#token', 'updated-token-12345');
+      await page.fill('#location-source-token-overland', 'updated-token-12345');
       await locationSourcesPage.clickSaveEdit();
       
       await locationSourcesPage.waitForSuccessToast();
@@ -373,7 +373,7 @@ test.describe('Location Sources Management', () => {
       await locationSourcesPage.waitForDialog();
       
       // Change something
-      await page.fill('#username', 'shouldnotchange');
+      await page.fill('#location-source-username', 'shouldnotchange');
       
       // Cancel
       await locationSourcesPage.clickCancel();
