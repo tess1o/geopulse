@@ -155,7 +155,8 @@ watch(() => props.places, () => {
   fitToPlaces()
 }, { deep: false })
 
-watch(selectedPlace, () => {
+watch(() => props.selectedPlaceKey, (nextKey, previousKey) => {
+  if (!nextKey || nextKey === previousKey) return
   focusSelectedPlace()
 })
 

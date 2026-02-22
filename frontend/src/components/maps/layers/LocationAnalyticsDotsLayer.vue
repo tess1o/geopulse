@@ -40,6 +40,8 @@ const baseLayerRef = ref(null)
 const markerClusterGroup = ref(null)
 const selectedMarker = ref(null)
 const markersByKey = new Map()
+const CLUSTER_LABEL_MIN_ZOOM = 8
+const CLUSTER_LABEL_MAX_COUNT = 49
 
 const getPlaceKey = (place) => `${place.type}-${place.id}`
 
@@ -219,9 +221,15 @@ const renderMarkers = () => {
 
 const handleLayerReady = () => {
   markerClusterGroup.value = L.markerClusterGroup({
-    maxClusterRadius: 45,
-    disableClusteringAtZoom: 16,
-    spiderfyOnMaxZoom: false,
+    maxClusterRadius: (zoom) => {
+      if (zoom <= 4) return 12
+      if (zoom <= 6) return 16
+      if (zoom <= 8) return 20
+      if (zoom <= 10) return 24
+      return 28
+    },
+    disableClusteringAtZoom: 12,
+    spiderfyOnMaxZoom: true,
     showCoverageOnHover: false,
     zoomToBoundsOnClick: true,
     chunkedLoading: true,
@@ -231,10 +239,27 @@ const handleLayerReady = () => {
     removeOutsideVisibleBounds: true,
     iconCreateFunction: (cluster) => {
       const count = cluster.getChildCount()
+      const zoom = props.map?.getZoom?.() ?? 0
+      const showLabel = zoom >= CLUSTER_LABEL_MIN_ZOOM && count <= CLUSTER_LABEL_MAX_COUNT
+      const size =
+        zoom <= 5 ? 14
+          : zoom <= 7 ? 16
+            : zoom <= 9 ? 18
+              : 20
+
       return L.divIcon({
-        html: `<div class="location-analytics-cluster"><span>${count}</span></div>`,
+        html: `
+          <div
+            class="location-analytics-cluster ${showLabel ? 'is-labeled' : 'is-compact'}"
+            style="--cluster-size:${size}px"
+            title="${count} places"
+            aria-label="${count} places"
+          >
+            ${showLabel ? `<span>${count}</span>` : ''}
+          </div>
+        `,
         className: 'location-analytics-cluster-icon',
-        iconSize: L.point(36, 36)
+        iconSize: L.point(size, size)
       })
     }
   })
@@ -271,21 +296,27 @@ onBeforeUnmount(() => {
 }
 
 :global(.location-analytics-cluster) {
-  width: 36px;
-  height: 36px;
+  width: var(--cluster-size, 18px);
+  height: var(--cluster-size, 18px);
   border-radius: 50%;
   background: rgba(255, 94, 0, 0.86);
   border: 2px solid #fff7f0;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+:global(.location-analytics-cluster.is-compact) {
+  border-width: 1.5px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 :global(.location-analytics-cluster span) {
   color: #fff;
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.62rem;
+  line-height: 1;
 }
 
 :global(.location-analytics-popup .popup-name) {
