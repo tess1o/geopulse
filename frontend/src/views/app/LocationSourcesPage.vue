@@ -35,83 +35,19 @@
           </template>
           <template #content>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div class="source-option">
+              <div v-for="option in quickSetupOptions" :key="option.value" class="source-option">
                 <div class="source-header">
-                  <i class="pi pi-mobile text-2xl text-blue-500"></i>
+                  <i :class="[getSourceIcon(option.value), 'text-2xl', option.accentClass]"></i>
                   <div>
-                    <h3 class="source-name">OwnTracks</h3>
-                    <p class="source-description">Open-source location tracking with HTTP or MQTT connections</p>
+                    <h3 class="source-name">{{ option.label }}</h3>
+                    <p class="source-description">{{ option.description }}</p>
                   </div>
                 </div>
                 <Button 
-                  label="Setup OwnTracks" 
+                  :label="`Setup ${option.label}`"
                   outlined 
                   size="small"
-                  @click="startQuickSetup('OWNTRACKS')"
-                />
-              </div>
-
-              <div class="source-option">
-                <div class="source-header">
-                  <i class="pi pi-compass text-2xl text-cyan-500"></i>
-                  <div>
-                    <h3 class="source-name">GPSLogger</h3>
-                    <p class="source-description">Android app using HTTP + Basic Auth with OwnTracks-compatible payloads</p>
-                  </div>
-                </div>
-                <Button
-                  label="Setup GPSLogger"
-                  outlined
-                  size="small"
-                  @click="startQuickSetup('GPSLOGGER')"
-                />
-              </div>
-              
-              <div class="source-option">
-                <div class="source-header">
-                  <i class="pi pi-map text-2xl text-green-500"></i>
-                  <div>
-                    <h3 class="source-name">Overland</h3>
-                    <p class="source-description">Simple HTTP endpoint with token-based authentication</p>
-                  </div>
-                </div>
-                <Button 
-                  label="Setup Overland" 
-                  outlined 
-                  size="small"
-                  @click="startQuickSetup('OVERLAND')"
-                />
-              </div>
-              
-              <div class="source-option">
-                <div class="source-header">
-                  <i class="pi pi-key text-2xl text-purple-500"></i>
-                  <div>
-                    <h3 class="source-name">Dawarich</h3>
-                    <p class="source-description">Privacy-focused location tracking with API key authentication</p>
-                  </div>
-                </div>
-                <Button 
-                  label="Setup Dawarich"
-                  outlined 
-                  size="small"
-                  @click="startQuickSetup('DAWARICH')"
-                />
-              </div>
-              
-              <div class="source-option">
-                <div class="source-header">
-                  <i class="pi pi-home text-2xl text-orange-500"></i>
-                  <div>
-                    <h3 class="source-name">Home Assistant</h3>
-                    <p class="source-description">Integrate with Home Assistant automation for automatic location tracking</p>
-                  </div>
-                </div>
-                <Button 
-                  label="Setup Home Assistant"
-                  outlined 
-                  size="small"
-                  @click="startQuickSetup('HOME_ASSISTANT')"
+                  @click="startQuickSetup(option.value)"
                 />
               </div>
             </div>
@@ -519,142 +455,12 @@
           </template>
         </Card>
 
-        <!-- Add/Edit Source Dialog -->
-        <Dialog 
-          v-model:visible="showAddDialog"
-          :header="isEditMode ? 'Edit Location Source' : 'Add Location Source'"
-          @hide="handleDialogHide"
-          modal
-          class="source-dialog"
-        >
-          <div class="dialog-content">
-            <div class="source-type-selection">
-              <label class="form-label">Source Type</label>
-              <div class="source-types">
-                <div 
-                  v-for="type in sourceTypes" 
-                  :key="type.value"
-                  :class="['source-type-option', { active: formData.type === type.value }]"
-                  @click="formData.type = type.value"
-                >
-                  <i :class="type.icon"></i>
-                  <div>
-                    <div class="type-name">{{ type.label }}</div>
-                    <div class="type-description">{{ type.description }}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER'" class="form-section">
-              <div v-if="formData.type === 'OWNTRACKS'" class="form-field">
-                <label for="connectionType" class="form-label">Connection Type</label>
-                <div class="connection-type-selection">
-                  <div 
-                    :class="['connection-type-option', { active: formData.connectionType === 'HTTP' }]"
-                    @click="formData.connectionType = 'HTTP'"
-                  >
-                    <i class="pi pi-globe"></i>
-                    <div>
-                      <div class="connection-type-name">HTTP</div>
-                      <div class="connection-type-description">Standard HTTP endpoint</div>
-                    </div>
-                  </div>
-                  <div 
-                    :class="['connection-type-option', { active: formData.connectionType === 'MQTT' }]"
-                    @click="formData.connectionType = 'MQTT'"
-                  >
-                    <i class="pi pi-send"></i>
-                    <div>
-                      <div class="connection-type-name">MQTT</div>
-                      <div class="connection-type-description">MQTT broker connection</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="formData.type === 'GPSLOGGER'" class="step-value">
-                GPSLogger uses HTTP only and sends an OwnTracks-compatible payload.
-              </div>
-              
-              <div class="form-field">
-                <label for="username" class="form-label">Username</label>
-                <InputText 
-                  id="username"
-                  v-model="formData.username"
-                  placeholder="Enter username"
-                  :invalid="!!formErrors.username"
-                />
-                <small v-if="formErrors.username" class="error-message">{{ formErrors.username }}</small>
-              </div>
-              
-              <div class="form-field">
-                <label for="password" class="form-label">Password</label>
-                <Password 
-                  id="password"
-                  v-model="formData.password"
-                  :placeholder="isEditMode ? 'Enter new password (leave empty to keep current)' : 'Enter password'"
-                  :feedback="false"
-                  toggleMask
-                  :invalid="!!formErrors.password"
-                />
-                <small v-if="formErrors.password" class="error-message">{{ formErrors.password }}</small>
-              </div>
-            </div>
-
-            <div v-else-if="formData.type === 'OVERLAND'" class="form-section">
-              <div class="form-field">
-                <label for="token" class="form-label">Access Token</label>
-                <InputText 
-                  id="token"
-                  v-model="formData.token"
-                  placeholder="Enter access token"
-                  :invalid="!!formErrors.token"
-                />
-                <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
-              </div>
-            </div>
-
-            <div v-else-if="formData.type === 'DAWARICH'" class="form-section">
-              <div class="form-field">
-                <label for="apiKey" class="form-label">API Key</label>
-                <InputText 
-                  id="apiKey"
-                  v-model="formData.token"
-                  placeholder="Enter API key"
-                  :invalid="!!formErrors.token"
-                />
-                <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
-              </div>
-            </div>
-
-            <div v-else-if="formData.type === 'HOME_ASSISTANT'" class="form-section">
-              <div class="form-field">
-                <label for="token" class="form-label">Token</label>
-                <InputText 
-                  id="token"
-                  v-model="formData.token"
-                  placeholder="Enter token"
-                  :invalid="!!formErrors.token"
-                />
-                <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
-              </div>
-            </div>
-            <!-- New GpsFilteringSettings component -->
-            <GpsFilteringSettings v-model:settings="formData" />
-          </div>
-
-          <template #footer>
-            <div class="dialog-footer">
-              <Button label="Cancel" outlined @click="closeDialog" />
-              <Button 
-                :label="isEditMode ? 'Save Changes' : 'Add Source'"
-                @click="saveSource"
-                :loading="saving"
-              />
-            </div>
-          </template>
-        </Dialog>
+        <LocationSourceDialog
+          ref="locationSourceDialogRef"
+          :saving="saving"
+          :defaultFilteringValues="defaultFilteringValues"
+          @submit="handleLocationSourceDialogSubmit"
+        />
 
         <!-- Confirm Delete Dialog -->
         <ConfirmDialog />
@@ -665,7 +471,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -675,7 +481,13 @@ import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import OnboardingTour from '@/components/OnboardingTour.vue'
-import GpsFilteringSettings from '@/components/GpsFilteringSettings.vue'
+import LocationSourceDialog from '@/components/location-sources/LocationSourceDialog.vue'
+import {
+  LOCATION_SOURCE_OPTIONS,
+  getLocationSourceDisplayName,
+  getLocationSourceIcon,
+  getLocationSourceIdentifier
+} from '@/components/location-sources/locationSourceMeta'
 
 // Store
 import { useGpsSourcesStore } from '@/stores/gpsSources'
@@ -690,63 +502,22 @@ const toast = useToast()
 const confirm = useConfirm()
 
 // State
-const showAddDialog = ref(false)
-const isEditMode = ref(false)
-const editingSource = ref(null)
+const locationSourceDialogRef = ref(null)
 const saving = ref(false)
-const activeInstructionTab = ref('owntracks')
 const activeTab = ref('owntracks-http')
 
-// Form data - filtering values will be populated from backend after mount
-const formData = ref({
-  type: 'OWNTRACKS',
-  username: '',
-  password: '',
-  token: '',
-  connectionType: 'HTTP',
-  // GPS filtering settings - will be populated dynamically from backend defaults
-  filterInaccurateData: null,
-  maxAllowedAccuracy: null,
-  maxAllowedSpeed: null,
-  enableDuplicateDetection: null,
-  duplicateDetectionThresholdMinutes: null
+const QUICK_SETUP_ACCENT_BY_TYPE = Object.freeze({
+  OWNTRACKS: 'text-blue-500',
+  GPSLOGGER: 'text-cyan-500',
+  OVERLAND: 'text-green-500',
+  DAWARICH: 'text-purple-500',
+  HOME_ASSISTANT: 'text-orange-500'
 })
 
-const formErrors = ref({})
-
-// Source type options
-const sourceTypes = [
-  {
-    value: 'OWNTRACKS',
-    label: 'OwnTracks',
-    description: 'Open-source location tracking with HTTP or MQTT connections',
-    icon: 'pi pi-mobile'
-  },
-  {
-    value: 'GPSLOGGER',
-    label: 'GPSLogger',
-    description: 'Android GPSLogger app via HTTP + Basic Auth (OwnTracks-compatible payload)',
-    icon: 'pi pi-compass'
-  },
-  {
-    value: 'OVERLAND',
-    label: 'Overland',
-    description: 'Simple HTTP endpoint with token-based authentication',
-    icon: 'pi pi-map'
-  },
-  {
-    value: 'DAWARICH',
-    label: 'Dawarich',
-    description: 'Privacy-focused location tracking with API key authentication',
-    icon: 'pi pi-key'
-  },
-  {
-    value: 'HOME_ASSISTANT',
-    label: 'Home Assistant',
-    description: 'Integrate with Home Assistant automation for automatic location tracking',
-    icon: 'pi pi-home'
-  }
-]
+const quickSetupOptions = LOCATION_SOURCE_OPTIONS.map((option) => ({
+  ...option,
+  accentClass: QUICK_SETUP_ACCENT_BY_TYPE[option.value] || 'text-blue-500'
+}))
 
 // Computed
 const hasAnySources = computed(() => gpsSourceConfigs.value.length > 0)
@@ -789,9 +560,12 @@ if (typeof window !== 'undefined') {
   const handleResize = () => {
     windowWidth.value = window.innerWidth
   }
-  window.addEventListener('resize', handleResize)
   onMounted(() => {
+    window.addEventListener('resize', handleResize)
     handleResize()
+  })
+  onUnmounted(() => {
+    window.removeEventListener('resize', handleResize)
   })
 }
 
@@ -865,7 +639,6 @@ const setFirstTabActive = () => {
   if (tabItems.value.length > 0) {
     const firstTab = tabItems.value[0]
     activeTab.value = firstTab.key
-    activeInstructionTab.value = firstTab.key
   }
 }
 
@@ -880,69 +653,24 @@ watch(tabItems, (newTabs) => {
   }
 }, { immediate: true })
 
-// Helper to get default filtering values safely
-const getDefaultFiltering = () => {
-  if (defaultFilteringValues.value) {
-    return {
-      filterInaccurateData: defaultFilteringValues.value.filterInaccurateData,
-      maxAllowedAccuracy: defaultFilteringValues.value.maxAllowedAccuracy,
-      maxAllowedSpeed: defaultFilteringValues.value.maxAllowedSpeed,
-      enableDuplicateDetection: defaultFilteringValues.value.enableDuplicateDetection,
-      duplicateDetectionThresholdMinutes: defaultFilteringValues.value.duplicateDetectionThresholdMinutes
-    }
-  }
-  // Fallback to null if backend values not loaded yet
-  return {
-    filterInaccurateData: null,
-    maxAllowedAccuracy: null,
-    maxAllowedSpeed: null,
-    enableDuplicateDetection: null,
-    duplicateDetectionThresholdMinutes: null
-  }
-}
-
 // Methods
-const getSourceIcon = (type) => {
-  if (type === 'OWNTRACKS') return 'pi pi-mobile'
-  if (type === 'GPSLOGGER') return 'pi pi-compass'
-  if (type === 'OVERLAND') return 'pi pi-map'
-  if (type === 'DAWARICH') return 'pi pi-key'
-  if (type === 'HOME_ASSISTANT') return 'pi pi-home'
-  return 'pi pi-question'
-}
-
-const getSourceDisplayName = (type) => {
-  if (type === 'OWNTRACKS') return 'OwnTracks'
-  if (type === 'GPSLOGGER') return 'GPSLogger'
-  if (type === 'OVERLAND') return 'Overland'
-  if (type === 'DAWARICH') return 'Dawarich'
-  if (type === 'HOME_ASSISTANT') return 'Home Assistant'
-  return type
-}
-
-const getSourceIdentifier = (source) => {
-  if (source.type === 'OWNTRACKS') return source.username || 'No username'
-  if (source.type === 'GPSLOGGER') return source.username || 'No username'
-  if (source.type === 'OVERLAND') return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
-  if (source.type === 'DAWARICH') return source.token ? `API Key: ${source.token.substring(0, 8)}...` : 'No API key'
-  if (source.type === 'HOME_ASSISTANT') return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
-  return `Unknown type: ${source.type}`
-}
+const getSourceIcon = getLocationSourceIcon
+const getSourceDisplayName = getLocationSourceDisplayName
+const getSourceIdentifier = getLocationSourceIdentifier
 
 const handleTabChange = (event) => {
   const selectedTab = tabItems.value[event.index]
   if (selectedTab) {
     activeTab.value = selectedTab.key
-    activeInstructionTab.value = selectedTab.key
   }
 }
 
+const openAddDialog = () => {
+  locationSourceDialogRef.value?.openAdd()
+}
+
 const startQuickSetup = (type) => {
-  isEditMode.value = false
-  editingSource.value = null
-  resetDialogForm()
-  formData.value.type = type
-  showAddDialog.value = true
+  locationSourceDialogRef.value?.openQuickSetup(type)
 }
 
 const showInstructions = (source) => {
@@ -955,103 +683,22 @@ const showInstructions = (source) => {
   }
   
   activeTab.value = tabKey
-  activeInstructionTab.value = tabKey
   // Scroll to instructions
   document.querySelector('.instructions-card')?.scrollIntoView({ behavior: 'smooth' })
 }
 
-const resetDialogForm = () => {
-  // Reset form with default values from backend
-  const defaults = getDefaultFiltering()
-  formData.value = {
-    type: 'OWNTRACKS',
-    username: '',
-    password: '',
-    token: '',
-    connectionType: 'HTTP',
-    filterInaccurateData: defaults.filterInaccurateData,
-    maxAllowedAccuracy: defaults.maxAllowedAccuracy,
-    maxAllowedSpeed: defaults.maxAllowedSpeed,
-    enableDuplicateDetection: defaults.enableDuplicateDetection,
-    duplicateDetectionThresholdMinutes: defaults.duplicateDetectionThresholdMinutes
-  }
-  formErrors.value = {}
-}
-
-const openAddDialog = () => {
-  isEditMode.value = false
-  editingSource.value = null
-  resetDialogForm()
-  showAddDialog.value = true
-}
-
 const editSource = (source) => {
-  isEditMode.value = true
-  editingSource.value = source
-  formData.value = {
-    type: source.type,
-    username: source.username || '',
-    password: '',
-    token: source.token || '',
-    connectionType: source.connectionType || 'HTTP',
-    filterInaccurateData: source.filterInaccurateData ?? false,
-    maxAllowedAccuracy: source.maxAllowedAccuracy ?? null,
-    maxAllowedSpeed: source.maxAllowedSpeed ?? null,
-    enableDuplicateDetection: source.enableDuplicateDetection ?? false,
-    duplicateDetectionThresholdMinutes: source.duplicateDetectionThresholdMinutes ?? null
-  }
-  showAddDialog.value = true
+  locationSourceDialogRef.value?.openEdit(source)
 }
 
-const closeDialog = () => {
-  showAddDialog.value = false
-}
-
-const handleDialogHide = () => {
-  // PrimeVue Dialog closes on ESC / close icon / mask interaction without calling closeDialog().
-  // Reset transient dialog state here so the next open starts in create mode.
-  isEditMode.value = false
-  editingSource.value = null
-  resetDialogForm()
-}
-
-const validateForm = () => {
-  formErrors.value = {}
-  
-  if (formData.value.type === 'OWNTRACKS' || formData.value.type === 'GPSLOGGER') {
-    if (!formData.value.username) {
-      formErrors.value.username = 'Username is required'
-    }
-    if (!formData.value.password && !isEditMode.value) {
-      formErrors.value.password = 'Password is required'
-    }
-  } else if (formData.value.type === 'OVERLAND') {
-    if (!formData.value.token) {
-      formErrors.value.token = 'Access token is required'
-    }
-  } else if (formData.value.type === 'DAWARICH') {
-    if (!formData.value.token) {
-      formErrors.value.token = 'API key is required'
-    }
-  } else if (formData.value.type === 'HOME_ASSISTANT') {
-    if (!formData.value.token) {
-      formErrors.value.token = 'Token is required'
-    }
-  }
-  
-  return Object.keys(formErrors.value).length === 0
-}
-
-const saveSource = async () => {
-  if (!validateForm()) return
-  
+const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, formData }) => {
   saving.value = true
   
   try {
-    if (isEditMode.value) {
+    if (isEditMode) {
       await gpsStore.updateGpsSource({
-        ...editingSource.value,
-        ...formData.value
+        ...editingSource,
+        ...formData
       })
       toast.add({
         severity: 'success',
@@ -1060,44 +707,43 @@ const saveSource = async () => {
         life: 3000
       })
     } else {
-      if (formData.value.type === 'OWNTRACKS' || formData.value.type === 'GPSLOGGER') {
+      if (formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER') {
         await gpsStore.addGpsConfigSource(
-          formData.value.type,
-          formData.value.username,
-          formData.value.password,
+          formData.type,
+          formData.username,
+          formData.password,
           null, // token not used for OwnTracks
-          formData.value.type === 'OWNTRACKS' ? formData.value.connectionType : 'HTTP',
-          formData.value.filterInaccurateData,
-          formData.value.maxAllowedAccuracy,
-          formData.value.maxAllowedSpeed,
-          formData.value.enableDuplicateDetection,
-          formData.value.duplicateDetectionThresholdMinutes
+          formData.type === 'OWNTRACKS' ? formData.connectionType : 'HTTP',
+          formData.filterInaccurateData,
+          formData.maxAllowedAccuracy,
+          formData.maxAllowedSpeed,
+          formData.enableDuplicateDetection,
+          formData.duplicateDetectionThresholdMinutes
         )
       } else {
         // For Overland, Dawarich, and Home Assistant - only send token, no username/password
         await gpsStore.addGpsConfigSource(
-          formData.value.type,
+          formData.type,
           null, // username not used
           null, // password not used
-          formData.value.token,
+          formData.token,
           'HTTP', // always HTTP for these types
-          formData.value.filterInaccurateData,
-          formData.value.maxAllowedAccuracy,
-          formData.value.maxAllowedSpeed,
-          formData.value.enableDuplicateDetection,
-          formData.value.duplicateDetectionThresholdMinutes
+          formData.filterInaccurateData,
+          formData.maxAllowedAccuracy,
+          formData.maxAllowedSpeed,
+          formData.enableDuplicateDetection,
+          formData.duplicateDetectionThresholdMinutes
         )
       }
       
       // Set the newly created source's tab as active
-      let sourceType = formData.value.type.toLowerCase()
-      if (formData.value.type === 'OWNTRACKS') {
-        const connectionType = formData.value.connectionType.toLowerCase()
+      let sourceType = formData.type.toLowerCase()
+      if (formData.type === 'OWNTRACKS') {
+        const connectionType = formData.connectionType.toLowerCase()
         sourceType = `owntracks-${connectionType}`
       }
       await nextTick() // Wait for DOM update
       activeTab.value = sourceType
-      activeInstructionTab.value = sourceType
       
       toast.add({
         severity: 'success',
@@ -1106,12 +752,12 @@ const saveSource = async () => {
         life: 3000
       })
     }
-    closeDialog()
+    locationSourceDialogRef.value?.close()
   } catch (error) {
     const errorMessage = error.response?.data?.message || error.message || 'An error occurred'
     toast.add({
       severity: 'error',
-      summary: isEditMode.value ? 'Update Failed' : 'Add Failed',
+      summary: isEditMode ? 'Update Failed' : 'Add Failed',
       detail: errorMessage,
       life: 5000
     })
@@ -1277,14 +923,6 @@ onMounted(async () => {
       gpsStore.fetchGpsConfigSources(),
       gpsStore.fetchDefaultFilteringValues()
     ])
-
-    // Initialize form with defaults from backend
-    const defaults = getDefaultFiltering()
-    formData.value.filterInaccurateData = defaults.filterInaccurateData
-    formData.value.maxAllowedAccuracy = defaults.maxAllowedAccuracy
-    formData.value.maxAllowedSpeed = defaults.maxAllowedSpeed
-    formData.value.enableDuplicateDetection = defaults.enableDuplicateDetection
-    formData.value.duplicateDetectionThresholdMinutes = defaults.duplicateDetectionThresholdMinutes
 
     // Ensure first tab is active after data loads
     await nextTick()
@@ -1580,148 +1218,6 @@ onMounted(async () => {
   max-width: 100%;
 }
 
-/* Dialog */
-.source-dialog {
-  min-width: 500px;
-}
-
-.dialog-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.source-type-selection {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.source-types {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.source-type-option {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  border: 2px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--gp-surface-white);
-}
-
-.source-type-option:hover {
-  border-color: var(--gp-border-medium);
-  background: var(--gp-surface-light);
-}
-
-.source-type-option.active {
-  border-color: var(--gp-primary);
-  background: var(--gp-surface-white);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-.source-type-option.active:hover {
-  background: var(--gp-surface-white);
-}
-
-.type-name {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin-bottom: 0.25rem;
-}
-
-.type-description {
-  font-size: 0.85rem;
-  color: var(--gp-text-secondary);
-  line-height: 1.3;
-}
-
-.source-type-option.active .type-description {
-  color: var(--gp-text-secondary);
-}
-
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.connection-type-selection {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.connection-type-option {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 2px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-medium);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  background: var(--gp-surface-white);
-  flex: 1;
-}
-
-.connection-type-option:hover {
-  border-color: var(--gp-border-medium);
-  background: var(--gp-surface-light);
-}
-
-.connection-type-option.active {
-  border-color: var(--gp-primary);
-  background: var(--gp-surface-white);
-  box-shadow: 0 0 0 3px rgba(26, 86, 219, 0.1);
-}
-
-.connection-type-option.active:hover {
-  background: var(--gp-surface-white);
-}
-
-.connection-type-name {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-  margin-bottom: 0.125rem;
-  font-size: 0.9rem;
-}
-
-.connection-type-description {
-  font-size: 0.8rem;
-  color: var(--gp-text-secondary);
-  line-height: 1.2;
-}
-
-.error-message {
-  color: var(--gp-danger);
-  font-size: 0.85rem;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gp-border-light);
-}
-
 /* Dark Mode */
 .p-dark .page-title {
   color: var(--gp-text-primary);
@@ -1785,70 +1281,6 @@ onMounted(async () => {
   color: var(--gp-text-primary);
 }
 
-.p-dark .source-type-option {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .source-type-option:hover {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .source-type-option.active {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.p-dark .source-type-option.active:hover {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .type-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .type-description {
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .form-label {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .dialog-footer {
-  border-top-color: var(--gp-border-dark);
-}
-
-.p-dark .connection-type-option {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .connection-type-option:hover {
-  background: var(--gp-surface-light);
-  border-color: var(--gp-border-medium);
-}
-
-.p-dark .connection-type-option.active {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.p-dark .connection-type-option.active:hover {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .connection-type-name {
-  color: var(--gp-text-primary);
-}
-
-.p-dark .connection-type-description {
-  color: var(--gp-text-secondary);
-}
-
 .p-dark .text-muted {
   color: var(--gp-text-muted, #9ca3af);
 }
@@ -1900,10 +1332,6 @@ onMounted(async () => {
   
   .sources-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .source-dialog {
-    min-width: 90vw;
   }
   
   .action-buttons {
