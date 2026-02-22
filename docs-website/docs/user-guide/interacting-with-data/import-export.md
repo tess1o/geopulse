@@ -211,6 +211,51 @@ Click **Start Import** to begin. The system will:
 
 GeoPulse also supports a server-side **drop folder** for automated imports. This is useful for headless workflows or automated pipelines.
 
+**Status:** Disabled by default. You must explicitly enable it and mount the folder into the backend container.
+
+#### Enable Drop Folder Imports
+
+You can enable this in two ways:
+
+1. **Admin UI (no restart):** Go to **Admin → Settings → Import → Drop Folder Enabled** and turn it on.
+2. **Environment variable (requires restart):** Set `GEOPULSE_IMPORT_DROP_FOLDER_ENABLED=true` and restart the backend container.
+
+If you change the drop folder path, also set `GEOPULSE_IMPORT_DROP_FOLDER_PATH` (default is `/data/geopulse-import`).
+
+#### Environment Variables (All Drop Folder Options)
+
+These settings can be configured via environment variables **or** the Admin UI. Changes made in the Admin UI take effect without a restart (within the next scan interval). Environment variable changes require a backend restart.
+
+| Variable | Default | Description |
+|---|---|---|
+| `GEOPULSE_IMPORT_DROP_FOLDER_ENABLED` | `false` | Enable/disable drop folder imports |
+| `GEOPULSE_IMPORT_DROP_FOLDER_PATH` | `/data/geopulse-import` | Drop folder path inside the container |
+| `GEOPULSE_IMPORT_DROP_FOLDER_POLL_INTERVAL_SECONDS` | `10` | How often to scan the drop folder |
+| `GEOPULSE_IMPORT_DROP_FOLDER_STABLE_AGE_SECONDS` | `10` | Minimum file age before import begins |
+| `GEOPULSE_IMPORT_DROP_FOLDER_GEOPULSE_MAX_SIZE_MB` | `200` | Max GeoPulse ZIP size for drop imports |
+
+#### Ensure the Volume Is Mounted
+
+Make sure the backend container has the drop folder mounted. In `docker-compose.yml`, you should have:
+
+```yaml title="docker-compose.yml"
+services:
+  geopulse-backend:
+    volumes:
+      - ./import-drop:/data/geopulse-import
+```
+
+:::info SELinux Hosts
+If your host runs SELinux (Fedora, RHEL, CentOS), bind mounts may be blocked unless you add a label. Use `:Z` (private label) or `:z` (shared label):
+
+```yaml title="docker-compose.yml"
+services:
+  geopulse-backend:
+    volumes:
+      - ./import-drop:/data/geopulse-import:Z
+```
+:::
+
 **How it works:**
 - The server watches a configurable drop folder.
 - The admin must create a subfolder for each user, named exactly like the user's email (case-insensitive matching is used).
@@ -229,8 +274,8 @@ GeoPulse also supports a server-side **drop folder** for automated imports. This
 ```
 
 **What happens on success/failure:**
-- ✅ **Success:** file is deleted after the import finishes.
-- ❌ **Failure:** file is moved to `.failed/` and an `.error.json` file is written with details.
+- **Success:** file is deleted after the import finishes.
+- **Failure:** file is moved to `.failed/` and an `.error.json` file is written with details.
 
 **File type detection:**
 - The system uses filename hints first (e.g., `timeline`, `owntracks`, `geopulse`).
@@ -239,6 +284,61 @@ GeoPulse also supports a server-side **drop folder** for automated imports. This
   - `.zip`: GeoPulse → GPX ZIP
   - `.gpx`, `.geojson`, `.csv`: direct matching
 - For large GeoPulse ZIPs, a size cap applies **only for drop-folder imports** (default 200MB). Regular uploads are not affected.
+
+#### Drop Folder Permissions
+
+The drop folder is typically mounted from the host filesystem into the GeoPulse container. Because GeoPulse runs as a **non-root container user**, correct permissions must be set up on the folder before importing will work.
+
+GeoPulse needs to read uploaded files, delete them after a successful import, move failed files into `.failed/`, and write `.error.json` error reports. This means user directories inside the drop folder must be writable and uploaded files must be readable by the GeoPulse container user (UID `1001` by default).
+
+##### If Docker already created the folder
+
+When the bind mount target does not exist, Docker creates it automatically as `root:root` with `0755` permissions. In that case, GeoPulse (UID `1001`) can read but cannot write, so drop imports will fail. Fix the existing folder on the host:
+
+```bash
+# Align ownership with the container user (UID 1001, GID 0)
+sudo chown -R 1001:0 import-drop
+sudo chmod -R g+rwX import-drop
+```
+
+If you prefer to keep ownership, use ACLs instead (Option 3 below).
+
+##### Recommended Setup
+
+###### Option 1 — Run uploader services with the same UID
+
+If you use FileBrowser or another containerized upload tool, run it with the same UID as GeoPulse. This avoids cross-user permission issues entirely.
+
+```yaml title="docker-compose.yml"
+filebrowser:
+  image: filebrowser/filebrowser
+  user: "1001:1001"
+```
+
+###### Option 2 — Relax directory permissions
+
+Create the drop folder with open permissions so any service can read and write freely.
+
+```bash
+mkdir -p import-drop/user@example.com
+chmod -R 777 import-drop
+```
+
+:::caution
+`chmod 777` grants full access to all local users. Only use this in trusted, single-node environments.
+:::
+
+###### Option 3 — Use ACLs
+
+Grant GeoPulse access without changing file ownership. New files will automatically inherit the correct permissions.
+
+```bash
+# Grant UID 1001 access to existing files
+setfacl -R -m u:1001:rwX import-drop
+
+# Ensure future files inherit the same permissions
+setfacl -R -d -m u:1001:rwX import-drop
+```
 
 **Notes:**
 - Files must be stable (unchanged) for a short period before import begins.

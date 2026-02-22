@@ -20,6 +20,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -127,6 +128,83 @@ public class LocationAnalyticsResource {
             log.error("Failed to get countries for user {}", userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get countries"))
+                    .build();
+        }
+    }
+
+    /**
+     * Get map-ready aggregated places for the analytics map.
+     * Supports optional date and viewport filtering.
+     */
+    @GET
+    @Path("/map/places")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getMapPlaces(
+            @QueryParam("from") String from,
+            @QueryParam("to") String to,
+            @QueryParam("minLat") Double minLat,
+            @QueryParam("maxLat") Double maxLat,
+            @QueryParam("minLon") Double minLon,
+            @QueryParam("maxLon") Double maxLon,
+            @QueryParam("minVisits") @DefaultValue("1") Integer minVisits,
+            @QueryParam("limit") @DefaultValue("3000") Integer limit
+    ) {
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Map places request from user {} (limit={}, minVisits={})", userId, limit, minVisits);
+
+        try {
+            Instant fromInstant = parseOptionalInstant(from);
+            Instant toInstant = parseOptionalInstant(to);
+
+            if (fromInstant != null && toInstant != null && fromInstant.isAfter(toInstant)) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("'from' must be before 'to'"))
+                        .build();
+            }
+
+            boolean anyViewportParam = minLat != null || maxLat != null || minLon != null || maxLon != null;
+            boolean allViewportParams = minLat != null && maxLat != null && minLon != null && maxLon != null;
+            if (anyViewportParam && !allViewportParams) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Viewport filter requires minLat, maxLat, minLon and maxLon"))
+                        .build();
+            }
+
+            if (allViewportParams) {
+                if (!Double.isFinite(minLat) || !Double.isFinite(maxLat) || !Double.isFinite(minLon) || !Double.isFinite(maxLon)) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Viewport bounds must be finite numbers"))
+                            .build();
+                }
+                if (minLat < -90 || maxLat > 90 || minLat > maxLat || minLon > maxLon) {
+                    return Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid viewport bounds"))
+                            .build();
+                }
+            }
+
+            List<LocationAnalyticsMapPlaceDTO> places = analyticsService.getMapPlaces(
+                    userId,
+                    fromInstant,
+                    toInstant,
+                    minLat,
+                    maxLat,
+                    minLon,
+                    maxLon,
+                    minVisits,
+                    limit
+            );
+
+            return Response.ok(ApiResponse.success(places)).build();
+
+        } catch (DateTimeParseException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid date format. Use ISO-8601 format, e.g. 2026-02-21T00:00:00Z"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to fetch map places for user {}", userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get map places"))
                     .build();
         }
     }
@@ -502,5 +580,12 @@ public class LocationAnalyticsResource {
      */
     private String sanitizeFilename(String filename) {
         return filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+
+    private Instant parseOptionalInstant(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return Instant.parse(value.trim());
     }
 }

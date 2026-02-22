@@ -848,7 +848,7 @@ jobs:
         with:
           name: Release v${{ needs.prepare.outputs.version }}
           body_path: RELEASE_NOTES.md
-          draft: false
+          draft: true
           prerelease: false
           files: |
             artifacts/geopulse-frontend-${{ needs.prepare.outputs.version }}.tar.gz

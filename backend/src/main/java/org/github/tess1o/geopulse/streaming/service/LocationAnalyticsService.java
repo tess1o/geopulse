@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -161,6 +162,51 @@ public class LocationAnalyticsService {
                         .totalDuration(((Number) row[3]).longValue())
                         .uniquePlaces(((Number) row[4]).intValue())
                         .build())
+                .toList();
+    }
+
+    /**
+     * Get map-ready aggregated places, sorted by last visit descending.
+     *
+     * @param userId    user ID
+     * @param startTime optional start timestamp (inclusive)
+     * @param endTime   optional end timestamp (inclusive)
+     * @param minLat    optional viewport min latitude
+     * @param maxLat    optional viewport max latitude
+     * @param minLon    optional viewport min longitude
+     * @param maxLon    optional viewport max longitude
+     * @param minVisits minimum visits per place
+     * @param limit     max places returned
+     * @return aggregated places for map rendering
+     */
+    public List<LocationAnalyticsMapPlaceDTO> getMapPlaces(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            Double minLat,
+            Double maxLat,
+            Double minLon,
+            Double maxLon,
+            Integer minVisits,
+            Integer limit
+    ) {
+        int safeMinVisits = minVisits == null ? 1 : Math.max(1, minVisits);
+        int safeLimit = limit == null ? 3000 : Math.min(Math.max(limit, 1), 10000);
+
+        List<Object[]> rows = stayRepository.findMapPlaces(
+                userId,
+                startTime,
+                endTime,
+                minLat,
+                maxLat,
+                minLon,
+                maxLon,
+                safeMinVisits,
+                safeLimit
+        );
+
+        return rows.stream()
+                .map(this::convertToMapPlace)
                 .toList();
     }
 
@@ -426,6 +472,25 @@ public class LocationAnalyticsService {
                 .totalDuration(((Number) row[4]).longValue())
                 .latitude(row[5] != null ? ((Number) row[5]).doubleValue() : null)
                 .longitude(row[6] != null ? ((Number) row[6]).doubleValue() : null)
+                .build();
+    }
+
+    /**
+     * Convert native query row to map place DTO.
+     * Expected array:
+     * [type, placeId, locationName, visitCount, lastVisit, latitude, longitude, city, country]
+     */
+    private LocationAnalyticsMapPlaceDTO convertToMapPlace(Object[] row) {
+        return LocationAnalyticsMapPlaceDTO.builder()
+                .type((String) row[0])
+                .id(((Number) row[1]).longValue())
+                .locationName((String) row[2])
+                .visitCount(((Number) row[3]).longValue())
+                .lastVisit(TimestampUtils.getInstantSafe(row[4]))
+                .latitude(((Number) row[5]).doubleValue())
+                .longitude(((Number) row[6]).doubleValue())
+                .city((String) row[7])
+                .country((String) row[8])
                 .build();
     }
 

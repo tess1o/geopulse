@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.admin.model.SystemSettingsEntity;
 import org.github.tess1o.geopulse.admin.model.ValueType;
 import org.github.tess1o.geopulse.admin.repository.SystemSettingsRepository;
 import org.github.tess1o.geopulse.ai.service.AIEncryptionService;
+import org.github.tess1o.geopulse.shared.system.ProcessIdentity;
 
 import java.time.Instant;
 import java.util.*;
@@ -29,6 +30,8 @@ public class SystemSettingsService {
     private final SystemSettingsRepository repository;
     private final Config config;
     private final AIEncryptionService encryptionService;
+
+    private static final String IMPORT_DROP_FOLDER_IDENTITY_KEY = "import.drop-folder.runtime-identity";
 
     // Mapping from setting keys to their env var names and defaults
     private static final Map<String, SettingDefinition> SETTING_DEFINITIONS = new LinkedHashMap<>();
@@ -344,6 +347,19 @@ public class SystemSettingsService {
                         displayDefault
                 ));
             }
+        }
+
+        if ("import".equals(category)) {
+            String identity = ProcessIdentity.describe();
+            result.add(new SettingInfo(
+                    IMPORT_DROP_FOLDER_IDENTITY_KEY,
+                    identity,
+                    ValueType.STRING,
+                    "import",
+                    "Effective user/group running GeoPulse (read-only)",
+                    true,
+                    identity
+            ));
         }
 
         return result;

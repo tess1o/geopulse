@@ -2344,6 +2344,86 @@ paths:
       summary: Handle Dawarich Stats
       tags:
       - Dawarich Resource
+  /api/digest/heatmap/monthly:
+    get:
+      parameters:
+      - name: layer
+        in: query
+        schema:
+          type: string
+      - name: month
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: year
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Monthly Heatmap
+      tags:
+      - Digest Heatmap Resource
+      security:
+      - jwt: []
+  /api/digest/heatmap/range:
+    get:
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: layer
+        in: query
+        schema:
+          type: string
+      - name: startTime
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Range Heatmap
+      tags:
+      - Digest Heatmap Resource
+      security:
+      - jwt: []
+  /api/digest/heatmap/yearly:
+    get:
+      parameters:
+      - name: layer
+        in: query
+        schema:
+          type: string
+      - name: year
+        in: query
+        schema:
+          format: int32
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Yearly Heatmap
+      tags:
+      - Digest Heatmap Resource
+      security:
+      - jwt: []
   /api/digest/monthly:
     get:
       parameters:
@@ -3446,6 +3526,20 @@ paths:
         "403":
           description: Not Allowed
       summary: Get Gps Points
+      tags:
+      - Gps Point Resource
+      security:
+      - jwt: []
+  /api/gps/all:
+    delete:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete All Gps Data
       tags:
       - Gps Point Resource
       security:
@@ -5518,7 +5612,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.16.2
+  version: 1.17.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o

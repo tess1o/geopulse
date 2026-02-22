@@ -29,6 +29,10 @@ spec:
         - name: generate-keys
           image: {{ include "geopulse.keygen.image" . }}
           imagePullPolicy: {{ .Values.keygen.image.pullPolicy }}
+          # The script may install openssl via apk on first run, which requires root.
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
           command:
             - /bin/sh
             - /scripts/generate-keys.sh

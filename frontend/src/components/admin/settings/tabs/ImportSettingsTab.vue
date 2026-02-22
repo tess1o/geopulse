@@ -67,12 +67,14 @@
             v-if="setting.valueType === 'BOOLEAN'"
             v-model="setting.currentValue"
             @change="handleUpdate(setting)"
+            :disabled="setting.readOnly"
           />
           <InputText
             v-else-if="setting.valueType === 'STRING'"
             v-model="setting.currentValue"
             @change="handleUpdate(setting)"
             style="width: 300px"
+            :disabled="setting.readOnly"
           />
           <InputNumber
             v-else
@@ -80,6 +82,7 @@
             @update:modelValue="handleUpdate(setting)"
             :min="1"
             style="width: 150px"
+            :disabled="setting.readOnly"
           />
         </template>
       </SettingItem>
@@ -143,7 +146,8 @@ const dropFolderSettings = computed(() =>
       'import.drop-folder.path',
       'import.drop-folder.poll-interval-seconds',
       'import.drop-folder.stable-age-seconds',
-      'import.drop-folder.geopulse-max-size-mb'
+      'import.drop-folder.geopulse-max-size-mb',
+      'import.drop-folder.runtime-identity'
     ].includes(s.key)
   )
 )
@@ -157,6 +161,9 @@ onMounted(async () => {
 })
 
 const handleUpdate = async (setting) => {
+  if (setting.readOnly) {
+    return
+  }
   await updateSetting(setting)
 }
 

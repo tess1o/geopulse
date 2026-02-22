@@ -444,6 +444,12 @@ watch(dateRange, async (newValue) => {
   lastFetchedRange.value = rangeKey
 
   try {
+    // Clear stale map/timeline highlights immediately on date-range change.
+    // Otherwise the previously selected trip path can remain visible while the
+    // new range loads, which is confusing UX.
+    lastHighlightedPath.value = null
+    highlightStore.clearAllHighlights()
+
     const shouldProceed = await checkDatasetSize(startDate, endDate)
 
     if (!shouldProceed) {

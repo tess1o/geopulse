@@ -8,7 +8,7 @@
 </template>
 
 <script setup>
-import {ref, watch, computed, readonly} from 'vue'
+import {ref, watch, computed, readonly, onBeforeUnmount} from 'vue'
 import L from 'leaflet'
 import BaseLayer from './BaseLayer.vue'
 import {createHighlightedPathStartMarker, createHighlightedPathEndMarker} from '@/utils/mapHelpers'
@@ -150,10 +150,23 @@ watch(() => props.pathData, () => {
 const tripPathLayer = ref(null)
 const tripStartMarker = ref(null)
 const tripEndMarker = ref(null)
+let tripPopupTimeoutId = null
 
-// Watch for trip highlighting
-watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
-  // Remove previous trip path and markers
+const clearTripPopupTimeout = () => {
+  if (tripPopupTimeoutId) {
+    clearTimeout(tripPopupTimeoutId)
+    tripPopupTimeoutId = null
+  }
+}
+
+const clearHighlightedTripLayers = () => {
+  clearTripPopupTimeout()
+
+  // Stop in-progress zoom/pan animations before removing layers.
+  // Leaflet can otherwise dispatch zoom animation callbacks to markers
+  // that have already been detached, causing "_map is null" errors.
+  props.map?.stop?.()
+
   if (tripPathLayer.value) {
     baseLayerRef.value?.removeFromLayer(tripPathLayer.value)
     tripPathLayer.value = null
@@ -166,6 +179,12 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
     baseLayerRef.value?.removeFromLayer(tripEndMarker.value)
     tripEndMarker.value = null
   }
+}
+
+// Watch for trip highlighting
+watch(() => props.highlightedTrip, (newTrip) => {
+  // Remove previous trip path and markers
+  clearHighlightedTripLayers()
 
   if (newTrip && newTrip.type === 'trip') {
     const tripPath = reconstructTripPath(newTrip)
@@ -305,12 +324,15 @@ watch(() => props.highlightedTrip, (newTrip, oldTrip) => {
       const bounds = L.latLngBounds(tripCoords)
       props.map.fitBounds(bounds, {
         padding: [20, 20],
-        animate: true,
-        duration: 0.8
+        // Animated zoom can race with trip layer replacement when users click
+        // multiple trips in quick succession, leaving detached markers in the
+        // zoom animation callback queue.
+        animate: false
       })
 
       // Open trip info popup after zoom
-      setTimeout(() => {
+      tripPopupTimeoutId = setTimeout(() => {
+        tripPopupTimeoutId = null
         tripPathLayer.value?.openPopup()
       }, 500)
     }
@@ -344,6 +366,10 @@ watch(() => props.pathOptions, () => {
     renderPaths()
   }
 }, {deep: true})
+
+onBeforeUnmount(() => {
+  clearHighlightedTripLayers()
+})
 
 // Expose methods
 defineExpose({

@@ -28,6 +28,7 @@ export function useAdminSettings() {
           ...setting,
           label: metadata.label,
           description: metadata.description,
+          readOnly: metadata.readOnly || false,
           currentValue: transformSettingValue(setting)
         }
       })
