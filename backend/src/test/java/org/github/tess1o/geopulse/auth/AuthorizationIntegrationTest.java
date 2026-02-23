@@ -58,9 +58,9 @@ public class AuthorizationIntegrationTest {
     public void testAccessProtectedEndpointWithoutAuthentication() {
         given()
                 .contentType(ContentType.JSON)
-        .when()
+                .when()
                 .get("/api/friends")
-        .then()
+                .then()
                 .statusCode(401);
     }
 
@@ -211,7 +211,9 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(200)
                 .body("status", equalTo("success"))
-                .body("data.accessToken", notNullValue());
+                .cookie("access_token", notNullValue())
+                .cookie("refresh_token", notNullValue())
+                .cookie("token_expires_at", notNullValue());
     }
 
     /**
@@ -236,7 +238,7 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(anyOf(is(404), is(403))); // Not found or forbidden
     }
-    
+
     @Test
     public void testPostOperationsRequireAuth() {
         // Test adding favorite without authentication
@@ -254,7 +256,7 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-    
+
     @Test
     public void testSecurityEnforcementDemonstration() {
         given()
