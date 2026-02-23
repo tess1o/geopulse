@@ -166,6 +166,16 @@ const clearHighlightedTripLayers = () => {
   // Leaflet can otherwise dispatch zoom animation callbacks to markers
   // that have already been detached, causing "_map is null" errors.
   props.map?.stop?.()
+  props.map?.closePopup?.()
+
+  // Leaflet scroll-wheel zoom uses a deferred timer. Rapid highlight switching
+  // can remove layers before that timer fires, which then triggers zoomanim on
+  // detached overlays/markers.
+  const wheelZoom = props.map?.scrollWheelZoom
+  if (wheelZoom?._timer) {
+    clearTimeout(wheelZoom._timer)
+    wheelZoom._timer = null
+  }
 
   if (tripPathLayer.value) {
     baseLayerRef.value?.removeFromLayer(tripPathLayer.value)

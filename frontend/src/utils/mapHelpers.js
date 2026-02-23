@@ -47,6 +47,12 @@ export function fixLeafLetTooltip() {
  * Prevents _latLngToNewLayerPoint errors when map container is not ready
  */
 export function fixLeafletMarkerAnimation() {
+    const PATCH_VERSION = 2
+    if (L.__geoPulseZoomGuardsPatchVersion === PATCH_VERSION) {
+        return
+    }
+    L.__geoPulseZoomGuardsPatchVersion = PATCH_VERSION
+
     // Enhanced zoom animation fix with scaling prevention
     const originalAnimateZoom = L.Marker.prototype._animateZoom
     L.Marker.prototype._animateZoom = function (opt) {
@@ -195,6 +201,56 @@ export function fixLeafletMarkerAnimation() {
         } catch (e) {
             // Silently handle layer group zoom errors
             return this
+        }
+    }
+
+    // Popup/Tooltip each override DivOverlay._animateZoom, so guard the
+    // concrete classes directly.
+    const wrapOverlayAnimateZoom = (OverlayClass) => {
+        if (!OverlayClass?.prototype?._animateZoom) return
+
+        const original = OverlayClass.prototype._animateZoom
+        OverlayClass.prototype._animateZoom = function (opt) {
+            if (!this._map ||
+                !this._map._container ||
+                !this._map._latLngToNewLayerPoint ||
+                !this._latlng ||
+                !opt ||
+                typeof opt.zoom === 'undefined' ||
+                !opt.center) {
+                return this
+            }
+
+            try {
+                return original.call(this, opt)
+            } catch (e) {
+                return this
+            }
+        }
+    }
+
+    wrapOverlayAnimateZoom(L.Popup)
+    wrapOverlayAnimateZoom(L.Tooltip)
+
+    // Guard vector renderer zoom callbacks for the same race when polylines are
+    // removed during an in-flight zoom animation.
+    if (L.Renderer?.prototype?._animateZoom) {
+        const originalRendererAnimateZoom = L.Renderer.prototype._animateZoom
+        L.Renderer.prototype._animateZoom = function (opt) {
+            if (!this._map ||
+                !this._map._container ||
+                !this._map._latLngToNewLayerPoint ||
+                !opt ||
+                typeof opt.zoom === 'undefined' ||
+                !opt.center) {
+                return this
+            }
+
+            try {
+                return originalRendererAnimateZoom.call(this, opt)
+            } catch (e) {
+                return this
+            }
         }
     }
 }

@@ -22,6 +22,10 @@ const props = defineProps({
     type: Number,
     default: 13
   },
+  options: {
+    type: Object,
+    default: () => ({})
+  },
   height: {
     type: String,
     default: '100%'
@@ -120,7 +124,8 @@ const initializeMap = async () => {
             touchZoom: true,
             dragging: true,
             tap: true,
-            touchExtend: false
+            touchExtend: false,
+            ...props.options
           })
 
           // Only set view if center is provided, otherwise wait for data
