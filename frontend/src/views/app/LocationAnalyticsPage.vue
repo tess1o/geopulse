@@ -40,6 +40,8 @@
           :places="sortedMapPlaces"
           :loading="mapPlacesLoading"
           :selected-place-key="selectedMapPlaceKey"
+          :hovered-place-key="hoveredMapPlaceKey"
+          :selection-focus-mode="selectedMapPlaceFocusMode"
           @viewport-change="handleMapViewportChange"
           @place-click="handleMapPlaceClick"
           @open-place-details="openMapPlaceDetails"
@@ -89,9 +91,14 @@
               v-for="place in mapPlacesPreview"
               :key="getPlaceKey(place)"
               class="map-place-item"
-              :class="{ active: selectedMapPlaceKey === getPlaceKey(place) }"
+              :class="{
+                active: selectedMapPlaceKey === getPlaceKey(place),
+                hovered: hoveredMapPlaceKey === getPlaceKey(place)
+              }"
               :ref="(el) => setMapPlaceRef(place, el)"
               @click="selectMapPlace(place)"
+              @mouseenter="setHoveredMapPlace(place)"
+              @mouseleave="clearHoveredMapPlace(place)"
             >
               <div class="map-place-thumb">
                 <i class="pi pi-map-marker"></i>
@@ -254,6 +261,8 @@ const mapPlacesRailRef = ref(null)
 const canScrollRailLeft = ref(false)
 const canScrollRailRight = ref(false)
 const mapPlaceRefs = new Map()
+const hoveredMapPlaceKey = ref(null)
+const selectedMapPlaceFocusMode = ref('pan')
 let mapFetchTimer = null
 
 const getPlaceKey = (place) => `${place.type}-${place.id}`
@@ -293,6 +302,17 @@ const setMapPlaceRef = (place, element) => {
     mapPlaceRefs.set(key, element)
   } else {
     mapPlaceRefs.delete(key)
+  }
+}
+
+const setHoveredMapPlace = (place) => {
+  hoveredMapPlaceKey.value = getPlaceKey(place)
+}
+
+const clearHoveredMapPlace = (place) => {
+  const key = getPlaceKey(place)
+  if (hoveredMapPlaceKey.value === key) {
+    hoveredMapPlaceKey.value = null
   }
 }
 
@@ -419,15 +439,25 @@ const handleMapViewportChange = (viewport) => {
 }
 
 const handleMapPlaceClick = (place) => {
+  selectedMapPlaceFocusMode.value = 'pan'
   selectedMapPlace.value = place
 }
 
 const selectMapPlace = (place) => {
+  selectedMapPlaceFocusMode.value = 'soft-zoom'
   selectedMapPlace.value = place
 }
 
 const openMapPlaceDetails = (place) => {
-  router.push(`/app/place-details/${place.type}/${place.id}`)
+  const resolvedRoute = router.resolve(`/app/place-details/${place.type}/${place.id}`)
+  const newWindow = window.open(resolvedRoute.href, '_blank')
+  if (!newWindow) {
+    router.push(resolvedRoute.fullPath)
+    return
+  }
+  // Prevent opener access without relying on noopener return semantics,
+  // which can report null even when the tab opened.
+  newWindow.opener = null
 }
 
 const navigateToCity = (cityName) => {
@@ -641,6 +671,11 @@ onBeforeUnmount(() => {
 }
 
 .map-place-item:hover {
+  border-color: var(--gp-primary);
+  background: var(--gp-surface-light);
+}
+
+.map-place-item.hovered {
   border-color: var(--gp-primary);
   background: var(--gp-surface-light);
 }

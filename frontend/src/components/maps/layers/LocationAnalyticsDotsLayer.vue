@@ -31,6 +31,10 @@ const props = defineProps({
   selectedPlaceKey: {
     type: String,
     default: null
+  },
+  hoveredPlaceKey: {
+    type: String,
+    default: null
   }
 })
 
@@ -39,9 +43,14 @@ const emit = defineEmits(['marker-click', 'open-place-details'])
 const baseLayerRef = ref(null)
 const markerClusterGroup = ref(null)
 const selectedMarker = ref(null)
+const hoveredMarker = ref(null)
 const markersByKey = new Map()
+const openPopupPlaceKey = ref(null)
 const CLUSTER_LABEL_MIN_ZOOM = 8
 const CLUSTER_LABEL_MAX_COUNT = 49
+const POPUP_RESTORE_MIN_ZOOM = 12
+let hoveredMarkerKey = null
+let suppressPopupCloseTracking = false
 
 const getPlaceKey = (place) => `${place.type}-${place.id}`
 
@@ -62,14 +71,15 @@ const formatDate = (timestamp) => {
   return date.toLocaleString()
 }
 
-const createDotIcon = () => {
+const createDotIcon = ({ hovered = false } = {}) => {
   const size = 12
   const innerSize = 6
 
   return L.divIcon({
-    className: 'location-analytics-dot-icon',
+    className: hovered ? 'location-analytics-dot-icon is-hovered' : 'location-analytics-dot-icon',
     html: `
       <div
+        class="location-analytics-dot-shell"
         style="
           width:${size}px;
           height:${size}px;
@@ -83,6 +93,7 @@ const createDotIcon = () => {
         "
       >
         <div
+          class="location-analytics-dot-inner"
           style="
             width:${innerSize}px;
             height:${innerSize}px;
@@ -125,15 +136,27 @@ const buildPopup = (place) => {
   `.trim()
 }
 
+const buildTooltip = (place) => {
+  const name = escapeHtml(place.locationName || 'Unknown location')
+  const cityCountry = [place.city, place.country].filter(Boolean).join(', ')
+  return cityCountry ? `${name}<br><span class="dot-tooltip-sub">${escapeHtml(cityCountry)}</span>` : name
+}
+
 const clearMarkers = () => {
-  if (markerClusterGroup.value) {
-    markerClusterGroup.value.clearLayers()
-  } else if (baseLayerRef.value) {
-    for (const marker of markersByKey.values()) {
-      baseLayerRef.value.removeFromLayer(marker)
+  suppressPopupCloseTracking = true
+  try {
+    if (markerClusterGroup.value) {
+      markerClusterGroup.value.clearLayers()
+    } else if (baseLayerRef.value) {
+      for (const marker of markersByKey.values()) {
+        baseLayerRef.value.removeFromLayer(marker)
+      }
     }
+  } finally {
+    suppressPopupCloseTracking = false
   }
   markersByKey.clear()
+  hoveredMarkerKey = null
 }
 
 const removeSelectedMarker = () => {
@@ -142,10 +165,17 @@ const removeSelectedMarker = () => {
   selectedMarker.value = null
 }
 
+const removeHoveredMarker = () => {
+  if (!hoveredMarker.value || !props.map) return
+  props.map.removeLayer(hoveredMarker.value)
+  hoveredMarker.value = null
+}
+
 const renderSelectedMarker = (selectedKey) => {
   removeSelectedMarker()
 
   if (!selectedKey || !props.map) return
+  if (props.hoveredPlaceKey && props.hoveredPlaceKey !== selectedKey) return
   const selectedPlace = props.places.find((place) => getPlaceKey(place) === selectedKey)
   if (!selectedPlace) return
   if (typeof selectedPlace.latitude !== 'number' || typeof selectedPlace.longitude !== 'number') return
@@ -160,12 +190,34 @@ const renderSelectedMarker = (selectedKey) => {
   props.map.addLayer(selectedMarker.value)
 }
 
+const renderHoveredMarker = (hoveredKey) => {
+  removeHoveredMarker()
+
+  if (!hoveredKey || !props.map) return
+  if (hoveredKey === props.selectedPlaceKey) return
+
+  const hoveredPlace = props.places.find((place) => getPlaceKey(place) === hoveredKey)
+  if (!hoveredPlace) return
+  if (typeof hoveredPlace.latitude !== 'number' || typeof hoveredPlace.longitude !== 'number') return
+
+  hoveredMarker.value = L.marker([hoveredPlace.latitude, hoveredPlace.longitude], {
+    icon: createSelectedPinIcon(),
+    keyboard: false,
+    interactive: false,
+    zIndexOffset: 1600
+  })
+
+  props.map.addLayer(hoveredMarker.value)
+}
+
 const updateSelectedMarkerIcon = (_previousKey, nextKey) => {
   renderSelectedMarker(nextKey)
 }
 
 const bindPlacePopupActions = (marker, place) => {
+  const placeKey = getPlaceKey(place)
   marker.on('popupopen', () => {
+    openPopupPlaceKey.value = placeKey
     const popupElement = marker.getPopup()?.getElement()
     if (!popupElement) return
     const actionButton = popupElement.querySelector('.popup-open-btn')
@@ -174,6 +226,47 @@ const bindPlacePopupActions = (marker, place) => {
       emit('open-place-details', place)
     }, { once: true })
   })
+
+  marker.on('popupclose', () => {
+    if (suppressPopupCloseTracking) return
+    if (openPopupPlaceKey.value === placeKey) {
+      openPopupPlaceKey.value = null
+    }
+  })
+}
+
+const setMarkerHovered = (key, hovered) => {
+  const marker = markersByKey.get(key)
+  if (!marker) return
+
+  const iconElement = marker.getElement?.()
+  if (iconElement) {
+    iconElement.classList.toggle('is-hovered', hovered)
+  }
+  if (marker.setZIndexOffset) {
+    marker.setZIndexOffset(hovered ? 1200 : 0)
+  }
+}
+
+const syncHoveredMarker = (nextKey) => {
+  if (hoveredMarkerKey && hoveredMarkerKey !== nextKey) {
+    setMarkerHovered(hoveredMarkerKey, false)
+  }
+  hoveredMarkerKey = nextKey || null
+  if (hoveredMarkerKey) {
+    setMarkerHovered(hoveredMarkerKey, true)
+  }
+}
+
+const restoreOpenPopup = () => {
+  const popupKey = openPopupPlaceKey.value
+  if (!popupKey) return
+
+  const marker = markersByKey.get(popupKey)
+  if (!marker) return
+  if (!marker.getElement?.()) return
+
+  marker.openPopup()
 }
 
 const createPlaceMarker = (place) => {
@@ -184,6 +277,11 @@ const createPlaceMarker = (place) => {
   })
 
   marker.bindPopup(buildPopup(place))
+  marker.bindTooltip(buildTooltip(place), {
+    direction: 'top',
+    offset: [0, -8],
+    opacity: 0.96
+  })
   marker.on('click', () => {
     emit('marker-click', place)
   })
@@ -205,6 +303,7 @@ const addMarkerToLayer = (marker) => {
 
 const renderMarkers = () => {
   if (!baseLayerRef.value) return
+  const popupKeyToRestore = openPopupPlaceKey.value
   clearMarkers()
 
   for (const place of props.places) {
@@ -216,7 +315,14 @@ const renderMarkers = () => {
     markersByKey.set(key, marker)
   }
 
+  openPopupPlaceKey.value = popupKeyToRestore
+  syncHoveredMarker(props.hoveredPlaceKey)
+  renderHoveredMarker(props.hoveredPlaceKey)
   renderSelectedMarker(props.selectedPlaceKey)
+  const currentZoom = props.map?.getZoom?.() ?? 0
+  if (currentZoom >= POPUP_RESTORE_MIN_ZOOM) {
+    restoreOpenPopup()
+  }
 }
 
 const handleLayerReady = () => {
@@ -277,11 +383,19 @@ watch(() => props.places, () => {
 
 watch(() => props.selectedPlaceKey, (next, previous) => {
   updateSelectedMarkerIcon(previous, next)
+  renderHoveredMarker(props.hoveredPlaceKey)
+})
+
+watch(() => props.hoveredPlaceKey, (next) => {
+  syncHoveredMarker(next)
+  renderHoveredMarker(next)
+  renderSelectedMarker(props.selectedPlaceKey)
 })
 
 onBeforeUnmount(() => {
   clearMarkers()
   removeSelectedMarker()
+  removeHoveredMarker()
   if (markerClusterGroup.value && props.map) {
     props.map.removeLayer(markerClusterGroup.value)
   }
@@ -290,6 +404,38 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+:global(.location-analytics-dot-icon) {
+  background: transparent;
+  border: none;
+}
+
+:global(.location-analytics-dot-icon .location-analytics-dot-shell) {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5e00;
+  border: 2px solid #ffe5d0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: scale(1);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+:global(.location-analytics-dot-icon .location-analytics-dot-inner) {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff8a3d;
+}
+
+:global(.location-analytics-dot-icon.is-hovered .location-analytics-dot-shell) {
+  transform: scale(1.55);
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.22), 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
 :global(.location-analytics-cluster-icon) {
   background: transparent;
   border: none;
@@ -348,6 +494,11 @@ onBeforeUnmount(() => {
 
 :global(.location-analytics-popup .popup-open-btn:hover) {
   filter: brightness(0.95);
+}
+
+:global(.leaflet-tooltip .dot-tooltip-sub) {
+  color: #64748b;
+  font-size: 0.76rem;
 }
 
 :global(.location-analytics-selected-pin-icon) {
