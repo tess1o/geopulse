@@ -68,7 +68,7 @@ test.describe('Location Analytics Page', () => {
       await page.goto('/app/timeline');
       await page.waitForTimeout(500);
 
-      await locationAnalyticsPage.navigate();
+      await locationAnalyticsPage.navigateToTab('cities');
 
       // Loading state may appear briefly - just verify page loads correctly
       await locationAnalyticsPage.waitForPageLoad();
@@ -430,8 +430,7 @@ test.describe('Location Analytics Page', () => {
       await locationAnalyticsPage.waitForPageLoad();
       await page.waitForTimeout(1000);
 
-      // After reload, should default back to Cities tab (as it's client-side state)
-      expect(await locationAnalyticsPage.isTabActive('Cities')).toBe(true);
+      expect(await locationAnalyticsPage.isTabActive('Countries')).toBe(true);
     });
   });
 

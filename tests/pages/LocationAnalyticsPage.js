@@ -8,10 +8,10 @@ export class LocationAnalyticsPage {
       // Page container
       pageContainer: '.page-container',
       pageTitle: 'h1:has-text("Location Analytics")',
-      pageSubtitle: 'p:has-text("Explore your visits by city and country")',
+      pageSubtitle: 'p:has-text("Explore your visits by map, city, and country")',
 
       // Header controls
-      headerControls: '.header-controls',
+      headerControls: '.header-actions',
       searchContainer: '.search-container',
       searchInput: '.p-autocomplete-input',
       searchDropdown: '.p-autocomplete-panel',
@@ -55,6 +55,10 @@ export class LocationAnalyticsPage {
 
   async navigate() {
     await this.page.goto('/app/location-analytics');
+  }
+
+  async navigateToTab(tab) {
+    await this.page.goto('/app/location-analytics?tab=' + tab);
   }
 
   async waitForPageLoad() {
@@ -346,7 +350,7 @@ export class LocationAnalyticsPage {
 
   async verifyPageSubtitle() {
     const subtitle = await this.page.locator(this.selectors.pageSubtitle).textContent();
-    return subtitle.includes('Explore your visits by city and country');
+    return subtitle.includes('Explore your visits by map, city, and country');
   }
 
   // ===========================================

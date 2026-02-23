@@ -1105,7 +1105,7 @@ export class TestSetupHelper {
     const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
     const LocationAnalyticsPage = (await import('../pages/LocationAnalyticsPage.js')).LocationAnalyticsPage;
     const locationAnalyticsPage = new LocationAnalyticsPage(page);
-    await locationAnalyticsPage.navigate();
+    await locationAnalyticsPage.navigateToTab('cities');
     await locationAnalyticsPage.waitForPageLoad();
     return {locationAnalyticsPage, user, testUser};
   }

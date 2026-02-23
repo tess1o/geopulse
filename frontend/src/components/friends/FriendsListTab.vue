@@ -141,7 +141,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useTimezone } from '@/composables/useTimezone'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
-import apiService from '@/utils/apiService'
+import friendsService from '@/services/friendsService'
 import InputSwitch from 'primevue/inputswitch'
 
 const timezone = useTimezone()
@@ -176,7 +176,7 @@ async function loadAllPermissions() {
     // Load permissions for each friend
     const permissionPromises = props.friends.map(async (friend) => {
       try {
-        const response = await apiService.getFriendPermissions(friend.friendId)
+        const response = await friendsService.getFriendPermissions(friend.friendId)
         friend.shareTimelinePermission = response.data?.shareTimeline || false
         friend.shareLiveLocationPermission = response.data?.shareLiveLocation || false
       } catch (error) {
@@ -204,7 +204,7 @@ async function handleTimelinePermissionChange(friend) {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        const response = await apiService.updateFriendPermissions(friend.friendId, newValue)
+        const response = await friendsService.updateFriendPermissions(friend.friendId, newValue)
 
         // Update state from API response to ensure consistency
         friend.shareTimelinePermission = response.data?.shareTimeline ?? newValue
@@ -251,7 +251,7 @@ async function handleLiveLocationPermissionChange(friend) {
     icon: 'pi pi-exclamation-triangle',
     accept: async () => {
       try {
-        const response = await apiService.updateLiveLocationPermission(friend.friendId, newValue)
+        const response = await friendsService.updateLiveLocationPermission(friend.friendId, newValue)
 
         // Update state from API response to ensure consistency
         friend.shareLiveLocationPermission = response.data?.shareLiveLocation ?? newValue

@@ -340,8 +340,8 @@ public class UserService {
     }
 
     @Transactional
-    public void updateProfile(UpdateProfileRequest request) {
-        UserEntity user = userRepository.findById(request.getUserId());
+    public UserEntity updateProfile(UUID userId, UpdateProfileRequest request) {
+        UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new UserNotFoundException("User not found");
         }
@@ -363,12 +363,6 @@ public class UserService {
             log.debug("Updated timezone for user {} to {}", user.getId(), validatedTimezone);
         }
 
-        if (request.getCustomMapTileUrl() != null) {
-            validateCustomMapTileUrl(request.getCustomMapTileUrl());
-            user.setCustomMapTileUrl(request.getCustomMapTileUrl().trim().isEmpty() ? null : request.getCustomMapTileUrl().trim());
-            log.debug("Updated custom map tile URL for user {}", user.getId());
-        }
-
         if (request.getMeasureUnit() != null) {
             user.setMeasureUnit(request.getMeasureUnit());
             log.debug("Updated measure unit for user {}", user.getId());
@@ -379,11 +373,13 @@ public class UserService {
             user.setDefaultRedirectUrl(request.getDefaultRedirectUrl().trim().isEmpty() ? null : request.getDefaultRedirectUrl().trim());
             log.debug("Updated default redirect URL for user {}", user.getId());
         }
+
+        return user;
     }
 
     @Transactional
-    public void changePassword(UpdateUserPasswordRequest request) {
-        UserEntity user = userRepository.findById(request.getUserId());
+    public void changePassword(UUID userId, UpdateUserPasswordRequest request) {
+        UserEntity user = userRepository.findById(userId);
         if (user == null) {
             throw new UserNotFoundException("User not found");
         }

@@ -5,8 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,13 +18,8 @@ public class UpdateProfileRequest {
     @Size(max = 255, message = "Timezone cannot exceed 255 characters")
     private String timezone;
 
-    @Size(max = 1000, message = "Custom map tile URL cannot exceed 1000 characters")
-    private String customMapTileUrl;
-
     private MeasureUnit measureUnit;
 
     @Size(max = 1000, message = "Default redirect URL cannot exceed 1000 characters")
     private String defaultRedirectUrl;
-
-    private UUID userId;
 }

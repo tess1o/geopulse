@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.auth;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.github.tess1o.geopulse.auth.dto.AuthStatusResponse;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
+import org.github.tess1o.geopulse.auth.model.BrowserAuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
@@ -24,6 +25,7 @@ import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
                 OidcTokenResponse.class,
                 UserOidcConnectionResponse.class,
                 AuthResponse.class,
+                BrowserAuthResponse.class,
                 LoginRequest.class,
                 TokenRefreshRequest.class,
                 AuthStatusResponse.class

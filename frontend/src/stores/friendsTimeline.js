@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import apiService from '../utils/apiService'
+import timelineService from '@/services/timelineService'
 import { useTimezone } from '@/composables/useTimezone'
 
 const timezone = useTimezone()
@@ -146,7 +146,7 @@ export const useFriendsTimelineStore = defineStore('friendsTimeline', {
             this.error = null
 
             try {
-                const response = await apiService.getMultiUserTimeline(startTime, endTime, userIds)
+                const response = await timelineService.getMultiUserTimeline(startTime, endTime, userIds)
 
                 this.multiUserTimeline = response.data
                 this.dateRange = { start: startTime, end: endTime }

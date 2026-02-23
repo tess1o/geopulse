@@ -76,17 +76,10 @@ public class UserResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response updateProfile(@Valid UpdateProfileRequest request) {
         try {
-            if (request.getUserId() == null) {
-                request.setUserId(currentUserService.getCurrentUserId());
-            }
-            if (!request.getUserId().equals(currentUserService.getCurrentUserId())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("You can modify only your profile"))
-                        .build();
-            }
+            UUID userId = currentUserService.getCurrentUserId();
             log.info("Updating profile with {}", request);
-            userService.updateProfile(request);
-            return Response.status(Response.Status.CREATED).build();
+            UserEntity updatedUser = userService.updateProfile(userId, request);
+            return Response.ok(ApiResponse.success(userMapper.toResponse(updatedUser))).build();
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to update user profile"))
@@ -99,16 +92,9 @@ public class UserResource {
     @RolesAllowed({"USER", "ADMIN"})
     public Response changePassword(@Valid UpdateUserPasswordRequest request) {
         try {
-            if (request.getUserId() == null) {
-                request.setUserId(currentUserService.getCurrentUserId());
-            }
-            if (!request.getUserId().equals(currentUserService.getCurrentUserId())) {
-                return Response.status(Response.Status.BAD_REQUEST)
-                        .entity(ApiResponse.error("You can modify only your profile"))
-                        .build();
-            }
-            userService.changePassword(request);
-            return Response.status(Response.Status.CREATED).build();
+            UUID userId = currentUserService.getCurrentUserId();
+            userService.changePassword(userId, request);
+            return Response.ok(ApiResponse.success(java.util.Map.of("hasPassword", true))).build();
         } catch (InvalidPasswordException e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Invalid password"))
@@ -182,8 +168,8 @@ public class UserResource {
 
         userService.updateTimelineDisplayPreferences(userId, request);
 
-        // No job created - these are display-only settings
-        return Response.noContent().build();
+        TimelineDisplayPreferences updatedPreferences = userService.getTimelineDisplayPreferences(userId);
+        return Response.ok(ApiResponse.success(updatedPreferences)).build();
     }
 
     /**

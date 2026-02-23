@@ -34,13 +34,6 @@ export function useTimezone() {
 
     const setTimezone = (tz) => {
         userTimezone.value = tz
-        try {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-            userInfo.timezone = tz
-            localStorage.setItem('userInfo', JSON.stringify(userInfo))
-        } catch (error) {
-            console.warn('Failed to update user timezone in localStorage:', error)
-        }
     }
 
     const getTimezone = () => userTimezone.value

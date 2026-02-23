@@ -208,7 +208,7 @@ public class OidcAuthenticationService {
     }
 
     @Transactional // Ensure entire callback operation is atomic
-    public AuthResponse handleCallback(OidcCallbackRequest request) {
+    public OidcCallbackAuthResult handleCallback(OidcCallbackRequest request) {
         OidcSessionStateEntity sessionState = null;
         try {
             // Validate state token
@@ -253,7 +253,10 @@ public class OidcAuthenticationService {
             UserEntity user = findOrCreateUser(userInfo, sessionState);
 
             // Generate JWT tokens
-            return authenticationService.createAuthResponse(user);
+            return new OidcCallbackAuthResult(
+                    authenticationService.createAuthResponse(user),
+                    sessionState.getRedirectUri()
+            );
 
         } catch (OidcRegistrationDisabledException e) {
             log.warn("Registration via OIDC is disabled", e);

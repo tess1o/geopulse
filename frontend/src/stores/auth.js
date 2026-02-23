@@ -1,7 +1,36 @@
 import {defineStore} from 'pinia'
 import apiService from '../utils/apiService'
-import {setUserTimezone} from '../utils/timezoneUtils'
-import {useTimezone} from "@/composables/useTimezone";
+import {useTimezone} from '@/composables/useTimezone'
+import {clearUserSnapshot, readUserSnapshot, writeUserSnapshot} from '@/utils/authSnapshotStorage'
+
+let authReconcilePromise = null
+
+function normalizeUser(source) {
+    if (!source) {
+        return null
+    }
+
+    const raw = source.user || source
+    const id = raw.id || raw.userId || null
+    if (!id) {
+        return null
+    }
+
+    return {
+        id,
+        userId: id,
+        fullName: raw.fullName || '',
+        email: raw.email || '',
+        avatar: raw.avatar || null,
+        timezone: raw.timezone || 'UTC',
+        createdAt: raw.createdAt || null,
+        hasPassword: !!raw.hasPassword,
+        customMapTileUrl: raw.customMapTileUrl || '',
+        measureUnit: raw.measureUnit || 'METRIC',
+        defaultRedirectUrl: raw.defaultRedirectUrl || '',
+        role: raw.role || 'USER'
+    }
+}
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
@@ -12,8 +41,6 @@ export const useAuthStore = defineStore('auth', {
     getters: {
         getCurrentUser: (state) => state.user,
         getIsAuthenticated: (state) => state.isAuthenticated,
-
-        // You can also add computed getters
         userName: (state) => state.user?.fullName || '',
         currentUser: (state) => state.user?.avatar || '',
         userEmail: (state) => state.user?.email || '',
@@ -29,64 +56,73 @@ export const useAuthStore = defineStore('auth', {
     },
 
     actions: {
-        // Set user data in the state
-        setUser(user) {
-            this.user = user;
-            this.isAuthenticated = !!user;
-            const timezone = useTimezone();
+        _applyUserState(rawUser, {persist = true} = {}) {
+            const user = normalizeUser(rawUser)
+            this.user = user
+            this.isAuthenticated = !!user
+
+            const timezone = useTimezone()
             if (user) {
-                const userInfo = {
-                    id: user.id || user.userId || null,
-                    userId: user.id, // For backward compatibility with other parts of the app
-                    fullName: user.fullName,
-                    email: user.email,
-                    avatar: user.avatar,
-                    timezone: user.timezone || 'UTC',
-                    createdAt: user.createdAt,
-                    hasPassword: user.hasPassword,
-                    customMapTileUrl: user.customMapTileUrl || '',
-                    measureUnit: user.measureUnit || 'METRIC',
-                    defaultRedirectUrl: user.defaultRedirectUrl || '',
-                    role: user.role || 'USER'
-                };
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-                timezone.setTimezone(user.timezone || 'UTC');
-            } else {
-                localStorage.removeItem('userInfo');
+                if (persist) {
+                    writeUserSnapshot(user)
+                }
+                timezone.setTimezone(user.timezone || 'UTC')
+            } else if (persist) {
+                clearUserSnapshot()
+            }
+
+            return user
+        },
+
+        setUser(user) {
+            return this._applyUserState(user, {persist: true})
+        },
+
+        hydrateUserFromSnapshot(snapshot) {
+            return this._applyUserState(snapshot, {persist: false})
+        },
+
+        patchCurrentUser(patch) {
+            if (!this.user) {
+                return null
+            }
+            return this.setUser({...this.user, ...patch})
+        },
+
+        consumeBrowserAuthResponse(browserAuthPayload) {
+            const normalizedUser = this.setUser(browserAuthPayload?.user || browserAuthPayload)
+            return {
+                ...(browserAuthPayload || {}),
+                user: normalizedUser,
+                ...(normalizedUser || {})
             }
         },
 
-        // Clear user data from state and storage
         clearUser() {
-            this.user = null;
-            this.isAuthenticated = false;
-            localStorage.removeItem('userInfo');
-            apiService.clearAuthData();
+            this.user = null
+            this.isAuthenticated = false
+            clearUserSnapshot()
+            apiService.clearAuthData()
         },
 
         async login(email, password) {
             try {
-                const loginResponse = await apiService.login(email, password);
-                this.setUser(loginResponse); // setUser will handle localStorage
-                return loginResponse;
+                const response = await apiService.login(email, password)
+                return this.consumeBrowserAuthResponse(response?.data)
             } catch (error) {
-                this.clearUser();
-                throw error;
+                this.clearUser()
+                throw error
             }
         },
 
         async register(email, password, fullName, timezone) {
-            try {
-                await apiService.post('/users/register', {
-                    email,
-                    password,
-                    fullName,
-                    timezone
-                });
-                await this.login(email, password);
-            } catch (error) {
-                throw error
-            }
+            await apiService.post('/users/register', {
+                email,
+                password,
+                fullName,
+                timezone
+            })
+            await this.login(email, password)
         },
 
         async logout() {
@@ -94,215 +130,209 @@ export const useAuthStore = defineStore('auth', {
             this.clearUser()
         },
 
-        //TODO: remove userId, find it on backend.
-        async updateProfile(fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl, userId) {
-            try {
-                await apiService.post(`/users/update`, {
-                    fullName,
-                    avatar,
-                    timezone,
-                    customMapTileUrl,
-                    measureUnit,
-                    defaultRedirectUrl,
-                    userId
-                });
+        async updateProfile({fullName, avatar, timezone, measureUnit, defaultRedirectUrl}) {
+            const response = await apiService.post('/users/update', {
+                fullName,
+                avatar,
+                timezone,
+                measureUnit,
+                defaultRedirectUrl
+            })
 
-                // Update user info in localStorage
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-                userInfo.fullName = fullName;
-                userInfo.avatar = avatar;
-                userInfo.timezone = timezone;
-                userInfo.customMapTileUrl = customMapTileUrl || '';
-                userInfo.measureUnit = measureUnit || 'METRIC';
-                userInfo.defaultRedirectUrl = defaultRedirectUrl || '';
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-
-                // Update the user in store
-                if (this.user) {
-                    this.user = {...this.user, fullName, avatar, timezone, customMapTileUrl, measureUnit, defaultRedirectUrl}
-                }
-            } catch (error) {
-                throw error
+            const updatedUser = response?.data
+            if (updatedUser) {
+                this.setUser(updatedUser)
+                return this.user
             }
+
+            return this.fetchCurrentUserProfile()
         },
 
-        // Update user's timezone in store and localStorage
+        async updateTimelineDisplayPreferences(displayPreferences) {
+            const response = await apiService.put('/users/preferences/timeline/display', displayPreferences)
+            const updatedPreferences = response?.data || null
+
+            if (updatedPreferences && Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapTileUrl')) {
+                this.patchCurrentUser({customMapTileUrl: updatedPreferences.customMapTileUrl || ''})
+            }
+
+            return updatedPreferences
+        },
+
         updateUserTimezone(timezone) {
-            if (this.user) {
-                this.user.timezone = timezone
-
-                // Update localStorage with normalized timezone
-                setUserTimezone(timezone)
+            if (!this.user) {
+                return
             }
+            this.patchCurrentUser({timezone})
         },
 
-        //TODO: remove userId, find it on backend.
-        async changePassword(oldPassword, newPassword, userId) {
-            try {
-                await apiService.post(`/users/changePassword`, {
-                    oldPassword,
-                    newPassword,
-                    userId
-                });
-            } catch (error) {
-                throw error
+        async changePassword(oldPassword, newPassword) {
+            const response = await apiService.post('/users/changePassword', {
+                oldPassword,
+                newPassword
+            })
+
+            if (response?.data?.hasPassword) {
+                this.patchCurrentUser({hasPassword: true})
             }
+
+            return response?.data || null
+        },
+
+        async _reconcileAuthState() {
+            if (authReconcilePromise) {
+                return authReconcilePromise
+            }
+
+            authReconcilePromise = (async () => {
+                try {
+                    if (apiService.isTokenExpired()) {
+                        const refreshed = await apiService.refreshToken()
+                        if (!refreshed) {
+                            this.clearUser()
+                            return null
+                        }
+                    }
+
+                    return await this.fetchCurrentUserProfile()
+                } catch (error) {
+                    this.clearUser()
+                    return null
+                } finally {
+                    authReconcilePromise = null
+                }
+            })()
+
+            return authReconcilePromise
         },
 
         async checkAuth() {
             try {
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-
-                // Check if we have user profile data
-                if (!userInfo.id) {
-                    this.clearUser()
-                    return null
-                }
-
-                // Check cookie expiration and refresh if needed
-                if (apiService.isTokenExpired()) {
-                    const refreshed = await apiService.refreshToken()
-                    if (!refreshed) {
-                        this.clearUser()
-                        return null
+                const snapshot = readUserSnapshot()
+                if (snapshot.id) {
+                    if (!this.user) {
+                        this.hydrateUserFromSnapshot(snapshot)
                     }
+                    // Keep optimistic snapshot semantics on reloads.
+                    // Many flows (including tests) intentionally mutate the cached snapshot
+                    // and expect the app to render from it after reload.
+                    if (apiService.isTokenExpired()) {
+                        const refreshed = await apiService.refreshToken()
+                        if (!refreshed) {
+                            this.clearUser()
+                            return null
+                        }
+                    }
+                    return this.user
                 }
 
-                // Use user data from localStorage (profile info only)
-                const user = {
-                    id: userInfo.id,
-                    userId: userInfo.id,
-                    fullName: userInfo.fullName,
-                    email: userInfo.email,
-                    avatar: userInfo.avatar,
-                    timezone: userInfo.timezone || 'UTC',
-                    createdAt: userInfo.createdAt,
-                    hasPassword: userInfo.hasPassword,
-                    customMapTileUrl: userInfo.customMapTileUrl || '',
-                    measureUnit: userInfo.measureUnit || 'METRIC',
-                    defaultRedirectUrl: userInfo.defaultRedirectUrl || '',
-                    role: userInfo.role || 'USER'
-                }
-
-                this.setUser(user)
-                return user
+                return await this._reconcileAuthState()
             } catch (error) {
-                apiService.clearAuthData()
                 this.clearUser()
                 return null
             }
         },
 
-        // OIDC Actions
         async getOidcProviders() {
             try {
-                const response = await apiService.get('/auth/oidc/providers');
-                // Defensively return an array to prevent template errors
-                return response?.data || [];
+                const response = await apiService.get('/auth/oidc/providers')
+                return response?.data || []
             } catch (error) {
-                console.error('Failed to get OIDC providers:', error);
-                return [];
+                console.error('Failed to get OIDC providers:', error)
+                return []
             }
         },
 
         async initiateOidcLogin(providerName) {
             try {
-                const response = await apiService.post(`/auth/oidc/login/${providerName}`);
-                // Redirect to provider's authorization URL
-                window.location.href = response.data.authorizationUrl;
+                const response = await apiService.post(`/auth/oidc/login/${providerName}`)
+                window.location.href = response.data.authorizationUrl
             } catch (error) {
-                console.error('Failed to initiate OIDC login:', error);
-                throw error;
+                console.error('Failed to initiate OIDC login:', error)
+                throw error
             }
         },
 
         async handleOidcCallback(code, state) {
             try {
-                const response = await apiService.post('/auth/oidc/callback', {code, state});
-                this.setUser(response.data);
-                return response.data;
+                const response = await apiService.post('/auth/oidc/callback', {code, state})
+                return this.consumeBrowserAuthResponse(response?.data)
             } catch (error) {
-                this.clearUser();
-                throw error;
+                this.clearUser()
+                throw error
             }
         },
 
         async linkOidcProvider(providerName) {
             try {
-                const response = await apiService.post(`/auth/oidc/link/${providerName}`);
-                // Redirect to provider for linking
-                window.location.href = response.data.authorizationUrl;
+                const response = await apiService.post(`/auth/oidc/link/${providerName}`)
+                window.location.href = response.data.authorizationUrl
             } catch (error) {
-                console.error('Failed to initiate OIDC linking:', error);
-                throw error;
+                console.error('Failed to initiate OIDC linking:', error)
+                throw error
             }
         },
 
         async unlinkOidcProvider(providerName) {
             try {
-                await apiService.delete(`/auth/oidc/unlink/${providerName}`);
+                await apiService.delete(`/auth/oidc/unlink/${providerName}`)
             } catch (error) {
-                console.error('Failed to unlink OIDC provider:', error);
-                throw error;
+                console.error('Failed to unlink OIDC provider:', error)
+                throw error
             }
         },
 
         async getLinkedProviders() {
             try {
-                const response = await apiService.get('/auth/oidc/connections');
-                return response.data;
+                const response = await apiService.get('/auth/oidc/connections')
+                return response.data
             } catch (error) {
-                console.error('Failed to get linked OIDC providers:', error);
-                return [];
+                console.error('Failed to get linked OIDC providers:', error)
+                return []
             }
         },
 
-        // Fetch current user profile from backend and update state/localStorage
         async fetchCurrentUserProfile() {
             try {
-                const response = await apiService.get('/users/me');
-                const userData = response.data;
-
-                // Update user state and localStorage with fresh data
-                this.setUser(userData);
-                return userData;
+                const response = await apiService.get('/users/me')
+                const userData = response?.data
+                this.setUser(userData)
+                return this.user
             } catch (error) {
-                console.error('Failed to fetch current user profile:', error);
-                throw error;
+                console.error('Failed to fetch current user profile:', error)
+                throw error
             }
         },
 
         async getRegistrationStatus() {
             try {
-                const response = await apiService.get('/auth/status');
-                return response.data;
+                const response = await apiService.get('/auth/status')
+                return response.data
             } catch (error) {
-                console.error('Failed to fetch registration status:', error);
-                // Return a default that disables registration UI elements
-                return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false };
+                console.error('Failed to fetch registration status:', error)
+                return { passwordRegistrationEnabled: false, oidcRegistrationEnabled: false }
             }
         },
 
         async getAuthStatus() {
             try {
-                const response = await apiService.get('/auth/status');
+                const response = await apiService.get('/auth/status')
                 return response.data || {
                     passwordRegistrationEnabled: false,
                     oidcRegistrationEnabled: false,
                     passwordLoginEnabled: true,
                     oidcLoginEnabled: true,
                     adminLoginBypassEnabled: true
-                };
+                }
             } catch (error) {
-                console.error('Failed to get auth status:', error);
-                // Fail-open: default to enabled if API fails
+                console.error('Failed to get auth status:', error)
                 return {
                     passwordRegistrationEnabled: false,
                     oidcRegistrationEnabled: false,
                     passwordLoginEnabled: true,
                     oidcLoginEnabled: true,
                     adminLoginBypassEnabled: true
-                };
+                }
             }
         }
     }

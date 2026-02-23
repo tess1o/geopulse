@@ -144,9 +144,9 @@ const linkWithPassword = async () => {
       linkingToken: props.linkingData.linkingToken
     })
     
-    // Set user data from successful authentication
-    authStore.setUser(response.data)
-    emit('success', response.data)
+    // Set user data from successful authentication (cookie-based browser auth response)
+    const authResult = authStore.consumeBrowserAuthResponse(response.data)
+    emit('success', authResult)
     
   } catch (error) {
     console.error('Password linking failed:', error)

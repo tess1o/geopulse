@@ -2,6 +2,7 @@ import axios from 'axios';
 import {formatError, isBackendDown} from './errorHandler';
 import dayjs from 'dayjs';
 import { useTimezone } from '@/composables/useTimezone';
+import { clearUserSnapshot, readUserSnapshot } from '@/utils/authSnapshotStorage';
 
 const API_BASE_URL = window.VUE_APP_CONFIG?.API_BASE_URL || '/api';
 /**
@@ -13,6 +14,10 @@ const apiService = {
 
     // Promise that resolves when token refresh completes
     _refreshTokenPromise: null,
+
+    hasCachedUser() {
+        return !!readUserSnapshot().id;
+    },
 
 
     /**
@@ -60,9 +65,8 @@ const apiService = {
             const expiresAt = this.getTokenExpirationFromCookie();
             // If expiration cookie is missing, assume token is expired (needs refresh)
             if (expiresAt === null) {
-                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
                 // Only consider expired if we have user info (logged in)
-                return !!userInfo.id;
+                return this.hasCachedUser();
             }
             const timezone = useTimezone()
             return timezone.now().isAfter(timezone.fromUtc(expiresAt).subtract(10, 'second'));
@@ -136,8 +140,7 @@ const apiService = {
             } catch (error) {
                 // Retry on 401 with token refresh
                 if (error.response?.status === 401 && attempt < maxRetries) {
-                    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-                    if (userInfo.id) {
+                    if (this.hasCachedUser()) {
                         try {
                             const refreshSuccessful = await this.refreshToken();
                             if (refreshSuccessful) {
@@ -418,12 +421,11 @@ const apiService = {
     handleError(error) {
         // If unauthorized, clear auth data and redirect to login if logged in
         if (error.response && error.response.status === 401) {
+            const hadUserInfo = this.hasCachedUser();
             this.clearAuthData();
 
-            // 401 means cookies expired - redirect to login if we have user info
-            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-            
-            if (userInfo.id) {
+            // 401 means cookies expired - redirect to login if we had user info
+            if (hadUserInfo) {
                 window.location.href = '/login';
             }
         }
@@ -481,67 +483,10 @@ const apiService = {
     },
 
     /**
-     * Get multi-user timeline data (for friends timeline view)
-     * @param {string} startTime - Start time in ISO format
-     * @param {string} endTime - End time in ISO format
-     * @param {Array<string>} userIds - Optional array of user IDs to fetch
-     * @returns {Promise<Object>} - Multi-user timeline data
-     */
-    async getMultiUserTimeline(startTime, endTime, userIds = null) {
-        const params = {
-            startTime,
-            endTime
-        };
-
-        if (userIds && userIds.length > 0) {
-            params.userIds = userIds.join(',');
-        }
-
-        return this.get('/streaming-timeline/multi-user', params);
-    },
-
-    /**
-     * Get friend permissions for a specific friend
-     * @param {string} friendId - Friend's user ID
-     * @returns {Promise<Object>} - Permission data
-     */
-    async getFriendPermissions(friendId) {
-        return this.get(`/friends/${friendId}/permissions`);
-    },
-
-    /**
-     * Update friend permissions
-     * @param {string} friendId - Friend's user ID
-     * @param {boolean} shareTimeline - Whether to share timeline
-     * @returns {Promise<Object>} - Updated permission data
-     */
-    async updateFriendPermissions(friendId, shareTimeline) {
-        return this.put(`/friends/${friendId}/permissions`, { shareTimeline });
-    },
-
-    /**
-     * Update live location permission for a friend
-     * @param {string} friendId - Friend's user ID
-     * @param {boolean} shareLiveLocation - Whether to share live location
-     * @returns {Promise<Object>} - Updated permission data
-     */
-    async updateLiveLocationPermission(friendId, shareLiveLocation) {
-        return this.put(`/friends/${friendId}/permissions/live`, { shareLiveLocation });
-    },
-
-    /**
-     * Get all friend permissions
-     * @returns {Promise<Array>} - Array of permission objects
-     */
-    async getAllFriendPermissions() {
-        return this.get('/friends/permissions');
-    },
-
-    /**
-     * Login user with credentials and store tokens/CSRF token
+     * Login user with credentials (cookie-based auth for browser clients)
      * @param {string} email - User ID
      * @param {string} password - User password
-     * @returns {Promise<Object>} - User data
+     * @returns {Promise<Object>} - Standard API response envelope
      */
     async login(email, password) {
         try {
@@ -553,23 +498,7 @@ const apiService = {
             });
 
             if (response.data && response.data.data) {
-                const responseData = response.data.data;
-                
-                // Store only user profile info (no tokens)
-                const userInfo = {
-                    email: responseData.email,
-                    fullName: responseData.fullName,
-                    id: responseData.id,
-                    avatar: responseData.avatar,
-                    createdAt: responseData.createdAt,
-                    hasPassword: responseData.hasPassword,
-                    timezone: responseData.timezone,
-                    customMapTileUrl: responseData.customMapTileUrl || '',
-                    measureUnit: responseData.measureUnit || 'METRIC',
-                    defaultRedirectUrl: responseData.defaultRedirectUrl || ''
-                };
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
-                return responseData;
+                return response.data;
             }
             throw new Error('Invalid login response');
         } catch (error) {
@@ -594,24 +523,8 @@ const apiService = {
         }
     },
     clearAuthData() {
-        localStorage.removeItem('userInfo');
+        clearUserSnapshot();
         // Note: httpOnly cookies are cleared by the logout endpoint on the server
-    },
-
-    getUserInfoFromAuthData() {
-        try {
-            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-            return {
-                userId: userInfo.id,
-                fullName: userInfo.fullName,
-                email: userInfo.email,
-                avatar: userInfo.avatar,
-                createdAt: userInfo.createdAt,
-            };
-        } catch (error) {
-            console.error('Error getting user info:', error);
-            return null;
-        }
     },
 };
 

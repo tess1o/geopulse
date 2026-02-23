@@ -204,15 +204,13 @@ const getErrorMessage = (error) => {
 // Profile Save Handler
 const handleProfileSave = async (data) => {
   try {
-    await authStore.updateProfile(
-      data.fullName,
-      data.avatar,
-      data.timezone,
-      null, // customMapTileUrl - now handled in Timeline Display tab
-      data.measureUnit,
-      data.defaultRedirectUrl,
-      userId.value
-    )
+    await authStore.updateProfile({
+      fullName: data.fullName,
+      avatar: data.avatar,
+      timezone: data.timezone,
+      measureUnit: data.measureUnit,
+      defaultRedirectUrl: data.defaultRedirectUrl
+    })
 
     toast.add({
       severity: 'success',
@@ -234,21 +232,12 @@ const handleProfileSave = async (data) => {
 // Timeline Display Save Handler
 const handleTimelineDisplaySave = async (displayPrefs) => {
   try {
-    await apiService.put('/users/preferences/timeline/display', displayPrefs)
+    const savedDisplayPrefs = await authStore.updateTimelineDisplayPreferences(displayPrefs)
 
-    // Update local state
-    timelineDisplayPrefs.value = { ...displayPrefs }
-
-    // Update custom map tile URL in auth store if it changed
-    if (displayPrefs.customMapTileUrl !== undefined) {
-      // Update the store directly to reflect the change in UI
-      if (authStore.user) {
-        authStore.user.customMapTileUrl = displayPrefs.customMapTileUrl
-      }
-      // Also update localStorage
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      userInfo.customMapTileUrl = displayPrefs.customMapTileUrl
-      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    // Update local state from canonical backend response when available
+    timelineDisplayPrefs.value = {
+      ...timelineDisplayPrefs.value,
+      ...(savedDisplayPrefs || displayPrefs)
     }
 
     toast.add({
@@ -275,17 +264,8 @@ const handlePasswordSave = async (data) => {
   try {
     await authStore.changePassword(
       data.currentPassword,
-      data.newPassword,
-      userId.value
+      data.newPassword
     )
-
-    // Update hasPassword flag if this was the first time setting a password
-    if (!hasPassword.value && authStore.user) {
-      authStore.user.hasPassword = true
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      userInfo.hasPassword = true
-      localStorage.setItem('userInfo', JSON.stringify(userInfo))
-    }
 
     toast.add({
       severity: 'success',

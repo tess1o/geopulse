@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.model.LoginRequest;
 import org.github.tess1o.geopulse.auth.model.TokenRefreshRequest;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
+import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
@@ -28,14 +29,17 @@ public class AuthenticationResource {
 
     private final AuthenticationService authenticationService;
     private final CookieService cookieService;
+    private final BrowserAuthResponseMapper browserAuthResponseMapper;
     private AuthConfigurationService authConfigurationService;
 
     @Inject
     public AuthenticationResource(AuthenticationService authenticationService,
                                   CookieService cookieService,
+                                  BrowserAuthResponseMapper browserAuthResponseMapper,
                                   AuthConfigurationService authConfigurationService) {
         this.authenticationService = authenticationService;
         this.cookieService = cookieService;
+        this.browserAuthResponseMapper = browserAuthResponseMapper;
         this.authConfigurationService = authConfigurationService;
     }
 
@@ -63,7 +67,7 @@ public class AuthenticationResource {
             var refreshTokenCookie = cookieService.createRefreshTokenCookie(authResponse.getRefreshToken(), authenticationService.getRefreshTokenLifespan());
             var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            return Response.ok(ApiResponse.success(authResponse))
+            return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null)))
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)
@@ -258,4 +262,5 @@ public class AuthenticationResource {
                 .build();
         return Response.ok(ApiResponse.success(status)).build();
     }
+
 }

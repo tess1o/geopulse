@@ -71,12 +71,11 @@ public class UserServiceTest {
 
         for (String validPath : validPaths) {
             UpdateProfileRequest request = new UpdateProfileRequest();
-            request.setUserId(user.getId());
             request.setFullName("Test User");
             request.setAvatar(validPath);
 
             // Should not throw exception
-            assertDoesNotThrow(() -> userService.updateProfile(request));
+            assertDoesNotThrow(() -> userService.updateProfile(user.getId(), request));
 
             // Verify avatar was set
             UserEntity updatedUser = userRepository.findById(user.getId());
@@ -108,17 +107,16 @@ public class UserServiceTest {
 
         for (String invalidPath : invalidPaths) {
             UpdateProfileRequest request = new UpdateProfileRequest();
-            request.setUserId(user.getId());
             request.setFullName("Test User");
             request.setAvatar(invalidPath);
 
             if (invalidPath.isEmpty()) {
                 // Empty string should be allowed (removes avatar)
-                assertDoesNotThrow(() -> userService.updateProfile(request));
+                assertDoesNotThrow(() -> userService.updateProfile(user.getId(),request));
             } else {
                 // Should throw IllegalArgumentException
                 assertThrows(IllegalArgumentException.class,
-                        () -> userService.updateProfile(request),
+                        () -> userService.updateProfile(user.getId(),request),
                         "Expected exception for invalid path: " + invalidPath);
             }
         }
@@ -131,11 +129,10 @@ public class UserServiceTest {
         UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
 
         UpdateProfileRequest request = new UpdateProfileRequest();
-        request.setUserId(user.getId());
         request.setFullName("Test User");
         request.setAvatar(null); // null should be allowed
 
         // Should not throw exception
-        assertDoesNotThrow(() -> userService.updateProfile(request));
+        assertDoesNotThrow(() -> userService.updateProfile(user.getId(),request));
     }
 }

@@ -21,6 +21,7 @@ import org.github.tess1o.geopulse.auth.oidc.service.OidcAuthenticationService;
 import org.github.tess1o.geopulse.auth.oidc.service.OidcProviderService;
 import org.github.tess1o.geopulse.auth.oidc.service.UserOidcConnectionService;
 import org.github.tess1o.geopulse.auth.oidc.service.OidcAccountLinkingService;
+import org.github.tess1o.geopulse.auth.service.BrowserAuthResponseMapper;
 import org.github.tess1o.geopulse.auth.service.CookieService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
@@ -50,6 +51,9 @@ public class OidcAuthenticationResource {
 
     @Inject
     CookieService cookieService;
+
+    @Inject
+    BrowserAuthResponseMapper browserAuthResponseMapper;
 
     @Inject
     @ConfigProperty(name = "jwt.refresh-token.lifespan")
@@ -123,7 +127,8 @@ public class OidcAuthenticationResource {
     @Path("/callback")
     public Response handleCallback(@Valid OidcCallbackRequest request) {
         try {
-            AuthResponse authResponse = oidcAuthService.handleCallback(request);
+            OidcCallbackAuthResult callbackResult = oidcAuthService.handleCallback(request);
+            AuthResponse authResponse = callbackResult.authResponse();
 
             // Create cookies similar to regular login
             var accessTokenCookie = cookieService.createAccessTokenCookie(
@@ -132,7 +137,7 @@ public class OidcAuthenticationResource {
                     authResponse.getRefreshToken(), refreshTokenLifespan);
             var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            return Response.ok(ApiResponse.success(authResponse))
+            return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, callbackResult.redirectUri())))
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)
@@ -252,7 +257,7 @@ public class OidcAuthenticationResource {
                     authResponse.getRefreshToken(), refreshTokenLifespan);
             var tokenExpirationCookie = cookieService.createTokenExpirationCookie(authResponse.getExpiresIn());
 
-            return Response.ok(ApiResponse.success(authResponse))
+            return Response.ok(ApiResponse.success(browserAuthResponseMapper.toBrowserAuthResponse(authResponse, null)))
                     .cookie(accessTokenCookie)
                     .cookie(refreshTokenCookie)
                     .cookie(tokenExpirationCookie)

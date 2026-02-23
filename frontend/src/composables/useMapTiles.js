@@ -1,3 +1,5 @@
+import {useAuthStore} from '@/stores/auth'
+
 /**
  * Composable for managing custom map tile URLs
  * Provides dynamic tile URLs based on user preferences or shared link overrides
@@ -7,6 +9,14 @@
  */
 export function useMapTiles(options = {}) {
   const { overrideTileUrl, isSharedView = false } = options
+  const getStoredCustomTileUrl = () => {
+    try {
+      return useAuthStore().customMapTileUrl || null
+    } catch (error) {
+      console.error('[useMapTiles] Error reading custom map tile URL from auth store:', error)
+      return null
+    }
+  }
 
   /**
    * Get the tile URL from override, user preferences, or default to OSM
@@ -28,16 +38,12 @@ export function useMapTiles(options = {}) {
     }
 
     // Priority 3: Try user preferences (for authenticated users in normal views)
-    try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      if (userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim()) {
-        const customUrl = userInfo.customMapTileUrl.trim()
-        const urlHash = btoa(customUrl).substring(0, 8)
-        const separator = customUrl.includes('?') ? '&' : '?'
-        return `${customUrl}${separator}v=${urlHash}`
-      }
-    } catch (error) {
-      console.error('[useMapTiles] Error reading custom map tile URL from localStorage:', error)
+    const storedCustomUrl = getStoredCustomTileUrl()
+    if (storedCustomUrl && storedCustomUrl.trim()) {
+      const customUrl = storedCustomUrl.trim()
+      const urlHash = btoa(customUrl).substring(0, 8)
+      const separator = customUrl.includes('?') ? '&' : '?'
+      return `${customUrl}${separator}v=${urlHash}`
     }
 
     // Priority 4: Default to OSM tiles
@@ -53,14 +59,7 @@ export function useMapTiles(options = {}) {
     // Determine which URL to check (override or user preferences)
     const urlToCheck = overrideTileUrl && overrideTileUrl.trim() ?
       overrideTileUrl.trim() :
-      (!isSharedView ? (function() {
-        try {
-          const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-          return userInfo.customMapTileUrl
-        } catch {
-          return null
-        }
-      })() : null)
+      (!isSharedView ? getStoredCustomTileUrl() : null)
 
     if (urlToCheck) {
       const customUrl = urlToCheck.toLowerCase()
@@ -95,12 +94,8 @@ export function useMapTiles(options = {}) {
     if (isSharedView) {
       return false
     }
-    try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      return !!(userInfo.customMapTileUrl && userInfo.customMapTileUrl.trim())
-    } catch (error) {
-      return false
-    }
+    const storedCustomUrl = getStoredCustomTileUrl()
+    return !!(storedCustomUrl && storedCustomUrl.trim())
   }
 
   /**
@@ -111,14 +106,7 @@ export function useMapTiles(options = {}) {
     // Determine which URL to check (override or user preferences unless isSharedView)
     const urlToCheck = overrideTileUrl && overrideTileUrl.trim() ?
       overrideTileUrl.trim() :
-      (!isSharedView ? (function() {
-        try {
-          const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-          return userInfo.customMapTileUrl
-        } catch {
-          return null
-        }
-      })() : null)
+      (!isSharedView ? getStoredCustomTileUrl() : null)
 
     if (urlToCheck && urlToCheck.includes('{s}')) {
       return ['a', 'b', 'c']
