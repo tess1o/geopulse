@@ -146,14 +146,18 @@ When a data gap is detected, the system checks if stay inference should apply:
 
 ```
 1. Is Gap Stay Inference enabled? (default: disabled)
-2. Was user stationary before the gap? (POTENTIAL_STAY or CONFIRMED_STAY)
-3. Is gap duration ≤ Maximum Gap Duration for Inference?
-4. Is the new point within stay radius of the previous location?
+2. Is gap duration ≤ Maximum Gap Duration for Inference?
+3. What was the state before the gap?
+   - POTENTIAL_STAY / CONFIRMED_STAY:
+     Check if new point is within stay radius of the previous stay cluster
+   - IN_TRIP (special cases only):
+     a) Short local unfinished trip that returns within stay radius
+     b) Trip tail looks like arrival/stop cluster, and first post-gap point resumes there
 
 If ALL conditions are true:
   → Skip gap creation
-  → Add new point to existing stay cluster
-  → Stay continues across the gap
+  → Continue stay across the gap
+  → (IN_TRIP tail-arrival case only) finalize the trip portion before the stop cluster
 
 If ANY condition is false:
   → Create normal Data Gap
@@ -162,14 +166,32 @@ If ANY condition is false:
 
 ### Key Conditions
 
-**Must be stationary before gap:**
-Inference only applies when you were at a location (stay). If you were traveling (IN_TRIP mode), the gap is created normally because we don't know where you ended up.
+**Usually must be stationary before gap (with IN_TRIP exceptions):**
+Most stay inference applies when you were already in a stay (`POTENTIAL_STAY` or `CONFIRMED_STAY`).
+
+For `IN_TRIP`, the system now supports two conservative exceptions:
+
+- **Short local unfinished trip:** If the active trip is a short/local excursion and the first point after the gap returns within the stay radius, the system treats it as a continuous stay (for example, a brief movement around home before tracking stops).
+- **Trip tail arrival inference:** If the end of the active trip already looks like an arrival (slow + spatially clustered points), and the first point after the gap resumes at the same place, the system finalizes the trip portion and infers a stay across the gap.
+
+If neither exception applies, a normal data gap is created.
 
 **Must return to same location:**
 The new GPS point must be within the stay radius of where you were. If you're at a different location after the gap, a normal gap is created.
 
 **Gap must be reasonable duration:**
 Gaps longer than the maximum (default 24 hours) create normal gaps. A week-long gap shouldn't be inferred as continuous stay.
+
+**IN_TRIP safeguards (when applicable):**
+- Short local unfinished trip inference requires multiple trip points and strict locality checks (time, radius, and trip spread)
+- Trip tail arrival inference requires a slow clustered tail, minimum points, and a short stop duration before the gap
+- The first point after the gap must also be slow and near the trip tail location
+
+**Current heuristic details (implementation-specific):**
+- **Short local unfinished trip**: active `IN_TRIP` must have at least 2 points, pending trip duration must be at most **30 minutes**, resume point must be within **stay radius**, and pending trip spread must stay within **2× stay radius**
+- **Trip tail arrival inference**: uses existing trip arrival settings (`Trip Arrival Min Points`, stay radius, velocity threshold), but allows a **relaxed pre-gap stop duration** for the tail cluster: **half** of `Trip Arrival Detection Min Duration`, clamped to **30-60 seconds**
+
+These `IN_TRIP` stay-continuation heuristics are designed to be conservative and reduce false positives while covering common real-world gaps (for example, arriving home and losing GPS shortly after).
 
 ---
 
@@ -281,7 +303,8 @@ The inferred trip is classified using the same algorithm as normal trips:
 
 **Priority System:**
 Trip inference runs after stay inference, so:
-1. Same location → Stay inference (if enabled)
+1. Same location / stay-continuation patterns → Stay inference (if enabled)
+   - Includes normal stay modes and conservative `IN_TRIP` stay-continuation cases
 2. Long distance → Trip inference (if enabled)
 3. Neither applies → Normal data gap
 
@@ -556,7 +579,32 @@ Result:
   - Data Gap: (10:20-12:20)
   - Stay: Restaurant (12:20-...)
 
-Inference doesn't apply during trips because we don't know where you ended up.
+Inference doesn't apply here because the user resumes at a different location, so this is not a stay-continuation case.
+```
+
+### Example 5: Gap Right After Arriving (Trip Tail Arrival Inference)
+
+```
+Configuration:
+  Gap Stay Inference: Enabled
+  Max Gap Duration: 24 hours
+
+Timeline:
+  17:35 - Trip started
+  17:57 - Slow clustered points near destination (arrival)
+  17:57 - Last GPS point (tracking stops shortly after arrival)
+  ------ Overnight without tracking ------
+  10:03 - First GPS point near same location (stationary)
+  10:04 - Trip starts again
+
+State before gap: IN_TRIP
+Tail before gap: Arrival-like stop cluster (slow + spatially clustered)
+
+Result:
+  - Trip: (17:35-17:57)   [finalized from trip portion before the stop cluster]
+  - Stay: (17:57-10:04...) [continues across the gap]
+
+No Data Gap is created because the system can infer the user arrived before the gap and remained there.
 ```
 
 ---
@@ -749,7 +797,7 @@ Changing data gap settings triggers a **full timeline rebuild**:
 - Non-gap timeline events maintain their detection parameters
 
 :::info Enabling Inference
-When you enable Gap Stay Inference, stays that previously ended at gaps will now extend across those gaps (where conditions are met). This can significantly change stay durations in your historical timeline.
+When you enable Gap Stay Inference, stays that previously ended at gaps may extend across those gaps (where conditions are met). In some `IN_TRIP` arrival cases, the system may also split the pre-gap trip and infer a stay across the gap. This can significantly change stay durations in your historical timeline.
 :::
 
 ---
@@ -772,7 +820,8 @@ Data gaps and gap stay inference handle missing GPS data intelligently:
 - **Gap threshold** controls when gaps are detected (default 3 hours)
 - **Minimum duration** filters out insignificant gaps (default 30 minutes)
 - **Gap stay inference** infers stays when returning to same location
-- **Inference conditions** ensure conservative, accurate inference
+- **Gap stay inference** can also handle some `IN_TRIP` edge cases (short local excursions and arrival-like trip tails)
+- **Inference conditions** remain conservative and use existing stay/trip thresholds plus internal safeguards
 
 By enabling gap stay inference and configuring appropriate thresholds, you can get more accurate continuous stays (like overnight at home) while still preserving the integrity of your timeline when GPS tracking truly stops.
 

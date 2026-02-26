@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
+import org.github.tess1o.geopulse.streaming.model.domain.Trip;
 import org.github.tess1o.geopulse.streaming.model.domain.UserState;
 import org.github.tess1o.geopulse.streaming.service.StreamingDataGapService;
 import org.junit.jupiter.api.BeforeEach;
@@ -185,7 +186,7 @@ class DataGapDetectionEngineTest {
         assertTrue(events.stream().anyMatch(e -> e instanceof DataGap));
     }
 
-    // ============== Tests for IN_TRIP mode (should always create gap) ==============
+    // ============== Tests for IN_TRIP mode (with local-excursion fallback) ==============
 
     @Test
     void shouldCreateGap_WhenInTripMode_EvenIfSameLocation() {
@@ -208,6 +209,92 @@ class DataGapDetectionEngineTest {
         // Then: Should create gap - inference doesn't apply to IN_TRIP
         assertEquals(1, events.size());
         assertTrue(events.get(0) instanceof DataGap);
+    }
+
+    @Test
+    void shouldInferStay_WhenInTripModeIsShortLocalExcursion_AndReturnsWithinRadius() {
+        // Given: Short unfinished trip that returns near the same place before GPS goes silent
+        config.setGapStayInferenceEnabled(true);
+        config.setStaypointRadiusMeters(80);
+
+        GPSPoint tripFar = createGpsPoint(Instant.parse("2024-01-01T20:00:00Z"), 40.71375, -74.0060);
+        GPSPoint tripReturn1 = createGpsPoint(Instant.parse("2024-01-01T20:00:30Z"), 40.71335, -74.0060);
+        GPSPoint tripReturn2 = createGpsPoint(Instant.parse("2024-01-01T20:01:00Z"), 40.71300, -74.0060);
+        GPSPoint tripEnd = createGpsPoint(Instant.parse("2024-01-01T20:01:30Z"), 40.71292, -74.0060);
+
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP, tripFar, tripReturn1, tripReturn2, tripEnd);
+
+        // Resume point after overnight gap is back within 80m of the unfinished trip endpoint
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2024-01-02T08:00:00Z"), 40.71284, -74.0060);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+
+        // When
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        // Then: Treat as continuous stay context (skip gap, convert pending local trip back to stay)
+        assertTrue(events.isEmpty());
+        assertEquals(ProcessorMode.CONFIRMED_STAY, userState.getCurrentMode());
+        assertTrue(userState.getActivePoints().size() < 4, "Far excursion point should be trimmed from stay seed");
+    }
+
+    @Test
+    void shouldCreateGap_WhenInTripModeLocalButPendingTripIsTooLong() {
+        // Given: A local-looking IN_TRIP that lasted too long to safely collapse into a stay
+        config.setGapStayInferenceEnabled(true);
+        config.setStaypointRadiusMeters(80);
+
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
+                createGpsPoint(Instant.parse("2024-01-01T20:00:00Z"), 40.71310, -74.0060),
+                createGpsPoint(Instant.parse("2024-01-01T20:45:00Z"), 40.71292, -74.0060));
+
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2024-01-02T08:00:00Z"), 40.71284, -74.0060);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTripForGap(any(), any(), any())).thenReturn(null);
+
+        // When
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        // Then
+        assertEquals(1, events.size());
+        assertTrue(events.get(0) instanceof DataGap);
+        assertEquals(ProcessorMode.UNKNOWN, userState.getCurrentMode()); // reset after gap creation
+    }
+
+    @Test
+    void shouldFinalizeTripAndInferStay_WhenInTripTailLooksLikeArrival_AndResumesSameLocationAfterGap() {
+        // Given: Real trip followed by slow clustered tail before GPS gap (arrival-like)
+        config.setGapStayInferenceEnabled(true);
+        config.setStaypointRadiusMeters(80);
+        config.setStaypointVelocityThreshold(2.0);
+        config.setTripArrivalMinPoints(3);
+        config.setTripArrivalDetectionMinDurationSeconds(90); // default-like, gap heuristic uses relaxed threshold
+
+        UserState userState = createUserStateWithPoints(ProcessorMode.IN_TRIP,
+                createGpsPoint(Instant.parse("2024-01-01T17:35:00Z"), 40.7120, -74.0100, 10.0),
+                createGpsPoint(Instant.parse("2024-01-01T17:40:00Z"), 40.7130, -74.0080, 12.0),
+                createGpsPoint(Instant.parse("2024-01-01T17:50:00Z"), 40.7145, -74.0060, 11.0),
+                createGpsPoint(Instant.parse("2024-01-01T17:57:06Z"), 40.71510, -74.00580, 0.7),
+                createGpsPoint(Instant.parse("2024-01-01T17:57:26Z"), 40.71500, -74.00576, 0.5),
+                createGpsPoint(Instant.parse("2024-01-01T17:57:46Z"), 40.71492, -74.00574, 0.6),
+                createGpsPoint(Instant.parse("2024-01-01T17:57:57Z"), 40.71486, -74.00572, 0.4));
+
+        // First point after overnight gap is stationary and resumes within stay radius of trip tail
+        GPSPoint currentPoint = createGpsPoint(Instant.parse("2024-01-02T10:03:03Z"), 40.71482, -74.00570, 0.0);
+
+        when(dataGapService.shouldCreateDataGap(any(), any(), any())).thenReturn(true);
+        when(finalizationService.finalizeTrip(any(), any())).thenReturn(createTrip(Instant.parse("2024-01-01T17:35:00Z")));
+
+        // When
+        List<TimelineEvent> events = engine.checkForDataGap(currentPoint, userState, config);
+
+        // Then: Trip part should be finalized, no DataGap, state continues as stay
+        assertEquals(1, events.size());
+        assertTrue(events.get(0) instanceof Trip);
+        assertFalse(events.stream().anyMatch(e -> e instanceof DataGap));
+        assertEquals(ProcessorMode.CONFIRMED_STAY, userState.getCurrentMode());
+        assertTrue(userState.getActivePoints().size() >= 3, "Tail stop cluster should seed stay state");
     }
 
     // ============== Tests for max gap hours ==============
@@ -327,6 +414,16 @@ class DataGapDetectionEngineTest {
                 .build();
     }
 
+    private GPSPoint createGpsPoint(Instant timestamp, double lat, double lon, double speed) {
+        return GPSPoint.builder()
+                .timestamp(timestamp)
+                .latitude(lat)
+                .longitude(lon)
+                .speed(speed)
+                .accuracy(10.0)
+                .build();
+    }
+
     private UserState createUserStateWithPoints(ProcessorMode mode, GPSPoint... points) {
         UserState state = new UserState();
         state.setCurrentMode(mode);
@@ -345,6 +442,14 @@ class DataGapDetectionEngineTest {
                 .duration(Duration.ofMinutes(10))
                 .latitude(40.7128)
                 .longitude(-74.0060)
+                .build();
+    }
+
+    private Trip createTrip(Instant startTime) {
+        return Trip.builder()
+                .startTime(startTime)
+                .duration(Duration.ofMinutes(22))
+                .distanceMeters(1500)
                 .build();
     }
 }
