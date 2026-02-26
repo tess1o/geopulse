@@ -55,6 +55,9 @@ public class StreamingTimelineProcessor {
     @Inject
     GpsPointRepository gpsPointRepository;
 
+    @Inject
+    TripStopHeuristicsService tripStopHeuristicsService;
+
 
     /**
      * Process GPS points to generate timeline events (stays, trips, data gaps).
@@ -434,26 +437,6 @@ public class StreamingTimelineProcessor {
         return Duration.ofMinutes(staypointMinDurationMinutes);
     }
 
-    private double getStopSpeedThreshold(TimelineConfig config) {
-        Double threshold = config.getStaypointVelocityThreshold();
-        return threshold != null ? threshold : 2;
-    }
-
-    private Duration getArrivalDetectionDuration(TimelineConfig config) {
-        Integer seconds = config.getTripArrivalDetectionMinDurationSeconds();
-        return seconds != null ? Duration.ofSeconds(seconds) : Duration.ofSeconds(90);
-    }
-
-    private Duration getSustainedStopDuration(TimelineConfig config) {
-        Integer seconds = config.getTripSustainedStopMinDurationSeconds();
-        return seconds != null ? Duration.ofSeconds(seconds) : Duration.ofSeconds(60);
-    }
-
-    private int getTripArrivalMinPoints(TimelineConfig config) {
-        Integer minPoints = config.getTripArrivalMinPoints();
-        return minPoints != null ? minPoints : 3;
-    }
-
     /**
      * Result of sustained stop detection containing information about the stopped cluster.
      */
@@ -482,50 +465,10 @@ public class StreamingTimelineProcessor {
      */
     private StopDetectionResult detectSustainedStopInTrip(UserState userState, TimelineConfig config) {
         List<GPSPoint> activePoints = userState.copyActivePoints();
-        int minPoints = getTripArrivalMinPoints(config);
-
-        if (activePoints.size() < minPoints) {
-            return StopDetectionResult.noStop();
-        }
-
-        double stopSpeedThreshold = getStopSpeedThreshold(config);
-        double stayRadius = getStayRadius(config);
-
-        // Get recent points for analysis based on configured minimum
-        int recentPointsToCheck = Math.min(minPoints, activePoints.size());
-        int stoppedClusterStartIndex = activePoints.size() - recentPointsToCheck;
-        List<GPSPoint> recentPoints = activePoints.subList(stoppedClusterStartIndex, activePoints.size());
-
-        // Check 1: Arrival Detection - Are recent points spatially clustered with low speed?
-        GPSPoint lastPoint = recentPoints.get(recentPoints.size() - 1);
-        boolean spatiallyClusteredAndSlow = recentPoints.stream()
-                .allMatch(p -> p.distanceTo(lastPoint) <= stayRadius && p.getSpeed() <= stopSpeedThreshold);
-
-        if (spatiallyClusteredAndSlow) {
-            Duration clusterDuration = Duration.between(recentPoints.get(0).getTimestamp(), lastPoint.getTimestamp());
-            Duration arrivalDetectionDuration = getArrivalDetectionDuration(config);
-            boolean isArrival = clusterDuration.compareTo(arrivalDetectionDuration) >= 0;
-
-            if (isArrival) {
-                return StopDetectionResult.stopDetected(stoppedClusterStartIndex);
-            }
-        }
-
-        // Check 2: Sustained Stop Detection - For traffic light avoidance (more conservative)
-        // Only if we have enough points and they're consistently slow for longer period
-        if (recentPoints.size() >= 2) {
-            boolean allRecentSlow = recentPoints.stream()
-                    .allMatch(p -> p.getSpeed() < stopSpeedThreshold);
-
-            if (allRecentSlow) {
-                Duration slowDuration = Duration.between(recentPoints.get(0).getTimestamp(), lastPoint.getTimestamp());
-                Duration sustainedStopDuration = getSustainedStopDuration(config);
-                boolean sustainedStop = slowDuration.compareTo(sustainedStopDuration) >= 0;
-
-                if (sustainedStop) {
-                    return StopDetectionResult.stopDetected(stoppedClusterStartIndex);
-                }
-            }
+        TripStopHeuristicsService.TripStopDetection detection =
+                tripStopHeuristicsService.detectTripStopFromRecentWindow(activePoints, config);
+        if (detection.isStopDetected()) {
+            return StopDetectionResult.stopDetected(detection.getStoppedClusterStartIndex());
         }
 
         return StopDetectionResult.noStop();

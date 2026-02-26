@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Method;
@@ -46,6 +47,9 @@ class StreamingTimelineProcessorTest {
 
     @Mock
     private FavoriteLocationService favoriteLocationService;
+
+    @Spy
+    private TripStopHeuristicsService tripStopHeuristicsService = new TripStopHeuristicsService();
 
     private TimelineConfig config;
     private UUID testUserId;

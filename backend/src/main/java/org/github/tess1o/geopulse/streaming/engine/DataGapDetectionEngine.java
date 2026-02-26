@@ -28,17 +28,14 @@ import java.util.List;
 @ApplicationScoped
 public class DataGapDetectionEngine {
 
-    private static final int DEFAULT_STAY_RADIUS_METERS = 50;
-    private static final Duration MIN_GAP_TAIL_STOP_DURATION = Duration.ofSeconds(30);
-    private static final Duration MAX_GAP_TAIL_STOP_DURATION = Duration.ofSeconds(60);
-    private static final Duration MAX_IN_TRIP_LOCAL_EXCURSION_DURATION = Duration.ofMinutes(30);
-    private static final double IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER = 2;
-
     @Inject
     TimelineEventFinalizationService finalizationService;
 
     @Inject
     StreamingDataGapService dataGapService;
+
+    @Inject
+    GapStayInferenceService gapStayInferenceService;
 
     @Inject
     TravelClassification travelClassification;
@@ -70,13 +67,14 @@ public class DataGapDetectionEngine {
                     timeDelta, lastPoint.getTimestamp(), currentPoint.getTimestamp());
 
             // Priority 1: Check if we should infer a stay instead of creating a gap
-            List<TimelineEvent> stayInferenceEvents = new ArrayList<>();
-            boolean shouldInferStay = shouldInferStayDuringGap(currentPoint, userState, config, timeDelta, stayInferenceEvents);
+            GapStayInferencePlan stayInferencePlan =
+                    gapStayInferenceService.tryInfer(currentPoint, userState, config, timeDelta);
+            boolean shouldInferStay = stayInferencePlan.isInferred();
             log.info("Gap stay inference check: shouldInfer={}, enabled={}",
                     shouldInferStay, config.getGapStayInferenceEnabled());
             if (shouldInferStay) {
                 log.info("Gap stay inference applied - skipping gap creation, points are at same location");
-                gapEvents.addAll(stayInferenceEvents);
+                applyStayInferencePlan(stayInferencePlan, userState, config, gapEvents);
                 // Don't create gap, don't reset state - let state machine process the point normally
                 // The point will be added to activePoints and duration calculation will span the gap
                 return gapEvents;
@@ -133,305 +131,35 @@ public class DataGapDetectionEngine {
         return gapEvents;
     }
 
-    /**
-     * Determines whether to infer a stay during a data gap instead of creating a gap.
-     * This feature helps capture overnight stays at home or extended stays where
-     * the app doesn't send GPS data but the user remains at the same location.
-     *
-     * @param currentPoint the GPS point after the gap
-     * @param userState    current user processing state
-     * @param config       timeline configuration
-     * @param gapDuration  duration of the gap
-     * @return true if a stay should be inferred instead of creating a gap
-     */
-    private boolean shouldInferStayDuringGap(GPSPoint currentPoint, UserState userState,
-                                             TimelineConfig config, Duration gapDuration,
-                                             List<TimelineEvent> inferredEvents) {
-        // Check if feature is enabled
-        Boolean enabled = config.getGapStayInferenceEnabled();
-        if (enabled == null || !enabled) {
-            log.debug("Gap stay inference is disabled (enabled={})", enabled);
-            return false;
-        }
-
-        // Check if we have active points to compare against
-        if (!userState.hasActivePoints()) {
-            log.debug("No active points for gap stay inference comparison");
-            return false;
-        }
-
-        // Check if gap is within max duration
-        Integer maxGapHours = config.getGapStayInferenceMaxGapHours();
-        if (maxGapHours != null && maxGapHours > 0) {
-            long gapHours = gapDuration.toHours();
-            if (gapHours > maxGapHours) {
-                log.debug("Gap duration {}h exceeds max allowed {}h for stay inference",
-                        gapHours, maxGapHours);
-                return false;
-            }
-        }
-
-        ProcessorMode mode = userState.getCurrentMode();
-        if (mode == ProcessorMode.UNKNOWN) {
-            log.debug("Gap stay inference not applicable for mode: {}", mode);
-            return false;
-        }
-
-        Integer radiusMeters = config.getStaypointRadiusMeters();
-        if (radiusMeters == null) {
-            radiusMeters = DEFAULT_STAY_RADIUS_METERS;
-        }
-
-        if (mode == ProcessorMode.IN_TRIP) {
-            if (shouldInferStayForShortLocalTripDuringGap(currentPoint, userState, radiusMeters, gapDuration)) {
-                return true;
-            }
-            return shouldInferStayFromTripTailDuringGap(currentPoint, userState, config, radiusMeters, gapDuration, inferredEvents);
-        }
-
-        // Calculate distance between centroid and current point
-        GPSPoint centroid = userState.calculateCentroid();
-        if (centroid == null) {
-            log.debug("Could not calculate centroid for gap stay inference");
-            return false;
-        }
-
-        double distance = centroid.distanceTo(currentPoint);
-        if (distance > radiusMeters) {
-            log.debug("Distance {}m from centroid exceeds stay radius {}m - creating gap instead",
-                    String.format("%.1f", distance), radiusMeters);
-            return false;
-        }
-
-        log.info("Gap stay inference conditions met: mode={}, gap={}h, distance={}m (radius={}m)",
-                mode, gapDuration.toHours(), String.format("%.1f", distance), radiusMeters);
-        return true;
-    }
-
-    /**
-     * Gap stay inference fallback for unfinished short/local trips.
-     * This handles cases where the user briefly moves outside the stay radius,
-     * returns to the same place, but GPS stops before the trip stop detector can
-     * transition the state back to a stay.
-     */
-    private boolean shouldInferStayForShortLocalTripDuringGap(GPSPoint currentPoint, UserState userState,
-                                                              int stayRadiusMeters, Duration gapDuration) {
-        List<GPSPoint> activeTripPoints = userState.copyActivePoints();
-        if (activeTripPoints.size() < 2) {
-            log.debug("Gap stay inference not applicable for IN_TRIP with fewer than 2 active points");
-            return false;
-        }
-
-        GPSPoint firstTripPoint = activeTripPoints.get(0);
-        GPSPoint lastTripPoint = activeTripPoints.get(activeTripPoints.size() - 1);
-        if (firstTripPoint.getTimestamp() == null || lastTripPoint.getTimestamp() == null) {
-            log.debug("Gap stay inference not applicable for IN_TRIP with missing timestamps");
-            return false;
-        }
-
-        Duration pendingTripDuration = Duration.between(firstTripPoint.getTimestamp(), lastTripPoint.getTimestamp());
-        if (pendingTripDuration.compareTo(MAX_IN_TRIP_LOCAL_EXCURSION_DURATION) > 0) {
-            log.debug("Pending IN_TRIP duration {} exceeds local excursion limit {} for gap stay inference",
-                    pendingTripDuration, MAX_IN_TRIP_LOCAL_EXCURSION_DURATION);
-            return false;
-        }
-
-        double resumeDistance = lastTripPoint.distanceTo(currentPoint);
-        if (resumeDistance > stayRadiusMeters) {
-            log.debug("IN_TRIP resume distance {}m exceeds stay radius {}m - creating gap instead",
-                    String.format("%.1f", resumeDistance), stayRadiusMeters);
-            return false;
-        }
-
-        double maxDistanceFromTripEnd = 0.0;
-        for (GPSPoint tripPoint : activeTripPoints) {
-            maxDistanceFromTripEnd = Math.max(maxDistanceFromTripEnd, tripPoint.distanceTo(lastTripPoint));
-        }
-
-        double localExcursionLimitMeters = stayRadiusMeters * IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER;
-        if (maxDistanceFromTripEnd > localExcursionLimitMeters) {
-            log.debug("Pending IN_TRIP spread {}m exceeds local excursion limit {}m (radius={}m x {})",
-                    String.format("%.1f", maxDistanceFromTripEnd),
-                    String.format("%.1f", localExcursionLimitMeters),
-                    stayRadiusMeters,
-                    IN_TRIP_LOCAL_EXCURSION_RADIUS_MULTIPLIER);
-            return false;
-        }
-
-        reclassifyPendingTripAsStay(userState, lastTripPoint, stayRadiusMeters);
-
-        log.info("Gap stay inference conditions met for short local IN_TRIP: gap={}h, pendingTrip={}, " +
-                        "resumeDistance={}m, spread={}m (radius={}m)",
-                gapDuration.toHours(),
-                pendingTripDuration,
-                String.format("%.1f", resumeDistance),
-                String.format("%.1f", maxDistanceFromTripEnd),
-                stayRadiusMeters);
-        return true;
-    }
-
-    /**
-     * Converts a local unfinished trip back into stay state so the next point after the gap
-     * continues a stay instead of finalizing a trip.
-     */
-    private void reclassifyPendingTripAsStay(UserState userState, GPSPoint anchorPoint, int stayRadiusMeters) {
-        List<GPSPoint> originalPoints = userState.copyActivePoints();
-        List<GPSPoint> localPoints = new ArrayList<>();
-
-        for (GPSPoint point : originalPoints) {
-            if (point.distanceTo(anchorPoint) <= stayRadiusMeters) {
-                localPoints.add(point);
-            }
-        }
-
-        if (localPoints.isEmpty()) {
-            localPoints.add(anchorPoint);
-        }
-
-        userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
-        userState.clearActivePoints();
-        for (GPSPoint point : localPoints) {
-            userState.addActivePoint(point);
-        }
-    }
-
-    /**
-     * Gap stay inference for trips that likely ended just before GPS data stopped.
-     * If the tail of the active trip is a slow, clustered stop and the first point after
-     * the gap resumes in the same area, finalize the trip portion and continue as a stay.
-     */
-    private boolean shouldInferStayFromTripTailDuringGap(GPSPoint currentPoint, UserState userState,
-                                                         TimelineConfig config, int stayRadiusMeters,
-                                                         Duration gapDuration, List<TimelineEvent> inferredEvents) {
-        List<GPSPoint> activeTripPoints = userState.copyActivePoints();
-        int stopClusterStartIndex = findArrivalLikeTailClusterStartIndex(activeTripPoints, currentPoint, config, stayRadiusMeters);
-        if (stopClusterStartIndex < 0) {
-            return false;
-        }
-
-        List<GPSPoint> tripPoints = new ArrayList<>(activeTripPoints.subList(0, stopClusterStartIndex));
-        List<GPSPoint> stoppedTailPoints = new ArrayList<>(activeTripPoints.subList(stopClusterStartIndex, activeTripPoints.size()));
-
-        if (tripPoints.size() >= 2) {
-            UserState tripState = new UserState();
-            tripState.setCurrentMode(ProcessorMode.IN_TRIP);
-            for (GPSPoint point : tripPoints) {
-                tripState.addActivePoint(point);
-            }
-
-            Trip finalizedTrip = finalizationService.finalizeTrip(tripState, config);
+    private void applyStayInferencePlan(GapStayInferencePlan plan, UserState userState,
+                                        TimelineConfig config, List<TimelineEvent> gapEvents) {
+        if (plan.hasTripToFinalize()) {
+            Trip finalizedTrip = finalizeTripFromPoints(plan.getTripPointsToFinalize(), config);
             if (finalizedTrip != null) {
-                inferredEvents.add(finalizedTrip);
+                gapEvents.add(finalizedTrip);
             }
         }
 
-        userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
-        userState.clearActivePoints();
-        for (GPSPoint point : stoppedTailPoints) {
-            userState.addActivePoint(point);
-        }
-
-        GPSPoint tailAnchor = stoppedTailPoints.get(stoppedTailPoints.size() - 1);
-        Duration tailDuration = Duration.between(stoppedTailPoints.get(0).getTimestamp(), tailAnchor.getTimestamp());
-        double resumeDistance = tailAnchor.distanceTo(currentPoint);
-
-        log.info("Gap stay inference conditions met for IN_TRIP tail arrival: gap={}h, tailPoints={}, tailDuration={}, " +
-                        "resumeDistance={}m (radius={}m), finalizedTripPoints={}",
-                gapDuration.toHours(),
-                stoppedTailPoints.size(),
-                tailDuration,
-                String.format("%.1f", resumeDistance),
-                stayRadiusMeters,
-                tripPoints.size());
-        return true;
-    }
-
-    private int findArrivalLikeTailClusterStartIndex(List<GPSPoint> activeTripPoints, GPSPoint currentPoint,
-                                                     TimelineConfig config, int stayRadiusMeters) {
-        if (activeTripPoints == null || activeTripPoints.isEmpty()) {
-            return -1;
-        }
-
-        GPSPoint lastTripPoint = activeTripPoints.get(activeTripPoints.size() - 1);
-        double stopSpeedThreshold = getStopSpeedThreshold(config);
-
-        if (lastTripPoint.getSpeed() > stopSpeedThreshold) {
-            log.debug("IN_TRIP tail arrival inference rejected: last trip point speed {} > threshold {}",
-                    String.format("%.2f", lastTripPoint.getSpeed()), String.format("%.2f", stopSpeedThreshold));
-            return -1;
-        }
-
-        if (currentPoint.getSpeed() > stopSpeedThreshold) {
-            log.debug("IN_TRIP tail arrival inference rejected: post-gap point speed {} > threshold {}",
-                    String.format("%.2f", currentPoint.getSpeed()), String.format("%.2f", stopSpeedThreshold));
-            return -1;
-        }
-
-        double resumeDistance = lastTripPoint.distanceTo(currentPoint);
-        if (resumeDistance > stayRadiusMeters) {
-            log.debug("IN_TRIP tail arrival inference rejected: post-gap point {}m from trip tail exceeds radius {}m",
-                    String.format("%.1f", resumeDistance), stayRadiusMeters);
-            return -1;
-        }
-
-        int startIndex = activeTripPoints.size() - 1;
-        while (startIndex > 0) {
-            GPSPoint candidate = activeTripPoints.get(startIndex - 1);
-            if (candidate.distanceTo(lastTripPoint) > stayRadiusMeters || candidate.getSpeed() > stopSpeedThreshold) {
-                break;
+        if (plan.hasReplacementStayPoints()) {
+            userState.setCurrentMode(ProcessorMode.CONFIRMED_STAY);
+            userState.clearActivePoints();
+            for (GPSPoint point : plan.getReplacementStayPoints()) {
+                userState.addActivePoint(point);
             }
-            startIndex--;
         }
-
-        int minPoints = getTripArrivalMinPoints(config);
-        int tailPointCount = activeTripPoints.size() - startIndex;
-        if (tailPointCount < minPoints) {
-            log.debug("IN_TRIP tail arrival inference rejected: tail cluster size {} < min points {}",
-                    tailPointCount, minPoints);
-            return -1;
-        }
-
-        GPSPoint firstTailPoint = activeTripPoints.get(startIndex);
-        if (firstTailPoint.getTimestamp() == null || lastTripPoint.getTimestamp() == null) {
-            log.debug("IN_TRIP tail arrival inference rejected: tail cluster timestamps missing");
-            return -1;
-        }
-
-        Duration tailDuration = Duration.between(firstTailPoint.getTimestamp(), lastTripPoint.getTimestamp());
-        Duration requiredTailDuration = getGapTailStopMinDuration(config);
-        if (tailDuration.compareTo(requiredTailDuration) < 0) {
-            log.debug("IN_TRIP tail arrival inference rejected: tail duration {} < required {}",
-                    tailDuration, requiredTailDuration);
-            return -1;
-        }
-
-        return startIndex;
     }
 
-    private double getStopSpeedThreshold(TimelineConfig config) {
-        Double threshold = config.getStaypointVelocityThreshold();
-        return threshold != null ? threshold : 2.0;
-    }
-
-    private Duration getArrivalDetectionDuration(TimelineConfig config) {
-        Integer seconds = config.getTripArrivalDetectionMinDurationSeconds();
-        return seconds != null ? Duration.ofSeconds(seconds) : Duration.ofSeconds(90);
-    }
-
-    private int getTripArrivalMinPoints(TimelineConfig config) {
-        Integer minPoints = config.getTripArrivalMinPoints();
-        return minPoints != null ? minPoints : 3;
-    }
-
-    private Duration getGapTailStopMinDuration(TimelineConfig config) {
-        Duration relaxed = getArrivalDetectionDuration(config).dividedBy(2);
-        if (relaxed.compareTo(MIN_GAP_TAIL_STOP_DURATION) < 0) {
-            return MIN_GAP_TAIL_STOP_DURATION;
+    private Trip finalizeTripFromPoints(List<GPSPoint> tripPoints, TimelineConfig config) {
+        if (tripPoints == null || tripPoints.size() < 2) {
+            return null;
         }
-        if (relaxed.compareTo(MAX_GAP_TAIL_STOP_DURATION) > 0) {
-            return MAX_GAP_TAIL_STOP_DURATION;
+
+        UserState tripState = new UserState();
+        tripState.setCurrentMode(ProcessorMode.IN_TRIP);
+        for (GPSPoint point : tripPoints) {
+            tripState.addActivePoint(point);
         }
-        return relaxed;
+        return finalizationService.finalizeTrip(tripState, config);
     }
 
     /**
