@@ -23,6 +23,7 @@ class TimelinePreferencesMapperTest {
         preferences.setStaypointVelocityThreshold(12.0);
         preferences.setStaypointRadiusMeters(100);
         preferences.setIsMergeEnabled(false);
+        preferences.setCarEnabled(false);
 
         // When
         TimelineConfig config = mapper.preferencesToConfig(preferences);
@@ -33,6 +34,7 @@ class TimelinePreferencesMapperTest {
         assertEquals(12.0, config.getStaypointVelocityThreshold());
         assertEquals(100, config.getStaypointRadiusMeters());
         assertEquals(false, config.getIsMergeEnabled());
+        assertEquals(false, config.getCarEnabled());
     }
 
     @Test
@@ -42,6 +44,7 @@ class TimelinePreferencesMapperTest {
         request.setStaypointVelocityThreshold(15.0);
         request.setStaypointRadiusMeters(200);
         request.setIsMergeEnabled(true);
+        request.setCarEnabled(false);
 
         // When
         TimelineConfig config = mapper.requestToConfig(request);
@@ -51,6 +54,7 @@ class TimelinePreferencesMapperTest {
         assertEquals(15.0, config.getStaypointVelocityThreshold());
         assertEquals(200, config.getStaypointRadiusMeters());
         assertEquals(true, config.getIsMergeEnabled());
+        assertEquals(false, config.getCarEnabled());
     }
 
     @Test
@@ -64,6 +68,7 @@ class TimelinePreferencesMapperTest {
         config.setStaypointVelocityThreshold(12.0);
         config.setStaypointRadiusMeters(100);
         config.setIsMergeEnabled(false);
+        config.setCarEnabled(false);
 
         // When
         mapper.updatePreferencesFromConfig(config, preferences);
@@ -73,6 +78,7 @@ class TimelinePreferencesMapperTest {
         assertEquals(12.0, preferences.getStaypointVelocityThreshold());
         assertEquals(100, preferences.getStaypointRadiusMeters());
         assertEquals(false, preferences.getIsMergeEnabled());
+        assertEquals(false, preferences.getCarEnabled());
     }
 
     @Test
@@ -83,6 +89,7 @@ class TimelinePreferencesMapperTest {
         config.setStaypointVelocityThreshold(20.0);
         config.setStaypointRadiusMeters(150);
         config.setIsMergeEnabled(true);
+        config.setCarEnabled(true);
 
         // When
         TimelinePreferences preferences = mapper.configToPreferences(config);
@@ -93,6 +100,7 @@ class TimelinePreferencesMapperTest {
         assertEquals(20.0, preferences.getStaypointVelocityThreshold());
         assertEquals(150, preferences.getStaypointRadiusMeters());
         assertEquals(true, preferences.getIsMergeEnabled());
+        assertEquals(true, preferences.getCarEnabled());
     }
 
     @Test

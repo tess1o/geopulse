@@ -13,6 +13,7 @@ import { computed } from 'vue'
  * @returns {Object} Validation state and helper functions
  */
 export function useClassificationValidation(prefs) {
+  const isCarEnabled = () => prefs.value?.carEnabled !== false
 
   /**
    * Check for bicycle completely exceeding car threshold (PROBLEMATIC)
@@ -22,7 +23,7 @@ export function useClassificationValidation(prefs) {
    * WRONG: bicycle 8-30 km/h, car 10+ km/h → car trips at 28 km/h would be classified as BICYCLE
    */
   const bicycleCarOverlapWarning = computed(() => {
-    if (!prefs.value?.bicycleEnabled) return null
+    if (!prefs.value?.bicycleEnabled || !isCarEnabled()) return null
 
     const bicycleMaxAvg = prefs.value?.bicycleMaxAvgSpeed ?? 25.0
     const bicycleMaxMax = prefs.value?.bicycleMaxMaxSpeed ?? 35.0
@@ -48,7 +49,7 @@ export function useClassificationValidation(prefs) {
    * Only warn if car min is HIGHER than bicycle max (creating a gap where trips become UNKNOWN)
    */
   const bicycleCarGapWarning = computed(() => {
-    if (!prefs.value?.bicycleEnabled) return null
+    if (!prefs.value?.bicycleEnabled || !isCarEnabled()) return null
 
     const bicycleMaxAvg = prefs.value?.bicycleMaxAvgSpeed ?? 25.0
     const carMinAvg = prefs.value?.carMinAvgSpeed ?? 10.0
@@ -223,6 +224,8 @@ export function useClassificationValidation(prefs) {
    * Check for car min/max inversion
    */
   const carMinMaxWarning = computed(() => {
+    if (!isCarEnabled()) return null
+
     const minAvg = prefs.value?.carMinAvgSpeed
     const minMax = prefs.value?.carMinMaxSpeed
 

@@ -40,6 +40,7 @@ public class TimelinePreferences {
     // Travel Classification Settings
     private Double walkingMaxAvgSpeed;
     private Double walkingMaxMaxSpeed;
+    private Boolean carEnabled;
     private Double carMinAvgSpeed;
     private Double carMinMaxSpeed;
     private Double shortDistanceKm;

@@ -26,7 +26,7 @@ public enum TripType {
 
     /**
      * Car trip - characterized by higher speeds and vehicular movement patterns.
-     * Always enabled (mandatory type).
+     * Optional type, enabled by default.
      */
     CAR,
 

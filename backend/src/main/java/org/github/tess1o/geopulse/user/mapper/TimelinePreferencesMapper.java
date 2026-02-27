@@ -90,6 +90,8 @@ public interface TimelinePreferencesMapper {
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "walkingMaxMaxSpeed", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @org.mapstruct.Mapping(target = "carEnabled",
+                          nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carMinAvgSpeed", 
                           nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @org.mapstruct.Mapping(target = "carMinMaxSpeed", 
@@ -175,6 +177,7 @@ public interface TimelinePreferencesMapper {
                     .gapTripInferenceMaxGapHours(fromImport.getGapTripInferenceMaxGapHours())
                     .walkingMaxAvgSpeed(fromImport.getWalkingMaxAvgSpeed())
                     .walkingMaxMaxSpeed(fromImport.getWalkingMaxMaxSpeed())
+                    .carEnabled(fromImport.getCarEnabled())
                     .carMinAvgSpeed(fromImport.getCarMinAvgSpeed())
                     .carMinMaxSpeed(fromImport.getCarMinMaxSpeed())
                     .shortDistanceKm(fromImport.getShortDistanceKm())
@@ -224,6 +227,7 @@ public interface TimelinePreferencesMapper {
                 .gapTripInferenceMaxGapHours(existing.getGapTripInferenceMaxGapHours())
                 .walkingMaxAvgSpeed(existing.getWalkingMaxAvgSpeed())
                 .walkingMaxMaxSpeed(existing.getWalkingMaxMaxSpeed())
+                .carEnabled(existing.getCarEnabled())
                 .carMinAvgSpeed(existing.getCarMinAvgSpeed())
                 .carMinMaxSpeed(existing.getCarMinMaxSpeed())
                 .shortDistanceKm(existing.getShortDistanceKm())

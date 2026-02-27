@@ -173,7 +173,7 @@
       title="Running"
       subtitle="Optional transport type"
       icon="pi pi-bolt"
-      description="Detects running/jogging trips (7-14 km/h typical range). Conservative thresholds separate running from fast walking and slow cycling. When disabled, running speeds are captured by BICYCLE (if enabled) or CAR."
+      description="Detects running/jogging trips (7-14 km/h typical range). Conservative thresholds separate running from fast walking and slow cycling. When disabled, running speeds are captured by BICYCLE (if enabled) or CAR/UNKNOWN."
       :enabled="modelValue.runningEnabled"
       @update:enabled="updatePref('runningEnabled', $event)"
       :collapsible="true"
@@ -234,10 +234,12 @@
     <TransportTypeCard
       type="car"
       title="Car"
-      subtitle="Mandatory transport type"
+      subtitle="Optional transport type (enabled by default)"
       icon="pi pi-car"
-      description="Detects motorized vehicle transport (10+ km/h). High speed variance indicates stop-and-go traffic."
-      :mandatory="true"
+      description="Detects motorized vehicle transport (10+ km/h). Disable this if you want non-matching motorized trips to fall back to UNKNOWN."
+      :enabled="modelValue.carEnabled !== false"
+      @update:enabled="updatePref('carEnabled', $event)"
+      :collapsible="true"
       :validation-messages="getWarningMessagesForType('car').value"
     >
       <template #parameters>

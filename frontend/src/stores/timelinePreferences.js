@@ -29,6 +29,7 @@ export const useTimelinePreferencesStore = defineStore('timelinePreferences', {
         // Travel classification preference getters with defaults
         getWalkingMaxAvgSpeed: (state) => state.timelinePreferences?.walkingMaxAvgSpeed ?? 6.0,
         getWalkingMaxMaxSpeed: (state) => state.timelinePreferences?.walkingMaxMaxSpeed ?? 8.0,
+        getCarEnabled: (state) => state.timelinePreferences?.carEnabled ?? true,
         getCarMinAvgSpeed: (state) => state.timelinePreferences?.carMinAvgSpeed ?? 8.0,
         getCarMinMaxSpeed: (state) => state.timelinePreferences?.carMinMaxSpeed ?? 15.0,
         getShortDistanceKm: (state) => state.timelinePreferences?.shortDistanceKm ?? 1.0,

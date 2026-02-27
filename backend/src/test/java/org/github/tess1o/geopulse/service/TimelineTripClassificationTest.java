@@ -23,6 +23,7 @@ public class TimelineTripClassificationTest {
 
     private static final TimelineConfig config = TimelineConfig.builder()
             .staypointRadiusMeters(200)
+            .carEnabled(true)
             .carMinAvgSpeed(10.0)
             .carMinMaxSpeed(15.0)
             .walkingMaxAvgSpeed(6.0)
@@ -77,6 +78,33 @@ public class TimelineTripClassificationTest {
         assertEquals(TripType.CAR, tripType);
     }
 
+    @Test
+    void testCarClassification_WhenCarDisabled() {
+        TimelineConfig noCarConfig = TimelineConfig.builder()
+                .carEnabled(false)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .bicycleEnabled(false)
+                .runningEnabled(false)
+                .trainEnabled(false)
+                .flightEnabled(false)
+                .build();
+
+        // Motorized speed with no matching optional type should fall back to UNKNOWN
+        TripGpsStatistics stats = new TripGpsStatistics(40.0 / 3.6, 65.0 / 3.6, 18.0, 0);
+
+        TripType result = classification.classifyTravelType(
+                stats,
+                Duration.ofMinutes(25),
+                16_500,
+                noCarConfig
+        );
+
+        assertEquals(TripType.UNKNOWN, result);
+    }
+
     private double calculateTripDistance(List<? extends GpsPoint> path) {
         if (path == null || path.size() < 2) {
             return 0.0;
@@ -108,6 +136,31 @@ public class TimelineTripClassificationTest {
         TripType car50kmh = classification.classifyTravelType(TripGpsStatistics.empty(), Duration.ofMinutes(60), 50*1000, config);
         assertEquals(TripType.CAR, car50kmh);
 
+    }
+
+    @Test
+    void testNoSpeedCalculationCar_WhenCarDisabled() {
+        TimelineConfig noCarConfig = TimelineConfig.builder()
+                .carEnabled(false)
+                .carMinAvgSpeed(10.0)
+                .carMinMaxSpeed(15.0)
+                .walkingMaxAvgSpeed(6.0)
+                .walkingMaxMaxSpeed(8.0)
+                .bicycleEnabled(false)
+                .runningEnabled(false)
+                .trainEnabled(false)
+                .flightEnabled(false)
+                .build();
+
+        // 21 km/h avg speed with all optional transport types disabled
+        TripType result = classification.classifyTravelType(
+                TripGpsStatistics.empty(),
+                Duration.ofMinutes(30),
+                10_500,
+                noCarConfig
+        );
+
+        assertEquals(TripType.UNKNOWN, result);
     }
 
     @Test
