@@ -83,6 +83,8 @@ public class UpdateTimelinePreferencesRequest {
     @DecimalMin(value = "5.0", message = "Walking max maximum speed must be at least 5.0 km/h") 
     @DecimalMax(value = "15.0", message = "Walking max maximum speed must be at most 15.0 km/h")
     private Double walkingMaxMaxSpeed;
+
+    private Boolean carEnabled;
     
     @DecimalMin(value = "5.0", message = "Car min average speed must be at least 5.0 km/h")
     @DecimalMax(value = "25.0", message = "Car min average speed must be at most 25.0 km/h")

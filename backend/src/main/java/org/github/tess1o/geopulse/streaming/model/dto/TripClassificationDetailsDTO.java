@@ -41,14 +41,15 @@ public record TripClassificationDetailsDTO(
 
     /**
      * Configuration thresholds used for classification.
-     * Optional types (bicycle, running, train, flight) may be null if disabled.
+     * Optional types (car, bicycle, running, train, flight) may be null if disabled.
      */
     public record ClassificationThresholds(
             // WALK thresholds (mandatory)
             Double walkingMaxAvgSpeed,
             Double walkingMaxMaxSpeed,
 
-            // CAR thresholds (mandatory)
+            // CAR thresholds (optional, enabled by default)
+            Boolean carEnabled,
             Double carMinAvgSpeed,
             Double carMinMaxSpeed,
 

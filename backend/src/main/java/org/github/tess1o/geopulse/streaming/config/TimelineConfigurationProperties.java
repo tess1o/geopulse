@@ -116,6 +116,10 @@ public class TimelineConfigurationProperties {
     @StaticInitSafe
     String walkingMaxMaxSpeed;
 
+    @ConfigProperty(name = "geopulse.timeline.travel.classification.car.enabled", defaultValue = "true")
+    @StaticInitSafe
+    String carEnabled;
+
     @ConfigProperty(name = "geopulse.timeline.travel.classification.car.min_avg_speed", defaultValue = "10.0")
     @StaticInitSafe
     String carMinAvgSpeed;

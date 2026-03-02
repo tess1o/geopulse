@@ -207,4 +207,19 @@ class TimelinePreferencesUpdaterTest {
         assertNotNull(persistedPrefs);
         assertEquals(999, persistedPrefs.getStaypointRadiusMeters());
     }
+
+    @Test
+    @Transactional
+    void testUpdateTimelinePreferences_ClassificationFlagUpdate() {
+        UpdateTimelinePreferencesRequest request = new UpdateTimelinePreferencesRequest();
+        request.setCarEnabled(false);
+
+        userService.updateTimelinePreferences(testUser.getId(), request);
+
+        UserEntity freshUser = userRepository.findById(testUser.getId());
+        TimelinePreferences persistedPrefs = freshUser.getTimelinePreferences();
+
+        assertNotNull(persistedPrefs);
+        assertEquals(false, persistedPrefs.getCarEnabled());
+    }
 }

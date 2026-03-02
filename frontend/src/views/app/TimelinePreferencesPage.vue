@@ -344,6 +344,7 @@ const confirmSavePreferences = () => {
 const hasClassificationParameters = (changes) => {
   const classificationFields = [
     'walkingMaxAvgSpeed', 'walkingMaxMaxSpeed',
+    'carEnabled',
     'carMinAvgSpeed', 'carMinMaxSpeed', 'shortDistanceKm',
     // Bicycle
     'bicycleEnabled', 'bicycleMinAvgSpeed', 'bicycleMaxAvgSpeed', 'bicycleMaxMaxSpeed',

@@ -213,6 +213,14 @@ public class TimelineConfig {
      * Trips with maximum speeds below this threshold are likely walking trips.
      */
     private Double walkingMaxMaxSpeed;
+
+    /**
+     * Enable or disable car trip type detection.
+     * When disabled, trips that would otherwise match car thresholds
+     * fall back to UNKNOWN unless another transport type matches first.
+     * Default: true (enabled)
+     */
+    private Boolean carEnabled;
     
     /**
      * Minimum average speed in km/h to classify movement as car travel.
@@ -269,7 +277,7 @@ public class TimelineConfig {
     // Optional Trip Types Configuration - Bicycle
     /**
      * Enable or disable bicycle trip type detection.
-     * When disabled, trips in bicycle speed range (8-25 km/h) fall back to CAR or WALK classification.
+     * When disabled, trips in bicycle speed range (8-25 km/h) fall back to CAR (if enabled) or UNKNOWN/WALK classification.
      * Default: false (disabled)
      */
     private Boolean bicycleEnabled;
@@ -298,7 +306,7 @@ public class TimelineConfig {
     // Optional Trip Types Configuration - Running
     /**
      * Enable or disable running trip type detection.
-     * When disabled, trips in running speed range (7-14 km/h) fall back to BICYCLE or CAR classification.
+     * When disabled, trips in running speed range (7-14 km/h) fall back to BICYCLE (if enabled) or CAR/UNKNOWN classification.
      * Default: false (disabled)
      */
     private Boolean runningEnabled;
@@ -327,7 +335,7 @@ public class TimelineConfig {
     // Optional Trip Types Configuration - Train
     /**
      * Enable or disable train trip type detection.
-     * When disabled, trips matching train criteria fall back to CAR classification.
+     * When disabled, trips matching train criteria fall back to CAR (if enabled) or UNKNOWN classification.
      * Default: false (disabled)
      */
     private Boolean trainEnabled;

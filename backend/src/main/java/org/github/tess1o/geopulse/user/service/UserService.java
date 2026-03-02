@@ -498,6 +498,7 @@ public class UserService {
     private boolean hasClassificationParameters(UpdateTimelinePreferencesRequest update) {
         return update.getWalkingMaxAvgSpeed() != null ||
                 update.getWalkingMaxMaxSpeed() != null ||
+                update.getCarEnabled() != null ||
                 update.getCarMinAvgSpeed() != null ||
                 update.getCarMinMaxSpeed() != null ||
                 update.getShortDistanceKm() != null ||
