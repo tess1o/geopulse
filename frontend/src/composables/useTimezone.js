@@ -28,6 +28,11 @@ const DATE_FORMAT_PRIMEVUE = {
     DMY: 'dd/mm/yy',
     YMD: 'yy-mm-dd'
 }
+const DATE_FORMAT_FIRST_DAY_OF_WEEK = {
+    MDY: 0,
+    DMY: 1,
+    YMD: 1
+}
 
 const normalizeDateFormat = (value) => {
     const normalized = String(value || '').trim().toUpperCase()
@@ -222,6 +227,7 @@ export function useTimezone() {
     const formatUrlDate = (date) => format(date, 'YYYY-MM-DD')
 
     const getPrimeVueDatePickerFormat = () => DATE_FORMAT_PRIMEVUE[getDateFormat()]
+    const getPrimeVueFirstDayOfWeek = () => DATE_FORMAT_FIRST_DAY_OF_WEEK[getDateFormat()]
 
     const formatDateLong = (date) => {
         // Handle YYYY-MM-DD strings directly in user timezone
@@ -569,6 +575,7 @@ export function useTimezone() {
         formatDateWithYear,
         formatUrlDate,
         getPrimeVueDatePickerFormat,
+        getPrimeVueFirstDayOfWeek,
         timeAgo,
 
         // Timeline Specific
