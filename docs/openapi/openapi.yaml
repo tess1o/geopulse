@@ -1163,6 +1163,8 @@ components:
           maximum: 15.0
           minimum: 5.0
           type: number
+        carEnabled:
+          type: boolean
         carMinAvgSpeed:
           format: double
           maximum: 25.0
@@ -4809,6 +4811,38 @@ paths:
       - Place Details Resource
       security:
       - jwt: []
+  /api/place-details/{type}/{id}/photo-search-window:
+    get:
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - name: type
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          default: 100.0
+          type: number
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Place Photo Search Window
+      tags:
+      - Place Details Resource
+      security:
+      - jwt: []
   /api/place-details/{type}/{id}/visits:
     get:
       parameters:
@@ -5399,6 +5433,127 @@ paths:
       - Immich Resource
       security:
       - jwt: []
+  /api/users/me/immich/photos/map-marker/photos:
+    get:
+      parameters:
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: coordinatePrecision
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: markerLatitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: markerLongitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Current User Photos For Map Marker
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/me/immich/photos/map-markers:
+    get:
+      parameters:
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: coordinatePrecision
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Current User Photo Map Markers
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
   /api/users/me/immich/photos/search:
     get:
       parameters:
@@ -5681,6 +5836,137 @@ paths:
       - Immich Resource
       security:
       - jwt: []
+  /api/users/{userId}/immich/photos/map-marker/photos:
+    get:
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: coordinatePrecision
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: markerLatitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: markerLongitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Photos For Map Marker
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
+  /api/users/{userId}/immich/photos/map-markers:
+    get:
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: city
+        in: query
+        schema:
+          type: string
+      - name: coordinatePrecision
+        in: query
+        schema:
+          format: int32
+          type: integer
+      - name: country
+        in: query
+        schema:
+          type: string
+      - name: endDate
+        in: query
+        schema:
+          type: string
+      - name: latitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: longitude
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: radiusMeters
+        in: query
+        schema:
+          format: double
+          type: number
+      - name: startDate
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json: {}
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Photo Map Markers
+      tags:
+      - Immich Resource
+      security:
+      - jwt: []
   /api/users/{userId}/immich/photos/search:
     get:
       parameters:
@@ -5803,7 +6089,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.19.0
+  version: 1.19.1
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
