@@ -128,6 +128,7 @@ GeoPulse comparing to Google Timeline allows to change almost any timeline param
 regeneration. Thus, we do not allow to modify Stays or Trips – those changes will be lost once timeline is regenerated
 again. It's a fundumental tradeoff between flexibility (we allow end users to change almost any timeline parameter) and
 allowing to modify timeline data.
+
 ---
 
 ## Troubleshooting
