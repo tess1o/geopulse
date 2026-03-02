@@ -28,6 +28,7 @@ class TimelinePreferencesMapperUnitTest {
                 .isMergeEnabled(true)
                 .mergeMaxDistanceMeters(200)
                 .mergeMaxTimeGapMinutes(30)
+                .carEnabled(false)
                 .tripDetectionAlgorithm("claude")
                 .build();
 
@@ -43,6 +44,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(true, config.getIsMergeEnabled());
         assertEquals(200, config.getMergeMaxDistanceMeters());
         assertEquals(30, config.getMergeMaxTimeGapMinutes());
+        assertEquals(false, config.getCarEnabled());
         assertEquals("claude", config.getTripDetectionAlgorithm());
     }
 
@@ -53,6 +55,7 @@ class TimelinePreferencesMapperUnitTest {
                 .staypointVelocityThreshold(1.0)
                 .staypointRadiusMeters(75)
                 .isMergeEnabled(false)
+                .carEnabled(false)
                 .build();
 
         TimelineConfig config = mapper.requestToConfig(request);
@@ -62,6 +65,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(1.0, config.getStaypointVelocityThreshold());
         assertEquals(75, config.getStaypointRadiusMeters());
         assertEquals(false, config.getIsMergeEnabled());
+        assertEquals(false, config.getCarEnabled());
     }
 
     @Test
@@ -72,6 +76,7 @@ class TimelinePreferencesMapperUnitTest {
                 .staypointRadiusMeters(150)
                 .isMergeEnabled(true)
                 .mergeMaxDistanceMeters(300)
+                .carEnabled(false)
                 .build();
 
         TimelinePreferences preferences = new TimelinePreferences();
@@ -83,6 +88,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(150, preferences.getStaypointRadiusMeters());
         assertEquals(true, preferences.getIsMergeEnabled());
         assertEquals(300, preferences.getMergeMaxDistanceMeters());
+        assertEquals(false, preferences.getCarEnabled());
     }
 
     @Test
@@ -94,6 +100,7 @@ class TimelinePreferencesMapperUnitTest {
                 .tripDetectionAlgorithm("original")
                 .isMergeEnabled(true)
                 .mergeMaxDistanceMeters(300)
+                .carEnabled(true)
                 .build();
 
         TimelinePreferences preferences = mapper.configToPreferences(config);
@@ -105,6 +112,7 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals("original", preferences.getTripDetectionAlgorithm());
         assertEquals(true, preferences.getIsMergeEnabled());
         assertEquals(300, preferences.getMergeMaxDistanceMeters());
+        assertEquals(true, preferences.getCarEnabled());
     }
 
     @Test

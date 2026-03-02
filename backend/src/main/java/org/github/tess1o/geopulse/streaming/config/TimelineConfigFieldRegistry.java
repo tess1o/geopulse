@@ -196,6 +196,13 @@ public class TimelineConfigFieldRegistry {
                         Double::valueOf
                 ))
                 .register(new ConfigField<>(
+                        "geopulse.timeline.travel.classification.car.enabled",
+                        properties.getCarEnabled(),
+                        TimelineConfig::getCarEnabled,
+                        TimelineConfig::setCarEnabled,
+                        Boolean::valueOf
+                ))
+                .register(new ConfigField<>(
                         "geopulse.timeline.travel.classification.car.min_avg_speed",
                         properties.getCarMinAvgSpeed(),
                         TimelineConfig::getCarMinAvgSpeed,

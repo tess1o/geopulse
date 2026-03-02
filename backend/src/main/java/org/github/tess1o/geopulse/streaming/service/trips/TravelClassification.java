@@ -14,7 +14,7 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
 /**
  * Service for classifying trip types based on GPS movement patterns.
  * <p>
- * Supports both mandatory types (WALK, CAR) and optional types (BICYCLE, TRAIN, FLIGHT).
+ * Supports mandatory WALK type and optional types (CAR, BICYCLE, TRAIN, FLIGHT).
  * Classification is based on speed analysis and movement characteristics.
  * <p>
  * GPS RELIABILITY VALIDATION (BIDIRECTIONAL):
@@ -30,8 +30,8 @@ import static org.github.tess1o.geopulse.streaming.model.shared.TripType.*;
  * 2. TRAIN - high speed with low variance (30-150 km/h, variance &lt; 15)
  * 3. BICYCLE - medium speeds (8-25 km/h) - checked before RUNNING
  * 4. RUNNING - medium-low speeds (7-14 km/h) - MUST be before CAR!
- * 5. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak)
- * 6. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak)
+ * 5. CAR - motorized transport (10+ km/h avg OR 15+ km/h peak, if enabled)
+ * 6. WALK - low speeds (&lt;= 6 km/h avg, &lt;= 8 km/h peak, mandatory)
  * 7. UNKNOWN - fallback
  */
 @ApplicationScoped
@@ -452,7 +452,7 @@ public class TravelClassification {
      * 2. TRAIN - before CAR (uses variance discriminator)
      * 3. BICYCLE - checked before RUNNING (higher speeds)
      * 4. RUNNING - BEFORE CAR (overlapping speeds)
-     * 5. CAR - mandatory type
+     * 5. CAR - optional type (enabled by default)
      * 6. WALK - mandatory type
      * 7. UNKNOWN - fallback
      *
@@ -519,11 +519,12 @@ public class TravelClassification {
             return RUNNING;
         }
 
-        // 5. CAR - motorized transport (mandatory)
+        // 5. CAR - motorized transport (optional, enabled by default)
         //    CRITICAL: Checked AFTER BICYCLE and RUNNING to avoid capturing human-powered trips
         //    Uses OR logic: avg >= 10 OR max >= 15
-        if (avgSpeedKmh >= config.getCarMinAvgSpeed() ||
-                maxSpeedKmh >= config.getCarMinMaxSpeed()) {
+        if (isCarEnabled(config) &&
+                (avgSpeedKmh >= config.getCarMinAvgSpeed() ||
+                        maxSpeedKmh >= config.getCarMinMaxSpeed())) {
             return CAR;
         }
 
@@ -541,7 +542,8 @@ public class TravelClassification {
 
     /**
      * Verifies and corrects the trip classification based on realistic speed constraints.
-     * If a trip is classified as WALK but the speed is unrealistically high, it's corrected to CAR.
+     * If a trip is classified as WALK but the speed is unrealistically high,
+     * it is corrected to CAR (if enabled) or UNKNOWN (if CAR is disabled).
      *
      * @param tripType       the initial trip classification
      * @param distanceMeters the total distance of the trip in meters
@@ -558,16 +560,23 @@ public class TravelClassification {
             final double hours = tripDuration / 3600.0;
             final double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-            // If calculated speed exceeds walking threshold with tolerance, re-classify as CAR
+            // If calculated speed exceeds walking threshold with tolerance, re-classify as CAR (if enabled)
+            // or UNKNOWN (if CAR is disabled) to avoid forcing a disabled transport type.
             // Uses WALK_VERIFICATION_COEFFICIENT (1.2x) to allow for GPS inaccuracies in short trips
             if (avgSpeedKmh > config.getWalkingMaxMaxSpeed() * WALK_VERIFICATION_COEFFICIENT) {
-                log.debug("Correcting WALK to CAR due to unrealistic speed: {} km/h (exceeds {} km/h threshold)",
+                TripType fallbackType = isCarEnabled(config) ? CAR : UNKNOWN;
+                log.debug("Correcting WALK to {} due to unrealistic speed: {} km/h (exceeds {} km/h threshold)",
+                        fallbackType,
                         avgSpeedKmh,
                         config.getWalkingMaxMaxSpeed() * WALK_VERIFICATION_COEFFICIENT);
-                return CAR;
+                return fallbackType;
             }
         }
         return tripType;
+    }
+
+    private boolean isCarEnabled(TimelineConfig config) {
+        return !Boolean.FALSE.equals(config.getCarEnabled());
     }
 
     // ============================================

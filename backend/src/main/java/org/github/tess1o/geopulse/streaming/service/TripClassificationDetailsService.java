@@ -61,7 +61,8 @@ public class TripClassificationDetailsService {
 
     /**
      * Coefficient for walk speed verification (multiplier).
-     * If calculated speed exceeds walkingMaxMaxSpeed * this coefficient, reclassify as CAR.
+     * If calculated speed exceeds walkingMaxMaxSpeed * this coefficient,
+     * reclassify as CAR (if enabled) or UNKNOWN.
      */
     private static final double WALK_VERIFICATION_COEFFICIENT = 1.2;
 
@@ -272,8 +273,9 @@ public class TripClassificationDetailsService {
                 config.getWalkingMaxMaxSpeed(),
 
                 // CAR
-                config.getCarMinAvgSpeed(),
-                config.getCarMinMaxSpeed(),
+                isCarEnabled(config),
+                isCarEnabled(config) ? config.getCarMinAvgSpeed() : null,
+                isCarEnabled(config) ? config.getCarMinMaxSpeed() : null,
 
                 // BICYCLE
                 config.getBicycleEnabled(),
@@ -520,7 +522,8 @@ public class TripClassificationDetailsService {
      * Verifies and corrects the trip classification based on realistic speed constraints.
      * Replicates TravelClassification.verifyAndCorrectClassification() logic.
      *
-     * If a trip is classified as WALK but the speed is unrealistically high, it's corrected to CAR.
+     * If a trip is classified as WALK but the speed is unrealistically high,
+     * it's corrected to CAR (if enabled) or UNKNOWN.
      *
      * @param tripType       the initial trip classification
      * @param distanceMeters the total distance of the trip in meters
@@ -537,13 +540,16 @@ public class TripClassificationDetailsService {
             final double hours = tripDuration / 3600.0;
             final double avgSpeedKmh = hours > 0 ? distanceKm / hours : 0.0;
 
-            // If calculated speed exceeds walking threshold with tolerance, re-classify as CAR
+            // If calculated speed exceeds walking threshold with tolerance, re-classify as CAR (if enabled)
+            // or UNKNOWN (if CAR is disabled).
             // Uses WALK_VERIFICATION_COEFFICIENT (1.2x) to allow for GPS inaccuracies in short trips
             if (avgSpeedKmh > config.getWalkingMaxMaxSpeed() * WALK_VERIFICATION_COEFFICIENT) {
-                log.debug("Correcting WALK to CAR due to unrealistic speed: {} km/h (exceeds {} km/h threshold)",
+                String fallbackType = isCarEnabled(config) ? "CAR" : "UNKNOWN";
+                log.debug("Correcting WALK to {} due to unrealistic speed: {} km/h (exceeds {} km/h threshold)",
+                        fallbackType,
                         avgSpeedKmh,
                         config.getWalkingMaxMaxSpeed() * WALK_VERIFICATION_COEFFICIENT);
-                return "CAR";
+                return fallbackType;
             }
         }
         return tripType;
@@ -748,6 +754,11 @@ public class TripClassificationDetailsService {
     }
 
     private ClassificationStep checkCar(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
+        if (!isCarEnabled(config)) {
+            return new ClassificationStep("CAR", false, false,
+                    "Car detection is not enabled in configuration", List.of());
+        }
+
         List<ThresholdCheck> checks = new ArrayList<>();
         boolean avgCheck = avgSpeedKmh >= config.getCarMinAvgSpeed();
         boolean maxCheck = maxSpeedKmh >= config.getCarMinMaxSpeed();
@@ -765,6 +776,10 @@ public class TripClassificationDetailsService {
                 avgSpeedKmh, config.getCarMinAvgSpeed(), maxSpeedKmh, config.getCarMinMaxSpeed(), speedSource);
 
         return new ClassificationStep("CAR", true, passed, reason, checks);
+    }
+
+    private boolean isCarEnabled(TimelineConfig config) {
+        return !Boolean.FALSE.equals(config.getCarEnabled());
     }
 
     private ClassificationStep checkWalk(double avgSpeedKmh, double maxSpeedKmh, TimelineConfig config, String speedSource) {
