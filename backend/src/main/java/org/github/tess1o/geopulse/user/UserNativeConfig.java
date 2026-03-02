@@ -15,6 +15,8 @@ import org.github.tess1o.geopulse.user.model.*;
         UserSearchDTO.class,
         UpdateTimelineDisplayPreferencesRequest.class,
         TimelineDisplayPreferences.class,
+        RefreshTokenResponse.class,
+        MeasureUnit.class
 })
 public class UserNativeConfig {
 }
