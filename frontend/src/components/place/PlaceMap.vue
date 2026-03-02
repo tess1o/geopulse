@@ -42,6 +42,10 @@ const props = defineProps({
   photos: {
     type: Array,
     default: () => []
+  },
+  photoMarkerGroups: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -62,6 +66,7 @@ const {
   clearPhotoMarkers,
   clearFocusMarker,
   renderPhotoMarkers: renderMapPhotoMarkers,
+  renderPhotoMarkerGroups: renderMapPhotoMarkerGroups,
   focusOnCoordinates: focusOnMapCoordinates,
   focusOnPhoto: focusOnMapPhoto
 } = usePhotoMapMarkers({ emit })
@@ -149,6 +154,11 @@ const addAreaRectangle = () => {
 const renderPhotoMarkers = () => {
   if (!map.value) return
 
+  if (Array.isArray(props.photoMarkerGroups) && props.photoMarkerGroups.length > 0) {
+    renderMapPhotoMarkerGroups(map.value, props.photoMarkerGroups)
+    return
+  }
+
   renderMapPhotoMarkers(map.value, props.photos)
 }
 
@@ -176,6 +186,12 @@ watch(() => props.photos, () => {
     renderPhotoMarkers()
   })
 })
+
+watch(() => props.photoMarkerGroups, () => {
+  nextTick(() => {
+    renderPhotoMarkers()
+  })
+}, { deep: false })
 
 onBeforeUnmount(() => {
   clearPhotoMarkers()

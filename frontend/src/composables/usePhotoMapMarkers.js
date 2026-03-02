@@ -63,6 +63,25 @@ const buildPhotoGroups = (photos) => {
   return Array.from(groups.values())
 }
 
+const normalizeProvidedGroups = (markerGroups = []) => {
+  if (!Array.isArray(markerGroups)) {
+    return []
+  }
+
+  return markerGroups
+    .filter((group) => typeof group?.latitude === 'number' && typeof group?.longitude === 'number')
+    .map((group) => ({
+      latitude: group.latitude,
+      longitude: group.longitude,
+      photos: Array.isArray(group.photos) ? group.photos : [],
+      indices: Array.isArray(group.indices) ? group.indices : [],
+      markerKey: group.markerKey || `${group.latitude},${group.longitude}`,
+      count: Number.isFinite(group.count) ? Number(group.count) : (
+        Number.isFinite(group.photoCount) ? Number(group.photoCount) : (Array.isArray(group.photos) ? group.photos.length : 1)
+      )
+    }))
+}
+
 export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarkerZIndexOffset = 500 } = {}) => {
   const photoMarkers = ref([])
   const focusMarker = ref(null)
@@ -106,6 +125,52 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
           photos: group.photos,
           indices: group.indices,
           initialIndex: 0
+        })
+      })
+
+      photoMarkers.value.push(marker)
+    })
+
+    return groups
+  }
+
+  const renderPhotoMarkerGroups = (mapInstance, markerGroups = []) => {
+    if (!mapInstance) {
+      return []
+    }
+
+    clearPhotoMarkers()
+    const groups = normalizeProvidedGroups(markerGroups)
+
+    groups.forEach((group) => {
+      const marker = L.marker([group.latitude, group.longitude], {
+        icon: createPhotoMarkerIcon(Math.max(group.count || 1, 1)),
+        zIndexOffset: markerZIndexOffset
+      }).addTo(mapInstance)
+
+      marker.on('click', () => {
+        if (group.photos.length > 0) {
+          emitPhotoClick({
+            photos: group.photos,
+            indices: group.indices,
+            initialIndex: 0,
+            markerGroup: {
+              latitude: group.latitude,
+              longitude: group.longitude,
+              markerKey: group.markerKey,
+              count: group.count
+            }
+          })
+          return
+        }
+
+        emitPhotoClick({
+          markerGroup: {
+            latitude: group.latitude,
+            longitude: group.longitude,
+            markerKey: group.markerKey,
+            count: group.count
+          }
         })
       })
 
@@ -165,6 +230,7 @@ export const usePhotoMapMarkers = ({ emit, markerZIndexOffset = 300, focusMarker
     clearPhotoMarkers,
     clearFocusMarker,
     renderPhotoMarkers,
+    renderPhotoMarkerGroups,
     focusOnCoordinates,
     focusOnPhoto
   }

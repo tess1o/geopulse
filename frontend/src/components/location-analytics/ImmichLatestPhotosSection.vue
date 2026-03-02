@@ -76,6 +76,7 @@
     :photos="photoViewerPhotos"
     :initial-photo-index="photoViewerIndex"
     :allow-show-on-map="showOnMapEnabled"
+    :preloaded-blob-url-resolver="getPhotoBlobUrl"
     @show-on-map="handleShowOnMap"
     @close="closePhotoViewer"
   />
@@ -153,6 +154,7 @@ import { useTimezone } from '@/composables/useTimezone'
 const DEFAULT_LIMIT = 20
 const DEFAULT_FILTER_CACHE_TTL_MS = 60000
 const DEFAULT_FILTER_CACHE_MAX_ENTRIES = 10
+const MAP_COORDINATE_PRECISION = 4
 const inMemoryFilterDatasetCache = new Map()
 const inMemoryFilterDatasetInFlightRequests = new Map()
 
@@ -195,7 +197,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['latest-photos-change', 'show-on-map'])
+const emit = defineEmits(['latest-photos-change', 'map-markers-change', 'show-on-map'])
 
 const toast = useToast()
 const immichStore = useImmichStore()
@@ -206,6 +208,8 @@ const totalPhotos = ref(0)
 const latestPhotosLoading = ref(false)
 const latestPhotosLoadingMode = ref(null)
 const photosError = ref(null)
+const mapMarkerGroups = ref([])
+const mapMarkersLoading = ref(false)
 
 const photoBlobUrls = ref(new Map())
 const photoBlobLoadingIds = ref(new Set())
@@ -214,6 +218,7 @@ let photoBlobContextToken = 0
 const currentLimit = ref(DEFAULT_LIMIT)
 let latestRequestToken = 0
 let galleryRequestToken = 0
+let mapMarkersRequestToken = 0
 
 const galleryVisible = ref(false)
 const galleryLoading = ref(false)
@@ -226,6 +231,8 @@ const photoViewerIndex = ref(0)
 const photoViewerPhotos = ref([])
 
 const immichConfigChecked = ref(false)
+const mapMarkerPhotosCache = new Map()
+const mapMarkerPhotosInFlight = new Map()
 
 const showSection = computed(() => immichConfigChecked.value && immichStore.isConfigured)
 const isLoadingMore = computed(() => latestPhotosLoading.value && latestPhotosLoadingMode.value === 'more')
@@ -306,6 +313,62 @@ const normalizePhoto = (photo) => ({
   thumbnailUrl: photo.thumbnailUrl ? photo.thumbnailUrl.replace(/^\/api/, '') : null,
   downloadUrl: photo.downloadUrl ? photo.downloadUrl.replace(/^\/api/, '') : null
 })
+
+const buildMarkerKey = (latitude, longitude, precision = MAP_COORDINATE_PRECISION) => {
+  if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+    return ''
+  }
+
+  const factor = 10 ** precision
+  const roundedLat = Math.round(latitude * factor) / factor
+  const roundedLng = Math.round(longitude * factor) / factor
+  return `${roundedLat},${roundedLng}`
+}
+
+const buildMarkerGroupsFromPhotos = (photos, { includePhotos = false } = {}) => {
+  const groups = new Map()
+
+  ;(Array.isArray(photos) ? photos : []).forEach((photo) => {
+    if (typeof photo?.latitude !== 'number' || typeof photo?.longitude !== 'number') {
+      return
+    }
+
+    const markerKey = buildMarkerKey(photo.latitude, photo.longitude)
+    if (!markerKey) {
+      return
+    }
+
+    if (!groups.has(markerKey)) {
+      groups.set(markerKey, {
+        latitude: photo.latitude,
+        longitude: photo.longitude,
+        markerKey,
+        count: 0,
+        latestTakenAt: photo.takenAt || null,
+        photos: includePhotos ? [] : undefined
+      })
+    }
+
+    const group = groups.get(markerKey)
+    group.count += 1
+
+    if (photo.takenAt && (!group.latestTakenAt || photo.takenAt > group.latestTakenAt)) {
+      group.latestTakenAt = photo.takenAt
+    }
+
+    if (includePhotos && Array.isArray(group.photos)) {
+      group.photos.push(photo)
+    }
+  })
+
+  return Array.from(groups.values())
+    .sort((a, b) => {
+      if (!a.latestTakenAt && !b.latestTakenAt) return 0
+      if (!a.latestTakenAt) return 1
+      if (!b.latestTakenAt) return -1
+      return a.latestTakenAt < b.latestTakenAt ? 1 : -1
+    })
+}
 
 const getInMemoryFilterDatasetCacheKey = () => {
   if (!hasInMemoryFilter.value || !searchSignature.value) {
@@ -454,6 +517,7 @@ const normalizeBaseParams = (rawParams) => {
 const resetPhotoState = ({ resetLimit = true } = {}) => {
   latestRequestToken += 1
   galleryRequestToken += 1
+  mapMarkersRequestToken += 1
   photoBlobContextToken += 1
 
   latestPhotos.value = []
@@ -461,6 +525,10 @@ const resetPhotoState = ({ resetLimit = true } = {}) => {
   latestPhotosLoading.value = false
   latestPhotosLoadingMode.value = null
   photosError.value = null
+  mapMarkerGroups.value = []
+  mapMarkersLoading.value = false
+  mapMarkerPhotosCache.clear()
+  mapMarkerPhotosInFlight.clear()
 
   galleryVisible.value = false
   galleryLoading.value = false
@@ -508,6 +576,76 @@ const searchPhotos = async (limit = currentLimit.value) => {
   }
 
   const response = await apiService.get('/users/me/immich/photos/search', params)
+  const payload = response?.data || {}
+  const photos = (Array.isArray(payload.photos) ? payload.photos : []).map(normalizePhoto)
+  const totalCount = Number(payload.totalCount || photos.length)
+  return { photos, totalCount }
+}
+
+const searchPhotoMapMarkers = async () => {
+  const params = buildSearchParams(null)
+  if (!params) {
+    return { markers: [], totalPhotos: 0, geotaggedPhotos: 0 }
+  }
+
+  params.coordinatePrecision = MAP_COORDINATE_PRECISION
+  const response = await apiService.get('/users/me/immich/photos/map-markers', params)
+  const payload = response?.data || {}
+  const markers = Array.isArray(payload.markers) ? payload.markers : []
+  const totalPhotosCount = Number(payload.totalPhotos || 0)
+  const geotaggedPhotos = Number(payload.geotaggedPhotos || markers.reduce((acc, marker) => acc + Number(marker?.count || 0), 0))
+
+  return {
+    markers: markers.map((marker) => ({
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+      count: Number(marker.count || 0),
+      latestTakenAt: marker.latestTakenAt || null,
+      markerKey: buildMarkerKey(marker.latitude, marker.longitude)
+    })),
+    totalPhotos: totalPhotosCount,
+    geotaggedPhotos
+  }
+}
+
+const getKnownPhotosById = () => {
+  const photoMap = new Map()
+  ;[latestPhotos.value, galleryPhotos.value].forEach((collection) => {
+    collection.forEach((photo) => {
+      if (photo?.id) {
+        photoMap.set(photo.id, photo)
+      }
+    })
+  })
+
+  mapMarkerPhotosCache.forEach((photos) => {
+    if (!Array.isArray(photos)) {
+      return
+    }
+    photos.forEach((photo) => {
+      if (photo?.id && !photoMap.has(photo.id)) {
+        photoMap.set(photo.id, photo)
+      }
+    })
+  })
+
+  return photoMap
+}
+
+const searchPhotosForMarker = async ({ markerLatitude, markerLongitude, limit = null }) => {
+  const params = buildSearchParams(null)
+  if (!params) {
+    return { photos: [], totalCount: 0 }
+  }
+
+  params.coordinatePrecision = MAP_COORDINATE_PRECISION
+  params.markerLatitude = markerLatitude
+  params.markerLongitude = markerLongitude
+  if (typeof limit === 'number' && Number.isFinite(limit) && limit > 0) {
+    params.limit = limit
+  }
+
+  const response = await apiService.get('/users/me/immich/photos/map-marker/photos', params)
   const payload = response?.data || {}
   const photos = (Array.isArray(payload.photos) ? payload.photos : []).map(normalizePhoto)
   const totalCount = Number(payload.totalCount || photos.length)
@@ -620,6 +758,49 @@ const fetchLatestPhotos = async ({ append = false, mode = 'initial' } = {}) => {
     if (requestToken === latestRequestToken) {
       latestPhotosLoading.value = false
       latestPhotosLoadingMode.value = null
+    }
+  }
+}
+
+const fetchMapMarkerGroups = async () => {
+  if (!showSection.value || !hasValidSearchParams.value) {
+    mapMarkerGroups.value = []
+    return
+  }
+
+  const requestToken = ++mapMarkersRequestToken
+  mapMarkersLoading.value = true
+
+  try {
+    if (hasInMemoryFilter.value) {
+      const filteredDataset = await getFilteredPhotoDataset()
+      if (requestToken !== mapMarkersRequestToken) {
+        return
+      }
+
+      mapMarkerGroups.value = buildMarkerGroupsFromPhotos(filteredDataset, { includePhotos: true })
+      totalPhotos.value = Math.max(totalPhotos.value, filteredDataset.length)
+      return
+    }
+
+    const { markers, totalPhotos: markerTotalPhotos } = await searchPhotoMapMarkers()
+    if (requestToken !== mapMarkersRequestToken) {
+      return
+    }
+
+    mapMarkerGroups.value = markers
+    if (Number.isFinite(markerTotalPhotos) && markerTotalPhotos > 0) {
+      totalPhotos.value = Math.max(totalPhotos.value, markerTotalPhotos)
+    }
+  } catch (err) {
+    if (requestToken !== mapMarkersRequestToken) {
+      return
+    }
+    mapMarkerGroups.value = []
+    console.warn('Failed to load map marker groups:', err)
+  } finally {
+    if (requestToken === mapMarkersRequestToken) {
+      mapMarkersLoading.value = false
     }
   }
 }
@@ -750,6 +931,72 @@ const handleShowOnMap = async (photo) => {
   emit('show-on-map', photo)
 }
 
+const openPhotoViewerForMarker = async (markerGroup) => {
+  if (Array.isArray(markerGroup?.photos) && markerGroup.photos.length > 0) {
+    openPhotoViewer(markerGroup.photos, 0)
+    return
+  }
+
+  const markerLatitude = Number(markerGroup?.latitude)
+  const markerLongitude = Number(markerGroup?.longitude)
+  if (!Number.isFinite(markerLatitude) || !Number.isFinite(markerLongitude)) {
+    return
+  }
+
+  const markerKey = markerGroup?.markerKey || buildMarkerKey(markerLatitude, markerLongitude)
+  if (!markerKey) {
+    return
+  }
+
+  const cachedMarkerPhotos = mapMarkerPhotosCache.get(markerKey)
+  if (Array.isArray(cachedMarkerPhotos) && cachedMarkerPhotos.length > 0) {
+    openPhotoViewer(cachedMarkerPhotos, 0)
+    return
+  }
+
+  const existingInFlight = mapMarkerPhotosInFlight.get(markerKey)
+  if (existingInFlight) {
+    const photos = await existingInFlight
+    if (Array.isArray(photos) && photos.length > 0) {
+      openPhotoViewer(photos, 0)
+    }
+    return
+  }
+
+  const loadPromise = (async () => {
+    const { photos } = await searchPhotosForMarker({
+      markerLatitude,
+      markerLongitude,
+      limit: null
+    })
+
+    const knownPhotosById = getKnownPhotosById()
+    const mergedPhotos = photos.map((photo) => knownPhotosById.get(photo.id) || photo)
+    mapMarkerPhotosCache.set(markerKey, mergedPhotos)
+    return mergedPhotos
+  })()
+
+  mapMarkerPhotosInFlight.set(markerKey, loadPromise)
+  try {
+    const photos = await loadPromise
+    if (Array.isArray(photos) && photos.length > 0) {
+      openPhotoViewer(photos, 0)
+    }
+  } catch (err) {
+    console.error('Failed to load marker photos:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Map Preview Failed',
+      detail: err.response?.data?.message || 'Failed to load photos for this map marker',
+      life: 4000
+    })
+  } finally {
+    if (mapMarkerPhotosInFlight.get(markerKey) === loadPromise) {
+      mapMarkerPhotosInFlight.delete(markerKey)
+    }
+  }
+}
+
 const getPhotoBlobUrl = (photoId) => photoBlobUrls.value.get(photoId)
 
 const formatPhotoDate = (dateValue) => {
@@ -770,6 +1017,10 @@ watch(latestPhotos, (photos) => {
   emit('latest-photos-change', photos)
 }, { immediate: true })
 
+watch(mapMarkerGroups, (groups) => {
+  emit('map-markers-change', groups)
+}, { immediate: true })
+
 watch(
   [showSection, searchSignature, normalizedInMemoryFilterCacheKey],
   async ([visible]) => {
@@ -777,7 +1028,10 @@ watch(
     if (!visible || !hasValidSearchParams.value) {
       return
     }
-    await fetchLatestPhotos({ append: false, mode: 'initial' })
+    await Promise.all([
+      fetchLatestPhotos({ append: false, mode: 'initial' }),
+      fetchMapMarkerGroups()
+    ])
   },
   { immediate: true }
 )
@@ -800,7 +1054,8 @@ watch(galleryVisible, (visible) => {
 })
 
 defineExpose({
-  openPhotoViewer
+  openPhotoViewer,
+  openPhotoViewerForMarker
 })
 </script>
 

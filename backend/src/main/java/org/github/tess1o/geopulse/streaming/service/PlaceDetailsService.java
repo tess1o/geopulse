@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
@@ -53,6 +54,39 @@ public class PlaceDetailsService {
         } else {
             return Optional.empty();
         }
+    }
+
+    /**
+     * Get merged min/max visit window for stays near the target place geometry.
+     * Used by Immich integration to search photos for nearby related places.
+     *
+     * @param type place type ("favorite" or "geocoding")
+     * @param id place ID
+     * @param userId user ID
+     * @param radiusMeters radius in meters
+     * @return photo search window, or empty if place not found/not accessible
+     */
+    public Optional<PlacePhotoSearchWindowDTO> getPlacePhotoSearchWindow(
+            String type, Long id, UUID userId, double radiusMeters) {
+
+        if (radiusMeters <= 0) {
+            throw new IllegalArgumentException("radiusMeters must be greater than 0");
+        }
+
+        Optional<Geometry> targetGeometryOpt = resolvePlaceGeometry(type, id, userId);
+        if (targetGeometryOpt.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Object[] row = timelineStayRepository.getVisitWindowNearGeometry(userId, targetGeometryOpt.get(), radiusMeters);
+        long nearbyStayCount = row[2] instanceof Number ? ((Number) row[2]).longValue() : 0L;
+
+        return Optional.of(PlacePhotoSearchWindowDTO.builder()
+                .minVisit(TimestampUtils.getInstantSafe(row[0]))
+                .maxVisit(TimestampUtils.getInstantSafe(row[1]))
+                .nearbyStayCount(nearbyStayCount)
+                .radiusMeters(radiusMeters)
+                .build());
     }
 
     /**
@@ -182,6 +216,32 @@ public class PlaceDetailsService {
     }
 
     // Private helper methods
+
+    private Optional<Geometry> resolvePlaceGeometry(String type, Long id, UUID userId) {
+        if ("favorite".equalsIgnoreCase(type)) {
+            return favoritesRepository.findByIdAndUserId(id, userId)
+                    .map(FavoritesEntity::getGeometry);
+        }
+
+        if ("geocoding".equalsIgnoreCase(type)) {
+            Optional<ReverseGeocodingLocationEntity> geocodingOpt = geocodingRepository.findByIdOptional(id);
+            if (geocodingOpt.isEmpty()) {
+                return Optional.empty();
+            }
+
+            ReverseGeocodingLocationEntity geocoding = geocodingOpt.get();
+            if (geocoding.getUser() != null && !userId.equals(geocoding.getUser().getId())) {
+                return Optional.empty();
+            }
+
+            Point point = geocoding.getResultCoordinates() != null
+                    ? geocoding.getResultCoordinates()
+                    : geocoding.getRequestCoordinates();
+            return Optional.ofNullable(point);
+        }
+
+        return Optional.empty();
+    }
 
     private Optional<PlaceDetailsDTO> getFavoritePlaceDetails(Long favoriteId, UUID userId) {
         Optional<FavoritesEntity> favoriteOpt = favoritesRepository.findByIdAndUserId(favoriteId, userId);

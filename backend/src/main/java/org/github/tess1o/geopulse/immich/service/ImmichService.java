@@ -45,53 +45,85 @@ public class ImmichService {
 
     public CompletableFuture<ImmichPhotoSearchResponse> searchPhotos(UUID userId, ImmichPhotoSearchRequest searchRequest) {
         log.debug("Searching photos for user {} with params: {}", userId, searchRequest);
+        return loadAllFilteredPhotos(userId, searchRequest)
+                .thenApply(allFilteredPhotos -> buildSearchResponse(allFilteredPhotos, searchRequest.getLimit()));
+    }
 
-        UserEntity user = userRepository.findById(userId);
-        if (user == null) {
-            throw new IllegalArgumentException("User not found: " + userId);
-        }
+    public CompletableFuture<ImmichPhotoMapMarkersResponse> getPhotoMapMarkers(
+            UUID userId,
+            ImmichPhotoSearchRequest searchRequest,
+            Integer coordinatePrecision
+    ) {
+        int safePrecision = sanitizeCoordinatePrecision(coordinatePrecision);
 
-        ImmichPreferences immichPrefs = user.getImmichPreferences();
-        if (immichPrefs == null || !Boolean.TRUE.equals(immichPrefs.getEnabled())) {
-            log.debug("Immich not configured or disabled for user {}", userId);
-            return CompletableFuture.completedFuture(ImmichPhotoSearchResponse.builder()
-                    .photos(List.of())
-                    .totalCount(0)
-                    .build());
-        }
+        return loadAllFilteredPhotos(userId, searchRequest).thenApply((allFilteredPhotos) -> {
+            Map<String, MapMarkerAccumulator> groups = new LinkedHashMap<>();
+            int geotaggedCount = 0;
 
-        ImmichSearchRequest immichSearchRequest = ImmichSearchRequest.builder()
-                .takenAfter(searchRequest.getStartDate().format(DateTimeFormatter.ISO_INSTANT))
-                .takenBefore(searchRequest.getEndDate().format(DateTimeFormatter.ISO_INSTANT))
-                .type("IMAGE")
-                .city(trimToNull(searchRequest.getCity()))
-                .country(trimToNull(searchRequest.getCountry()))
-                .withExif(true)
-                .build();
+            for (ImmichPhotoDto photo : allFilteredPhotos) {
+                if (photo.getLatitude() == null || photo.getLongitude() == null) {
+                    continue;
+                }
 
-        PhotoSearchCacheKey cacheKey = PhotoSearchCacheKey.from(userId, searchRequest, immichSearchRequest);
-        List<ImmichPhotoDto> cachedPhotos = getCachedSearchResult(cacheKey);
-        if (cachedPhotos != null) {
-            log.debug("Returning cached Immich search result for user {} with {} photos", userId, cachedPhotos.size());
-            return CompletableFuture.completedFuture(buildSearchResponse(cachedPhotos, searchRequest.getLimit()));
-        }
+                geotaggedCount++;
+                double roundedLat = roundCoordinate(photo.getLatitude(), safePrecision);
+                double roundedLon = roundCoordinate(photo.getLongitude(), safePrecision);
+                String key = buildMarkerKey(roundedLat, roundedLon);
 
-        CompletableFuture<List<ImmichPhotoDto>> inFlightSearch = inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored ->
-                immichClient.searchAssetsAllPages(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest)
-                        .thenApply(response -> {
-                            List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest, userId);
-                            cacheSearchResult(cacheKey, allFilteredPhotos);
-                            return allFilteredPhotos;
-                        })
-                        .whenComplete((ignoredResult, throwable) -> {
-                            inFlightPhotoSearches.remove(cacheKey);
-                            if (throwable != null) {
-                                log.error("Failed to search photos for user {}: {}", userId, throwable.getMessage(), throwable);
-                            }
-                        })
-        );
+                groups.compute(key, (ignored, existing) -> {
+                    if (existing == null) {
+                        return new MapMarkerAccumulator(roundedLat, roundedLon, photo.getTakenAt(), 1);
+                    }
+                    return existing.add(photo.getTakenAt());
+                });
+            }
 
-        return inFlightSearch.thenApply(allFilteredPhotos -> buildSearchResponse(allFilteredPhotos, searchRequest.getLimit()));
+            List<ImmichPhotoMapMarkerDto> markers = groups.values().stream()
+                    .map(group -> ImmichPhotoMapMarkerDto.builder()
+                            .latitude(group.latitude())
+                            .longitude(group.longitude())
+                            .count(group.count())
+                            .latestTakenAt(group.latestTakenAt())
+                            .build())
+                    .sorted(Comparator.comparing(
+                            ImmichPhotoMapMarkerDto::getLatestTakenAt,
+                            Comparator.nullsLast(Comparator.reverseOrder())
+                    ))
+                    .toList();
+
+            return ImmichPhotoMapMarkersResponse.builder()
+                    .markers(markers)
+                    .totalPhotos(allFilteredPhotos.size())
+                    .geotaggedPhotos(geotaggedCount)
+                    .build();
+        });
+    }
+
+    public CompletableFuture<ImmichPhotoSearchResponse> getPhotosForMapMarker(
+            UUID userId,
+            ImmichPhotoSearchRequest searchRequest,
+            double markerLatitude,
+            double markerLongitude,
+            Integer coordinatePrecision,
+            Integer limit
+    ) {
+        int safePrecision = sanitizeCoordinatePrecision(coordinatePrecision);
+        double roundedMarkerLat = roundCoordinate(markerLatitude, safePrecision);
+        double roundedMarkerLon = roundCoordinate(markerLongitude, safePrecision);
+        String markerKey = buildMarkerKey(roundedMarkerLat, roundedMarkerLon);
+
+        return loadAllFilteredPhotos(userId, searchRequest).thenApply((allFilteredPhotos) -> {
+            List<ImmichPhotoDto> markerPhotos = allFilteredPhotos.stream()
+                    .filter(photo -> photo.getLatitude() != null && photo.getLongitude() != null)
+                    .filter(photo -> {
+                        double roundedLat = roundCoordinate(photo.getLatitude(), safePrecision);
+                        double roundedLon = roundCoordinate(photo.getLongitude(), safePrecision);
+                        return buildMarkerKey(roundedLat, roundedLon).equals(markerKey);
+                    })
+                    .toList();
+
+            return buildSearchResponse(markerPhotos, limit);
+        });
     }
 
     public CompletableFuture<byte[]> getPhotoThumbnail(UUID userId, String photoId) {
@@ -239,6 +271,54 @@ public class ImmichService {
         }
     }
 
+    private CompletableFuture<List<ImmichPhotoDto>> loadAllFilteredPhotos(UUID userId, ImmichPhotoSearchRequest searchRequest) {
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            throw new IllegalArgumentException("User not found: " + userId);
+        }
+
+        ImmichPreferences immichPrefs = user.getImmichPreferences();
+        if (immichPrefs == null || !Boolean.TRUE.equals(immichPrefs.getEnabled())) {
+            log.debug("Immich not configured or disabled for user {}", userId);
+            return CompletableFuture.completedFuture(List.of());
+        }
+
+        ImmichSearchRequest immichSearchRequest = createImmichSearchRequest(searchRequest);
+        PhotoSearchCacheKey cacheKey = PhotoSearchCacheKey.from(userId, searchRequest, immichSearchRequest);
+
+        List<ImmichPhotoDto> cachedPhotos = getCachedSearchResult(cacheKey);
+        if (cachedPhotos != null) {
+            log.debug("Returning cached Immich search result for user {} with {} photos", userId, cachedPhotos.size());
+            return CompletableFuture.completedFuture(cachedPhotos);
+        }
+
+        return inFlightPhotoSearches.computeIfAbsent(cacheKey, ignored ->
+                immichClient.searchAssetsAllPages(immichPrefs.getServerUrl(), immichPrefs.getApiKey(), immichSearchRequest)
+                        .thenApply(response -> {
+                            List<ImmichPhotoDto> allFilteredPhotos = extractAndFilterPhotos(response, searchRequest, userId);
+                            cacheSearchResult(cacheKey, allFilteredPhotos);
+                            return allFilteredPhotos;
+                        })
+                        .whenComplete((ignoredResult, throwable) -> {
+                            inFlightPhotoSearches.remove(cacheKey);
+                            if (throwable != null) {
+                                log.error("Failed to search photos for user {}: {}", userId, throwable.getMessage(), throwable);
+                            }
+                        })
+        );
+    }
+
+    private ImmichSearchRequest createImmichSearchRequest(ImmichPhotoSearchRequest searchRequest) {
+        return ImmichSearchRequest.builder()
+                .takenAfter(searchRequest.getStartDate().format(DateTimeFormatter.ISO_INSTANT))
+                .takenBefore(searchRequest.getEndDate().format(DateTimeFormatter.ISO_INSTANT))
+                .type("IMAGE")
+                .city(trimToNull(searchRequest.getCity()))
+                .country(trimToNull(searchRequest.getCountry()))
+                .withExif(true)
+                .build();
+    }
+
     private boolean filterByLocation(ImmichAsset asset, ImmichPhotoSearchRequest searchRequest) {
         if (searchRequest.getLatitude() == null || searchRequest.getLongitude() == null || searchRequest.getRadiusMeters() == null) {
             return true;
@@ -351,6 +431,23 @@ public class ImmichService {
                 .build();
     }
 
+    private int sanitizeCoordinatePrecision(Integer precision) {
+        int defaultPrecision = 4;
+        if (precision == null) {
+            return defaultPrecision;
+        }
+        return Math.max(3, Math.min(6, precision));
+    }
+
+    private double roundCoordinate(double value, int precision) {
+        double factor = Math.pow(10, precision);
+        return Math.round(value * factor) / factor;
+    }
+
+    private String buildMarkerKey(double roundedLatitude, double roundedLongitude) {
+        return roundedLatitude + "," + roundedLongitude;
+    }
+
     private List<ImmichPhotoDto> getCachedSearchResult(PhotoSearchCacheKey cacheKey) {
         evictExpiredSearchCacheEntries();
         long nowEpochMillis = Instant.now().toEpochMilli();
@@ -422,6 +519,21 @@ public class ImmichService {
                                            long lastAccessEpochMillis) {
         private CachedPhotoSearchResult touch(long touchedAtEpochMillis) {
             return new CachedPhotoSearchResult(photos, expiresAtEpochMillis, touchedAtEpochMillis);
+        }
+    }
+
+    private record MapMarkerAccumulator(
+            double latitude,
+            double longitude,
+            java.time.OffsetDateTime latestTakenAt,
+            int count
+    ) {
+        private MapMarkerAccumulator add(java.time.OffsetDateTime takenAt) {
+            java.time.OffsetDateTime latest = latestTakenAt;
+            if (latest == null || (takenAt != null && takenAt.isAfter(latest))) {
+                latest = takenAt;
+            }
+            return new MapMarkerAccumulator(latitude, longitude, latest, count + 1);
         }
     }
 

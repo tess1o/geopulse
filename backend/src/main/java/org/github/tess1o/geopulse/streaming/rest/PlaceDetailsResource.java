@@ -12,6 +12,7 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.dto.PagedPlaceVisitsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceDetailsDTO;
+import org.github.tess1o.geopulse.streaming.model.dto.PlacePhotoSearchWindowDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.PlaceVisitDTO;
 import org.github.tess1o.geopulse.streaming.service.PlaceDetailsService;
 
@@ -71,6 +72,52 @@ public class PlaceDetailsResource {
             log.error("Failed to get place details for user {}, {}:{}", userId, type, id, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get place details: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    /**
+     * Get merged photo search window for stays near this place geometry.
+     * Useful for finding Immich photos across nearby places (for example close streets).
+     *
+     * @param type place type ("favorite" or "geocoding")
+     * @param id place ID
+     * @param radiusMeters nearby radius in meters (default 100)
+     * @return min/max visit window and number of matched stays
+     */
+    @GET
+    @Path("/{type}/{id}/photo-search-window")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response getPlacePhotoSearchWindow(
+            @PathParam("type") String type,
+            @PathParam("id") Long id,
+            @QueryParam("radiusMeters") @DefaultValue("100") double radiusMeters) {
+
+        UUID userId = currentUserService.getCurrentUserId();
+        log.info("Place photo search window request from user {} for {}:{} (radius={}m)",
+                userId, type, id, radiusMeters);
+
+        if (radiusMeters <= 0 || radiusMeters > 5000) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("radiusMeters must be between 0 and 5000"))
+                    .build();
+        }
+
+        try {
+            Optional<PlacePhotoSearchWindowDTO> windowOpt =
+                    placeDetailsService.getPlacePhotoSearchWindow(type, id, userId, radiusMeters);
+
+            if (windowOpt.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Place not found or access denied"))
+                        .build();
+            }
+
+            return Response.ok(ApiResponse.success(windowOpt.get())).build();
+        } catch (Exception e) {
+            log.error("Failed to get place photo search window for user {}, {}:{}", userId, type, id, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to get photo search window: " + e.getMessage()))
                     .build();
         }
     }

@@ -96,6 +96,7 @@
           :geometry="cityDetails.geometry"
           :location-name="cityDetails.cityName"
           :photos="cityPhotosForMap"
+          :photo-marker-groups="cityMarkerGroupsForMap"
           @photo-click="handleMapPhotoClick"
         />
 
@@ -105,6 +106,7 @@
           :search-params="cityImmichSearchParams"
           empty-message="No Immich photos found for this city."
           @latest-photos-change="handleCityPhotosChange"
+          @map-markers-change="handleCityMarkerGroupsChange"
           @show-on-map="handleCityPhotoShowOnMap"
         />
 
@@ -159,8 +161,10 @@ const placeMapRef = ref(null)
 const cityPhotosSectionRef = ref(null)
 const {
   photosForMap: cityPhotosForMap,
+  markerGroupsForMap: cityMarkerGroupsForMap,
   resetPhotosForMap: resetCityPhotosForMap,
   handlePhotosChange: handleCityPhotosChange,
+  handleMarkerGroupsChange: handleCityMarkerGroupsChange,
   handleMapPhotoClick,
   handlePhotoShowOnMap: handleCityPhotoShowOnMap
 } = useImmichPhotoMapBridge({

@@ -47,6 +47,7 @@ import org.github.tess1o.geopulse.streaming.model.shared.TripType;
         MultiUserTimelineDTO.UserTimelineDTO.class,
         MultiUserTimelineDTO.MultiUserTimelineDTOBuilder.class,
         MultiUserTimelineDTO.TimelineStats.class,
+        PlacePhotoSearchWindowDTO.class
 })
 public class StreamingNativeConfig {
 }

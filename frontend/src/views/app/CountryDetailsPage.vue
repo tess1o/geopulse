@@ -106,11 +106,12 @@
         </BaseCard>
 
         <ImmichPhotosMapCard
-          v-if="countryPhotosForMap.length > 0"
+          v-if="countryPhotosForMap.length > 0 || countryMarkerGroupsForMap.length > 0"
           ref="countryPhotosMapRef"
           :key="`country-photos-map-${countryName}`"
           :title="`Photo locations in ${countryDetails.countryName}`"
           :photos="countryPhotosForMap"
+          :photo-marker-groups="countryMarkerGroupsForMap"
           @photo-click="handleCountryMapPhotoClick"
         />
 
@@ -121,6 +122,7 @@
           empty-message="No Immich photos found for this country."
           :show-on-map-enabled="true"
           @latest-photos-change="handleCountryPhotosChange"
+          @map-markers-change="handleCountryMarkerGroupsChange"
           @show-on-map="handleCountryPhotoShowOnMap"
         />
 
@@ -176,8 +178,10 @@ const countryPhotosSectionRef = ref(null)
 const countryPhotosMapRef = ref(null)
 const {
   photosForMap: countryPhotosForMap,
+  markerGroupsForMap: countryMarkerGroupsForMap,
   resetPhotosForMap: resetCountryPhotosForMap,
   handlePhotosChange: handleCountryPhotosChange,
+  handleMarkerGroupsChange: handleCountryMarkerGroupsChange,
   handleMapPhotoClick: handleCountryMapPhotoClick,
   handlePhotoShowOnMap: handleCountryPhotoShowOnMap
 } = useImmichPhotoMapBridge({

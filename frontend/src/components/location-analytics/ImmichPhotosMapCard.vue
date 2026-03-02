@@ -30,6 +30,10 @@ const props = defineProps({
   photos: {
     type: Array,
     default: () => []
+  },
+  photoMarkerGroups: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -47,6 +51,7 @@ const {
   clearPhotoMarkers,
   clearFocusMarker,
   renderPhotoMarkers: renderMapPhotoMarkers,
+  renderPhotoMarkerGroups: renderMapPhotoMarkerGroups,
   focusOnCoordinates: focusOnMapCoordinates,
   focusOnPhoto: focusOnMapPhoto
 } = usePhotoMapMarkers({ emit })
@@ -55,23 +60,36 @@ const photosWithCoordinates = computed(() => props.photos.filter((photo) => {
   return typeof photo?.latitude === 'number' && typeof photo?.longitude === 'number'
 }))
 
+const markerGroupCoordinates = computed(() => {
+  if (!Array.isArray(props.photoMarkerGroups)) {
+    return []
+  }
+
+  return props.photoMarkerGroups.filter((group) => {
+    return typeof group?.latitude === 'number' && typeof group?.longitude === 'number'
+  })
+})
+
 const mapCenter = computed(() => {
   const photos = photosWithCoordinates.value
-  if (photos.length === 0) {
+  const markerGroups = markerGroupCoordinates.value
+
+  const points = markerGroups.length > 0 ? markerGroups : photos
+  if (points.length === 0) {
     return [20, 0]
   }
 
-  const total = photos.reduce((acc, photo) => {
-    acc.lat += photo.latitude
-    acc.lng += photo.longitude
+  const total = points.reduce((acc, point) => {
+    acc.lat += point.latitude
+    acc.lng += point.longitude
     return acc
   }, { lat: 0, lng: 0 })
 
-  return [total.lat / photos.length, total.lng / photos.length]
+  return [total.lat / points.length, total.lng / points.length]
 })
 
 const mapZoom = computed(() => {
-  return photosWithCoordinates.value.length > 0 ? 5 : 2
+  return (markerGroupCoordinates.value.length > 0 || photosWithCoordinates.value.length > 0) ? 5 : 2
 })
 
 const handleMapBackgroundClick = () => {
@@ -91,7 +109,9 @@ const renderPhotoMarkers = () => {
     return
   }
 
-  const groups = renderMapPhotoMarkers(map.value, props.photos)
+  const groups = (Array.isArray(props.photoMarkerGroups) && props.photoMarkerGroups.length > 0)
+    ? renderMapPhotoMarkerGroups(map.value, props.photoMarkerGroups)
+    : renderMapPhotoMarkers(map.value, props.photos)
   if (groups.length === 0) {
     hasAutoCentered.value = false
     return
@@ -122,6 +142,16 @@ const focusOnPhoto = (photo, zoom = 16) => {
 
 watch(
   () => props.photos,
+  () => {
+    nextTick(() => {
+      renderPhotoMarkers()
+    })
+  },
+  { deep: false }
+)
+
+watch(
+  () => props.photoMarkerGroups,
   () => {
     nextTick(() => {
       renderPhotoMarkers()

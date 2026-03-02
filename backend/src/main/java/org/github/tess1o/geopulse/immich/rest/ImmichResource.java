@@ -118,6 +118,116 @@ public class ImmichResource {
     }
 
     @GET
+    @Path("/{userId}/immich/photos/map-markers")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> getPhotoMapMarkers(
+            @PathParam("userId") String userIdStr,
+            @QueryParam("startDate") String startDateStr,
+            @QueryParam("endDate") String endDateStr,
+            @QueryParam("latitude") Double latitude,
+            @QueryParam("longitude") Double longitude,
+            @QueryParam("radiusMeters") Double radiusMeters,
+            @QueryParam("city") String city,
+            @QueryParam("country") String country,
+            @QueryParam("coordinatePrecision") Integer coordinatePrecision) {
+
+        UUID userId = parseUserId(userIdStr);
+        validateUserAccess(userId);
+
+        try {
+            ImmichPhotoSearchRequest searchRequest = new ImmichPhotoSearchRequest();
+            searchRequest.setStartDate(OffsetDateTime.parse(startDateStr));
+            searchRequest.setEndDate(OffsetDateTime.parse(endDateStr));
+            searchRequest.setLatitude(latitude);
+            searchRequest.setLongitude(longitude);
+            searchRequest.setRadiusMeters(radiusMeters);
+            searchRequest.setCity(city);
+            searchRequest.setCountry(country);
+
+            return immichService.getPhotoMapMarkers(userId, searchRequest, coordinatePrecision)
+                    .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
+                    .exceptionally(throwable -> {
+                        log.error("Failed to get map markers for user {}: {}", userId, throwable.getMessage(), throwable);
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity(ApiResponse.error("Failed to get map markers"))
+                                .build();
+                    });
+        } catch (Exception e) {
+            log.error("Invalid map marker parameters for user {}: {}", userId, e.getMessage());
+            return CompletableFuture.completedFuture(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid map marker parameters: " + e.getMessage()))
+                            .build()
+            );
+        }
+    }
+
+    @GET
+    @Path("/{userId}/immich/photos/map-marker/photos")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> getPhotosForMapMarker(
+            @PathParam("userId") String userIdStr,
+            @QueryParam("startDate") String startDateStr,
+            @QueryParam("endDate") String endDateStr,
+            @QueryParam("latitude") Double latitude,
+            @QueryParam("longitude") Double longitude,
+            @QueryParam("radiusMeters") Double radiusMeters,
+            @QueryParam("city") String city,
+            @QueryParam("country") String country,
+            @QueryParam("markerLatitude") Double markerLatitude,
+            @QueryParam("markerLongitude") Double markerLongitude,
+            @QueryParam("coordinatePrecision") Integer coordinatePrecision,
+            @QueryParam("limit") Integer limit) {
+
+        UUID userId = parseUserId(userIdStr);
+        validateUserAccess(userId);
+
+        if (markerLatitude == null || markerLongitude == null) {
+            return CompletableFuture.completedFuture(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("markerLatitude and markerLongitude are required"))
+                            .build()
+            );
+        }
+
+        try {
+            ImmichPhotoSearchRequest searchRequest = new ImmichPhotoSearchRequest();
+            searchRequest.setStartDate(OffsetDateTime.parse(startDateStr));
+            searchRequest.setEndDate(OffsetDateTime.parse(endDateStr));
+            searchRequest.setLatitude(latitude);
+            searchRequest.setLongitude(longitude);
+            searchRequest.setRadiusMeters(radiusMeters);
+            searchRequest.setCity(city);
+            searchRequest.setCountry(country);
+
+            return immichService.getPhotosForMapMarker(
+                            userId,
+                            searchRequest,
+                            markerLatitude,
+                            markerLongitude,
+                            coordinatePrecision,
+                            limit
+                    )
+                    .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
+                    .exceptionally(throwable -> {
+                        log.error("Failed to get marker photos for user {}: {}", userId, throwable.getMessage(), throwable);
+                        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                                .entity(ApiResponse.error("Failed to get marker photos"))
+                                .build();
+                    });
+        } catch (Exception e) {
+            log.error("Invalid marker photo parameters for user {}: {}", userId, e.getMessage());
+            return CompletableFuture.completedFuture(
+                    Response.status(Response.Status.BAD_REQUEST)
+                            .entity(ApiResponse.error("Invalid marker photo parameters: " + e.getMessage()))
+                            .build()
+            );
+        }
+    }
+
+    @GET
     @Path("/{userId}/immich/photos/{photoId}/thumbnail")
     @Produces("image/jpeg")
     @RolesAllowed({"USER", "ADMIN"})
@@ -229,6 +339,58 @@ public class ImmichResource {
         
         UUID userId = currentUserService.getCurrentUserId();
         return searchPhotos(userId.toString(), startDateStr, endDateStr, latitude, longitude, radiusMeters, city, country, limit);
+    }
+
+    @GET
+    @Path("/me/immich/photos/map-markers")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> getCurrentUserPhotoMapMarkers(
+            @QueryParam("startDate") String startDateStr,
+            @QueryParam("endDate") String endDateStr,
+            @QueryParam("latitude") Double latitude,
+            @QueryParam("longitude") Double longitude,
+            @QueryParam("radiusMeters") Double radiusMeters,
+            @QueryParam("city") String city,
+            @QueryParam("country") String country,
+            @QueryParam("coordinatePrecision") Integer coordinatePrecision) {
+
+        UUID userId = currentUserService.getCurrentUserId();
+        return getPhotoMapMarkers(userId.toString(), startDateStr, endDateStr, latitude, longitude, radiusMeters, city, country, coordinatePrecision);
+    }
+
+    @GET
+    @Path("/me/immich/photos/map-marker/photos")
+    @RolesAllowed({"USER", "ADMIN"})
+    @Blocking
+    public CompletableFuture<Response> getCurrentUserPhotosForMapMarker(
+            @QueryParam("startDate") String startDateStr,
+            @QueryParam("endDate") String endDateStr,
+            @QueryParam("latitude") Double latitude,
+            @QueryParam("longitude") Double longitude,
+            @QueryParam("radiusMeters") Double radiusMeters,
+            @QueryParam("city") String city,
+            @QueryParam("country") String country,
+            @QueryParam("markerLatitude") Double markerLatitude,
+            @QueryParam("markerLongitude") Double markerLongitude,
+            @QueryParam("coordinatePrecision") Integer coordinatePrecision,
+            @QueryParam("limit") Integer limit) {
+
+        UUID userId = currentUserService.getCurrentUserId();
+        return getPhotosForMapMarker(
+                userId.toString(),
+                startDateStr,
+                endDateStr,
+                latitude,
+                longitude,
+                radiusMeters,
+                city,
+                country,
+                markerLatitude,
+                markerLongitude,
+                coordinatePrecision,
+                limit
+        );
     }
 
     @GET

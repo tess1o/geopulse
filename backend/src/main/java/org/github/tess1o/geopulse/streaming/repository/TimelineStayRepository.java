@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.ai.model.StayGroupBy;
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
+import org.locationtech.jts.geom.Geometry;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -664,6 +665,37 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
      */
     public long countByGeocodingLocationId(Long geocodingId, UUID userId) {
         return count("geocodingLocation.id = ?1 and user.id = ?2", geocodingId, userId);
+    }
+
+    /**
+     * Get min/max stay window for all stays within a radius from target geometry.
+     * Uses geography distance so radius is interpreted in meters.
+     *
+     * @param userId user ID
+     * @param targetGeometry point or polygon geometry to measure proximity against
+     * @param radiusMeters search radius in meters
+     * @return [minVisitStart, maxVisitEnd, stayCount]
+     */
+    public Object[] getVisitWindowNearGeometry(UUID userId, Geometry targetGeometry, double radiusMeters) {
+        String sql = """
+                SELECT MIN(s.timestamp) AS min_visit_start,
+                       MAX(s.timestamp + (s.stay_duration * INTERVAL '1 second')) AS max_visit_end,
+                       COUNT(s.id) AS stay_count
+                FROM timeline_stays s
+                WHERE s.user_id = :userId
+                  AND s.location IS NOT NULL
+                  AND ST_DWithin(
+                    s.location::geography,
+                    (:targetGeometry)::geography,
+                    :radiusMeters
+                  )
+                """;
+
+        return (Object[]) getEntityManager().createNativeQuery(sql)
+                .setParameter("userId", userId)
+                .setParameter("targetGeometry", targetGeometry)
+                .setParameter("radiusMeters", radiusMeters)
+                .getSingleResult();
     }
 
     /**

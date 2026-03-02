@@ -186,6 +186,10 @@ const props = defineProps({
   allowShowOnMap: {
     type: Boolean,
     default: true
+  },
+  preloadedBlobUrlResolver: {
+    type: Function,
+    default: null
   }
 })
 
@@ -199,6 +203,7 @@ const downloading = ref(false)
 const currentImageBlobUrl = ref(null)
 const imageLoadCache = ref({})
 const imageLoadPromises = ref({})
+const ownedBlobUrls = ref(new Set())
 const loadingPhotoIds = ref(new Set())
 const currentPhotoLoadToken = ref(0)
 const thumbnailRailRef = ref(null)
@@ -245,12 +250,13 @@ const resetState = () => {
   currentImageBlobUrl.value = null
 
   Object.values(imageLoadCache.value).forEach((blobUrl) => {
-    if (blobUrl && blobUrl.startsWith('blob:')) {
+    if (blobUrl && blobUrl.startsWith('blob:') && ownedBlobUrls.value.has(blobUrl)) {
       imageService.revokeBlobUrl(blobUrl)
     }
   })
   imageLoadCache.value = {}
   imageLoadPromises.value = {}
+  ownedBlobUrls.value = new Set()
   loadingPhotoIds.value = new Set()
   currentPhotoLoadToken.value = 0
   thumbnailPreloadRunId.value += 1
@@ -260,7 +266,24 @@ const getPhotoBlobUrl = (photoId) => {
   if (photoId === null || photoId === undefined) {
     return null
   }
-  return imageLoadCache.value[photoId] || null
+
+  const localBlobUrl = imageLoadCache.value[photoId]
+  if (localBlobUrl) {
+    return localBlobUrl
+  }
+
+  if (typeof props.preloadedBlobUrlResolver === 'function') {
+    const preloadedBlob = props.preloadedBlobUrlResolver(photoId)
+    if (preloadedBlob) {
+      imageLoadCache.value = {
+        ...imageLoadCache.value,
+        [photoId]: preloadedBlob
+      }
+      return preloadedBlob
+    }
+  }
+
+  return null
 }
 
 const isPhotoLoading = (photoId) => {
@@ -299,6 +322,9 @@ const ensurePhotoLoaded = async (photo) => {
     markPhotoLoading(photoId, true)
     try {
       const blobUrl = await imageService.loadAuthenticatedImage(photo.thumbnailUrl)
+      const owned = new Set(ownedBlobUrls.value)
+      owned.add(blobUrl)
+      ownedBlobUrls.value = owned
       imageLoadCache.value = {
         ...imageLoadCache.value,
         [photoId]: blobUrl

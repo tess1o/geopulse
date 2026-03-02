@@ -100,6 +100,7 @@
         :geometry="placeDetails.geometry"
         :location-name="placeDetails.locationName"
         :photos="placePhotosForMap"
+        :photo-marker-groups="placeMarkerGroupsForMap"
         @photo-click="handleMapPhotoClick"
       />
 
@@ -108,10 +109,11 @@
         ref="placePhotosSectionRef"
         :title="`Latest photos near ${placeDetails.locationName}`"
         :search-params="placeImmichSearchParams"
-        :in-memory-filter="placePhotoFilterFn"
+        :in-memory-filter="placePhotoInMemoryFilter"
         :in-memory-filter-cache-key="placePhotoFilterCacheKey"
         empty-message="No nearby Immich photos found for this place."
         @latest-photos-change="handlePlacePhotosChange"
+        @map-markers-change="handlePlaceMarkerGroupsChange"
         @show-on-map="handlePlacePhotoShowOnMap"
       />
 
@@ -275,8 +277,10 @@ const placeMapRef = ref(null)
 const placePhotosSectionRef = ref(null)
 const {
   photosForMap: placePhotosForMap,
+  markerGroupsForMap: placeMarkerGroupsForMap,
   resetPhotosForMap: resetPlacePhotosForMap,
   handlePhotosChange: handlePlacePhotosChange,
+  handleMarkerGroupsChange: handlePlaceMarkerGroupsChange,
   handleMapPhotoClick,
   handlePhotoShowOnMap: handlePlacePhotoShowOnMap
 } = useImmichPhotoMapBridge({
@@ -286,6 +290,7 @@ const {
 })
 
 const PLACE_PHOTO_RADIUS_METERS = 100
+const placePhotoSearchWindow = ref(null)
 
 // Favorite editor composable (for editing favorite places)
 const {
@@ -338,21 +343,38 @@ const relatedFavoriteMessage = computed(() => {
 })
 
 const placeImmichSearchParams = computed(() => {
-  const firstVisit = placeDetails.value?.statistics?.firstVisit
-  const lastVisit = placeDetails.value?.statistics?.lastVisit
+  const firstVisit = placePhotoSearchWindow.value?.minVisit || placeDetails.value?.statistics?.firstVisit
+  const lastVisit = placePhotoSearchWindow.value?.maxVisit || placeDetails.value?.statistics?.lastVisit
   const city = placeDetails.value?.city?.trim?.()
   const country = placeDetails.value?.country?.trim?.()
+  const geometry = placeDetails.value?.geometry
 
-  if (!firstVisit || !lastVisit || (!city && !country)) {
+  if (!firstVisit || !lastVisit) {
     return null
   }
 
-  return {
+  const params = {
     startDate: firstVisit,
     endDate: lastVisit,
     city: city || undefined,
     country: country || undefined
   }
+
+  if (
+    geometry?.type !== 'area' &&
+    typeof geometry?.latitude === 'number' &&
+    typeof geometry?.longitude === 'number'
+  ) {
+    params.latitude = geometry.latitude
+    params.longitude = geometry.longitude
+    params.radiusMeters = PLACE_PHOTO_RADIUS_METERS
+  }
+
+  if (!params.city && !params.country && (params.latitude === undefined || params.longitude === undefined)) {
+    return null
+  }
+
+  return params
 })
 
 const placePhotoFilterCacheKey = computed(() => {
@@ -432,6 +454,14 @@ const placePhotoFilterFn = (photo) => {
   ) <= PLACE_PHOTO_RADIUS_METERS
 }
 
+const placePhotoInMemoryFilter = computed(() => {
+  const geometry = placeDetails.value?.geometry
+  if (geometry?.type === 'area' && geometry.northEast && geometry.southWest) {
+    return placePhotoFilterFn
+  }
+  return null
+})
+
 const formatDistance = (meters) => {
   if (meters === 0) return '0m'
   if (meters < 1000) {
@@ -490,11 +520,22 @@ const submitCreateFavorite = () => {
 }
 const loadPlaceData = async () => {
   error.value = null
+  placePhotoSearchWindow.value = null
   resetPlacePhotosForMap()
 
   try {
     // Load place details
     await placeStore.fetchPlaceDetails(placeType.value, placeId.value)
+
+    try {
+      const response = await apiService.get(`/place-details/${placeType.value}/${placeId.value}/photo-search-window`, {
+        radiusMeters: PLACE_PHOTO_RADIUS_METERS
+      })
+      placePhotoSearchWindow.value = response?.data || null
+    } catch (photoWindowError) {
+      console.warn('Failed to load place photo search window, using place statistics fallback:', photoWindowError)
+      placePhotoSearchWindow.value = null
+    }
 
     // Load first page of visits
     await loadVisits(0, 50)

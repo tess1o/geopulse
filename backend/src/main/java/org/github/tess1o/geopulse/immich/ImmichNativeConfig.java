@@ -16,7 +16,9 @@ import org.github.tess1o.geopulse.immich.model.*;
         UpdateImmichConfigRequest.class,
         ImmichExifInfo.class,
         TestImmichConnectionRequest.class,
-        TestImmichConnectionResponse.class
+        TestImmichConnectionResponse.class,
+        ImmichPhotoMapMarkerDto.class,
+        ImmichPhotoMapMarkersResponse.class
 })
 public class ImmichNativeConfig {
 }

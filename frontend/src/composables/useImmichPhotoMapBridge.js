@@ -7,16 +7,27 @@ export const useImmichPhotoMapBridge = ({
   shouldScrollToMap = true
 } = {}) => {
   const photosForMap = ref([])
+  const markerGroupsForMap = ref([])
 
   const resetPhotosForMap = () => {
     photosForMap.value = []
+    markerGroupsForMap.value = []
   }
 
   const handlePhotosChange = (photos) => {
     photosForMap.value = Array.isArray(photos) ? photos : []
   }
 
-  const handleMapPhotoClick = (payload) => {
+  const handleMarkerGroupsChange = (groups) => {
+    markerGroupsForMap.value = Array.isArray(groups) ? groups : []
+  }
+
+  const handleMapPhotoClick = async (payload) => {
+    if (payload?.markerGroup) {
+      await photosSectionRef?.value?.openPhotoViewerForMarker?.(payload.markerGroup)
+      return
+    }
+
     const photos = Array.isArray(payload?.photos) ? payload.photos : []
     if (photos.length === 0) {
       return
@@ -54,8 +65,10 @@ export const useImmichPhotoMapBridge = ({
 
   return {
     photosForMap,
+    markerGroupsForMap,
     resetPhotosForMap,
     handlePhotosChange,
+    handleMarkerGroupsChange,
     handleMapPhotoClick,
     handlePhotoShowOnMap
   }
