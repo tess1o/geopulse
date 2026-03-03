@@ -834,6 +834,19 @@ export class UserProfilePage {
   }
 
   /**
+   * Wait for toast notifications to disappear
+   */
+  async waitForToastToDisappear(timeout = 10000) {
+    try {
+      await this.page.waitForSelector(this.selectors.toast, { state: 'hidden', timeout });
+    } catch {
+      // Toast might already be gone
+    }
+    // Let fade-out animation finish to avoid stale selector races
+    await this.page.waitForTimeout(250);
+  }
+
+  /**
    * Get toast message text
    */
   async getToastMessage() {

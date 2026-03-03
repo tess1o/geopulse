@@ -715,11 +715,24 @@ test.describe('User Profile Management', () => {
         await profilePage.fillCustomMapTileUrl(validUrl);
         await profilePage.saveDisplaySettings();
         await profilePage.waitForSuccessToast();
+        await profilePage.waitForToastToDisappear();
 
         // Clear the URL
         await profilePage.fillCustomMapTileUrl('');
         await profilePage.saveDisplaySettings();
         await profilePage.waitForSuccessToast();
+        await profilePage.waitForToastToDisappear();
+
+        // Verify persistence in DB first (empty input is stored as NULL)
+        await expect.poll(async () => {
+          const dbUser = await dbManager.getUserByEmail(testUser.email);
+          return dbUser?.custom_map_tile_url ?? null;
+        }).toBe(null);
+
+        // Reload to avoid transient form state and verify URL is cleared in UI
+        await page.reload();
+        await profilePage.waitForPageLoad();
+        await profilePage.switchToDisplayTab();
 
         // Verify URL is cleared
         expect(await profilePage.getCustomMapTileUrl()).toBe('');
