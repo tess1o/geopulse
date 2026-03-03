@@ -74,9 +74,11 @@ export class TestSetupHelper {
 
   /**
    * Setup for public share access tests: create user with GPS data, then logout
+   * @param {number} gpsPointCount - Number of GPS points to seed before logout
+   * @param {Object|null} userData - Optional user object for isolated test user injection
    */
-  static async setupPublicShareAccess(page, dbManager, context, gpsPointCount = 5) {
-    const { user, testUser } = await this.createAndLoginUser(page, dbManager);
+  static async setupPublicShareAccess(page, dbManager, context, gpsPointCount = 5, userData = null) {
+    const { user, testUser } = await this.createAndLoginUser(page, dbManager, userData);
 
     if (gpsPointCount > 0) {
       await GpsDataFactory.createGpsPointsForUser(dbManager, user.id, gpsPointCount);
@@ -152,13 +154,15 @@ export class TestSetupHelper {
   /**
    * Create two users for friends testing (testUser and friendUser)
    * Does NOT login or navigate
+   * @param {Object|null} testUserData - Optional receiver/main user data
+   * @param {Object|null} friendUserData - Optional friend/sender user data
    * @returns {Promise<{testUser, friendUser, user, friend, loginPage, friendsPage}>}
    */
-  static async setupTwoUserFriendsTest(page, dbManager) {
+  static async setupTwoUserFriendsTest(page, dbManager, testUserData = null, friendUserData = null) {
     const loginPage = new LoginPage(page);
     const friendsPage = new FriendsPage(page);
-    const testUser = TestData.users.existing;
-    const friendUser = TestData.users.another;
+    const testUser = testUserData || TestData.buildExistingUser();
+    const friendUser = friendUserData || TestData.buildAnotherUser();
 
     await UserFactory.createUser(page, testUser);
     await UserFactory.createUser(page, friendUser);
@@ -171,11 +175,13 @@ export class TestSetupHelper {
 
   /**
    * Create two users, login as testUser, and navigate to friends page
+   * @param {Object|null} testUserData - Optional receiver/main user data
+   * @param {Object|null} friendUserData - Optional friend/sender user data
    * @returns {Promise<{testUser, friendUser, user, friend, loginPage, friendsPage}>}
    */
-  static async setupTwoUserFriendsTestWithLogin(page, dbManager) {
+  static async setupTwoUserFriendsTestWithLogin(page, dbManager, testUserData = null, friendUserData = null) {
     const { testUser, friendUser, user, friend, loginPage, friendsPage } =
-      await this.setupTwoUserFriendsTest(page, dbManager);
+      await this.setupTwoUserFriendsTest(page, dbManager, testUserData, friendUserData);
 
     await loginPage.navigate();
     await loginPage.login(testUser.email, testUser.password);
@@ -191,6 +197,8 @@ export class TestSetupHelper {
    * Create main user + multiple friends
    * @param {number} friendCount - Number of friends to create (default: 2)
    * @param {boolean} login - Whether to login as main user (default: false)
+   * @param {Object|null} testUserData - Optional main user data
+   * @param {Array<Object>|null} friendUsersData - Optional array of friend user data
    * @returns {Promise<{testUser, user, friends, friendsData, loginPage, friendsPage}>}
    *
    * Example:
@@ -198,10 +206,17 @@ export class TestSetupHelper {
    *   // user is the main user DB object
    *   // friends = [{testData: {email, password, ...}, dbUser: {id, email, ...}}, ...]
    */
-  static async setupMultipleFriendsTest(page, dbManager, friendCount = 2, login = false) {
+  static async setupMultipleFriendsTest(
+    page,
+    dbManager,
+    friendCount = 2,
+    login = false,
+    testUserData = null,
+    friendUsersData = null
+  ) {
     const loginPage = new LoginPage(page);
     const friendsPage = new FriendsPage(page);
-    const testUser = TestData.users.existing;
+    const testUser = testUserData || TestData.buildExistingUser();
 
     // Create main user
     await UserFactory.createUser(page, testUser);
@@ -211,9 +226,10 @@ export class TestSetupHelper {
     const friends = [];
 
     for (let i = 0; i < friendCount; i++) {
-      const friendData = i === 0
-        ? { ...TestData.users.another }
-        : TestData.generateUserWithEmail(`friend${i + 1}`);
+      const friendData = friendUsersData?.[i]
+        || (i === 0
+          ? TestData.buildAnotherUser()
+          : TestData.generateUserWithEmail(`friend${i + 1}`));
 
       await UserFactory.createUser(page, friendData);
       friendsData.push(friendData);
@@ -291,11 +307,19 @@ export class TestSetupHelper {
   /**
    * Setup invitation test: creates two users and an invitation
    * @param {boolean} loginAsReceiver - Whether to login as receiver (default: true)
+   * @param {Object|null} receiverData - Optional receiver user data
+   * @param {Object|null} senderData - Optional sender user data
    * @returns {Promise<{sender, receiver, senderData, receiverData, invitationId, loginPage, friendsPage}>}
    */
-  static async setupInvitationTest(page, dbManager, loginAsReceiver = true) {
+  static async setupInvitationTest(
+    page,
+    dbManager,
+    loginAsReceiver = true,
+    receiverData = null,
+    senderData = null
+  ) {
     const { testUser, friendUser, user, friend, loginPage, friendsPage } =
-      await this.setupTwoUserFriendsTest(page, dbManager);
+      await this.setupTwoUserFriendsTest(page, dbManager, receiverData, senderData);
 
     // For invitations: friendUser is sender, testUser is receiver
     const invitationId = await FriendsPage.insertInvitation(dbManager, friend.id, user.id);

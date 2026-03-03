@@ -9,7 +9,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
-    "setup:db": "node setup/database-setup.js"
+    "setup:db": "node setup/database-setup.js",
+    "validate:isolation": "node scripts/validate-isolated-specs.js"
   },
   "dependencies": {
     "@playwright/test": "^1.58.1",

@@ -1,21 +1,16 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {TimeDigestPage} from '../pages/TimeDigestPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 
 test.describe('Time Digest', () => {
 
   test.describe('Initial State and Empty Data', () => {
-    test('should show empty state when no digest data exists for selected period', async ({page, dbManager}) => {
+    test('should show empty state when no digest data exists for selected period', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      // Create user first
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
 
       // Login to the app
       await loginPage.navigate();
@@ -50,12 +45,10 @@ test.describe('Time Digest', () => {
       expect(hasEmptyState || hasContent).toBe(true);
     });
 
-    test('should show loading state initially', async ({page}) => {
+    test('should show loading state initially', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -79,12 +72,10 @@ test.describe('Time Digest', () => {
   });
 
   test.describe('Monthly Digest with Data', () => {
-    test('should display metrics section with correct data', async ({page, dbManager}) => {
+    test('should display metrics section with correct data', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -136,12 +127,10 @@ test.describe('Time Digest', () => {
       expect(metricsTitle).toBeTruthy();
     });
 
-    test('should display highlights section', async ({page, dbManager}) => {
+    test('should display highlights section', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -170,12 +159,10 @@ test.describe('Time Digest', () => {
       }
     });
 
-    test('should display top places section with data from database', async ({page, dbManager}) => {
+    test('should display top places section with data from database', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -220,12 +207,10 @@ test.describe('Time Digest', () => {
       }
     });
 
-    test('should display milestones section when achievements exist', async ({page, dbManager}) => {
+    test('should display milestones section when achievements exist', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -261,12 +246,10 @@ test.describe('Time Digest', () => {
       }
     });
 
-    test('should display trends section with chart or placeholder', async ({page, dbManager}) => {
+    test('should display trends section with chart or placeholder', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -299,12 +282,10 @@ test.describe('Time Digest', () => {
   });
 
   test.describe('Yearly Digest with Data', () => {
-    test('should display yearly digest metrics correctly', async ({page, dbManager}) => {
+    test('should display yearly digest metrics correctly', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -351,12 +332,10 @@ test.describe('Time Digest', () => {
       expect(metricsTitle).toContain('2024');
     });
 
-    test('should display yearly places and highlights', async ({page, dbManager}) => {
+    test('should display yearly places and highlights', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -392,12 +371,10 @@ test.describe('Time Digest', () => {
   });
 
   test.describe('Data Integration and Consistency', () => {
-    test('should show consistent data across all digest sections', async ({page, dbManager}) => {
+    test('should show consistent data across all digest sections', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -430,12 +407,10 @@ test.describe('Time Digest', () => {
       expect(places.length).toBeGreaterThan(0);
     });
 
-    test('should correctly handle comparison data when available', async ({page, dbManager}) => {
+    test('should correctly handle comparison data when available', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -466,12 +441,10 @@ test.describe('Time Digest', () => {
   });
 
   test.describe('Error Handling and Edge Cases', () => {
-    test('should handle navigation between different periods', async ({page, dbManager}) => {
+    test('should handle navigation between different periods', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -501,12 +474,10 @@ test.describe('Time Digest', () => {
       expect(await digestPage.hasMetrics()).toBe(true);
     });
 
-    test('should handle switching between monthly and yearly views', async ({page, dbManager}) => {
+    test('should handle switching between monthly and yearly views', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const digestPage = new TimeDigestPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');

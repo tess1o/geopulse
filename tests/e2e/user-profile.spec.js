@@ -1,18 +1,17 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {UserProfilePage} from '../pages/UserProfilePage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
 import {TestSetupHelper} from "../utils/test-setup-helper.js";
 import {DateFormatValues} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('User Profile Management', () => {
   
   test.describe('Profile Information Tab', () => {
-    test('should display user profile information correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should display user profile information correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify we're on the profile page
       expect(await profilePage.isOnProfilePage()).toBe(true);
@@ -30,8 +29,8 @@ test.describe('User Profile Management', () => {
       expect(avatarIndex).toBeGreaterThanOrEqual(0);
     });
 
-    test('should allow updating profile information', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should allow updating profile information', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Update full name
       const newFullName = 'Updated Test User';
@@ -56,8 +55,8 @@ test.describe('User Profile Management', () => {
       expect(toastMessage).toContain('updated successfully');
     });
 
-    test('should validate profile form inputs', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should validate profile form inputs', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Try to save with empty full name
       await profilePage.fillProfileForm('');
@@ -77,8 +76,8 @@ test.describe('User Profile Management', () => {
       expect(shortNameError).toContain('at least 2 characters');
     });
 
-    test('should allow resetting profile form', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should allow resetting profile form', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       const originalName = await profilePage.getFullNameValue();
       const originalAvatarIndex = await profilePage.getSelectedAvatarIndex();
@@ -98,9 +97,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Timezone Management', () => {
-    test('should display default timezone correctly', async ({page, dbManager}) => {
-      const userToCreate = TestData.users.existing;
-      userToCreate.timezone = 'UTC';
+    test('should display default timezone correctly', async ({page, isolatedUsers, dbManager}) => {
+      const userToCreate = createManagedUser(isolatedUsers, { timezone: 'UTC' });
       const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager,userToCreate);
       
       // Wait for timezone to load completely
@@ -115,8 +113,8 @@ test.describe('User Profile Management', () => {
       expect(localStorageTimezone).toBe('UTC');
     });
 
-    test('should update timezone and save to database and localStorage', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should update timezone and save to database and localStorage', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
       const newTimezone = 'Europe/London GMT+0';
       const expectedTimezoneValue = 'Europe/London';
 
@@ -151,8 +149,8 @@ test.describe('User Profile Management', () => {
       expect(persistedLocalStorageTimezone).toBe(expectedTimezoneValue);
     });
 
-    test('should handle timezone normalization (Europe/Kiev -> Europe/Kyiv)', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should handle timezone normalization (Europe/Kiev -> Europe/Kyiv)', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       const kiyvTimezone = 'Europe/Kyiv GMT+2';
       const expectedTimezoneValue = 'Europe/Kyiv';
@@ -174,12 +172,10 @@ test.describe('User Profile Management', () => {
       expect(reloadedTimezone).toBe(kiyvTimezone);
     });
 
-    test('should update timezone when auto-detected during login', async ({page, dbManager}) => {
+    test('should update timezone when auto-detected during login', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const profilePage = new UserProfilePage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
 
       // Mock browser timezone detection to simulate different timezone
       await page.addInitScript(() => {
@@ -220,8 +216,8 @@ test.describe('User Profile Management', () => {
       expect(localStorageTimezone).toBeTruthy();
     });
 
-    test('should reset timezone when form is reset', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should reset timezone when form is reset', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
       const newTimezone = 'Europe/Paris GMT+1';
       const originalTimezone = await profilePage.getSelectedTimezone();
       
@@ -245,8 +241,8 @@ test.describe('User Profile Management', () => {
       expect(localStorageTimezone).toBe('UTC'); // Should still be original value
     });
 
-    test('should validate timezone dropdown has expected options', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should validate timezone dropdown has expected options', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Open timezone dropdown
       await page.click(profilePage.selectors.profile.timezoneLabel);
@@ -275,8 +271,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Date Format Management', () => {
-    test('should update date format and persist to database and localStorage', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should update date format and persist to database and localStorage', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       await profilePage.selectDateFormat('DD/MM/YYYY (European)');
       expect(await profilePage.getSelectedDateFormat()).toBe('DD/MM/YYYY (European)');
@@ -300,8 +296,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Security Tab', () => {
-    test('should switch to security tab correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should switch to security tab correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to security tab
       await profilePage.switchToSecurityTab();
@@ -317,8 +313,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isChangePasswordButtonEnabled()).toBe(false);
     });
 
-    test('should validate password change form', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should validate password change form', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
       await profilePage.switchToSecurityTab();
       // Verify button is disabled with empty form
       expect(await profilePage.isChangePasswordButtonEnabled()).toBe(false);
@@ -349,8 +345,8 @@ test.describe('User Profile Management', () => {
       expect(errorMessage).toContain('do not match');
     });
 
-    test('should successfully change password with valid inputs', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should successfully change password with valid inputs', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
       await profilePage.switchToSecurityTab();
 
       const newPassword = 'NewPassword123!';
@@ -372,8 +368,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isPasswordFormEmpty()).toBe(true);
     });
 
-    test('should cancel password change', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should cancel password change', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       await profilePage.switchToSecurityTab();
       
@@ -389,8 +385,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Immich Integration Tab', () => {
-    test('should switch to immich tab correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should switch to immich tab correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to immich tab
       await profilePage.switchToImmichTab();
@@ -406,8 +402,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.areImmichFieldsDisabled()).toBe(true);
     });
 
-    test('should enable immich integration and enable fields', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should enable immich integration and enable fields', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       await profilePage.switchToImmichTab();
       
@@ -424,8 +420,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isImmichSaveButtonEnabled()).toBe(true);
     });
 
-    test('should validate immich configuration form', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should validate immich configuration form', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       await profilePage.switchToImmichTab();
       
@@ -456,8 +452,8 @@ test.describe('User Profile Management', () => {
       expect(errorMessage).toContain('API Key is required');
     });
 
-    test('should successfully save immich configuration', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should successfully save immich configuration', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
       await profilePage.switchToImmichTab();
 
       const serverUrl = 'https://photos.example.com';
@@ -479,8 +475,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getImmichServerUrl()).toBe(serverUrl);
     });
 
-    test('should reset immich form', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should reset immich form', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       await profilePage.switchToImmichTab();
       
@@ -497,8 +493,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getImmichServerUrl()).toBe('');
     });
 
-    test('should disable fields when integration is toggled off', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should disable fields when integration is toggled off', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       await profilePage.switchToImmichTab();
       
@@ -516,8 +512,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Tab Navigation', () => {
-    test('should navigate between all tabs correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should navigate between all tabs correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Should start on profile tab
       expect(await profilePage.isProfileTabActive()).toBe(true);
@@ -548,8 +544,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isDisplayTabActive()).toBe(false);
     });
 
-    test('should preserve form data when switching between tabs', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should preserve form data when switching between tabs', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
       const testName = 'Modified Name';
 
       // Make changes in profile tab
@@ -578,8 +574,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('Display Tab', () => {
-    test('should switch to display tab correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should switch to display tab correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to display tab
       await profilePage.switchToDisplayTab();
@@ -595,8 +591,8 @@ test.describe('User Profile Management', () => {
     });
 
     test.describe('Custom Map Tile URL', () => {
-      test('should display custom map tile URL input', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should display custom map tile URL input', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -605,8 +601,8 @@ test.describe('User Profile Management', () => {
         expect(customMapTileUrl).toBe('');
       });
 
-      test('should allow setting valid custom map tile URL', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should allow setting valid custom map tile URL', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -630,8 +626,8 @@ test.describe('User Profile Management', () => {
         expect(await profilePage.getCustomMapTileUrl()).toBe(validUrl);
       });
 
-      test('should validate URL must contain {z}, {x}, {y} placeholders', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should validate URL must contain {z}, {x}, {y} placeholders', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -649,8 +645,8 @@ test.describe('User Profile Management', () => {
         expect(errorMessage).toContain('must contain {z}, {x}, and {y} placeholders');
       });
 
-      test('should validate URL must use HTTP or HTTPS protocol', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should validate URL must use HTTP or HTTPS protocol', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -668,8 +664,8 @@ test.describe('User Profile Management', () => {
         expect(errorMessage).toContain('must use HTTP or HTTPS protocol');
       });
 
-      test('should reject dangerous protocols (javascript:, data:, file:)', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should reject dangerous protocols (javascript:, data:, file:)', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -690,8 +686,8 @@ test.describe('User Profile Management', () => {
         }
       });
 
-      test('should reject URLs with path traversal', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should reject URLs with path traversal', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -709,8 +705,8 @@ test.describe('User Profile Management', () => {
         expect(errorMessage).toContain('Invalid URL format');
       });
 
-      test('should allow clearing custom map tile URL', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should allow clearing custom map tile URL', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -731,8 +727,8 @@ test.describe('User Profile Management', () => {
     });
 
     test.describe('GPS Path Simplification', () => {
-      test('should display path simplification settings', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should display path simplification settings', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -745,8 +741,8 @@ test.describe('User Profile Management', () => {
         expect(await toggleCard.isVisible()).toBe(true);
       });
 
-      test('should enable and disable path simplification', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should enable and disable path simplification', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -763,8 +759,8 @@ test.describe('User Profile Management', () => {
         expect(await profilePage.isPathSimplificationEnabled()).toBe(true);
       });
 
-      test('should show/hide additional settings when toggling path simplification', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should show/hide additional settings when toggling path simplification', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -787,8 +783,8 @@ test.describe('User Profile Management', () => {
         expect(await adaptiveCard.isVisible()).toBe(false);
       });
 
-      test('should save path simplification settings', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should save path simplification settings', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -807,8 +803,8 @@ test.describe('User Profile Management', () => {
         expect(await profilePage.isPathSimplificationEnabled()).toBe(false);
       });
 
-      test('should reset display settings to defaults', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should reset display settings to defaults', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -829,8 +825,8 @@ test.describe('User Profile Management', () => {
         expect(await profilePage.isPathSimplificationEnabled()).toBe(true);
       });
 
-      test('should persist all settings after save and reload', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should persist all settings after save and reload', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         await profilePage.switchToDisplayTab();
 
@@ -857,8 +853,8 @@ test.describe('User Profile Management', () => {
     });
 
     test.describe('Tab Navigation', () => {
-      test('should navigate between Display tab and other tabs', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should navigate between Display tab and other tabs', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         // Default tab should be Profile
         expect(await profilePage.isProfileTabActive()).toBe(true);
@@ -888,8 +884,8 @@ test.describe('User Profile Management', () => {
         expect(await profilePage.isDisplayTabActive()).toBe(true);
       });
 
-      test('should preserve Display tab changes when navigating tabs', async ({page, dbManager}) => {
-        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+      test('should preserve Display tab changes when navigating tabs', async ({page, isolatedUsers, dbManager}) => {
+        const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
         // Switch to Display tab
         await profilePage.switchToDisplayTab();
@@ -913,8 +909,8 @@ test.describe('User Profile Management', () => {
   });
 
   test.describe('AI Assistant Tab', () => {
-    test('should display AI Assistant settings correctly', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should display AI Assistant settings correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -927,8 +923,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isAISaveButtonEnabled()).toBe(true);
     });
 
-    test('should allow enabling and configuring AI Assistant', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should allow enabling and configuring AI Assistant', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -956,8 +952,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getOpenAIApiUrl()).toBe('https://api.openai.com/v1');
     });
 
-    test('should allow using custom OpenAI-compatible API endpoint', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should allow using custom OpenAI-compatible API endpoint', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -981,8 +977,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.getOpenAIApiUrl()).toBe('https://my-custom-llm-provider.com/v1');
     });
 
-    test('should allow disabling AI Assistant', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should allow disabling AI Assistant', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -1017,8 +1013,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isAIAssistantEnabled()).toBe(false);
     });
 
-    test('should preserve API key when updating other settings', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should preserve API key when updating other settings', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Switch to AI Assistant tab
       await profilePage.switchToAiAssistantTab();
@@ -1045,8 +1041,8 @@ test.describe('User Profile Management', () => {
       expect(await profilePage.isOpenAIApiKeyConfigured()).toBe(true);
     });
 
-    test('should switch between AI Assistant and other tabs', async ({page, dbManager}) => {
-      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager);
+    test('should switch between AI Assistant and other tabs', async ({page, isolatedUsers, dbManager}) => {
+      const {profilePage, testUser} = await TestSetupHelper.loginAndNavigateToUserProfilePage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Default tab should be Profile
       expect(await profilePage.isProfileTabActive()).toBe(true);

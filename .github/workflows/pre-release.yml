@@ -185,6 +185,7 @@ jobs:
           npm run test:e2e
         env:
           BASE_URL: http://localhost:5556
+          PLAYWRIGHT_WORKERS: 4
           CI: true
 
       - name: Upload Playwright HTML report

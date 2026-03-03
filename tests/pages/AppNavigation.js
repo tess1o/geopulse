@@ -11,6 +11,12 @@ export class AppNavigation {
    */
   async logout() {
     try {
+      // Start waiting before clicking to avoid missing very fast responses.
+      const logoutResponsePromise = this.page.waitForResponse(
+        (resp) => resp.url().includes('/api/auth/logout') && resp.request().method() === 'POST',
+        { timeout: 7000 }
+      ).catch(() => null);
+
       // First check if logout button is already visible
       const logoutButton = this.page.locator('.gp-nav-logout');
 
@@ -58,12 +64,16 @@ export class AppNavigation {
         }
       }
 
-      // Wait for logout API call to complete
-      const response = await this.page.waitForResponse(resp =>
-          resp.url().includes('/api/auth/logout') && resp.request().method() === 'POST',
-          { timeout: 5000 }
-      );
-      // Wait for redirect to login page
+      // Wait for logout call if captured; do not fail on missing response event.
+      await logoutResponsePromise;
+
+      // Wait until we are no longer inside authenticated app routes.
+      await this.page.waitForURL(
+        (url) => !url.pathname.startsWith('/app'),
+        { timeout: 10000 }
+      ).catch(() => {});
+
+      // Preserve prior side effect for callers relying on this helper.
       await TestHelpers.isHomePage(this.page);
 
     } catch (error) {

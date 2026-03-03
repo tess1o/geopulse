@@ -1,11 +1,12 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Geocoding Management Page', () => {
 
   test.describe('Page Load and Initial State', () => {
-    test('should display geocoding management page correctly', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should display geocoding management page correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify we're on the geocoding page
       expect(await geocodingPage.isOnGeocodingPage()).toBe(true);
@@ -17,8 +18,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await geocodingPage.isReconcileAllButtonDisabled()).toBe(true);
     });
 
-    test('should display existing geocoding results on page load', async ({page, dbManager}) => {
-      const {geocodingPage, user, testUser} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should display existing geocoding results on page load', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user, testUser} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
       
       // Create test geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager, user.id, 3);
@@ -35,8 +36,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await geocodingPage.isReconcileAllButtonDisabled()).toBe(false);
     });
 
-    test('should display geocoding results with different providers', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should display geocoding results with different providers', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results with different providers
       await TestSetupHelper.createGeocodingResultsWithDifferentProviders(dbManager, user.id);
@@ -51,8 +52,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Filters', () => {
-    test('should filter by provider', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should filter by provider', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create results with different providers
       await TestSetupHelper.createGeocodingResultsWithDifferentProviders(dbManager, user.id);
@@ -86,8 +87,8 @@ test.describe('Geocoding Management Page', () => {
       expect(rowCount).toBe(4);
     });
 
-    test('should search by location name', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should search by location name', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results with unique names
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -118,8 +119,8 @@ test.describe('Geocoding Management Page', () => {
       expect(rowData.name).toContain('Coffee');
     });
 
-    test('should search by city', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should search by city', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results with different cities
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -147,8 +148,8 @@ test.describe('Geocoding Management Page', () => {
       expect(searchRowCount).toBe(1);
     });
 
-    test('should search by country', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should search by country', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results with different countries
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -176,8 +177,8 @@ test.describe('Geocoding Management Page', () => {
       expect(searchRowCount).toBe(1);
     });
 
-    test('should clear filters', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should clear filters', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results
       await TestSetupHelper.createGeocodingResultsWithDifferentProviders(dbManager, user.id);
@@ -203,8 +204,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await geocodingPage.isClearFiltersButtonEnabled()).toBe(false);
     });
 
-    test('should combine provider and search filters', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should combine provider and search filters', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create results with different providers and cities
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -247,8 +248,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Edit Geocoding Result', () => {
-    test('should edit geocoding result display name', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should edit geocoding result display name', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const resultId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -280,8 +281,8 @@ test.describe('Geocoding Management Page', () => {
       expect(rowData.name).toContain(newName);
     });
 
-    test('should edit geocoding result city and country', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should edit geocoding result city and country', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const resultId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -308,8 +309,8 @@ test.describe('Geocoding Management Page', () => {
       expect(result.country).toBe('USA');
     });
 
-    test('should cancel edit dialog', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should cancel edit dialog', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const resultId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -338,8 +339,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('View Details', () => {
-    test('should navigate to place details when clicking view button', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should navigate to place details when clicking view button', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const resultId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -362,8 +363,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Bulk Operations', () => {
-    test('should select multiple rows', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should select multiple rows', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create multiple geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 3);
@@ -380,8 +381,8 @@ test.describe('Geocoding Management Page', () => {
       expect(selectedCount).toBe(2);
     });
 
-    test('should show bulk action buttons when rows selected', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should show bulk action buttons when rows selected', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 2);
@@ -399,8 +400,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await geocodingPage.areBulkActionButtonsVisible()).toBe(true);
     });
 
-    test('should perform bulk edit of city and country', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should perform bulk edit of city and country', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results with different cities
       // Note: Table is sorted by "Last Used" desc by default, so last created appears first
@@ -510,8 +511,8 @@ test.describe('Geocoding Management Page', () => {
       expect(tableText).toContain('USA');
     });
 
-    test('should perform bulk edit of only city', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should perform bulk edit of only city', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results
       // Note: Table is sorted by "Last Used" desc by default
@@ -588,8 +589,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Reconcile Functionality', () => {
-    test('should show reconcile all button', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should show reconcile all button', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Initially button should be disabled (no results)
       expect(await geocodingPage.isReconcileAllButtonDisabled()).toBe(true);
@@ -609,8 +610,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await geocodingPage.isReconcileAllButtonDisabled()).toBe(false);
     });
 
-    test('should open reconcile dialog for single result', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should open reconcile dialog for single result', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -633,8 +634,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await dialog.isVisible()).toBe(true);
     });
 
-    test('should open reconcile dialog for selected results', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should open reconcile dialog for selected results', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create multiple geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 3);
@@ -656,8 +657,8 @@ test.describe('Geocoding Management Page', () => {
       expect(await dialog.isVisible()).toBe(true);
     });
 
-    test('should open reconcile dialog for all results', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should open reconcile dialog for all results', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 2);
@@ -677,8 +678,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Pagination', () => {
-    test('should paginate through results', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should paginate through results', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create more than 50 results to test pagination (default page size is 50)
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 55);
@@ -707,8 +708,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Sorting', () => {
-    test('should sort by display name', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should sort by display name', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create results with specific names
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -743,8 +744,8 @@ test.describe('Geocoding Management Page', () => {
       expect(firstRowDataDesc.name).toContain('Zebra');
     });
 
-    test('should sort by city', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should sort by city', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create results with different cities
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -774,8 +775,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Empty State', () => {
-    test('should show empty state when no geocoding results exist', async ({page, dbManager}) => {
-      const {geocodingPage} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should show empty state when no geocoding results exist', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify empty state
       expect(await geocodingPage.isTableEmpty()).toBe(true);
@@ -788,11 +789,11 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Responsive Behavior', () => {
-    test('should handle mobile viewport', async ({page, dbManager}) => {
+    test('should handle mobile viewport', async ({page, isolatedUsers, dbManager}) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
 
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 2);
@@ -809,11 +810,11 @@ test.describe('Geocoding Management Page', () => {
       expect(await table.isVisible()).toBe(true);
     });
 
-    test('should handle tablet viewport', async ({page, dbManager}) => {
+    test('should handle tablet viewport', async ({page, isolatedUsers, dbManager}) => {
       // Set tablet viewport
       await page.setViewportSize({ width: 768, height: 1024 });
 
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding results
       await TestSetupHelper.createMultipleGeocodingResults(dbManager,  user.id, 2);
@@ -828,8 +829,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Last Accessed Time', () => {
-    test('should display last accessed time', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should display last accessed time', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const resultId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -854,8 +855,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Data Integrity', () => {
-    test('should handle null city and country values', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should handle null city and country values', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result with null city and country
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -877,8 +878,8 @@ test.describe('Geocoding Management Page', () => {
       expect(rowData.name).toContain('Location Without City');
     });
 
-    test('should handle special characters in location names', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should handle special characters in location names', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result with special characters
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -899,8 +900,8 @@ test.describe('Geocoding Management Page', () => {
       expect(rowData.name).toContain('Café');
     });
 
-    test('should handle very long location names', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should handle very long location names', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result with a very long name
       const longName = 'This is a very long location name that should be handled properly by the application without breaking the UI or causing any display issues'.repeat(2);
@@ -922,8 +923,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Provider Tags', () => {
-    test('should display provider tags with correct styling', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should display provider tags with correct styling', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create results with different providers
       await TestSetupHelper.createGeocodingResultsWithDifferentProviders(dbManager, user.id);
@@ -946,8 +947,8 @@ test.describe('Geocoding Management Page', () => {
   });
 
   test.describe('Coordinates Display', () => {
-    test('should display coordinates with proper formatting', async ({page, dbManager}) => {
-      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager);
+    test('should display coordinates with proper formatting', async ({page, isolatedUsers, dbManager}) => {
+      const {geocodingPage, user} = await TestSetupHelper.loginAndNavigateToGeocodingPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result with specific coordinates
       await TestSetupHelper.createGeocodingResult(dbManager, user.id, {

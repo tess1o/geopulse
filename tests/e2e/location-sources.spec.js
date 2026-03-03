@@ -1,21 +1,17 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
 
 test.describe('Location Sources Management', () => {
   
   test.describe('Initial State and Source Creation', () => {
-    test('should show no location sources initially and allow creating OwnTracks HTTP source', async ({page, dbManager}) => {
+    test('should show no location sources initially and allow creating OwnTracks HTTP source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      // Create user first
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       
       // Login to the app
       await loginPage.navigate();
@@ -71,12 +67,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
-    test('should create OwnTracks MQTT source', async ({page, dbManager}) => {
+    test('should create OwnTracks MQTT source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -109,12 +103,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
-    test('should create Overland source', async ({page, dbManager}) => {
+    test('should create Overland source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -146,12 +138,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
-    test('should create Dawarich source', async ({page, dbManager}) => {
+    test('should create Dawarich source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -183,12 +173,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
-    test('should create Home Assistant source', async ({page, dbManager}) => {
+    test('should create Home Assistant source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -222,12 +210,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.password_hash).toBe("")
     });
 
-    test('should use quick setup buttons to create sources', async ({page, dbManager}) => {
+    test('should use quick setup buttons to create sources', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -268,12 +254,10 @@ test.describe('Location Sources Management', () => {
   });
 
   test.describe('Source Editing', () => {
-    test('should edit an existing OwnTracks source', async ({page, dbManager}) => {
+    test('should edit an existing OwnTracks source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -312,12 +296,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
-    test('should edit an existing Overland source', async ({page, dbManager}) => {
+    test('should edit an existing Overland source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -352,12 +334,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
-    test('should cancel source editing', async ({page, dbManager}) => {
+    test('should cancel source editing', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -395,12 +375,10 @@ test.describe('Location Sources Management', () => {
   });
 
   test.describe('Source Deletion', () => {
-    test('should delete a location source', async ({page, dbManager}) => {
+    test('should delete a location source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -437,12 +415,10 @@ test.describe('Location Sources Management', () => {
       expect(dbSource).toBeNull();
     });
 
-    test('should cancel source deletion', async ({page, dbManager}) => {
+    test('should cancel source deletion', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -477,12 +453,10 @@ test.describe('Location Sources Management', () => {
   });
 
   test.describe('Instructions and Setup', () => {
-    test('should show setup instructions after creating a source', async ({page}) => {
+    test('should show setup instructions after creating a source', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -504,12 +478,10 @@ test.describe('Location Sources Management', () => {
       expect(await locationSourcesPage.areInstructionsVisible()).toBe(true);
     });
 
-    test('should handle multiple source types with different instructions', async ({page}) => {
+    test('should handle multiple source types with different instructions', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -536,12 +508,10 @@ test.describe('Location Sources Management', () => {
   });
 
   test.describe('Form Validation', () => {
-    test('should validate required fields for OwnTracks', async ({page}) => {
+    test('should validate required fields for OwnTracks', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -565,12 +535,10 @@ test.describe('Location Sources Management', () => {
       expect(await passwordError.isVisible()).toBe(true);
     });
 
-    test('should validate required fields for Overland', async ({page}) => {
+    test('should validate required fields for Overland', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -591,12 +559,10 @@ test.describe('Location Sources Management', () => {
       expect(await tokenError.isVisible()).toBe(true);
     });
 
-    test('should validate required fields for Dawarich', async ({page}) => {
+    test('should validate required fields for Dawarich', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');

@@ -24,8 +24,42 @@ export class GeocodingFactory {
    * @returns {Promise<number>} The geocoding location ID
    */
   static async insertOrGetGeocodingLocation(dbManager, coords, name, city, country, userId = null) {
-    // First check if location exists (for originals where user_id IS NULL)
+    // Originals (user_id IS NULL) are protected by a unique partial index on coordinates.
+    // Use conflict-safe insert flow to avoid race conditions across parallel tests.
     if (userId === null) {
+      const insertResult = await dbManager.client.query(`
+        INSERT INTO reverse_geocoding_location (
+          id,
+          request_coordinates,
+          result_coordinates,
+          display_name,
+          provider_name,
+          city,
+          country,
+          user_id,
+          created_at,
+          last_accessed_at
+        )
+        VALUES (
+          nextval('reverse_geocoding_location_seq'),
+          $1,
+          $1,
+          $2,
+          'test',
+          $3,
+          $4,
+          NULL,
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `, [coords, name, city, country]);
+
+      if (insertResult.rows.length > 0) {
+        return insertResult.rows[0].id;
+      }
+
       const existingResult = await dbManager.client.query(`
         SELECT id FROM reverse_geocoding_location
         WHERE ST_Equals(request_coordinates, ST_GeomFromText($1, 4326)) AND user_id IS NULL
@@ -33,12 +67,12 @@ export class GeocodingFactory {
       `, [coords]);
 
       if (existingResult.rows.length > 0) {
-        // Location already exists, reuse it
         return existingResult.rows[0].id;
       }
+
+      throw new Error(`Failed to insert or resolve original geocoding location for ${coords}`);
     }
 
-    // Insert new location
     const insertResult = await dbManager.client.query(`
       INSERT INTO reverse_geocoding_location (
         id,

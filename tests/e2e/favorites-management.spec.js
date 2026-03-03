@@ -1,12 +1,12 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
-import {TestData} from '../fixtures/test-data.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Favorites Management Page', () => {
 
   test.describe('Page Load and Initial State', () => {
-    test('should display favorites management page correctly', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should display favorites management page correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify we're on the favorites page
       expect(await favoritesPage.isOnFavoritesPage()).toBe(true);
@@ -21,8 +21,8 @@ test.describe('Favorites Management Page', () => {
       expect(await favoritesPage.isTableEmpty()).toBe(true);
     });
 
-    test('should display existing favorites on page load', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should display existing favorites on page load', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create test favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
@@ -45,8 +45,8 @@ test.describe('Favorites Management Page', () => {
       expect(areaCount).toBe(1);
     });
 
-    test('should display favorites on map', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should display favorites on map', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create test favorites
       await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -72,8 +72,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Add Favorite Point - Immediate Save Mode', () => {
-    test('should add favorite point via map context menu', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should add favorite point via map context menu', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
@@ -97,8 +97,8 @@ test.describe('Favorites Management Page', () => {
       expect(rowCount).toBe(1);
     });
 
-    test('should cancel add favorite dialog', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should cancel add favorite dialog', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
@@ -117,8 +117,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Add Favorite Area - Immediate Save Mode', () => {
-    test('should add favorite area via rectangle drawing', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should add favorite area via rectangle drawing', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id, 'AREA');
 
@@ -142,8 +142,8 @@ test.describe('Favorites Management Page', () => {
       expect(areaCount).toBeGreaterThan(0);
     });
 
-    test('should cancel rectangle drawing with Escape key', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should cancel rectangle drawing with Escape key', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Start drawing mode
       await favoritesPage.rightClickOnMap(300, 300);
@@ -162,8 +162,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Bulk Add Mode', () => {
-    test('should enable and disable bulk mode', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should enable and disable bulk mode', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify bulk mode is off
       expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
@@ -184,8 +184,8 @@ test.describe('Favorites Management Page', () => {
       expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
     });
 
-    test('should add favorites to pending list in bulk mode', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should add favorites to pending list in bulk mode', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
@@ -217,8 +217,8 @@ test.describe('Favorites Management Page', () => {
       expect(dbCountAfter).toBe(initialCount);
     });
 
-    test('should display pending favorites on map', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should display pending favorites on map', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Enable bulk mode
       await favoritesPage.toggleBulkMode();
@@ -233,8 +233,8 @@ test.describe('Favorites Management Page', () => {
       expect(pendingMarkerCount).toBe(1);
     });
 
-    test('should save all pending favorites', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should save all pending favorites', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countFavorites(dbManager, user.id);
 
@@ -261,8 +261,8 @@ test.describe('Favorites Management Page', () => {
       expect(await favoritesPage.isBulkModeEnabled()).toBe(false);
     });
 
-    test('should show bulk save confirmation dialog with counts', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should show bulk save confirmation dialog with counts', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Enable bulk mode
       await favoritesPage.toggleBulkMode();
@@ -296,8 +296,8 @@ test.describe('Favorites Management Page', () => {
       await favoritesPage.cancelBulkSave();
     });
 
-    test('should remove individual pending favorite', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should remove individual pending favorite', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Enable bulk mode and add pending favorites
       await favoritesPage.toggleBulkMode();
@@ -319,8 +319,8 @@ test.describe('Favorites Management Page', () => {
       expect(await favoritesPage.getPendingCount()).toBe(1);
     });
 
-    test('should clear all pending favorites', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should clear all pending favorites', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Enable bulk mode and add pending favorites
       await favoritesPage.toggleBulkMode();
@@ -342,8 +342,8 @@ test.describe('Favorites Management Page', () => {
       await favoritesPage.waitForInfoToast();
     });
 
-    test('should warn when leaving page with unsaved pending favorites', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should warn when leaving page with unsaved pending favorites', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Enable bulk mode and add pending favorite
       await favoritesPage.toggleBulkMode();
@@ -375,8 +375,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Edit Favorite', () => {
-    test('should edit favorite point metadata without timeline regeneration', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should edit favorite point metadata without timeline regeneration', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite point
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -409,8 +409,8 @@ test.describe('Favorites Management Page', () => {
       expect(rowData.name).toContain(newName);
     });
 
-    test('should edit favorite area metadata without timeline regeneration', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should edit favorite area metadata without timeline regeneration', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
@@ -459,8 +459,8 @@ test.describe('Favorites Management Page', () => {
       expect(parseFloat(favorite.east_lon)).toBeCloseTo(-71.0, 4);
     });
 
-    test('should edit favorite area with redraw and trigger timeline regeneration', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should edit favorite area with redraw and trigger timeline regeneration', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
@@ -541,8 +541,8 @@ test.describe('Favorites Management Page', () => {
       expect(northLat).toBeGreaterThan(southLat); // North should be greater than south
     });
 
-    test('should edit favorite from map context menu', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should edit favorite from map context menu', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -580,8 +580,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Delete Favorite', () => {
-    test('should delete favorite from table', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should delete favorite from table', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -612,8 +612,8 @@ test.describe('Favorites Management Page', () => {
       expect(await favoritesPage.isTableEmpty()).toBe(true);
     });
 
-    test('should cancel delete confirmation', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should cancel delete confirmation', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -638,8 +638,8 @@ test.describe('Favorites Management Page', () => {
       expect(finalCount).toBe(initialCount);
     });
 
-    test('should delete favorite from map context menu', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should delete favorite from map context menu', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -673,8 +673,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Filters', () => {
-    test('should filter by type', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should filter by type', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create mixed favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
@@ -704,8 +704,8 @@ test.describe('Favorites Management Page', () => {
       expect(allRowCount).toBe(3);
     });
 
-    test('should search by name', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should search by name', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites with unique names
       await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -738,8 +738,8 @@ test.describe('Favorites Management Page', () => {
       expect(rowData.name).toContain('Coffee');
     });
 
-    test('should search by city', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should search by city', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites with different cities
       await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -769,8 +769,8 @@ test.describe('Favorites Management Page', () => {
       expect(searchRowCount).toBe(1);
     });
 
-    test('should clear filters', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should clear filters', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 1);
@@ -798,8 +798,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Bulk Operations', () => {
-    test('should select multiple rows', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should select multiple rows', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create multiple favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 3, 0);
@@ -816,8 +816,8 @@ test.describe('Favorites Management Page', () => {
       expect(selectedCount).toBe(2);
     });
 
-    test('should show bulk action buttons when rows selected', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should show bulk action buttons when rows selected', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
@@ -840,8 +840,8 @@ test.describe('Favorites Management Page', () => {
       expect(await reconcileSelectedButton.isVisible()).toBe(true);
     });
 
-    test('should perform bulk edit of city and country', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should perform bulk edit of city and country', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites with different cities
       const fav1Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -961,8 +961,8 @@ test.describe('Favorites Management Page', () => {
       expect(tableText).toContain('USA');
     });
 
-    test('should perform bulk edit of only city', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should perform bulk edit of only city', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites
       const fav1Id = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -1046,8 +1046,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Reconcile Favorites', () => {
-    test('should show reconcile all button', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should show reconcile all button', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Initially button should be disabled (no favorites)
       expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(true);
@@ -1068,8 +1068,8 @@ test.describe('Favorites Management Page', () => {
       expect(await favoritesPage.isReconcileAllButtonDisabled()).toBe(false);
     });
 
-    test('should open reconcile dialog for all favorites', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should open reconcile dialog for all favorites', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);
@@ -1087,8 +1087,8 @@ test.describe('Favorites Management Page', () => {
       expect(await dialog.isVisible()).toBe(true);
     });
 
-    test('should open reconcile dialog for selected favorites', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should open reconcile dialog for selected favorites', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 3, 0);
@@ -1112,8 +1112,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('View Details', () => {
-    test('should navigate to place details when clicking view button', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should navigate to place details when clicking view button', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -1137,8 +1137,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Show on Map', () => {
-    test('should focus on map when clicking show on map button', async ({page, dbManager}) => {
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should focus on map when clicking show on map button', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -1162,8 +1162,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Empty State', () => {
-    test('should show empty state when no favorites exist', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should show empty state when no favorites exist', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify empty state
       expect(await favoritesPage.isTableEmpty()).toBe(true);
@@ -1176,8 +1176,8 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Context Menu on Pending Favorites', () => {
-    test('should show context menu on pending favorite marker', async ({page, dbManager}) => {
-      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+    test('should show context menu on pending favorite marker', async ({page, isolatedUsers, dbManager}) => {
+      const {favoritesPage} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Enable bulk mode and add pending
       await favoritesPage.toggleBulkMode();
@@ -1197,11 +1197,11 @@ test.describe('Favorites Management Page', () => {
   });
 
   test.describe('Responsive Behavior', () => {
-    test('should handle mobile viewport', async ({page, dbManager}) => {
+    test('should handle mobile viewport', async ({page, isolatedUsers, dbManager}) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
 
-      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager);
+      const {favoritesPage, user} = await TestSetupHelper.loginAndNavigateToFavoritesPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorites
       await TestSetupHelper.createMultipleFavorites(dbManager, user.id, 2, 0);

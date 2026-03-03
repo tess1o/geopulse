@@ -257,12 +257,11 @@ export class GpsDataFactory {
   static async insertGpsData(dbManager, points) {
     for (const point of points) {
       const query = `
-        INSERT INTO gps_points (id, device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `;
       
       const values = [
-        point.id,
         point.device_id,
         point.user_id,
         point.coordinates,

@@ -1,17 +1,17 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {ShareLinksPage} from '../pages/ShareLinksPage.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
 import {DateFactory} from '../utils/date-factory.js';
 import {ShareLinkFactory} from '../utils/share-link-factory.js';
 import {TestConstants} from '../fixtures/test-constants.js';
-import {TestData} from '../fixtures/test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Share Links Management', () => {
 
     test.describe('Initial State and Empty State', () => {
-        test('should show empty state when no share links exist', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should show empty state when no share links exist', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
             await shareLinksPage.waitForLoadingComplete();
 
             // Verify empty state
@@ -21,8 +21,8 @@ test.describe('Share Links Management', () => {
             expect(await ShareLinkFactory.countByUserId(dbManager, user.id)).toBe(0);
         });
 
-        test('should show create button with menu in empty state', async ({page, dbManager}) => {
-            const { shareLinksPage } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should show create button with menu in empty state', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Click create button to open menu (waits for menu to open)
             await shareLinksPage.clickCreateFirstLink();
@@ -37,8 +37,8 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Create Live Location Shares', () => {
-        test('should create basic live location share with current location only', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should create basic live location share with current location only', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Open menu and select Live Location
             await shareLinksPage.clickCreateFirstLink();
@@ -73,8 +73,8 @@ test.describe('Share Links Management', () => {
             expect(await shareLinksPage.getLiveLocationSharesCount()).toBeGreaterThanOrEqual(1);
         });
 
-        test('should create live location share with history and hours', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should create live location share with history and hours', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();
@@ -125,8 +125,8 @@ test.describe('Share Links Management', () => {
             expect(historyValue).toContain('48h');
         });
 
-        test('should create password-protected live location share', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should create password-protected live location share', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();
@@ -159,8 +159,8 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Create Timeline Shares', () => {
-        test('should open timeline share dialog with correct fields', async ({page, dbManager}) => {
-            const { shareLinksPage } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should open timeline share dialog with correct fields', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectTimelineShare();
@@ -185,8 +185,8 @@ test.describe('Share Links Management', () => {
             await page.waitForTimeout(TestConstants.TIMEOUTS.SHORT);
         });
 
-        test('should display timeline shares created via database', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should display timeline shares created via database', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Create timeline share via database
             const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
@@ -209,8 +209,8 @@ test.describe('Share Links Management', () => {
             expect(await linkCard.isVisible()).toBe(true);
         });
 
-        test('should display timeline share date range using user date format', async ({page, dbManager}) => {
-            const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+        test('should display timeline share date range using user date format', async ({page, isolatedUsers, dbManager}) => {
+            const testUser = createManagedUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
             const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, testUser);
             const futureExpiry = new Date();
             futureExpiry.setUTCDate(futureExpiry.getUTCDate() + 30);
@@ -238,8 +238,8 @@ test.describe('Share Links Management', () => {
             expect(dateRangeText).toContain('24/09/2025');
         });
 
-        test('should create timeline share via UI', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should create timeline share via UI', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Create timeline share
             await shareLinksPage.clickCreateFirstLink();
@@ -281,8 +281,8 @@ test.describe('Share Links Management', () => {
             expect(await linkCard.isVisible()).toBe(true);
         });
 
-        test('should create password-protected timeline share via UI', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should create password-protected timeline share via UI', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectTimelineShare();
@@ -324,8 +324,8 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Display and Organization', () => {
-        test('should display timeline and live location shares in separate sections', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should display timeline and live location shares in separate sections', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert both types of shares
             await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -356,8 +356,8 @@ test.describe('Share Links Management', () => {
             expect(await liveLocationCard.isVisible()).toBe(true);
         });
 
-        test('should separate active and expired links within each section', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should separate active and expired links within each section', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert active live location
             await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -383,8 +383,8 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Edit Share Links', () => {
-        test('should edit live location share name and settings', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should edit live location share name and settings', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert link
             const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -418,8 +418,8 @@ test.describe('Share Links Management', () => {
             expect(updatedLink.name).toBe('Updated Name');
         });
 
-        test('should edit timeline share name and dates', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should edit timeline share name and dates', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert timeline share
             const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
@@ -466,8 +466,8 @@ test.describe('Share Links Management', () => {
             expect(await linkCard.isVisible()).toBe(true);
         });
 
-        test('should edit live location to add password protection', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should edit live location to add password protection', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert link without password
             const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -508,8 +508,8 @@ test.describe('Share Links Management', () => {
             expect(await shareLinksPage.isPasswordProtected('Add Password Test')).toBe(true);
         });
 
-        test('should edit live location to enable history', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should edit live location to enable history', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert link without history
             const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -550,8 +550,8 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Delete Share Links', () => {
-        test('should delete live location share', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should delete live location share', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert link
             const insertedLink = await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -580,8 +580,8 @@ test.describe('Share Links Management', () => {
             expect(afterDelete).toBeNull();
         });
 
-        test('should delete timeline share', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should delete timeline share', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert timeline share
             const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
@@ -608,8 +608,8 @@ test.describe('Share Links Management', () => {
             expect(afterDelete).toBeNull();
         });
 
-        test('should show confirmation dialog before deleting', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should show confirmation dialog before deleting', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert link
             await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -639,10 +639,10 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Copy to Clipboard', () => {
-        test('should copy live location share URL', async ({page, dbManager, context}) => {
+        test('should copy live location share URL', async ({page, isolatedUsers, dbManager, context}) => {
             await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert link
             await ShareLinkFactory.createLiveLocation(dbManager, user.id, {
@@ -661,10 +661,10 @@ test.describe('Share Links Management', () => {
             await shareLinksPage.waitForSuccessToast('copied');
         });
 
-        test('should copy timeline share URL', async ({page, dbManager, context}) => {
+        test('should copy timeline share URL', async ({page, isolatedUsers, dbManager, context}) => {
             await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // Insert timeline share
             const { startDate, endDate, expiresAt } = DateFactory.ranges.active();
@@ -692,9 +692,10 @@ test.describe('Share Links Management', () => {
     test.describe('Full CRUD Lifecycle', () => {
         test('should complete full lifecycle for live location share: create → edit → delete', async ({
                                                                                                           page,
+                                                                                                          isolatedUsers,
                                                                                                           dbManager
                                                                                                       }) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // STEP 1: CREATE
             await shareLinksPage.clickCreateFirstLink();
@@ -762,8 +763,8 @@ test.describe('Share Links Management', () => {
             expect(await shareLinksPage.hasEmptyState()).toBe(true);
         });
 
-        test('should complete full lifecycle for timeline share: create → edit → delete', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should complete full lifecycle for timeline share: create → edit → delete', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             // STEP 1: CREATE
             await shareLinksPage.clickCreateFirstLink();
@@ -841,12 +842,14 @@ test.describe('Share Links Management', () => {
             expect(url).toContain('/login');
         });
 
-        test('should only show own share links when logged in', async ({page, dbManager}) => {
+        test('should only show own share links when logged in', async ({page, isolatedUsers, dbManager}) => {
             const shareLinksPage = new ShareLinksPage(page);
+            const ownerUser = createManagedUser(isolatedUsers);
+            const viewerUser = createManagedUser(isolatedUsers);
 
             // Create two users
             const { ownerData, owner, viewer } =
-                await TestSetupHelper.createTwoUsers(page, dbManager, 'user1@test.com', 'user2@test.com');
+                await TestSetupHelper.createTwoUsers(page, dbManager, ownerUser.email, viewerUser.email);
 
             // Create share link for user1
             await ShareLinkFactory.createLiveLocation(dbManager, owner.id, {
@@ -877,8 +880,8 @@ test.describe('Share Links Management', () => {
     });
 
     test.describe('Edge Cases and Validation', () => {
-        test('should handle very long share names gracefully', async ({page, dbManager}) => {
-            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager);
+        test('should handle very long share names gracefully', async ({page, isolatedUsers, dbManager}) => {
+            const { shareLinksPage, user } = await TestSetupHelper.setupShareLinksTest(page, dbManager, createManagedUser(isolatedUsers));
 
             await shareLinksPage.clickCreateFirstLink();
             await shareLinksPage.selectLiveLocationShare();

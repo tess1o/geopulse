@@ -1,10 +1,10 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import { test, expect } from '../fixtures/isolated-fixture.js';
 import {TimelinePage} from '../pages/TimelinePage.js';
-import {TestData} from '../fixtures/test-data.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
 import {TestDates} from '../fixtures/test-dates.js';
 import * as TimelineTestData from '../utils/timeline-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createTimelineUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Timeline Page', () => {
 
@@ -14,12 +14,20 @@ test.describe('Timeline Page', () => {
     endDate: new Date('2025-09-21')
   };
 
+  const isExpectedStreamingRange = (requestUrl) => {
+    const url = new URL(requestUrl);
+    return (
+      url.searchParams.get('startTime') === '2025-09-21T00:00:00.000Z'
+      && url.searchParams.get('endTime') === '2025-09-21T23:59:59.999Z'
+    );
+  };
+
   test.describe('API Request Optimization', () => {
     test.skip(process.env.CI, 'Skipping on CI');
-    test( 'should not make duplicate API calls when loading timeline page', async ({page, dbManager}) => {
+    test( 'should not make duplicate API calls when loading timeline page', async ({ page, isolatedUsers, dbManager}) => {
       // First, log in and set up data (don't count these API calls)
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
 
       // Insert some test data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -36,7 +44,11 @@ test.describe('Timeline Page', () => {
         const url = request.url();
 
         // Track streaming timeline requests (exclude count)
-        if (url.includes('/api/streaming-timeline') && !url.includes('/count')) {
+        if (
+          url.includes('/api/streaming-timeline')
+          && !url.includes('/count')
+          && isExpectedStreamingRange(url)
+        ) {
           apiCalls.streamingTimeline.push({
             url: url,
             method: request.method(),
@@ -46,7 +58,7 @@ test.describe('Timeline Page', () => {
         }
 
         // Track count requests
-        if (url.includes('/api/streaming-timeline/count')) {
+        if (url.includes('/api/streaming-timeline/count') && isExpectedStreamingRange(url)) {
           apiCalls.streamingTimelineCount.push({
             url: url,
             method: request.method(),
@@ -99,42 +111,66 @@ test.describe('Timeline Page', () => {
       expect(apiCalls.periodTags.length).toBeLessThanOrEqual(1);
     });
 
-    test('should not make duplicate API calls when redirecting to timeline with query params', async ({page, dbManager}) => {
+    test('should not make duplicate API calls when redirecting to timeline with query params', async ({ page, isolatedUsers, dbManager}) => {
       // Log in first (don't count these API calls)
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
 
       // Insert some test data
       const user = await dbManager.getUserByEmail(testUser.email);
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);
 
-      // NOW set up request listener to track only the test navigation API calls
+      // Track completed requests for test navigation API calls.
       const apiCalls = {
-        streamingTimeline: [],
-        streamingTimelineCount: []
+        streamingTimelineFinished: [],
+        streamingTimelineCountFinished: [],
+        streamingTimelineFailed: [],
+        streamingTimelineCountFailed: []
       };
 
-      page.on('request', request => {
+      page.on('requestfinished', request => {
         const url = request.url();
 
         // Track streaming timeline requests (exclude count)
         if (url.includes('/api/streaming-timeline') && !url.includes('/count')) {
-          apiCalls.streamingTimeline.push({
+          apiCalls.streamingTimelineFinished.push({
             url: url,
             method: request.method(),
             timestamp: Date.now()
           });
-          console.log('[REQUEST] Streaming Timeline:', url);
+          console.log('[REQUEST FINISHED] Streaming Timeline:', url);
         }
 
         // Track count requests
         if (url.includes('/api/streaming-timeline/count')) {
-          apiCalls.streamingTimelineCount.push({
+          apiCalls.streamingTimelineCountFinished.push({
             url: url,
             method: request.method(),
             timestamp: Date.now()
           });
-          console.log('[REQUEST] Streaming Timeline Count:', url);
+          console.log('[REQUEST FINISHED] Streaming Timeline Count:', url);
+        }
+      });
+
+      page.on('requestfailed', request => {
+        const url = request.url();
+
+        if (url.includes('/api/streaming-timeline') && !url.includes('/count')) {
+          apiCalls.streamingTimelineFailed.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST FAILED] Streaming Timeline:', url);
+        }
+
+        if (url.includes('/api/streaming-timeline/count')) {
+          apiCalls.streamingTimelineCountFailed.push({
+            url: url,
+            method: request.method(),
+            timestamp: Date.now()
+          });
+          console.log('[REQUEST FAILED] Streaming Timeline Count:', url);
         }
       });
 
@@ -145,6 +181,9 @@ test.describe('Timeline Page', () => {
       await page.waitForURL(/\/app\/timeline\?start=.*&end=.*/);
       expect(page.url()).toMatch(/start=\d{4}-\d{2}-\d{2}/);
       expect(page.url()).toMatch(/end=\d{4}-\d{2}-\d{2}/);
+      const redirectedUrl = new URL(page.url());
+      const startDate = redirectedUrl.searchParams.get('start');
+      const endDate = redirectedUrl.searchParams.get('end');
 
       // Wait for the page to load completely
       await timelinePage.waitForPageLoad();
@@ -163,20 +202,33 @@ test.describe('Timeline Page', () => {
       const waitTime = process.env.CI ? 3000 : 1500;
       await page.waitForTimeout(waitTime);
 
-      // Verify each API endpoint was called exactly once
-      console.log('=== API Call Summary (After Redirect) ===');
-      console.log('Streaming Timeline calls:', apiCalls.streamingTimeline.length);
-      console.log('Streaming Timeline Count calls:', apiCalls.streamingTimelineCount.length);
+      const expectedStartTime = `${startDate}T00:00:00.000Z`;
+      const expectedEndTime = `${endDate}T23:59:59.999Z`;
+      const isExpectedRangeCall = (call) => {
+        const url = new URL(call.url);
+        return (
+          url.searchParams.get('startTime') === expectedStartTime
+          && url.searchParams.get('endTime') === expectedEndTime
+        );
+      };
 
-      expect(apiCalls.streamingTimeline.length).toBe(1);
-      expect(apiCalls.streamingTimelineCount.length).toBe(1);
+      const finishedStreamingCalls = apiCalls.streamingTimelineFinished.filter(isExpectedRangeCall);
+      const finishedCountCalls = apiCalls.streamingTimelineCountFinished.filter(isExpectedRangeCall);
+
+      // Verify each API endpoint completed exactly once for redirected range.
+      console.log('=== API Call Summary (After Redirect) ===');
+      console.log('Streaming Timeline finished calls:', finishedStreamingCalls.length);
+      console.log('Streaming Timeline Count finished calls:', finishedCountCalls.length);
+
+      expect(finishedStreamingCalls.length).toBe(1);
+      expect(finishedCountCalls.length).toBe(1);
     });
   });
   
   test.describe('Initial State and Empty Data', () => {
-    test('should show empty state when no timeline data exists', async ({page, dbManager}) => {
+    test('should show empty state when no timeline data exists', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       
       // Verify we're on the timeline page
       expect(await timelinePage.isOnTimelinePage()).toBe(true);
@@ -195,9 +247,9 @@ test.describe('Timeline Page', () => {
       const hasTimelineData = await TimelinePage.verifyTimelineDataExists(dbManager, user.id);
     });
 
-    test('should show loading state initially', async ({page}) => {
+    test('should show loading state initially', async ({ page, isolatedUsers}) => {
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       
       // Check if loading state appears briefly
       try {
@@ -212,9 +264,9 @@ test.describe('Timeline Page', () => {
   });
 
   test.describe('Timeline with Data', () => {
-    test('should display timeline date range and card timestamps using user date format', async ({page, dbManager}) => {
+    test('should display timeline date range and card timestamps using user date format', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+      const testUser = createTimelineUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
 
       await timelinePage.setupTimelineWithData(
         dbManager,
@@ -242,17 +294,17 @@ test.describe('Timeline Page', () => {
       );
     });
 
-    test('should display Movement Timeline header', async ({page, dbManager}) => {
+    test('should display Movement Timeline header', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, TestData.users.existing, testDateRange);
+      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       const header = page.locator('.timeline-header:has-text("Movement Timeline")');
       expect(await header.isVisible()).toBe(true);
     });
 
-    test('should display regular stays with correct information', async ({page, dbManager}) => {
+    test('should display regular stays with correct information', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -296,9 +348,9 @@ test.describe('Timeline Page', () => {
       }
     });
 
-    test('should display regular trips with correct information', async ({page, dbManager}) => {
+    test('should display regular trips with correct information', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -337,9 +389,9 @@ test.describe('Timeline Page', () => {
       }
     });
 
-    test('should display regular data gaps with correct information', async ({page, dbManager}) => {
+    test('should display regular data gaps with correct information', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, TestData.users.existing, testDateRange);
+      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -382,9 +434,9 @@ test.describe('Timeline Page', () => {
   });
 
   test.describe('Overnight Timeline Elements', () => {
-    test('should display overnight stays with correct data and special formatting', async ({page, dbManager}) => {
+    test('should display overnight stays with correct data and special formatting', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers);
 
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
 
@@ -420,12 +472,11 @@ test.describe('Timeline Page', () => {
       expect(await timelinePage.getDateGroupsCount()).toBeGreaterThanOrEqual(1);
     });
 
-    test('should calculate "on this day" duration correctly when browser timezone differs from user timezone', async ({page, dbManager}) => {
+    test('should calculate "on this day" duration correctly when browser timezone differs from user timezone', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/London' });
       
       // Simulate browser in New York timezone but user setting is Europe/London
-      testUser.timezone = 'Europe/London';
       
       // Mock browser timezone to America/New_York
       await page.addInitScript(() => {
@@ -470,12 +521,11 @@ test.describe('Timeline Page', () => {
       expect(userInfo.timezone).toBe('Europe/London');
     });
 
-    test('should display overnight trips with correct data and special formatting', async ({page, dbManager}) => {
+    test('should display overnight trips with correct data and special formatting', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
       
       // Set timezone to Europe/Kyiv to match test expectations
-      testUser.timezone = 'Europe/Kyiv';
       
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightTripsTestData, testUser);
       
@@ -533,12 +583,11 @@ test.describe('Timeline Page', () => {
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
     });
 
-    test('should display overnight data gaps with correct data and special formatting', async ({page, dbManager}) => {
+    test('should display overnight data gaps with correct data and special formatting', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
       
       // Set timezone to Europe/Kyiv to match test expectations
-      testUser.timezone = 'Europe/Kyiv';
       
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightDataGapsTestData, testUser);
       
@@ -594,9 +643,9 @@ test.describe('Timeline Page', () => {
       expect(await timelinePage.getMoonIconsCount()).toBeGreaterThan(0);
     });
 
-    test('should properly display overnight elements across multiple date groups', async ({page, dbManager}) => {
+    test('should properly display overnight elements across multiple date groups', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       
       // Insert mixed overnight test data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -625,9 +674,9 @@ test.describe('Timeline Page', () => {
   });
 
   test.describe('Timeline UI Behavior and Data Verification', () => {
-    test('should display date separators correctly', async ({page, dbManager}) => {
+    test('should display date separators correctly', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, TestData.users.existing, testDateRange);
+      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -641,12 +690,11 @@ test.describe('Timeline Page', () => {
       expect(await dateGroups.count()).toBeGreaterThan(0);
     });
     
-    test('should display date separators in user timezone format', async ({page, dbManager}) => {
+    test('should display date separators in user timezone format', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/London' });
       
       // Create user with specific timezone
-      testUser.timezone = 'Europe/London';
       
       // Login and navigate
       await timelinePage.loginAndNavigate(testUser);
@@ -677,9 +725,9 @@ test.describe('Timeline Page', () => {
       expect(userInfo.timezone).toBe('Europe/London');
     });
 
-    test('should handle timeline item clicks correctly', async ({page, dbManager}) => {
+    test('should handle timeline item clicks correctly', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, TestData.users.existing, testDateRange);
+      await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -692,9 +740,9 @@ test.describe('Timeline Page', () => {
       expect(true).toBe(true); // Item is clickable
     });
 
-    test('should correctly display timeline markers with appropriate icons', async ({page, dbManager}) => {
+    test('should correctly display timeline markers with appropriate icons', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
       
       // Insert mixed timeline data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -722,9 +770,9 @@ test.describe('Timeline Page', () => {
       expect(totalIcons).toBeGreaterThan(0);
     });
 
-    test('should verify data consistency between database and UI display', async ({page, dbManager}) => {
+    test('should verify data consistency between database and UI display', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      const { testData } = await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createTimelineUser(isolatedUsers), testDateRange);
       
       await timelinePage.waitForTimelineContent();
       
@@ -762,12 +810,11 @@ test.describe('Timeline Page', () => {
       });
     }
 
-    test('should display overnight stays correctly after switching from Europe/Kyiv to America/New_York', async ({page, dbManager}) => {
+    test('should display overnight stays correctly after switching from Europe/Kyiv to America/New_York', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
 
       // Start with Europe/Kyiv timezone
-      testUser.timezone = 'Europe/Kyiv';
 
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
       await timelinePage.waitForTimelineContent();
@@ -814,12 +861,11 @@ test.describe('Timeline Page', () => {
       }
     });
 
-    test('should display overnight trips correctly after switching from Europe/Kyiv to America/New_York', async ({page, dbManager}) => {
+    test('should display overnight trips correctly after switching from Europe/Kyiv to America/New_York', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
       
       // Start with Europe/Kyiv timezone
-      testUser.timezone = 'Europe/Kyiv';
       
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightTripsTestData, testUser);
       await timelinePage.waitForTimelineContent();
@@ -849,12 +895,11 @@ test.describe('Timeline Page', () => {
       console.log('Trip timezone switch - New York: 1 overnight trip (spans midnight)');
     });
 
-    test('should display overnight data gaps correctly after switching from Europe/Kyiv to America/New_York', async ({page, dbManager}) => {
+    test('should display overnight data gaps correctly after switching from Europe/Kyiv to America/New_York', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
       
       // Start with Europe/Kyiv timezone
-      testUser.timezone = 'Europe/Kyiv';
       
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightDataGapsTestData, testUser);
       await timelinePage.waitForTimelineContent();
@@ -879,12 +924,11 @@ test.describe('Timeline Page', () => {
       expect(updatedFirstCardText).toMatch(/Continued from Sep 20, 16:00/);
     });
 
-    test('should handle items that change overnight status when switching timezones', async ({page, dbManager}) => {
+    test('should handle items that change overnight status when switching timezones', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
       
       // Start with Europe/Kyiv timezone
-      testUser.timezone = 'Europe/Kyiv';
       
       const { testData } = await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
       await timelinePage.waitForTimelineContent();
@@ -910,12 +954,11 @@ test.describe('Timeline Page', () => {
       console.log(`New York: ${nyOvernightCards} cards, ${nyMoonIcons} moon icons`);
     });
 
-    test('should display date separators correctly after timezone switch', async ({page, dbManager}) => {
+    test('should display date separators correctly after timezone switch', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
       
       // Start with Europe/Kyiv timezone
-      testUser.timezone = 'Europe/Kyiv';
       
       await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
       await timelinePage.waitForTimelineContent();
@@ -935,12 +978,11 @@ test.describe('Timeline Page', () => {
       console.log(`Date groups - Kyiv: ${kyivDateGroups}, New York: ${nyDateGroups}`);
     });
 
-    test('should maintain chronological order of timeline items after timezone switch', async ({page, dbManager}) => {
+    test('should maintain chronological order of timeline items after timezone switch', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const testUser = TestData.users.existing;
+      const testUser = createTimelineUser(isolatedUsers, { timezone: 'Europe/Kyiv' });
 
       // Start with Europe/Kyiv timezone
-      testUser.timezone = 'Europe/Kyiv';
 
       await timelinePage.setupOvernightTimelineWithData(dbManager, TimelineTestData.insertVerifiableOvernightStaysTestData, testUser);
       await timelinePage.waitForTimelineContent();
@@ -990,8 +1032,9 @@ test.describe('Timeline Page', () => {
   });
 
   test.describe('Period Tags Display on Timeline', () => {
-    test('should display period tag banner when viewing tagged period', async ({page, dbManager}) => {
+    test('should display period tag banner when viewing tagged period', async ({ page, isolatedUsers, dbManager}) => {
       await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
         periodTag: {
           tagName: 'Summer Vacation 2025',
@@ -1007,8 +1050,9 @@ test.describe('Timeline Page', () => {
       await TestSetupHelper.assertPeriodTagVisibility(page, 'Summer Vacation 2025', true, expect);
     });
 
-    test('should display multiple period tags when viewing overlapping periods', async ({page, dbManager}) => {
+    test('should display multiple period tags when viewing overlapping periods', async ({ page, isolatedUsers, dbManager}) => {
       const { user } = await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
         skipNavigation: true
       });
@@ -1040,8 +1084,9 @@ test.describe('Timeline Page', () => {
       expect(await periodTagBanners.count()).toBeGreaterThan(0);
     });
 
-    test('should not display period tag banner when viewing non-tagged period', async ({page, dbManager}) => {
+    test('should not display period tag banner when viewing non-tagged period', async ({ page, isolatedUsers, dbManager}) => {
       await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
         periodTag: {
           tagName: 'Different Period',
@@ -1057,8 +1102,9 @@ test.describe('Timeline Page', () => {
       await TestSetupHelper.assertPeriodTagVisibility(page, 'Different Period', false, expect);
     });
 
-    test('should display active period tag for current date', async ({page, dbManager}) => {
+    test('should display active period tag for current date', async ({ page, isolatedUsers, dbManager}) => {
       const { timelinePage } = await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         periodTag: {
           tagName: 'Ongoing Trip',
           startTime: TestDates.daysAgo(3),
@@ -1082,8 +1128,9 @@ test.describe('Timeline Page', () => {
       expect(await timelineContent.isVisible()).toBe(true);
     });
 
-    test('should handle period tag with partial overlap on timeline date range', async ({page, dbManager}) => {
+    test('should handle period tag with partial overlap on timeline date range', async ({ page, isolatedUsers, dbManager}) => {
       await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
         periodTag: {
           tagName: 'Partial Overlap Tag',
@@ -1099,8 +1146,9 @@ test.describe('Timeline Page', () => {
       await TestSetupHelper.assertPeriodTagVisibility(page, 'Partial Overlap Tag', true, expect);
     });
 
-    test('should display OwnTracks source badge on period tag banner', async ({page, dbManager}) => {
+    test('should display OwnTracks source badge on period tag banner', async ({ page, isolatedUsers, dbManager}) => {
       await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         timelineDataFn: TimelineTestData.insertRegularStaysTestData,
         periodTag: {
           tagName: 'OwnTracks Trip',
@@ -1120,8 +1168,9 @@ test.describe('Timeline Page', () => {
       }
     });
 
-    test('should update period tag display when changing date range', async ({page, dbManager}) => {
+    test('should update period tag display when changing date range', async ({ page, isolatedUsers, dbManager}) => {
       const { user, timelinePage } = await TestSetupHelper.setupTimelineWithPeriodTag(page, dbManager, {
+        userData: createTimelineUser(isolatedUsers),
         skipNavigation: true
       });
 
@@ -1158,9 +1207,9 @@ test.describe('Timeline Page', () => {
       expect(isTagAVisible || isTagBVisible).toBe(true);
     });
 
-    test('should link to period tags management page from timeline', async ({page, dbManager}) => {
+    test('should link to period tags management page from timeline', async ({ page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
 
       const user = await dbManager.getUserByEmail(testUser.email);
       await TimelineTestData.insertRegularStaysTestData(dbManager, user.id);

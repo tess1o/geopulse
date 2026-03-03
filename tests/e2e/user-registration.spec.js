@@ -1,19 +1,17 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import { test, expect } from '../fixtures/isolated-fixture.js';
 import {RegisterPage} from '../pages/RegisterPage.js';
 import {LocationSourcesPage} from '../pages/LocationSourcesPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
 import {LoginPage} from "../pages/LoginPage.js";
+import {buildManagedUser as buildRegistrableUser} from '../utils/isolated-user-helper.js';
 
 test.describe('User Registration', () => {
-
-    test('should successfully register a new user', async ({page, dbManager}) => {
+    test('should successfully register a new user', async ({ page, isolatedUsers, dbManager}) => {
         const registerPage = new RegisterPage(page);
         const locationSourcesPage = new LocationSourcesPage(page);
-        const newUser = TestData.generateNewUser();
+        const newUser = buildRegistrableUser(isolatedUsers);
 
         // Navigate to register page
         await registerPage.navigate();
@@ -45,10 +43,9 @@ test.describe('User Registration', () => {
         expect(createdUser.full_name).toBe(newUser.fullName);
     });
 
-    test('should prevent registration with existing email', async ({page, dbManager}) => {
+    test('should prevent registration with existing email', async ({ page, isolatedUsers }) => {
         const registerPage = new RegisterPage(page);
-        const existingUser = TestData.users.existing;
-        await UserFactory.createUser(page, existingUser);
+        const existingUser = await isolatedUsers.create(page);
 
         await registerPage.navigate();
         await registerPage.waitForPageLoad();
@@ -82,10 +79,10 @@ test.describe('User Registration', () => {
     });
 
     test.describe('Timezone Auto-Detection', () => {
-        test('should auto-detect timezone during registration (America/New_York)', async ({page, dbManager}) => {
+        test('should auto-detect timezone during registration (America/New_York)', async ({ page, isolatedUsers, dbManager}) => {
             const registerPage = new RegisterPage(page);
             const locationSourcesPage = new LocationSourcesPage(page);
-            const newUser = TestData.generateNewUser();
+            const newUser = buildRegistrableUser(isolatedUsers);
 
             // Mock browser timezone to America/New_York
             await page.addInitScript(() => {
@@ -138,10 +135,10 @@ test.describe('User Registration', () => {
             expect(createdUser.timezone).toBe('America/New_York');
         });
 
-        test('should auto-detect timezone during registration (Europe/London)', async ({page, dbManager}) => {
+        test('should auto-detect timezone during registration (Europe/London)', async ({ page, isolatedUsers, dbManager}) => {
             const registerPage = new RegisterPage(page);
             const locationSourcesPage = new LocationSourcesPage(page);
-            const newUser = TestData.generateNewUser();
+            const newUser = buildRegistrableUser(isolatedUsers);
 
             // Mock browser timezone to Europe/London
             await page.addInitScript(() => {
@@ -194,10 +191,10 @@ test.describe('User Registration', () => {
             expect(createdUser.timezone).toBe('Europe/London');
         });
 
-        test('should handle timezone normalization during registration (Europe/Kiev -> Europe/Kyiv)', async ({page, dbManager}) => {
+        test('should handle timezone normalization during registration (Europe/Kiev -> Europe/Kyiv)', async ({ page, isolatedUsers, dbManager}) => {
             const registerPage = new RegisterPage(page);
             const locationSourcesPage = new LocationSourcesPage(page);
-            const newUser = TestData.generateNewUser();
+            const newUser = buildRegistrableUser(isolatedUsers);
 
             // Mock browser timezone to Europe/Kiev (old spelling)
             await page.addInitScript(() => {
@@ -250,10 +247,10 @@ test.describe('User Registration', () => {
             expect(createdUser.timezone).toBe('Europe/Kyiv'); // Should be normalized
         });
 
-        test('should fallback to UTC when timezone detection fails', async ({page, dbManager}) => {
+        test('should fallback to UTC when timezone detection fails', async ({ page, isolatedUsers, dbManager}) => {
             const registerPage = new RegisterPage(page);
             const locationSourcesPage = new LocationSourcesPage(page);
-            const newUser = TestData.generateNewUser();
+            const newUser = buildRegistrableUser(isolatedUsers);
 
             // Break timezone detection
             await page.addInitScript(() => {

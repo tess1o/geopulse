@@ -1,8 +1,8 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TimelineReportsPage} from '../pages/TimelineReportsPage.js';
-import {TestData} from '../fixtures/test-data.js';
 import * as TimelineTestData from '../utils/timeline-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Timeline Reports Page', () => {
 
@@ -13,9 +13,9 @@ test.describe('Timeline Reports Page', () => {
   };
 
   test.describe('Initial State and Empty Data', () => {
-    test('should show empty state when no timeline data exists', async ({page, dbManager}) => {
+    test('should show empty state when no timeline data exists', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testUser } = await reportsPage.loginAndNavigate();
+      const { testUser } = await reportsPage.loginAndNavigate(createManagedUser(isolatedUsers));
 
       // Verify we're on the timeline reports page
       expect(await reportsPage.isOnTimelineReportsPage()).toBe(true);
@@ -36,9 +36,9 @@ test.describe('Timeline Reports Page', () => {
       expect(hasTimelineData).toBe(false);
     });
 
-    test('should show loading state initially', async ({page}) => {
+    test('should show loading state initially', async ({page, isolatedUsers}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testUser } = await reportsPage.loginAndNavigate();
+      const { testUser } = await reportsPage.loginAndNavigate(createManagedUser(isolatedUsers));
 
       // Check if loading state appears briefly
       try {
@@ -53,18 +53,18 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Page Header and Quick Stats', () => {
-    test('should display Timeline Reports header', async ({page, dbManager}) => {
+    test('should display Timeline Reports header', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       const header = page.locator('h1:has-text("Timeline Reports")');
       expect(await header.isVisible()).toBe(true);
     });
 
-    test('should display date range correctly', async ({page, dbManager}) => {
+    test('should display date range correctly', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       const dateRangeText = await reportsPage.getDateRangeText();
@@ -73,9 +73,9 @@ test.describe('Timeline Reports Page', () => {
       );
     });
 
-    test('should apply user date format to header range and table dates', async ({page, dbManager}) => {
+    test('should apply user date format to header range and table dates', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+      const testUser = createManagedUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
 
       await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, testUser, testDateRange);
       await reportsPage.waitForContentLoaded();
@@ -97,9 +97,9 @@ test.describe('Timeline Reports Page', () => {
       );
     });
 
-    test('should display correct quick stats for stays', async ({page, dbManager}) => {
+    test('should display correct quick stats for stays', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       const stats = await reportsPage.getQuickStats();
@@ -108,9 +108,9 @@ test.describe('Timeline Reports Page', () => {
       expect(stats['Data Gaps']).toBe(0);
     });
 
-    test('should display correct quick stats for mixed data', async ({page, dbManager}) => {
+    test('should display correct quick stats for mixed data', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testUser } = await reportsPage.loginAndNavigate();
+      const { testUser } = await reportsPage.loginAndNavigate(createManagedUser(isolatedUsers));
 
       // Insert mixed data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -130,9 +130,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Tab Navigation', () => {
-    test('should have three tabs: Stays, Trips, and Data Gaps', async ({page, dbManager}) => {
+    test('should have three tabs: Stays, Trips, and Data Gaps', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       const staysTab = page.locator('.data-tables-tabs .p-tabmenu-item:has-text("Stays")');
@@ -144,18 +144,18 @@ test.describe('Timeline Reports Page', () => {
       expect(await dataGapsTab.isVisible()).toBe(true);
     });
 
-    test('should default to Stays tab', async ({page, dbManager}) => {
+    test('should default to Stays tab', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       const activeTab = await reportsPage.getActiveTab();
       expect(activeTab.trim()).toBe('Stays');
     });
 
-    test('should switch to Trips tab when clicked', async ({page, dbManager}) => {
+    test('should switch to Trips tab when clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -163,9 +163,9 @@ test.describe('Timeline Reports Page', () => {
       expect(activeTab.trim()).toBe('Trips');
     });
 
-    test('should switch to Data Gaps tab when clicked', async ({page, dbManager}) => {
+    test('should switch to Data Gaps tab when clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Data Gaps');
@@ -173,9 +173,9 @@ test.describe('Timeline Reports Page', () => {
       expect(activeTab.trim()).toBe('Data Gaps');
     });
 
-    test('should maintain tab state when switching between tabs', async ({page, dbManager}) => {
+    test('should maintain tab state when switching between tabs', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       // Switch to Trips tab
@@ -193,9 +193,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Stays Table', () => {
-    test('should display stays table with correct data', async ({page, dbManager}) => {
+    test('should display stays table with correct data', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -204,9 +204,9 @@ test.describe('Timeline Reports Page', () => {
       expect(rowCount).toBe(testData.length);
     });
 
-    test('should open details dialog when clicking on a stay row', async ({page, dbManager}) => {
+    test('should open details dialog when clicking on a stay row', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -228,9 +228,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await detailsSection.isVisible()).toBe(true);
     });
 
-    test('should display stay location and timing in dialog', async ({page, dbManager}) => {
+    test('should display stay location and timing in dialog', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -259,9 +259,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await durationDetail.isVisible()).toBe(true);
     });
 
-    test('should close dialog when close button is clicked', async ({page, dbManager}) => {
+    test('should close dialog when close button is clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -283,9 +283,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await dialog.isVisible()).toBe(false);
     });
 
-    test('should display correct table count text', async ({page, dbManager}) => {
+    test('should display correct table count text', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -294,9 +294,9 @@ test.describe('Timeline Reports Page', () => {
       expect(countText).toContain(`${testData.length} stays`);
     });
 
-    test('should have export CSV button', async ({page, dbManager}) => {
+    test('should have export CSV button', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -305,9 +305,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await exportButton.isVisible()).toBe(true);
     });
 
-    test('should filter stays by search term', async ({page, dbManager}) => {
+    test('should filter stays by search term', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -326,9 +326,9 @@ test.describe('Timeline Reports Page', () => {
       expect(filteredRowCount).toBeGreaterThan(0);
     });
 
-    test('should show no results when search term does not match', async ({page, dbManager}) => {
+    test('should show no results when search term does not match', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -342,9 +342,9 @@ test.describe('Timeline Reports Page', () => {
       expect(rowCount).toBe(0);
     });
 
-    test('should display stays table columns correctly', async ({page, dbManager}) => {
+    test('should display stays table columns correctly', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -363,9 +363,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Trips Table', () => {
-    test('should display trips table with correct data', async ({page, dbManager}) => {
+    test('should display trips table with correct data', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -374,9 +374,9 @@ test.describe('Timeline Reports Page', () => {
       expect(rowCount).toBe(testData.length);
     });
 
-    test('should open details dialog when clicking on a trip row', async ({page, dbManager}) => {
+    test('should open details dialog when clicking on a trip row', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -398,9 +398,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await detailsSection.isVisible()).toBe(true);
     });
 
-    test('should display trip route and details in dialog', async ({page, dbManager}) => {
+    test('should display trip route and details in dialog', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -425,9 +425,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await durationDetail.isVisible()).toBe(true);
     });
 
-    test('should close trip dialog when close button is clicked', async ({page, dbManager}) => {
+    test('should close trip dialog when close button is clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -449,9 +449,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await dialog.isVisible()).toBe(false);
     });
 
-    test('should display correct table count text', async ({page, dbManager}) => {
+    test('should display correct table count text', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -460,9 +460,9 @@ test.describe('Timeline Reports Page', () => {
       expect(countText).toContain(`${testData.length} trips`);
     });
 
-    test('should have export CSV button', async ({page, dbManager}) => {
+    test('should have export CSV button', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -471,9 +471,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await exportButton.isVisible()).toBe(true);
     });
 
-    test('should display trips table columns correctly', async ({page, dbManager}) => {
+    test('should display trips table columns correctly', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableTripsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Trips');
@@ -492,9 +492,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Data Gaps Table', () => {
-    test('should display data gaps table with correct data', async ({page, dbManager}) => {
+    test('should display data gaps table with correct data', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Data Gaps');
@@ -503,9 +503,9 @@ test.describe('Timeline Reports Page', () => {
       expect(rowCount).toBe(testData.length);
     });
 
-    test('should display correct table count text', async ({page, dbManager}) => {
+    test('should display correct table count text', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, TestData.users.existing, testDateRange);
+      const { testData } = await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Data Gaps');
@@ -514,9 +514,9 @@ test.describe('Timeline Reports Page', () => {
       expect(countText).toContain(`${testData.length} gaps`);
     });
 
-    test('should have export CSV button', async ({page, dbManager}) => {
+    test('should have export CSV button', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Data Gaps');
@@ -525,9 +525,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await exportButton.isVisible()).toBe(true);
     });
 
-    test('should display data gaps table columns correctly', async ({page, dbManager}) => {
+    test('should display data gaps table columns correctly', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableDataGapsTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Data Gaps');
@@ -544,18 +544,18 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Export Functionality', () => {
-    test('should have Export All Data button in header', async ({page, dbManager}) => {
+    test('should have Export All Data button in header', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       const exportAllButton = page.locator('button:has-text("Export All Data")');
       expect(await exportAllButton.isVisible()).toBe(true);
     });
 
-    test('should trigger export when Export All Data is clicked', async ({page, dbManager}) => {
+    test('should trigger export when Export All Data is clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       // Set up download handler
@@ -575,9 +575,9 @@ test.describe('Timeline Reports Page', () => {
       expect(download !== null || toastVisible).toBe(true);
     });
 
-    test('should trigger export when individual table Export CSV is clicked', async ({page, dbManager}) => {
+    test('should trigger export when individual table Export CSV is clicked', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -601,9 +601,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Table Features', () => {
-    test('should support table sorting', async ({page, dbManager}) => {
+    test('should support table sorting', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -618,9 +618,9 @@ test.describe('Timeline Reports Page', () => {
       expect(await sortIcon.isVisible()).toBe(true);
     });
 
-    test('should support table row selection', async ({page, dbManager}) => {
+    test('should support table row selection', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
@@ -640,9 +640,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('Data Consistency', () => {
-    test('should show consistent data across all three tables', async ({page, dbManager}) => {
+    test('should show consistent data across all three tables', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testUser } = await reportsPage.loginAndNavigate();
+      const { testUser } = await reportsPage.loginAndNavigate(createManagedUser(isolatedUsers));
 
       // Insert mixed data
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -676,9 +676,9 @@ test.describe('Timeline Reports Page', () => {
       expect(stats['Data Gaps']).toBe(dataGapsData.length);
     });
 
-    test('should update all views when date range changes', async ({page, dbManager}) => {
+    test('should update all views when date range changes', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      const { testUser } = await reportsPage.loginAndNavigate();
+      const { testUser } = await reportsPage.loginAndNavigate(createManagedUser(isolatedUsers));
 
       // Insert data for different dates
       const user = await dbManager.getUserByEmail(testUser.email);
@@ -712,9 +712,9 @@ test.describe('Timeline Reports Page', () => {
   });
 
   test.describe('UI Responsiveness', () => {
-    test('should handle rapid tab switching', async ({page, dbManager}) => {
+    test('should handle rapid tab switching', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       // Rapidly switch tabs
@@ -728,9 +728,9 @@ test.describe('Timeline Reports Page', () => {
       expect(activeTab.trim()).toBe('Trips');
     });
 
-    test('should clear search filter when switching tabs', async ({page, dbManager}) => {
+    test('should clear search filter when switching tabs', async ({page, isolatedUsers, dbManager}) => {
       const reportsPage = new TimelineReportsPage(page);
-      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, TestData.users.existing, testDateRange);
+      await reportsPage.setupWithData(dbManager, TimelineTestData.insertVerifiableStaysTestData, createManagedUser(isolatedUsers), testDateRange);
       await reportsPage.waitForContentLoaded();
 
       await reportsPage.switchToTab('Stays');
