@@ -1,9 +1,7 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {JourneyInsightsPage} from '../pages/JourneyInsightsPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {TestConfig} from '../config/test-config.js';
 import {ValidationHelpers} from '../utils/validation-helpers.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
@@ -12,13 +10,10 @@ import {randomUUID} from 'crypto';
 test.describe('Journey Insights', () => {
   
   test.describe('Initial State and Empty Data', () => {
-    test('should show empty state when no timeline data exists', async ({page, dbManager}) => {
+    test('should show empty state when no timeline data exists', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      // Create user first
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       
       // Login to the app
       await loginPage.navigate();
@@ -57,12 +52,10 @@ test.describe('Journey Insights', () => {
       expect(hasTimelineData).toBe(false);
     });
 
-    test('should show loading state initially', async ({page}) => {
+    test('should show loading state initially', async ({page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -87,12 +80,10 @@ test.describe('Journey Insights', () => {
   });
 
   test.describe('Journey Insights with Data', () => {
-    test('should display geographic insights with countries and cities', async ({page, dbManager}) => {
+    test('should display geographic insights with countries and cities', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -146,12 +137,10 @@ test.describe('Journey Insights', () => {
       }
     });
 
-    test('should display travel story with distance data', async ({page, dbManager}) => {
+    test('should display travel story with distance data', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -196,12 +185,10 @@ test.describe('Journey Insights', () => {
       expect(walkNum).toBe(dbWalkDistance);
     });
 
-    test('should display activity patterns with proper time formatting', async ({page, dbManager}) => {
+    test('should display activity patterns with proper time formatting', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -242,12 +229,10 @@ test.describe('Journey Insights', () => {
       expect(timePattern.test(mostActiveTime)).toBe(true);
     });
 
-    test('should properly use Vue computed properties for time display', async ({page, dbManager}) => {
+    test('should properly use Vue computed properties for time display', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -278,12 +263,10 @@ test.describe('Journey Insights', () => {
       expect(timeValue.trim().length).toBeGreaterThan(0);
     });
 
-    test('should display achievement badges', async ({page, dbManager}) => {
+    test('should display achievement badges', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -322,12 +305,10 @@ test.describe('Journey Insights', () => {
   });
 
   test.describe('Data Integration and Consistency', () => {
-    test('should show consistent data across all sections', async ({page, dbManager}) => {
+    test('should show consistent data across all sections', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -367,12 +348,10 @@ test.describe('Journey Insights', () => {
       expect(uiTotalNum).toBe(dbTotalDistance);
     });
 
-    test('should refresh data when navigating back to the page', async ({page, dbManager}) => {
+    test('should refresh data when navigating back to the page', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const journeyInsightsPage = new JourneyInsightsPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');

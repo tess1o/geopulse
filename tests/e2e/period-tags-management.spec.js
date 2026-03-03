@@ -1,13 +1,13 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
-import {TestData} from '../fixtures/test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Period Tags Management Page', () => {
 
   test.describe('Page Load and Initial State', () => {
-    test('should display period tags management page correctly', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should display period tags management page correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify we're on the period tags page
       expect(await periodTagsPage.isOnPeriodTagsPage()).toBe(true);
@@ -20,8 +20,8 @@ test.describe('Period Tags Management Page', () => {
       expect(await periodTagsPage.isTableEmpty()).toBe(true);
     });
 
-    test('should display existing period tags on page load', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should display existing period tags on page load', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create test period tags
       await TestSetupHelper.createMultiplePeriodTags(dbManager, user.id, 3, 'manual');
@@ -30,13 +30,12 @@ test.describe('Period Tags Management Page', () => {
       await page.reload();
       await periodTagsPage.waitForPageLoad();
 
-      // Verify tags appear in table
-      const rowCount = await periodTagsPage.getTableRowCount();
-      expect(rowCount).toBe(3);
+      // Wait for table hydration after reload before asserting exact row count.
+      await expect.poll(async () => periodTagsPage.getTableRowCount(), { timeout: 10000 }).toBe(3);
     });
 
-    test('should display active tag banner when active tag exists', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should display active tag banner when active tag exists', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create an active tag
       await TestSetupHelper.createActivePeriodTag(dbManager, user.id, {
@@ -59,8 +58,8 @@ test.describe('Period Tags Management Page', () => {
       expect(activeTagName).toContain('My Active Trip');
     });
 
-    test('should display period tag dates using user date format', async ({page, dbManager}) => {
-      const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+    test('should display period tag dates using user date format', async ({page, isolatedUsers, dbManager}) => {
+      const testUser = createManagedUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
       const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, testUser);
 
       await TestSetupHelper.createPeriodTag(dbManager, user.id, {
@@ -83,8 +82,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Create Period Tag', () => {
-    test('should create a new period tag with start and end date', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should create a new period tag with start and end date', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countPeriodTags(dbManager, user.id);
 
@@ -108,8 +107,8 @@ test.describe('Period Tags Management Page', () => {
       expect(rowData.source).toContain('Manual');
     });
 
-    test('should validate that date range is required', async ({page, dbManager}) => {
-      const {periodTagsPage} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should validate that date range is required', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await periodTagsPage.clickCreateButton();
       await periodTagsPage.waitForCreateDialog();
@@ -128,8 +127,8 @@ test.describe('Period Tags Management Page', () => {
       expect(await dialog.isVisible()).toBe(true);
     });
 
-    test('should cancel create period tag dialog', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should cancel create period tag dialog', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const initialCount = await TestSetupHelper.countPeriodTags(dbManager, user.id);
 
@@ -144,8 +143,8 @@ test.describe('Period Tags Management Page', () => {
       expect(finalCount).toBe(initialCount);
     });
 
-    test('should validate tag name is required', async ({page, dbManager}) => {
-      const {periodTagsPage} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should validate tag name is required', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await periodTagsPage.clickCreateButton();
       await periodTagsPage.waitForCreateDialog();
@@ -167,8 +166,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Edit Period Tag', () => {
-    test('should edit manual period tag name', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should edit manual period tag name', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a manual tag
       const tagId = await TestSetupHelper.createPeriodTag(dbManager, user.id, {
@@ -193,8 +192,8 @@ test.describe('Period Tags Management Page', () => {
       expect(rowData.name).toContain('Updated Name');
     });
 
-    test('should edit period tag dates', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should edit period tag dates', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const tagId = await TestSetupHelper.createPeriodTag(dbManager, user.id, {
         tagName: 'Test Tag',
@@ -225,8 +224,8 @@ test.describe('Period Tags Management Page', () => {
       expect(endDate.getDate()).toBe(17);
     });
 
-    test('should not allow editing active OwnTracks tag', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should not allow editing active OwnTracks tag', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create an active OwnTracks tag
       await TestSetupHelper.createActivePeriodTag(dbManager, user.id, {
@@ -242,8 +241,8 @@ test.describe('Period Tags Management Page', () => {
       expect(isDisabled).toBe(true);
     });
 
-    test('should allow editing completed OwnTracks tag', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should allow editing completed OwnTracks tag', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a completed OwnTracks tag
       const tagId = await TestSetupHelper.createPeriodTag(dbManager, user.id, {
@@ -266,8 +265,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Delete Period Tag', () => {
-    test('should delete manual period tag', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should delete manual period tag', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const tagId = await TestSetupHelper.createPeriodTag(dbManager, user.id, {
         tagName: 'Tag to Delete',
@@ -295,8 +294,8 @@ test.describe('Period Tags Management Page', () => {
       expect(await periodTagsPage.isTableEmpty()).toBe(true);
     });
 
-    test('should cancel delete confirmation', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should cancel delete confirmation', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createPeriodTag(dbManager, user.id, {
         tagName: 'Do Not Delete',
@@ -319,8 +318,8 @@ test.describe('Period Tags Management Page', () => {
       expect(finalCount).toBe(initialCount);
     });
 
-    test('should not allow deleting active OwnTracks tag', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should not allow deleting active OwnTracks tag', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create an active OwnTracks tag
       await TestSetupHelper.createActivePeriodTag(dbManager, user.id, {
@@ -338,8 +337,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Bulk Delete', () => {
-    test('should bulk delete multiple manual tags', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should bulk delete multiple manual tags', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create multiple manual tags
       await TestSetupHelper.createMultiplePeriodTags(dbManager, user.id, 3, 'manual');
@@ -373,8 +372,8 @@ test.describe('Period Tags Management Page', () => {
       expect(rowCount).toBe(1);
     });
 
-    test('should prevent bulk delete when active OwnTracks tag is selected', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should prevent bulk delete when active OwnTracks tag is selected', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a manual tag and an active OwnTracks tag
       await TestSetupHelper.createPeriodTag(dbManager, user.id, {
@@ -413,8 +412,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Search and Filters', () => {
-    test('should filter by tag name search', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should filter by tag name search', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create tags with different names
       await TestSetupHelper.createPeriodTag(dbManager, user.id, {
@@ -445,8 +444,8 @@ test.describe('Period Tags Management Page', () => {
       expect(rowData.name).toContain('Summer');
     });
 
-    test('should filter by source', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should filter by source', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create tags with different sources
       await TestSetupHelper.createMultiplePeriodTags(dbManager, user.id, 2, 'manual');
@@ -474,8 +473,8 @@ test.describe('Period Tags Management Page', () => {
       expect(allCount).toBe(3);
     });
 
-    test('should combine search and source filters', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should combine search and source filters', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create tags
       await TestSetupHelper.createPeriodTag(dbManager, user.id, {
@@ -514,8 +513,8 @@ test.describe('Period Tags Management Page', () => {
       expect(rowData.name).toContain('Manual Summer Trip');
     });
 
-    test('should clear search filter', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should clear search filter', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createMultiplePeriodTags(dbManager, user.id, 3, 'manual');
 
@@ -536,8 +535,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('View Timeline', () => {
-    test('should navigate to timeline with period tag dates', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should navigate to timeline with period tag dates', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const startDate = new Date('2024-06-01');
       const endDate = new Date('2024-06-07');
@@ -563,8 +562,8 @@ test.describe('Period Tags Management Page', () => {
       expect(url).toContain('end=2024-06-07');
     });
 
-    test('should navigate to timeline for active tag with current date as end', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should navigate to timeline for active tag with current date as end', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const startDate = new Date('2024-06-01');
 
@@ -592,11 +591,11 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Responsive Behavior', () => {
-    test('should display mobile cards on small viewport', async ({page, dbManager}) => {
+    test('should display mobile cards on small viewport', async ({page, isolatedUsers, dbManager}) => {
       // Set mobile viewport
       await page.setViewportSize({ width: 375, height: 667 });
 
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createMultiplePeriodTags(dbManager, user.id, 2, 'manual');
 
@@ -612,10 +611,10 @@ test.describe('Period Tags Management Page', () => {
       expect(await desktopTable.isVisible()).toBe(false);
     });
 
-    test('should support edit and delete from mobile cards', async ({page, dbManager}) => {
+    test('should support edit and delete from mobile cards', async ({page, isolatedUsers, dbManager}) => {
       await page.setViewportSize({ width: 375, height: 667 });
 
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const tagId = await TestSetupHelper.createPeriodTag(dbManager, user.id, {
         tagName: 'Mobile Tag',
@@ -643,8 +642,8 @@ test.describe('Period Tags Management Page', () => {
 
   test.describe('Empty State', () => {
 
-    test('should show empty state when filters return no results', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should show empty state when filters return no results', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create only manual tags
       await TestSetupHelper.createMultiplePeriodTags(dbManager, user.id, 2, 'manual');
@@ -661,8 +660,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Data Validation', () => {
-    test('should show error when end date is before start date', async ({page, dbManager}) => {
-      const {periodTagsPage} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should show error when end date is before start date', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await periodTagsPage.clickCreateButton();
       await periodTagsPage.waitForCreateDialog();
@@ -683,8 +682,8 @@ test.describe('Period Tags Management Page', () => {
   });
 
   test.describe('Page Subtitle', () => {
-    test('should display correct subtitle with tag count and days', async ({page, dbManager}) => {
-      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager);
+    test('should display correct subtitle with tag count and days', async ({page, isolatedUsers, dbManager}) => {
+      const {periodTagsPage, user} = await TestSetupHelper.loginAndNavigateToPeriodTagsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create tags with known durations
       await TestSetupHelper.createPeriodTag(dbManager, user.id, {

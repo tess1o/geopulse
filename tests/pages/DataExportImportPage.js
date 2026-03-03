@@ -642,17 +642,6 @@ export class DataExportImportPage {
    */
 
   /**
-   * Generate timeline data for testing GPX exports with trips and stays
-   */
-  static async generateTimeline(dbManager, userId) {
-    // This is a simplified version - in production, the timeline processor would handle this
-    // For testing, we'll just ensure some basic timeline data exists
-    // The actual timeline generation happens through the backend timeline processor
-    console.log(`Timeline generation triggered for user ${userId}`);
-    // In a real scenario, you might trigger the timeline processor API endpoint here
-  }
-
-  /**
    * Note: Export/Import jobs are stored in memory, not in the database.
    * Job verification should be done through the UI or API responses.
    */

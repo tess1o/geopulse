@@ -3,15 +3,48 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
+const isolatedSpecs = [
+  '**/authentication.spec.js',
+  '**/dashboard.spec.js',
+  '**/gps-data.spec.js',
+  '**/data-export-import.spec.js',
+  '**/timeline.spec.js',
+  '**/user-registration.spec.js',
+  '**/user-validation.spec.js',
+  '**/geocoding-management-visibility.spec.js',
+  '**/journey-insights.spec.js',
+  '**/time-digest.spec.js',
+  '**/location-sources.spec.js',
+  '**/location-analytics.spec.js',
+  '**/place-details.spec.js',
+  '**/share-links.spec.js',
+  '**/share-links-access.spec.js',
+  '**/period-tags-management.spec.js',
+  '**/friends.spec.js',
+  '**/favorites-management.spec.js',
+  '**/timeline-map-interactions.spec.js',
+  '**/timeline-reports.spec.js',
+  '**/user-profile.spec.js',
+  '**/geocoding-management.spec.js',
+  '**/health.spec.js',
+  '**/error-handling.spec.js',
+];
+
+const parallelWorkers = Number.parseInt(
+  process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? '4' : '4'),
+  10
+);
+
 export default defineConfig({
   testDir: './e2e',
+  testMatch: isolatedSpecs,
   /* Run tests in files in parallel */
-  fullyParallel: false, // Disable for E2E tests to avoid database conflicts
+  fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   retries: 1,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : 1, // Single worker to avoid database conflicts
+  /* Worker count for parallel-safe specs. */
+  workers: Number.isNaN(parallelWorkers) ? 4 : parallelWorkers,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html', { outputFolder: 'playwright-report' }],

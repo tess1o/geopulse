@@ -1,13 +1,13 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
-import {TestData} from '../fixtures/test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Location Analytics Page', () => {
 
   test.describe('Page Load and Initial State', () => {
-    test('should display location analytics page correctly', async ({page, dbManager}) => {
-      const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display location analytics page correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify we're on the location analytics page
       expect(await locationAnalyticsPage.isOnLocationAnalyticsPage()).toBe(true);
@@ -23,8 +23,8 @@ test.describe('Location Analytics Page', () => {
       expect(await locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
     });
 
-    test('should display correct tab counts', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display correct tab counts', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create location analytics data
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
@@ -42,8 +42,8 @@ test.describe('Location Analytics Page', () => {
       expect(countriesCount).toBe(4); // 4 countries in diverse data
     });
 
-    test('should display empty state when no locations exist', async ({page, dbManager}) => {
-      const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display empty state when no locations exist', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify empty state for cities
       expect(await locationAnalyticsPage.isEmptyStateVisible()).toBe(true);
@@ -60,8 +60,8 @@ test.describe('Location Analytics Page', () => {
       expect(countriesEmptyText).toContain('No countries found');
     });
 
-    test('should show loading state while fetching data', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should show loading state while fetching data', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create some data
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
@@ -81,8 +81,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardCount).toBeGreaterThan(0);
     });
 
-    test('should display map recent-place last visit using user date format', async ({page, dbManager}) => {
-      const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+    test('should display map recent-place last visit using user date format', async ({page, isolatedUsers, dbManager}) => {
+      const testUser = createManagedUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
       const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, testUser);
 
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -111,8 +111,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Cities Tab', () => {
-    test('should display cities with correct statistics', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display cities with correct statistics', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create test data
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
@@ -134,8 +134,8 @@ test.describe('Location Analytics Page', () => {
       expect(firstCard.stats.places).toBeGreaterThan(0);
     });
 
-    test('should display cities sorted by visit count', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display cities sorted by visit count', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create cities with different visit counts
       const locations = [
@@ -174,8 +174,8 @@ test.describe('Location Analytics Page', () => {
       expect(cards[1].stats.visits).toBeGreaterThanOrEqual(cards[2].stats.visits);
     });
 
-    test('should display correct statistics from database', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display correct statistics from database', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const cityName = 'New York';
       await TestSetupHelper.createSingleCityAnalyticsData(dbManager, user.id, {
@@ -198,8 +198,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardData.stats.places).toBe(parseInt(dbStats.unique_places));
     });
 
-    test('should navigate to city details when clicking city card', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should navigate to city details when clicking city card', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const cityName = 'New York';
       await TestSetupHelper.createSingleCityAnalyticsData(dbManager, user.id, {
@@ -218,8 +218,8 @@ test.describe('Location Analytics Page', () => {
       expect(await locationAnalyticsPage.verifyNavigationToCityDetails(cityName)).toBe(true);
     });
 
-    test('should display multiple cities from same country', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display multiple cities from same country', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {
@@ -262,8 +262,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Countries Tab', () => {
-    test('should display countries with correct statistics', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display countries with correct statistics', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create test data
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
@@ -289,8 +289,8 @@ test.describe('Location Analytics Page', () => {
       expect(firstCard.stats.places).toBeGreaterThan(0);
     });
 
-    test('should display countries sorted by visit count', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display countries sorted by visit count', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {
@@ -332,8 +332,8 @@ test.describe('Location Analytics Page', () => {
       expect(cards[1].stats.visits).toBeGreaterThanOrEqual(cards[2].stats.visits);
     });
 
-    test('should display correct country statistics from database', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display correct country statistics from database', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const countryName = 'USA';
       await TestSetupHelper.createSingleCountryAnalyticsData(dbManager, user.id, {
@@ -360,8 +360,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardData.stats.places).toBe(parseInt(dbStats.unique_places));
     });
 
-    test('should navigate to country details when clicking country card', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should navigate to country details when clicking country card', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const countryName = 'USA';
       await TestSetupHelper.createSingleCountryAnalyticsData(dbManager, user.id, {
@@ -384,8 +384,8 @@ test.describe('Location Analytics Page', () => {
       expect(await locationAnalyticsPage.verifyNavigationToCountryDetails(countryName)).toBe(true);
     });
 
-    test('should show multiple cities count for country', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should show multiple cities count for country', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create data for one country with multiple cities
       await TestSetupHelper.createSingleCountryAnalyticsData(dbManager, user.id, {
@@ -408,8 +408,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Tab Switching', () => {
-    test('should switch between cities and countries tabs', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should switch between cities and countries tabs', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -439,8 +439,8 @@ test.describe('Location Analytics Page', () => {
       expect(cards.length).toBe(7); // 7 cities
     });
 
-    test('should preserve tab selection on page reload', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should preserve tab selection on page reload', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -465,16 +465,16 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Search Functionality', () => {
-    test('should display search bar', async ({page, dbManager}) => {
-      const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display search bar', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Verify search input is visible
       const searchInput = page.locator('.p-autocomplete-input');
       expect(await searchInput.isVisible()).toBe(true);
     });
 
-    test('should search and navigate to city', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should search and navigate to city', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const cityName = 'New York';
       await TestSetupHelper.createSingleCityAnalyticsData(dbManager, user.id, {
@@ -499,8 +499,8 @@ test.describe('Location Analytics Page', () => {
       }
     });
 
-    test('should search and navigate to country', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should search and navigate to country', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createSingleCountryAnalyticsData(dbManager, user.id, {
         country: 'France',
@@ -524,8 +524,8 @@ test.describe('Location Analytics Page', () => {
       }
     });
 
-    test('should show no results for non-existent search', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should show no results for non-existent search', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -547,8 +547,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Data Display', () => {
-    test('should display correct visit counts', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display correct visit counts', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {
@@ -572,8 +572,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardData.stats.visits).toBe(7);
     });
 
-    test('should display unique places count correctly', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display unique places count correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create data with multiple unique places in one city
       await TestSetupHelper.createSingleCityAnalyticsData(dbManager, user.id, {
@@ -592,8 +592,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardData.stats.places).toBe(5);
     });
 
-    test('should handle cities with null country gracefully', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle cities with null country gracefully', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create geocoding result with null country
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -622,8 +622,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Responsive Behavior', () => {
-    test('should handle mobile viewport', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle mobile viewport', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -646,8 +646,8 @@ test.describe('Location Analytics Page', () => {
       expect(await locationAnalyticsPage.isTabActive('Countries')).toBe(true);
     });
 
-    test('should handle tablet viewport', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle tablet viewport', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -665,8 +665,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardCount).toBeGreaterThan(0);
     });
 
-    test('should display grid correctly on different screen sizes', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display grid correctly on different screen sizes', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -687,8 +687,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Edge Cases', () => {
-    test('should handle single city with many visits', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle single city with many visits', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {
@@ -712,8 +712,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardData.stats.visits).toBe(100);
     });
 
-    test('should handle city names with special characters', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle city names with special characters', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {
@@ -736,8 +736,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardData).not.toBeNull();
     });
 
-    test('should handle very long city and country names', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle very long city and country names', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {
@@ -762,8 +762,8 @@ test.describe('Location Analytics Page', () => {
       expect(cardCount).toBe(1);
     });
 
-    test('should handle multiple countries with single city each', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should handle multiple countries with single city each', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       const locations = [
         {city: 'Paris', country: 'France', latitude: 48.8566, longitude: 2.3522, visitCount: 1},
@@ -798,8 +798,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Card Interactions', () => {
-    test('should show hover effect on location cards', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should show hover effect on location cards', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -816,8 +816,8 @@ test.describe('Location Analytics Page', () => {
       expect(await firstCard.isVisible()).toBe(true);
     });
 
-    test('should display correct icons for cities and countries', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should display correct icons for cities and countries', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       await TestSetupHelper.createDiverseLocationAnalyticsData(dbManager, user.id);
 
@@ -839,8 +839,8 @@ test.describe('Location Analytics Page', () => {
   });
 
   test.describe('Performance and Loading', () => {
-    test('should load page efficiently with large dataset', async ({page, dbManager}) => {
-      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager);
+    test('should load page efficiently with large dataset', async ({page, isolatedUsers, dbManager}) => {
+      const {locationAnalyticsPage, user} = await TestSetupHelper.loginAndNavigateToLocationAnalyticsPage(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create large dataset
       const locations = [];

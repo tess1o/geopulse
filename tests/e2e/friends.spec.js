@@ -1,20 +1,63 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {FriendsPage} from '../pages/FriendsPage.js';
 import {insertVerifiableStaysTestData, insertVerifiableTripsTestData} from '../utils/timeline-test-data.js';
 import {TestSetupHelper} from "../utils/test-setup-helper.js";
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
+
+const createAndLoginUserAndNavigateToFriendsPage = (page, dbManager, isolatedUsers, overrides = {}) =>
+  TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(
+    page,
+    dbManager,
+    createManagedUser(isolatedUsers, overrides)
+  );
+
+const setupTwoUserFriendsTest = (page, dbManager, isolatedUsers, receiverOverrides = {}, senderOverrides = {}) =>
+  TestSetupHelper.setupTwoUserFriendsTest(
+    page,
+    dbManager,
+    createManagedUser(isolatedUsers, receiverOverrides),
+    createManagedUser(isolatedUsers, senderOverrides)
+  );
+
+const setupTwoUserFriendsTestWithLogin = (page, dbManager, isolatedUsers, receiverOverrides = {}, senderOverrides = {}) =>
+  TestSetupHelper.setupTwoUserFriendsTestWithLogin(
+    page,
+    dbManager,
+    createManagedUser(isolatedUsers, receiverOverrides),
+    createManagedUser(isolatedUsers, senderOverrides)
+  );
+
+const setupMultipleFriendsTest = (page, dbManager, isolatedUsers, friendCount = 2, login = false) =>
+  TestSetupHelper.setupMultipleFriendsTest(
+    page,
+    dbManager,
+    friendCount,
+    login,
+    createManagedUser(isolatedUsers),
+    Array.from({length: friendCount}, () => createManagedUser(isolatedUsers))
+  );
+
+const setupInvitationTest = (page, dbManager, isolatedUsers, loginAsReceiver = true) =>
+  TestSetupHelper.setupInvitationTest(
+    page,
+    dbManager,
+    loginAsReceiver,
+    createManagedUser(isolatedUsers),
+    createManagedUser(isolatedUsers)
+  );
 
 test.describe('Friends Page', () => {
 
   test.describe('Tab Navigation and Structure', () => {
-    test('should default to Live tab on page load', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should default to Live tab on page load', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
       // Should be on Live tab by default
       expect(await friendsPage.isTabActive('live')).toBe(true);
     });
 
-    test('should switch between tabs correctly', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should switch between tabs correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Default should be Live tab
       expect(await friendsPage.isTabActive('live')).toBe(true);
@@ -32,22 +75,22 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isTabActive('live')).toBe(true);
     });
 
-    test('should not show Invitations tab when no invites exist', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should not show Invitations tab when no invites exist', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Invitations tab should not be visible
       expect(await friendsPage.isInvitesTabVisible()).toBe(false);
     });
 
-    test('should show Invitations tab when invites exist', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.setupInvitationTest(page, dbManager);
+    test('should show Invitations tab when invites exist', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await setupInvitationTest(page, dbManager, isolatedUsers);
 
       // Invitations tab should be visible
       expect(await friendsPage.isInvitesTabVisible()).toBe(true);
     });
 
-    test('should show tab badges with correct counts', async ({page, dbManager}) => {
-      const {user, friend, friendsPage} = await TestSetupHelper.setupTwoUserFriendsTestWithLogin(page, dbManager);
+    test('should show tab badges with correct counts', async ({page, isolatedUsers, dbManager}) => {
+      const {user, friend, friendsPage} = await setupTwoUserFriendsTestWithLogin(page, dbManager, isolatedUsers);
 
       // Create friendship
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -61,9 +104,9 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Sending Friend Invitations', () => {
-    test('should send invitation with valid email', async ({page, dbManager}) => {
+    test('should send invitation with valid email', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, friendUser, user, friend, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTestWithLogin(page, dbManager);
+        await setupTwoUserFriendsTestWithLogin(page, dbManager, isolatedUsers);
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -87,8 +130,8 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isInvitesTabVisible()).toBe(true);
     });
 
-    test('should show validation error for invalid email', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should show validation error for invalid email', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -104,8 +147,8 @@ test.describe('Friends Page', () => {
       expect(error).toContain('valid email');
     });
 
-    test('should show validation error for empty email', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should show validation error for empty email', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
@@ -120,21 +163,22 @@ test.describe('Friends Page', () => {
       expect(error).toContain('required');
     });
 
-    test('should handle invitation to non-existent user', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should handle invitation to non-existent user', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
 
       // Open invite dialog
       await friendsPage.openInviteDialog();
 
       // Send invitation to non-existent user
-      await friendsPage.sendInvitation('nonexistent@example.com');
+      const missingUserEmail = `missing-${Date.now()}-${Math.random().toString(36).slice(2)}@` + 'example.com';
+      await friendsPage.sendInvitation(missingUserEmail);
 
       // Should show error toast
       await friendsPage.waitForErrorToast();
     });
 
-    test('should handle invitation to yourself', async ({page, dbManager}) => {
-      const {friendsPage, testUser} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager)
+    test('should handle invitation to yourself', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage, testUser} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers)
       // Open invite dialog
       await friendsPage.openInviteDialog();
 
@@ -145,9 +189,9 @@ test.describe('Friends Page', () => {
       await friendsPage.waitForErrorToast();
     });
 
-    test('should show sent invitation in Invitations tab', async ({page, dbManager}) => {
+    test('should show sent invitation in Invitations tab', async ({page, isolatedUsers, dbManager}) => {
       const {friendUser, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTestWithLogin(page, dbManager);
+        await setupTwoUserFriendsTestWithLogin(page, dbManager, isolatedUsers);
 
       // Send invitation
       await friendsPage.openInviteDialog();
@@ -167,8 +211,8 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Receiving and Managing Invitations', () => {
-    test('should display received invitations correctly', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.setupInvitationTest(page, dbManager);
+    test('should display received invitations correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await setupInvitationTest(page, dbManager, isolatedUsers);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -180,9 +224,9 @@ test.describe('Friends Page', () => {
       expect(receivedInvites.length).toBe(1);
     });
 
-    test('should accept individual invitation', async ({page, dbManager}) => {
+    test('should accept individual invitation', async ({page, isolatedUsers, dbManager}) => {
       const {sender, receiver, senderData, invitationId, friendsPage} =
-        await TestSetupHelper.setupInvitationTest(page, dbManager);
+        await setupInvitationTest(page, dbManager, isolatedUsers);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -217,9 +261,9 @@ test.describe('Friends Page', () => {
       expect(friends[0].email).toBe(senderData.email);
     });
 
-    test('should reject individual invitation', async ({page, dbManager}) => {
+    test('should reject individual invitation', async ({page, isolatedUsers, dbManager}) => {
       const {sender, receiver, senderData, invitationId, friendsPage} =
-        await TestSetupHelper.setupInvitationTest(page, dbManager);
+        await setupInvitationTest(page, dbManager, isolatedUsers);
 
       // Switch to invitations tab
       await friendsPage.switchToTab('invites');
@@ -244,9 +288,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isInvitesTabVisible()).toBe(false);
     });
 
-    test('should accept multiple invitations (bulk action)', async ({page, dbManager}) => {
+    test('should accept multiple invitations (bulk action)', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 2, false);
 
       // Create invitations from both friends BEFORE logging in
       await FriendsPage.insertInvitation(dbManager, friends[0].dbUser.id, user.id);
@@ -280,9 +324,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.getFriendsListCount()).toBe(2);
     });
 
-    test('should reject multiple invitations (bulk action)', async ({page, dbManager}) => {
+    test('should reject multiple invitations (bulk action)', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 2, false);
 
       // Create invitations from both friends BEFORE logging in
       await FriendsPage.insertInvitation(dbManager, friends[0].dbUser.id, user.id);
@@ -313,9 +357,9 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Canceling Sent Invitations', () => {
-    test('should cancel individual sent invitation', async ({page, dbManager}) => {
+    test('should cancel individual sent invitation', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create invitation BEFORE logging in
       const invitationId = await FriendsPage.insertInvitation(dbManager, user.id, friend.id);
@@ -343,9 +387,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isInvitesTabVisible()).toBe(false);
     });
 
-    test('should cancel multiple sent invitations (bulk action)', async ({page, dbManager}) => {
+    test('should cancel multiple sent invitations (bulk action)', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 2, false);
 
       // Create invitations BEFORE logging in
       const invitation1Id = await FriendsPage.insertInvitation(dbManager, user.id, friends[0].dbUser.id);
@@ -379,9 +423,9 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Friends List Display and Management', () => {
-    test('should display friends with correct information', async ({page, dbManager}) => {
+    test('should display friends with correct information', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -400,9 +444,9 @@ test.describe('Friends Page', () => {
       expect(friends[0].email).toBe(friendUser.email);
     });
 
-    test('should display multiple friends correctly', async ({page, dbManager}) => {
+    test('should display multiple friends correctly', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, friendsData, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 3, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 3, false);
 
       // Create friendships BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id);
@@ -426,8 +470,8 @@ test.describe('Friends Page', () => {
       expect(emails).toContain(friendsData[2].email);
     });
 
-    test('should show empty state when no friends exist', async ({page, dbManager}) => {
-      const {friendsPage} = await TestSetupHelper.createAndLoginUserAndNavigateToFriendsPage(page, dbManager);
+    test('should show empty state when no friends exist', async ({page, isolatedUsers, dbManager}) => {
+      const {friendsPage} = await createAndLoginUserAndNavigateToFriendsPage(page, dbManager, isolatedUsers);
 
       // Switch to Friends tab
       await friendsPage.switchToTab('friends');
@@ -437,9 +481,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.hasEmptyFriendsState()).toBe(true);
     });
 
-    test('should remove friend on confirmation', async ({page, dbManager}) => {
+    test('should remove friend on confirmation', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -471,9 +515,9 @@ test.describe('Friends Page', () => {
       expect(await FriendsPage.verifyFriendshipNotExists(dbManager, user.id, friend.id)).toBe(true);
     });
 
-    test('should navigate to live map when clicking Live button', async ({page, dbManager}) => {
+    test('should navigate to live map when clicking Live button', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship with location and friend shares live location permission BEFORE logging in
       await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, true);
@@ -493,9 +537,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isTabActive('live')).toBe(true);
     });
 
-    test('should navigate to timeline when clicking Timeline button', async ({page, dbManager}) => {
+    test('should navigate to timeline when clicking Timeline button', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -515,9 +559,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isTabActive('timeline')).toBe(true);
     });
 
-    test('should disable Live button when friend does not share live location', async ({page, dbManager}) => {
+    test('should disable Live button when friend does not share live location', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship with location but WITHOUT live location permission BEFORE logging in
       await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, false);
@@ -550,9 +594,9 @@ test.describe('Friends Page', () => {
       expect(await timelineButton.isDisabled()).toBe(false);
     });
 
-    test('should enable Live button when friend shares live location', async ({page, dbManager}) => {
+    test('should enable Live button when friend shares live location', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship with location AND live location permission BEFORE logging in
       await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, true);
@@ -582,9 +626,9 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Friend Permission Management', () => {
-    test('should toggle live location permission with confirmation', async ({page, dbManager}) => {
+    test('should toggle live location permission with confirmation', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -611,9 +655,9 @@ test.describe('Friends Page', () => {
       await friendsPage.waitForToastToDisappear();
     });
 
-    test('should toggle timeline permission with confirmation', async ({page, dbManager}) => {
+    test('should toggle timeline permission with confirmation', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -640,9 +684,9 @@ test.describe('Friends Page', () => {
       await friendsPage.waitForToastToDisappear();
     });
 
-    test('should cancel permission change when dialog is rejected', async ({page, dbManager}) => {
+    test('should cancel permission change when dialog is rejected', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, friendUser, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -670,9 +714,9 @@ test.describe('Friends Page', () => {
       expect(await friendsPage.isConfirmDialogVisible()).toBe(false);
     });
 
-    test('should display sharing status sections', async ({page, dbManager}) => {
+    test('should display sharing status sections', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id);
@@ -703,9 +747,9 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Filtered Friend Lists by Permissions', () => {
-    test('should show only friends with live location permission on Live tab', async ({page, dbManager}) => {
+    test('should show only friends with live location permission on Live tab', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 3, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 3, false);
 
       // Create friendships WITH GPS locations for all friends BEFORE logging in
       await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friends[0].dbUser.id, 50.4501, 30.5234, true); // Kyiv - shares live
@@ -749,7 +793,7 @@ test.describe('Friends Page', () => {
       }
     });
 
-    test('should auto-refresh live map when friend location changes (polling)', async ({page, dbManager}) => {
+    test('should auto-refresh live map when friend location changes (polling)', async ({page, isolatedUsers, dbManager}) => {
       let friendsEndpointGetCalls = 0;
       const friendCoordinatesHistory = [];
       let trackedFriendId = null;
@@ -797,7 +841,7 @@ test.describe('Friends Page', () => {
       });
 
       const {testUser, user, friends, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 1, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 1, false);
 
       const friendId = friends[0].dbUser.id;
       trackedFriendId = friendId;
@@ -860,9 +904,9 @@ test.describe('Friends Page', () => {
       expect(friendsEndpointGetCalls).toBeGreaterThanOrEqual(2);
     });
 
-    test('should show only friends with timeline permission on Timeline tab', async ({page, dbManager}) => {
+    test('should show only friends with timeline permission on Timeline tab', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 3, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 3, false);
 
       // Create friendships with timeline permissions BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friends[0].dbUser.id, {
@@ -910,9 +954,9 @@ test.describe('Friends Page', () => {
       }
     });
 
-    test('should display friend timeline data with date range selection', async ({page, dbManager}) => {
+    test('should display friend timeline data with date range selection', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friends, loginPage, friendsPage} =
-        await TestSetupHelper.setupMultipleFriendsTest(page, dbManager, 2, false);
+        await setupMultipleFriendsTest(page, dbManager, isolatedUsers, 2, false);
       await dbManager.client.query('UPDATE users SET date_format = $1 WHERE id = $2', [DateFormatValues.DMY, user.id]);
 
       // Create friendships with timeline permissions BEFORE logging in
@@ -1069,9 +1113,9 @@ test.describe('Friends Page', () => {
       }
     });
 
-    test('should show no badge on Live tab when no friends share live location', async ({page, dbManager}) => {
+    test('should show no badge on Live tab when no friends share live location', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship with GPS location but don't share live location permission BEFORE logging in
       await TestSetupHelper.setupFriendshipWithLocation(dbManager, user.id, friend.id, 50.4501, 30.5234, false);
@@ -1102,9 +1146,9 @@ test.describe('Friends Page', () => {
       }
     });
 
-    test('should show no badge on Timeline tab when no friends share timeline', async ({page, dbManager}) => {
+    test('should show no badge on Timeline tab when no friends share timeline', async ({page, isolatedUsers, dbManager}) => {
       const {testUser, user, friend, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship but don't share timeline permission BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, user.id, friend.id, {
@@ -1140,9 +1184,9 @@ test.describe('Friends Page', () => {
   });
 
   test.describe('Data Consistency', () => {
-    test('should verify friendship is bidirectional', async ({page, dbManager}) => {
+    test('should verify friendship is bidirectional', async ({page, isolatedUsers, dbManager}) => {
       const {testUser: user1, friendUser: user2, user: dbUser1, friend: dbUser2, loginPage, friendsPage} =
-        await TestSetupHelper.setupTwoUserFriendsTest(page, dbManager);
+        await setupTwoUserFriendsTest(page, dbManager, isolatedUsers);
 
       // Create friendship BEFORE logging in
       await TestSetupHelper.setupFriendship(dbManager, dbUser1.id, dbUser2.id);

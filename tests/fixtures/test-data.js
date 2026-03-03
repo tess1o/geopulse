@@ -1,24 +1,52 @@
 import faker from 'faker';
+import { randomUUID } from 'crypto';
+
+const EXISTING_USER_TEMPLATE = Object.freeze({
+  passwordHash: '$2a$12$Tw/8dhICF4wBQsy5S/Lf1OhaWatjLSdGuKtO5VZw3wfBHMaOwFmP6',
+  email: 'testuser@example.com',
+  password: 'password123',
+  fullName: 'Test User',
+  id: '550e8400-e29b-41d4-a716-446655440000',
+});
+
+const ANOTHER_USER_TEMPLATE = Object.freeze({
+  passwordHash: '$2a$12$Tw/8dhICF4wBQsy5S/Lf1OhaWatjLSdGuKtO5VZw3wfBHMaOwFmP6',
+  email: 'existinguser@example.com',
+  password: 'password123',
+  fullName: 'Existing User',
+  id: '550e8400-e29b-41d4-a716-446655440001',
+});
 
 export const TestData = {
   
   // Pre-defined test users
-  users: {
-    existing: {
-      passwordHash: '$2a$12$Tw/8dhICF4wBQsy5S/Lf1OhaWatjLSdGuKtO5VZw3wfBHMaOwFmP6',
-      email: 'testuser@example.com',
-      password: 'password123',
-      fullName: 'Test User',
-      id: '550e8400-e29b-41d4-a716-446655440000'
-    },
-    
-    another: {
-      passwordHash: '$2a$12$Tw/8dhICF4wBQsy5S/Lf1OhaWatjLSdGuKtO5VZw3wfBHMaOwFmP6',
-      email: 'existinguser@example.com',
-      password: 'password123',
-      fullName: 'Existing User',
-      id: '550e8400-e29b-41d4-a716-446655440001'
-    }
+  users: Object.freeze({
+    existing: EXISTING_USER_TEMPLATE,
+    another: ANOTHER_USER_TEMPLATE,
+  }),
+
+  buildExistingUser(overrides = {}) {
+    return {
+      ...EXISTING_USER_TEMPLATE,
+      ...overrides,
+    };
+  },
+
+  buildAnotherUser(overrides = {}) {
+    return {
+      ...ANOTHER_USER_TEMPLATE,
+      ...overrides,
+    };
+  },
+
+  generateUniqueUser(prefix = 'user', overrides = {}) {
+    const uniqueSuffix = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
+    return {
+      ...EXISTING_USER_TEMPLATE,
+      email: `${prefix}-${uniqueSuffix}@example.com`,
+      fullName: `E2E ${prefix} ${uniqueSuffix}`,
+      ...overrides,
+    };
   },
 
   // Generate new user data for registration tests

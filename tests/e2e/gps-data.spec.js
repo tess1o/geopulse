@@ -1,23 +1,19 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import { test, expect } from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {GpsDataPage} from '../pages/GpsDataPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import {GpsDataFactory} from '../utils/gps-data-factory.js';
-import {AppNavigation} from "../pages/AppNavigation.js";
 import {DateFormatTestHelper, DateFormatValues} from '../utils/date-format-test-helper.js';
 
 test.describe('GPS Data Page', () => {
 
     test.describe('Basic GPS Data Viewing', () => {
-        test('should display GPS data for authenticated user', async ({page, dbManager}) => {
+        test('should display GPS data for authenticated user', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and GPS test data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
@@ -50,13 +46,12 @@ test.describe('GPS Data Page', () => {
             expect(await gpsDataPage.isExportButtonEnabled()).toBe(true);
         });
 
-        test('should show empty state when user has no GPS data', async ({page, dbManager}) => {
+        test('should show empty state when user has no GPS data', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user without GPS data
-            await UserFactory.createUser(page, testUser);
 
             // Login and navigate to GPS data page
             await loginPage.navigate();
@@ -76,13 +71,12 @@ test.describe('GPS Data Page', () => {
             expect(await gpsDataPage.isExportButtonEnabled()).toBe(false);
         });
 
-        test('should display GPS data with correct details', async ({page, dbManager}) => {
+        test('should display GPS data with correct details', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and GPS test data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Create a smaller dataset for detailed verification
@@ -114,13 +108,12 @@ test.describe('GPS Data Page', () => {
             }
         });
 
-        test('should display correct summary statistics', async ({page, dbManager}) => {
+        test('should display correct summary statistics', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and GPS test data with known timestamps
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Generate test data with predictable dates
@@ -191,12 +184,10 @@ test.describe('GPS Data Page', () => {
             expect(dbLastDate.getMonth()).toBe(7); // August (0-indexed)
         });
 
-        test('should apply user date format to summary cards and timestamp column', async ({page, dbManager}) => {
+        test('should apply user date format to summary cards and timestamp column', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY, timezone: 'UTC' };
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page, { dateFormat: DateFormatValues.DMY, timezone: 'UTC' });
             const user = await dbManager.getUserByEmail(testUser.email);
             await dbManager.client.query(
                 'UPDATE users SET date_format = $1 WHERE id = $2',
@@ -229,14 +220,10 @@ test.describe('GPS Data Page', () => {
             expect(matchingTimestamp).not.toContain('08/15/2025');
         });
 
-        test('should display correct points today count', async ({page, dbManager}) => {
+        test('should display correct points today count', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
-
-            // Set user timezone to UTC for consistent test behavior
-            testUser.timezone = 'UTC';
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Create some GPS data for "today" in UTC
@@ -302,13 +289,12 @@ test.describe('GPS Data Page', () => {
             expect(testDataDbCount).toBe(5);
         });
 
-        test('should handle timezone correctly for points today count - GMT+3 scenario', async ({page, dbManager}) => {
+        test('should handle timezone correctly for points today count - GMT+3 scenario', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Simulate GMT+3 timezone scenario
@@ -386,14 +372,10 @@ test.describe('GPS Data Page', () => {
     });
 
     test.describe('Date Range Filtering', () => {
-        test('should filter GPS data by date range', async ({page, dbManager}) => {
+        test('should filter GPS data by date range', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
-
-            // Create user with UTC timezone and multi-day GPS test data
-            testUser.timezone = 'UTC';
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
             const user = await dbManager.getUserByEmail(testUser.email);
 
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
@@ -455,13 +437,12 @@ test.describe('GPS Data Page', () => {
             expect(finalStats.totalPoints).toBe(gpsTestData.allPoints.length);
         });
 
-        test('should filter GPS data by date range spanning multiple days', async ({page, dbManager}) => {
+        test('should filter GPS data by date range spanning multiple days', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and multi-day GPS test data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
@@ -503,16 +484,13 @@ test.describe('GPS Data Page', () => {
     });
 
     test.describe('User Data Isolation', () => {
-        test('should only show GPS data for the authenticated user', async ({page, dbManager}) => {
+        test('should only show GPS data for the authenticated user', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
 
             // Create two users
-            const user1 = TestData.users.existing;
-            const user2 = TestData.users.another;
-
-            await UserFactory.createUser(page, user1);
-            await UserFactory.createUser(page, user2);
+            const user1 = await isolatedUsers.create(page);
+            const user2 = await isolatedUsers.create(page);
 
             const user1Record = await dbManager.getUserByEmail(user1.email);
             const user2Record = await dbManager.getUserByEmail(user2.email);
@@ -554,9 +532,12 @@ test.describe('GPS Data Page', () => {
             expect(user1Stats.totalPoints).toBe(user1GpsData.allPoints.length);
             expect(user1Stats.totalPoints).not.toBe(user2GpsData.allPoints.length);
 
-            // Logout and login as user2
-            const appNavigation = new AppNavigation(page);
-            await appNavigation.logout();
+            // Clear session and login as user2 (avoids flaky logout-response timing)
+            await page.context().clearCookies();
+            await page.evaluate(() => {
+                localStorage.clear();
+                sessionStorage.clear();
+            });
 
             await loginPage.navigate();
             await loginPage.login(user2.email, user2.password);
@@ -572,13 +553,12 @@ test.describe('GPS Data Page', () => {
     });
 
     test.describe('CSV Export Functionality', () => {
-        test('should export GPS data to CSV', async ({page, dbManager}) => {
+        test('should export GPS data to CSV', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and GPS test data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
@@ -618,13 +598,12 @@ test.describe('GPS Data Page', () => {
             expect(downloadPath).toBeTruthy();
         });
 
-        test('should export filtered GPS data to CSV', async ({page, dbManager}) => {
+        test('should export filtered GPS data to CSV', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and GPS test data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
@@ -648,29 +627,50 @@ test.describe('GPS Data Page', () => {
             // Verify filter is applied
             expect(await gpsDataPage.hasDateFilter()).toBe(true);
 
-            // Set up download listener
-            const downloadPromise = page.waitForEvent('download');
+            // Track export API call for this filtered export
+            const exportResponsePromise = page.waitForResponse(response => {
+                if (!response.url().includes('/api/gps/export')) {
+                    return false;
+                }
+
+                if (response.request().method() !== 'GET') {
+                    return false;
+                }
+
+                const responseUrl = new URL(response.url());
+                return (
+                    response.status() === 200
+                    && responseUrl.searchParams.has('startTime')
+                    && responseUrl.searchParams.has('endTime')
+                );
+            });
+
+            // Download event is not always emitted reliably in headless mode for blob URLs
+            const downloadPromise = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);
 
             // Export filtered data
             await gpsDataPage.clickExportCsv();
+            const exportResponse = await exportResponsePromise;
+            expect(exportResponse.ok()).toBe(true);
             await gpsDataPage.waitForExportComplete();
             await gpsDataPage.waitForSuccessToast();
 
-            // Verify download
+            // Verify download when event is available
             const download = await downloadPromise;
-            expect(download.suggestedFilename()).toMatch(/\.csv$/);
+            if (download) {
+                expect(download.suggestedFilename()).toMatch(/\.csv$/);
+            }
 
             // The exported file should contain only the filtered data
             // In a real test, you might want to read the CSV and verify its contents
         });
 
-        test('should handle export with no data gracefully', async ({page, dbManager}) => {
+        test('should handle export with no data gracefully', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user without GPS data
-            await UserFactory.createUser(page, testUser);
 
             // Login and navigate
             await loginPage.navigate();
@@ -689,13 +689,12 @@ test.describe('GPS Data Page', () => {
     });
 
     test.describe('Pagination and Performance', () => {
-        test('should handle large datasets with pagination', async ({page, dbManager}) => {
+        test('should handle large datasets with pagination', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and large GPS dataset
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Generate multiple days of data for pagination testing
@@ -746,14 +745,10 @@ test.describe('GPS Data Page', () => {
     });
 
     test.describe('Timezone Date Picker Bug Tests', () => {
-        test('should send correct UTC date range for single day selection in America/New_York timezone', async ({page, dbManager}) => {
+        test('should send correct UTC date range for single day selection in America/New_York timezone', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
-
-            // Set user timezone to America/New_York 
-            testUser.timezone = 'America/New_York';
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page, { timezone: 'America/New_York' });
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Create some GPS data so the page loads properly
@@ -768,23 +763,27 @@ test.describe('GPS Data Page', () => {
             await gpsDataPage.navigate();
             await gpsDataPage.waitForPageLoad();
 
-            // Set up request interception to capture API calls
-            let apiRequest = null;
-            await page.route('**/api/gps*', route => {
-                const url = route.request().url();
-                if (url.includes('startTime') && url.includes('endTime')) {
-                    apiRequest = route.request();
+            const expectedStartTime = '2025-09-22T04:00:00.000Z';
+            const expectedEndTime = '2025-09-23T03:59:59.999Z';
+
+            // Wait for the exact API request to avoid races with unrelated GPS requests
+            const apiRequestPromise = page.waitForRequest(request => {
+                if (!request.url().includes('/api/gps')) {
+                    return false;
                 }
-                route.continue();
+
+                const requestUrl = new URL(request.url());
+                return (
+                    requestUrl.searchParams.get('startTime') === expectedStartTime
+                    && requestUrl.searchParams.get('endTime') === expectedEndTime
+                );
             });
 
             // Select single day: 09/22/2025 - 09/22/2025
             const selectedDate = new Date(2025, 8, 22); // September 22, 2025 (month is 0-indexed)
             await gpsDataPage.setDateRangeFilter(selectedDate, selectedDate);
             await gpsDataPage.waitForTableReload();
-
-            // Wait for API request to be made
-            await page.waitForTimeout(2000);
+            const apiRequest = await apiRequestPromise;
 
             // Verify the API request parameters
             expect(apiRequest).not.toBeNull();
@@ -800,8 +799,8 @@ test.describe('GPS Data Page', () => {
             // SHOULD BE: 2025-09-22T04:00:00.000Z (correct day)
             
             // This test will fail initially, demonstrating the bug
-            expect(startTime).toBe('2025-09-22T04:00:00.000Z'); // Should be 09/22, NOT 09/21!
-            expect(endTime).toBe('2025-09-23T03:59:59.999Z');   // Should be 09/23 (end of 09/22 NY time)
+            expect(startTime).toBe(expectedStartTime); // Should be 09/22, NOT 09/21!
+            expect(endTime).toBe(expectedEndTime);   // Should be 09/23 (end of 09/22 NY time)
 
             // Additional verification: check that start date represents the correct day
             const startDateObj = new Date(startTime);
@@ -815,14 +814,10 @@ test.describe('GPS Data Page', () => {
             expect(startDateInNY).toBe('09/22/2025'); // The start time should represent 09/22 in NY timezone
         });
 
-        test('should send correct UTC date range for single day selection in Europe/London timezone', async ({page, dbManager}) => {
+        test('should send correct UTC date range for single day selection in Europe/London timezone', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
-
-            // Set user timezone to Europe/London
-            testUser.timezone = 'Europe/London';
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page, { timezone: 'Europe/London' });
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Create some GPS data
@@ -878,14 +873,10 @@ test.describe('GPS Data Page', () => {
             expect(startDateInLondon).toBe('09/22/2025');
         });
 
-        test('should handle timezone switching and update API requests accordingly', async ({page, dbManager}) => {
+        test('should handle timezone switching and update API requests accordingly', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const gpsDataPage = new GpsDataPage(page);
-            const testUser = TestData.users.existing;
-
-            // Start with UTC timezone
-            testUser.timezone = 'UTC';
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Create GPS data

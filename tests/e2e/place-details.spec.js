@@ -1,14 +1,14 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TestSetupHelper} from '../utils/test-setup-helper.js';
 import {PlaceDetailsPage} from '../pages/PlaceDetailsPage.js';
-import {TestData} from '../fixtures/test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Place Details Page', () => {
 
   test.describe('Favorite Place Details - Page Load and Initial State', () => {
-    test('should display favorite point place details correctly', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display favorite point place details correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite point
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -56,8 +56,8 @@ test.describe('Place Details Page', () => {
       expect(await editButton.isVisible()).toBe(true);
     });
 
-    test('should display favorite area place details correctly', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display favorite area place details correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
@@ -83,8 +83,8 @@ test.describe('Place Details Page', () => {
       expect(await placeDetailsPage.hasMap()).toBe(true);
     });
 
-    test('should show error state for non-existent favorite', async ({page, dbManager}) => {
-      await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should show error state for non-existent favorite', async ({page, isolatedUsers, dbManager}) => {
+      await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       const placeDetailsPage = new PlaceDetailsPage(page);
       await placeDetailsPage.navigateToFavorite(999999);
@@ -97,8 +97,8 @@ test.describe('Place Details Page', () => {
       expect(errorMessage.length).toBeGreaterThan(0);
     });
 
-    test('should display visit dates using user date format in visits table', async ({page, dbManager}) => {
-      const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+    test('should display visit dates using user date format in visits table', async ({page, isolatedUsers, dbManager}) => {
+      const testUser = createManagedUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
       const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, testUser);
 
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -129,8 +129,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Geocoding Place Details - Page Load and Initial State', () => {
-    test('should display geocoding place details correctly', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display geocoding place details correctly', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -173,8 +173,8 @@ test.describe('Place Details Page', () => {
       expect(await createFavoriteButton.isVisible()).toBe(true);
     });
 
-    test('should show related favorite notice when geocoding is within favorite bounds', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should show related favorite notice when geocoding is within favorite bounds', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
@@ -217,8 +217,8 @@ test.describe('Place Details Page', () => {
       expect(await placeDetailsPage.hasVisitsTable()).toBe(false);
     });
 
-    test('should navigate to related favorite when clicking view button', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should navigate to related favorite when clicking view button', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
@@ -254,8 +254,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Statistics Display', () => {
-    test('should display statistics for favorite with visits', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display statistics for favorite with visits', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -288,8 +288,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Visits Table - Pagination and Sorting', () => {
-    test('should display visits in table', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display visits in table', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -323,8 +323,8 @@ test.describe('Place Details Page', () => {
       expect(rowCount).toBe(5);
     });
 
-    test('should sort visits table by clicking column header', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should sort visits table by clicking column header', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorite and visits
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -368,8 +368,8 @@ test.describe('Place Details Page', () => {
       expect(sortedFirstRow).toBeDefined();
     });
 
-    test('should export visits to CSV', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should export visits to CSV', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create favorite and visits
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -409,8 +409,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Edit Favorite', () => {
-    test('should edit favorite point name without timeline regeneration', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should edit favorite point name without timeline regeneration', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -445,8 +445,8 @@ test.describe('Place Details Page', () => {
       expect(pageTitle).toContain('Updated Name');
     });
 
-    test('should edit favorite metadata (city and country) without timeline regeneration', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should edit favorite metadata (city and country) without timeline regeneration', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -477,8 +477,8 @@ test.describe('Place Details Page', () => {
       expect(favorite.name).toBe('My Place');
     });
 
-    test('should cancel edit dialog', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should cancel edit dialog', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -506,8 +506,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Edit Geocoding Location', () => {
-    test('should edit geocoding location name', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should edit geocoding location name', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -541,8 +541,8 @@ test.describe('Place Details Page', () => {
       expect(pageTitle).toContain('Updated Location');
     });
 
-    test('should edit geocoding city and country', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should edit geocoding city and country', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -575,8 +575,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Create Favorite from Geocoding', () => {
-    test('should create favorite from geocoding location', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should create favorite from geocoding location', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -613,8 +613,8 @@ test.describe('Place Details Page', () => {
       expect(finalCount).toBe(initialCount + 1);
     });
 
-    test('should cancel create favorite dialog', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should cancel create favorite dialog', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -641,8 +641,8 @@ test.describe('Place Details Page', () => {
       expect(finalCount).toBe(initialCount);
     });
 
-    test('should pre-fill favorite name with geocoding location name', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should pre-fill favorite name with geocoding location name', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {
@@ -672,8 +672,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Navigation', () => {
-    test('should navigate back when clicking back button', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should navigate back when clicking back button', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -699,8 +699,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Error Handling', () => {
-    test('should show error and allow retry', async ({page, dbManager}) => {
-      await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should show error and allow retry', async ({page, isolatedUsers, dbManager}) => {
+      await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       const placeDetailsPage = new PlaceDetailsPage(page);
       await placeDetailsPage.navigateToFavorite(999999);
@@ -716,8 +716,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Map Display', () => {
-    test('should display map with point geometry for favorite point', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display map with point geometry for favorite point', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite point
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -745,8 +745,8 @@ test.describe('Place Details Page', () => {
       expect(await leafletMap.isVisible()).toBe(true);
     });
 
-    test('should display map with area geometry for favorite area', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display map with area geometry for favorite area', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite area
       const favoriteId = await TestSetupHelper.createFavoriteArea(dbManager, user.id, {
@@ -778,11 +778,11 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Responsive Behavior', () => {
-    test('should handle mobile viewport', async ({page, dbManager}) => {
+    test('should handle mobile viewport', async ({page, isolatedUsers, dbManager}) => {
       // Set mobile viewport
       await page.setViewportSize({width: 375, height: 667});
 
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -810,8 +810,8 @@ test.describe('Place Details Page', () => {
   });
 
   test.describe('Place Details with No Visits', () => {
-    test('should display favorite with no visits', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display favorite with no visits', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a favorite without any timeline stays
       const favoriteId = await TestSetupHelper.createFavoritePoint(dbManager, user.id, {
@@ -840,8 +840,8 @@ test.describe('Place Details Page', () => {
       expect(await placeDetailsPage.hasVisitsTable()).toBe(true);
     });
 
-    test('should display geocoding location with no visits', async ({page, dbManager}) => {
-      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager);
+    test('should display geocoding location with no visits', async ({page, isolatedUsers, dbManager}) => {
+      const {user} = await TestSetupHelper.createAndLoginUser(page, dbManager, createManagedUser(isolatedUsers));
 
       // Create a geocoding result without timeline stays
       const geocodingId = await TestSetupHelper.createGeocodingResult(dbManager, user.id, {

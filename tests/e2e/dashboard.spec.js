@@ -1,25 +1,19 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import { test, expect } from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {DashboardPage} from '../pages/DashboardPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
-import {TestConfig} from '../config/test-config.js';
-import {ValidationHelpers} from '../utils/validation-helpers.js';
 import {GeocodingFactory} from '../utils/geocoding-factory.js';
 import {DateFormatValues} from '../utils/date-format-test-helper.js';
-import {randomUUID} from 'crypto';
 
 test.describe('Dashboard', () => {
   
   test.describe('Initial State and Empty Data', () => {
-    test('should show empty state when no timeline data exists', async ({page, dbManager}) => {
+    test('should show empty state when no timeline data exists', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
+      const testUser = await isolatedUsers.create(page);
       
       // Create user first
-      await UserFactory.createUser(page, testUser);
       
       // Login to the app
       await loginPage.navigate();
@@ -63,12 +57,10 @@ test.describe('Dashboard', () => {
       expect(hasTimelineData).toBe(false);
     });
 
-    test('should show loading state initially', async ({page}) => {
+    test('should show loading state initially', async ({ page, isolatedUsers}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -92,12 +84,10 @@ test.describe('Dashboard', () => {
   });
 
   test.describe('Dashboard with Data', () => {
-    test('should display activity summary cards with metrics', async ({page, dbManager}) => {
+    test('should display activity summary cards with metrics', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -150,12 +140,10 @@ test.describe('Dashboard', () => {
       }
     });
 
-    test('should display top places cards with location data', async ({page, dbManager}) => {
+    test('should display top places cards with location data', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -203,12 +191,10 @@ test.describe('Dashboard', () => {
       }
     });
 
-    test('should display route analysis cards with statistics', async ({page, dbManager}) => {
+    test('should display route analysis cards with statistics', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -238,12 +224,10 @@ test.describe('Dashboard', () => {
       }
     });
 
-    test('should display proper date ranges for different periods', async ({page, dbManager}) => {
+    test('should display proper date ranges for different periods', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -275,14 +259,10 @@ test.describe('Dashboard', () => {
       }
     });
     
-    test('should display date ranges in user timezone format', async ({page, dbManager}) => {
+    test('should display date ranges in user timezone format', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      // Create user with specific timezone
-      testUser.timezone = 'America/Los_Angeles';
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page, { timezone: 'America/Los_Angeles' });
       
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
@@ -323,12 +303,10 @@ test.describe('Dashboard', () => {
       }
     });
 
-    test('should apply user date format to dashboard period ranges', async ({page, dbManager}) => {
+    test('should apply user date format to dashboard period ranges', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = { ...TestData.users.existing, timezone: 'UTC' };
-
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page, { timezone: 'UTC' });
       const user = await dbManager.getUserByEmail(testUser.email);
       await dbManager.client.query('UPDATE users SET date_format = $1 WHERE id = $2', [DateFormatValues.DMY, user.id]);
 
@@ -366,12 +344,10 @@ test.describe('Dashboard', () => {
   });
 
   test.describe('Data Integration and Consistency', () => {
-    test('should show consistent data across all dashboard sections', async ({page, dbManager}) => {
+    test('should show consistent data across all dashboard sections', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -411,12 +387,10 @@ test.describe('Dashboard', () => {
       const hasCharts = await dashboardPage.hasCharts();
     });
 
-    test('should handle different date ranges correctly', async ({page, dbManager}) => {
+    test('should handle different date ranges correctly', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -449,12 +423,10 @@ test.describe('Dashboard', () => {
       expect(dbThirtyDaysDistance).toBeGreaterThanOrEqual(dbSevenDaysDistance); // 30 days should have >= 7 days data
     });
 
-    test('should correctly calculate and display average speed', async ({page, dbManager}) => {
+    test('should correctly calculate and display average speed', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -490,12 +462,10 @@ test.describe('Dashboard', () => {
   });
 
   test.describe('Error Handling and Edge Cases', () => {
-    test('should handle partial data gracefully', async ({page, dbManager}) => {
+    test('should handle partial data gracefully', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -519,12 +489,10 @@ test.describe('Dashboard', () => {
       expect(totalDistance).toMatch(/\d+.*(m|km)/);
     });
 
-    test('should handle navigation between dashboard and other pages', async ({page, dbManager}) => {
+    test('should handle navigation between dashboard and other pages', async ({ page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const dashboardPage = new DashboardPage(page);
-      const testUser = TestData.users.existing;
-      
-      await UserFactory.createUser(page, testUser);
+      const testUser = await isolatedUsers.create(page);
       await loginPage.navigate();
       await loginPage.login(testUser.email, testUser.password);
       await TestHelpers.waitForNavigation(page, '**/app/timeline');

@@ -1,16 +1,16 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import {test, expect} from '../fixtures/isolated-fixture.js';
 import {TimelinePage} from '../pages/TimelinePage.js';
 import {TimelineMapPage} from '../pages/TimelineMapPage.js';
-import {TestData} from '../fixtures/test-data.js';
 import * as TimelineTestData from '../utils/timeline-test-data.js';
 import * as MapTestData from '../utils/map-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
+import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
 
 test.describe('Timeline Map Interactions', () => {
-  test('should display timeline marker popup timestamps using user date format', async ({page, dbManager}) => {
+  test('should display timeline marker popup timestamps using user date format', async ({page, isolatedUsers, dbManager}) => {
     const timelinePage = new TimelinePage(page);
     const mapPage = new TimelineMapPage(page);
-    const testUser = { ...TestData.users.existing, dateFormat: DateFormatValues.DMY };
+    const testUser = createManagedUser(isolatedUsers, { dateFormat: DateFormatValues.DMY });
 
     await timelinePage.setupTimelineWithData(dbManager, TimelineTestData.insertRegularStaysTestData, testUser, {
       startDate: new Date('2025-09-21'),
@@ -34,11 +34,11 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Context Menus', () => {
-    test('should show map context menu on right click', async ({page, dbManager}) => {
+    test('should show map context menu on right click', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Right-click on map and wait for context menu to appear
@@ -57,11 +57,11 @@ test.describe('Timeline Map Interactions', () => {
       await expect(addAreaItem).toBeVisible();
     });
 
-    test('should handle context menu item clicks', async ({page, dbManager}) => {
+    test('should handle context menu item clicks', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Right-click and select "Add to Favorites"
@@ -76,12 +76,12 @@ test.describe('Timeline Map Interactions', () => {
       await mapPage.closeAddFavoriteDialog();
     });
 
-    test('should show favorite context menu on favorite marker right-click', async ({page, dbManager}) => {
+    test('should show favorite context menu on favorite marker right-click', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
       // Setup timeline with data and add a favorite
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createManagedUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
       
       // Insert a favorite location first
@@ -126,11 +126,11 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Add Favorite Point Dialog', () => {
-    test('should complete add favorite point workflow', async ({page, dbManager}) => {
+    test('should complete add favorite point workflow', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      const { user } = await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      const { user } = await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       const favoriteName = 'Test Favorite Point';
@@ -178,11 +178,11 @@ test.describe('Timeline Map Interactions', () => {
       }
     });
 
-    test('should handle add favorite dialog cancellation', async ({page, dbManager}) => {
+    test('should handle add favorite dialog cancellation', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Right-click and open add favorite dialog
@@ -201,11 +201,11 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Rectangle Drawing Tool', () => {
-    test('should enter drawing mode when starting area creation', async ({page, dbManager}) => {
+    test('should enter drawing mode when starting area creation', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Right-click and select "Add an area to Favorites"
@@ -222,11 +222,11 @@ test.describe('Timeline Map Interactions', () => {
       expect(typeof isDrawing).toBe('boolean');
     });
 
-    test('should cancel drawing with Escape key', async ({page, dbManager}) => {
+    test('should cancel drawing with Escape key', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Start drawing mode
@@ -245,11 +245,11 @@ test.describe('Timeline Map Interactions', () => {
       expect(isDrawing).toBe(false);
     });
 
-    test('should complete rectangle drawing workflow', async ({page, dbManager}) => {
+    test('should complete rectangle drawing workflow', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      const { user } = await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      const { user } = await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       const areaName = 'Test Favorite Area';
@@ -315,12 +315,12 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Edit Favorite Dialog', () => {
-    test('should complete edit favorite workflow', async ({page, dbManager}) => {
+    test('should complete edit favorite workflow', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
       // Setup timeline with a pre-existing favorite
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createManagedUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
       
       // Insert a favorite location
@@ -392,12 +392,12 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Delete Favorite Dialog', () => {
-    test('should complete delete favorite workflow', async ({page, dbManager}) => {
+    test('should complete delete favorite workflow', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
       // Setup timeline with a pre-existing favorite
-      const { testUser } = await timelinePage.loginAndNavigate();
+      const { testUser } = await timelinePage.loginAndNavigate(createManagedUser(isolatedUsers));
       const user = await dbManager.getUserByEmail(testUser.email);
       
       // Insert a favorite location
@@ -478,11 +478,11 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Immich Integration Disabled', () => {
-    test('should not show Immich controls when integration is disabled', async ({page, dbManager}) => {
+    test('should not show Immich controls when integration is disabled', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Verify that "Show Photos" button does not exist in map controls
@@ -503,11 +503,11 @@ test.describe('Timeline Map Interactions', () => {
       }
     });
 
-    test('should not show any photo markers on map', async ({page, dbManager}) => {
+    test('should not show any photo markers on map', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Wait for all layers to load
@@ -526,11 +526,11 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Timeline Regeneration Modal', () => {
-    test('should show timeline regeneration modal during favorite operations', async ({page, dbManager}) => {
+    test('should show timeline regeneration modal during favorite operations', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       try {
@@ -556,11 +556,11 @@ test.describe('Timeline Map Interactions', () => {
   });
 
   test.describe('Error Handling', () => {
-    test('should handle context menu on map edge', async ({page, dbManager}) => {
+    test('should handle context menu on map edge', async ({page, isolatedUsers, dbManager}) => {
       const timelinePage = new TimelinePage(page);
       const mapPage = new TimelineMapPage(page);
       
-      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData);
+      await timelinePage.setupTimelineWithData(dbManager, MapTestData.insertMapTestStaysData, createManagedUser(isolatedUsers));
       await mapPage.waitForMapReady();
       
       // Right-click near map edge

@@ -1,9 +1,7 @@
-import {test, expect} from '../fixtures/database-fixture.js';
+import { test, expect } from '../fixtures/isolated-fixture.js';
 import {LoginPage} from '../pages/LoginPage.js';
 import {DataExportImportPage} from '../pages/DataExportImportPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
-import {TestData} from '../fixtures/test-data.js';
-import {UserFactory} from '../utils/user-factory.js';
 import path from 'path';
 import fs from 'fs';
 import {fileURLToPath} from 'url';
@@ -16,12 +14,10 @@ const __dirname = dirname(__filename);
 test.describe('Data Export & Import', () => {
 
     test.describe('Export - Initial State and Navigation', () => {
-        test('should navigate to export/import page and show export tab by default', async ({page, dbManager}) => {
+        test('should navigate to export/import page and show export tab by default', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -36,12 +32,10 @@ test.describe('Data Export & Import', () => {
             expect(await exportImportPage.isTabActive('export')).toBe(true);
         });
 
-        test('should switch between export and import tabs', async ({page, dbManager}) => {
+        test('should switch between export and import tabs', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -58,12 +52,10 @@ test.describe('Data Export & Import', () => {
             expect(await exportImportPage.isTabActive('export')).toBe(true);
         });
 
-        test('should have GeoPulse format selected by default', async ({page, dbManager}) => {
+        test('should have GeoPulse format selected by default', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -75,12 +67,10 @@ test.describe('Data Export & Import', () => {
             expect(selectedFormat).toBe('geopulse');
         });
 
-        test('should have all data types selected by default for GeoPulse format', async ({page, dbManager}) => {
+        test('should have all data types selected by default for GeoPulse format', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -95,12 +85,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Export - Format Selection', () => {
-        test('should allow switching between GeoPulse and OwnTracks formats', async ({page, dbManager}) => {
+        test('should allow switching between GeoPulse and OwnTracks formats', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -119,12 +107,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Export - Data Type Selection', () => {
-        test('should allow selecting and deselecting individual data types', async ({page, dbManager}) => {
+        test('should allow selecting and deselecting individual data types', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -150,12 +136,10 @@ test.describe('Data Export & Import', () => {
             expect(updatedSelected).not.toContain('favorites');
         });
 
-        test('should toggle all data types with select all button', async ({page, dbManager}) => {
+        test('should toggle all data types with select all button', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -180,12 +164,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Export - Date Range Selection', () => {
-        test('should allow setting custom date range', async ({page, dbManager}) => {
+        test('should allow setting custom date range', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -203,12 +185,10 @@ test.describe('Data Export & Import', () => {
             expect(await exportImportPage.isExportButtonDisabled()).toBe(false);
         });
 
-        test('should display export date range inputs using user date format', async ({page, dbManager}) => {
+        test('should display export date range inputs using user date format', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = { ...TestData.users.existing };
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
             await dbManager.client.query(
                 'UPDATE users SET date_format = $1 WHERE id = $2',
@@ -233,12 +213,10 @@ test.describe('Data Export & Import', () => {
             expect(endValue).not.toMatch(/09\/24\/(?:20)?25/);
         });
 
-        test('should use date range presets', async ({page, dbManager}) => {
+        test('should use date range presets', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -255,13 +233,12 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Export - Job Creation and Status', () => {
-        test('should create GeoPulse export job with all data types', async ({page, dbManager}) => {
+        test('should create GeoPulse export job with all data types', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and add sample GPS data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Insert sample data
@@ -297,13 +274,12 @@ test.describe('Data Export & Import', () => {
             expect(status.toLowerCase()).toContain('completed');
         });
 
-        test('should create OwnTracks export job', async ({page, dbManager}) => {
+        test('should create OwnTracks export job', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and add sample GPS data
-            await UserFactory.createUser(page, testUser);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Insert sample data
@@ -337,12 +313,10 @@ test.describe('Data Export & Import', () => {
             expect(status.toLowerCase()).toContain('completed');
         });
 
-        test('should show export job progress updates', async ({page, dbManager}) => {
+        test('should show export job progress updates', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Insert more data to have longer processing time
@@ -390,12 +364,10 @@ test.describe('Data Export & Import', () => {
             await exportImportPage.waitForExportJobStatus('Completed');
         });
 
-        test('should disable export button when required fields are missing', async ({page, dbManager}) => {
+        test('should disable export button when required fields are missing', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -415,12 +387,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Export - GPX Format Options', () => {
-        test('should export GPX as single file', async ({page, dbManager}) => {
+        test('should export GPX as single file', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
@@ -454,17 +424,14 @@ test.describe('Data Export & Import', () => {
             expect(filename).not.toMatch(/\.zip$/);
         });
 
-        test('should export GPX as ZIP with individual grouping', async ({page, dbManager}) => {
+        test('should export GPX as ZIP with individual grouping', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Insert GPS data and generate timeline
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 100);
-            await DataExportImportPage.generateTimeline(dbManager, user.id);
 
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
@@ -499,12 +466,10 @@ test.describe('Data Export & Import', () => {
             expect(filename).toContain('gpx');
         });
 
-        test('should export GPX as ZIP with daily grouping', async ({page, dbManager}) => {
+        test('should export GPX as ZIP with daily grouping', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
 
             // Insert GPS data across multiple days
@@ -517,9 +482,6 @@ test.describe('Data Export & Import', () => {
                 startDate: threeDaysAgo,
                 endDate: twoDaysAgo
             });
-
-            // Generate timeline
-            await DataExportImportPage.generateTimeline(dbManager, user.id);
 
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
@@ -554,12 +516,10 @@ test.describe('Data Export & Import', () => {
             expect(filename).toContain('gpx');
         });
 
-        test('should show ZIP grouping options only when ZIP mode is selected', async ({page, dbManager}) => {
+        test('should show ZIP grouping options only when ZIP mode is selected', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -583,12 +543,10 @@ test.describe('Data Export & Import', () => {
             expect(await exportImportPage.isGpxZipGroupingVisible()).toBe(false);
         });
 
-        test('should maintain GPX export settings when switching formats', async ({page, dbManager}) => {
+        test('should maintain GPX export settings when switching formats', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -614,12 +572,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Export - Download and Delete', () => {
-        test('should allow downloading completed export', async ({page, dbManager}) => {
+        test('should allow downloading completed export', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
@@ -652,12 +608,10 @@ test.describe('Data Export & Import', () => {
             expect(filename).toContain('geopulse-export');
         });
 
-        test('should allow deleting export job', async ({page, dbManager}) => {
+        test('should allow deleting export job', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             const user = await dbManager.getUserByEmail(testUser.email);
             await DataExportImportPage.insertSampleGpsData(dbManager, user.id, 50);
 
@@ -689,12 +643,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - Initial State', () => {
-        test('should show import tab with GeoPulse format selected by default', async ({page, dbManager}) => {
+        test('should show import tab with GeoPulse format selected by default', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -708,12 +660,10 @@ test.describe('Data Export & Import', () => {
             expect(selectedFormat).toBe('geopulse');
         });
 
-        test('should disable import button when no file is selected', async ({page, dbManager}) => {
+        test('should disable import button when no file is selected', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -729,12 +679,10 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - Format Selection', () => {
-        test('should allow switching between import formats', async ({page, dbManager}) => {
+        test('should allow switching between import formats', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-
-            await UserFactory.createUser(page, testUser);
+            const testUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(testUser.email, testUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -759,14 +707,12 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - GeoPulse Format (using dynamic export)', () => {
-        test('should import GeoPulse export with all data types', async ({page, dbManager}) => {
+        test('should import GeoPulse export with all data types', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-            const importUser = TestData.users.another;
+            const testUser = await isolatedUsers.create(page);
 
             // Create export user and generate data
-            await UserFactory.createUser(page, testUser);
             const exportUserId = (await dbManager.getUserByEmail(testUser.email)).id;
             await DataExportImportPage.insertSampleGpsData(dbManager, exportUserId, 100);
             await DataExportImportPage.insertSampleFavorites(dbManager, exportUserId, 5);
@@ -802,7 +748,7 @@ test.describe('Data Export & Import', () => {
             const appNav = await import('../pages/AppNavigation.js').then(m => new m.AppNavigation(page));
             await appNav.logout();
 
-            await UserFactory.createUser(page, importUser);
+            const importUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(importUser.email, importUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -848,14 +794,12 @@ test.describe('Data Export & Import', () => {
             }
         });
 
-        test('should import selective data types from GeoPulse export', async ({page, dbManager}) => {
+        test('should import selective data types from GeoPulse export', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-            const importUser = TestData.users.another;
+            const testUser = await isolatedUsers.create(page);
 
             // Create export user and generate data
-            await UserFactory.createUser(page, testUser);
             const exportUserId = (await dbManager.getUserByEmail(testUser.email)).id;
             await DataExportImportPage.insertSampleGpsData(dbManager, exportUserId, 50);
             await DataExportImportPage.insertSampleFavorites(dbManager, exportUserId, 3);
@@ -891,7 +835,7 @@ test.describe('Data Export & Import', () => {
             const appNav = await import('../pages/AppNavigation.js').then(m => new m.AppNavigation(page));
             await appNav.logout();
 
-            await UserFactory.createUser(page, importUser);
+            const importUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(importUser.email, importUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -930,13 +874,12 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - Options', () => {
-        test('should import only data within date range when date filter is enabled', async ({page, dbManager}) => {
+        test('should import only data within date range when date filter is enabled', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user with GPS data spanning multiple months
-            await UserFactory.createUser(page, testUser);
             const userId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert GPS data across different months:
@@ -1050,13 +993,12 @@ test.describe('Data Export & Import', () => {
             }
         });
 
-        test('should replace existing data in time range when reimporting', async ({page, dbManager}) => {
+        test('should replace existing data in time range when reimporting', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user and add GPS data
-            await UserFactory.createUser(page, testUser);
             const userId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert GPS data in January with specific velocities
@@ -1166,13 +1108,12 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - Other Formats', () => {
-        test('should import OwnTracks JSON format', async ({page, dbManager}) => {
+        test('should import OwnTracks JSON format', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user
-            await UserFactory.createUser(page, testUser);
             const userId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert reverse geocoding data to avoid Nominatim API calls
@@ -1216,13 +1157,12 @@ test.describe('Data Export & Import', () => {
             expect(gpsPoints.rows[0].source_type).toBe('OWNTRACKS');
         });
 
-        test('should import GPX format', async ({page, dbManager}) => {
+        test('should import GPX format', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user
-            await UserFactory.createUser(page, testUser);
             const userId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert reverse geocoding data to avoid Nominatim API calls
@@ -1279,13 +1219,12 @@ test.describe('Data Export & Import', () => {
             expect(point.lon).toBeLessThan(30.6);
         });
 
-        test('should import Google Timeline legacy format', async ({page, dbManager}) => {
+        test('should import Google Timeline legacy format', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user
-            await UserFactory.createUser(page, testUser);
             const userId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert reverse geocoding data to avoid Nominatim API calls
@@ -1330,13 +1269,12 @@ test.describe('Data Export & Import', () => {
             expect(gpsPoints.rows[0].source_type).toBe('GOOGLE_TIMELINE');
         });
 
-        test('should import Google Timeline format', async ({page, dbManager}) => {
+        test('should import Google Timeline format', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user
-            await UserFactory.createUser(page, testUser);
             const userId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert reverse geocoding data to avoid Nominatim API calls
@@ -1383,14 +1321,12 @@ test.describe('Data Export & Import', () => {
     });
 
     test.describe('Import - Data Integrity', () => {
-        test('should maintain data integrity through export-import cycle', async ({page, dbManager}) => {
+        test('should maintain data integrity through export-import cycle', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-            const importUser = TestData.users.another;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user with known data
-            await UserFactory.createUser(page, testUser);
             const exportUserId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             const gpsIds = await DataExportImportPage.insertSampleGpsData(dbManager, exportUserId, 200);
@@ -1431,7 +1367,7 @@ test.describe('Data Export & Import', () => {
             const appNav = await import('../pages/AppNavigation.js').then(m => new m.AppNavigation(page));
             await appNav.logout();
 
-            await UserFactory.createUser(page, importUser);
+            const importUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(importUser.email, importUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
@@ -1461,14 +1397,12 @@ test.describe('Data Export & Import', () => {
             }
         });
 
-        test('should maintain data integrity through OwnTracks export-import cycle', async ({page, dbManager}) => {
+        test('should maintain data integrity through OwnTracks export-import cycle', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
             const exportImportPage = new DataExportImportPage(page);
-            const testUser = TestData.users.existing;
-            const importUser = TestData.users.another;
+            const testUser = await isolatedUsers.create(page);
 
             // Create user with GPS data
-            await UserFactory.createUser(page, testUser);
             const exportUserId = (await dbManager.getUserByEmail(testUser.email)).id;
 
             // Insert GPS data
@@ -1508,7 +1442,7 @@ test.describe('Data Export & Import', () => {
             const appNav = await import('../pages/AppNavigation.js').then(m => new m.AppNavigation(page));
             await appNav.logout();
 
-            await UserFactory.createUser(page, importUser);
+            const importUser = await isolatedUsers.create(page);
             await loginPage.navigate();
             await loginPage.login(importUser.email, importUser.password);
             await TestHelpers.waitForNavigation(page, '**/app/timeline');
