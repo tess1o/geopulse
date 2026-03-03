@@ -18,6 +18,9 @@ import java.util.List;
 public class CountryDetailsDTO {
     private String countryName;
 
+    // Geometry (centroid of all visits in this country)
+    private PlaceGeometryDTO geometry;
+
     // Aggregated statistics for this country
     private LocationStatisticsDTO statistics;
 

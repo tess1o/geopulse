@@ -186,17 +186,31 @@ const cityImmichSearchParams = computed(() => {
   const firstVisit = cityDetails.value?.statistics?.firstVisit
   const lastVisit = cityDetails.value?.statistics?.lastVisit
   const city = cityDetails.value?.cityName
+  const geometry = cityDetails.value?.geometry
 
   if (!firstVisit || !lastVisit || !city) {
     return null
   }
 
-  return {
+  const params = {
     startDate: firstVisit,
     endDate: lastVisit,
     city,
     country: cityDetails.value?.country
   }
+
+  if (
+    geometry?.type === 'point' &&
+    typeof geometry?.latitude === 'number' &&
+    Number.isFinite(geometry.latitude) &&
+    typeof geometry?.longitude === 'number' &&
+    Number.isFinite(geometry.longitude)
+  ) {
+    params.latitude = geometry.latitude
+    params.longitude = geometry.longitude
+  }
+
+  return params
 })
 
 const formatDuration = (seconds) => {

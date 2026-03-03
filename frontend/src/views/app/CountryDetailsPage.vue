@@ -197,16 +197,30 @@ const countryImmichSearchParams = computed(() => {
   const firstVisit = countryDetails.value?.statistics?.firstVisit
   const lastVisit = countryDetails.value?.statistics?.lastVisit
   const country = countryDetails.value?.countryName
+  const geometry = countryDetails.value?.geometry
 
   if (!firstVisit || !lastVisit || !country) {
     return null
   }
 
-  return {
+  const params = {
     startDate: firstVisit,
     endDate: lastVisit,
     country
   }
+
+  if (
+    geometry?.type === 'point' &&
+    typeof geometry?.latitude === 'number' &&
+    Number.isFinite(geometry.latitude) &&
+    typeof geometry?.longitude === 'number' &&
+    Number.isFinite(geometry.longitude)
+  ) {
+    params.latitude = geometry.latitude
+    params.longitude = geometry.longitude
+  }
+
+  return params
 })
 
 const formatDuration = (seconds) => {

@@ -7,6 +7,9 @@ import org.github.tess1o.geopulse.geocoding.client.NominatimRestClient;
 import org.github.tess1o.geopulse.geocoding.client.PhotonRestClient;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
+import org.github.tess1o.geopulse.geocoding.model.GeonamesCityRecord;
+import org.github.tess1o.geopulse.geocoding.model.GeonamesCountryRecord;
+import org.github.tess1o.geopulse.geocoding.model.GeonamesNormalizedLocation;
 import org.github.tess1o.geopulse.geocoding.model.ReconciliationJobProgress;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
@@ -64,6 +67,9 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
         ReverseGeocodingResource.class,
         ReverseGeocodingManagementService.class,
         ReconciliationJobProgress.class,
+        GeonamesCityRecord.class,
+        GeonamesCountryRecord.class,
+        GeonamesNormalizedLocation.class,
 
         BulkUpdateGeocodingDto.class,
         BulkUpdateGeocodingResult.class,

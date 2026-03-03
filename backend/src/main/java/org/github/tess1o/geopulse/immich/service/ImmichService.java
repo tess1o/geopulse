@@ -5,6 +5,8 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.github.tess1o.geopulse.geocoding.model.GeonamesNormalizedLocation;
+import org.github.tess1o.geopulse.geocoding.service.GeonamesLocationNormalizationService;
 import org.github.tess1o.geopulse.immich.client.ImmichClient;
 import org.github.tess1o.geopulse.immich.model.*;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
@@ -37,11 +39,17 @@ public class ImmichService {
     @Inject
     UserRepository userRepository;
 
+    @Inject
+    GeonamesLocationNormalizationService geonamesLocationNormalizationService;
+
     @ConfigProperty(name = "immich.photos.search-cache-ttl-seconds", defaultValue = "300")
     long photoSearchCacheTtlSeconds;
 
     @ConfigProperty(name = "immich.photos.search-cache-max-entries", defaultValue = "200")
     int photoSearchCacheMaxEntries;
+
+    @ConfigProperty(name = "immich.photos.geonames-normalization.max-distance-meters", defaultValue = "50000")
+    double geonamesNormalizationMaxDistanceMeters;
 
     public CompletableFuture<ImmichPhotoSearchResponse> searchPhotos(UUID userId, ImmichPhotoSearchRequest searchRequest) {
         log.debug("Searching photos for user {} with params: {}", userId, searchRequest);
@@ -309,14 +317,69 @@ public class ImmichService {
     }
 
     private ImmichSearchRequest createImmichSearchRequest(ImmichPhotoSearchRequest searchRequest) {
+        SearchLocationFilter locationFilter = resolveSearchLocationFilter(searchRequest);
+
         return ImmichSearchRequest.builder()
                 .takenAfter(searchRequest.getStartDate().format(DateTimeFormatter.ISO_INSTANT))
                 .takenBefore(searchRequest.getEndDate().format(DateTimeFormatter.ISO_INSTANT))
                 .type("IMAGE")
-                .city(trimToNull(searchRequest.getCity()))
-                .country(trimToNull(searchRequest.getCountry()))
+                .city(locationFilter.city())
+                .country(locationFilter.country())
                 .withExif(true)
                 .build();
+    }
+
+    private SearchLocationFilter resolveSearchLocationFilter(ImmichPhotoSearchRequest searchRequest) {
+        String fallbackCity = trimToNull(searchRequest.getCity());
+        String fallbackCountry = trimToNull(searchRequest.getCountry());
+        boolean countryOnlySearch = fallbackCity == null && fallbackCountry != null;
+
+        if (searchRequest.getLatitude() == null || searchRequest.getLongitude() == null) {
+            if (countryOnlySearch) {
+                return new SearchLocationFilter(null, fallbackCountry);
+            }
+            return new SearchLocationFilter(fallbackCity, fallbackCountry);
+        }
+
+        double maxDistance = geonamesNormalizationMaxDistanceMeters > 0
+                ? geonamesNormalizationMaxDistanceMeters
+                : 50000.0;
+
+        try {
+            Optional<GeonamesNormalizedLocation> normalizedLocation = geonamesLocationNormalizationService.normalizeByCoordinates(
+                    searchRequest.getLatitude(),
+                    searchRequest.getLongitude(),
+                    maxDistance
+            );
+            if (normalizedLocation.isPresent()) {
+                GeonamesNormalizedLocation location = normalizedLocation.get();
+                String normalizedCity = trimToNull(location.city());
+                String normalizedCountry = trimToNull(location.country());
+
+                if (countryOnlySearch) {
+                    String effectiveCountry = normalizedCountry != null ? normalizedCountry : fallbackCountry;
+                    if (effectiveCountry != null) {
+                        log.debug("Resolved GeoNames country-only filter for Immich search: geonameId={}, country='{}', distance={}m",
+                                location.geonameId(), effectiveCountry, location.distanceMeters());
+                        return new SearchLocationFilter(null, effectiveCountry);
+                    }
+                }
+
+                if (normalizedCity != null || normalizedCountry != null) {
+                    log.debug("Resolved GeoNames location filter for Immich search: geonameId={}, city='{}', country='{}', distance={}m",
+                            location.geonameId(), normalizedCity, normalizedCountry, location.distanceMeters());
+                    return new SearchLocationFilter(normalizedCity, normalizedCountry);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to resolve GeoNames normalization for coordinates [{}, {}]: {}",
+                    searchRequest.getLatitude(), searchRequest.getLongitude(), e.getMessage());
+        }
+
+        if (countryOnlySearch) {
+            return new SearchLocationFilter(null, fallbackCountry);
+        }
+        return new SearchLocationFilter(fallbackCity, fallbackCountry);
     }
 
     private boolean filterByLocation(ImmichAsset asset, ImmichPhotoSearchRequest searchRequest) {
@@ -522,6 +585,12 @@ public class ImmichService {
         }
     }
 
+    private record SearchLocationFilter(
+            String city,
+            String country
+    ) {
+    }
+
     private record MapMarkerAccumulator(
             double latitude,
             double longitude,
@@ -555,8 +624,8 @@ public class ImmichService {
                     request.getLatitude(),
                     request.getLongitude(),
                     request.getRadiusMeters(),
-                    trim(request.getCity()),
-                    trim(request.getCountry())
+                    trim(immichRequest.getCity()),
+                    trim(immichRequest.getCountry())
             );
         }
 

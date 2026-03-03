@@ -89,15 +89,9 @@ public class ImmichResource {
         validateUserAccess(userId);
 
         try {
-            ImmichPhotoSearchRequest searchRequest = new ImmichPhotoSearchRequest();
-            searchRequest.setStartDate(OffsetDateTime.parse(startDateStr));
-            searchRequest.setEndDate(OffsetDateTime.parse(endDateStr));
-            searchRequest.setLatitude(latitude);
-            searchRequest.setLongitude(longitude);
-            searchRequest.setRadiusMeters(radiusMeters);
-            searchRequest.setCity(city);
-            searchRequest.setCountry(country);
-            searchRequest.setLimit(limit);
+            ImmichPhotoSearchRequest searchRequest = buildSearchRequest(
+                    startDateStr, endDateStr, latitude, longitude, radiusMeters, city, country, limit
+            );
 
             return immichService.searchPhotos(userId, searchRequest)
                     .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
@@ -136,14 +130,9 @@ public class ImmichResource {
         validateUserAccess(userId);
 
         try {
-            ImmichPhotoSearchRequest searchRequest = new ImmichPhotoSearchRequest();
-            searchRequest.setStartDate(OffsetDateTime.parse(startDateStr));
-            searchRequest.setEndDate(OffsetDateTime.parse(endDateStr));
-            searchRequest.setLatitude(latitude);
-            searchRequest.setLongitude(longitude);
-            searchRequest.setRadiusMeters(radiusMeters);
-            searchRequest.setCity(city);
-            searchRequest.setCountry(country);
+            ImmichPhotoSearchRequest searchRequest = buildSearchRequest(
+                    startDateStr, endDateStr, latitude, longitude, radiusMeters, city, country, null
+            );
 
             return immichService.getPhotoMapMarkers(userId, searchRequest, coordinatePrecision)
                     .thenApply(result -> Response.ok(ApiResponse.success(result)).build())
@@ -193,14 +182,9 @@ public class ImmichResource {
         }
 
         try {
-            ImmichPhotoSearchRequest searchRequest = new ImmichPhotoSearchRequest();
-            searchRequest.setStartDate(OffsetDateTime.parse(startDateStr));
-            searchRequest.setEndDate(OffsetDateTime.parse(endDateStr));
-            searchRequest.setLatitude(latitude);
-            searchRequest.setLongitude(longitude);
-            searchRequest.setRadiusMeters(radiusMeters);
-            searchRequest.setCity(city);
-            searchRequest.setCountry(country);
+            ImmichPhotoSearchRequest searchRequest = buildSearchRequest(
+                    startDateStr, endDateStr, latitude, longitude, radiusMeters, city, country, null
+            );
 
             return immichService.getPhotosForMapMarker(
                             userId,
@@ -426,5 +410,27 @@ public class ImmichResource {
         if (!currentUserId.equals(userId)) {
             throw new WebApplicationException("Access denied", Response.Status.FORBIDDEN);
         }
+    }
+
+    private ImmichPhotoSearchRequest buildSearchRequest(
+            String startDateStr,
+            String endDateStr,
+            Double latitude,
+            Double longitude,
+            Double radiusMeters,
+            String city,
+            String country,
+            Integer limit
+    ) {
+        ImmichPhotoSearchRequest searchRequest = new ImmichPhotoSearchRequest();
+        searchRequest.setStartDate(OffsetDateTime.parse(startDateStr));
+        searchRequest.setEndDate(OffsetDateTime.parse(endDateStr));
+        searchRequest.setLatitude(latitude);
+        searchRequest.setLongitude(longitude);
+        searchRequest.setRadiusMeters(radiusMeters);
+        searchRequest.setCity(city);
+        searchRequest.setCountry(country);
+        searchRequest.setLimit(limit);
+        return searchRequest;
     }
 }
