@@ -361,12 +361,16 @@ const placeImmichSearchParams = computed(() => {
   }
 
   if (
-    geometry?.type !== 'area' &&
     typeof geometry?.latitude === 'number' &&
-    typeof geometry?.longitude === 'number'
+    Number.isFinite(geometry.latitude) &&
+    typeof geometry?.longitude === 'number' &&
+    Number.isFinite(geometry.longitude)
   ) {
     params.latitude = geometry.latitude
     params.longitude = geometry.longitude
+  }
+
+  if (geometry?.type !== 'area' && params.latitude !== undefined && params.longitude !== undefined) {
     params.radiusMeters = PLACE_PHOTO_RADIUS_METERS
   }
 

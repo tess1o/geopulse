@@ -1334,6 +1334,29 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     }
 
     /**
+     * Get centroid coordinates for a country (average of all visit locations).
+     *
+     * @param userId      user ID
+     * @param countryName country name
+     * @return Object array with [latitude, longitude]
+     */
+    public Object[] getCountryCentroid(UUID userId, String countryName) {
+        String sql = """
+                SELECT AVG(ST_Y(s.location)) as latitude,
+                       AVG(ST_X(s.location)) as longitude
+                FROM timeline_stays s
+                LEFT JOIN favorite_locations f ON s.favorite_id = f.id
+                LEFT JOIN reverse_geocoding_location g ON s.geocoding_id = g.id
+                WHERE s.user_id = ?1
+                  AND COALESCE(f.country, g.country) = ?2
+                """;
+        return (Object[]) getEntityManager().createNativeQuery(sql)
+                .setParameter(1, userId)
+                .setParameter(2, countryName)
+                .getSingleResult();
+    }
+
+    /**
      * Get country name for a specific city.
      *
      * @param userId   user ID

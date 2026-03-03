@@ -307,8 +307,11 @@ public class LocationAnalyticsService {
                 .map(this::convertToTopPlace)
                 .toList();
 
+        PlaceGeometryDTO geometry = getCountryGeometry(userId, countryName);
+
         return Optional.of(CountryDetailsDTO.builder()
                 .countryName(countryName)
+                .geometry(geometry)
                 .statistics(statistics)
                 .cities(cities)
                 .topPlaces(topPlaces)
@@ -525,6 +528,26 @@ public class LocationAnalyticsService {
      */
     private PlaceGeometryDTO getCityGeometry(UUID userId, String cityName) {
         Object[] centroid = stayRepository.getCityCentroid(userId, cityName);
+
+        Double latitude = centroid[0] != null ? ((Number) centroid[0]).doubleValue() : null;
+        Double longitude = centroid[1] != null ? ((Number) centroid[1]).doubleValue() : null;
+
+        if (latitude != null && longitude != null) {
+            return PlaceGeometryDTO.builder()
+                    .type("point")
+                    .latitude(latitude)
+                    .longitude(longitude)
+                    .build();
+        }
+
+        return null;
+    }
+
+    /**
+     * Get geometry (centroid) for a country.
+     */
+    private PlaceGeometryDTO getCountryGeometry(UUID userId, String countryName) {
+        Object[] centroid = stayRepository.getCountryCentroid(userId, countryName);
 
         Double latitude = centroid[0] != null ? ((Number) centroid[0]).doubleValue() : null;
         Double longitude = centroid[1] != null ? ((Number) centroid[1]).doubleValue() : null;
