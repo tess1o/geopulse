@@ -60,6 +60,7 @@ services:
     # Minimal resource usage with detailed monitoring for local development
     command: >
       postgres
+      -c timezone=UTC
       -c shared_buffers=${GEOPULSE_POSTGRES_SHARED_BUFFERS:-128MB}
       -c work_mem=${GEOPULSE_POSTGRES_WORK_MEM:-6MB}
       -c maintenance_work_mem=${GEOPULSE_POSTGRES_MAINTENANCE_WORK_MEM:-32MB}
