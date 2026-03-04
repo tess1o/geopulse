@@ -268,13 +268,6 @@ public class AdminUserService {
         log.info("User {} ({}) deleted with all associated data", userId, email);
     }
 
-    /**
-     * Count admin users.
-     */
-    public long countAdmins() {
-        return userRepository.count("role", Role.ADMIN);
-    }
-
     private String generateTemporaryPassword() {
         SecureRandom random = new SecureRandom();
         StringBuilder password = new StringBuilder(TEMP_PASSWORD_LENGTH);

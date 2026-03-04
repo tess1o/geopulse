@@ -15,7 +15,6 @@ import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRe
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 

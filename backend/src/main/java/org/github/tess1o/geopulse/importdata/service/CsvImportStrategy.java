@@ -154,7 +154,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
                         GpsPointEntity gpsPoint = convertRowToGpsPoint(row, user);
                         if (gpsPoint != null) {
                             addToBatchAndFlushIfNeeded(currentBatch, gpsPoint, firstTimestamp,
-                                totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                                totalImported, clearMode, job, totalExpectedPoints, batchSize);
                         }
                     } else {
                         totalSkipped.incrementAndGet();
@@ -185,7 +185,7 @@ public class CsvImportStrategy extends BaseGpsImportStrategy {
      */
     private void addToBatchAndFlushIfNeeded(List<GpsPointEntity> currentBatch, GpsPointEntity gpsPoint,
                                             AtomicReference<Instant> firstTimestamp,
-                                            AtomicInteger totalImported, AtomicInteger totalSkipped,
+                                            AtomicInteger totalImported,
                                             boolean clearMode, ImportJob job, int totalExpectedPoints,
                                             int batchSize) {
         currentBatch.add(gpsPoint);

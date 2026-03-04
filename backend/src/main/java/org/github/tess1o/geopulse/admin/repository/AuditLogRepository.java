@@ -92,15 +92,4 @@ public class AuditLogRepository implements PanacheRepositoryBase<AuditLogEntity,
 
         return count(query.toString(), params.toArray());
     }
-
-    public List<AuditLogEntity> findByAdminUserId(UUID adminUserId, int page, int size) {
-        return find("adminUserId", Sort.descending("timestamp"), adminUserId)
-                .page(Page.of(page, size))
-                .list();
-    }
-
-    public List<AuditLogEntity> findByTargetTypeAndId(TargetType targetType, String targetId) {
-        return find("targetType = ?1 and targetId = ?2", Sort.descending("timestamp"), targetType, targetId)
-                .list();
-    }
 }

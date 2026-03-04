@@ -141,7 +141,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
         }
 
         // Step 2: Check if we have legitimate mode diversity (not just traffic fragmentation)
-        boolean hasSignificantModeChanges = hasLegitimateModChanges(condensedTrips, config);
+        boolean hasSignificantModeChanges = hasLegitimateModChanges(condensedTrips);
 
         if (hasSignificantModeChanges) {
             log.debug("Multi algorithm: keeping {} separate trips due to significant mode changes", condensedTrips.size());
@@ -200,7 +200,7 @@ public class StreamingMultipleTripAlgorithm extends AbstractTripAlgorithm {
      * Determine if trip segments represent legitimate mode changes vs traffic fragmentation.
      * Uses relative contribution analysis: both modes must contribute meaningfully to total distance.
      */
-    private boolean hasLegitimateModChanges(List<Trip> trips, TimelineConfig config) {
+    private boolean hasLegitimateModChanges(List<Trip> trips) {
         long walkingTrips = trips.stream().filter(t -> t.getTripType() == TripType.WALK).count();
         long drivingTrips = trips.stream().filter(t -> t.getTripType() == TripType.CAR).count();
 

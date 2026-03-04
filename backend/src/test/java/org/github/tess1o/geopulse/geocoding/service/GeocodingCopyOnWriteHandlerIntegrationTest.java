@@ -200,7 +200,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
                 .country("Updated Country")
                 .build();
         // When
-        GeocodingCopyOnWriteHandler.UpdateResult result = handler.handleUserUpdate(testUserId, reloadedEntity, updateDTO);
+        handler.handleUserUpdate(testUserId, reloadedEntity, updateDTO);
         // Then
         entityManager.flush();
         entityManager.clear();
@@ -402,8 +402,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
                 "Test Country"
         );
         // When
-        GeocodingCopyOnWriteHandler.ReconciliationResult result =
-                handler.handleReconciliation(testUserId, reloadedCopy, freshResult);
+        handler.handleReconciliation(testUserId, reloadedCopy, freshResult);
         // Then
         entityManager.flush();
         entityManager.clear();

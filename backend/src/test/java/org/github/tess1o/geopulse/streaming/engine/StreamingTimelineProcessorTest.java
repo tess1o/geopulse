@@ -63,7 +63,6 @@ class StreamingTimelineProcessorTest {
         lenient().when(finalizationService.finalizeStayWithoutLocation(any(), any()))
             .thenAnswer(invocation -> {
                 UserState userState = invocation.getArgument(0);
-                TimelineConfig cfg = invocation.getArgument(1);
                 // Handle null userState
                 if (userState == null) return null;
                 GPSPoint first = userState.getFirstActivePoint();
@@ -88,11 +87,6 @@ class StreamingTimelineProcessorTest {
     }
     @Test
     void shouldFilterPointsByAccuracy_RemoveHighAccuracyPoints() {
-        List<GPSPoint> contextPoints = Arrays.asList(
-            createGpsPoint(Instant.parse("2024-08-15T08:00:00Z"), 40.7589, -73.9851, 0.0, 30.0), // good
-            createGpsPoint(Instant.parse("2024-08-15T08:01:00Z"), 40.7589, -73.9851, 0.0, 100.0), // bad - filtered
-            createGpsPoint(Instant.parse("2024-08-15T08:02:00Z"), 40.7589, -73.9851, 0.0, 20.0)  // good
-        );
         List<GPSPoint> newPoints = Arrays.asList(
             createGpsPoint(Instant.parse("2024-08-15T08:03:00Z"), 40.7589, -73.9851, 0.0, 80.0), // bad - filtered
             createGpsPoint(Instant.parse("2024-08-15T08:04:00Z"), 40.7589, -73.9851, 0.0, 40.0)  // good
@@ -112,10 +106,6 @@ class StreamingTimelineProcessorTest {
             .staypointMaxAccuracyThreshold(null) // no threshold
             .useVelocityAccuracy(false) // disabled
             .build();
-        List<GPSPoint> points = Arrays.asList(
-            createGpsPoint(Instant.parse("2024-08-15T08:00:00Z"), 40.7589, -73.9851, 0.0, 200.0), // normally bad
-            createGpsPoint(Instant.parse("2024-08-15T08:01:00Z"), 40.7589, -73.9851, 0.0, 300.0)  // normally bad
-        );
         List<TimelineEvent> result = processor.processPoints(Arrays.asList(), configNoAccuracy, testUserId);
         // Should not filter when threshold is not set
         assertNotNull(result);

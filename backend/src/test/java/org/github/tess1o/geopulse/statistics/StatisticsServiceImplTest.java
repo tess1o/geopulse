@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
     /**
  * Unit tests for StatisticsServiceImpl with SQL-based calculations.
@@ -194,7 +193,7 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getChartDataByWeeks(any(UUID.class), any(), any(), any()))
                 .thenReturn(List.of(new ChartDataPoint("01/01", 15.0)));
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
+        statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
         // Then
         verify(statisticsRepository, times(6)).getChartDataByWeeks(any(), any(), any(), any());
         verify(statisticsRepository, times(0)).getChartDataByDays(any(), any(), any(), any());

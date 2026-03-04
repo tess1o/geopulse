@@ -125,7 +125,7 @@ public class StreamingTimelineProcessor {
         }
 
         // 3. Finalize any remaining active event
-        TimelineEvent finalEvent = finalizeActiveEvent(userState, config, userId);
+        TimelineEvent finalEvent = finalizeActiveEvent(userState, config);
         if (finalEvent != null) {
             finalizedEvents.add(finalEvent);
         }
@@ -405,7 +405,7 @@ public class StreamingTimelineProcessor {
      * @param userId    user identifier for location matching
      * @return finalized event or null if none active
      */
-    public TimelineEvent finalizeActiveEvent(UserState userState, TimelineConfig config, java.util.UUID userId) {
+    public TimelineEvent finalizeActiveEvent(UserState userState, TimelineConfig config) {
         if (!userState.hasActivePoints()) {
             return null;
         }

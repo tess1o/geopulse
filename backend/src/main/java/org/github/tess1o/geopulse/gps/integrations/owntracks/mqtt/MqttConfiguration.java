@@ -7,9 +7,6 @@ import jakarta.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.paho.client.mqttv3.internal.NetworkModuleService;
-
-import java.net.URI;
 
 /**
  * Configuration class for conditional MQTT support.

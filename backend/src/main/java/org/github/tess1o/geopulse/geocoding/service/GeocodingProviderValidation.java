@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Startup validation for geocoding provider configuration.

@@ -149,13 +149,7 @@ class CacheGeocodingBatchServiceTest {
     @Transactional
     @DisplayName("Should return empty map for null coordinates list")
     void testNullCoordinatesList() {
-        // Given
-        Point uncachedCoords1 = GeoUtils.createPoint(100.0, 50.0);
-        Point uncachedCoords2 = GeoUtils.createPoint(110.0, 60.0);
-        List<Point> lookupCoords = List.of(uncachedCoords1, uncachedCoords2);
-        // When
         Map<String, Long> result = batchService.getCachedGeocodingResultIdsBatch(USER_A_ID, null);
-        // Then
         assertNotNull(result);
         assertTrue(result.isEmpty());
     }

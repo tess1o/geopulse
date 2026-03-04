@@ -24,7 +24,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.OidcLoginDisabledException;
 import org.github.tess1o.geopulse.auth.exceptions.OidcRegistrationDisabledException;
-import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.oidc.dto.*;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcProviderConfiguration;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;

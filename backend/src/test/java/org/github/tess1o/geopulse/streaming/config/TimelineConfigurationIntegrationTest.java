@@ -121,8 +121,6 @@ class TimelineConfigurationIntegrationTest {
     @Test
     @Transactional
     void testConfigurationUpdateFlow() {
-        // Initial state: no preferences
-        TimelineConfig initialConfig = timelineConfigurationProvider.getConfigurationForUser(testUser.getId());
         // Update 1: Set some preferences
         UpdateTimelinePreferencesRequest update1 = new UpdateTimelinePreferencesRequest();
         update1.setStaypointRadiusMeters(100);

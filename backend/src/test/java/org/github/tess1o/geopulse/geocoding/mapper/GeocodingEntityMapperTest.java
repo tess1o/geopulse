@@ -397,7 +397,6 @@ class GeocodingEntityMapperTest {
             // Given
             ReverseGeocodingLocationEntity entity = createTestEntity();
             entity.setId(1L);
-            UUID userId = UUID.randomUUID();
             Instant originalCreatedAt = Instant.now().minusSeconds(3600);
             entity.setCreatedAt(originalCreatedAt);
             entity.setLastAccessedAt(originalCreatedAt);

@@ -150,7 +150,6 @@ class PropertyBasedConfigLoaderTest {
 
     @Test
     void testDefaultValueLoading() {
-        TestConfig config = new TestConfig();
         // Test that default values are properly parsed and set
         for (ConfigField<TestConfig, ?> field : registry.getFields()) {
             String defaultValue = field.defaultValue();

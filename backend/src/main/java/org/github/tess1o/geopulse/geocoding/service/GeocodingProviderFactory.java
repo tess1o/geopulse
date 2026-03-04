@@ -13,8 +13,6 @@ import org.github.tess1o.geopulse.geocoding.service.external.NominatimGeocodingS
 import org.github.tess1o.geopulse.geocoding.service.external.PhotonGeocodingService;
 import org.locationtech.jts.geom.Point;
 
-import java.util.Optional;
-
 /**
  * Factory service to handle multiple geocoding providers with failover.
  * Now uses dedicated provider services that return structured results.

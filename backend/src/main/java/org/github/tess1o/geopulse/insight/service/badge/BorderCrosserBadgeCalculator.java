@@ -1,8 +1,6 @@
 package org.github.tess1o.geopulse.insight.service.badge;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
 import org.github.tess1o.geopulse.insight.service.CountriesBadgeCalculator;
 

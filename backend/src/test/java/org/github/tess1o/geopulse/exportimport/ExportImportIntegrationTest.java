@@ -292,7 +292,6 @@ class ExportImportIntegrationTest {
                 "Location sources should be included");
         // Step 4: Delete test data (simulating data loss or migration scenario)
         log.info("Step 4: Deleting test data");
-        Long originalGeocodingId = originalGeocodingLocation.getId();
         // Clear the entire transaction context first to avoid stale references
         timelineStayRepository.getEntityManager().clear();
         // Delete in dependency order (children first)

@@ -169,7 +169,7 @@ public class StreamingTimelineGenerationService {
                 updateProgress(jobId, "Persisting timeline events to database", 7, 80, null);
 
                 // Persist raw timeline with GPS statistics calculation
-                persistenceManager.persistRawTimeline(userId, rawTimeline, jobId);
+                persistenceManager.persistRawTimeline(userId, rawTimeline);
 
                 // Re-attach manual movement-type overrides to regenerated trips.
                 tripMovementTypeOverrideService.reapplyManualOverrides(userId);

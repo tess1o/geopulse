@@ -53,8 +53,8 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(1800), "Work", 120, 40.2, -74.2)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1680), 15, 1500, 40.15, -74.15)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1680), 15, 1500)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
         // Act
@@ -74,9 +74,9 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(2640), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 200, 40.1, -74.1), // 200m trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 2, 200), // 200m trip
+                createTrip(baseTime.plusSeconds(2520), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
         // Act
@@ -103,9 +103,9 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(2640), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 400, 40.1, -74.1), // 400m, 2min trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 2, 400), // 400m, 2min trip
+                createTrip(baseTime.plusSeconds(2520), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
         // Act
@@ -132,9 +132,9 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(2640), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 5, 500, 40.1, -74.1), // 500m, 5min trip
-                createTrip(baseTime.plusSeconds(2520), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 5, 500), // 500m, 5min trip
+                createTrip(baseTime.plusSeconds(2520), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
         // Act
@@ -154,10 +154,10 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(3240), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 150, 40.1, -74.1), // 150m trip
-                createTrip(baseTime.plusSeconds(2280), 1, 100, 40.1, -74.1),   // 100m trip
-                createTrip(baseTime.plusSeconds(3120), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 2, 150), // 150m trip
+                createTrip(baseTime.plusSeconds(2280), 1, 100),   // 100m trip
+                createTrip(baseTime.plusSeconds(3120), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
         // Act
@@ -186,11 +186,11 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(5440), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 2, 200, 40.1, -74.1),    // Short trip between Parks
-                createTrip(baseTime.plusSeconds(2520), 10, 1500, 40.15, -74.15), // To Mall
-                createTrip(baseTime.plusSeconds(4120), 10, 1500, 40.15, -74.15), // To Park again
-                createTrip(baseTime.plusSeconds(5320), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 2, 200),    // Short trip between Parks
+                createTrip(baseTime.plusSeconds(2520), 10, 1500), // To Mall
+                createTrip(baseTime.plusSeconds(4120), 10, 1500), // To Park again
+                createTrip(baseTime.plusSeconds(5320), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, List.of());
         // Act
@@ -237,11 +237,11 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(3840), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 1, 100, 40.1, -74.1),   // 100m, 1min
-                createTrip(baseTime.plusSeconds(2100), 1, 50, 40.1, -74.1),  // 50m, 1min
-                createTrip(baseTime.plusSeconds(2220), 1, 80, 40.1, -74.1),  // 80m, 1min
-                createTrip(baseTime.plusSeconds(3720), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 1, 100),   // 100m, 1min
+                createTrip(baseTime.plusSeconds(2100), 1, 50),  // 50m, 1min
+                createTrip(baseTime.plusSeconds(2220), 1, 80),  // 80m, 1min
+                createTrip(baseTime.plusSeconds(3720), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
         // Act
@@ -268,10 +268,10 @@ public class MovementTimelineMergerImplTest {
                 createStay(baseTime.plusSeconds(5700), "Home", 30, 40.0, -74.0)
         );
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.05, -74.05),
-                createTrip(baseTime.plusSeconds(1980), 10, 1500, 40.15, -74.15),
-                createTrip(baseTime.plusSeconds(3780), 10, 1500, 40.15, -74.15),
-                createTrip(baseTime.plusSeconds(5580), 10, 2000, 40.05, -74.05)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),
+                createTrip(baseTime.plusSeconds(1980), 10, 1500),
+                createTrip(baseTime.plusSeconds(3780), 10, 1500),
+                createTrip(baseTime.plusSeconds(5580), 10, 2000)
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
         // Act
@@ -292,10 +292,10 @@ public class MovementTimelineMergerImplTest {
         );
         // NOTE: NO trip between the two Home stays at indices 2 and 3
         List<Trip> trips = Arrays.asList(
-                createTrip(baseTime.plusSeconds(780), 10, 2000, 40.1, -74.1),    // Home -> Work
-                createTrip(baseTime.plusSeconds(2880), 10, 2000, 40.1, -74.1),   // Work -> Home (first)
+                createTrip(baseTime.plusSeconds(780), 10, 2000),    // Home -> Work
+                createTrip(baseTime.plusSeconds(2880), 10, 2000),   // Work -> Home (first)
                 // MISSING: No trip between Home stays!
-                createTrip(baseTime.plusSeconds(5280), 10, 2000, 40.1, -74.1)    // Home (second) -> Work
+                createTrip(baseTime.plusSeconds(5280), 10, 2000)    // Home (second) -> Work
         );
         RawTimeline timeline = new RawTimeline(userId, stays, trips, new ArrayList<>());
         // Act
@@ -332,8 +332,7 @@ public class MovementTimelineMergerImplTest {
                 .longitude(lon)
                 .build();
     }
-    private Trip createTrip(Instant timestamp, long duration, long distanceMeters,
-                           double lat, double lon) {
+    private Trip createTrip(Instant timestamp, long duration, long distanceMeters) {
         return Trip.builder()
                 .duration(Duration.ofSeconds(duration))
                 .startTime(timestamp)
