@@ -353,9 +353,9 @@ After timeline regeneration, GeoPulse tries to reattach unmatched overrides to r
 
 Candidate filters (all must pass):
 
-- timestamp delta <= 45 minutes (default `2700` seconds)
-- start-point distance <= 350 m
-- end-point distance <= 350 m
+- timestamp delta `<=` 45 minutes (default `2700` seconds)
+- start-point distance `<=` 350 m
+- end-point distance `<=` 350 m
 - duration ratio in `[0.6, 1.8]`
 - distance ratio in `[0.6, 1.8]`
 
