@@ -91,6 +91,7 @@
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
+              @edit-movement-type="handleQuickEditMovementType"
               @photo-show-on-map="handlePhotoShowOnMap"
             />
 
@@ -101,6 +102,7 @@
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
               @show-classification="handleShowClassification"
+              @edit-movement-type="handleQuickEditMovementType"
               @photo-show-on-map="handlePhotoShowOnMap"
             />
 
@@ -126,7 +128,15 @@
     <TripClassificationDialog
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
+      @movement-updated="handleMovementTypeUpdated"
       @close="handleCloseClassificationDialog"
+    />
+
+    <TripMovementTypeQuickEditDialog
+      :visible="quickEditDialogVisible"
+      :trip="selectedTripForQuickEdit"
+      @movement-updated="handleMovementTypeUpdated"
+      @close="handleCloseQuickEditDialog"
     />
   </div>
 </template>
@@ -152,6 +162,9 @@ import { useTimezone } from '@/composables/useTimezone'
 const TripClassificationDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripClassificationDialog.vue')
 )
+const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
+)
 
 const toast = useToast()
 const exportImportStore = useExportImportStore()
@@ -164,6 +177,8 @@ const displayLimit = ref(50)
 // Classification dialog state
 const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
+const quickEditDialogVisible = ref(false)
+const selectedTripForQuickEdit = ref(null)
 
 // Props
 const props = defineProps({
@@ -369,6 +384,28 @@ const handleShowClassification = (tripItem) => {
 const handleCloseClassificationDialog = () => {
   classificationDialogVisible.value = false
   selectedTripForClassification.value = null
+}
+
+const handleQuickEditMovementType = (tripItem) => {
+  selectedTripForQuickEdit.value = tripItem
+  quickEditDialogVisible.value = true
+}
+
+const handleCloseQuickEditDialog = () => {
+  quickEditDialogVisible.value = false
+  selectedTripForQuickEdit.value = null
+}
+
+const handleMovementTypeUpdated = (updated) => {
+  if (!updated?.tripId) return
+  if (selectedTripForClassification.value?.id === updated.tripId) {
+    selectedTripForClassification.value.movementType = updated.movementType
+    selectedTripForClassification.value.movementTypeSource = updated.movementTypeSource
+  }
+  if (selectedTripForQuickEdit.value?.id === updated.tripId) {
+    selectedTripForQuickEdit.value.movementType = updated.movementType
+    selectedTripForQuickEdit.value.movementTypeSource = updated.movementTypeSource
+  }
 }
 
 // Load period tags when dateRange changes

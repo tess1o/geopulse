@@ -63,6 +63,9 @@ public class StreamingTimelineGenerationService {
     StreamingDataGapService dataGapService;
 
     @Inject
+    TripMovementTypeOverrideService tripMovementTypeOverrideService;
+
+    @Inject
     BadgeRecalculationService badgeRecalculationService;
 
     @Inject
@@ -167,6 +170,9 @@ public class StreamingTimelineGenerationService {
 
                 // Persist raw timeline with GPS statistics calculation
                 persistenceManager.persistRawTimeline(userId, rawTimeline, jobId);
+
+                // Re-attach manual movement-type overrides to regenerated trips.
+                tripMovementTypeOverrideService.reapplyManualOverrides(userId);
             }
 
             // Step 8: Data gap detection (90%)

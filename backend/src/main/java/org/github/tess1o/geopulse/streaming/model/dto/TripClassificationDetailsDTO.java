@@ -21,6 +21,8 @@ public record TripClassificationDetailsDTO(
         long tripDurationSeconds,
         long distanceMeters,
         String currentClassification,
+        String algorithmClassification,
+        String movementTypeSource,
         TripStatistics statistics,
         ClassificationThresholds thresholds,
         List<ClassificationStep> steps,

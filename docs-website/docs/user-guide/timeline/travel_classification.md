@@ -304,6 +304,94 @@ If you see many UNKNOWN classifications, try enabling more optional trip types (
 
 ---
 
+## Manual Movement Type Override
+
+You can manually set a trip movement type when automatic classification is not what you expect.
+
+### What this feature does
+
+- Lets you override any trip to a selected type (`WALK`, `CAR`, `BICYCLE`, `RUNNING`, `TRAIN`, `FLIGHT`, `UNKNOWN`).
+- Marks that trip as `MANUAL` source.
+- Keeps the override across timeline rebuilds (including rebuilds triggered by Timeline Preferences updates).
+
+### UI behavior
+
+- **UNKNOWN + AUTO:** shows a single primary action: **Set movement type** with a hint text.
+- **Known + AUTO:** shows a pencil edit action.
+- **Known + MANUAL:** shows `MANUAL` status; the quick edit dialog provides **Change** and **Reset to automatic**.
+
+### Effective vs Automatic classification
+
+GeoPulse now exposes two classification values:
+
+- **Effective Classification**: what is currently used in timeline and analytics (may be manual).
+- **Automatic Classification**: what the algorithm would assign from current settings and GPS data.
+
+In the **Trip Classification Details** dialog:
+
+- `Classification Source = AUTO` means effective = automatic.
+- `Classification Source = MANUAL` means effective is user-selected and may differ from automatic.
+
+### What is stored
+
+When you set a manual movement type, GeoPulse stores an override record with:
+
+- selected movement type
+- user id
+- optional current trip link
+- immutable source anchors from the originally selected trip:
+  - source timestamp
+  - source duration
+  - source distance
+  - source start/end coordinates
+
+These anchors are used to reattach the override after trips are regenerated and IDs change.
+
+### Rebuild-safe matching algorithm
+
+After timeline regeneration, GeoPulse tries to reattach unmatched overrides to regenerated trips.
+
+Candidate filters (all must pass):
+
+- timestamp delta <= 45 minutes (default `2700` seconds)
+- start-point distance <= 350 m
+- end-point distance <= 350 m
+- duration ratio in `[0.6, 1.8]`
+- distance ratio in `[0.6, 1.8]`
+
+Scoring for best match (lowest score wins):
+
+`score = timestampDeltaSeconds + (startDistanceMeters + endDistanceMeters) + (durationDeltaSeconds * 0.6) + (distanceDeltaMeters * 0.04)`
+
+Additional rules:
+
+- one regenerated trip can be matched to only one override
+- source anchor fields remain immutable (they are not updated to the new matched trip shape)
+- if no candidate passes filters, override is not applied and trip stays `AUTO`
+
+### Override Matching Configuration
+
+These thresholds are configured via environment variables (system-wide defaults, not per-user settings):
+
+- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_TIMESTAMP_DELTA_SECONDS` (default: `2700`)
+- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_POINT_DISTANCE_METERS` (default: `350.0`)
+- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MIN_DURATION_RATIO` (default: `0.6`)
+- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_DURATION_RATIO` (default: `1.8`)
+- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MIN_DISTANCE_RATIO` (default: `0.6`)
+- `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_DISTANCE_RATIO` (default: `1.8`)
+
+For deployment-level configuration examples, see [Timeline Global Configuration](/docs/system-administration/configuration/timeline-global-config).
+
+### Reset behavior
+
+If you choose **Reset to automatic**:
+
+- override record is removed
+- trip movement type is recomputed with current timeline preferences
+- source switches back to `AUTO`
+
+---
+
 ## Technical Details
 
 ### GPS Data Processing
@@ -443,9 +531,13 @@ Example: Trip initially classified as WALK with GPS showing 5 km/h, but calculat
 Changing travel classification settings triggers a full timeline rebuild to reclassify all existing trips with the new thresholds.
 
 **What Gets Reclassified:**
-- All past trips are re-evaluated using the new speed thresholds
+- All `AUTO` trips are re-evaluated using the new speed thresholds
 - Trip icons and type labels are updated throughout the app
 - Journey Insights and statistics are recalculated
+
+**What Is Preserved:**
+- Trips with `MANUAL` source keep the user-selected movement type
+- Manual overrides are reattached to regenerated trips using anchor-based matching
 
 **What Doesn't Change:**
 - Stay locations remain the same
@@ -473,6 +565,7 @@ Travel classification automatically identifies how you traveled based on GPS spe
 
 - **Configurable trip types**: WALK (always available) + CAR, BICYCLE, RUNNING, TRAIN, FLIGHT (optional) with UNKNOWN as fallback
 - **Smart algorithms**: GPS noise detection, reliability validation, special case handling
+- **Manual control**: You can override movement type per trip and reset to automatic anytime
 - **Fully customizable**: Adjust speed thresholds to match your travel patterns
 - **Automatic updates**: Enable/disable trip types and see classifications update instantly
 

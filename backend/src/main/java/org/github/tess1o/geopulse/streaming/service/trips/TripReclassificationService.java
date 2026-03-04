@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 
@@ -56,14 +57,21 @@ public class TripReclassificationService {
 
             int updatedCount = 0;
             int skippedCount = 0;
+            int manualCount = 0;
             
             for (TimelineTripEntity trip : trips) {
                 try {
+                    if (trip.getMovementTypeSource() == MovementTypeSource.MANUAL) {
+                        manualCount++;
+                        continue;
+                    }
+
                     String oldMovementType = trip.getMovementType();
                     String newMovementType = reclassifyTrip(trip, config);
                     
                     if (!newMovementType.equals(oldMovementType)) {
                         trip.setMovementType(newMovementType);
+                        trip.setMovementTypeSource(MovementTypeSource.AUTO);
                         trip.setLastUpdated(Instant.now());
                         updatedCount++;
                         
@@ -82,8 +90,8 @@ public class TripReclassificationService {
             }
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Trip reclassification completed for user {} in {}ms: {} updated, {} unchanged", 
-                userId, duration, updatedCount, skippedCount);
+            log.info("Trip reclassification completed for user {} in {}ms: {} updated, {} unchanged, {} manual overrides preserved",
+                userId, duration, updatedCount, skippedCount, manualCount);
                 
         } catch (Exception e) {
             log.error("Failed to reclassify trips for user {}: {}", userId, e.getMessage(), e);

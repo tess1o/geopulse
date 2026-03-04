@@ -25,7 +25,7 @@
           <DetailItem label="Start Time" :value="formatDateTime(details.timestamp)" />
           <DetailItem label="Duration" :value="formatDuration(details.tripDurationSeconds)" />
           <DetailItem label="Distance" :value="formatDistance(details.distanceMeters)" />
-          <DetailItem label="Classification">
+          <DetailItem label="Effective Classification">
             <template #value>
               <Tag
                 :value="details.currentClassification"
@@ -33,10 +33,69 @@
               />
             </template>
           </DetailItem>
+          <DetailItem label="Automatic Classification">
+            <template #value>
+              <Tag
+                :value="details.algorithmClassification"
+                :severity="getTransportSeverity(details.algorithmClassification)"
+              />
+            </template>
+          </DetailItem>
+          <DetailItem label="Classification Source">
+            <template #value>
+              <Tag
+                :value="details.movementTypeSource"
+                :severity="details.movementTypeSource === 'MANUAL' ? 'warn' : 'success'"
+              />
+            </template>
+          </DetailItem>
+        </div>
+        <Message v-if="details.movementTypeSource === 'MANUAL'" severity="warn" :closable="false">
+          Manual override is active for this trip.
+        </Message>
+      </div>
+
+      <!-- Section 2: Manual Override -->
+      <div class="section">
+        <h3 class="section-title">Edit Movement Type</h3>
+        <Message v-if="details.currentClassification === 'UNKNOWN'" severity="warn" :closable="false">
+          Algorithm did not recognize this movement type. Set it manually below.
+        </Message>
+        <Message v-else severity="info" :closable="false">
+          If this looks incorrect, override it manually.
+        </Message>
+        <div class="override-controls">
+          <Select
+            v-model="selectedMovementType"
+            :options="movementTypeOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select movement type"
+            class="movement-select"
+            :disabled="savingMovementType"
+          />
+          <div class="override-actions">
+            <Button
+              label="Save Override"
+              icon="pi pi-save"
+              :loading="savingMovementType"
+              :disabled="!selectedMovementType || savingMovementType"
+              @click="saveManualMovementType"
+            />
+            <Button
+              label="Reset to Automatic"
+              icon="pi pi-refresh"
+              severity="secondary"
+              outlined
+              :loading="savingMovementType"
+              :disabled="!canResetMovementType || savingMovementType"
+              @click="resetToAutomaticMovementType"
+            />
+          </div>
         </div>
       </div>
 
-      <!-- Section 2: GPS Statistics -->
+      <!-- Section 3: GPS Statistics -->
       <div class="section">
         <h3 class="section-title">GPS Statistics</h3>
         <div class="stats-grid">
@@ -78,7 +137,7 @@
         </div>
       </div>
 
-      <!-- Section 3: Classification Priority Order -->
+      <!-- Section 4: Classification Priority Order -->
       <div class="section">
         <div class="priority-banner">
           <div class="priority-banner-icon">
@@ -116,11 +175,11 @@
         </div>
       </div>
 
-      <!-- Section 4: Classification Steps -->
+      <!-- Section 5: Classification Steps -->
       <div class="section">
         <h3 class="section-title">Classification Analysis</h3>
         <p class="section-description">
-          Detailed threshold checks for each transport type.
+          Detailed threshold checks for automatic classification.
         </p>
 
         <div class="steps-list">
@@ -129,12 +188,12 @@
             :key="index"
             :step="step"
             :index="index + 1"
-            :is-selected="step.tripType === details.currentClassification"
+            :is-selected="step.tripType === details.algorithmClassification"
           />
         </div>
       </div>
 
-      <!-- Section 5: Final Reason -->
+      <!-- Section 6: Final Reason -->
       <div class="section">
         <Message severity="info" :closable="false">
           <strong>Final Decision:</strong> {{ details.finalReason }}
@@ -155,10 +214,12 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
+import Select from 'primevue/select'
 import { useToast } from 'primevue/usetoast'
 import apiService from '@/utils/apiService'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDurationSmart, formatDistance } from '@/utils/calculationsHelpers'
+import { useTimelineStore } from '@/stores/timeline'
 import DetailItem from './classification/DetailItem.vue'
 import StatCard from './classification/StatCard.vue'
 import ClassificationStepCard from './classification/ClassificationStepCard.vue'
@@ -174,14 +235,29 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'movement-updated'])
 
 const toast = useToast()
 const timezone = useTimezone()
+const timelineStore = useTimelineStore()
 
 const loading = ref(false)
 const error = ref(null)
 const details = ref(null)
+const savingMovementType = ref(false)
+const selectedMovementType = ref(null)
+
+const movementTypeOptions = [
+  { label: 'Walk', value: 'WALK' },
+  { label: 'Car', value: 'CAR' },
+  { label: 'Bicycle', value: 'BICYCLE' },
+  { label: 'Running', value: 'RUNNING' },
+  { label: 'Train', value: 'TRAIN' },
+  { label: 'Flight', value: 'FLIGHT' },
+  { label: 'Unknown', value: 'UNKNOWN' }
+]
+
+const canResetMovementType = computed(() => details.value?.movementTypeSource === 'MANUAL')
 
 const internalVisible = computed({
   get: () => props.visible,
@@ -204,6 +280,7 @@ watch(() => props.visible, async (visible) => {
     // Reset when dialog closes
     details.value = null
     error.value = null
+    selectedMovementType.value = null
   }
 })
 
@@ -218,6 +295,7 @@ const fetchClassificationDetails = async (tripId) => {
 
     if (response.status === 'success') {
       details.value = response.data
+      selectedMovementType.value = response.data?.currentClassification || 'UNKNOWN'
     } else {
       error.value = response.message || 'Failed to load classification details'
     }
@@ -232,6 +310,77 @@ const fetchClassificationDetails = async (tripId) => {
     })
   } finally {
     loading.value = false
+  }
+}
+
+const saveManualMovementType = async () => {
+  if (!props.trip?.id || !selectedMovementType.value) return
+  savingMovementType.value = true
+  try {
+    const updated = await timelineStore.updateTripMovementType(props.trip.id, selectedMovementType.value)
+    if (updated) {
+      details.value.currentClassification = updated.movementType
+      details.value.movementTypeSource = updated.movementTypeSource
+      details.value.algorithmClassification = updated.algorithmClassification
+      if (props.trip) {
+        props.trip.movementType = updated.movementType
+        props.trip.movementTypeSource = updated.movementTypeSource
+      }
+      emit('movement-updated', updated)
+      await fetchClassificationDetails(props.trip.id)
+      toast.add({
+        severity: 'success',
+        summary: 'Movement Type Updated',
+        detail: `Trip marked as ${updated.movementType}`,
+        life: 2500
+      })
+    }
+  } catch (err) {
+    console.error('Error updating movement type:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: err.message || 'Could not update movement type',
+      life: 3000
+    })
+  } finally {
+    savingMovementType.value = false
+  }
+}
+
+const resetToAutomaticMovementType = async () => {
+  if (!props.trip?.id) return
+  savingMovementType.value = true
+  try {
+    const updated = await timelineStore.resetTripMovementType(props.trip.id)
+    if (updated) {
+      details.value.currentClassification = updated.movementType
+      details.value.movementTypeSource = updated.movementTypeSource
+      details.value.algorithmClassification = updated.algorithmClassification
+      selectedMovementType.value = updated.movementType
+      if (props.trip) {
+        props.trip.movementType = updated.movementType
+        props.trip.movementTypeSource = updated.movementTypeSource
+      }
+      emit('movement-updated', updated)
+      await fetchClassificationDetails(props.trip.id)
+      toast.add({
+        severity: 'success',
+        summary: 'Movement Type Reset',
+        detail: `Trip classification reset to ${updated.movementType}`,
+        life: 2500
+      })
+    }
+  } catch (err) {
+    console.error('Error resetting movement type:', err)
+    toast.add({
+      severity: 'error',
+      summary: 'Reset Failed',
+      detail: err.message || 'Could not reset movement type',
+      life: 3000
+    })
+  } finally {
+    savingMovementType.value = false
   }
 }
 
@@ -356,6 +505,22 @@ const getTransportSeverity = (transportMode) => {
   display: flex;
   flex-direction: column;
   gap: var(--gp-spacing-md);
+}
+
+.override-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gp-spacing-md);
+}
+
+.movement-select {
+  max-width: 320px;
+}
+
+.override-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gp-spacing-sm);
 }
 
 .priority-banner {
@@ -534,6 +699,10 @@ const getTransportSeverity = (transportMode) => {
 
   .steps-list {
     gap: var(--gp-spacing-sm);
+  }
+
+  .movement-select {
+    max-width: 100%;
   }
 
   .priority-banner {

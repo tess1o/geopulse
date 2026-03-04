@@ -2,6 +2,7 @@ package org.github.tess1o.geopulse.streaming.model.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
@@ -62,6 +63,14 @@ public class TimelineTripEntity {
     private String movementType;
 
     /**
+     * Source of movement type value (automatic classification vs manual user override).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "movement_type_source", nullable = false, length = 20)
+    @Builder.Default
+    private MovementTypeSource movementTypeSource = MovementTypeSource.AUTO;
+
+    /**
      * Spatial path of the trip as a LineString geometry
      * Stores the actual GPS path taken during the trip
      * Since 1.3.0 we don't store path in DB so once we ensure all functionality works we'll delete this column
@@ -114,6 +123,9 @@ public class TimelineTripEntity {
     protected void onCreate() {
         this.createdAt = Instant.now();
         this.lastUpdated = Instant.now();
+        if (this.movementTypeSource == null) {
+            this.movementTypeSource = MovementTypeSource.AUTO;
+        }
     }
 
     @PreUpdate

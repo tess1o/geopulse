@@ -171,13 +171,28 @@
         :style="{ 'min-width': '120px' }"
       >
         <template #body="slotProps">
-          <Tag 
-            v-if="slotProps.data.movementType"
-            :value="slotProps.data.movementType"
-            :severity="getTransportSeverity(slotProps.data.movementType)"
-            :icon="getTransportIcon(slotProps.data.movementType)"
-            class="transport-tag"
-          />
+          <div class="transport-tags">
+            <Tag 
+              v-if="slotProps.data.movementType"
+              :value="slotProps.data.movementType"
+              :severity="getTransportSeverity(slotProps.data.movementType)"
+              :icon="getTransportIcon(slotProps.data.movementType)"
+              class="transport-tag"
+            />
+            <Tag
+              v-if="slotProps.data.movementTypeSource === 'MANUAL'"
+              value="Manual"
+              severity="warn"
+              class="transport-tag transport-tag--manual"
+            />
+            <button
+              v-if="slotProps.data.movementType === 'UNKNOWN'"
+              class="transport-set-btn"
+              @click.stop="openQuickEditDialog(slotProps.data)"
+            >
+              Set manually
+            </button>
+          </div>
         </template>
       </Column>
 
@@ -185,7 +200,7 @@
       <Column
         header="Actions"
         :exportable="false"
-        :style="{ 'min-width': '120px' }"
+        :style="{ 'min-width': '150px' }"
       >
         <template #body="slotProps">
           <div class="row-actions">
@@ -196,6 +211,16 @@
               rounded
               size="small"
               @click="showDetails(slotProps.data)"
+              class="action-button"
+            />
+            <Button
+              icon="pi pi-pencil"
+              v-tooltip.top="'Edit movement type'"
+              outlined
+              rounded
+              size="small"
+              severity="warning"
+              @click="openQuickEditDialog(slotProps.data)"
               class="action-button"
             />
             <Button
@@ -233,7 +258,15 @@
     <TripClassificationDialog
       :visible="classificationDialogVisible"
       :trip="selectedTripForClassification"
+      @movement-updated="handleMovementTypeUpdated"
       @close="closeClassificationDialog"
+    />
+
+    <TripMovementTypeQuickEditDialog
+      :visible="quickEditDialogVisible"
+      :trip="selectedTripForQuickEdit"
+      @movement-updated="handleMovementTypeUpdated"
+      @close="closeQuickEditDialog"
     />
   </BaseCard>
 </template>
@@ -261,6 +294,9 @@ const TripDetailsDialog = defineAsyncComponent(() =>
 
 const TripClassificationDialog = defineAsyncComponent(() =>
   import('@/components/dialogs/TripClassificationDialog.vue')
+)
+const TripMovementTypeQuickEditDialog = defineAsyncComponent(() =>
+  import('@/components/dialogs/TripMovementTypeQuickEditDialog.vue')
 )
 
 const timezone = useTimezone()
@@ -317,6 +353,8 @@ const detailsDialogVisible = ref(false)
 const selectedTripForDetails = ref(null)
 const classificationDialogVisible = ref(false)
 const selectedTripForClassification = ref(null)
+const quickEditDialogVisible = ref(false)
+const selectedTripForQuickEdit = ref(null)
 
 // Use shared filter logic
 const filteredTripsData = useTripsFilter(
@@ -419,6 +457,36 @@ const showClassification = (trip) => {
 const closeClassificationDialog = () => {
   classificationDialogVisible.value = false
   selectedTripForClassification.value = null
+}
+
+const openQuickEditDialog = (trip) => {
+  selectedTripForQuickEdit.value = trip
+  quickEditDialogVisible.value = true
+}
+
+const closeQuickEditDialog = () => {
+  quickEditDialogVisible.value = false
+  selectedTripForQuickEdit.value = null
+}
+
+const handleMovementTypeUpdated = (updated) => {
+  if (!updated?.tripId) return
+
+  const targetTrip = props.trips.find((trip) => trip.id === updated.tripId)
+  if (targetTrip) {
+    targetTrip.movementType = updated.movementType
+    targetTrip.movementTypeSource = updated.movementTypeSource
+  }
+
+  if (selectedTripForClassification.value?.id === updated.tripId) {
+    selectedTripForClassification.value.movementType = updated.movementType
+    selectedTripForClassification.value.movementTypeSource = updated.movementTypeSource
+  }
+
+  if (selectedTripForQuickEdit.value?.id === updated.tripId) {
+    selectedTripForQuickEdit.value.movementType = updated.movementType
+    selectedTripForQuickEdit.value.movementTypeSource = updated.movementTypeSource
+  }
 }
 
 // Search is handled reactively in the computed filteredTripsData
@@ -537,6 +605,27 @@ const closeClassificationDialog = () => {
 
 .transport-tag {
   font-size: 0.75rem;
+}
+
+.transport-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.transport-tag--manual {
+  font-size: 0.65rem;
+}
+
+.transport-set-btn {
+  border: none;
+  background: transparent;
+  color: var(--gp-warning);
+  font-weight: 700;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
 }
 
 .row-actions {

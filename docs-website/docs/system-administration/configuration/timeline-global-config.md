@@ -43,13 +43,27 @@ Controls how movement is classified into different transportation modes based on
 
 ### Trip Detection Settings
 
-| Property                                                     | Default  | Description                                                                                                                |
-|--------------------------------------------------------------|----------|----------------------------------------------------------------------------------------------------------------------------|
-| `GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM`                 | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                |
+| Property                                                     | Default  | Description                                                                                                                 |
+|--------------------------------------------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_TRIP_DETECTION_ALGORITHM`                 | `single` | Algorithm used for trip detection. Possible values: `single` and `multiple`                                                 |
 | `GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_DURATION_SECONDS`        | `90`     | Minimum duration (seconds) for arrival detection. GPS points must be clustered and slow for this duration to detect arrival |
-| `GEOPULSE_TIMELINE_TRIP_SUSTAINED_STOP_MIN_DURATION_SECONDS` | `60`     | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                       |
-| `GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_POINTS`                  | `3`      | Minimum number of GPS points required to detect arrival at destination during trips.            |
-| `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM`                        | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips        |
+| `GEOPULSE_TIMELINE_TRIP_SUSTAINED_STOP_MIN_DURATION_SECONDS` | `60`     | Minimum duration (seconds) for sustained stop detection. Filters out brief stops like traffic lights                        |
+| `GEOPULSE_TIMELINE_TRIP_ARRIVAL_MIN_POINTS`                  | `3`      | Minimum number of GPS points required to detect arrival at destination during trips.                                        |
+| `GEOPULSE_TIMELINE_SHORT_DISTANCE_KM`                        | `1.0`    | Distance threshold (km) for applying relaxed walking speed detection to account for GPS inaccuracies in short trips         |
+
+### Manual Override Reattachment Matching
+
+These settings control how manual trip movement overrides are reattached after timeline rebuild/regeneration.
+They are currently configurable via environment variables only (not available in Admin UI).
+
+| Property                                                               | Default | Description                                                                                       |
+|------------------------------------------------------------------------|---------|---------------------------------------------------------------------------------------------------|
+| `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_TIMESTAMP_DELTA_SECONDS` | `2700`  | Maximum allowed timestamp difference (seconds) between source trip and candidate regenerated trip |
+| `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_POINT_DISTANCE_METERS`   | `350.0` | Maximum allowed distance (meters) for both start and end point matching                           |
+| `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MIN_DURATION_RATIO`          | `0.6`   | Minimum allowed ratio `candidateDuration / sourceDuration`                                        |
+| `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_DURATION_RATIO`          | `1.8`   | Maximum allowed ratio `candidateDuration / sourceDuration`                                        |
+| `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MIN_DISTANCE_RATIO`          | `0.6`   | Minimum allowed ratio `candidateDistance / sourceDistance`                                        |
+| `GEOPULSE_TIMELINE_TRIP_MOVEMENT_OVERRIDE_MAX_DISTANCE_RATIO`          | `1.8`   | Maximum allowed ratio `candidateDistance / sourceDistance`                                        |
 
 ### Walking Classification (Mandatory)
 
