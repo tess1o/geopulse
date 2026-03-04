@@ -10,6 +10,8 @@
       :width="width"
       :custom-tile-url="customTileUrl"
       :is-shared-view="isSharedView"
+      :enable-fullscreen="enableFullscreen"
+      :fullscreen-options="fullscreenOptions"
       @map-ready="handleMapReady"
       @map-click="handleMapClick"
       @map-contextmenu="handleMapContextMenu"
@@ -77,6 +79,14 @@ const props = defineProps({
   isSharedView: {
     type: Boolean,
     default: false
+  },
+  enableFullscreen: {
+    type: Boolean,
+    default: true
+  },
+  fullscreenOptions: {
+    type: Object,
+    default: () => ({})
   }
 })
 

@@ -275,6 +275,31 @@
     box-shadow: 0 2px 8px var(--gp-map-accent-bg) !important;
 }
 
+/* Keep leaflet.fullscreen icons visible when global zoom control background overrides apply */
+.leaflet-control-zoom a.leaflet-fullscreen-icon {
+    background-image: var(--fullscreen-icon-enter) !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 26px 26px !important;
+}
+
+.leaflet-control-zoom a.leaflet-control-zoom-fullscreen,
+.leaflet-bar a.leaflet-control-zoom-fullscreen {
+    background-color: var(--gp-surface-white) !important;
+    border: 1px solid var(--gp-border-medium) !important;
+    color: var(--gp-text-secondary) !important;
+}
+
+.leaflet-control-zoom a.leaflet-control-zoom-fullscreen:hover,
+.leaflet-bar a.leaflet-control-zoom-fullscreen:hover {
+    background-color: var(--gp-primary) !important;
+    color: white !important;
+}
+
+.leaflet-control-zoom a.leaflet-fullscreen-icon.leaflet-fullscreen-on {
+    background-image: var(--fullscreen-icon-exit) !important;
+}
+
 .leaflet-control-attribution {
     background: rgba(255, 255, 255, 0.95) !important;
     border-radius: var(--gp-radius-small) !important;
@@ -484,6 +509,33 @@
 .p-dark .leaflet-control-zoom a:hover {
     background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-dark)) !important;
     color: white !important;
+}
+
+.p-dark .leaflet-control-zoom a.leaflet-control-zoom-fullscreen,
+.p-dark .leaflet-bar a.leaflet-control-zoom-fullscreen {
+    background-color: var(--gp-surface-white) !important;
+    border-color: var(--gp-border-medium) !important;
+    color: var(--gp-text-primary) !important;
+}
+
+.p-dark .leaflet-control-zoom a.leaflet-control-zoom-fullscreen:hover,
+.p-dark .leaflet-bar a.leaflet-control-zoom-fullscreen:hover {
+    background-color: var(--gp-primary) !important;
+    color: white !important;
+}
+
+/* Dark mode: re-apply fullscreen icon after shorthand background overrides */
+.p-dark .leaflet-control-zoom a.leaflet-fullscreen-icon,
+.p-dark .leaflet-bar a.leaflet-fullscreen-icon {
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M5 10.3V5.9c0-.5.4-.9.9-.9h4.4c.2 0 .4.2.4.4V7c0 .2-.2.4-.4.4h-3v3c0 .2-.2.4-.4.4H5.4a.4.4 0 0 1-.4-.4zm10.3-4.9V7c0 .2.2.4.4.4h3v3c0 .2.2.4.4.4h1.5c.2 0 .4-.2.4-.4V5.9c0-.5-.4-.9-.9-.9h-4.4c-.2 0-.4.2-.4.4zm5.3 9.9H19c-.2 0-.4.2-.4.4v3h-3c-.2 0-.4.2-.4.4v1.5c0 .2.2.4.4.4h4.4c.5 0 .9-.4.9-.9v-4.4c0-.2-.2-.4-.4-.4zm-9.9 5.3V19c0-.2-.2-.4-.4-.4h-3v-3c0-.2-.2-.4-.4-.4H5.4c-.2 0-.4.2-.4.4v4.4c0 .5.4.9.9.9h4.4c.2 0 .4-.2.4-.4z" fill="%23f8fafc"/></svg>') !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 26px 26px !important;
+}
+
+.p-dark .leaflet-control-zoom a.leaflet-fullscreen-icon.leaflet-fullscreen-on,
+.p-dark .leaflet-bar a.leaflet-fullscreen-icon.leaflet-fullscreen-on {
+    background-image: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M20.6 10.7H16a.9.9 0 0 1-.8-.8v-4.5c0-.2.2-.4.4-.4h1.4c.3 0 .5.2.5.4v3h3c.2 0 .4.2.4.5v1.4c0 .2-.2.4-.4.4zm-9.9-.8V5.4c0-.2-.2-.4-.4-.4H8.9c-.3 0-.5.2-.5.4v3h-3c-.2 0-.4.2-.4.5v1.4c0 .2.2.4.4.4H9.9c.4 0 .8-.4.8-.8zm0 10.7V16c0-.4-.4-.8-.8-.8H5.4c-.2 0-.4.2-.4.4v1.4c0 .3.2.5.4.5h3v3c0 .2.2.4.5.4h1.4c.2 0 .4-.2.4-.4zm6.9 0v-3h3c.2 0 .4-.2.4-.5v-1.4c0-.2-.2-.4-.4-.4H16c-.4 0-.8.4-.8.8v4.5c0 .2.2.4.4.4h1.5c.3 0 .5-.2.5-.4z" fill="%23f8fafc"/></svg>') !important;
 }
 
 .p-dark .leaflet-control-attribution {

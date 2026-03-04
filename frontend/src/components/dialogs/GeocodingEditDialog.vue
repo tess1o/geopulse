@@ -16,6 +16,7 @@
           :center="mapCenter"
           :zoom="16"
           :show-controls="false"
+          :enable-fullscreen="false"
           height="250px"
           width="100%"
           @map-ready="handleMapReady"

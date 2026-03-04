@@ -6,6 +6,8 @@
 import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { FullScreen } from 'leaflet.fullscreen'
+import 'leaflet.fullscreen/dist/Control.FullScreen.css'
 import {fixLeafletMarkerImages, fixLeafLetTooltip, fixLeafletMarkerAnimation} from "@/utils/mapHelpers"
 import { useMapTiles } from '@/composables/useMapTiles'
 
@@ -41,6 +43,14 @@ const props = defineProps({
   isSharedView: {
     type: Boolean,
     default: false
+  },
+  enableFullscreen: {
+    type: Boolean,
+    default: true
+  },
+  fullscreenOptions: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -131,6 +141,10 @@ const initializeMap = async () => {
           // Only set view if center is provided, otherwise wait for data
           if (props.center) {
             map.value.setView(props.center, props.zoom)
+          }
+
+          if (props.enableFullscreen) {
+            map.value.addControl(new FullScreen(props.fullscreenOptions))
           }
 
           // Add tile layer with dynamic URL from user preferences
