@@ -38,20 +38,6 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
     }
 
-    /**
-     * Find the latest GPS point for a user and source type.
-     * Used for location-based duplicate detection.
-     *
-     * @param userId     The ID of the user
-     * @param sourceType The GPS source type
-     * @return The latest GPS point for the user and source type, if any
-     */
-    public Optional<GpsPointEntity> findLatestByUserIdAndSourceType(UUID userId, GpsSourceType sourceType) {
-        return find("user.id = ?1 AND sourceType = ?2 ORDER BY timestamp DESC", userId, sourceType)
-                .firstResultOptional();
-    }
-
-
     public Optional<GpsPointEntity> findLatest() {
         return find("ORDER BY timestamp DESC")
                 .firstResultOptional();

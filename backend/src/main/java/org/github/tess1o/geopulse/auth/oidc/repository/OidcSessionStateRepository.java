@@ -18,13 +18,6 @@ public class OidcSessionStateRepository implements PanacheRepository<OidcSession
     }
     
     /**
-     * Find OIDC session state by state token that hasn't expired
-     */
-    public Optional<OidcSessionStateEntity> findValidByStateToken(String stateToken) {
-        return find("stateToken = ?1 AND expiresAt > ?2", stateToken, Instant.now()).firstResultOptional();
-    }
-    
-    /**
      * Delete expired session states
      */
     public long deleteExpired() {
@@ -37,11 +30,5 @@ public class OidcSessionStateRepository implements PanacheRepository<OidcSession
     public long deleteOlderThan(Instant cutoffTime) {
         return delete("createdAt < ?1", cutoffTime);
     }
-    
-    /**
-     * Count all unexpired session states
-     */
-    public long countUnexpired() {
-        return count("expiresAt > ?1", Instant.now());
-    }
+
 }

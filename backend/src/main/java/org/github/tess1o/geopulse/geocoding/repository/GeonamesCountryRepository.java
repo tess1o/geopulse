@@ -17,39 +17,6 @@ public class GeonamesCountryRepository {
 
     private static final String STAGING_TABLE = "geonames_country_import_staging";
 
-    private static final String UPSERT_SQL = """
-            INSERT INTO geonames_country (
-                iso_alpha2, iso_alpha3, iso_numeric, fips_code, country_name, capital,
-                area_sq_km, population, continent, tld, currency_code, currency_name,
-                phone, postal_code_format, postal_code_regex, languages, geonameid,
-                neighbors, equivalent_fips_code
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?,
-                ?, ?
-            )
-            ON CONFLICT (iso_alpha2) DO UPDATE SET
-                iso_alpha3 = EXCLUDED.iso_alpha3,
-                iso_numeric = EXCLUDED.iso_numeric,
-                fips_code = EXCLUDED.fips_code,
-                country_name = EXCLUDED.country_name,
-                capital = EXCLUDED.capital,
-                area_sq_km = EXCLUDED.area_sq_km,
-                population = EXCLUDED.population,
-                continent = EXCLUDED.continent,
-                tld = EXCLUDED.tld,
-                currency_code = EXCLUDED.currency_code,
-                currency_name = EXCLUDED.currency_name,
-                phone = EXCLUDED.phone,
-                postal_code_format = EXCLUDED.postal_code_format,
-                postal_code_regex = EXCLUDED.postal_code_regex,
-                languages = EXCLUDED.languages,
-                geonameid = EXCLUDED.geonameid,
-                neighbors = EXCLUDED.neighbors,
-                equivalent_fips_code = EXCLUDED.equivalent_fips_code
-            """;
-
     private static final String UPSERT_STAGING_SQL = """
             INSERT INTO geonames_country_import_staging (
                 iso_alpha2, iso_alpha3, iso_numeric, fips_code, country_name, capital,
@@ -95,32 +62,6 @@ public class GeonamesCountryRepository {
         Number result = (Number) entityManager.createNativeQuery("SELECT COUNT(*) FROM geonames_country")
                 .getSingleResult();
         return result.longValue();
-    }
-
-    @Transactional
-    public void truncateAll() {
-        entityManager.createNativeQuery("TRUNCATE TABLE geonames_country").executeUpdate();
-    }
-
-    @Transactional
-    public int upsertBatch(List<GeonamesCountryRecord> batch) {
-        if (batch == null || batch.isEmpty()) {
-            return 0;
-        }
-
-        Session session = entityManager.unwrap(Session.class);
-        session.doWork(connection -> {
-            try (PreparedStatement statement = connection.prepareStatement(UPSERT_SQL)) {
-                for (GeonamesCountryRecord record : batch) {
-                    bind(statement, record);
-                    statement.addBatch();
-                }
-                statement.executeBatch();
-            }
-        });
-
-        entityManager.clear();
-        return batch.size();
     }
 
     @Transactional
