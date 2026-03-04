@@ -107,8 +107,16 @@ export class FavoritesManagementPage {
     // Open menu first
     await this.openNavigationMenu();
 
-    // Click the navigation link
-    const link = this.page.locator(`nav a:has-text("${linkText}")`);
+    // Match the label text exactly to avoid collisions like "Timeline" vs "Timeline Preferences".
+    const escapedLinkText = linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const exactLabelPattern = new RegExp(`^\\s*${escapedLinkText}\\s*$`);
+    const link = this.page
+      .locator('nav:visible a.gp-nav-item-link')
+      .filter({
+        has: this.page.locator('.gp-nav-item-label', { hasText: exactLabelPattern })
+      });
+
+    await expect(link).toHaveCount(1);
     await link.click();
   }
 
