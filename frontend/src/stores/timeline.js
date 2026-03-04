@@ -242,6 +242,41 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        applyStayFavoriteUpdate(updatedFavorite) {
+            if (!this.timelineData || !updatedFavorite?.id) return
+
+            this.timelineData = this.timelineData.map((item) => {
+                if (item.type !== 'stay' || item.favoriteId !== updatedFavorite.id) {
+                    return item
+                }
+
+                return {
+                    ...item,
+                    locationName: updatedFavorite.name ?? item.locationName,
+                    city: updatedFavorite.city ?? null,
+                    country: updatedFavorite.country ?? null
+                }
+            })
+        },
+
+        applyStayGeocodingUpdate(oldGeocodingId, updatedGeocoding) {
+            if (!this.timelineData || !oldGeocodingId || !updatedGeocoding?.id) return
+
+            this.timelineData = this.timelineData.map((item) => {
+                if (item.type !== 'stay' || item.geocodingId !== oldGeocodingId) {
+                    return item
+                }
+
+                return {
+                    ...item,
+                    geocodingId: updatedGeocoding.id,
+                    locationName: updatedGeocoding.displayName ?? item.locationName,
+                    city: updatedGeocoding.city ?? null,
+                    country: updatedGeocoding.country ?? null
+                }
+            })
+        },
+
         // Find timeline item index (useful for component interactions)
         findTimelineItemIndex(timestamp, latitude, longitude) {
             if (!this.timelineData) return -1

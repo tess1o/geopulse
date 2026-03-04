@@ -70,6 +70,7 @@
               :immich-photos="immichPhotosForCards"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
+              @rename-stay="handleRenameStay"
               @photo-show-on-map="handlePhotoShowOnMap"
             />
 
@@ -79,6 +80,7 @@
               :immich-photos="immichPhotosForCards"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportStayAsGpx"
+              @rename-stay="handleRenameStay"
               @photo-show-on-map="handlePhotoShowOnMap"
             />
 
@@ -201,7 +203,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['timeline-item-click', 'tag-clicked', 'photo-show-on-map'])
+const emit = defineEmits(['timeline-item-click', 'tag-clicked', 'photo-show-on-map', 'rename-stay'])
 
 // Composables
 const timezone = useTimezone()
@@ -334,6 +336,10 @@ const handleTagClick = (tag) => {
 
 const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
+}
+
+const handleRenameStay = (stayItem) => {
+  emit('rename-stay', stayItem)
 }
 
 const handleExportTripAsGpx = async (tripItem) => {

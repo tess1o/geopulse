@@ -22,6 +22,15 @@
         <span class="location-name">
           {{ stayItem.locationName }}
         </span>
+        <button
+          v-if="canRenameStay"
+          class="location-edit-icon-btn"
+          aria-label="Rename stay place"
+          title="Rename stay place"
+          @click.stop="handleRenameStay"
+        >
+          <i class="pi pi-pencil"></i>
+        </button>
       </div>
     </template>
 
@@ -69,7 +78,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map'])
+const emit = defineEmits(['click', 'export-gpx', 'photo-show-on-map', 'rename-stay'])
 
 const contextMenu = ref(null)
 
@@ -87,6 +96,16 @@ const contextMenuItems = computed(() => {
       }
     }
   ]
+
+  if (canRenameStay.value) {
+    items.push({
+      label: 'Rename place...',
+      icon: 'pi pi-pencil',
+      command: () => {
+        handleRenameStay()
+      }
+    })
+  }
 
   // Add city details option if available
   if (hasCity.value) {
@@ -134,12 +153,21 @@ const { matchingPhotos } = useTimelineCardPhotoMatching({
   durationField: 'stayDuration'
 })
 
+const canRenameStay = computed(() => {
+  return Boolean(props.stayItem.favoriteId || props.stayItem.geocodingId)
+})
+
 const handleClick = () => {
   emit('click', props.stayItem)
 }
 
 const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
+}
+
+const handleRenameStay = () => {
+  if (!canRenameStay.value) return
+  emit('rename-stay', props.stayItem)
 }
 
 const showContextMenu = (event) => {
@@ -269,6 +297,20 @@ const formattedTimestamp = computed(() => {
 .location-name {
   color: var(--gp-primary);
   font-weight: 700;
+}
+
+.location-edit-icon-btn {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gp-primary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.location-edit-icon-btn i {
+  font-size: 0.85rem;
 }
 
 .stay-content {

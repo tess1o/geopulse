@@ -45,6 +45,7 @@
             :dateRange="dateRange"
             @timeline-item-click="handleTimelineItemClick"
             @tag-clicked="handleTagClicked"
+            @rename-stay="handleRenameStay"
             @photo-show-on-map="handleTimelinePhotoShowOnMap"
         />
           </div>
@@ -63,8 +64,15 @@
             :visible="showFavoriteDialog"
             :header="'Edit Favorite Location'"
             :favorite-location="selectedFavorite"
-            @edit-favorite="(data) => handleFavoriteSave(data, { onSuccess: () => favoritesStore.fetchFavoritePlaces() })"
+            @edit-favorite="handleFavoriteDialogSave"
             @close="closeFavoriteEditor"
+        />
+
+        <GeocodingEditDialog
+            :visible="showGeocodingEditDialog"
+            :geocoding-result="editGeocodingData"
+            @save="handleSaveGeocoding"
+            @close="closeGeocodingDialog"
         />
 
         <!-- Timeline Regeneration Modal -->
@@ -92,12 +100,14 @@ import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import EditFavoriteDialog from '@/components/dialogs/EditFavoriteDialog.vue'
+import GeocodingEditDialog from '@/components/dialogs/GeocodingEditDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
 import { useFavoriteEditor } from '@/composables/useFavoriteEditor'
 
 const timezone = useTimezone()
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useFavoritesStore } from '@/stores/favorites'
+import { useGeocodingStore } from '@/stores/geocoding'
 import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
@@ -106,6 +116,7 @@ const toast = useToast()
 
 const dateRangeStore = useDateRangeStore()
 const favoritesStore = useFavoritesStore()
+const geocodingStore = useGeocodingStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const highlightStore = useHighlightStore()
@@ -146,6 +157,8 @@ const geolocationError = ref(null)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
+const showGeocodingEditDialog = ref(false)
+const editGeocodingData = ref(null)
 
 // Large dataset warning state
 const showLargeDatasetWarning = ref(false)
@@ -199,6 +212,122 @@ const handleTimelineItemClick = (item) => {
 const handleEditFavorite = (favorite) => {
   // Open the edit dialog with full favorite data
   openFavoriteEditor(favorite)
+}
+
+const getFavoriteById = (favoriteId) => {
+  const points = favoritePlaces.value?.points || []
+  const areas = favoritePlaces.value?.areas || []
+  return [...points, ...areas].find((favorite) => favorite.id === favoriteId) || null
+}
+
+const handleFavoriteDialogSave = async (data) => {
+  await handleFavoriteSave(data, {
+    onSuccess: () => {
+      favoritesStore.fetchFavoritePlaces()
+      timelineStore.applyStayFavoriteUpdate(data)
+    }
+  })
+}
+
+const closeGeocodingDialog = () => {
+  showGeocodingEditDialog.value = false
+  editGeocodingData.value = null
+}
+
+const handleSaveGeocoding = async (updatedData) => {
+  if (!editGeocodingData.value?.id) return
+
+  const oldGeocodingId = editGeocodingData.value.id
+  try {
+    const updated = await geocodingStore.updateGeocodingResult(oldGeocodingId, updatedData)
+    timelineStore.applyStayGeocodingUpdate(oldGeocodingId, updated)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Updated',
+      detail: 'Stay location name updated successfully.',
+      life: 3000
+    })
+
+    closeGeocodingDialog()
+  } catch (error) {
+    console.error('Failed to update geocoding result from timeline:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Failed to update stay location'
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: errorMessage,
+      life: 5000
+    })
+  }
+}
+
+const openFavoriteRenameDialog = async (stayItem) => {
+  let favorite = getFavoriteById(stayItem.favoriteId)
+
+  if (!favorite) {
+    await favoritesStore.fetchFavoritePlaces()
+    favorite = getFavoriteById(stayItem.favoriteId)
+  }
+
+  if (!favorite) {
+    toast.add({
+      severity: 'error',
+      summary: 'Favorite Not Found',
+      detail: 'Could not load favorite details for this stay.',
+      life: 4000
+    })
+    return
+  }
+
+  openFavoriteEditor({ ...favorite })
+}
+
+const openGeocodingRenameDialog = async (stayItem) => {
+  try {
+    const geocoding = await geocodingStore.getGeocodingResult(stayItem.geocodingId)
+    editGeocodingData.value = {
+      id: geocoding?.id ?? stayItem.geocodingId,
+      displayName: geocoding?.displayName ?? stayItem.locationName ?? '',
+      city: geocoding?.city ?? stayItem.city ?? '',
+      country: geocoding?.country ?? stayItem.country ?? '',
+      latitude: geocoding?.latitude ?? stayItem.latitude,
+      longitude: geocoding?.longitude ?? stayItem.longitude,
+      providerName: geocoding?.providerName || 'Unknown'
+    }
+    showGeocodingEditDialog.value = true
+  } catch (error) {
+    console.error('Failed to load geocoding details for stay rename:', error)
+    const errorMessage = error.response?.data?.message || error.message || 'Could not load geocoding details'
+    toast.add({
+      severity: 'error',
+      summary: 'Unable to Rename',
+      detail: errorMessage,
+      life: 5000
+    })
+  }
+}
+
+const handleRenameStay = (stayItem) => {
+  if (!stayItem?.favoriteId && !stayItem?.geocodingId) {
+    return
+  }
+
+  const locationName = stayItem.locationName || 'this location'
+
+  confirm.require({
+    header: 'Rename Stay Location',
+    message: `Renaming "${locationName}" will update all stays with this name. Continue?`,
+    icon: 'pi pi-exclamation-triangle',
+    accept: () => {
+      if (stayItem.favoriteId) {
+        openFavoriteRenameDialog(stayItem)
+        return
+      }
+
+      openGeocodingRenameDialog(stayItem)
+    }
+  })
 }
 
 const handleFavoriteDelete = (favorite) => {
