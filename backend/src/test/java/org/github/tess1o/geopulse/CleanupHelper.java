@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.insight.repository.UserBadgeRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
+import org.github.tess1o.geopulse.streaming.repository.TimelineTripMovementOverrideRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -20,6 +21,9 @@ public class CleanupHelper {
 
     @Inject
     TimelineTripRepository tripRepository;
+
+    @Inject
+    TimelineTripMovementOverrideRepository tripMovementOverrideRepository;
 
     @Inject
     TimelineStayRepository stayRepository;
@@ -42,6 +46,7 @@ public class CleanupHelper {
     @Transactional
     public void cleanupTimeline() {
         this.badgeRepository.deleteAll();
+        this.tripMovementOverrideRepository.deleteAll();
         this.stayRepository.deleteAll();
         this.tripRepository.deleteAll();
         this.dataGapRepository.deleteAll();

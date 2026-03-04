@@ -22,6 +22,49 @@ test.describe('Timeline Page', () => {
     );
   };
 
+  const insertSingleTripForMovementType = async (dbManager, userId, {
+    timestamp = '2025-09-21T11:35:00Z',
+    movementType = 'UNKNOWN',
+    movementTypeSource = 'AUTO',
+    tripDuration = 600,
+    distanceMeters = 2000
+  } = {}) => {
+    const result = await dbManager.client.query(`
+      INSERT INTO timeline_trips (
+        user_id,
+        timestamp,
+        trip_duration,
+        start_point,
+        end_point,
+        distance_meters,
+        movement_type,
+        movement_type_source,
+        created_at,
+        last_updated
+      )
+      VALUES (
+        $1, $2, $3,
+        ST_SetSRID(ST_MakePoint($4, $5), 4326),
+        ST_SetSRID(ST_MakePoint($6, $7), 4326),
+        $8, $9, $10, NOW(), NOW()
+      )
+      RETURNING id, timestamp, movement_type, movement_type_source
+    `, [
+      userId,
+      timestamp,
+      tripDuration,
+      -73.9857,
+      40.7484,
+      -73.9851,
+      40.7589,
+      distanceMeters,
+      movementType,
+      movementTypeSource
+    ]);
+
+    return result.rows[0];
+  };
+
   test.describe('API Request Optimization', () => {
     test.skip(process.env.CI, 'Skipping on CI');
     test( 'should not make duplicate API calls when loading timeline page', async ({ page, isolatedUsers, dbManager}) => {
@@ -430,6 +473,123 @@ test.describe('Timeline Page', () => {
           expect(gapText).toMatch(/less than a minute|1 minute/i);
         }
       }
+    });
+  });
+
+  test.describe('Trip Movement Type Override UX', () => {
+    test('should show Set movement type CTA for UNKNOWN + AUTO', async ({ page, isolatedUsers, dbManager }) => {
+      const timelinePage = new TimelinePage(page);
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      await insertSingleTripForMovementType(dbManager, user.id, {
+        movementType: 'UNKNOWN',
+        movementTypeSource: 'AUTO'
+      });
+
+      await timelinePage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
+      await timelinePage.waitForPageLoad();
+      await timelinePage.waitForTimelineContent();
+
+      const tripCard = timelinePage.getTimelineCards('trips').first();
+
+      await expect(tripCard.locator('.movement-set-btn')).toBeVisible();
+      await expect(tripCard.locator('.movement-edit-icon-btn')).toHaveCount(0);
+      await expect(tripCard.locator('.trip-hint')).toContainText('Algorithm did not recognize this trip');
+    });
+
+    test('should show inline pencil edit for known AUTO movement type', async ({ page, isolatedUsers, dbManager }) => {
+      const timelinePage = new TimelinePage(page);
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      await insertSingleTripForMovementType(dbManager, user.id, {
+        movementType: 'CAR',
+        movementTypeSource: 'AUTO'
+      });
+
+      await timelinePage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
+      await timelinePage.waitForPageLoad();
+      await timelinePage.waitForTimelineContent();
+
+      const tripCard = timelinePage.getTimelineCards('trips').first();
+
+      await expect(tripCard.locator('.movement-edit-icon-btn')).toBeVisible();
+      await expect(tripCard.locator('.movement-set-btn')).toHaveCount(0);
+      await expect(tripCard.locator('.manual-indicator')).toHaveCount(0);
+    });
+
+    test('should save manual movement type and then reset to automatic', async ({ page, isolatedUsers, dbManager }) => {
+      const timelinePage = new TimelinePage(page);
+      const { testUser } = await timelinePage.loginAndNavigate(createTimelineUser(isolatedUsers));
+      const user = await dbManager.getUserByEmail(testUser.email);
+
+      const insertedTrip = await insertSingleTripForMovementType(dbManager, user.id, {
+        movementType: 'UNKNOWN',
+        movementTypeSource: 'AUTO'
+      });
+
+      await timelinePage.navigateWithDateRange(testDateRange.startDate, testDateRange.endDate);
+      await timelinePage.waitForPageLoad();
+      await timelinePage.waitForTimelineContent();
+
+      const tripCard = timelinePage.getTimelineCards('trips').first();
+      await tripCard.locator('.movement-set-btn').click();
+
+      const quickEditDialog = page.locator('.p-dialog').filter({ hasText: 'Edit Movement Type' });
+      await expect(quickEditDialog).toBeVisible();
+      await expect(quickEditDialog).toContainText('UNKNOWN');
+      await expect(quickEditDialog).toContainText('AUTO');
+
+      await quickEditDialog.locator('.movement-select').click();
+      await page.locator('.p-select-option').filter({ hasText: 'Car' }).first().click();
+      await quickEditDialog.getByRole('button', { name: 'Save' }).click();
+      await expect(quickEditDialog).toBeHidden();
+
+      await expect(tripCard).toContainText('Car');
+      await expect(tripCard.locator('.manual-indicator')).toBeVisible();
+      await expect(tripCard.locator('.movement-set-btn')).toHaveCount(0);
+      await expect(tripCard.locator('.movement-edit-icon-btn')).toBeVisible();
+
+      const tripAfterManual = await dbManager.client.query(`
+        SELECT movement_type, movement_type_source
+        FROM timeline_trips
+        WHERE id = $1
+      `, [insertedTrip.id]);
+      expect(tripAfterManual.rows[0].movement_type).toBe('CAR');
+      expect(tripAfterManual.rows[0].movement_type_source).toBe('MANUAL');
+
+      const overrideAfterManual = await dbManager.client.query(`
+        SELECT trip_id, movement_type
+        FROM timeline_trip_movement_overrides
+        WHERE user_id = $1 AND trip_id = $2
+      `, [user.id, insertedTrip.id]);
+      expect(overrideAfterManual.rowCount).toBe(1);
+      expect(overrideAfterManual.rows[0].movement_type).toBe('CAR');
+
+      await tripCard.locator('.movement-edit-icon-btn').click();
+      await expect(quickEditDialog).toBeVisible();
+      await expect(quickEditDialog).toContainText('MANUAL');
+
+      await quickEditDialog.getByRole('button', { name: 'Reset' }).click();
+      await expect(quickEditDialog).toBeHidden();
+
+      await expect(tripCard.locator('.manual-indicator')).toHaveCount(0);
+      await expect(tripCard.locator('.movement-edit-icon-btn')).toBeVisible();
+
+      const tripAfterReset = await dbManager.client.query(`
+        SELECT movement_type_source
+        FROM timeline_trips
+        WHERE id = $1
+      `, [insertedTrip.id]);
+      expect(tripAfterReset.rows[0].movement_type_source).toBe('AUTO');
+
+      const overrideAfterReset = await dbManager.client.query(`
+        SELECT COUNT(*)::int AS count
+        FROM timeline_trip_movement_overrides
+        WHERE user_id = $1 AND trip_id = $2
+      `, [user.id, insertedTrip.id]);
+      expect(overrideAfterReset.rows[0].count).toBe(0);
     });
   });
 

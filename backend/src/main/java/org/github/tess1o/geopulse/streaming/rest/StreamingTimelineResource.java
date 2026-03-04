@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.streaming.model.TimelineJobProgress;
+import org.github.tess1o.geopulse.streaming.model.dto.TripMovementTypeUpdateRequest;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService;
 import org.github.tess1o.geopulse.streaming.service.MultiUserTimelineService;
@@ -19,6 +20,8 @@ import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.service.TimelineJobProgressService;
+import org.github.tess1o.geopulse.streaming.service.TripMovementTypeOverrideService;
+import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -60,6 +63,9 @@ public class StreamingTimelineResource {
 
     @Inject
     org.github.tess1o.geopulse.streaming.service.TripClassificationDetailsService tripClassificationDetailsService;
+
+    @Inject
+    TripMovementTypeOverrideService tripMovementTypeOverrideService;
 
     @Inject
     MultiUserTimelineService multiUserTimelineService;
@@ -210,6 +216,66 @@ public class StreamingTimelineResource {
             log.error("Failed to get classification details for trip {} and user {}", tripId, userId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to get classification details: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @PUT
+    @Path("/trips/{tripId}/movement-type")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response updateTripMovementType(@PathParam("tripId") Long tripId, TripMovementTypeUpdateRequest request) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        if (request == null || request.getMovementType() == null || request.getMovementType().isBlank()) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("movementType is required"))
+                    .build();
+        }
+
+        final TripType movementType;
+        try {
+            movementType = TripType.valueOf(request.getMovementType().trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid movementType. Allowed values: " +
+                            Arrays.stream(TripType.values()).map(Enum::name).collect(Collectors.joining(", "))))
+                    .build();
+        }
+
+        try {
+            var result = tripMovementTypeOverrideService.setManualMovementType(userId, tripId, movementType);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Trip not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (Exception e) {
+            log.error("Failed to set manual movement type for trip {} and user {}", tripId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to update movement type: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @DELETE
+    @Path("/trips/{tripId}/movement-type")
+    @RolesAllowed({"USER", "ADMIN"})
+    public Response resetTripMovementType(@PathParam("tripId") Long tripId) {
+        UUID userId = currentUserService.getCurrentUserId();
+
+        try {
+            var result = tripMovementTypeOverrideService.resetToAutomaticMovementType(userId, tripId);
+            if (result.isEmpty()) {
+                return Response.status(Response.Status.NOT_FOUND)
+                        .entity(ApiResponse.error("Trip not found or access denied"))
+                        .build();
+            }
+            return Response.ok(ApiResponse.success(result.get())).build();
+        } catch (Exception e) {
+            log.error("Failed to reset movement type for trip {} and user {}", tripId, userId, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to reset movement type: " + e.getMessage()))
                     .build();
         }
     }

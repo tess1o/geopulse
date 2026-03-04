@@ -200,6 +200,48 @@ export const useTimelineStore = defineStore('timeline', {
             }
         },
 
+        async updateTripMovementType(tripId, movementType) {
+            try {
+                const response = await apiService.put(`/streaming-timeline/trips/${tripId}/movement-type`, {
+                    movementType
+                })
+                const updatedTrip = response?.data
+                if (updatedTrip) {
+                    this.applyTripMovementUpdate(updatedTrip)
+                }
+                return updatedTrip
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async resetTripMovementType(tripId) {
+            try {
+                const response = await apiService.delete(`/streaming-timeline/trips/${tripId}/movement-type`)
+                const updatedTrip = response?.data
+                if (updatedTrip) {
+                    this.applyTripMovementUpdate(updatedTrip)
+                }
+                return updatedTrip
+            } catch (error) {
+                throw error
+            }
+        },
+
+        applyTripMovementUpdate(updatedTrip) {
+            if (!this.timelineData || !updatedTrip?.tripId) return
+            const index = this.timelineData.findIndex(
+                (item) => item.type === 'trip' && item.id === updatedTrip.tripId
+            )
+            if (index === -1) return
+
+            this.timelineData[index] = {
+                ...this.timelineData[index],
+                movementType: updatedTrip.movementType,
+                movementTypeSource: updatedTrip.movementTypeSource
+            }
+        },
+
         // Find timeline item index (useful for component interactions)
         findTimelineItemIndex(timestamp, latitude, longitude) {
             if (!this.timelineData) return -1

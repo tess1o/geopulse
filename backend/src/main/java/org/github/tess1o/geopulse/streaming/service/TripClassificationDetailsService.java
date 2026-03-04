@@ -8,7 +8,9 @@ import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider
 import org.github.tess1o.geopulse.streaming.model.dto.TripClassificationDetailsDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TripClassificationDetailsDTO.*;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -29,6 +31,9 @@ public class TripClassificationDetailsService {
 
     @Inject
     TimelineConfigurationProvider configProvider;
+
+    @Inject
+    TravelClassification travelClassification;
 
     // ============================================
     // GPS VALIDATION CONSTANTS
@@ -177,11 +182,21 @@ public class TripClassificationDetailsService {
         // Build thresholds from config
         ClassificationThresholds thresholds = buildThresholds(config);
 
+        String algorithmClassification = travelClassification.classifyTravelType(trip, config).name();
+        String movementTypeSource = trip.getMovementTypeSource() != null
+                ? trip.getMovementTypeSource().name()
+                : MovementTypeSource.AUTO.name();
+
         // Generate classification steps explanation
         List<ClassificationStep> steps = explainClassification(trip, config, statistics);
 
         // Generate final reason
-        String finalReason = generateFinalReason(trip.getMovementType(), statistics, config);
+        String finalReason = generateFinalReason(
+                trip.getMovementType(),
+                algorithmClassification,
+                movementTypeSource,
+                statistics
+        );
 
         TripClassificationDetailsDTO dto = new TripClassificationDetailsDTO(
                 trip.getId(),
@@ -189,6 +204,8 @@ public class TripClassificationDetailsService {
                 trip.getTripDuration(),
                 trip.getDistanceMeters(),
                 trip.getMovementType(),
+                algorithmClassification,
+                movementTypeSource,
                 statistics,
                 thresholds,
                 steps,
@@ -809,19 +826,32 @@ public class TripClassificationDetailsService {
     /**
      * Generate a user-friendly final reason for the classification.
      */
-    private String generateFinalReason(String classification, TripStatistics statistics, TimelineConfig config) {
+    private String generateFinalReason(String effectiveClassification,
+                                       String algorithmClassification,
+                                       String movementTypeSource,
+                                       TripStatistics statistics) {
         double avgSpeed = statistics.gpsReliable() && statistics.avgGpsSpeedKmh() != null
                 ? statistics.avgGpsSpeedKmh()
                 : statistics.calculatedAvgSpeedKmh();
 
-        return switch (classification) {
-            case "FLIGHT" -> String.format("This trip was classified as FLIGHT because the speed (%.1f km/h) is consistent with air travel.", avgSpeed);
-            case "TRAIN" -> String.format("This trip was classified as TRAIN due to sustained high speeds (%.1f km/h) with consistent velocity.", avgSpeed);
-            case "BICYCLE" -> String.format("This trip was classified as BICYCLE based on moderate speeds (%.1f km/h) typical of cycling.", avgSpeed);
-            case "RUNNING" -> String.format("This trip was classified as RUNNING based on speeds (%.1f km/h) consistent with running pace.", avgSpeed);
-            case "CAR" -> String.format("This trip was classified as CAR due to motorized speeds (average %.1f km/h, max %.1f km/h).", avgSpeed, statistics.maxGpsSpeedKmh());
-            case "WALK" -> String.format("This trip was classified as WALK based on low speeds (%.1f km/h) typical of walking.", avgSpeed);
-            default -> "This trip could not be definitively classified and was marked as UNKNOWN.";
+        String autoReason = switch (algorithmClassification) {
+            case "FLIGHT" -> String.format("Automatic classification was FLIGHT because speed (%.1f km/h) matches air travel.", avgSpeed);
+            case "TRAIN" -> String.format("Automatic classification was TRAIN due to sustained high speeds (%.1f km/h) and consistency.", avgSpeed);
+            case "BICYCLE" -> String.format("Automatic classification was BICYCLE based on moderate speeds (%.1f km/h).", avgSpeed);
+            case "RUNNING" -> String.format("Automatic classification was RUNNING based on speeds (%.1f km/h) consistent with running.", avgSpeed);
+            case "CAR" -> String.format("Automatic classification was CAR due to motorized-speed profile (avg %.1f km/h).", avgSpeed);
+            case "WALK" -> String.format("Automatic classification was WALK based on low speeds (%.1f km/h).", avgSpeed);
+            default -> "Automatic classification resulted in UNKNOWN.";
         };
+
+        if (MovementTypeSource.MANUAL.name().equals(movementTypeSource)) {
+            return String.format(
+                    "Manual override is active: effective classification is %s. %s",
+                    effectiveClassification,
+                    autoReason
+            );
+        }
+
+        return autoReason;
     }
 }

@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineDataGapEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.locationtech.jts.geom.Coordinate;
@@ -106,6 +107,7 @@ public class StreamingTimelineConverter {
         entity.setTripDuration(trip.getDuration().toSeconds());
         entity.setDistanceMeters((long) trip.getDistanceMeters());
         entity.setMovementType(trip.getTripType() != null ? trip.getTripType().name() : "UNKNOWN");
+        entity.setMovementTypeSource(MovementTypeSource.AUTO);
 
         // Set start and end points
         GPSPoint startLocation = trip.getStartLocation();
@@ -205,7 +207,10 @@ public class StreamingTimelineConverter {
                 .endLatitude(entity.getEndPoint().getY())
                 .tripDuration(entity.getTripDuration()) // Already in seconds
                 .distanceMeters(entity.getDistanceMeters())
-                .movementType(entity.getMovementType());
+                .movementType(entity.getMovementType())
+                .movementTypeSource(entity.getMovementTypeSource() != null
+                        ? entity.getMovementTypeSource().name()
+                        : MovementTypeSource.AUTO.name());
 
         return builder.build();
     }

@@ -39,7 +39,27 @@
           <span class="font-bold">
             {{ formatMovementType(tripItem.movementType).icon }}
             {{ formatMovementType(tripItem.movementType).label }}
+            <span v-if="tripItem.movementTypeSource === 'MANUAL'" class="manual-indicator">(Manual)</span>
+            <button
+              v-if="showInlineEditIcon"
+              class="movement-edit-icon-btn"
+              aria-label="Edit movement type"
+              title="Edit movement type"
+              @click.stop="handleEditMovementType"
+            >
+              <i class="pi pi-pencil"></i>
+            </button>
+            <button
+              v-if="isUnknownAuto"
+              class="movement-set-btn"
+              @click.stop="handleEditMovementType"
+            >
+              Set movement type
+            </button>
           </span>
+        </p>
+        <p v-if="tripItem.movementType === 'UNKNOWN'" class="trip-hint">
+          Algorithm did not recognize this trip.
         </p>
       </div>
     </template>
@@ -66,12 +86,19 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'photo-show-on-map'])
+const emit = defineEmits(['click', 'export-gpx', 'show-classification', 'edit-movement-type', 'photo-show-on-map'])
 
 const contextMenu = ref(null)
 const contextMenuItems = ref([
   {
-    label: 'Why is this ' + props.tripItem.movementType + '?',
+    label: 'Change movement type...',
+    icon: 'pi pi-pencil',
+    command: () => {
+      emit('edit-movement-type', props.tripItem)
+    }
+  },
+  {
+    label: 'Why this classification?',
     icon: 'pi pi-question-circle',
     command: () => {
       emit('show-classification', props.tripItem)
@@ -109,12 +136,21 @@ const formatMovementType = (type) => {
   return movementTypeMap[type] || { label: type, icon: '' }
 }
 
+const movementTypeSource = computed(() => props.tripItem.movementTypeSource || 'AUTO')
+const movementType = computed(() => props.tripItem.movementType || 'UNKNOWN')
+const isUnknownAuto = computed(() => movementType.value === 'UNKNOWN' && movementTypeSource.value === 'AUTO')
+const showInlineEditIcon = computed(() => !isUnknownAuto.value)
+
 const handleClick = () => {
   emit('click', props.tripItem)
 }
 
 const handlePhotoShowOnMap = (photo) => {
   emit('photo-show-on-map', photo)
+}
+
+const handleEditMovementType = () => {
+  emit('edit-movement-type', props.tripItem)
 }
 
 const showContextMenu = (event) => {
@@ -221,6 +257,46 @@ const formattedTimestamp = computed(() => {
 .trip-detail .font-bold {
   font-weight: 700;
   color: var(--gp-primary);
+}
+
+.manual-indicator {
+  margin-left: 6px;
+  font-size: 0.75rem;
+  color: var(--gp-warning);
+  font-weight: 700;
+}
+
+.movement-set-btn {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gp-primary);
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.movement-edit-icon-btn {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: var(--gp-primary);
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.movement-edit-icon-btn i {
+  font-size: 0.85rem;
+}
+
+.trip-hint {
+  margin: 4px 0 0 0;
+  color: var(--gp-warning);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 /* Dark mode adjustments */

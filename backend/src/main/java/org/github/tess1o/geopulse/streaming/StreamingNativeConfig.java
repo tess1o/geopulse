@@ -8,20 +8,25 @@ import org.github.tess1o.geopulse.streaming.model.domain.ProcessorMode;
 import org.github.tess1o.geopulse.streaming.model.domain.TimelineEventType;
 import org.github.tess1o.geopulse.streaming.model.dto.*;
 import org.github.tess1o.geopulse.streaming.model.entity.*;
+import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.model.shared.TripType;
 
 @RegisterForReflection(targets = {
         TimelineStayEntity.class,
         TimelineTripEntity.class,
+        TimelineTripMovementOverrideEntity.class,
         TimelineDataGapEntity.class,
         LocationSource.class,
         ProcessorMode.class,
         TimelineEventType.class,
         TripType.class,
+        MovementTypeSource.class,
         TimelineDataGapDTO.class,
         MovementTimelineDTO.class,
         TimelineStayLocationDTO.class,
         TimelineTripDTO.class,
+        TripMovementTypeUpdateRequest.class,
+        TripMovementTypeUpdateResponseDTO.class,
         TimelineDataGapDTO.class,
         TimelineConfig.class,
         TimelineJobProgress.class,

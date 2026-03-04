@@ -87,6 +87,16 @@ After initial classification, the system performs verification to catch edge cas
 
 This classification happens after the trip is complete and helps provide more context to your travel patterns in dashboards and reports.
 
+### Manual Movement Type Overrides
+
+In addition to automatic classification, you can manually set the movement type for a trip.
+
+- Overrides are applied per trip and marked as `MANUAL`.
+- Automatic results remain available as a reference in the classification details dialog.
+- You can reset a manual override at any time to return the trip to automatic classification (`AUTO`).
+
+This is useful when GPS quality is poor, when a trip lands in `UNKNOWN`, or when your real transport mode differs from algorithm output.
+
 ---
 
 :::tip Learn More
@@ -139,8 +149,11 @@ A background job runs automatically every few minutes (typically 5 by default, b
 1.  It finds the last confirmed stay on your timeline.
 2.  It removes all timeline events (trips, stays, gaps) that occurred *after* the start of that last stay.
 3.  It then re-processes all the GPS data from that point forward.
+4.  It re-applies stored manual trip movement overrides to regenerated trips using timestamp/geometry/shape matching.
 
 This "rewind and rebuild" approach is crucial for accuracy. It ensures that if you are in the middle of a long stay or a data gap, the duration of that event is always kept up-to-date. It also allows new GPS points to be correctly incorporated into the most recent activity.
+
+Manual overrides are designed to survive rebuilds. If a regenerated trip no longer matches the original trip shape closely enough, the override is not attached and classification stays automatic for that trip.
 
 See [Global Timeline Settiings](/docs/system-administration/configuration/timeline-global-config#real-time-timeline-processing) to understand how to adjust the frequency of this job.
 

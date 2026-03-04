@@ -32,5 +32,6 @@ public class TimelineTripDTO implements GpsPoint {
      */
     private long distanceMeters;
     private String movementType;
+    private String movementTypeSource;
     private List<? extends GpsPoint> path; // Only used for TRIP items
 }
