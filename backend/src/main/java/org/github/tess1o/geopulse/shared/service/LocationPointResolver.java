@@ -165,10 +165,10 @@ public class LocationPointResolver {
         long step2StartTime = System.currentTimeMillis();
 
         // Step 2: Batch lookup cached geocoding results with user filtering
-        Map<String, FormattableGeocodingResult> cachedResults =
-                batchService.getCachedGeocodingResultsBatch(userId, needGeocoding);
-        Map<String, Long> cachedIds =
-                batchService.getCachedGeocodingResultIdsBatch(userId, needGeocoding);
+        CacheGeocodingBatchService.BatchLookupResult cacheLookup =
+                batchService.getCachedGeocodingResultsAndIdsBatch(userId, needGeocoding);
+        Map<String, FormattableGeocodingResult> cachedResults = cacheLookup.results();
+        Map<String, Long> cachedIds = cacheLookup.ids();
 
         log.debug("Found {} cached geocoding results for user {} in {} s",
                 cachedResults.size(), userId, (System.currentTimeMillis() - step2StartTime) / 1000.0d);

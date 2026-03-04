@@ -206,10 +206,9 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                     .append(", :lat").append(i).append(")");
         }
 
-        // Step 1: Get matching geocoding IDs and their corresponding input coordinates
-        // Optimized query with LATERAL JOIN instead of CROSS JOIN for better performance
-        // The LATERAL JOIN allows PostgreSQL to use indexes more efficiently
-        // Prioritizes user-specific copies over originals
+        // Step 1: Get matching geocoding IDs and their corresponding input coordinates.
+        // Split user-specific and original branches so PostgreSQL can use partial indexes
+        // on user_id more effectively than a single OR predicate.
         String matchingQuery = """
                 WITH input_coords AS (
                     SELECT input_point, input_lon, input_lat
@@ -219,17 +218,29 @@ public class ReverseGeocodingLocationRepository implements PanacheRepository<Rev
                        r.id, ic.input_lon, ic.input_lat
                 FROM input_coords ic
                 CROSS JOIN LATERAL (
-                    SELECT id
-                    FROM reverse_geocoding_location r
-                    WHERE (r.user_id = :userId OR r.user_id IS NULL)
-                      AND (
-                        ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
-                        OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
-                        OR ST_Contains(r.bounding_box, ic.input_point)
-                      )
-                    ORDER BY
-                      CASE WHEN r.user_id = :userId THEN 0 ELSE 1 END,
-                      r.last_accessed_at DESC
+                    SELECT candidate.id
+                    FROM (
+                        SELECT r.id, 0 AS user_priority, r.last_accessed_at
+                        FROM reverse_geocoding_location r
+                        WHERE r.user_id = :userId
+                          AND (
+                            ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
+                            OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
+                            OR ST_Contains(r.bounding_box, ic.input_point)
+                          )
+
+                        UNION ALL
+
+                        SELECT r.id, 1 AS user_priority, r.last_accessed_at
+                        FROM reverse_geocoding_location r
+                        WHERE r.user_id IS NULL
+                          AND (
+                            ST_DWithin(r.result_coordinates::geography, ic.input_point::geography, :tolerance)
+                            OR ST_DWithin(r.request_coordinates::geography, ic.input_point::geography, :tolerance)
+                            OR ST_Contains(r.bounding_box, ic.input_point)
+                          )
+                    ) candidate
+                    ORDER BY candidate.user_priority, candidate.last_accessed_at DESC
                     LIMIT 1
                 ) r
                 ORDER BY ic.input_lon, ic.input_lat

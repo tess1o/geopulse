@@ -12,10 +12,10 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.locationtech.jts.geom.Point;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Service for batch geocoding cache operations.
@@ -24,6 +24,12 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 @Slf4j
 public class CacheGeocodingBatchService {
+
+    public record BatchLookupResult(
+            Map<String, FormattableGeocodingResult> results,
+            Map<String, Long> ids
+    ) {
+    }
 
     private final ReverseGeocodingLocationRepository repository;
     private final GeocodingEntityMapper entityMapper;
@@ -49,39 +55,7 @@ public class CacheGeocodingBatchService {
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Map<String, Long> getCachedGeocodingResultIdsBatch(UUID userId, List<Point> coordinates) {
-        if (coordinates == null || coordinates.isEmpty()) {
-            return Map.of();
-        }
-
-        long startTime = System.currentTimeMillis();
-        try {
-            log.debug("Starting batch geocoding ID lookup for user {} with {} coordinates", userId, coordinates.size());
-
-            Map<String, ReverseGeocodingLocationEntity> cachedResults =
-                    repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
-
-            long duration = System.currentTimeMillis() - startTime;
-            log.info("Batch geocoding ID lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
-                    duration, userId, coordinates.size(), cachedResults.size());
-
-            return cachedResults.entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> entry.getValue().getId()
-                    ));
-
-        } catch (QueryTimeoutException e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.warn("Batch geocoding ID lookup timed out after {}ms for user {} with {} coordinates. " +
-                            "Returning empty result - locations will need individual geocoding.",
-                    duration, userId, coordinates.size());
-            return Map.of();
-        } catch (Exception e) {
-            long duration = System.currentTimeMillis() - startTime;
-            log.error("Error retrieving batch cached entity IDs for user {} with {} coordinates after {}ms",
-                    userId, coordinates.size(), duration, e);
-            return Map.of();
-        }
+        return getCachedGeocodingResultsAndIdsBatch(userId, coordinates).ids();
     }
 
     /**
@@ -94,38 +68,52 @@ public class CacheGeocodingBatchService {
      */
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public Map<String, FormattableGeocodingResult> getCachedGeocodingResultsBatch(UUID userId, List<Point> coordinates) {
+        return getCachedGeocodingResultsAndIdsBatch(userId, coordinates).results();
+    }
+
+    /**
+     * Batch get cached geocoding results and IDs in one DB lookup.
+     * Use this for hot paths where both values are needed to avoid duplicate spatial queries.
+     */
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
+    public BatchLookupResult getCachedGeocodingResultsAndIdsBatch(UUID userId, List<Point> coordinates) {
         if (coordinates == null || coordinates.isEmpty()) {
-            return Map.of();
+            return new BatchLookupResult(Map.of(), Map.of());
         }
 
         long startTime = System.currentTimeMillis();
         try {
-            log.debug("Starting batch geocoding results lookup for user {} with {} coordinates", userId, coordinates.size());
+            log.debug("Starting batch geocoding results+ID lookup for user {} with {} coordinates", userId, coordinates.size());
 
             Map<String, ReverseGeocodingLocationEntity> cachedResults =
                     repository.findByCoordinatesBatchReal(userId, coordinates, spatialToleranceMeters);
 
+            Map<String, FormattableGeocodingResult> resultMap = new HashMap<>(cachedResults.size());
+            Map<String, Long> idMap = new HashMap<>(cachedResults.size());
+
+            for (Map.Entry<String, ReverseGeocodingLocationEntity> entry : cachedResults.entrySet()) {
+                ReverseGeocodingLocationEntity entity = entry.getValue();
+                resultMap.put(entry.getKey(), entityMapper.toResult(entity));
+                idMap.put(entry.getKey(), entity.getId());
+            }
+
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Batch geocoding results lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
+            log.info("Batch geocoding results+ID lookup completed in {}ms for user {} with {} coordinates ({} cached hits)",
                     duration, userId, coordinates.size(), cachedResults.size());
 
-            return cachedResults.entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> entityMapper.toResult(entry.getValue())
-                    ));
+            return new BatchLookupResult(Map.copyOf(resultMap), Map.copyOf(idMap));
 
         } catch (QueryTimeoutException e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.warn("Batch geocoding results lookup timed out after {}ms for user {} with {} coordinates. " +
+            log.warn("Batch geocoding results+ID lookup timed out after {}ms for user {} with {} coordinates. " +
                             "Returning empty result - locations will need individual geocoding.",
                     duration, userId, coordinates.size());
-            return Map.of();
+            return new BatchLookupResult(Map.of(), Map.of());
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            log.error("Error retrieving batch cached results for user {} with {} coordinates after {}ms",
+            log.error("Error retrieving batch cached results+IDs for user {} with {} coordinates after {}ms",
                     userId, coordinates.size(), duration, e);
-            return Map.of();
+            return new BatchLookupResult(Map.of(), Map.of());
         }
     }
 }
