@@ -144,32 +144,4 @@ public class AuditLogService {
                 ipAddress
         );
     }
-
-    /**
-     * Get audit logs with filters.
-     */
-    public List<AuditLogEntity> getAuditLogs(
-            ActionType actionType,
-            TargetType targetType,
-            UUID adminUserId,
-            Instant from,
-            Instant to,
-            int page,
-            int size) {
-
-        return repository.findWithFilters(actionType, targetType, adminUserId, from, to, page, size);
-    }
-
-    /**
-     * Count audit logs with filters.
-     */
-    public long countAuditLogs(
-            ActionType actionType,
-            TargetType targetType,
-            UUID adminUserId,
-            Instant from,
-            Instant to) {
-
-        return repository.countWithFilters(actionType, targetType, adminUserId, from, to);
-    }
 }

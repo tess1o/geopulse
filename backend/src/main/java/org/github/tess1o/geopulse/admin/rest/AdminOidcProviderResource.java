@@ -8,9 +8,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.microprofile.jwt.JsonWebToken;
 import org.eclipse.microprofile.rest.client.RestClientBuilder;
 import org.github.tess1o.geopulse.admin.dto.*;
 import org.github.tess1o.geopulse.admin.model.ActionType;
@@ -23,7 +21,6 @@ import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.net.URI;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

@@ -326,7 +326,7 @@ public class TravelClassification {
         // Step 2: Validate GPS reliability against calculated speed
         GpsReliabilityResult reliabilityResult = validateGpsReliability(
                 avgSpeedKmh, maxSpeedKmh, calculatedAvgSpeedKmh,
-                distanceMeters, tripDuration, statistics, config
+                distanceMeters, tripDuration
         );
 
         return classifyBySpeed(reliabilityResult.finalAvgSpeed(), reliabilityResult.finalMaxSpeed(),
@@ -650,8 +650,7 @@ public class TravelClassification {
      */
     private GpsReliabilityResult validateGpsReliability(double avgSpeedKmh, double maxSpeedKmh,
                                                         double calculatedAvgSpeedKmh,
-                                                        long distanceMeters, Duration tripDuration,
-                                                        TripGpsStatistics statistics, TimelineConfig config) {
+                                                        long distanceMeters, Duration tripDuration) {
         // Check if GPS is unreliable compared to calculated
         boolean isUnreliable = isGpsUnreliable(avgSpeedKmh, calculatedAvgSpeedKmh);
 

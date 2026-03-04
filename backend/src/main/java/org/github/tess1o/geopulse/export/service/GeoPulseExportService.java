@@ -93,12 +93,12 @@ public class GeoPulseExportService {
 
             // Export dependencies first (order matters for import)
             if (actualDataTypes.contains(ExportImportConstants.DataTypes.REVERSE_GEOCODING_LOCATION)) {
-                addReverseGeocodingData(zos, job, currentProgress, currentProgress + progressPerType);
+                addReverseGeocodingData(zos, job, currentProgress);
                 currentProgress += progressPerType;
             }
 
             if (actualDataTypes.contains(ExportImportConstants.DataTypes.FAVORITES)) {
-                addFavoritesData(zos, job, currentProgress, currentProgress + progressPerType);
+                addFavoritesData(zos, job, currentProgress);
                 currentProgress += progressPerType;
             }
 
@@ -114,7 +114,7 @@ public class GeoPulseExportService {
                         currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.DATA_GAPS:
-                        addDataGapsData(zos, job, currentProgress, currentProgress + progressPerType);
+                        addDataGapsData(zos, job, currentProgress);
                         currentProgress += progressPerType;
                         break;
                     case ExportImportConstants.DataTypes.USER_INFO:
@@ -278,7 +278,7 @@ public class GeoPulseExportService {
         log.debug("Completed streaming timeline data export");
     }
 
-    private void addDataGapsData(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+    private void addDataGapsData(ZipOutputStream zos, ExportJob job, int progressStart)
             throws IOException {
         log.debug("Exporting data gaps for user {}", job.getUserId());
 
@@ -304,7 +304,7 @@ public class GeoPulseExportService {
         log.debug("Exported {} data gaps", dataGaps.size());
     }
 
-    private void addFavoritesData(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+    private void addFavoritesData(ZipOutputStream zos, ExportJob job, int progressStart)
             throws IOException {
         log.debug("Exporting favorites data for user {}", job.getUserId());
 
@@ -339,7 +339,7 @@ public class GeoPulseExportService {
         log.debug("Exported {} location sources", sources.size());
     }
 
-    private void addReverseGeocodingData(ZipOutputStream zos, ExportJob job, int progressStart, int progressEnd)
+    private void addReverseGeocodingData(ZipOutputStream zos, ExportJob job, int progressStart)
             throws IOException {
         log.debug("Exporting reverse geocoding data for user {}", job.getUserId());
 

@@ -54,7 +54,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Run all backend tests
-        run: ./mvnw -pl backend clean test
+        run: ./mvnw -pl backend clean verify -DskipITs=false
         env:
           QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/geopulse_test
           QUARKUS_DATASOURCE_USERNAME: geopulse_test
@@ -65,7 +65,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-full-test-results
-          path: backend/target/surefire-reports/
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
           retention-days: 30
 
   frontend-full-tests:

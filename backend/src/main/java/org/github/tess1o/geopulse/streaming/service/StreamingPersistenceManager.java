@@ -54,20 +54,6 @@ public class StreamingPersistenceManager {
     @Inject
     ReverseGeocodingLocationRepository geocodingRepository;
 
-    @Inject
-    TimelineEventFinalizationService finalizationService;
-
-    /**
-     * Persist raw timeline with GPS statistics calculation.
-     * This method processes trips with rich GPS data while maintaining optimized stays/gaps persistence.
-     *
-     * @param userId      user identifier
-     * @param rawTimeline raw timeline container with domain objects
-     */
-    public void persistRawTimeline(UUID userId, RawTimeline rawTimeline) {
-        persistRawTimeline(userId, rawTimeline, null);
-    }
-
     /**
      * Persist raw timeline with GPS statistics calculation and progress tracking.
      * This method processes trips with rich GPS data while maintaining optimized stays/gaps persistence.
@@ -76,7 +62,7 @@ public class StreamingPersistenceManager {
      * @param rawTimeline raw timeline container with domain objects
      * @param jobId       optional job ID for progress tracking
      */
-    public void persistRawTimeline(UUID userId, RawTimeline rawTimeline, UUID jobId) {
+    public void persistRawTimeline(UUID userId, RawTimeline rawTimeline) {
         log.debug("Starting raw timeline persistence for user {} with {} events",
                 userId, rawTimeline.getTotalEventCount());
 

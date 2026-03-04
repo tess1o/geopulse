@@ -12,7 +12,6 @@ import org.github.tess1o.geopulse.streaming.model.shared.MovementTypeSource;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.trips.TravelClassification;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -582,7 +581,6 @@ public class TripClassificationDetailsService {
 
         List<ThresholdCheck> checks = new ArrayList<>();
         double distanceKm = distanceMeters / 1000.0;
-        double hours = tripDurationSeconds / 3600.0;
 
         // If inferred trip, use distance-based heuristics (matches TravelClassification.classifyWithoutGpsStatistics)
         if (isInferredTrip) {

@@ -5,8 +5,6 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocations;
@@ -15,7 +13,6 @@ import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRe
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Path("/")

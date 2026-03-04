@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
-import org.github.tess1o.geopulse.streaming.model.entity.TimelineTripEntity;
 
 import java.time.Instant;
 import java.util.List;

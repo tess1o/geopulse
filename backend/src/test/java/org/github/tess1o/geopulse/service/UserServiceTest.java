@@ -3,8 +3,10 @@ package org.github.tess1o.geopulse.service;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
+import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UpdateProfileRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -13,15 +15,12 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.transaction.Transactional;
-
-
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 @QuarkusTest
-@QuarkusTestResource(PostgisTestResource.class)
+@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@SerializedDatabaseTest
 public class UserServiceTest {
 
     @Inject
@@ -54,7 +53,6 @@ public class UserServiceTest {
         assertNull(user.getUpdatedAt());
         assertTrue(passwordUtils.isPasswordValid("test", user.getPasswordHash()));
     }
-
     @Test
     @Transactional
     public void testValidAvatarPaths() {

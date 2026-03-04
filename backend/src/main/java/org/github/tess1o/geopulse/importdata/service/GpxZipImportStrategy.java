@@ -205,7 +205,7 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
                         GpsPointEntity gpsEntity = convertGpxPointToGpsEntity(point, user);
                         if (gpsEntity != null) {
                             addToBatchAndFlushIfNeeded(currentBatch, gpsEntity, firstTimestamp,
-                                    totalImported, totalSkipped, clearMode, job, totalExpectedPoints, batchSize);
+                                    totalImported, totalSkipped, clearMode, totalExpectedPoints, batchSize);
                         }
                     });
 
@@ -249,7 +249,6 @@ public class GpxZipImportStrategy extends BaseGpsImportStrategy {
             AtomicInteger totalImported,
             AtomicInteger totalSkipped,
             boolean clearMode,
-            ImportJob job,
             int totalExpectedPoints,
             int batchSize) {
 

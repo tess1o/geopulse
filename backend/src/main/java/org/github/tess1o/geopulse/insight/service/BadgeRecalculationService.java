@@ -10,7 +10,6 @@ import org.github.tess1o.geopulse.insight.repository.UserBadgeRepository;
 import org.github.tess1o.geopulse.insight.service.badge.BadgeCalculator;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.StreamSupport;

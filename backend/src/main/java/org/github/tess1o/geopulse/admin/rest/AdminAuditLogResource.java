@@ -12,7 +12,6 @@ import org.github.tess1o.geopulse.admin.model.ActionType;
 import org.github.tess1o.geopulse.admin.model.AuditLogEntity;
 import org.github.tess1o.geopulse.admin.model.TargetType;
 import org.github.tess1o.geopulse.admin.repository.AuditLogRepository;
-import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
 import java.time.Instant;

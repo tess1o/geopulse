@@ -161,8 +161,6 @@ public class StreamingGoogleTimelineParser {
 
         Instant startTime = null;
         Instant endTime = null;
-        String recordType = null;
-
         // Track which section we're in
         while (parser.nextToken() != JsonToken.END_OBJECT) {
             String fieldName = parser.getCurrentName();
@@ -183,7 +181,6 @@ public class StreamingGoogleTimelineParser {
                     // Check if value is null before parsing
                     JsonToken token = parser.nextToken();
                     if (token != JsonToken.VALUE_NULL) {
-                        recordType = "activity";
                         // Parser is already at START_OBJECT, so don't call nextToken() in the method
                         parseLegacyActivityFromObject(parser, startTime, endTime, callback, stats);
                         stats.activityCount++;
@@ -194,7 +191,6 @@ public class StreamingGoogleTimelineParser {
                     // Check if value is null before parsing
                     JsonToken token = parser.nextToken();
                     if (token != JsonToken.VALUE_NULL) {
-                        recordType = "visit";
                         // Parser is already at START_OBJECT, so don't call nextToken() in the method
                         parseLegacyVisitFromObject(parser, startTime, endTime, callback, stats);
                         stats.visitCount++;
@@ -205,7 +201,6 @@ public class StreamingGoogleTimelineParser {
                     // Check if value is null before parsing
                     JsonToken token = parser.nextToken();
                     if (token != JsonToken.VALUE_NULL) {
-                        recordType = "timelinePath";
                         // Parser is already at START_ARRAY, so don't call nextToken() in the method
                         parseLegacyTimelinePathFromArray(parser, startTime, callback, stats);
                         stats.timelinePathCount++;

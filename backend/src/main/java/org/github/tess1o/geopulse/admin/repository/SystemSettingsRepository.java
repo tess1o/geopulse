@@ -17,15 +17,7 @@ public class SystemSettingsRepository implements PanacheRepositoryBase<SystemSet
         return find("key", key).firstResultOptional();
     }
 
-    public List<SystemSettingsEntity> findByCategory(String category) {
-        return list("category", category);
-    }
-
     public void deleteByKey(String key) {
         delete("key", key);
-    }
-
-    public boolean existsByKey(String key) {
-        return count("key", key) > 0;
     }
 }
