@@ -3,14 +3,12 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>com.github.tess1o</groupId>
         <artifactId>GeoPulse</artifactId>
         <version>1.19.2</version>
     </parent>
     <artifactId>backend</artifactId>
-
     <properties>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <maven.compiler.release>25</maven.compiler.release>
@@ -19,14 +17,15 @@
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.28.2</quarkus.platform.version>
-        <skipITs>true</skipITs>
+        <skipITs>false</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <failsafe-plugin.version>3.5.4</failsafe-plugin.version>
         <jts-core.version>1.20.0</jts-core.version>
         <lombok.version>1.18.42</lombok.version>
         <lombok.mapstruct-binding.version>0.2.0</lombok.mapstruct-binding.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <hibernate-spatial.version>7.1.2.Final</hibernate-spatial.version>
-        <junit-jupiter.version>6.0.0</junit-jupiter.version>
+        <mockito.version>5.19.0</mockito.version>
         <jjwt-api.version>0.13.0</jjwt-api.version>
         <testcontainers.version>1.21.3</testcontainers.version>
         <pmd.version>7.17.0</pmd.version>
@@ -35,7 +34,6 @@
         <hypersistence-utils-hibernate-71.version>3.11.0</hypersistence-utils-hibernate-71.version>
         <extra.native.build.args></extra.native.build.args>
     </properties>
-
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -58,44 +56,35 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <dependencies>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-container-image-jib</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jackson</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-client-jackson</artifactId>
         </dependency>
-
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-xml</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-cache</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-jwt</artifactId>
@@ -104,17 +93,14 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-jwt-build</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-csrf</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-openapi</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -136,7 +122,6 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-scheduler</artifactId>
         </dependency>
-
         <!-- Optional: Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -164,80 +149,68 @@
             <artifactId>hibernate-spatial</artifactId>
             <version>${hibernate-spatial.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-flyway</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.locationtech.jts</groupId>
             <artifactId>jts-core</artifactId>
             <version>${jts-core.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.hypersistence</groupId>
             <artifactId>hypersistence-utils-hibernate-71</artifactId>
             <version>${hypersistence-utils-hibernate-71.version}</version>
         </dependency>
-
         <!-- Validation dependencies -->
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-hibernate-validator</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
             <version>${mapstruct.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok-mapstruct-binding</artifactId>
             <version>${lombok.mapstruct-binding.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-smallrye-fault-tolerance</artifactId>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-micrometer-registry-prometheus</artifactId>
         </dependency>
-
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -252,7 +225,6 @@
             <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
-
         <!-- PostgreSQL container -->
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -260,21 +232,18 @@
             <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
-
         <!-- BCrypt for secure password hashing -->
         <dependency>
             <groupId>org.mindrot</groupId>
             <artifactId>jbcrypt</artifactId>
             <version>0.4</version>
         </dependency>
-
         <!-- MQTT support for OwnTracks -->
         <dependency>
             <groupId>org.eclipse.paho</groupId>
             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
             <version>${org.eclipse.paho.client.mqttv3.version}</version>
         </dependency>
-
         <!-- OIDC and OAuth2 Support -->
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -291,7 +260,6 @@
             <version>11.9.1</version>
         </dependency>
     </dependencies>
-
     <build>
         <plugins>
             <plugin>
@@ -340,12 +308,81 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
-                    <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
+                    <argLine>
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
+                    </argLine>
+                    <groups>unit</groups>
+                    <excludedGroups>io.quarkus.test.junit.QuarkusTest</excludedGroups>
+                    <reuseForks>true</reuseForks>
+                    <forkCount>4</forkCount>
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.tags.include=unit
+                        </configurationParameters>
+                    </properties>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
+                        <quarkus.http.test-port>0</quarkus.http.test-port>
+                        <quarkus.http.test-ssl-port>0</quarkus.http.test-ssl-port>
+                        <junit.jupiter.execution.parallel.enabled>true</junit.jupiter.execution.parallel.enabled>
+                        <junit.jupiter.execution.parallel.mode.default>same_thread
+                        </junit.jupiter.execution.parallel.mode.default>
+                        <junit.jupiter.execution.parallel.mode.classes.default>concurrent
+                        </junit.jupiter.execution.parallel.mode.classes.default>
+                        <junit.jupiter.execution.parallel.config.strategy>dynamic
+                        </junit.jupiter.execution.parallel.config.strategy>
+                        <junit.jupiter.execution.parallel.config.dynamic.factor>1
+                        </junit.jupiter.execution.parallel.config.dynamic.factor>
                     </systemPropertyVariables>
                 </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${failsafe-plugin.version}</version>
+                <configuration>
+                    <argLine>
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
+                    </argLine>
+                    <groups>io.quarkus.test.junit.QuarkusTest</groups>
+                    <excludedGroups>unit</excludedGroups>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <skipITs>${skipITs}</skipITs>
+                    <reuseForks>true</reuseForks>
+                    <forkCount>1</forkCount>
+                    <properties>
+                        <configurationParameters>
+                            junit.jupiter.tags.include=io.quarkus.test.junit.QuarkusTest
+                        </configurationParameters>
+                    </properties>
+                    <systemPropertyVariables>
+                        <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        <maven.home>${maven.home}</maven.home>
+                        <quarkus.http.test-port>0</quarkus.http.test-port>
+                        <quarkus.http.test-ssl-port>0</quarkus.http.test-ssl-port>
+                        <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
+                        <junit.jupiter.execution.parallel.mode.default>same_thread
+                        </junit.jupiter.execution.parallel.mode.default>
+                        <junit.jupiter.execution.parallel.mode.classes.default>same_thread
+                        </junit.jupiter.execution.parallel.mode.classes.default>
+                        <junit.jupiter.execution.parallel.config.strategy>dynamic
+                        </junit.jupiter.execution.parallel.config.strategy>
+                        <junit.jupiter.execution.parallel.config.dynamic.factor>1
+                        </junit.jupiter.execution.parallel.config.dynamic.factor>
+                    </systemPropertyVariables>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -382,7 +419,6 @@
             </plugin>
         </plugins>
     </build>
-
     <profiles>
         <profile>
             <id>native</id>
@@ -414,7 +450,6 @@
             </properties>
         </profile>
     </profiles>
-
     <reporting>
         <plugins>
             <plugin>

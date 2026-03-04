@@ -4,14 +4,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * Test for PropertyBasedConfigLoader focusing on registry pattern functionality.
  * This tests the load logic with direct config values rather than mocking the MicroProfile Config.
  */
+@Tag("unit")
 class PropertyBasedConfigLoaderTest {
 
     @Setter
@@ -55,18 +56,15 @@ class PropertyBasedConfigLoaderTest {
     @Test
     void testLoadFromPropertiesWithDefaults() {
         TestConfig config = new TestConfig();
-        
         // Test direct field configuration with default values
         for (ConfigField<TestConfig, ?> field : registry.getFields()) {
             setFieldValueFromString(field, config, field.defaultValue());
         }
-
         // Should use default values
         assertEquals("defaultName", config.getName());
         assertEquals(42, config.getCount());
         assertEquals(true, config.getEnabled());
     }
-
     @Test
     void testFieldParsing() {
         ConfigField<TestConfig, String> stringField = new ConfigField<>(
@@ -76,7 +74,6 @@ class PropertyBasedConfigLoaderTest {
             TestConfig::setName,
             String::valueOf
         );
-        
         ConfigField<TestConfig, Integer> intField = new ConfigField<>(
             "test.count",
             "42",
@@ -84,7 +81,6 @@ class PropertyBasedConfigLoaderTest {
             TestConfig::setCount,
             Integer::valueOf
         );
-        
         ConfigField<TestConfig, Boolean> boolField = new ConfigField<>(
             "test.enabled",
             "true",
@@ -92,13 +88,11 @@ class PropertyBasedConfigLoaderTest {
             TestConfig::setEnabled,
             Boolean::valueOf
         );
-
         // Test parsing functionality
         assertEquals("test", stringField.parseValue("test"));
         assertEquals(100, intField.parseValue("100"));
         assertEquals(false, boolField.parseValue("false"));
     }
-
     @Test
     void testFieldParsingExceptions() {
         ConfigField<TestConfig, Integer> intField = new ConfigField<>(
@@ -108,70 +102,55 @@ class PropertyBasedConfigLoaderTest {
             TestConfig::setCount,
             Integer::valueOf
         );
-
         // Should throw NumberFormatException for invalid input
         assertThrows(NumberFormatException.class, () -> {
             intField.parseValue("not-a-number");
         });
     }
-
     @Test
     void testRegistryBasedConfiguration() {
         TestConfig config = new TestConfig();
-        
         // Simulate loading with different values
         TestConfig sourceConfig = new TestConfig();
         sourceConfig.setName("configuredName");
         sourceConfig.setCount(100);
         sourceConfig.setEnabled(false);
-        
         // Use registry to merge
         registry.mergeUserPreferences(config, sourceConfig);
-        
         assertEquals("configuredName", config.getName());
         assertEquals(100, config.getCount());
         assertEquals(false, config.getEnabled());
     }
-
     @Test
     void testRegistryPartialConfiguration() {
         TestConfig baseConfig = new TestConfig();
         baseConfig.setName("originalName");
         baseConfig.setCount(50);
         baseConfig.setEnabled(true);
-        
         TestConfig updates = new TestConfig();
         updates.setName("updatedName");
         updates.setCount(null); // Don't update
         updates.setEnabled(false);
-        
         registry.mergeUserPreferences(baseConfig, updates);
-        
         assertEquals("updatedName", baseConfig.getName()); // Updated
         assertEquals(50, baseConfig.getCount()); // Preserved
         assertEquals(false, baseConfig.getEnabled()); // Updated
     }
-
     @Test
     void testEmptyRegistry() {
         ConfigFieldRegistry<TestConfig> emptyRegistry = new ConfigFieldRegistry<>();
-        
         TestConfig config = new TestConfig();
         config.setName("original");
-        
         TestConfig updates = new TestConfig();
         updates.setName("updated");
-        
         // Empty registry should not change anything
         emptyRegistry.mergeUserPreferences(config, updates);
-        
         assertEquals("original", config.getName());
     }
 
     @Test
     void testDefaultValueLoading() {
         TestConfig config = new TestConfig();
-        
         // Test that default values are properly parsed and set
         for (ConfigField<TestConfig, ?> field : registry.getFields()) {
             String defaultValue = field.defaultValue();

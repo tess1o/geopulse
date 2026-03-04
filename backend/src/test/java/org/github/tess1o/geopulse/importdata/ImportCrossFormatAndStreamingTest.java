@@ -1,9 +1,13 @@
 package org.github.tess1o.geopulse.importdata;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.CleanupHelper;
+import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -12,6 +16,7 @@ import org.github.tess1o.geopulse.importdata.model.ImportOptions;
 import org.github.tess1o.geopulse.importdata.service.ImportDataService;
 import org.github.tess1o.geopulse.importdata.service.ImportJobService;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
+import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -25,10 +30,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.github.tess1o.geopulse.CleanupHelper;
-
 /**
  * Test suite for cross-format duplicate detection and streaming edge cases.
  *
@@ -39,35 +40,28 @@ import org.github.tess1o.geopulse.CleanupHelper;
  * - Temp file handling
  */
 @QuarkusTest
+@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
 @Slf4j
+@SerializedDatabaseTest
 public class ImportCrossFormatAndStreamingTest {
-
     @Inject
     ImportDataService importDataService;
-
     @Inject
     ImportJobService importJobService;
-
     @Inject
     GpsPointRepository gpsPointRepository;
-
     @Inject
     UserRepository userRepository;
-
     @Inject
     ObjectMapper objectMapper;
-
     @Inject
     CleanupHelper cleanupHelper;
-
     private UserEntity testUser;
     private UUID testUserId;
-
     @BeforeEach
     @Transactional
     void setUp() {
         cleanupHelper.cleanupAll();
-
         testUser = new UserEntity();
         testUser.setEmail("test-cross-format@geopulse.test");
         testUser.setPasswordHash("test-hash");
@@ -78,13 +72,11 @@ public class ImportCrossFormatAndStreamingTest {
         userRepository.persist(testUser);
         testUserId = testUser.getId();
     }
-
     @AfterEach
     @Transactional
     void tearDown() {
         cleanupHelper.cleanupAll();
     }
-
     /**
      * CRITICAL TEST: Cross-format duplicate detection
      *
@@ -97,11 +89,9 @@ public class ImportCrossFormatAndStreamingTest {
     @Transactional
     void testCrossFormatDuplicateDetection_GpxThenOwnTracks() throws Exception {
         log.info("=== Testing cross-format duplicate detection (GPX -> OwnTracks) ===");
-
         // Use whole-second timestamps for compatibility
         Instant timestamp1 = Instant.parse("2025-01-01T12:00:00Z");
         Instant timestamp2 = Instant.parse("2025-01-01T13:00:00Z");
-
         // Step 1: Import as GPX
         String gpxData = """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -121,20 +111,15 @@ public class ImportCrossFormatAndStreamingTest {
                   </trk>
                 </gpx>
                 """;
-
         ImportOptions gpxOptions = new ImportOptions();
         gpxOptions.setImportFormat("gpx");
         gpxOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-
         ImportJob gpxJob = importJobService.createImportJob(
                 testUserId, gpxOptions, "test.gpx", gpxData.getBytes());
-
         importDataService.processImportData(gpxJob);
-
         long gpxCount = gpsPointRepository.count("user.id = ?1", testUserId);
         assertEquals(2, gpxCount, "GPX import should succeed");
         log.info("✓ GPX import: {} points", gpxCount);
-
         // Step 2: Import SAME data as OwnTracks (same timestamp + coordinates)
         List<OwnTracksLocationMessage> ownTracksMessages = new ArrayList<>();
         ownTracksMessages.add(OwnTracksLocationMessage.builder()
@@ -151,25 +136,19 @@ public class ImportCrossFormatAndStreamingTest {
                 .tst(timestamp2.getEpochSecond())
                 .acc(5.0)
                 .build());
-
         ImportOptions ownTracksOptions = new ImportOptions();
         ownTracksOptions.setImportFormat("owntracks");
         ownTracksOptions.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-
         ImportJob ownTracksJob = importJobService.createImportJob(
                 testUserId, ownTracksOptions, "test.json",
                 objectMapper.writeValueAsString(ownTracksMessages).getBytes());
-
         importDataService.processImportData(ownTracksJob);
-
         long finalCount = gpsPointRepository.count("user.id = ?1", testUserId);
         assertEquals(2, finalCount,
                 "Cross-format duplicates should be detected (same timestamp + coordinates)");
-
         log.info("✓ OwnTracks import: {} total points (0 new, 2 duplicates skipped)", finalCount);
         log.info("=== TEST PASSED: Cross-format duplicate detection works correctly ===");
     }
-
     /**
      * TEST: Timestamp precision across formats
      *
@@ -182,7 +161,6 @@ public class ImportCrossFormatAndStreamingTest {
     @Transactional
     void testTimestampPrecision_GpxSubsecondHandling() throws Exception {
         log.info("=== Testing GPX subsecond timestamp precision ===");
-
         // GPX with subsecond timestamps
         String gpxWithSubseconds = """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -199,40 +177,29 @@ public class ImportCrossFormatAndStreamingTest {
                   </trk>
                 </gpx>
                 """;
-
         ImportOptions options = new ImportOptions();
         options.setImportFormat("gpx");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-
         ImportJob job = importJobService.createImportJob(
                 testUserId, options, "subseconds.gpx", gpxWithSubseconds.getBytes());
-
         importDataService.processImportData(job);
-
         long count = gpsPointRepository.count("user.id = ?1", testUserId);
-
         // These should be treated as DIFFERENT points (different subsecond timestamps)
         // Same coordinates, but timestamps differ by 333ms
         assertEquals(2, count,
                 "GPX points with different subsecond timestamps should be treated as different");
-
         // Verify the timestamps were preserved correctly
         List<GpsPointEntity> points = gpsPointRepository.list("user.id = ?1 ORDER BY timestamp", testUserId);
         assertEquals(2, points.size());
-
         Instant ts1 = points.get(0).getTimestamp();
         Instant ts2 = points.get(1).getTimestamp();
-
         assertNotEquals(ts1, ts2, "Timestamps should be different");
         assertTrue(ts1.isBefore(ts2), "First timestamp should be before second");
-
         long millisDiff = ChronoUnit.MILLIS.between(ts1, ts2);
         assertEquals(333, millisDiff, "Timestamp difference should be 333ms");
-
         log.info("✓ Subsecond timestamps preserved: {} vs {}", ts1, ts2);
         log.info("=== TEST PASSED: GPX subsecond precision handled correctly ===");
     }
-
     /**
      * TEST: Large dataset streaming performance
      *
@@ -243,10 +210,8 @@ public class ImportCrossFormatAndStreamingTest {
     @Transactional
     void testStreamingPerformance_LargeDataset() throws Exception {
         log.info("=== Testing streaming performance with large dataset (1000 points) ===");
-
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         List<OwnTracksLocationMessage> messages = new ArrayList<>();
-
         // Create 1000 points
         for (int i = 0; i < 1000; i++) {
             messages.add(OwnTracksLocationMessage.builder()
@@ -257,33 +222,24 @@ public class ImportCrossFormatAndStreamingTest {
                     .acc(5.0)
                     .build());
         }
-
         ImportOptions options = new ImportOptions();
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-
         long startTime = System.currentTimeMillis();
-
         ImportJob job = importJobService.createImportJob(
                 testUserId, options, "large.json",
                 objectMapper.writeValueAsString(messages).getBytes());
-
         importDataService.processImportData(job);
-
         long duration = System.currentTimeMillis() - startTime;
-
         long count = gpsPointRepository.count("user.id = ?1", testUserId);
         assertEquals(1000, count, "All 1000 points should be imported");
-
         log.info("✓ Large dataset import completed in {}ms ({} points/sec)",
                 duration, (1000 * 1000) / duration);
         log.info("=== TEST PASSED: Large dataset streaming works efficiently ===");
-
         // Performance assertion: should complete in reasonable time (< 30 seconds)
         assertTrue(duration < 30000,
                 "Import of 1000 points should complete in < 30 seconds. Took: " + duration + "ms");
     }
-
     /**
      * TEST: Geographic edge cases
      *
@@ -293,10 +249,8 @@ public class ImportCrossFormatAndStreamingTest {
     @Transactional
     void testGeographicEdgeCases_PolesAndDateline() throws Exception {
         log.info("=== Testing geographic edge cases (poles, dateline) ===");
-
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         List<OwnTracksLocationMessage> messages = new ArrayList<>();
-
         // North Pole
         messages.add(OwnTracksLocationMessage.builder()
                 .type("location")
@@ -304,7 +258,6 @@ public class ImportCrossFormatAndStreamingTest {
                 .lon(0.0)
                 .tst(baseTime.getEpochSecond())
                 .build());
-
         // South Pole
         messages.add(OwnTracksLocationMessage.builder()
                 .type("location")
@@ -312,7 +265,6 @@ public class ImportCrossFormatAndStreamingTest {
                 .lon(0.0)
                 .tst(baseTime.plusSeconds(60).getEpochSecond())
                 .build());
-
         // International Date Line (positive)
         messages.add(OwnTracksLocationMessage.builder()
                 .type("location")
@@ -320,7 +272,6 @@ public class ImportCrossFormatAndStreamingTest {
                 .lon(180.0)
                 .tst(baseTime.plusSeconds(120).getEpochSecond())
                 .build());
-
         // International Date Line (negative)
         messages.add(OwnTracksLocationMessage.builder()
                 .type("location")
@@ -328,35 +279,26 @@ public class ImportCrossFormatAndStreamingTest {
                 .lon(-180.0)
                 .tst(baseTime.plusSeconds(180).getEpochSecond())
                 .build());
-
         ImportOptions options = new ImportOptions();
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-
         ImportJob job = importJobService.createImportJob(
                 testUserId, options, "edge-cases.json",
                 objectMapper.writeValueAsString(messages).getBytes());
-
         importDataService.processImportData(job);
-
         long count = gpsPointRepository.count("user.id = ?1", testUserId);
-
         // Note: ±180° longitude are the same location (dateline), might be treated as duplicates
         // depending on PostGIS normalization
         assertTrue(count >= 3 && count <= 4,
                 "Should import pole points and handle dateline correctly. Got: " + count);
-
         List<GpsPointEntity> points = gpsPointRepository.list("user.id = ?1", testUserId);
         boolean hasNorthPole = points.stream().anyMatch(p -> p.getLatitude() == 90.0);
         boolean hasSouthPole = points.stream().anyMatch(p -> p.getLatitude() == -90.0);
-
         assertTrue(hasNorthPole, "Should have North Pole point");
         assertTrue(hasSouthPole, "Should have South Pole point");
-
         log.info("✓ Geographic edge cases handled: {} points imported", count);
         log.info("=== TEST PASSED: Geographic edge cases work correctly ===");
     }
-
     /**
      * TEST: Batch size edge cases
      *
@@ -366,9 +308,7 @@ public class ImportCrossFormatAndStreamingTest {
     @Transactional
     void testBatchSize_EdgeCases() throws Exception {
         log.info("=== Testing batch size edge cases ===");
-
         Instant baseTime = Instant.now().truncatedTo(ChronoUnit.SECONDS);
-
         // Test with small dataset that fits in single batch
         List<OwnTracksLocationMessage> smallDataset = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
@@ -380,20 +320,15 @@ public class ImportCrossFormatAndStreamingTest {
                     .acc(5.0)
                     .build());
         }
-
         ImportOptions options = new ImportOptions();
         options.setImportFormat("owntracks");
         options.setDataTypes(List.of(ExportImportConstants.DataTypes.RAW_GPS));
-
         ImportJob job = importJobService.createImportJob(
                 testUserId, options, "small.json",
                 objectMapper.writeValueAsString(smallDataset).getBytes());
-
         importDataService.processImportData(job);
-
         long count = gpsPointRepository.count("user.id = ?1", testUserId);
         assertEquals(5, count, "Small dataset should import correctly");
-
         log.info("✓ Small dataset (5 points) imported successfully");
         log.info("=== TEST PASSED: Batch size edge cases handled ===");
     }

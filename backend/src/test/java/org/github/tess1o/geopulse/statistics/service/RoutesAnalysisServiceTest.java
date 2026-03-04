@@ -6,6 +6,7 @@ import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineStayLocationDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.TimelineTripDTO;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,31 +16,26 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * Unit tests for RoutesAnalysisService.
  * Tests route statistics calculation, trip duration analysis, and route frequency detection.
  */
 @ExtendWith(MockitoExtension.class)
+@Tag("unit")
 class RoutesAnalysisServiceTest {
-
     private RoutesAnalysisService routesAnalysisService;
     private UUID testUserId;
-
     @BeforeEach
     void setUp() {
         routesAnalysisService = new RoutesAnalysisService();
         testUserId = UUID.randomUUID();
     }
-
     @Test
     void getRoutesStatistics_WithValidData_CalculatesCorrectStatistics() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithRoutes();
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
         assertTrue(result.getAvgTripDurationSeconds() > 0);
@@ -47,22 +43,18 @@ class RoutesAnalysisServiceTest {
         assertTrue(result.getLongestTripDurationSeconds() > 0);
         assertTrue(result.getLongestTripDistanceMeters() > 0);
         assertNotNull(result.getMostCommonRoute());
-        
         // Verify specific calculations
         assertEquals(66.67, result.getAvgTripDurationSeconds(), 0.1); // (60 + 50 + 90) / 3
         assertEquals(90.0, result.getLongestTripDurationSeconds());
         assertEquals(15000, result.getLongestTripDistanceMeters());
         assertEquals(3, result.getUniqueRoutesCount()); // Home->Work, Work->Home, Home->Store
     }
-
     @Test
     void getRoutesStatistics_WithEmptyTimeline_ReturnsZeroStatistics() {
         // Given
         MovementTimelineDTO emptyTimeline = new MovementTimelineDTO(testUserId, List.of(), List.of());
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(emptyTimeline);
-
         // Then
         assertNotNull(result);
         assertEquals(0.0, result.getAvgTripDurationSeconds());
@@ -73,55 +65,43 @@ class RoutesAnalysisServiceTest {
         assertEquals("", result.getMostCommonRoute().getName());
         assertEquals(0, result.getMostCommonRoute().getCount());
     }
-
     @Test
     void getRoutesStatistics_WithSingleTrip_HandlesSingleTripCorrectly() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithSingleTrip();
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
         assertEquals(60.0, result.getAvgTripDurationSeconds());
         assertEquals(1, result.getUniqueRoutesCount());
         assertEquals(60.0, result.getLongestTripDurationSeconds());
         assertEquals(10000, result.getLongestTripDistanceMeters());
-        
         MostCommonRoute mostCommon = result.getMostCommonRoute();
         assertEquals("Home -> Work", mostCommon.getName());
         assertEquals(1, mostCommon.getCount());
     }
-
     @Test
     void getRoutesStatistics_WithRepeatedRoutes_IdentifiesMostCommonRoute() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithRepeatedRoutes();
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
-        
         MostCommonRoute mostCommon = result.getMostCommonRoute();
         assertEquals("Home -> Work", mostCommon.getName());
         assertEquals(2, mostCommon.getCount()); // Should appear twice
-        
         assertTrue(result.getUniqueRoutesCount() >= 1);
     }
-
     @Test
     void getRoutesStatistics_WithNoStays_HandlesGracefully() {
         // Given - timeline with trips but no stays (edge case)
         MovementTimelineDTO timeline = new MovementTimelineDTO(testUserId,
                 List.of(), // No stays
                 List.of(createTrip("2024-01-01T10:00:00Z", 10000, 60)));
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
         assertEquals(60.0, result.getAvgTripDurationSeconds());
@@ -131,7 +111,6 @@ class RoutesAnalysisServiceTest {
         assertEquals("", result.getMostCommonRoute().getName());
         assertEquals(0, result.getMostCommonRoute().getCount());
     }
-
     @Test
     void getRoutesStatistics_WithNoTrips_HandlesGracefully() {
         // Given - timeline with stays but no trips
@@ -141,53 +120,42 @@ class RoutesAnalysisServiceTest {
                         createStay("2024-01-01T11:00:00Z", "Work", 40.7580, -73.9855, 480)
                 ),
                 List.of()); // No trips
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
         assertEquals(0.0, result.getAvgTripDurationSeconds());
         assertEquals(1, result.getUniqueRoutesCount()); // One route from Home -> Work
         assertEquals(0.0, result.getLongestTripDurationSeconds());
         assertEquals(0.0, result.getLongestTripDistanceMeters());
-        
         MostCommonRoute mostCommon = result.getMostCommonRoute();
         assertEquals("Home -> Work", mostCommon.getName());
         assertEquals(1, mostCommon.getCount());
     }
-
     @Test
     void getRoutesStatistics_WithVariedTripDurations_CalculatesCorrectAverages() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithVariedTripDurations();
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
         assertEquals(60.0, result.getAvgTripDurationSeconds(), 0.1); // (30 + 60 + 90) / 3
         assertEquals(90.0, result.getLongestTripDurationSeconds());
         assertEquals(15000, result.getLongestTripDistanceMeters());
     }
-
     @Test
     void getRoutesStatistics_WithComplexRoutes_CountsUniqueRoutesCorrectly() {
         // Given
         MovementTimelineDTO timeline = createTimelineWithComplexRoutes();
-
         // When
         RoutesStatistics result = routesAnalysisService.getRoutesStatistics(timeline);
-
         // Then
         assertNotNull(result);
         assertTrue(result.getUniqueRoutesCount() >= 4); // Multiple unique routes
         assertNotNull(result.getMostCommonRoute());
     }
-
     // Helper methods for creating test data
-
     private MovementTimelineDTO createTimelineWithRoutes() {
         return new MovementTimelineDTO(testUserId,
                 List.of(
@@ -202,7 +170,6 @@ class RoutesAnalysisServiceTest {
                         createTrip("2024-01-02T10:00:00Z", 15000, 90)
                 ));
     }
-
     private MovementTimelineDTO createTimelineWithSingleTrip() {
         return new MovementTimelineDTO(testUserId,
                 List.of(
@@ -211,7 +178,6 @@ class RoutesAnalysisServiceTest {
                 ),
                 List.of(createTrip("2024-01-01T10:00:00Z", 10000, 60)));
     }
-
     private MovementTimelineDTO createTimelineWithRepeatedRoutes() {
         return new MovementTimelineDTO(testUserId,
                 List.of(
@@ -227,7 +193,6 @@ class RoutesAnalysisServiceTest {
                         createTrip("2024-01-02T10:00:00Z", 10, 60)  // Home -> Work (repeat)
                 ));
     }
-
     private MovementTimelineDTO createTimelineWithVariedTripDurations() {
         return new MovementTimelineDTO(testUserId,
                 List.of(
@@ -242,7 +207,6 @@ class RoutesAnalysisServiceTest {
                         createTrip("2024-01-01T12:30:00Z", 15000, 90)   // Long trip
                 ));
     }
-
     private MovementTimelineDTO createTimelineWithComplexRoutes() {
         return new MovementTimelineDTO(testUserId,
                 List.of(
@@ -259,7 +223,6 @@ class RoutesAnalysisServiceTest {
                         createTrip("2024-01-01T12:30:00Z", 12, 60)
                 ));
     }
-
     private TimelineTripDTO createTrip(String timestamp, long distanceMeters, long durationSeconds) {
         return TimelineTripDTO.builder()
                 .timestamp(Instant.parse(timestamp))
@@ -267,7 +230,6 @@ class RoutesAnalysisServiceTest {
                 .tripDuration(durationSeconds)
                 .build();
     }
-
     private TimelineStayLocationDTO createStay(String timestamp, String location, double lat, double lon, long durationSeconds) {
         return TimelineStayLocationDTO.builder()
                 .timestamp(Instant.parse(timestamp))

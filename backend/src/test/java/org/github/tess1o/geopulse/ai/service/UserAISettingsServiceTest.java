@@ -15,29 +15,23 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * Integration test for UserAISettingsService.
  * Tests the full lifecycle of AI settings: save, retrieve, update, and edge cases.
  */
 @QuarkusTest
-@QuarkusTestResource(PostgisTestResource.class)
+@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
 public class UserAISettingsServiceTest {
-
     @Inject
     UserAISettingsService aiSettingsService;
-
     @Inject
     UserRepository userRepository;
-
     private UUID testUserId;
-
     @BeforeEach
     @Transactional
     public void setup() {
         // Clean up existing users
         //userRepository.findAll().stream().forEach(user -> userRepository.delete(user));
-
         // Create a test user
         UserEntity testUser = new UserEntity();
         testUser.setEmail("ai-test@example.com");
@@ -45,22 +39,18 @@ public class UserAISettingsServiceTest {
         testUser.setPasswordHash("test-hash");
         testUser.setTimezone("UTC");
         userRepository.persist(testUser);
-
         testUserId = testUser.getId();
     }
-
     @AfterEach
     @Transactional
     public void cleanup() {
         userRepository.deleteById(testUserId);
     }
-
     @Test
     @Transactional
     public void testGetDefaultAISettings() {
         // When no settings are configured, should return defaults
         UserAISettings settings = aiSettingsService.getAISettings(testUserId);
-
         assertNotNull(settings);
         assertFalse(settings.isEnabled());
         assertNull(settings.getOpenaiApiKey()); // API key should never be exposed in GET
@@ -69,7 +59,6 @@ public class UserAISettingsServiceTest {
         assertFalse(settings.isOpenaiApiKeyConfigured());
         assertTrue(settings.isApiKeyRequired()); // Default is API key required
     }
-
     @Test
     @Transactional
     public void testSaveAndRetrieveAISettingsWithApiKey() {
@@ -81,24 +70,19 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-4")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, settingsToSave);
-
         // Retrieve settings (without API key)
         UserAISettings retrievedSettings = aiSettingsService.getAISettings(testUserId);
-
         assertTrue(retrievedSettings.isEnabled());
         assertNull(retrievedSettings.getOpenaiApiKey()); // API key should never be exposed
         assertTrue(retrievedSettings.isOpenaiApiKeyConfigured()); // But flag should indicate it exists
         assertEquals("https://api.openai.com/v1", retrievedSettings.getOpenaiApiUrl());
         assertEquals("gpt-4", retrievedSettings.getOpenaiModel());
         assertTrue(retrievedSettings.isApiKeyRequired());
-
         // Retrieve settings with API key (for internal use)
         UserAISettings settingsWithKey = aiSettingsService.getAISettingsWithApiKey(testUserId);
         assertEquals("sk-test-api-key-12345", settingsWithKey.getOpenaiApiKey());
     }
-
     @Test
     @Transactional
     public void testSaveAISettingsWithoutApiKey_Ollama() {
@@ -110,26 +94,21 @@ public class UserAISettingsServiceTest {
                 .openaiModel("llama2")
                 .apiKeyRequired(false) // API key not required for Ollama
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, settingsToSave);
-
         // Retrieve settings
         UserAISettings retrievedSettings = aiSettingsService.getAISettings(testUserId);
-
         assertTrue(retrievedSettings.isEnabled());
         assertNull(retrievedSettings.getOpenaiApiKey());
         assertFalse(retrievedSettings.isOpenaiApiKeyConfigured()); // No API key configured
         assertEquals("http://localhost:11434/v1", retrievedSettings.getOpenaiApiUrl());
         assertEquals("llama2", retrievedSettings.getOpenaiModel());
         assertFalse(retrievedSettings.isApiKeyRequired());
-
         // Retrieve settings with API key - should return empty string
         UserAISettings settingsWithKey = aiSettingsService.getAISettingsWithApiKey(testUserId);
         assertNotNull(settingsWithKey.getOpenaiApiKey());
         assertTrue(settingsWithKey.getOpenaiApiKey().isEmpty());
         assertFalse(settingsWithKey.isOpenaiApiKeyConfigured());
     }
-
     @Test
     @Transactional
     public void testUpdateSettingsWithoutProvidingNewApiKey() {
@@ -141,9 +120,7 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-3.5-turbo")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, initialSettings);
-
         // Now update settings WITHOUT providing API key (should preserve existing key)
         UserAISettings updatedSettings = UserAISettings.builder()
                 .enabled(true)
@@ -152,15 +129,12 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-4") // Changed model
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, updatedSettings);
-
         // Verify the API key was preserved
         UserAISettings retrievedSettings = aiSettingsService.getAISettingsWithApiKey(testUserId);
         assertEquals("sk-original-key", retrievedSettings.getOpenaiApiKey());
         assertEquals("gpt-4", retrievedSettings.getOpenaiModel());
     }
-
     @Test
     @Transactional
     public void testUpdateApiKey() {
@@ -172,9 +146,7 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-3.5-turbo")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, initialSettings);
-
         // Update with new API key
         UserAISettings updatedSettings = UserAISettings.builder()
                 .enabled(true)
@@ -183,14 +155,11 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-3.5-turbo")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, updatedSettings);
-
         // Verify the API key was updated
         UserAISettings retrievedSettings = aiSettingsService.getAISettingsWithApiKey(testUserId);
         assertEquals("sk-new-key", retrievedSettings.getOpenaiApiKey());
     }
-
     @Test
     @Transactional
     public void testSwitchFromOpenAIToOllama() {
@@ -202,9 +171,7 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-4")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, openAISettings);
-
         // Switch to Ollama (no API key required)
         UserAISettings ollamaSettings = UserAISettings.builder()
                 .enabled(true)
@@ -213,16 +180,13 @@ public class UserAISettingsServiceTest {
                 .openaiModel("llama2")
                 .apiKeyRequired(false) // API key not required
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, ollamaSettings);
-
         // Verify settings
         UserAISettings retrievedSettings = aiSettingsService.getAISettings(testUserId);
         assertFalse(retrievedSettings.isApiKeyRequired());
         assertEquals("http://localhost:11434/v1", retrievedSettings.getOpenaiApiUrl());
         assertEquals("llama2", retrievedSettings.getOpenaiModel());
     }
-
     @Test
     @Transactional
     public void testHandleCorruptedSettings() {
@@ -234,14 +198,11 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-3.5-turbo")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, validSettings);
-
         // Manually corrupt the encrypted settings in the database
         UserEntity user = userRepository.findById(testUserId);
         user.setAiSettingsEncrypted("corrupted-data-not-valid-base64!");
         userRepository.persist(user);
-
         // Now try to save new settings - should not fail due to corruption
         UserAISettings newSettings = UserAISettings.builder()
                 .enabled(true)
@@ -250,15 +211,12 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-4")
                 .apiKeyRequired(true)
                 .build();
-
         // Should not throw exception even though old settings are corrupted
         assertDoesNotThrow(() -> aiSettingsService.saveAISettings(testUserId, newSettings));
-
         // Verify new settings were saved successfully
         UserAISettings retrievedSettings = aiSettingsService.getAISettingsWithApiKey(testUserId);
         assertEquals("sk-new-key-after-corruption", retrievedSettings.getOpenaiApiKey());
     }
-
     @Test
     @Transactional
     public void testEmptyApiKeyDoesNotCauseDecryptionError() {
@@ -270,19 +228,15 @@ public class UserAISettingsServiceTest {
                 .openaiModel("llama2")
                 .apiKeyRequired(false)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, settingsWithEmptyKey);
-
         // Retrieve settings - should not fail with decryption error
         UserAISettings retrievedSettings = assertDoesNotThrow(
                 () -> aiSettingsService.getAISettingsWithApiKey(testUserId)
         );
-
         assertNotNull(retrievedSettings);
         assertTrue(retrievedSettings.getOpenaiApiKey().isEmpty());
         assertFalse(retrievedSettings.isOpenaiApiKeyConfigured());
     }
-
     @Test
     @Transactional
     public void testDisableAI() {
@@ -294,9 +248,7 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-3.5-turbo")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, enabledSettings);
-
         // Disable AI
         UserAISettings disabledSettings = UserAISettings.builder()
                 .enabled(false) // Disable
@@ -305,18 +257,14 @@ public class UserAISettingsServiceTest {
                 .openaiModel("gpt-3.5-turbo")
                 .apiKeyRequired(true)
                 .build();
-
         aiSettingsService.saveAISettings(testUserId, disabledSettings);
-
         // Verify AI is disabled
         UserAISettings retrievedSettings = aiSettingsService.getAISettings(testUserId);
         assertFalse(retrievedSettings.isEnabled());
     }
-
     @Test
     public void testGetSettingsForNonExistentUser() {
         UUID nonExistentUserId = UUID.randomUUID();
-
         // Should throw exception for non-existent user
         assertThrows(Exception.class,
                 () -> aiSettingsService.getAISettings(nonExistentUserId));

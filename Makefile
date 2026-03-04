@@ -203,6 +203,18 @@ backend-test-unit:
 	@echo "Running backend unit tests"
 	./mvnw -pl backend clean test
 
+# Backend integration tests
+.PHONY: backend-test-integration
+backend-test-integration:
+	@echo "Running backend integration tests"
+	./mvnw -pl backend -DskipITs=false failsafe:integration-test failsafe:verify
+
+# Full backend test suite (unit + integration)
+.PHONY: backend-test-all
+backend-test-all:
+	@echo "Running full backend test suite"
+	./mvnw -pl backend clean verify -DskipITs=false
+
 #==============================================================================
 # E2E TESTING TARGETS
 #==============================================================================
@@ -397,7 +409,9 @@ help:
 	@echo "  push-frontend          Push frontend image"
 	@echo ""
 	@echo "🧪 TESTING TARGETS:"
-	@echo "  test-unit              Run backend unit tests"
+	@echo "  backend-test-unit      Run backend unit tests"
+	@echo "  backend-test-integration Run backend integration tests"
+	@echo "  backend-test-all       Run all backend tests (unit + integration)"
 	@echo "  test-e2e               Run E2E tests (requires E2E environment)"
 	@echo "  test-e2e-ui            Run E2E tests in UI mode (interactive)"
 	@echo "  test-e2e-headed        Run E2E tests in headed mode (visible browser)"

@@ -15,41 +15,31 @@ import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
-
 @QuarkusTest
-@QuarkusTestResource(PostgisTestResource.class)
+@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
 public class AuthorizationIntegrationTest {
-
     @Inject
     UserService userService;
-
     @Inject
     UserRepository userRepository;
-
     @Inject
     AuthenticationService authenticationService;
-
     private String validJwtToken;
     private String expiredJwtToken;
-
     @BeforeEach
     @Transactional
     public void setup() {
         // Clean up existing data in proper order to avoid foreign key constraint violations
         // Delete users
         userRepository.findAll().stream().forEach(userRepository::delete);
-
         // Create test user
         userService.registerUser("test@example.com", "password123", "Test User", "Europe/Kyiv");
-
         // Generate valid JWT token
         AuthResponse authResponse = authenticationService.authenticate("test@example.com", "password123");
         validJwtToken = authResponse.getAccessToken();
-
         // Create an expired token (manually crafted for testing - in real scenarios this would be naturally expired)
         expiredJwtToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2dlb3B1bHNlLnRlc3NpbyIsInN1YiI6IjEyMyIsImV4cCI6MTYwMDAwMDAwMCwiaWF0IjoxNjAwMDAwMDAwfQ.invalid";
     }
-
     /**
      * Test Case 1: Accessing protected endpoint without any authentication
      * Expected: 401 Unauthorized
@@ -63,7 +53,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-
     /**
      * Test Case 2: Accessing protected endpoint with invalid JWT token
      * Expected: 401 Unauthorized
@@ -78,7 +67,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-
     /**
      * Test Case 3: Accessing protected endpoint with expired JWT token
      * Expected: 401 Unauthorized
@@ -93,7 +81,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-
     /**
      * Test Case 4: Accessing protected endpoint with malformed Authorization header
      * Expected: 401 Unauthorized
@@ -108,7 +95,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-
     /**
      * Test Case 5: Accessing protected endpoint with valid JWT token
      * Expected: 200 OK (or appropriate success status)
@@ -124,7 +110,6 @@ public class AuthorizationIntegrationTest {
                 .statusCode(200)
                 .body("status", equalTo("success"));
     }
-
     /**
      * Multiple protected endpoints requiring USER role
      * Expected: All should deny access without authentication
@@ -138,7 +123,6 @@ public class AuthorizationIntegrationTest {
                 .get("/api/friends")
                 .then()
                 .statusCode(401);
-
         // Test Favorites endpoint
         given()
                 .contentType(ContentType.JSON)
@@ -146,7 +130,6 @@ public class AuthorizationIntegrationTest {
                 .get("/api/favorites")
                 .then()
                 .statusCode(401);
-
         // Test Statistics endpoint
         given()
                 .contentType(ContentType.JSON)
@@ -154,7 +137,6 @@ public class AuthorizationIntegrationTest {
                 .get("/api/statistics")
                 .then()
                 .statusCode(401);
-
         // Test GPS Source Config endpoint
         given()
                 .contentType(ContentType.JSON)
@@ -162,7 +144,6 @@ public class AuthorizationIntegrationTest {
                 .get("/api/gps/source")
                 .then()
                 .statusCode(401);
-
         // Test Timeline endpoint
         given()
                 .contentType(ContentType.JSON)
@@ -171,7 +152,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-
     /**
      * @PermitAll endpoints should work without authentication
      * Expected: These should be accessible without JWT token
@@ -196,7 +176,6 @@ public class AuthorizationIntegrationTest {
                 .body("data.fullName", equalTo("New User"))
                 .body("data.role", equalTo("USER"))
                 .body("data.email", equalTo("newuser@example.com"));
-
         // Test login endpoint
         given()
                 .contentType(ContentType.JSON)
@@ -215,7 +194,6 @@ public class AuthorizationIntegrationTest {
                 .cookie("refresh_token", notNullValue())
                 .cookie("token_expires_at", notNullValue());
     }
-
     /**
      * Test DELETE operations require authentication
      * Expected: 401 Unauthorized without token, 403/404 with valid token
@@ -228,7 +206,6 @@ public class AuthorizationIntegrationTest {
                 .delete("/api/favorites/1")
                 .then()
                 .statusCode(401);
-
         // With valid authentication (but non-existent resource)
         given()
                 .contentType(ContentType.JSON)
@@ -238,7 +215,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(anyOf(is(404), is(403))); // Not found or forbidden
     }
-
     @Test
     public void testPostOperationsRequireAuth() {
         // Test adding favorite without authentication
@@ -256,7 +232,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401);
     }
-
     @Test
     public void testSecurityEnforcementDemonstration() {
         given()
@@ -266,7 +241,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(401)
                 .log().body(); // Log the error response
-
         given()
                 .contentType(ContentType.JSON)
                 .body("""
@@ -280,7 +254,6 @@ public class AuthorizationIntegrationTest {
                 .then()
                 .statusCode(anyOf(is(200), is(401))) // 401 if user doesn't exist, which is fine
                 .log().body();
-
         given()
                 .contentType(ContentType.JSON)
                 .header("Authorization", "Bearer " + validJwtToken)
