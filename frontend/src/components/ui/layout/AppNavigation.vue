@@ -264,7 +264,7 @@ const accountItems = computed(() => [
     key: 'period-tags'
   },
   {
-    label: 'Preferences',
+    label: 'Timeline Preferences',
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',
     key: 'preferences'
