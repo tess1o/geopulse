@@ -799,20 +799,6 @@ public class TimelineStayRepository implements PanacheRepository<TimelineStayEnt
     }
 
     /**
-     * Update cached location name for all stays associated with a geocoding location.
-     * This maintains data consistency when a geocoding location is updated.
-     *
-     * @param geocodingId ID of the geocoding location
-     * @param userId      user ID
-     * @param newName     new location name
-     * @return number of stays updated
-     */
-    public int updateLocationNameByGeocodingId(Long geocodingId, UUID userId, String newName) {
-        return update("locationName = ?1 where geocodingLocation.id = ?2 and user.id = ?3",
-                newName, geocodingId, userId);
-    }
-
-    /**
      * Count timeline stays for a user within a time range (including boundary expansion).
      * Used for checking dataset size before loading full data.
      *

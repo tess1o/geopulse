@@ -20,37 +20,6 @@ public class GeonamesCityRepository {
 
     private static final String STAGING_TABLE = "geonames_city_import_staging";
 
-    private static final String UPSERT_SQL = """
-            INSERT INTO geonames_city (
-                geonameid, name, asciiname, alternatenames, latitude, longitude,
-                feature_class, feature_code, country_code, cc2, admin1_code, admin2_code, admin3_code, admin4_code,
-                population, elevation, dem, timezone, modification_date
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?
-            )
-            ON CONFLICT (geonameid) DO UPDATE SET
-                name = EXCLUDED.name,
-                asciiname = EXCLUDED.asciiname,
-                alternatenames = EXCLUDED.alternatenames,
-                latitude = EXCLUDED.latitude,
-                longitude = EXCLUDED.longitude,
-                feature_class = EXCLUDED.feature_class,
-                feature_code = EXCLUDED.feature_code,
-                country_code = EXCLUDED.country_code,
-                cc2 = EXCLUDED.cc2,
-                admin1_code = EXCLUDED.admin1_code,
-                admin2_code = EXCLUDED.admin2_code,
-                admin3_code = EXCLUDED.admin3_code,
-                admin4_code = EXCLUDED.admin4_code,
-                population = EXCLUDED.population,
-                elevation = EXCLUDED.elevation,
-                dem = EXCLUDED.dem,
-                timezone = EXCLUDED.timezone,
-                modification_date = EXCLUDED.modification_date
-            """;
-
     private static final String UPSERT_STAGING_SQL = """
             INSERT INTO geonames_city_import_staging (
                 geonameid, name, asciiname, alternatenames, latitude, longitude,
@@ -94,32 +63,6 @@ public class GeonamesCityRepository {
         Number result = (Number) entityManager.createNativeQuery("SELECT COUNT(*) FROM geonames_city")
                 .getSingleResult();
         return result.longValue();
-    }
-
-    @Transactional
-    public void truncateAll() {
-        entityManager.createNativeQuery("TRUNCATE TABLE geonames_city").executeUpdate();
-    }
-
-    @Transactional
-    public int upsertBatch(List<GeonamesCityRecord> batch) {
-        if (batch == null || batch.isEmpty()) {
-            return 0;
-        }
-
-        Session session = entityManager.unwrap(Session.class);
-        session.doWork(connection -> {
-            try (PreparedStatement statement = connection.prepareStatement(UPSERT_SQL)) {
-                for (GeonamesCityRecord record : batch) {
-                    bind(statement, record);
-                    statement.addBatch();
-                }
-                statement.executeBatch();
-            }
-        });
-
-        entityManager.clear();
-        return batch.size();
     }
 
     @Transactional

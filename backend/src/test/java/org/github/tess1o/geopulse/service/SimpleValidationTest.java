@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -12,15 +13,14 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@Tag("unit")
 public class SimpleValidationTest {
-
     @Test
     public void testGpsPointEntityImplementsInterface() {
         // Test that GpsPointEntity properly implements GpsPoint interface
         GpsPointEntity entity = new GpsPointEntity();
         assertTrue(entity instanceof GpsPoint);
     }
-
     @Test
     public void testGpsPointPathPointDTOImplementsInterface() {
         // Test that GpsPointPathPointDTO properly implements GpsPoint interface
@@ -31,7 +31,6 @@ public class SimpleValidationTest {
         assertEquals(40.0, dto.getLatitude());
         assertEquals(-74.0, dto.getLongitude());
     }
-
     @Test
     public void testGpsPointPathDTOConstruction() {
         // Test basic construction and functionality
@@ -40,7 +39,6 @@ public class SimpleValidationTest {
         points.add(new GpsPointPathPointDTO(
                 1L, -74.0, 40.0, Instant.now(), 5.0, 100.0, 10.0, userId, "OWNTRACKS"
         ));
-        
         GpsPointPathDTO path = new GpsPointPathDTO(userId, points);
         assertNotNull(path);
         assertEquals(userId, path.getUserId());

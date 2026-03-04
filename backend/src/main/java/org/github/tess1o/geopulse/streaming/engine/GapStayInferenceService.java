@@ -65,7 +65,7 @@ class GapStayInferenceService {
             if (localTripPlan.isInferred()) {
                 return localTripPlan;
             }
-            return tryInferFromTripTailArrival(currentPoint, userState, config, stayRadiusMeters, gapDuration);
+            return tryInferFromTripTailArrival(currentPoint, userState, config, gapDuration);
         }
 
         return tryInferForStayModes(currentPoint, userState, stayRadiusMeters, gapDuration, mode);
@@ -149,8 +149,7 @@ class GapStayInferenceService {
     }
 
     private GapStayInferencePlan tryInferFromTripTailArrival(GPSPoint currentPoint, UserState userState,
-                                                             TimelineConfig config, int stayRadiusMeters,
-                                                             Duration gapDuration) {
+                                                             TimelineConfig config, Duration gapDuration) {
         List<GPSPoint> activeTripPoints = userState.copyActivePoints();
         TripStopHeuristicsService.TailArrivalClusterMatch tailMatch =
                 tripStopHeuristicsService.findGapTailArrivalClusterMatch(activeTripPoints, currentPoint, config);

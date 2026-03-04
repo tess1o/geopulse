@@ -38,18 +38,4 @@ public class UserOidcConnectionRepository implements PanacheRepository<UserOidcC
     public long countByUserIdExcludingProvider(UUID userId, String excludeProviderName) {
         return count("userId = ?1 AND providerName != ?2", userId, excludeProviderName);
     }
-    
-    /**
-     * Check if a user has any OIDC connections
-     */
-    public boolean hasOidcConnections(UUID userId) {
-        return count("userId", userId) > 0;
-    }
-    
-    /**
-     * Delete all OIDC connections for a user
-     */
-    public long deleteByUserId(UUID userId) {
-        return delete("userId", userId);
-    }
 }

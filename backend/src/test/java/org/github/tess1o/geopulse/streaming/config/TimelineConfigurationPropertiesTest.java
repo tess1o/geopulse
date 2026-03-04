@@ -1,17 +1,19 @@
 package org.github.tess1o.geopulse.streaming.config;
 
+import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProperties;
+import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * Integration test for TimelineConfigurationProperties to verify
  * that environment variables properly override default values.
  */
 @QuarkusTest
+@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
 class TimelineConfigurationPropertiesTest {
 
     @Inject
@@ -29,7 +31,7 @@ class TimelineConfigurationPropertiesTest {
         assertEquals("50", properties.getStaypointRadiusMeters());
         assertEquals("7", properties.getStaypointMinDurationMinutes());
         assertEquals("true", properties.getMergeEnabled());
-        assertEquals("400", properties.getMergeMaxDistanceMeters()); // From application.properties  
+        assertEquals("400", properties.getMergeMaxDistanceMeters()); // From application.properties
         assertEquals("15", properties.getMergeMaxTimeGapMinutes()); // From application.properties
         assertEquals("true", properties.getPathSimplificationEnabled());
         assertEquals("15.0", properties.getPathSimplificationTolerance());
@@ -38,7 +40,6 @@ class TimelineConfigurationPropertiesTest {
         assertEquals("10800", properties.getDataGapThresholdSeconds());
         assertEquals("1800", properties.getDataGapMinDurationSeconds());
     }
-
     @Test
     void testPropertiesAreNotNull() {
         // All properties should be injected and not null

@@ -152,18 +152,4 @@ public class UserFriendPermissionRepository implements PanacheRepository<UserFri
     public List<UserFriendPermissionEntity> findAllByUserId(UUID userId) {
         return list("user.id", userId);
     }
-
-    /**
-     * Delete permissions when friendship is removed (handled automatically by CASCADE).
-     * This method is for explicit deletion if needed.
-     *
-     * @param userId   The first user
-     * @param friendId The second user
-     * @return Number of deleted records
-     */
-    public long deletePermissions(UUID userId, UUID friendId) {
-        long count1 = delete("user.id = ?1 AND friend.id = ?2", userId, friendId);
-        long count2 = delete("user.id = ?1 AND friend.id = ?2", friendId, userId);
-        return count1 + count2;
-    }
 }

@@ -3,19 +3,18 @@ package org.github.tess1o.geopulse.user.mapper;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UpdateTimelinePreferencesRequest;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
 
 import static org.junit.jupiter.api.Assertions.*;
-
 /**
  * Unit test for MapStruct-generated TimelinePreferencesMapper.
  * This demonstrates the MapStruct solution working correctly without Quarkus context.
  */
+@Tag("unit")
 class TimelinePreferencesMapperUnitTest {
-
     private final TimelinePreferencesMapper mapper = Mappers.getMapper(TimelinePreferencesMapper.class);
-
     @Test
     void testPreferencesToConfig() {
         TimelinePreferences preferences = TimelinePreferences.builder()
@@ -31,9 +30,7 @@ class TimelinePreferencesMapperUnitTest {
                 .carEnabled(false)
                 .tripDetectionAlgorithm("claude")
                 .build();
-
         TimelineConfig config = mapper.preferencesToConfig(preferences);
-
         assertNotNull(config);
         assertEquals(true, config.getUseVelocityAccuracy());
         assertEquals(2.5, config.getStaypointVelocityThreshold());
@@ -47,7 +44,6 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(false, config.getCarEnabled());
         assertEquals("claude", config.getTripDetectionAlgorithm());
     }
-
     @Test
     void testRequestToConfig() {
         UpdateTimelinePreferencesRequest request = UpdateTimelinePreferencesRequest.builder()
@@ -57,9 +53,7 @@ class TimelinePreferencesMapperUnitTest {
                 .isMergeEnabled(false)
                 .carEnabled(false)
                 .build();
-
         TimelineConfig config = mapper.requestToConfig(request);
-
         assertNotNull(config);
         assertEquals(false, config.getUseVelocityAccuracy());
         assertEquals(1.0, config.getStaypointVelocityThreshold());
@@ -67,7 +61,6 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(false, config.getIsMergeEnabled());
         assertEquals(false, config.getCarEnabled());
     }
-
     @Test
     void testUpdatePreferencesFromConfig() {
         TimelineConfig config = TimelineConfig.builder()
@@ -78,11 +71,8 @@ class TimelinePreferencesMapperUnitTest {
                 .mergeMaxDistanceMeters(300)
                 .carEnabled(false)
                 .build();
-
         TimelinePreferences preferences = new TimelinePreferences();
-        
         mapper.updatePreferencesFromConfig(config, preferences);
-
         assertEquals(true, preferences.getUseVelocityAccuracy());
         assertEquals(3.0, preferences.getStaypointVelocityThreshold());
         assertEquals(150, preferences.getStaypointRadiusMeters());
@@ -90,7 +80,6 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(300, preferences.getMergeMaxDistanceMeters());
         assertEquals(false, preferences.getCarEnabled());
     }
-
     @Test
     void testConfigToPreferences() {
         TimelineConfig config = TimelineConfig.builder()
@@ -102,9 +91,7 @@ class TimelinePreferencesMapperUnitTest {
                 .mergeMaxDistanceMeters(300)
                 .carEnabled(true)
                 .build();
-
         TimelinePreferences preferences = mapper.configToPreferences(config);
-
         assertNotNull(preferences);
         assertEquals(false, preferences.getUseVelocityAccuracy());
         assertEquals(2.0, preferences.getStaypointVelocityThreshold());
@@ -114,25 +101,20 @@ class TimelinePreferencesMapperUnitTest {
         assertEquals(300, preferences.getMergeMaxDistanceMeters());
         assertEquals(true, preferences.getCarEnabled());
     }
-
     @Test
     void testNullHandling() {
         assertNull(mapper.preferencesToConfig(null));
         assertNull(mapper.requestToConfig(null));
         assertNull(mapper.configToPreferences(null));
-        
         TimelinePreferences preferences = new TimelinePreferences();
         mapper.updatePreferencesFromConfig(null, preferences);
     }
-
     @Test
     void testPartialData() {
         TimelinePreferences preferences = TimelinePreferences.builder()
                 .staypointRadiusMeters(100)
                 .build();
-
         TimelineConfig config = mapper.preferencesToConfig(preferences);
-
         assertNotNull(config);
         assertEquals(100, config.getStaypointRadiusMeters());
         assertNull(config.getUseVelocityAccuracy());

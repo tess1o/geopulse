@@ -9,7 +9,6 @@ import org.github.tess1o.geopulse.streaming.service.trips.TripGpsStatistics;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 
 /**
  * Represents a trip event - a period of movement between locations.

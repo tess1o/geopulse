@@ -159,7 +159,7 @@ public class ReverseGeocodingManagementService {
                         .build();
 
                 // Use copy-on-write handler to apply update
-                UpdateResult result = copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
+                copyOnWriteHandler.handleUserUpdate(currentUserId, entity, updateDTO);
                 successCount++;
 
                 log.debug("Successfully updated geocoding {} for user {}", geocodingId, currentUserId);

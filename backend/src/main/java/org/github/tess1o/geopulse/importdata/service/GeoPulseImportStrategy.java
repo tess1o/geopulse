@@ -18,7 +18,6 @@ import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
 import org.github.tess1o.geopulse.importdata.mapper.ImportDataMapper;
 import org.github.tess1o.geopulse.importdata.model.ImportJob;
 import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
-import org.github.tess1o.geopulse.shared.exportimport.NativeSqlImportTemplates;
 import org.github.tess1o.geopulse.shared.exportimport.SequenceResetService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.user.model.UserEntity;

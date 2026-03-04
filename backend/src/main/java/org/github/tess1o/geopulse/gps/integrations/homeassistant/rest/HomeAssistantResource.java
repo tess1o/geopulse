@@ -10,7 +10,6 @@ import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gps.service.auth.GpsIntegrationAuthenticatorRegistry;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
-import java.util.Optional;
 import java.util.UUID;
 
 @Path("/")

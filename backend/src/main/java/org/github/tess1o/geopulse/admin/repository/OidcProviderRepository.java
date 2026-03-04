@@ -14,10 +14,6 @@ public class OidcProviderRepository implements PanacheRepository<OidcProviderEnt
         return find("name", name).firstResultOptional();
     }
 
-    public List<OidcProviderEntity> findByEnabled(boolean enabled) {
-        return find("enabled", enabled).list();
-    }
-
     public boolean existsByName(String name) {
         return count("name", name) > 0;
     }

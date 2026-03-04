@@ -5,13 +5,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.export.model.DebugExportRequest;
+import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
+import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
-import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
-import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -93,7 +93,7 @@ public class DebugExportService {
 
             // 1. Add metadata.json
             zipOut.putNextEntry(new ZipEntry("metadata.json"));
-            byte[] metadataData = generateMetadata(userId, request, gpsPointCount, locationsCount, areasCount);
+            byte[] metadataData = generateMetadata(request, gpsPointCount, locationsCount, areasCount);
             zipOut.write(metadataData);
             zipOut.closeEntry();
             log.info("Added metadata.json to archive: {} bytes", metadataData.length);
@@ -248,7 +248,7 @@ public class DebugExportService {
     /**
      * Generate metadata JSON.
      */
-    private byte[] generateMetadata(UUID userId, DebugExportRequest request,
+    private byte[] generateMetadata(DebugExportRequest request,
                                     long gpsPointCount, int locationsCount, int areasCount) throws IOException {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("export_version", "1.0");

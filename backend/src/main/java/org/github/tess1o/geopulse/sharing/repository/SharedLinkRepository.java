@@ -40,11 +40,4 @@ public class SharedLinkRepository implements PanacheRepositoryBase<SharedLinkEnt
         return count("user.id = ?1 and shareType = ?2 and (expiresAt is null or expiresAt > ?3)",
                 userId, shareType, Instant.now());
     }
-
-    /**
-     * Find all shares by user and type
-     */
-    public List<SharedLinkEntity> findByUserIdAndType(UUID userId, ShareType shareType) {
-        return find("user.id = ?1 and shareType = ?2", userId, shareType).list();
-    }
 }

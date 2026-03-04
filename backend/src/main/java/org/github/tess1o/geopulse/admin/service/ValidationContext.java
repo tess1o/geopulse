@@ -63,17 +63,4 @@ public class ValidationContext {
         String value = getValue(key);
         return value != null && Boolean.parseBoolean(value);
     }
-
-    /**
-     * Checks if a setting has a non-empty value (pending or persisted).
-     * <p>
-     * Masked values (e.g., "********") are considered empty.
-     *
-     * @param key Setting key
-     * @return true if value exists and is not blank or masked
-     */
-    public boolean hasValue(String key) {
-        String value = getValue(key);
-        return value != null && !value.isBlank() && !value.equals("********");
-    }
 }

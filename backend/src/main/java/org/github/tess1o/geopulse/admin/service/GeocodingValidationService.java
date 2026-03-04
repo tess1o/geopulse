@@ -59,20 +59,6 @@ public class GeocodingValidationService {
     }
 
     /**
-     * Validate a single geocoding configuration change.
-     * <p>
-     * This method is used when validating changes without batch context.
-     * For bulk updates, use {@link #validateGeocodingChanges(List)} instead.
-     *
-     * @param key Setting key
-     * @param newValue New value
-     * @return Error message if validation fails, null if validation passes
-     */
-    public String validateGeocodingChange(String key, String newValue) {
-        return validateGeocodingChange(key, newValue, null);
-    }
-
-    /**
      * Validate a geocoding configuration change with optional context.
      *
      * @param key Setting key

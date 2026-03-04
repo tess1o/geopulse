@@ -44,10 +44,6 @@ public class GpsSourceRepository implements PanacheRepositoryBase<GpsSourceConfi
         return find("username = ?1 and connectionType = ?2 and active = true", username, connectionType).firstResultOptional();
     }
 
-    public boolean existsByUserAndUsername(UUID userId, String username) {
-        return count("user.id = ?1 AND username = ?2", userId, username) > 0;
-    }
-
     /**
      * Find existing GPS source configurations by user, username and source type for duplicate detection during import.
      * 
@@ -58,9 +54,5 @@ public class GpsSourceRepository implements PanacheRepositoryBase<GpsSourceConfi
      */
     public List<GpsSourceConfigEntity> findByUserAndUsernameAndType(UUID userId, String username, GpsSourceType sourceType) {
         return list("user.id = ?1 AND username = ?2 AND sourceType = ?3", userId, username, sourceType);
-    }
-
-    public long deleteByUserId(UUID userId) {
-        return delete("user.id = ?1", userId);
     }
 }

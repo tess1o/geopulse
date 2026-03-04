@@ -4,6 +4,7 @@ import org.github.tess1o.geopulse.statistics.model.*;
 import org.github.tess1o.geopulse.statistics.repository.StatisticsRepository;
 import org.github.tess1o.geopulse.statistics.service.StatisticsServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -14,34 +15,27 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
     /**
  * Unit tests for StatisticsServiceImpl with SQL-based calculations.
  * Tests cover normal operations, edge cases, and error conditions.
  */
 @ExtendWith(MockitoExtension.class)
+@Tag("unit")
 class StatisticsServiceImplTest {
-
     @Mock
     private StatisticsRepository statisticsRepository;
-
     private StatisticsServiceImpl statisticsService;
-
     private UUID testUserId;
     private Instant testStart;
     private Instant testEnd;
-
     @BeforeEach
     void setUp() {
         testUserId = UUID.randomUUID();
         testStart = Instant.parse("2024-01-01T00:00:00Z");
         testEnd = Instant.parse("2024-01-07T23:59:59Z");
-
         statisticsService = new StatisticsServiceImpl(statisticsRepository);
     }
-
     @Test
     void getStatistics_WithValidData_ReturnsCompleteStatistics() {
         // Given
@@ -56,10 +50,8 @@ class StatisticsServiceImplTest {
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any()))
                 .thenReturn(List.of(new ChartDataPoint("MON", 10.0)));
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
-
         // Then
         assertNotNull(result);
         assertEquals(15000.0, result.getTotalDistanceMeters());
@@ -73,7 +65,6 @@ class StatisticsServiceImplTest {
         assertNotNull(result.getRoutes());
         assertNotNull(result.getDistanceChartsByTripType());
         assertFalse(result.getDistanceChartsByTripType().isEmpty());
-
         // Verify repository was called
         verify(statisticsRepository).getTripAggregations(testUserId, testStart, testEnd);
         verify(statisticsRepository).getUniqueLocationsCount(testUserId, testStart, testEnd);
@@ -82,7 +73,6 @@ class StatisticsServiceImplTest {
         verify(statisticsRepository).getRoutesStatistics(testUserId, testStart, testEnd);
         verify(statisticsRepository, times(6)).getChartDataByDays(any(), any(), any(), any());
     }
-
     @Test
     void getStatistics_WithEmptyData_ReturnsZeroStatistics() {
         // Given - empty results from database
@@ -100,10 +90,8 @@ class StatisticsServiceImplTest {
                         .mostCommonRoute(new MostCommonRoute("", 0))
                         .build());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
-
         // Then
         assertNotNull(result);
         assertEquals(0.0, result.getTotalDistanceMeters());
@@ -121,7 +109,6 @@ class StatisticsServiceImplTest {
             assertEquals(0, chart.getLabels().length);
         });
     }
-
     @Test
     void getStatistics_WithZeroMovingTime_PreventsDivisionByZero() {
         // Given - distance but no time (edge case)
@@ -134,15 +121,12 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
-
         // Then
         assertEquals(0.0, result.getAverageSpeed()); // Should not throw exception
         assertDoesNotThrow(() -> result.getAverageSpeed());
     }
-
     @Test
     void getStatistics_UsesWeeklyGrouping_ForLongDateRanges() {
         // Given - date range > 10 days
@@ -161,17 +145,14 @@ class StatisticsServiceImplTest {
                         new ChartDataPoint("01/01", 10.0),
                         new ChartDataPoint("01/08", 5.0)
                 ));
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, longRangeEnd, ChartGroupMode.DAYS);
-
         // Then
         verify(statisticsRepository, atLeast(5)).getChartDataByWeeks(any(), any(), any(), any());
         assertNotNull(result.getDistanceChartsByTripType());
         // Should have charts for multiple trip types
         assertTrue(result.getDistanceChartsByTripType().size() > 0);
     }
-
     @Test
     void getStatistics_UsesDailyGrouping_ForShortDateRanges() {
         // Given - date range < 10 days
@@ -189,17 +170,14 @@ class StatisticsServiceImplTest {
                         new ChartDataPoint("MON", 5.0),
                         new ChartDataPoint("TUE", 10.0)
                 ));
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
-
         // Then
         verify(statisticsRepository, atLeast(5)).getChartDataByDays(any(), any(), any(), any());
         assertNotNull(result.getDistanceChartsByTripType());
         // Should have charts for multiple trip types
         assertTrue(result.getDistanceChartsByTripType().size() > 0);
     }
-
     @Test
     void getStatistics_RespectsChartGroupModeOverride() {
         // Given - short range but WEEKS mode explicitly requested
@@ -214,15 +192,12 @@ class StatisticsServiceImplTest {
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByWeeks(any(UUID.class), any(), any(), any()))
                 .thenReturn(List.of(new ChartDataPoint("01/01", 15.0)));
-
         // When
-        UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
-
+        statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.WEEKS);
         // Then
         verify(statisticsRepository, times(6)).getChartDataByWeeks(any(), any(), any(), any());
         verify(statisticsRepository, times(0)).getChartDataByDays(any(), any(), any(), any());
     }
-
     @Test
     void getStatistics_HandlesTopPlacesWithCoordinates() {
         // Given
@@ -239,14 +214,11 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
-
         // Then
         List<TopPlace> places = result.getPlaces();
         assertEquals(3, places.size());
-
         // Verify each place has proper coordinates
         for (TopPlace place : places) {
             assertNotNull(place.getCoordinates());
@@ -255,7 +227,6 @@ class StatisticsServiceImplTest {
             assertTrue(place.getCoordinates()[1] != 0.0); // Longitude
         }
     }
-
     @Test
     void getStatistics_CalculatesAverageSpeedCorrectly() {
         // Given - 36 km in 2 hours = 18 km/h
@@ -267,16 +238,12 @@ class StatisticsServiceImplTest {
         when(statisticsRepository.getRoutesStatistics(testUserId, testStart, testEnd))
                 .thenReturn(createRoutesStats());
         when(statisticsRepository.getChartDataByDays(any(UUID.class), any(), any(), any())).thenReturn(List.of());
-
         // When
         UserStatistics result = statisticsService.getStatistics(testUserId, testStart, testEnd, ChartGroupMode.DAYS);
-
         // Then
         assertEquals(18.0, result.getAverageSpeed(), 0.01); // 36km / 2h = 18 km/h
     }
-
     // Helper methods to create test data
-
     private TopPlace createTopPlace(String name, int visits, long duration, double lat, double lon) {
         return TopPlace.builder()
                 .name(name)
@@ -285,7 +252,6 @@ class StatisticsServiceImplTest {
                 .coordinates(new double[]{lat, lon})
                 .build();
     }
-
     private MostActiveDayDto createMostActiveDay(String date, String day, double distance, double travelTime, long locations) {
         return MostActiveDayDto.builder()
                 .date(date)
@@ -295,7 +261,6 @@ class StatisticsServiceImplTest {
                 .locationsVisited(locations)
                 .build();
     }
-
     private RoutesStatistics createRoutesStats() {
         return RoutesStatistics.builder()
                 .avgTripDurationSeconds(3600.0)

@@ -5,7 +5,6 @@ import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.sharing.model.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 

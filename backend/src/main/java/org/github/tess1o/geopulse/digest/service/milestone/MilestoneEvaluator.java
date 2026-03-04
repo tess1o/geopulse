@@ -11,7 +11,6 @@ import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
