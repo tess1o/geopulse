@@ -876,6 +876,11 @@ components:
         refreshToken:
           pattern: \S
           type: string
+    TripMovementTypeUpdateRequest:
+      type: object
+      properties:
+        movementType:
+          type: string
     UUID:
       format: uuid
       pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
@@ -5324,6 +5329,55 @@ paths:
       - Streaming Timeline Resource
       security:
       - jwt: []
+  /api/streaming-timeline/trips/{tripId}/movement-type:
+    put:
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripMovementTypeUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Update Trip Movement Type
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
+    delete:
+      parameters:
+      - name: tripId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Reset Trip Movement Type
+      tags:
+      - Streaming Timeline Resource
+      security:
+      - jwt: []
   /api/streaming-timeline/user/preferences:
     get:
       responses:
@@ -6089,7 +6143,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.19.2
+  version: 1.20.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
