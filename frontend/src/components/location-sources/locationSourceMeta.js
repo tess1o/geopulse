@@ -28,6 +28,12 @@ export const LOCATION_SOURCE_OPTIONS = Object.freeze([
     label: 'Home Assistant',
     description: 'Integrate with Home Assistant automation for automatic location tracking',
     icon: 'pi pi-home'
+  },
+  {
+    value: 'COLOTA',
+    label: 'Colota',
+    description: 'Privacy-focused GPS tracker with batch sync and smart tracking',
+    icon: 'pi pi-map-marker'
   }
 ])
 
@@ -54,7 +60,7 @@ export const getLocationSourceDisplayName = (type) => getLocationSourceMeta(type
 export const getLocationSourceIdentifier = (source) => {
   if (!source) return ''
 
-  if (source.type === 'OWNTRACKS' || source.type === 'GPSLOGGER') {
+  if (source.type === 'OWNTRACKS' || source.type === 'GPSLOGGER' || source.type === 'COLOTA') {
     return source.username || 'No username'
   }
   if (source.type === 'OVERLAND') {

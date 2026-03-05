@@ -78,12 +78,15 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     }
 
     private void validateUniqueness(CreateGpsSourceConfigDto newConfig) {
-        if (newConfig.getType() == GpsSourceType.OWNTRACKS || newConfig.getType() == GpsSourceType.GPSLOGGER) {
+        if (newConfig.getType() == GpsSourceType.OWNTRACKS || newConfig.getType() == GpsSourceType.GPSLOGGER || newConfig.getType() == GpsSourceType.COLOTA) {
             boolean isUnique = isOwnTrackSourceUnique(newConfig);
             if (!isUnique) {
-                throw new IllegalArgumentException(newConfig.getType() == GpsSourceType.GPSLOGGER
-                        ? "GPSLogger username is already used"
-                        : "Owntrack username is already used");
+                String msg = switch (newConfig.getType()) {
+                    case GPSLOGGER -> "GPSLogger username is already used";
+                    case COLOTA -> "Colota username is already used";
+                    default -> "Owntrack username is already used";
+                };
+                throw new IllegalArgumentException(msg);
             }
         } else if (newConfig.getType() == GpsSourceType.OVERLAND) {
             boolean isUnique = isOverlandSourceUnique(newConfig);
@@ -135,7 +138,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             return false;
         }
         GpsSourceConfigEntity dbConfig = configOpt.get();
-        if (dbConfig.getSourceType() == GpsSourceType.OWNTRACKS || dbConfig.getSourceType() == GpsSourceType.GPSLOGGER) {
+        if (dbConfig.getSourceType() == GpsSourceType.OWNTRACKS || dbConfig.getSourceType() == GpsSourceType.GPSLOGGER || dbConfig.getSourceType() == GpsSourceType.COLOTA) {
             dbConfig.setUsername(config.getUsername());
             // Only update password if a new one is provided
             if (config.getPassword() != null && !config.getPassword().isEmpty()) {

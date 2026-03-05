@@ -12,7 +12,7 @@
               <h1 class="page-title">Location Data Sources</h1>
               <p class="page-description">
                 Configure how GeoPulse receives your location data from different tracking apps.
-                Set up OwnTracks, GPSLogger, Overland, Dawarich, or Home Assistant to automatically sync your location history.
+                Set up OwnTracks, GPSLogger, Overland, Dawarich, Home Assistant, or Colota to automatically sync your location history.
               </p>
             </div>
             <Button 
@@ -50,6 +50,7 @@
           :has-gps-logger-source="hasGpsLoggerSource"
           :has-dawarich-source="hasDawarichSource"
           :has-home-assistant-source="hasHomeAssistantSource"
+          :has-colota-source="hasColotaSource"
           @tab-change="handleTabChange"
           @copy-text="copyToClipboard"
         />
@@ -133,6 +134,10 @@ const hasHomeAssistantSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'HOME_ASSISTANT')
 )
 
+const hasColotaSource = computed(() =>
+  gpsSourceConfigs.value.some(source => source.type === 'COLOTA')
+)
+
 // Mobile detection
 const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
 
@@ -203,11 +208,18 @@ const tabItems = computed(() => {
       key: 'dawarich'
     })
   }
-  if (hasHomeAssistantSource.value) {
+  if (hasHomeAssistantSource.value) { 
     tabs.push({
-      label: isMobile.value ? 'HA' : 'Home Assistant', 
+      label: isMobile.value ? 'HA' : 'Home Assistant',
       icon: 'pi pi-home',
       key: 'home_assistant'
+    })
+  }
+  if (hasColotaSource.value) {
+    tabs.push({
+      label: 'Colota',
+      icon: 'pi pi-map-marker',
+      key: 'colota'
     })
   }
   return tabs
@@ -287,7 +299,7 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
         life: 3000
       })
     } else {
-      if (formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER') {
+      if (formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER' || formData.type === 'COLOTA') {
         await gpsStore.addGpsConfigSource(
           formData.type,
           formData.username,

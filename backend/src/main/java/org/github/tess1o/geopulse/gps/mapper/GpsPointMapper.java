@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps.mapper;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantLocation;
@@ -97,6 +98,24 @@ public class GpsPointMapper {
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
 
+
+        return entity;
+    }
+
+    public GpsPointEntity toEntity(ColotaLocationMessage message, UserEntity userId, GpsSourceType sourceType) {
+        GpsPointEntity entity = new GpsPointEntity();
+        entity.setDeviceId("Colota");
+        entity.setUser(userId);
+        entity.setCoordinates(GeoUtils.createPoint(message.getLon(), message.getLat()));
+        entity.setTimestamp(Instant.ofEpochSecond(message.getTst()));
+        entity.setAccuracy(message.getAcc());
+        entity.setBattery(message.getBatt());
+        // Convert speed from m/s to km/h for consistent storage (Colota sends m/s)
+        Double speedMs = message.getVel();
+        entity.setVelocity(speedMs != null ? speedMs * 3.6 : null);
+        entity.setAltitude(message.getAlt());
+        entity.setSourceType(sourceType);
+        entity.setCreatedAt(Instant.now());
 
         return entity;
     }
