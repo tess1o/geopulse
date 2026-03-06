@@ -4,16 +4,17 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @ApplicationScoped
 public class FirstStepsBadgeCalculator implements BadgeCalculator {
 
     private static final String FIRST_TRIP_QUERY = """
-            SELECT timestamp
+            SELECT timestamp AT TIME ZONE 'UTC' as timestamp_utc
             FROM timeline_trips
             WHERE user_id = :userId
             AND distance_meters >= 1000
@@ -37,9 +38,15 @@ public class FirstStepsBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(FIRST_TRIP_QUERY);
         query.setParameter("userId", userId);
 
-        LocalDateTime result = (LocalDateTime) query.getResultList().stream().findFirst().orElse(null);
+        Object result = query.getResultList().stream().findFirst().orElse(null);
         boolean earned = result != null;
-        LocalDateTime earnedDate = earned ? result : null;
+        String earnedDate = null;
+        if (earned) {
+            var earnedInstant = TimestampUtils.getInstantSafe(result);
+            if (earnedInstant != null) {
+                earnedDate = earnedInstant.atZone(ZoneOffset.UTC).toLocalDate().format(DateTimeFormatter.ISO_DATE);
+            }
+        }
 
         return Badge.builder()
                 .id(getBadgeId())
@@ -47,7 +54,7 @@ public class FirstStepsBadgeCalculator implements BadgeCalculator {
                 .title("First Steps")
                 .description("Complete your first trip (≥1 km)")
                 .earned(earned)
-                .earnedDate(earned ? earnedDate.format(DateTimeFormatter.ISO_DATE) : null)
+                .earnedDate(earnedDate)
                 .build();
     }
 }

@@ -4,9 +4,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 /**
@@ -17,7 +18,7 @@ import java.util.UUID;
 public class TimeOfDayBadgeCalculator {
 
     private static final String TIME_OF_DAY_QUERY = """
-            SELECT timestamp
+            SELECT t.timestamp AT TIME ZONE 'UTC' as timestamp_utc
             FROM timeline_trips t
             JOIN users u ON t.user_id = u.id
             WHERE t.user_id = :userId
@@ -51,9 +52,15 @@ public class TimeOfDayBadgeCalculator {
         Query timeQuery = entityManager.createNativeQuery(query);
         timeQuery.setParameter("userId", userId);
 
-        LocalDateTime result = (LocalDateTime) timeQuery.getResultList().stream().findFirst().orElse(null);
+        Object result = timeQuery.getResultList().stream().findFirst().orElse(null);
         boolean earned = result != null;
-        LocalDateTime earnedDate = earned ? result : null;
+        String earnedDate = null;
+        if (earned) {
+            var earnedInstant = TimestampUtils.getInstantSafe(result);
+            if (earnedInstant != null) {
+                earnedDate = earnedInstant.atZone(ZoneOffset.UTC).toLocalDate().format(DateTimeFormatter.ISO_DATE);
+            }
+        }
 
         return Badge.builder()
                 .id(badgeId)
@@ -61,7 +68,7 @@ public class TimeOfDayBadgeCalculator {
                 .title(title)
                 .description(description)
                 .earned(earned)
-                .earnedDate(earned ? earnedDate.format(DateTimeFormatter.ISO_DATE) : null)
+                .earnedDate(earnedDate)
                 .build();
     }
 }

@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
@@ -43,6 +44,9 @@ public class CleanupHelper {
     @Inject
     ReverseGeocodingLocationRepository reverseGeocodingLocationRepository;
 
+    @Inject
+    FriendshipRepository friendshipRepository;
+
     @Transactional
     public void cleanupTimeline() {
         this.badgeRepository.deleteAll();
@@ -58,6 +62,7 @@ public class CleanupHelper {
         gpsSourceRepository.deleteAll();
         gpsPointRepository.deleteAll();
         reverseGeocodingLocationRepository.deleteAll();
+        friendshipRepository.deleteAll();
         userRepository.deleteAll();
     }
 }

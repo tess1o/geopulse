@@ -215,6 +215,40 @@ backend-test-all:
 	@echo "Running full backend test suite"
 	./mvnw -pl backend clean verify -DskipITs=false
 
+# Timezone matrix settings for local verification
+# Override like:
+#   make backend-test-unit-tz-matrix TZ_MATRIX="UTC Europe/Kyiv America/New_York"
+#   make backend-test-integration-tz-matrix IT_TEST=FriendshipRepositoryIntegrationTest
+TZ_MATRIX ?= UTC Europe/Kyiv
+UNIT_TEST ?=
+IT_TEST ?=
+
+# Backend unit tests in timezone matrix
+.PHONY: backend-test-unit-tz-matrix
+backend-test-unit-tz-matrix:
+	@set -e; \
+	for tz in $(TZ_MATRIX); do \
+		echo "Running backend unit tests with timezone $$tz"; \
+		if [ -n "$(UNIT_TEST)" ]; then \
+			TZ=$$tz ./mvnw -pl backend -Duser.timezone=$$tz -Dtest="$(UNIT_TEST)" test; \
+		else \
+			TZ=$$tz ./mvnw -pl backend -Duser.timezone=$$tz clean test; \
+		fi; \
+	done
+
+# Backend integration tests in timezone matrix
+.PHONY: backend-test-integration-tz-matrix
+backend-test-integration-tz-matrix:
+	@set -e; \
+	for tz in $(TZ_MATRIX); do \
+		echo "Running backend integration tests with timezone $$tz"; \
+		if [ -n "$(IT_TEST)" ]; then \
+			TZ=$$tz ./mvnw -pl backend -DskipITs=false -Duser.timezone=$$tz -Dit.test="$(IT_TEST)" test-compile failsafe:integration-test failsafe:verify; \
+		else \
+			TZ=$$tz ./mvnw -pl backend -DskipITs=false -Duser.timezone=$$tz test-compile failsafe:integration-test failsafe:verify; \
+		fi; \
+	done
+
 #==============================================================================
 # E2E TESTING TARGETS
 #==============================================================================

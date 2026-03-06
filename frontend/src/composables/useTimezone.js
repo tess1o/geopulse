@@ -243,10 +243,16 @@ export function useTimezone() {
         const dateObj = fromUtc(date)
         const nowObj = now()
 
-        if (nowObj.diff(dateObj, 'minute') < 1) return 'Just now'
-        if (nowObj.diff(dateObj, 'minute') < 60) return `${nowObj.diff(dateObj, 'minute')} min ago`
-        if (nowObj.diff(dateObj, 'hour') < 24) return `${nowObj.diff(dateObj, 'hour')} hours ago`
-        if (nowObj.diff(dateObj, 'day') < 30) return `${nowObj.diff(dateObj, 'day')} days ago`
+        const minutesDiff = nowObj.diff(dateObj, 'minute')
+        if (minutesDiff < 0) return formatDateDisplay(date)
+        if (minutesDiff < 1) return 'Just now'
+        if (minutesDiff < 60) return `${minutesDiff} min ago`
+
+        const hoursDiff = nowObj.diff(dateObj, 'hour')
+        if (hoursDiff < 24) return `${hoursDiff} hours ago`
+
+        const daysDiff = nowObj.diff(dateObj, 'day')
+        if (daysDiff < 30) return `${daysDiff} days ago`
 
         return formatDateDisplay(date)
     }

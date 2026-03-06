@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -140,23 +141,32 @@ public class GpsPointServiceTest {
     @Test
     @Transactional
     public void testGetGpsPointSummary_BasicFunctionality() {
-        // Create test GPS points with known timestamps
-        createTestGpsPoint(Instant.now().minus(7, ChronoUnit.DAYS)); // 7 days ago
-        createTestGpsPoint(Instant.now().minus(1, ChronoUnit.DAYS)); // 1 day ago
-        createTestGpsPoint(Instant.now().minus(1, ChronoUnit.HOURS)); // 1 hour ago (should count as today in UTC)
+        Instant utcTodayNoon = Instant.now()
+                .atZone(ZoneId.of("UTC"))
+                .toLocalDate()
+                .atTime(12, 0)
+                .toInstant(ZoneOffset.UTC);
+        Instant sevenDaysAgo = utcTodayNoon.minus(7, ChronoUnit.DAYS);
+        Instant oneDayAgo = utcTodayNoon.minus(1, ChronoUnit.DAYS);
+
+        // Create test GPS points with deterministic timestamps
+        createTestGpsPoint(sevenDaysAgo);
+        createTestGpsPoint(oneDayAgo);
+        createTestGpsPoint(utcTodayNoon); // Should count as "today" in UTC
+
         GpsPointSummaryDTO summary = gpsPointService.getGpsPointSummary(userId);
         assertEquals(3, summary.getTotalPoints());
-        assertEquals(1, summary.getPointsToday()); // Only the 1-hour-ago point should count as today
-        assertNotNull(summary.getFirstPointDate());
-        assertNotNull(summary.getLastPointDate());
+        assertEquals(1, summary.getPointsToday());
+        assertEquals(sevenDaysAgo, summary.getFirstPointDate());
+        assertEquals(utcTodayNoon, summary.getLastPointDate());
     }
     @Test
     @Transactional
     public void testGetGpsPointSummary_TimezoneIssue_GMT_Plus3_Early_Morning() {
         // Test timezone fix: Create points that are clearly from different days in user timezone
         ZoneId gmtPlus3 = ZoneId.of("Europe/Kyiv"); // GMT+3
-        // Use today's date but convert to specific times
-        LocalDate today = LocalDate.now();
+        // Use "today" in GMT+3 timezone to avoid date skew under timezone matrix runs
+        LocalDate today = LocalDate.now(gmtPlus3);
         LocalDate yesterday = today.minusDays(1);
         // Create test points:
         // 1. Point from "yesterday" in GMT+3 (should NOT count as today)

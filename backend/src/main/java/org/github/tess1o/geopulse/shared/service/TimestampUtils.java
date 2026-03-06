@@ -2,7 +2,9 @@ package org.github.tess1o.geopulse.shared.service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 /**
  * Utility class for handling timestamp conversions from various types.
@@ -25,10 +27,10 @@ public final class TimestampUtils {
         if (date == null) return null;
         if (date instanceof Instant) return (Instant) date;
         if (date instanceof java.sql.Timestamp) {
-            // Database timestamps are stored in UTC, so treat them as UTC
-            java.sql.Timestamp ts = (java.sql.Timestamp) date;
-            return ts.toLocalDateTime().toInstant(ZoneOffset.UTC);
+            return ((java.sql.Timestamp) date).toInstant();
         }
+        if (date instanceof OffsetDateTime) return ((OffsetDateTime) date).toInstant();
+        if (date instanceof ZonedDateTime) return ((ZonedDateTime) date).toInstant();
         if (date instanceof java.util.Date) return ((java.util.Date) date).toInstant();
         if (date instanceof Long) return Instant.ofEpochMilli((Long) date);
         if (date instanceof LocalDateTime) return ((LocalDateTime) date).toInstant(ZoneOffset.UTC);

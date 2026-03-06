@@ -4,10 +4,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
@@ -77,7 +78,7 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
 
     private String getTrackingStartDate(UUID userId) {
         String sql = """
-                SELECT MIN(timestamp)
+                SELECT MIN(timestamp AT TIME ZONE 'UTC')
                 FROM gps_points
                 WHERE user_id = :userId
                 """;
@@ -85,12 +86,13 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
 
-        LocalDateTime result = (LocalDateTime) query.getSingleResult();
-        if (result == null) {
+        Object result = query.getSingleResult();
+        var startInstant = TimestampUtils.getInstantSafe(result);
+        if (startInstant == null) {
             return "No tracking data";
         }
 
-        LocalDate startDate = result.toLocalDate();
+        LocalDate startDate = startInstant.atZone(ZoneOffset.UTC).toLocalDate();
         return startDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy"));
     }
 }
