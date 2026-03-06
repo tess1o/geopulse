@@ -279,6 +279,48 @@
             </div>
           </div>
         </div>
+        <div v-if="activeTab === 'colota' && hasColotaSource">
+          <div class="instruction-content">
+            <h3 class="instruction-title">Colota Configuration</h3>
+            <div class="instruction-steps">
+              <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <div class="step-title">API Endpoint</div>
+                  <div class="copy-field">
+                    <code>{{ colotaUrl }}</code>
+                    <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(colotaUrl)" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                  <div class="step-title">Authentication</div>
+                  <div class="step-value">
+                    Uses <strong>Basic Authentication</strong> with the username and password configured in your source.
+                  </div>
+                </div>
+              </div>
+
+              <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                  <div class="step-title">Payload Format (JSON)</div>
+                  <div class="copy-field">
+                    <pre class="yaml-config">{{ colotaPayloadExample }}</pre>
+                  </div>
+                  <small class="text-muted">
+                    Fields: lat, lon, acc (meters), alt (meters), vel (m/s), batt (%), bs (battery status), tst (Unix timestamp), bear (bearing degrees).
+                  </small>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
       </TabContainer>
     </template>
   </Card>
@@ -325,6 +367,10 @@ const props = defineProps({
   hasHomeAssistantSource: {
     type: Boolean,
     default: false
+  },
+  hasColotaSource: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -342,6 +388,19 @@ const owntracksUrl = computed(() => `${browserOrigin.value}/api/owntracks`)
 const overlandUrl = computed(() => `${browserOrigin.value}/api/overland`)
 const gpsLoggerUrl = computed(() => `${browserOrigin.value}/api/gpslogger`)
 const dawarichUrl = computed(() => `${browserOrigin.value}/api/dawarich`)
+const colotaUrl = computed(() => `${browserOrigin.value}/api/colota`)
+
+const colotaPayloadExample = computed(() => `{
+  "lat": 48.135,
+  "lon": 11.582,
+  "acc": 12,
+  "alt": 519,
+  "vel": 0,
+  "batt": 85,
+  "bs": 2,
+  "tst": 1704067200,
+  "bear": 180.5
+}`)
 
 const gpsLoggerHttpBody = computed(() => `{
   "_type": "location",

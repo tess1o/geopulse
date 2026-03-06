@@ -4,6 +4,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
@@ -227,6 +228,36 @@ public class GpsPointService {
         // Map message to entity (mapper handles m/s → km/h conversion)
         UserEntity user = em.getReference(UserEntity.class, userId);
         GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
+
+        // Filter and persist
+        filterAndPersistGpsPoint(entity, config);
+    }
+
+    @Transactional
+    public void saveColotaGpsPoint(ColotaLocationMessage message, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        Instant timestamp = Instant.ofEpochSecond(message.getTst());
+
+        // Check for location-based duplicates if enabled, otherwise use exact timestamp check
+        if (config.isEnableDuplicateDetection()) {
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                ? config.getDuplicateDetectionThresholdMinutes()
+                : globalDuplicateDetectionThresholdMinutes;
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, message.getLat(), message.getLon(), timestamp, sourceType, threshold)) {
+                log.info("Skipping Colota GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                        userId, message.getLat(), message.getLon(), threshold);
+                return;
+            }
+        } else {
+            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                log.info("Skipping duplicate Colota GPS point for user {} at timestamp {}", userId, timestamp);
+                return;
+            }
+        }
+
+        // Map message to entity (mapper handles m/s -> km/h conversion)
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
         // Filter and persist
         filterAndPersistGpsPoint(entity, config);

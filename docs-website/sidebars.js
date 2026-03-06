@@ -64,6 +64,7 @@ const sidebars = {
                 'user-guide/gps-sources/home_assistant',
                 'user-guide/gps-sources/gps_logger',
                 'user-guide/gps-sources/dawarich',
+                'user-guide/gps-sources/colota',
                 'user-guide/gps-sources/data-mirroring',
             ],
         },

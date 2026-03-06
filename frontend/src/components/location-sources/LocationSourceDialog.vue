@@ -69,7 +69,7 @@
       </div>
 
       <template v-if="isEditMode || addWizardStep === 2">
-        <div v-if="formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER'" class="form-section">
+        <div v-if="formData.type === 'OWNTRACKS' || formData.type === 'GPSLOGGER' || formData.type === 'COLOTA'" class="form-section">
           <div v-if="formData.type === 'OWNTRACKS'" class="form-field">
             <label for="connectionType" class="form-label">Connection Type</label>
             <div class="connection-type-selection">
@@ -375,7 +375,7 @@ watch(() => formData.value.type, () => {
 const validateForm = () => {
   formErrors.value = {}
 
-  if (formData.value.type === 'OWNTRACKS' || formData.value.type === 'GPSLOGGER') {
+  if (formData.value.type === 'OWNTRACKS' || formData.value.type === 'GPSLOGGER' || formData.value.type === 'COLOTA') {
     if (isBlank(formData.value.username)) {
       formErrors.value.username = 'Username is required'
     }

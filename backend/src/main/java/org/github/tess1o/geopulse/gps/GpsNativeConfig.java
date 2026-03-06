@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.gps;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichGeometry;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
@@ -41,6 +42,7 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
         GpxTrackPoint.class,
         GpxTrackSegment.class,
         GpxWaypoint.class,
+        ColotaLocationMessage.class,
         OwnTracksLocationMessage.class,
         StatusMessage.class,
         ConfigurationMessage.class,

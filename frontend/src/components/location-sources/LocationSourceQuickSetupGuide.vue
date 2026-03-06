@@ -43,7 +43,8 @@ const QUICK_SETUP_ACCENT_BY_TYPE = Object.freeze({
   GPSLOGGER: 'text-cyan-500',
   OVERLAND: 'text-green-500',
   DAWARICH: 'text-purple-500',
-  HOME_ASSISTANT: 'text-orange-500'
+  HOME_ASSISTANT: 'text-orange-500',
+  COLOTA: 'text-red-500'
 })
 
 const quickSetupOptions = computed(() => (
