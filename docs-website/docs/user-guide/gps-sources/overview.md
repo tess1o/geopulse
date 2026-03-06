@@ -24,6 +24,7 @@ GeoPulse supports a variety of common location tracking apps, including:
 *   **GPSLogger:** A versatile Android app that can be configured to send data via the OwnTracks HTTP format.
 *   **Dawarich:** A privacy-focused tracking app with API key authentication.
 *   **Home Assistant:** Integrate with your smart home automation to send location updates.
+*   **Colota:** Privacy-focused tracker with batch sync and smart tracking support.
 
 During the creation process, you will provide the necessary credentials (e.g., username/password or a token/API key) specific to the chosen third-party system.
 
@@ -64,3 +65,4 @@ For more in-depth guides on each specific integration, please refer to the dedic
 *   [GPSLogger](/docs/user-guide/gps-sources/gps_logger)
 *   [Dawarich](/docs/user-guide/gps-sources/dawarich)
 *   [Home Assistant](/docs/user-guide/gps-sources/home_assistant)
+*   [Colota](/docs/user-guide/gps-sources/colota)

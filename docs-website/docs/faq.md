@@ -26,6 +26,7 @@ GeoPulse supports multiple GPS data sources:
 - **Dawarich** (HTTP)
 - **GPSLogger** (HTTP)
 - **HomeAssistant** (HTTP)
+- **Colota** (HTTP with Basic Auth)
 - **File imports** (GPX, GeoJSON, Google Timeline, CSV, OwnTracks)
 
 Each source can be configured with custom endpoints and authentication in the Location Sources page.

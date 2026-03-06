@@ -7,7 +7,7 @@ description: Introduction to GeoPulse — a self-hosted location tracking and an
 
 **GeoPulse** is a self-hosted location tracking and analysis platform that turns raw GPS data into meaningful insights — all securely stored on your own server.
 
-It integrates with popular tracking apps like **OwnTracks**, **Overland**, **Dawarich**, **GPSLogger**, and **HomeAssistant**, providing real-time synchronization, timeline visualization, and deep analytics.
+It integrates with popular tracking apps like **OwnTracks**, **Overland**, **Dawarich**, **GPSLogger**, **HomeAssistant**, and **Colota**, providing real-time synchronization, timeline visualization, and deep analytics.
 
 ---
 

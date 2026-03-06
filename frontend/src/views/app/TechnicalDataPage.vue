@@ -586,6 +586,7 @@ const sourceTypeOptions = ref([
   { label: 'GPX', value: 'GPX' },
   { label: 'Dawarich', value: 'DAWARICH' },
   { label: 'Home Assistant', value: 'HOME_ASSISTANT' },
+  { label: 'Colota', value: 'COLOTA' },
   { label: 'GeoJSON', value: 'GEOJSON' },
   { label: 'CSV', value: 'CSV' }
 ])
@@ -732,6 +733,7 @@ const getSourceSeverity = (sourceType) => {
     'IMPORT': 'secondary',
     'GOOGLE_TIMELINE': 'danger',
     'DAWARICH' : 'danger',
+    'COLOTA': 'success',
     'GPX': 'contrast'
   }
   return severityMap[sourceType] || 'contrast'

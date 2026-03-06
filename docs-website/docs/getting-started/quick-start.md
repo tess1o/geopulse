@@ -91,6 +91,7 @@ GeoPulse supports multiple GPS tracking apps. Choose the one that works best for
 | **GPS Logger** | Android | Lightweight, battery-efficient | Low |
 | **Dawarich** | iOS, Android | Privacy-focused, API key authentication | Low-Medium |
 | **Home Assistant** | Any | Smart home integration, existing HA users | Varies |
+| **Colota** | Any | Privacy-focused batch updates with smart tracking sync | Low |
 
 ### Quick Setup Process
 
@@ -123,6 +124,7 @@ For step-by-step instructions for each app, see:
 - [GPS Logger Setup Guide](/docs/user-guide/gps-sources/gps_logger)
 - [Dawarich Setup Guide](/docs/user-guide/gps-sources/dawarich)
 - [Home Assistant Integration](/docs/user-guide/gps-sources/home_assistant)
+- [Colota Setup Guide](/docs/user-guide/gps-sources/colota)
 - [All GPS Sources Overview](/docs/user-guide/gps-sources/overview)
 
 :::info Multiple Devices?

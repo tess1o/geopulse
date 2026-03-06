@@ -50,7 +50,7 @@ driving, or traveling. The system also detects data gaps when GPS is unavailable
 
 **Universal GPS Compatibility**
 
-Works with all major GPS tracking apps including OwnTracks, Overland, GPSLogger, Dawarich, and Home Assistant. Import
+Works with all major GPS tracking apps including OwnTracks, Overland, GPSLogger, Dawarich, Home Assistant, and Colota. Import
 your existing location data from Google Timeline, GPX, GeoJSON, OwnTracks, or CSV formats. Real-time sync via HTTP or
 MQTT.
 
@@ -336,6 +336,7 @@ Access the Admin Panel at `/app/admin` (requires ADMIN role)
 - **GPSLogger** (Android) - HTTP
 - **Dawarich** (iOS, Android) - HTTP with API key
 - **Home Assistant** - Integration
+- **Colota** - HTTP with Basic Auth
 
 **[GPS Sources Setup Guides](https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview)**
 
