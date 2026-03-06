@@ -60,7 +60,7 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
                        u.email,
                        u.full_name,
                        u.avatar,
-                       CASE WHEN ufp.share_live_location = true THEN latest_gps.timestamp AT TIME ZONE 'UTC' ELSE NULL END as gps_timestamp,
+                       CASE WHEN ufp.share_live_location = true THEN latest_gps.timestamp ELSE NULL END as gps_timestamp,
                        CASE WHEN ufp.share_live_location = true THEN latest_gps.coordinates ELSE NULL END as coordinates,
                        CASE
                            WHEN ufp.share_live_location = false OR ufp.share_live_location IS NULL THEN NULL

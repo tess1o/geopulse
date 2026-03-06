@@ -17,7 +17,7 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
     private static final int TARGET_DURATION_MINUTES = 240; // 4 hours in minutes
     private static final int TARGET_DURATION_SECONDS = 14400; // 4 hours in seconds
     private static final String LONG_DURATION_QUERY = """
-            SELECT trip_duration, timestamp AT TIME ZONE 'UTC' as timestamp_utc
+            SELECT trip_duration, timestamp as timestamp_utc
             FROM timeline_trips
             WHERE user_id = :userId
             ORDER BY trip_duration DESC

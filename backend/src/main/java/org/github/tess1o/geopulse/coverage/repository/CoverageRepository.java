@@ -146,9 +146,9 @@ public class CoverageRepository {
                                 "  AND gp.coordinates IS NOT NULL " +
                                 "  AND gp.timestamp IS NOT NULL " +
                                 "  AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy) " +
-                                "  AND (CAST(:lowerTs AS timestamp) IS NULL " +
-                                "       OR gp.timestamp > CAST(:lowerTs AS timestamp) " +
-                                "       OR (gp.timestamp = CAST(:lowerTs AS timestamp) " +
+                                "  AND (CAST(:lowerTs AS timestamptz) IS NULL " +
+                                "       OR gp.timestamp > CAST(:lowerTs AS timestamptz) " +
+                                "       OR (gp.timestamp = CAST(:lowerTs AS timestamptz) " +
                                 "           AND gp.id > COALESCE(CAST(:lowerPointId AS bigint), -1))) " +
                                 "ORDER BY gp.timestamp DESC, gp.id DESC " +
                                 "LIMIT 1")
@@ -186,9 +186,9 @@ public class CoverageRepository {
                       AND gp.coordinates IS NOT NULL
                       AND gp.timestamp IS NOT NULL
                       AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy)
-                      AND CAST(:lowerTs AS timestamp) IS NOT NULL
-                      AND (gp.timestamp < CAST(:lowerTs AS timestamp)
-                           OR (gp.timestamp = CAST(:lowerTs AS timestamp)
+                      AND CAST(:lowerTs AS timestamptz) IS NOT NULL
+                      AND (gp.timestamp < CAST(:lowerTs AS timestamptz)
+                           OR (gp.timestamp = CAST(:lowerTs AS timestamptz)
                                AND gp.id <= COALESCE(CAST(:lowerPointId AS bigint), 9223372036854775807)))
                     ORDER BY gp.timestamp DESC, gp.id DESC
                     LIMIT 1
@@ -200,12 +200,12 @@ public class CoverageRepository {
                     FROM gps_points gp
                     WHERE gp.user_id = :userId
                       AND gp.timestamp IS NOT NULL
-                      AND (CAST(:lowerTs AS timestamp) IS NULL
-                           OR gp.timestamp > CAST(:lowerTs AS timestamp)
-                           OR (gp.timestamp = CAST(:lowerTs AS timestamp)
+                      AND (CAST(:lowerTs AS timestamptz) IS NULL
+                           OR gp.timestamp > CAST(:lowerTs AS timestamptz)
+                           OR (gp.timestamp = CAST(:lowerTs AS timestamptz)
                                AND gp.id > COALESCE(CAST(:lowerPointId AS bigint), -1)))
-                      AND (gp.timestamp < CAST(:upperTs AS timestamp)
-                           OR (gp.timestamp = CAST(:upperTs AS timestamp)
+                      AND (gp.timestamp < CAST(:upperTs AS timestamptz)
+                           OR (gp.timestamp = CAST(:upperTs AS timestamptz)
                                AND gp.id <= CAST(:upperPointId AS bigint)))
                       AND gp.coordinates IS NOT NULL
                       AND (gp.accuracy IS NULL OR gp.accuracy <= :maxAccuracy)

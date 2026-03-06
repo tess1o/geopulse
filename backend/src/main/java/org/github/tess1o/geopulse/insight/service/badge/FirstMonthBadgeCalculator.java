@@ -45,7 +45,7 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
 
     private int[] getTrackingDays(UUID userId) {
         String firstDateSql = """
-                SELECT MIN(DATE(timestamp))
+                SELECT MIN(DATE(timestamp AT TIME ZONE 'UTC'))
                 FROM gps_points
                 WHERE user_id = :userId
                 """;
@@ -62,7 +62,7 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
         int totalDays = (int) ChronoUnit.DAYS.between(firstDate, today) + 1;
 
         String trackedDaysSql = """
-                SELECT COUNT(DISTINCT DATE(timestamp))
+                SELECT COUNT(DISTINCT DATE(timestamp AT TIME ZONE 'UTC'))
                 FROM gps_points
                 WHERE user_id = :userId
                 """;
@@ -78,7 +78,7 @@ public class FirstMonthBadgeCalculator implements BadgeCalculator {
 
     private String getTrackingStartDate(UUID userId) {
         String sql = """
-                SELECT MIN(timestamp AT TIME ZONE 'UTC')
+                SELECT MIN(timestamp)
                 FROM gps_points
                 WHERE user_id = :userId
                 """;

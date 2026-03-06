@@ -18,7 +18,7 @@ import java.util.UUID;
 public class TimeOfDayBadgeCalculator {
 
     private static final String TIME_OF_DAY_QUERY = """
-            SELECT t.timestamp AT TIME ZONE 'UTC' as timestamp_utc
+            SELECT t.timestamp as timestamp_utc
             FROM timeline_trips t
             JOIN users u ON t.user_id = u.id
             WHERE t.user_id = :userId

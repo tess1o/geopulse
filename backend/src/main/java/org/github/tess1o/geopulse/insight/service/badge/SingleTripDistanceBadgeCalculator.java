@@ -19,7 +19,7 @@ import java.util.UUID;
 public class SingleTripDistanceBadgeCalculator {
 
     private static final String MAX_DISTANCE_QUERY = """
-            SELECT distance_meters, timestamp AT TIME ZONE 'UTC' as timestamp_utc
+            SELECT distance_meters, timestamp as timestamp_utc
             FROM timeline_trips
             WHERE user_id = :userId
             ORDER BY distance_meters DESC

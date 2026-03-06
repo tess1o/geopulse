@@ -14,7 +14,7 @@ import java.util.UUID;
 public class FirstStepsBadgeCalculator implements BadgeCalculator {
 
     private static final String FIRST_TRIP_QUERY = """
-            SELECT timestamp AT TIME ZONE 'UTC' as timestamp_utc
+            SELECT timestamp as timestamp_utc
             FROM timeline_trips
             WHERE user_id = :userId
             AND distance_meters >= 1000
