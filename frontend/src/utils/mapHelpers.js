@@ -691,17 +691,25 @@ export function createHighlightedTimelineIcon() {
  * Create icon for friend markers
  * @returns {L.DivIcon} - Configured friend icon
  */
-export function createFriendIcon() {
+export function createFriendIcon({
+  color = MARKER_COLORS.FRIEND,
+  gradientEnd = '#F39C12',
+  customStyle = {},
+  icon = 'fas fa-user',
+  ...rest
+} = {}) {
     return createCustomDivIcon({
-        color: MARKER_COLORS.FRIEND,
-        icon: 'fas fa-user', // User icon for friends
+        color,
+        icon,
         size: MARKER_SIZES.LARGE,
-        className: 'custom-marker friend-marker',
+        className: rest.className || 'custom-marker friend-marker',
         shape: 'circle',
         customStyle: {
-            background: `linear-gradient(135deg, ${MARKER_COLORS.FRIEND}, #F39C12)`,
-            border: '3px solid white'
-        }
+            background: `linear-gradient(135deg, ${color}, ${gradientEnd})`,
+            border: '3px solid white',
+            ...(customStyle || {})
+        },
+        ...rest
     })
 }
 

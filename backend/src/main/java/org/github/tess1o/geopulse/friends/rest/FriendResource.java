@@ -21,7 +21,11 @@ import org.github.tess1o.geopulse.shared.api.ApiResponse;
 import org.github.tess1o.geopulse.user.exceptions.NotAuthorizedUserException;
 import org.github.tess1o.geopulse.user.model.UserSearchDTO;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Path("/api/friends")
@@ -146,6 +150,54 @@ public class FriendResource {
             log.error("Failed to get friend location {} for user", friendId, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to retrieve friend location"))
+                    .build();
+        }
+    }
+
+    /**
+     * Get recent location trails for all friends who shared live location.
+     *
+     * @param minutes Optional number of minutes to look back from end time (default 60)
+     * @param endTime Optional end time for the trail window (ISO-8601). Defaults to now.
+     * @return Map of friend ID to list of GPS points in the requested window
+     */
+    @GET
+    @Path("/location/trails")
+    public Response getFriendsLocationTrails(
+            @QueryParam("minutes") @DefaultValue("60") Integer minutes,
+            @QueryParam("endTime") String endTime) {
+        try {
+            if (minutes == null || minutes <= 0 || minutes > 1440) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("minutes must be between 1 and 1440"))
+                        .build();
+            }
+
+            UUID userId = currentUserService.getCurrentUserId();
+            Instant requestedEndTime = endTime != null && !endTime.isBlank()
+                    ? Instant.parse(endTime)
+                    : Instant.now();
+
+            Map<UUID, List<GpsPointEntity>> trails = friendService.getFriendsLocationHistory(userId, minutes, requestedEndTime);
+            Map<String, List<GpsPointPathPointDTO>> response = new LinkedHashMap<>();
+
+            trails.forEach((friendId, points) -> {
+                List<GpsPointPathPointDTO> dtoPoints = points.stream()
+                        .map(gpsPointMapper::toPathPoint)
+                        .toList();
+                response.put(friendId.toString(), dtoPoints);
+            });
+
+            return Response.ok(ApiResponse.success(response)).build();
+        } catch (DateTimeParseException e) {
+            log.warn("Invalid endTime format: {}", endTime, e);
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error("Invalid endTime format. Use ISO-8601 format (e.g., 2023-01-01T00:00:00Z)"))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to get friends location trails", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to retrieve friends location trails"))
                     .build();
         }
     }

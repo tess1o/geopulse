@@ -21,9 +21,13 @@ import org.github.tess1o.geopulse.user.model.UserSearchDTO;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.locationtech.jts.geom.Point;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 @Slf4j
@@ -92,6 +96,33 @@ public class FriendService {
         }
 
         return gpsPointRepository.findByUserIdLatestGpsPoint(friendId);
+    }
+
+    /**
+     * Get recent location history for all friends who shared live location with the current user.
+     *
+     * @param userId            The ID of the requesting user
+     * @param minutes           Window size in minutes
+     * @param requestedEndTime  Optional upper bound for selecting latest points.
+     * @return Map of friend ID to location points in chronological order
+     */
+    public Map<UUID, List<GpsPointEntity>> getFriendsLocationHistory(UUID userId, int minutes, Instant requestedEndTime) {
+        if (minutes <= 0) {
+            return Map.of();
+        }
+
+        Instant fallbackEndTime = requestedEndTime != null ? requestedEndTime : Instant.now();
+        List<GpsPointEntity> points = gpsPointRepository.findFriendTrailPointsForUser(userId, minutes, fallbackEndTime);
+        if (points.isEmpty()) {
+            return Map.of();
+        }
+
+        return points.stream()
+                .collect(Collectors.groupingBy(
+                        gpsPoint -> gpsPoint.getUser().getId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
     }
 
 
