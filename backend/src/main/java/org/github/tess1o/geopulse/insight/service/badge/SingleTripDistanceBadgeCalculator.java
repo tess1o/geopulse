@@ -4,9 +4,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,7 +19,7 @@ import java.util.UUID;
 public class SingleTripDistanceBadgeCalculator {
 
     private static final String MAX_DISTANCE_QUERY = """
-            SELECT distance_meters, timestamp
+            SELECT distance_meters, timestamp as timestamp_utc
             FROM timeline_trips
             WHERE user_id = :userId
             ORDER BY distance_meters DESC
@@ -52,9 +53,15 @@ public class SingleTripDistanceBadgeCalculator {
 
         int maxDistance = ((Number) result.get(0)[0]).intValue();
         int maxDistanceKm = maxDistance / 1000;
-        LocalDateTime maxDate = (LocalDateTime) result.get(0)[1];
-
+        String earnedDate = null;
         int thresholdKm = thresholdMeters / 1000;
+        if (maxDistanceKm >= thresholdKm) {
+            var maxDateInstant = TimestampUtils.getInstantSafe(result.get(0)[1]);
+            if (maxDateInstant != null) {
+                earnedDate = maxDateInstant.atZone(ZoneOffset.UTC).toLocalDate().format(DateTimeFormatter.ISO_DATE);
+            }
+        }
+
 
         return Badge.builder()
                 .id(badgeId)
@@ -65,7 +72,7 @@ public class SingleTripDistanceBadgeCalculator {
                 .current(maxDistanceKm)
                 .progress(maxDistanceKm >= thresholdKm ? 100 : (maxDistanceKm * 100) / thresholdKm)
                 .earned(maxDistanceKm >= thresholdKm)
-                .earnedDate(maxDistanceKm >= thresholdKm ? maxDate.format(DateTimeFormatter.ISO_DATE) : null)
+                .earnedDate(earnedDate)
                 .build();
     }
 }

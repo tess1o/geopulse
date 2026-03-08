@@ -4,9 +4,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.github.tess1o.geopulse.insight.model.Badge;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -16,7 +17,7 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
     private static final int TARGET_DURATION_MINUTES = 240; // 4 hours in minutes
     private static final int TARGET_DURATION_SECONDS = 14400; // 4 hours in seconds
     private static final String LONG_DURATION_QUERY = """
-            SELECT trip_duration, timestamp
+            SELECT trip_duration, timestamp as timestamp_utc
             FROM timeline_trips
             WHERE user_id = :userId
             ORDER BY trip_duration DESC
@@ -55,7 +56,13 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
 
         int maxDurationSeconds = ((Number) result.get(0)[0]).intValue();
         int maxDurationMinutes = maxDurationSeconds / 60;
-        LocalDateTime maxDate = (LocalDateTime) result.get(0)[1];
+        String earnedDate = null;
+        if (maxDurationSeconds >= TARGET_DURATION_SECONDS) {
+            var maxDateInstant = TimestampUtils.getInstantSafe(result.get(0)[1]);
+            if (maxDateInstant != null) {
+                earnedDate = maxDateInstant.atZone(ZoneOffset.UTC).toLocalDate().format(DateTimeFormatter.ISO_DATE);
+            }
+        }
 
         return Badge.builder()
                 .id(getBadgeId())
@@ -66,7 +73,7 @@ public class LongHaulerBadgeCalculator implements BadgeCalculator {
                 .current(maxDurationMinutes)
                 .progress(maxDurationSeconds >= TARGET_DURATION_SECONDS ? 100 : (maxDurationSeconds * 100) / TARGET_DURATION_SECONDS)
                 .earned(maxDurationSeconds >= TARGET_DURATION_SECONDS)
-                .earnedDate(maxDurationSeconds >= TARGET_DURATION_SECONDS ? maxDate.format(DateTimeFormatter.ISO_DATE) : null)
+                .earnedDate(earnedDate)
                 .build();
     }
 }

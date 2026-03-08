@@ -137,7 +137,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
     public List<GPSPoint> findEssentialDataChunk(UUID userId, Instant fromTimestamp,
                                                  int offset, int limit) {
         List<Object[]> results = getEntityManager().createNativeQuery(
-                        "SELECT gp.timestamp, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
+                        "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
                                 "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy " +
                                 "FROM gps_points gp " +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :fromTimestamp " +
@@ -166,7 +166,7 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
      */
     public List<GPSPoint> findEssentialPointsInInterval(UUID userId, Instant start, Instant end) {
         List<Object[]> results = getEntityManager().createNativeQuery(
-                        "SELECT gp.timestamp, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
+                        "SELECT gp.timestamp as timestamp_utc, ST_Y(gp.coordinates) as latitude, ST_X(gp.coordinates) as longitude, " +
                                 "COALESCE(gp.velocity, 0.0) / 3.6 as speed, COALESCE(gp.accuracy, 0.0) as accuracy " +
                                 "FROM gps_points gp " +
                                 "WHERE gp.user_id = :userId AND gp.timestamp >= :start AND gp.timestamp <= :end " +

@@ -7,10 +7,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import org.geolatte.geom.Point;
 import org.github.tess1o.geopulse.friends.model.FriendInfoDTO;
+import org.github.tess1o.geopulse.shared.service.TimestampUtils;
 import org.github.tess1o.geopulse.friends.model.UserFriendEntity;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -138,10 +137,8 @@ public class FriendshipRepository implements PanacheRepository<UserFriendEntity>
         if (value == null) {
             return null;
         }
-        // Convert timestamp correctly - database stores UTC timestamps
-        // Using toLocalDateTime().toInstant(ZoneOffset.UTC) to avoid timezone conversion
-        LocalDateTime timestamp = (LocalDateTime) value;
-        return timestamp.toInstant(ZoneOffset.UTC).toString();
+        var timestamp = TimestampUtils.getInstantSafe(value);
+        return timestamp != null ? timestamp.toString() : null;
     }
 
     private static Double getCoordinate(Object value, int index) {
