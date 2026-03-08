@@ -36,6 +36,23 @@ const friendsService = {
      */
     async getAllFriendPermissions() {
         return apiService.get('/friends/permissions')
+    },
+
+    /**
+     * Get friend location trails for all eligible friends
+     * @param {number} minutes How many minutes to load from the end time
+     * @param {string|null} endTime Optional ISO-8601 end time
+     * @returns {Promise<Object>} API response envelope
+     */
+    async getFriendsLocationTrails(minutes = 60, endTime = null) {
+        const utcEndTime = endTime instanceof Date
+            ? endTime.toISOString()
+            : (typeof endTime === 'string' && endTime.trim() ? endTime.trim() : null)
+
+        return apiService.get('/friends/location/trails', {
+            minutes,
+            ...(utcEndTime ? {endTime: utcEndTime} : {})
+        })
     }
 }
 

@@ -16,6 +16,7 @@ x
           <keep-alive>
             <component
               :is="currentTabComponent"
+              v-bind="currentTabBindings"
               :key="activeTab"
               :ref="activeTab === 'live' ? (el) => friendsMapTabRef = el : undefined"
             />
@@ -80,12 +81,11 @@ x
 </template>
 
 <script setup>
-import {ref, computed, onMounted, onUnmounted, reactive, watch, h} from 'vue'
+import {ref, computed, onMounted, onUnmounted, reactive, watch} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {storeToRefs} from 'pinia'
 import {useToast} from 'primevue/usetoast'
 import {useConfirm} from 'primevue/useconfirm'
-import {useTimezone} from '@/composables/useTimezone'
 import {useLocationStore} from '@/stores/location'
 import {useAuthStore} from '@/stores/auth'
 import AutoComplete from 'primevue/autocomplete'
@@ -103,6 +103,7 @@ import InvitationsTab from '@/components/friends/InvitationsTab.vue'
 
 // Store
 import {useFriendsStore} from '@/stores/friends'
+import friendsService from '@/services/friendsService'
 
 // Composables
 const toast = useToast()
@@ -122,21 +123,11 @@ const {friends, receivedInvites, sentInvitations: sentInvites} = storeToRefs(fri
 
 // Computed: Filter friends based on what they share with current user
 const friendsWithLiveLocation = computed(() => {
-  const filtered = friends.value?.filter(f => f.friendSharesLiveLocation === true) || []
-  console.log(`[Friends Filter] Total friends: ${friends.value?.length || 0}, With live location: ${filtered.length}`)
-  filtered.forEach(f => {
-    console.log(`[Friends Filter]   - ${f.fullName} (${f.email}) shares live location`)
-  })
-  return filtered
+  return friends.value?.filter(f => f.friendSharesLiveLocation === true) || []
 })
 
 const friendsWithTimeline = computed(() => {
-  const filtered = friends.value?.filter(f => f.friendSharesTimeline === true) || []
-  console.log(`[Friends Filter] Total friends: ${friends.value?.length || 0}, With timeline: ${filtered.length}`)
-  filtered.forEach(f => {
-    console.log(`[Friends Filter]   - ${f.fullName} (${f.email}) shares timeline`)
-  })
-  return filtered
+  return friends.value?.filter(f => f.friendSharesTimeline === true) || []
 })
 
 // State
@@ -188,7 +179,7 @@ const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
 })
 
-const currentTabComponent = computed(() => {
+const currentTabConfig = computed(() => {
   const components = {
     live: {
       component: FriendsMapTab,
@@ -197,13 +188,16 @@ const currentTabComponent = computed(() => {
         currentUser: currentUser.value,
         initialFriendEmailToZoom: initialFriendEmailToZoom.value,
         refreshing: refreshing.value,
-        loading: dataLoading.value
+        loading: dataLoading.value,
+        friendTrails: friendLocationTrails.value,
+        showFriendLocationTrails: showFriendLocationTrails.value
       },
       handlers: {
         onInviteFriend: () => { showInviteDialog.value = true },
         onRefresh: refreshFriendsData,
         onFriendLocated: handleFriendLocated,
-        onShowAll: handleShowAll
+        onShowAll: handleShowAll,
+        onToggleTrails: handleToggleFriendLocationTrails
       }
     },
     timeline: {
@@ -244,10 +238,21 @@ const currentTabComponent = computed(() => {
     }
   }
 
-  const tabConfig = components[activeTab.value]
-  if (!tabConfig) return null
+  return components[activeTab.value] || null
+})
 
-  return h(tabConfig.component, { ...tabConfig.props, ...tabConfig.handlers })
+const currentTabComponent = computed(() => {
+  return currentTabConfig.value?.component || null
+})
+
+const currentTabBindings = computed(() => {
+  const config = currentTabConfig.value
+  if (!config) return {}
+
+  return {
+    ...(config.props || {}),
+    ...(config.handlers || {})
+  }
 })
 
 const inviteLoading = ref(false)
@@ -266,6 +271,13 @@ const inviteForm = ref({
   message: ''
 })
 
+const FRIEND_TRAIL_WINDOW_MINUTES = 60
+const FRIEND_TRAIL_TOAST_COOLDOWN_MS = 15000
+const showFriendLocationTrails = ref(true)
+const friendLocationTrails = ref({})
+const lastFriendTrailSuccessToastAt = ref(0)
+const lastFriendTrailErrorToastAt = ref(0)
+
 const inviteErrors = ref({})
 
 // Loading states
@@ -275,6 +287,7 @@ const bulkActionsLoading = reactive({
   rejectAll: false,
   cancelAll: false
 })
+let friendTrailFetchInFlight = false
 
 // Methods
 const handleTabChange = (event) => {
@@ -598,6 +611,15 @@ const handleShowAll = () => {
   });
 }
 
+const handleToggleFriendLocationTrails = (value) => {
+  const shouldShowTrails = typeof value === 'boolean' ? value : !showFriendLocationTrails.value
+  showFriendLocationTrails.value = shouldShowTrails
+
+  if (shouldShowTrails) {
+    showFriendTrailVisibleToast(friendLocationTrails.value)
+  }
+}
+
 const updateCurrentUserFromLastPosition = (lastPosition) => {
   if (!lastPosition) return
 
@@ -610,11 +632,136 @@ const updateCurrentUserFromLastPosition = (lastPosition) => {
   }
 }
 
+const getFriendLocationKey = (friend) => {
+  return friend?.friendId || friend?.userId || friend?.id
+}
+
+const extractTrailsByFriend = (response) => {
+  if (!response) return {}
+
+  const nestedData = response?.data?.data
+  if (nestedData && typeof nestedData === 'object' && !Array.isArray(nestedData)) {
+    return nestedData
+  }
+
+  const directData = response?.data
+  if (directData && typeof directData === 'object' && !Array.isArray(directData)) {
+    return directData
+  }
+
+  if (typeof response === 'object' && !Array.isArray(response)) {
+    return response
+  }
+
+  return {}
+}
+
+const shouldShowFriendTrailToast = (toastType) => {
+  const now = Date.now()
+  if (toastType === 'success') {
+    if (now - lastFriendTrailSuccessToastAt.value < FRIEND_TRAIL_TOAST_COOLDOWN_MS) {
+      return false
+    }
+    lastFriendTrailSuccessToastAt.value = now
+    return true
+  }
+
+  if (now - lastFriendTrailErrorToastAt.value < FRIEND_TRAIL_TOAST_COOLDOWN_MS) {
+    return false
+  }
+  lastFriendTrailErrorToastAt.value = now
+  return true
+}
+
+const showFriendTrailVisibleToast = (trails) => {
+  if (!shouldShowFriendTrailToast('success')) {
+    return
+  }
+
+  const friendIds = Object.keys(trails || {})
+  const friendsWithPoints = friendIds.filter(friendId => Array.isArray(trails[friendId]) && trails[friendId].length > 0)
+  const totalPoints = friendsWithPoints.reduce((sum, friendId) => sum + trails[friendId].length, 0)
+
+  if (totalPoints > 0) {
+    toast.add({
+      severity: 'success',
+      summary: 'Location Trails Enabled',
+      detail: `Showing ${totalPoints} points across ${friendsWithPoints.length} friend trail(s)`,
+      life: 3500
+    })
+    return
+  }
+
+  toast.add({
+    severity: 'info',
+    summary: 'Location Trails Enabled',
+    detail: `No trail points found for the last ${FRIEND_TRAIL_WINDOW_MINUTES} minutes`,
+    life: 3500
+  })
+}
+
+const showFriendTrailErrorToast = (error) => {
+  if (!shouldShowFriendTrailToast('error')) {
+    return
+  }
+
+  const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load friend location trails'
+  toast.add({
+    severity: 'error',
+    summary: 'Trail Loading Failed',
+    detail: errorMessage,
+    life: 5000
+  })
+}
+
+const refreshFriendLocationTrails = async ({ notifyOnError = false } = {}) => {
+  if (!friendsWithLiveLocation.value || friendsWithLiveLocation.value.length === 0) {
+    friendLocationTrails.value = {}
+    return {}
+  }
+
+  if (friendTrailFetchInFlight) {
+    return friendLocationTrails.value
+  }
+
+  friendTrailFetchInFlight = true
+
+  try {
+    const trails = {}
+    friendsWithLiveLocation.value.forEach((friend) => {
+      const key = getFriendLocationKey(friend)
+      if (key) {
+        trails[String(key)] = []
+      }
+    })
+
+    const response = await friendsService.getFriendsLocationTrails(FRIEND_TRAIL_WINDOW_MINUTES)
+    const trailsByFriend = extractTrailsByFriend(response)
+    Object.entries(trailsByFriend).forEach(([friendId, points]) => {
+      trails[String(friendId)] = Array.isArray(points) ? points : []
+    })
+
+    friendLocationTrails.value = trails
+    return trails
+  } catch (error) {
+    if (notifyOnError) {
+      showFriendTrailErrorToast(error)
+    }
+    return friendLocationTrails.value
+  } finally {
+    friendTrailFetchInFlight = false
+  }
+}
+
 const refreshLiveMapData = async () => {
   const [_, lastPosition] = await Promise.all([
     friendsStore.fetchFriends(),
     locationStore.getLastKnownPosition()
   ])
+
+  if (activeTab.value === 'live') {
+    await refreshFriendLocationTrails()
+  }
 
   updateCurrentUserFromLastPosition(lastPosition)
 }
@@ -628,6 +775,10 @@ const refreshFriendsData = async () => {
       friendsStore.refreshAllFriendsData(),
       locationStore.getLastKnownPosition()
     ])
+
+    if (activeTab.value === 'live') {
+      await refreshFriendLocationTrails({ notifyOnError: true })
+    }
 
     updateCurrentUserFromLastPosition(lastPosition)
 
@@ -752,6 +903,10 @@ onMounted(async () => {
 
 watch([activeTab, dataLoading], () => {
   ensureLiveTabPolling()
+
+  if (activeTab.value === 'live' && !dataLoading.value && !refreshing.value && !friendTrailFetchInFlight) {
+    refreshFriendLocationTrails()
+  }
 }, { immediate: true })
 
 onUnmounted(() => {

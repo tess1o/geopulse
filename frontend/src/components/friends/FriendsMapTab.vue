@@ -52,12 +52,15 @@
       <FriendsMap
           ref="friendsMapRef"
           :friends="friendsWithLocation"
+          :friend-trails="friendTrails"
+          :show-friend-location-trails="showFriendLocationTrails"
           :current-user="currentUser"
           :initial-friend-email="initialFriendEmailToZoom"
           :key="`friends-map-${friendsWithLocation.length}`"
           @friend-located="$emit('friend-located', $event)"
           @refresh="$emit('refresh')"
           @show-all="$emit('show-all')"
+          @toggle-trails="$emit('toggle-trails', $event)"
           class="friends-map"
       />
     </div>
@@ -81,6 +84,14 @@ const props = defineProps({
     type: String,
     default: null
   },
+  friendTrails: {
+    type: Object,
+    default: () => ({})
+  },
+  showFriendLocationTrails: {
+    type: Boolean,
+    default: true
+  },
   refreshing: {
     type: Boolean,
     default: false
@@ -91,7 +102,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all'])
+const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all', 'toggle-trails'])
 
 const friendsMapRef = ref(null)
 

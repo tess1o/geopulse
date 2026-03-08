@@ -34,6 +34,54 @@ public class GpsPointRepository implements PanacheRepository<GpsPointEntity> {
                 userId, startTime, endTime);
     }
 
+    /**
+     * Get friend trail points for the current user in one SQL query.
+     * For every friend who shared live location, the window is:
+     * [max(friend timestamp up to endTime) - minutes, max(friend timestamp up to endTime)].
+     *
+     * @param userId  Current user ID
+     * @param minutes Window size in minutes
+     * @param endTime Upper timestamp bound for latest point selection
+     * @return Trail points ordered by user and timestamp
+     */
+    public List<GpsPointEntity> findFriendTrailPointsForUser(UUID userId, int minutes, Instant endTime) {
+        if (userId == null || minutes <= 0 || endTime == null) {
+            return List.of();
+        }
+
+        String sql = """
+                WITH eligible_friends AS (
+                    SELECT uf.friend_id
+                    FROM user_friends uf
+                    JOIN user_friend_permissions ufp
+                      ON ufp.user_id = uf.friend_id
+                     AND ufp.friend_id = uf.user_id
+                    WHERE uf.user_id = :userId
+                      AND ufp.share_live_location = true
+                ),
+                latest_by_friend AS (
+                    SELECT gp.user_id, MAX(gp.timestamp) AS max_timestamp
+                    FROM gps_points gp
+                    JOIN eligible_friends ef ON ef.friend_id = gp.user_id
+                    WHERE gp.timestamp <= :endTime
+                    GROUP BY gp.user_id
+                )
+                SELECT gp.*
+                FROM gps_points gp
+                JOIN latest_by_friend lf ON lf.user_id = gp.user_id
+                WHERE gp.timestamp >= lf.max_timestamp - make_interval(mins => :minutes)
+                  AND gp.timestamp <= lf.max_timestamp
+                ORDER BY gp.user_id ASC, gp.timestamp ASC
+                """;
+
+        return getEntityManager()
+                .createNativeQuery(sql, GpsPointEntity.class)
+                .setParameter("userId", userId)
+                .setParameter("endTime", endTime)
+                .setParameter("minutes", minutes)
+                .getResultList();
+    }
+
     public GpsPointEntity findByUserIdLatestGpsPoint(UUID userId) {
         return find("user.id = ?1 ORDER BY timestamp DESC", userId).firstResult();
     }
