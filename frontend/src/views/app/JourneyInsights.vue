@@ -404,12 +404,20 @@ const getFlagByLocalName = (localName) => {
     return null
   }
 
+  const normalizeName = (value) => value?.toString().trim().toLocaleLowerCase()
+  const targetName = normalizeName(localName)
+  if (!targetName) return null
+
   const country = countriesCache.find(c => {
-    if (!c.name?.nativeName) return false;
-    return Object.values(c.name.nativeName).some(n =>
-        n.common.toLowerCase() === localName.toLowerCase() ||
-        n.official.toLowerCase() === localName.toLowerCase()
-    );
+    const namesToMatch = [
+      c.name?.common,
+      c.name?.official,
+      ...Object.values(c.name?.nativeName || {}).flatMap(n => [n.common, n.official])
+    ]
+      .map(normalizeName)
+      .filter(Boolean)
+
+    return namesToMatch.includes(targetName)
   })
 
   return country?.flags?.png || null
