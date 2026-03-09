@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -52,4 +53,12 @@ public class UpdateTimelineDisplayPreferencesRequest {
      * Enable adaptive simplification based on zoom level.
      */
     private Boolean pathAdaptiveSimplification;
+
+    /**
+     * Default preset used for Timeline, Dashboard and Timeline Reports date range.
+     * Valid values: today, yesterday, lastWeek, lastMonth
+     */
+    @Pattern(regexp = "^(today|yesterday|lastWeek|lastMonth)?$",
+            message = "Default date range preset must be one of: today, yesterday, lastWeek, lastMonth")
+    private String defaultDateRangePreset;
 }

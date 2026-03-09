@@ -26,5 +26,6 @@ public class UserResponse {
     private MeasureUnit measureUnit;
     private String defaultRedirectUrl;
     private String dateFormat;
+    private String defaultDateRangePreset;
     // Don't include passwordHash in responses
 }

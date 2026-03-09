@@ -163,6 +163,7 @@ public class AuthenticationService {
                 .defaultRedirectUrl(user.getDefaultRedirectUrl())
                 .measureUnit(user.getMeasureUnit())
                 .dateFormat(user.getDateFormat())
+                .defaultDateRangePreset(user.getDefaultDateRangePreset())
                 .build();
     }
 

@@ -70,7 +70,7 @@ const authStore = useAuthStore()
 const immichStore = useImmichStore()
 
 // Store refs
-const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, measureUnit, defaultRedirectUrl, dateFormat } = storeToRefs(authStore)
+const { userId, userName, userAvatar, userEmail, hasPassword, userTimezone, customMapTileUrl, measureUnit, defaultRedirectUrl, dateFormat, defaultDateRangePreset } = storeToRefs(authStore)
 const { config: immichConfig, configLoading: immichLoading } = storeToRefs(immichStore)
 
 // State
@@ -88,10 +88,12 @@ const aiSettings = ref({
 
 // Timeline Display Preferences state
 const timelineDisplayPrefs = ref({
+  customMapTileUrl: customMapTileUrl.value || '',
   pathSimplificationEnabled: true,
   pathSimplificationTolerance: 15.0,
   pathMaxPoints: 0,
-  pathAdaptiveSimplification: true
+  pathAdaptiveSimplification: true,
+  defaultDateRangePreset: defaultDateRangePreset.value || ''
 })
 
 // Tab configuration
@@ -374,7 +376,8 @@ const loadTimelineDisplayPreferences = async () => {
         pathSimplificationEnabled: data.pathSimplificationEnabled ?? true,
         pathSimplificationTolerance: data.pathSimplificationTolerance ?? 15.0,
         pathMaxPoints: data.pathMaxPoints ?? 0,
-        pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true
+        pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
+        defaultDateRangePreset: data.defaultDateRangePreset || ''
       }
     }
   } catch (error) {

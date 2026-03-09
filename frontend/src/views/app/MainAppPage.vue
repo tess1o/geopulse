@@ -49,6 +49,8 @@ import LocationSearchBar from '@/components/search/LocationSearchBar.vue'
 
 // Stores
 import { useDateRangeStore } from '@/stores/dateRange'
+import { useAuthStore } from '@/stores/auth'
+import { readUserSnapshot } from '@/utils/authSnapshotStorage'
 
 // Composables
 const route = useRoute()
@@ -57,7 +59,9 @@ const timezone = useTimezone()
 
 // Pinia store
 const dateRangeStore = useDateRangeStore()
+const authStore = useAuthStore()
 const { dateRange: dates } = storeToRefs(dateRangeStore)
+const { defaultDateRangePreset } = storeToRefs(authStore)
 
 // Reactive state
 const activeIndex = ref(0)
@@ -117,13 +121,29 @@ const showShareDialog = () => {
   shareDialogVisible.value = true
 }
 
+const getRangeForDefaultPreset = () => {
+  const preset = defaultDateRangePreset.value || readUserSnapshot().defaultDateRangePreset || ''
+
+  switch (preset) {
+    case 'yesterday':
+      return timezone.getYesterdayRangeUtc()
+    case 'lastWeek':
+      return timezone.getLastWeekRange()
+    case 'lastMonth':
+      return timezone.getLastMonthRange()
+    case 'today':
+    default:
+      return timezone.getTodayRangeUtc()
+  }
+}
+
 const initializeDateRangeFromQuery = () => {
-  const todayRange = timezone.getTodayRangeUtc();
+  const defaultRange = getRangeForDefaultPreset()
   const startFromQuery = timezone.parseUrlDate(route.query.start, false);
   const endFromQuery = timezone.parseUrlDate(route.query.end, true);
 
-  const startDate = timezone.isValidDate(startFromQuery) ? startFromQuery : todayRange.start;
-  const endDate = timezone.isValidDate(endFromQuery) ? endFromQuery : todayRange.end;
+  const startDate = timezone.isValidDate(startFromQuery) ? startFromQuery : defaultRange.start;
+  const endDate = timezone.isValidDate(endFromQuery) ? endFromQuery : defaultRange.end;
 
   dateRangeStore.setDateRange([startDate, endDate]);
 }

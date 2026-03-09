@@ -43,6 +43,7 @@ function normalizeUser(source) {
         measureUnit: raw.measureUnit || 'METRIC',
         defaultRedirectUrl: raw.defaultRedirectUrl || '',
         dateFormat: raw.dateFormat || 'MDY',
+        defaultDateRangePreset: raw.defaultDateRangePreset || '',
         role: raw.role || 'USER'
     }
 }
@@ -67,6 +68,7 @@ export const useAuthStore = defineStore('auth', {
         measureUnit: (state) => state.user?.measureUnit || 'METRIC',
         defaultRedirectUrl: (state) => state.user?.defaultRedirectUrl || '',
         dateFormat: (state) => state.user?.dateFormat || 'MDY',
+        defaultDateRangePreset: (state) => state.user?.defaultDateRangePreset || '',
         userRole: (state) => state.user?.role || 'USER',
         isAdmin: (state) => state.user?.role === 'ADMIN',
     },
@@ -176,8 +178,20 @@ export const useAuthStore = defineStore('auth', {
             const response = await apiService.put('/users/preferences/timeline/display', displayPreferences)
             const updatedPreferences = response?.data || null
 
-            if (updatedPreferences && Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapTileUrl')) {
-                this.patchCurrentUser({customMapTileUrl: updatedPreferences.customMapTileUrl || ''})
+            if (updatedPreferences) {
+                const userPatch = {}
+
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'customMapTileUrl')) {
+                    userPatch.customMapTileUrl = updatedPreferences.customMapTileUrl || ''
+                }
+
+                if (Object.prototype.hasOwnProperty.call(updatedPreferences, 'defaultDateRangePreset')) {
+                    userPatch.defaultDateRangePreset = updatedPreferences.defaultDateRangePreset || ''
+                }
+
+                if (Object.keys(userPatch).length > 0) {
+                    this.patchCurrentUser(userPatch)
+                }
             }
 
             return updatedPreferences

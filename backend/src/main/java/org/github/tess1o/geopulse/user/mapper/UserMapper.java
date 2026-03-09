@@ -33,6 +33,7 @@ public class UserMapper {
                 .measureUnit(entity.getMeasureUnit())
                 .defaultRedirectUrl(entity.getDefaultRedirectUrl())
                 .dateFormat(entity.getDateFormat())
+                .defaultDateRangePreset(entity.getDefaultDateRangePreset())
                 .build();
     }
 }

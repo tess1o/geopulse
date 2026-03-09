@@ -50,4 +50,11 @@ public class TimelineDisplayPreferences {
      * Default: true
      */
     private Boolean pathAdaptiveSimplification;
+
+    /**
+     * Default date range preset for Timeline, Dashboard and Timeline Reports pages.
+     * Allowed values: today, yesterday, lastWeek, lastMonth
+     * Default: null (falls back to today/today behavior)
+     */
+    private String defaultDateRangePreset;
 }

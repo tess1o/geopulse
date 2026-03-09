@@ -44,6 +44,31 @@
           </div>
         </div>
 
+        <!-- Default Date Range Section -->
+        <div class="section">
+          <h3 class="section-title">Default Date Range</h3>
+          <p class="section-description">
+            Choose the preset used by default on Timeline, Dashboard, and Timeline Reports
+          </p>
+
+          <div class="form-field">
+            <label for="defaultDateRangePreset" class="form-label">
+              Default Date Range Preset
+              <i class="pi pi-info-circle" v-tooltip.right="'If not set, GeoPulse keeps the current default behavior (Today).'"></i>
+            </label>
+            <Dropdown
+              id="defaultDateRangePreset"
+              v-model="form.defaultDateRangePreset"
+              :options="defaultDateRangePresetOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Use app default (Today)"
+              class="w-full"
+              showClear
+            />
+          </div>
+        </div>
+
         <!-- GPS Path Simplification Section -->
         <div class="section">
           <h3 class="section-title">GPS Path Simplification</h3>
@@ -155,10 +180,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import Dropdown from 'primevue/dropdown'
 import ToggleSwitch from 'primevue/toggleswitch'
 import SettingCard from '@/components/ui/forms/SettingCard.vue'
 import SliderControl from '@/components/ui/forms/SliderControl.vue'
@@ -175,6 +201,7 @@ const emit = defineEmits(['save'])
 // Form state
 const form = ref({
   customMapTileUrl: '',
+  defaultDateRangePreset: '',
   pathSimplificationEnabled: true,
   pathSimplificationTolerance: 15.0,
   pathMaxPoints: 0,
@@ -186,6 +213,12 @@ const errors = ref({
 })
 
 const loading = ref(false)
+const defaultDateRangePresetOptions = [
+  { label: 'Today', value: 'today' },
+  { label: 'Yesterday', value: 'yesterday' },
+  { label: 'Last 7 days', value: 'lastWeek' },
+  { label: 'Last 30 days', value: 'lastMonth' }
+]
 
 // Initialize form from props
 watch(
@@ -194,6 +227,7 @@ watch(
     if (newPrefs) {
       form.value = {
         customMapTileUrl: newPrefs.customMapTileUrl || '',
+        defaultDateRangePreset: newPrefs.defaultDateRangePreset || '',
         pathSimplificationEnabled: newPrefs.pathSimplificationEnabled ?? true,
         pathSimplificationTolerance: newPrefs.pathSimplificationTolerance ?? 15.0,
         pathMaxPoints: newPrefs.pathMaxPoints ?? 0,
@@ -255,6 +289,7 @@ const handleSubmit = async () => {
     // Save all display preferences including custom map tile URL
     emit('save', {
       customMapTileUrl: form.value.customMapTileUrl,
+      defaultDateRangePreset: form.value.defaultDateRangePreset ?? '',
       pathSimplificationEnabled: form.value.pathSimplificationEnabled,
       pathSimplificationTolerance: form.value.pathSimplificationTolerance,
       pathMaxPoints: form.value.pathMaxPoints,
@@ -268,6 +303,7 @@ const handleSubmit = async () => {
 const handleReset = () => {
   form.value = {
     customMapTileUrl: '',
+    defaultDateRangePreset: '',
     pathSimplificationEnabled: true,
     pathSimplificationTolerance: 15.0,
     pathMaxPoints: 0,

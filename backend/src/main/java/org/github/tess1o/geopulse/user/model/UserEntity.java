@@ -104,6 +104,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "date_format", length = 16)
     private String dateFormat;
 
+    @Size(max = 32, message = "Default date range preset cannot exceed 32 characters")
+    @Column(name = "default_date_range_preset", length = 32)
+    private String defaultDateRangePreset;
+
     @Column(name = "coverage_enabled", nullable = false)
     @Builder.Default
     private boolean coverageEnabled = false;

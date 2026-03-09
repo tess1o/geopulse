@@ -23,6 +23,7 @@ public class BrowserAuthResponseMapper {
                 .measureUnit(authResponse.getMeasureUnit())
                 .defaultRedirectUrl(authResponse.getDefaultRedirectUrl())
                 .dateFormat(authResponse.getDateFormat())
+                .defaultDateRangePreset(authResponse.getDefaultDateRangePreset())
                 .build();
 
         return BrowserAuthResponse.builder()

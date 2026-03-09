@@ -29,4 +29,5 @@ public class AuthResponse {
     private MeasureUnit measureUnit;
     private String defaultRedirectUrl;
     private String dateFormat;
+    private String defaultDateRangePreset;
 }

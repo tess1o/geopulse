@@ -17,6 +17,7 @@ import org.github.tess1o.geopulse.user.exceptions.UserNotFoundException;
 import org.github.tess1o.geopulse.user.model.*;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -236,6 +237,21 @@ public class UserService {
         return switch (normalized) {
             case "MDY", "DMY", "YMD" -> normalized;
             default -> throw new IllegalArgumentException("Invalid date format. Allowed values: MDY, DMY, YMD");
+        };
+    }
+
+    private String validateDefaultDateRangePreset(String defaultDateRangePreset) {
+        if (defaultDateRangePreset == null || defaultDateRangePreset.trim().isEmpty()) {
+            return null;
+        }
+
+        return switch (defaultDateRangePreset.trim().toLowerCase(Locale.ENGLISH)) {
+            case "today" -> "today";
+            case "yesterday" -> "yesterday";
+            case "lastweek" -> "lastWeek";
+            case "lastmonth" -> "lastMonth";
+            default -> throw new IllegalArgumentException(
+                    "Invalid default date range preset. Allowed values: today, yesterday, lastWeek, lastMonth");
         };
     }
 
@@ -592,6 +608,9 @@ public class UserService {
         if (request.getPathAdaptiveSimplification() != null) {
             user.setTimelineDisplayPathAdaptiveSimplification(request.getPathAdaptiveSimplification());
         }
+        if (request.getDefaultDateRangePreset() != null) {
+            user.setDefaultDateRangePreset(validateDefaultDateRangePreset(request.getDefaultDateRangePreset()));
+        }
 
         log.info("Updated timeline display preferences for user {} (no regeneration required)", userId);
     }
@@ -618,6 +637,7 @@ public class UserService {
                         ? user.getTimelineDisplayPathMaxPoints() : 0)
                 .pathAdaptiveSimplification(user.getTimelineDisplayPathAdaptiveSimplification() != null
                         ? user.getTimelineDisplayPathAdaptiveSimplification() : true)
+                .defaultDateRangePreset(user.getDefaultDateRangePreset())
                 .build();
     }
 }

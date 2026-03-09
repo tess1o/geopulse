@@ -23,6 +23,7 @@ export function writeUserSnapshot(user) {
         measureUnit: user.measureUnit,
         defaultRedirectUrl: user.defaultRedirectUrl,
         dateFormat: user.dateFormat,
+        defaultDateRangePreset: user.defaultDateRangePreset,
         role: user.role
     }))
 }
