@@ -61,6 +61,7 @@ const sidebars = {
                 'user-guide/gps-sources/overview',
                 'user-guide/gps-sources/owntracks',
                 'user-guide/gps-sources/overland',
+                'user-guide/gps-sources/traccar',
                 'user-guide/gps-sources/home_assistant',
                 'user-guide/gps-sources/gps_logger',
                 'user-guide/gps-sources/dawarich',

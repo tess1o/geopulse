@@ -18,6 +18,12 @@ export const LOCATION_SOURCE_OPTIONS = Object.freeze([
     icon: 'pi pi-map'
   },
   {
+    value: 'TRACCAR',
+    label: 'Traccar',
+    description: 'Traccar Position Forwarding (JSON) with Bearer token authentication',
+    icon: 'pi pi-car'
+  },
+  {
     value: 'DAWARICH',
     label: 'Dawarich',
     description: 'Privacy-focused location tracking with API key authentication',
@@ -64,6 +70,9 @@ export const getLocationSourceIdentifier = (source) => {
     return source.username || 'No username'
   }
   if (source.type === 'OVERLAND') {
+    return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
+  }
+  if (source.type === 'TRACCAR') {
     return source.token ? `Token: ${source.token.substring(0, 8)}...` : 'No token'
   }
   if (source.type === 'DAWARICH') {

@@ -138,6 +138,19 @@
           </div>
         </div>
 
+        <div v-else-if="formData.type === 'TRACCAR'" class="form-section">
+          <div class="form-field">
+            <label for="location-source-token-traccar" class="form-label">Forwarding Token</label>
+            <InputText
+              id="location-source-token-traccar"
+              v-model="formData.token"
+              placeholder="Enter forwarding token"
+              :invalid="!!formErrors.token"
+            />
+            <small v-if="formErrors.token" class="error-message">{{ formErrors.token }}</small>
+          </div>
+        </div>
+
         <div v-else-if="formData.type === 'DAWARICH'" class="form-section">
           <div class="form-field">
             <label for="location-source-token-dawarich" class="form-label">API Key</label>
@@ -385,6 +398,10 @@ const validateForm = () => {
   } else if (formData.value.type === 'OVERLAND') {
     if (isBlank(formData.value.token)) {
       formErrors.value.token = 'Access token is required'
+    }
+  } else if (formData.value.type === 'TRACCAR') {
+    if (isBlank(formData.value.token)) {
+      formErrors.value.token = 'Forwarding token is required'
     }
   } else if (formData.value.type === 'DAWARICH') {
     if (isBlank(formData.value.token)) {

@@ -8,25 +8,21 @@ import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.Optional;
 
-/**
- * Authenticator for Overland GPS integration.
- * Uses Bearer Token authentication.
- */
 @ApplicationScoped
 @Slf4j
-public class OverlandAuthenticator extends AbstractGpsIntegrationAuthenticator {
-    
+public class TraccarAuthenticator extends AbstractGpsIntegrationAuthenticator {
+
     @Override
     public GpsSourceType getSupportedSourceType() {
-        return GpsSourceType.OVERLAND;
+        return GpsSourceType.TRACCAR;
     }
-    
+
     @Override
     protected Optional<GpsSourceConfigEntity> findConfig(String authHeader) {
         String token = extractBearerToken(authHeader);
-        return configProvider.findByTokenAndSourceType(token, GpsSourceType.OVERLAND);
+        return configProvider.findByTokenAndSourceType(token, GpsSourceType.TRACCAR);
     }
-    
+
     @Override
     protected void validateCredentials(String authHeader, GpsSourceConfigEntity config) throws InvalidPasswordException {
         String token = extractBearerToken(authHeader);
@@ -34,14 +30,14 @@ public class OverlandAuthenticator extends AbstractGpsIntegrationAuthenticator {
             throw new InvalidPasswordException("Invalid token");
         }
     }
-    
+
     @Override
     protected void logConfigNotFound() {
-        log.error("No GPS source config found for Overland token");
+        log.error("No GPS source config found for Traccar token");
     }
-    
+
     @Override
     protected void logAuthenticationFailed(Exception e) {
-        log.error("Overland authentication failed", e);
+        log.error("Traccar authentication failed", e);
     }
 }

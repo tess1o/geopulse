@@ -21,6 +21,7 @@ GeoPulse supports a variety of common location tracking apps, including:
 
 *   **OwnTracks:** A popular open-source solution that can send data via HTTP or MQTT.
 *   **Overland:** A simple HTTP endpoint with token-based authentication.
+*   **Traccar:** Position Forwarding integration using JSON payloads and bearer token auth.
 *   **GPSLogger:** A versatile Android app that can be configured to send data via the OwnTracks HTTP format.
 *   **Dawarich:** A privacy-focused tracking app with API key authentication.
 *   **Home Assistant:** Integrate with your smart home automation to send location updates.
@@ -62,6 +63,7 @@ Below your configured sources, a dynamic **Setup Instructions** section appears.
 For more in-depth guides on each specific integration, please refer to the dedicated documentation pages:
 *   [OwnTracks](/docs/user-guide/gps-sources/owntracks)
 *   [Overland](/docs/user-guide/gps-sources/overland)
+*   [Traccar](/docs/user-guide/gps-sources/traccar)
 *   [GPSLogger](/docs/user-guide/gps-sources/gps_logger)
 *   [Dawarich](/docs/user-guide/gps-sources/dawarich)
 *   [Home Assistant](/docs/user-guide/gps-sources/home_assistant)

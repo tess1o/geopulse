@@ -12,7 +12,7 @@
               <h1 class="page-title">Location Data Sources</h1>
               <p class="page-description">
                 Configure how GeoPulse receives your location data from different tracking apps.
-                Set up OwnTracks, GPSLogger, Overland, Dawarich, Home Assistant, or Colota to automatically sync your location history.
+                Set up OwnTracks, GPSLogger, Overland, Traccar, Dawarich, Home Assistant, or Colota to automatically sync your location history.
               </p>
             </div>
             <Button 
@@ -47,6 +47,7 @@
           :has-own-tracks-http="hasOwnTracksHttp"
           :has-own-tracks-mqtt="hasOwnTracksMqtt"
           :has-overland-source="hasOverlandSource"
+          :has-traccar-source="hasTraccarSource"
           :has-gps-logger-source="hasGpsLoggerSource"
           :has-dawarich-source="hasDawarichSource"
           :has-home-assistant-source="hasHomeAssistantSource"
@@ -122,6 +123,10 @@ const hasOverlandSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'OVERLAND')
 )
 
+const hasTraccarSource = computed(() =>
+  gpsSourceConfigs.value.some(source => source.type === 'TRACCAR')
+)
+
 const hasGpsLoggerSource = computed(() =>
   gpsSourceConfigs.value.some(source => source.type === 'GPSLOGGER')
 )
@@ -192,6 +197,13 @@ const tabItems = computed(() => {
       label: 'Overland', 
       icon: 'pi pi-map',
       key: 'overland'
+    })
+  }
+  if (hasTraccarSource.value) {
+    tabs.push({
+      label: 'Traccar',
+      icon: 'pi pi-car',
+      key: 'traccar'
     })
   }
   if (hasGpsLoggerSource.value) {
@@ -313,7 +325,7 @@ const handleLocationSourceDialogSubmit = async ({ isEditMode, editingSource, for
           formData.duplicateDetectionThresholdMinutes
         )
       } else {
-        // For Overland, Dawarich, and Home Assistant - only send token, no username/password
+        // Token-only sources (Overland, Traccar, Dawarich, Home Assistant).
         await gpsStore.addGpsConfigSource(
           formData.type,
           null, // username not used

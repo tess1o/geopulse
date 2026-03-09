@@ -5,6 +5,9 @@ import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMe
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantLocation;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarDevice;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointDTO;
@@ -118,6 +121,47 @@ public class GpsPointMapper {
         entity.setCreatedAt(Instant.now());
 
         return entity;
+    }
+
+    public GpsPointEntity toEntity(TraccarPositionData message, UserEntity userId, GpsSourceType sourceType) {
+        TraccarPosition position = message.getPosition();
+        TraccarDevice device = message.getDevice();
+
+        GpsPointEntity entity = new GpsPointEntity();
+        entity.setDeviceId(resolveDeviceId(device, position));
+        entity.setUser(userId);
+        entity.setCoordinates(GeoUtils.createPoint(position.getLongitude(), position.getLatitude()));
+        entity.setTimestamp(position.resolveTimestamp());
+        entity.setAccuracy(position.getAccuracy());
+        entity.setBattery(position.resolveBatteryLevel());
+
+        // Traccar Position model stores speed in knots.
+        Double speedKnots = position.getSpeed();
+        entity.setVelocity(speedKnots != null ? speedKnots * 1.852 : null);
+
+        entity.setAltitude(position.getAltitude());
+        entity.setSourceType(sourceType);
+        entity.setCreatedAt(Instant.now());
+
+        return entity;
+    }
+
+    private String resolveDeviceId(TraccarDevice device, TraccarPosition position) {
+        if (device != null) {
+            if (device.getUniqueId() != null && !device.getUniqueId().isBlank()) {
+                return device.getUniqueId();
+            }
+            if (device.getName() != null && !device.getName().isBlank()) {
+                return device.getName();
+            }
+            if (device.getId() != null) {
+                return "traccar-" + device.getId();
+            }
+        }
+        if (position != null && position.getDeviceId() != null) {
+            return "traccar-" + position.getDeviceId();
+        }
+        return "Traccar";
     }
 
     /**
