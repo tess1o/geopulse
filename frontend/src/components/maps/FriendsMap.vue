@@ -45,6 +45,15 @@
                       class="custom-map-control-button">
                 <i class="pi pi-filter-slash"></i>
               </button>
+              <button
+                  @click="toggleFriendLocationTrails"
+                  :title="showFriendLocationTrails ? 'Hide location trails' : 'Show location trails'"
+                  :aria-pressed="showFriendLocationTrails"
+                  class="custom-map-control-button"
+                  :class="{ 'custom-map-control-button--active': showFriendLocationTrails }"
+              >
+                <i :class="showFriendLocationTrails ? 'pi pi-sitemap' : 'pi pi-eye-slash'"></i>
+              </button>
             </div>
           </div>
         </template>
@@ -56,6 +65,8 @@
               ref="friendsLayerRef"
               :map="map"
               :friends-data="processedFriendsData"
+              :friend-trails="friendTrails"
+              :show-trails="showFriendLocationTrails"
               :visible="true"
               @friend-click="handleFriendClick"
               @friend-hover="handleFriendHover"
@@ -87,10 +98,18 @@ import {useFriendsStore} from '@/stores/friends'
 const props = defineProps({
   friends: Array,
   currentUser: Object,
-  initialFriendEmail: String
+  initialFriendEmail: String,
+  friendTrails: {
+    type: Object,
+    default: () => ({})
+  },
+  showFriendLocationTrails: {
+    type: Boolean,
+    default: true
+  }
 })
 
-const emit = defineEmits(['friend-located', 'refresh', 'show-all'])
+const emit = defineEmits(['friend-located', 'refresh', 'show-all', 'toggle-trails'])
 
 // Pinia store
 const friendsStore = useFriendsStore()
@@ -101,9 +120,59 @@ const toast = useToast()
 const processedFriendsData = computed(() => {
   if (!props.friends) return []
 
-  // Debug logging
   return processFriendsForMap(props.friends)
 })
+
+const FRIEND_TRAIL_COLOR_PALETTE = [
+  '#E53935',
+  '#43A047',
+  '#1E88E5',
+  '#FDD835',
+  '#8E24AA',
+  '#F57C00',
+  '#00ACC1',
+  '#3949AB',
+  '#6D4C41',
+  '#546E7A',
+  '#00897B',
+  '#6A1B9A'
+]
+
+const getFriendLocationKey = (friend) => {
+  return friend?.friendId || friend?.userId || friend?.id || friend?.email
+}
+
+const getColorByFriend = (friend, index) => {
+  const key = String(getFriendLocationKey(friend) || `friend-${index}`)
+  const hash = key
+      .split('')
+      .reduce((acc, char) => (acc * 31 + char.charCodeAt(0)) % FRIEND_TRAIL_COLOR_PALETTE.length, 0)
+
+  return FRIEND_TRAIL_COLOR_PALETTE[hash]
+}
+
+const getFriendTrailPoints = (friend) => {
+  const key = getFriendLocationKey(friend)
+  const trail = props.friendTrails?.[key] || props.friendTrails?.[String(key)] || []
+  if (!Array.isArray(trail)) return []
+
+  return trail
+      .map(point => {
+        const latitude = point?.latitude
+        const longitude = point?.longitude
+
+        if (typeof latitude !== 'number' || typeof longitude !== 'number' || Number.isNaN(latitude) || Number.isNaN(longitude)) {
+          return null
+        }
+
+        return {
+          latitude,
+          longitude,
+          timestamp: point?.timestamp
+        }
+      })
+      .filter(Boolean)
+}
 
 const dataBounds = computed(() => {
   const bounds = []
@@ -235,6 +304,11 @@ const resetFriendSelections = () => {
   emit('show-all')
 }
 
+const toggleFriendLocationTrails = () => {
+  const nextState = !props.showFriendLocationTrails
+  emit('toggle-trails', nextState)
+}
+
 const zoomToFriend = (friend) => {
   if (!map.value) {
     toast.add({
@@ -271,14 +345,17 @@ const processFriendsForMap = (friends) => {
 
   return friends
       .filter(friend => friend.lastLatitude && friend.lastLongitude)
-      .map(friend => ({
+      .map((friend, index) => ({
         ...friend,
         latitude: friend.lastLatitude,
         longitude: friend.lastLongitude,
-        id: friend.id || friend.email,
+        id: getFriendLocationKey(friend),
+        friendId: getFriendLocationKey(friend),
         name: friend.fullName || friend.email,
         avatar: friend.avatar,
-        lastSeen: friend.lastSeen
+        lastSeen: friend.lastSeen,
+        trailPoints: getFriendTrailPoints(friend),
+        trailColor: getColorByFriend(friend, index)
       }))
 }
 
@@ -338,7 +415,6 @@ watch(() => props.initialFriendEmail, (newEmail) => {
 onMounted(async () => {
   // Load initial data
   if (props.friends?.length === 0) {
-    console.log('Loading initial friend locations...', props.friends.length)
     await loadFriendLocations()
   }
 
@@ -447,6 +523,11 @@ export default {
 .custom-map-control-button i {
   font-size: 1.2rem;
   color: white;
+}
+
+.custom-map-control-button--active {
+  background-color: #0f766e;
+  border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 /* Mobile responsiveness */
