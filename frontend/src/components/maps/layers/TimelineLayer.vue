@@ -53,6 +53,194 @@ const markerClusterGroup = ref(null)
 // Computed
 const hasTimelineData = computed(() => props.timelineData && props.timelineData.length > 0)
 
+const isFiniteCoordinate = (value) => typeof value === 'number' && Number.isFinite(value)
+
+const hasValidCoordinates = (item) => (
+  item &&
+  isFiniteCoordinate(item.latitude) &&
+  isFiniteCoordinate(item.longitude)
+)
+
+const getCoordinateKey = (latitude, longitude) => `${latitude}|${longitude}`
+
+const isSameTimelineItem = (left, right) => {
+  if (!left || !right) return false
+
+  if (left.id && right.id) {
+    return left.id === right.id
+  }
+
+  return Boolean(
+    left.timestamp &&
+    right.timestamp &&
+    left.timestamp === right.timestamp &&
+    left.latitude === right.latitude &&
+    left.longitude === right.longitude
+  )
+}
+
+const createStackTimelineIcon = (count, isHighlighted = false) => {
+  const markerClass = isHighlighted
+    ? 'timeline-stack-marker timeline-stack-marker-highlighted'
+    : 'timeline-stack-marker'
+
+  return L.divIcon({
+    html: `<div class="${markerClass}"><span>${count}</span></div>`,
+    className: 'timeline-stack-icon',
+    iconSize: L.point(isHighlighted ? 34 : 30, isHighlighted ? 34 : 30),
+    iconAnchor: L.point(isHighlighted ? 17 : 15, isHighlighted ? 17 : 15)
+  })
+}
+
+const escapeHtml = (value) => {
+  if (value === null || value === undefined) return ''
+
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+const stackMovementTypeMap = {
+  WALK: { label: 'Walk', icon: '🚶' },
+  BICYCLE: { label: 'Bicycle', icon: '🚴' },
+  RUNNING: { label: 'Running', icon: '🏃' },
+  CAR: { label: 'Car', icon: '🚗' },
+  TRAIN: { label: 'Train', icon: '🚊' },
+  FLIGHT: { label: 'Flight', icon: '✈️' },
+  UNKNOWN: { label: 'Unknown', icon: '❓' }
+}
+
+const getMovementTypeDisplay = (movementType) => {
+  return stackMovementTypeMap[movementType] || { label: movementType || 'Unknown', icon: '❓' }
+}
+
+const getStackItemTypeClass = (item) => {
+  if (item.type === 'stay') return 'stack-item--stay'
+  if (item.type === 'trip') return 'stack-item--trip'
+  if (item.type === 'dataGap') return 'stack-item--datagap'
+  return 'stack-item--default'
+}
+
+const getStackItemTitle = (item) => {
+  if (item.type === 'stay') {
+    return `🏠 Stayed at ${item.locationName || item.address || 'Unknown place'}`
+  }
+
+  if (item.type === 'trip') {
+    return '🔄 Transition to new place'
+  }
+
+  if (item.type === 'dataGap') {
+    return '⚠️ Data Gap'
+  }
+
+  return 'Timeline event'
+}
+
+const getStackItemSubtitle = (item) => {
+  if (item.type === 'trip') {
+    const movement = getMovementTypeDisplay(item.movementType)
+    const isManual = item.movementTypeSource === 'MANUAL' ? ' (Manual)' : ''
+    return `🚦 Movement: ${movement.icon} ${movement.label}${isManual}`
+  }
+
+  return ''
+}
+
+const getStackItemMeta = (item) => {
+  if (item.type === 'stay' && item.stayDuration) {
+    return `For ${formatDuration(item.stayDuration)}`
+  }
+
+  if (item.type === 'trip') {
+    const duration = item.tripDuration ? `Duration: ${formatDuration(item.tripDuration)}` : null
+    const distanceValue = item.distanceMeters ?? item.totalDistanceMeters
+    const distance = distanceValue ? `Distance: ${(distanceValue / 1000).toFixed(1)} km` : null
+    return [duration, distance].filter(Boolean).join(' | ')
+  }
+
+  return ''
+}
+
+const createStackPopupElement = (marker, markerItems) => {
+  const popupRoot = document.createElement('div')
+  popupRoot.className = 'timeline-stack-popup'
+
+  const header = document.createElement('div')
+  header.className = 'stack-popup-header'
+  header.textContent = `${markerItems.length} events at this location`
+  popupRoot.appendChild(header)
+
+  const list = document.createElement('div')
+  list.className = 'stack-popup-list'
+  popupRoot.appendChild(list)
+
+  markerItems.forEach(({ item, index }, stackIndex) => {
+    const timestamp = item.timestamp || item.startTime
+    const dateStr = timestamp
+      ? `${timezone.formatDateDisplay(timestamp)} ${timezone.format(timestamp, 'HH:mm:ss')}`
+      : 'Unknown time'
+
+    const typeClass = getStackItemTypeClass(item)
+    const title = escapeHtml(getStackItemTitle(item))
+    const subtitle = escapeHtml(getStackItemSubtitle(item))
+    const meta = escapeHtml(getStackItemMeta(item))
+
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = `timeline-stack-select ${typeClass}`
+    button.dataset.stackItemIndex = String(stackIndex)
+    button.innerHTML = `
+      <div class="stack-item-time">🕐 ${escapeHtml(dateStr)}</div>
+      <div class="stack-item-title">${title}</div>
+      ${subtitle ? `<div class="stack-item-subtitle">${subtitle}</div>` : ''}
+      ${meta ? `<div class="stack-item-meta">${meta}</div>` : ''}
+    `.trim()
+
+    button.addEventListener('click', (domEvent) => {
+      L.DomEvent.stop(domEvent)
+
+      marker.closePopup()
+      emit('marker-click', {
+        timelineItem: item,
+        index,
+        marker,
+        event: {
+          target: marker,
+          originalEvent: domEvent
+        }
+      })
+    })
+
+    list.appendChild(button)
+  })
+
+  L.DomEvent.disableClickPropagation(popupRoot)
+  L.DomEvent.disableScrollPropagation(popupRoot)
+
+  return popupRoot
+}
+
+const groupTimelineItemsByCoordinates = () => {
+  const groupedItems = new Map()
+
+  props.timelineData.forEach((item, index) => {
+    if (!hasValidCoordinates(item)) return
+
+    const key = getCoordinateKey(item.latitude, item.longitude)
+    if (!groupedItems.has(key)) {
+      groupedItems.set(key, [])
+    }
+
+    groupedItems.get(key).push({ item, index })
+  })
+
+  return Array.from(groupedItems.values())
+}
+
 // Layer management
 const handleLayerReady = (layerGroup) => {
   // Only use clustering if we have many markers (50+)
@@ -112,55 +300,64 @@ const renderTimelineMarkers = () => {
 
   if (!hasTimelineData.value) return
 
-  props.timelineData.forEach((item, index) => {
-    if (!item.latitude || !item.longitude) return
+  const groupedItems = groupTimelineItemsByCoordinates()
+  groupedItems.forEach((markerItems) => {
+    const [{ item: primaryItem, index: primaryIndex }] = markerItems
+    const isStack = markerItems.length > 1
+    const highlightedItem = markerItems.find(({ item }) => isSameTimelineItem(props.highlightedItem, item))
+    const isHighlighted = Boolean(highlightedItem)
 
-    // Determine if this marker should be highlighted
-    const isHighlighted = props.highlightedItem && (
-      (props.highlightedItem.id && item.id && props.highlightedItem.id === item.id) ||
-      (props.highlightedItem.timestamp && item.timestamp && props.highlightedItem.timestamp === item.timestamp &&
-       props.highlightedItem.latitude === item.latitude && props.highlightedItem.longitude === item.longitude)
-    )
+    const icon = isStack
+      ? createStackTimelineIcon(markerItems.length, isHighlighted)
+      : (isHighlighted ? createHighlightedTimelineIcon() : createTimelineIcon())
 
-    // Create appropriate icon
-    const icon = isHighlighted ?
-      createHighlightedTimelineIcon() :
-      createTimelineIcon()
-
-    // Create marker
-    const marker = L.marker([item.latitude, item.longitude], {
+    const marker = L.marker([primaryItem.latitude, primaryItem.longitude], {
       icon,
-      timelineItem: item,
-      timelineIndex: index,
+      timelineItem: primaryItem,
+      timelineItems: markerItems.map(({ item }) => item),
+      timelineIndex: primaryIndex,
       ...props.markerOptions
     })
 
-    // Add event listeners
-    marker.on('click', (e) => {
-      emit('marker-click', {
-        timelineItem: item,
-        index,
-        marker,
-        event: e
-      })
-    })
+    if (isStack) {
+      marker.bindPopup(createStackPopupElement(marker, markerItems), { maxWidth: 320 })
 
-    marker.on('mouseover', (e) => {
-      emit('marker-hover', {
-        timelineItem: item,
-        index,
-        marker,
-        event: e
+      marker.on('click', () => {
+        marker.openPopup()
       })
-    })
 
-    // Add popup if item has relevant data
-    if (item.address || item.timestamp) {
-      const popupContent = createPopupContent(item)
-      marker.bindPopup(popupContent)
+      marker.on('mouseover', (e) => {
+        emit('marker-hover', {
+          timelineItem: primaryItem,
+          index: primaryIndex,
+          marker,
+          event: e
+        })
+      })
+    } else {
+      marker.on('click', (e) => {
+        emit('marker-click', {
+          timelineItem: primaryItem,
+          index: primaryIndex,
+          marker,
+          event: e
+        })
+      })
+
+      marker.on('mouseover', (e) => {
+        emit('marker-hover', {
+          timelineItem: primaryItem,
+          index: primaryIndex,
+          marker,
+          event: e
+        })
+      })
+
+      if (primaryItem.address || primaryItem.timestamp) {
+        marker.bindPopup(createPopupContent(primaryItem))
+      }
     }
 
-    // Add to cluster group if clustering is enabled, otherwise add directly to layer
     if (markerClusterGroup.value) {
       markerClusterGroup.value.addLayer(marker)
     } else {
@@ -169,8 +366,9 @@ const renderTimelineMarkers = () => {
 
     timelineMarkers.value.push({
       marker,
-      item,
-      index,
+      items: markerItems.map(({ item }) => item),
+      indexes: markerItems.map(({ index }) => index),
+      isStack,
       isHighlighted
     })
   })
@@ -291,22 +489,23 @@ const reinitializeLayer = (shouldUseClustering) => {
 }
 
 const updateHighlightedMarker = () => {
-  timelineMarkers.value.forEach(({ marker, item, isHighlighted }, index) => {
-    const shouldBeHighlighted = props.highlightedItem && (
-      (props.highlightedItem.id && item.id && props.highlightedItem.id === item.id) ||
-      (props.highlightedItem.timestamp && item.timestamp && props.highlightedItem.timestamp === item.timestamp &&
-       props.highlightedItem.latitude === item.latitude && props.highlightedItem.longitude === item.longitude)
+  timelineMarkers.value.forEach(({ marker, items, isHighlighted, isStack }, index) => {
+    const shouldBeHighlighted = Boolean(
+      props.highlightedItem &&
+      items.some((item) => isSameTimelineItem(props.highlightedItem, item))
     )
 
     if (shouldBeHighlighted !== isHighlighted) {
-      const newIcon = shouldBeHighlighted ?
-        createHighlightedTimelineIcon() :
-        createTimelineIcon()
+      const newIcon = isStack
+        ? createStackTimelineIcon(items.length, shouldBeHighlighted)
+        : (shouldBeHighlighted ? createHighlightedTimelineIcon() : createTimelineIcon())
 
       marker.setIcon(newIcon)
 
+      const focusedItem = items.find((item) => isSameTimelineItem(props.highlightedItem, item)) || items[0]
+
       // If highlighting this marker, only zoom for stay items (trips handle their own zooming)
-      if (shouldBeHighlighted && props.map && item.type !== 'trip') {
+      if (shouldBeHighlighted && focusedItem && props.map && focusedItem.type !== 'trip') {
         // Disable animation when clustering is enabled to prevent markers flying around
         const useAnimation = !markerClusterGroup.value
 
@@ -316,7 +515,7 @@ const updateHighlightedMarker = () => {
         const defaultZoom = 16
         const targetZoom = currentZoom >= defaultZoom ? currentZoom : defaultZoom
 
-        props.map.setView([item.latitude, item.longitude], targetZoom, {
+        props.map.setView([focusedItem.latitude, focusedItem.longitude], targetZoom, {
           animate: useAnimation,
           duration: useAnimation ? 0.8 : 0
         })
@@ -325,7 +524,7 @@ const updateHighlightedMarker = () => {
         setTimeout(() => {
           marker.openPopup()
         }, useAnimation ? 300 : 100)
-      } else if (shouldBeHighlighted && item.type !== 'trip') {
+      } else if (shouldBeHighlighted && focusedItem && focusedItem.type !== 'trip') {
         // For stay items without map, just open popup
         setTimeout(() => {
           marker.openPopup()
@@ -342,10 +541,8 @@ const updateHighlightedMarker = () => {
 }
 
 const getMarkerByItem = (timelineItem) => {
-  const found = timelineMarkers.value.find(({ item }) => 
-    (timelineItem.id && item.id && timelineItem.id === item.id) ||
-    (timelineItem.timestamp && item.timestamp && timelineItem.timestamp === item.timestamp &&
-     timelineItem.latitude === item.latitude && timelineItem.longitude === item.longitude)
+  const found = timelineMarkers.value.find(({ items }) =>
+    items.some((item) => isSameTimelineItem(timelineItem, item))
   )
   return found?.marker
 }
@@ -512,6 +709,174 @@ defineExpose({
 
 .timeline-popup .popup-activity {
   color: #64748b !important;
+}
+
+.timeline-stack-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.timeline-stack-marker {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 100%);
+  border: 2px solid #134e4a;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.timeline-stack-marker-highlighted {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
+  border-color: #9a3412;
+}
+
+.timeline-stack-popup {
+  min-width: 290px;
+}
+
+.stack-popup-header {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--gp-text-primary, #1e293b);
+  margin-bottom: 0.45rem;
+}
+
+.stack-popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.timeline-stack-select {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--gp-border-light, #cbd5e1);
+  background: var(--gp-surface-white, #ffffff);
+  border-radius: 8px;
+  padding: 0.5rem 0.55rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  border-left-width: 4px;
+  border-left-style: solid;
+}
+
+.timeline-stack-select:hover {
+  border-color: var(--gp-primary-light, #60a5fa);
+  transform: translateY(-1px);
+  box-shadow: var(--gp-shadow-medium, 0 8px 24px rgba(15, 23, 42, 0.12));
+}
+
+.timeline-stack-select.stack-item--stay {
+  background: var(--gp-timeline-blue-light, rgba(219, 234, 254, 0.5));
+  border-left-color: var(--gp-primary, #1a56db);
+}
+
+.timeline-stack-select.stack-item--trip {
+  background: var(--gp-timeline-green-light, rgba(209, 250, 229, 0.5));
+  border-left-color: var(--gp-success, #10b981);
+}
+
+.timeline-stack-select.stack-item--datagap {
+  background: var(--gp-danger-light, #fef2f2);
+  border-left-color: var(--gp-danger, #ef4444);
+}
+
+.timeline-stack-select.stack-item--default {
+  border-left-color: var(--gp-border-medium, #94a3b8);
+}
+
+.stack-item-title {
+  font-weight: 600;
+  color: var(--gp-text-primary, #0f172a);
+  font-size: 0.84rem;
+  margin-bottom: 0.12rem;
+}
+
+.stack-item-time {
+  color: var(--gp-primary, #1a56db);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-bottom: 0.12rem;
+}
+
+.stack-item-subtitle {
+  color: var(--gp-text-primary, #1e293b);
+  font-size: 0.78rem;
+  margin-bottom: 0.12rem;
+  line-height: 1.25;
+}
+
+.stack-item-meta {
+  color: var(--gp-primary, #1a56db);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.p-dark .timeline-stack-marker {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  border-color: #134e4a;
+}
+
+.p-dark .timeline-stack-marker-highlighted {
+  background: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  border-color: #c2410c;
+}
+
+.p-dark .stack-popup-header {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.p-dark .timeline-stack-select {
+  border-color: var(--gp-border-medium, rgba(148, 163, 184, 0.45));
+  background: rgba(15, 23, 42, 0.75);
+}
+
+.p-dark .timeline-stack-select:hover {
+  border-color: var(--gp-primary-light, #60a5fa);
+  background: rgba(30, 64, 175, 0.3);
+}
+
+.p-dark .timeline-stack-select.stack-item--stay {
+  background: var(--gp-timeline-blue, rgba(30, 64, 175, 0.15));
+  border-left-color: var(--gp-primary, #3b82f6);
+}
+
+.p-dark .timeline-stack-select.stack-item--trip {
+  background: var(--gp-timeline-green, rgba(5, 150, 105, 0.15));
+  border-left-color: var(--gp-success, #10b981);
+}
+
+.p-dark .timeline-stack-select.stack-item--datagap {
+  background: rgba(127, 29, 29, 0.35);
+  border-left-color: var(--gp-danger, #ef4444);
+}
+
+.p-dark .stack-item-title {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.p-dark .stack-item-time {
+  color: var(--gp-primary-light, #93c5fd);
+}
+
+.p-dark .stack-item-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.p-dark .stack-item-meta {
+  color: var(--gp-primary-light, #93c5fd);
 }
 </style>
 

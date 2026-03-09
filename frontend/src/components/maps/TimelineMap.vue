@@ -286,7 +286,7 @@ const {
   handleMapClick: baseHandleMapClick,
   handleMapContextMenu: baseHandleMapContextMenu
 } = useMapInteractions({
-  onTimelineMarkerClick: (event) => emit('timeline-marker-click', event),
+  onTimelineMarkerClick: (event) => emit('timeline-marker-click', event?.timelineItem || event),
   onPathClick: (event) => emit('highlighted-path-click', event),
   onFriendClick: (event) => {},
   onFavoriteClick: (event) => {},
@@ -547,14 +547,6 @@ const handleMapContextMenu = (event) => {
 // Layer event handlers
 const handleTimelineMarkerClick = (event) => {
   baseHandleTimelineMarkerClick(event)
-  
-  // Check if this item is already highlighted - if so, clear it
-  if (highlightStore.isItemHighlighted(event.timelineItem)) {
-    clearAllMapHighlights()
-  } else {
-    // Use simplified highlighting (store only)
-    highlightTimelineItem(event.timelineItem)
-  }
 }
 
 

@@ -194,6 +194,15 @@ const clearHighlightedTripLayers = () => {
   }
 }
 
+const areSameCoordinate = (first, second) => {
+  if (!first || !second) return false
+  const epsilon = 1e-7
+  return (
+    Math.abs(first.latitude - second.latitude) <= epsilon &&
+    Math.abs(first.longitude - second.longitude) <= epsilon
+  )
+}
+
 const resolveTripMarkerPoint = (trip, type, fallbackPoint) => {
   if (type === 'start') {
     const lat = Number(trip?.latitude)
@@ -228,6 +237,7 @@ watch(() => props.highlightedTrip, (newTrip) => {
 
     const startPoint = resolveTripMarkerPoint(newTrip, 'start', tripPath[0])
     const endPoint = resolveTripMarkerPoint(newTrip, 'end', tripPath[tripPath.length - 1])
+    const sameEndpoint = areSameCoordinate(startPoint, endPoint)
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
 
     // Keep highlighted polyline endpoints aligned with start/end markers.
@@ -246,14 +256,21 @@ watch(() => props.highlightedTrip, (newTrip) => {
     tripStartMarker.value = createHighlightedPathStartMarker(
         startPoint.latitude,
         startPoint.longitude,
-        true // instant appearance
+        true, // instant appearance
+        sameEndpoint ? { transform: 'translateX(-14px)' } : {}
     )
 
     tripEndMarker.value = createHighlightedPathEndMarker(
         endPoint.latitude,
         endPoint.longitude,
-        true // instant appearance
+        true, // instant appearance
+        sameEndpoint ? { transform: 'translateX(14px)' } : {}
     )
+
+    if (sameEndpoint) {
+      tripStartMarker.value.setZIndexOffset(20)
+      tripEndMarker.value.setZIndexOffset(10)
+    }
 
     const formatDateTimeDisplay = (dateValue) =>
       `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm:ss')}`
