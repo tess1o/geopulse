@@ -2,12 +2,12 @@ package org.github.tess1o.geopulse.favorites.service;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.context.ManagedExecutor;
 import jakarta.enterprise.context.control.ActivateRequestContext;
 import jakarta.enterprise.event.Event;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.context.ManagedExecutor;
 import org.github.tess1o.geopulse.favorites.mapper.FavoriteLocationMapper;
 import org.github.tess1o.geopulse.favorites.model.*;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
@@ -15,6 +15,7 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.service.GeocodingService;
 import org.github.tess1o.geopulse.geocoding.service.ReconciliationJobProgressService;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.streaming.config.TimelineConfigurationProvider;
 import org.github.tess1o.geopulse.streaming.events.FavoriteDeletedEvent;
 import org.github.tess1o.geopulse.streaming.events.FavoriteRenamedEvent;
 import org.locationtech.jts.geom.Point;
@@ -31,9 +32,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FavoriteLocationService {
 
-    @ConfigProperty(name = "geopulse.favorites.max-distance-from-point", defaultValue = "75")
-    @StaticInitSafe
-    int maxDistanceFromPoint;
+    private static final int DEFAULT_STAYPOINT_RADIUS_METERS = 50;
 
     @ConfigProperty(name = "geopulse.favorites.max-distance-from-area", defaultValue = "15")
     @StaticInitSafe
@@ -46,6 +45,7 @@ public class FavoriteLocationService {
     private final Event<FavoriteRenamedEvent> favoriteRenamedEvent;
     private final org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService;
     private final ReconciliationJobProgressService reconciliationProgressService;
+    private final TimelineConfigurationProvider timelineConfigurationProvider;
     private final ManagedExecutor managedExecutor;
 
     public FavoriteLocationService(FavoritesRepository repository,
@@ -55,6 +55,7 @@ public class FavoriteLocationService {
                                    Event<FavoriteRenamedEvent> favoriteRenamedEvent,
                                    org.github.tess1o.geopulse.streaming.service.AsyncTimelineGenerationService asyncTimelineGenerationService,
                                    ReconciliationJobProgressService reconciliationProgressService,
+                                   TimelineConfigurationProvider timelineConfigurationProvider,
                                    ManagedExecutor managedExecutor) {
         this.repository = repository;
         this.mapper = mapper;
@@ -63,9 +64,8 @@ public class FavoriteLocationService {
         this.favoriteRenamedEvent = favoriteRenamedEvent;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
         this.reconciliationProgressService = reconciliationProgressService;
+        this.timelineConfigurationProvider = timelineConfigurationProvider;
         this.managedExecutor = managedExecutor;
-        this.maxDistanceFromPoint = maxDistanceFromPoint;
-        this.maxDistanceFromArea = maxDistanceFromArea;
     }
 
     public FavoriteLocationsDto getFavorites(UUID userId) {
@@ -228,7 +228,13 @@ public class FavoriteLocationService {
     }
 
     public FavoriteLocationsDto findByPoint(UUID userId, Point point) {
-        Optional<FavoritesEntity> favorite = repository.findByPoint(userId, point, maxDistanceFromPoint, maxDistanceFromArea);
+        int maxDistanceFromPoint = getFavoritePointMatchingDistanceMeters(userId);
+        Optional<FavoritesEntity> favorite = repository.findByPoint(
+                userId,
+                point,
+                maxDistanceFromPoint,
+                maxDistanceFromArea
+        );
         if (favorite.isEmpty()) {
             return null;
         }
@@ -245,7 +251,13 @@ public class FavoriteLocationService {
      * @return Map of coordinate string (lon,lat) to FavoriteLocationsDto
      */
     public Map<String, FavoriteLocationsDto> findByPointsBatch(UUID userId, List<Point> points) {
-        Map<String, FavoritesEntity> entities = repository.findByPointsBatch(userId, points, maxDistanceFromPoint, maxDistanceFromArea);
+        int maxDistanceFromPoint = getFavoritePointMatchingDistanceMeters(userId);
+        Map<String, FavoritesEntity> entities = repository.findByPointsBatch(
+                userId,
+                points,
+                maxDistanceFromPoint,
+                maxDistanceFromArea
+        );
 
         Map<String, FavoriteLocationsDto> results = new java.util.HashMap<>();
         for (Map.Entry<String, FavoritesEntity> entry : entities.entrySet()) {
@@ -259,6 +271,24 @@ public class FavoriteLocationService {
         }
 
         return results;
+    }
+
+    /**
+     * Favorite point matching radius is tied to the user's stay detection radius.
+     * This keeps favorite matching behavior consistent with timeline stay detection.
+     */
+    public int getFavoritePointMatchingDistanceMeters(UUID userId) {
+        Integer staypointRadiusMeters = timelineConfigurationProvider
+                .getConfigurationForUser(userId)
+                .getStaypointRadiusMeters();
+
+        if (staypointRadiusMeters == null || staypointRadiusMeters <= 0) {
+            log.warn("Invalid staypoint radius for user {} (value={}), using fallback {}m",
+                    userId, staypointRadiusMeters, DEFAULT_STAYPOINT_RADIUS_METERS);
+            return DEFAULT_STAYPOINT_RADIUS_METERS;
+        }
+
+        return staypointRadiusMeters;
     }
 
     @Transactional

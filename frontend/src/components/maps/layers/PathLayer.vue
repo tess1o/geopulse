@@ -194,6 +194,35 @@ const clearHighlightedTripLayers = () => {
   }
 }
 
+const areSameCoordinate = (first, second) => {
+  if (!first || !second) return false
+  const epsilon = 1e-7
+  return (
+    Math.abs(first.latitude - second.latitude) <= epsilon &&
+    Math.abs(first.longitude - second.longitude) <= epsilon
+  )
+}
+
+const resolveTripMarkerPoint = (trip, type, fallbackPoint) => {
+  if (type === 'start') {
+    const lat = Number(trip?.latitude)
+    const lon = Number(trip?.longitude)
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { latitude: lat, longitude: lon }
+    }
+  }
+
+  if (type === 'end') {
+    const lat = Number(trip?.endLatitude)
+    const lon = Number(trip?.endLongitude)
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { latitude: lat, longitude: lon }
+    }
+  }
+
+  return fallbackPoint
+}
+
 // Watch for trip highlighting
 watch(() => props.highlightedTrip, (newTrip) => {
   // Remove previous trip path and markers
@@ -206,7 +235,16 @@ watch(() => props.highlightedTrip, (newTrip) => {
       return
     }
 
+    const startPoint = resolveTripMarkerPoint(newTrip, 'start', tripPath[0])
+    const endPoint = resolveTripMarkerPoint(newTrip, 'end', tripPath[tripPath.length - 1])
+    const sameEndpoint = areSameCoordinate(startPoint, endPoint)
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
+
+    // Keep highlighted polyline endpoints aligned with start/end markers.
+    if (tripCoords.length >= 2) {
+      tripCoords[0] = [startPoint.latitude, startPoint.longitude]
+      tripCoords[tripCoords.length - 1] = [endPoint.latitude, endPoint.longitude]
+    }
 
     tripPathLayer.value = L.polyline(tripCoords, {
       color: '#ff6b6b',
@@ -215,20 +253,24 @@ watch(() => props.highlightedTrip, (newTrip) => {
       dashArray: '10, 5'
     })
 
-    const startPoint = tripPath[0]
-    const endPoint = tripPath[tripPath.length - 1]
-
     tripStartMarker.value = createHighlightedPathStartMarker(
         startPoint.latitude,
         startPoint.longitude,
-        true // instant appearance
+        true, // instant appearance
+        sameEndpoint ? { transform: 'translateX(-14px)' } : {}
     )
 
     tripEndMarker.value = createHighlightedPathEndMarker(
         endPoint.latitude,
         endPoint.longitude,
-        true // instant appearance
+        true, // instant appearance
+        sameEndpoint ? { transform: 'translateX(14px)' } : {}
     )
+
+    if (sameEndpoint) {
+      tripStartMarker.value.setZIndexOffset(20)
+      tripEndMarker.value.setZIndexOffset(10)
+    }
 
     const formatDateTimeDisplay = (dateValue) =>
       `${timezone.formatDateDisplay(dateValue)} ${timezone.format(dateValue, 'HH:mm:ss')}`

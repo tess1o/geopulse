@@ -53,7 +53,12 @@ public class LocationPointResolver {
             // Found a favorite location
             if (!favorite.getPoints().isEmpty()) {
                 var favoritePoint = favorite.getPoints().getFirst();
-                return LocationResolutionResult.fromFavorite(favoritePoint.getName(), favoritePoint.getId());
+                return LocationResolutionResult.fromFavorite(
+                        favoritePoint.getName(),
+                        favoritePoint.getId(),
+                        favoritePoint.getLatitude(),
+                        favoritePoint.getLongitude()
+                );
             } else {
                 var favoriteArea = favorite.getAreas().getFirst();
                 return LocationResolutionResult.fromFavorite(favoriteArea.getName(), favoriteArea.getId());
@@ -136,7 +141,10 @@ public class LocationPointResolver {
                 if (!favorite.getPoints().isEmpty()) {
                     var favoritePoint = favorite.getPoints().getFirst();
                     results.put(coordKey, LocationResolutionResult.fromFavorite(
-                            favoritePoint.getName(), favoritePoint.getId()));
+                            favoritePoint.getName(),
+                            favoritePoint.getId(),
+                            favoritePoint.getLatitude(),
+                            favoritePoint.getLongitude()));
                 } else if (!favorite.getAreas().isEmpty()) {
                     var favoriteArea = favorite.getAreas().getFirst();
                     results.put(coordKey, LocationResolutionResult.fromFavorite(

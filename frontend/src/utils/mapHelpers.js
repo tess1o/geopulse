@@ -515,7 +515,7 @@ export function createPathLastMarker(latitude, longitude) {
  * @param {boolean} instant - Skip animation for instant appearance
  * @returns {L.Marker} - Configured marker
  */
-export function createHighlightedPathStartMarker(latitude, longitude, instant = false) {
+export function createHighlightedPathStartMarker(latitude, longitude, instant = false, styleOverrides = {}) {
     return L.marker([latitude, longitude], {
         icon: createCustomDivIcon({
             //color: MARKER_COLORS.HIGHLIGHT_START,
@@ -524,7 +524,8 @@ export function createHighlightedPathStartMarker(latitude, longitude, instant = 
             className: `custom-marker highlight-start-marker${instant ? ' instant' : ''}`,
             shape: 'circle',
             customStyle: {
-                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_START}, #27AE60)`
+                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_START}, #27AE60)`,
+                ...styleOverrides
             }
         }),
         zoomAnimation: false, // Disable zoom animation to prevent marker jumping with clusters
@@ -539,7 +540,7 @@ export function createHighlightedPathStartMarker(latitude, longitude, instant = 
  * @param {boolean} instant - Skip animation for instant appearance
  * @returns {L.Marker} - Configured marker
  */
-export function createHighlightedPathEndMarker(latitude, longitude, instant = false) {
+export function createHighlightedPathEndMarker(latitude, longitude, instant = false, styleOverrides = {}) {
     return L.marker([latitude, longitude], {
         icon: createCustomDivIcon({
             color: MARKER_COLORS.HIGHLIGHT_END,
@@ -548,7 +549,8 @@ export function createHighlightedPathEndMarker(latitude, longitude, instant = fa
             className: `custom-marker highlight-end-marker${instant ? ' instant' : ''}`,
             shape: 'square',
             customStyle: {
-                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_END}, #C0392B)`
+                background: `linear-gradient(135deg, ${MARKER_COLORS.HIGHLIGHT_END}, #C0392B)`,
+                ...styleOverrides
             }
         }),
         zoomAnimation: false, // Disable zoom animation to prevent marker jumping with clusters

@@ -181,16 +181,10 @@ const triggerMapResize = () => {
   })
 }
 
-const handleTimelineMarkerClick = (item) => {
-  const index = timelineStore.findTimelineItemIndex(
-      item.timestamp,
-      item.latitude,
-      item.longitude
-  )
-
-  if (index !== -1) {
-    handleTimelineItemClick(item)
-  }
+const handleTimelineMarkerClick = (itemOrEvent) => {
+  const item = itemOrEvent?.timelineItem || itemOrEvent
+  if (!item) return
+  handleTimelineItemClick(item)
 }
 
 const handleHighlightedPathClick = (data) => {

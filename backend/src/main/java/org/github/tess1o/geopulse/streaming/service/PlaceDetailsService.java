@@ -4,9 +4,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.favorites.model.FavoriteLocationsDto;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
 import org.github.tess1o.geopulse.favorites.repository.FavoritesRepository;
+import org.github.tess1o.geopulse.favorites.service.FavoriteLocationService;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.shared.service.TimestampUtils;
@@ -37,6 +39,9 @@ public class PlaceDetailsService {
 
     @Inject
     ReverseGeocodingLocationRepository geocodingRepository;
+
+    @Inject
+    FavoriteLocationService favoriteLocationService;
 
     /**
      * Get comprehensive details for a place including statistics.
@@ -424,7 +429,7 @@ public class PlaceDetailsService {
 
     /**
      * Find a related favorite location for a geocoding point that has no visits.
-     * Checks if there's a favorite within 10 meters or an area containing the point.
+     * Uses the same favorite matching logic as timeline resolution.
      *
      * @param geocoding the geocoding location entity
      * @param userId    the user ID
@@ -440,8 +445,23 @@ public class PlaceDetailsService {
             return null;
         }
 
-        // Look for favorites within 10 meters for points, or containing this point for areas
-        Optional<FavoritesEntity> favoriteOpt = favoritesRepository.findByPoint(userId, point, 10, 10);
+        FavoriteLocationsDto favoriteMatch = favoriteLocationService.findByPoint(userId, point);
+        if (favoriteMatch == null) {
+            return null;
+        }
+
+        Long favoriteId = null;
+        if (favoriteMatch.getPoints() != null && !favoriteMatch.getPoints().isEmpty()) {
+            favoriteId = favoriteMatch.getPoints().getFirst().getId();
+        } else if (favoriteMatch.getAreas() != null && !favoriteMatch.getAreas().isEmpty()) {
+            favoriteId = favoriteMatch.getAreas().getFirst().getId();
+        }
+
+        if (favoriteId == null) {
+            return null;
+        }
+
+        Optional<FavoritesEntity> favoriteOpt = favoritesRepository.findByIdAndUserId(favoriteId, userId);
 
         if (favoriteOpt.isEmpty()) {
             return null;

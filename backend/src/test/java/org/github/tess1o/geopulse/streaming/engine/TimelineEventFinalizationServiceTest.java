@@ -1,5 +1,8 @@
 package org.github.tess1o.geopulse.streaming.engine;
 
+import org.github.tess1o.geopulse.shared.service.LocationPointResolver;
+import org.github.tess1o.geopulse.shared.service.LocationResolutionResult;
+import org.github.tess1o.geopulse.streaming.model.domain.TimelineEvent;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.model.domain.GPSPoint;
 import org.github.tess1o.geopulse.streaming.model.domain.Stay;
@@ -9,17 +12,28 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.when;
 /**
  * Unit tests for TimelineEventFinalizationService accuracy validation.
  */
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
 class TimelineEventFinalizationServiceTest {
+    @Mock
+    private LocationPointResolver locationPointResolver;
+
     @InjectMocks
     private TimelineEventFinalizationService service;
     private TimelineConfig config;
@@ -104,6 +118,33 @@ class TimelineEventFinalizationServiceTest {
         }
         Stay result = service.finalizeStayWithoutLocation(userState, config);
         assertNotNull(result, "Should allow stay when accuracy ratio exactly meets threshold");
+    }
+
+    @Test
+    void shouldAnchorStayCoordinates_WhenFavoriteResolutionProvidesAnchorCoordinates() {
+        Stay stay = Stay.builder()
+                .startTime(Instant.parse("2024-08-15T08:00:00Z"))
+                .duration(java.time.Duration.ofMinutes(30))
+                .latitude(40.7588)
+                .longitude(-73.9851)
+                .build();
+
+        List<TimelineEvent> events = List.of(stay);
+        UUID userId = UUID.randomUUID();
+        Map<String, LocationResolutionResult> results = Map.of(
+                "-73.9851,40.7588",
+                LocationResolutionResult.fromFavorite("Home", 123L, 40.7580, -73.9855)
+        );
+
+        when(locationPointResolver.resolveLocationsWithReferencesBatch(eq(userId), anyList(), isNull()))
+                .thenReturn(results);
+
+        service.populateStayLocations(events, userId);
+
+        assertEquals("Home", stay.getLocationName());
+        assertEquals(123L, stay.getFavoriteId());
+        assertEquals(40.7580, stay.getLatitude(), 0.000001);
+        assertEquals(-73.9855, stay.getLongitude(), 0.000001);
     }
     private GPSPoint createGpsPoint(String timestamp, double lat, double lon, double accuracy) {
         return GPSPoint.builder()

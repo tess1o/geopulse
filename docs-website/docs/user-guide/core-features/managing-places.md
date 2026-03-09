@@ -15,7 +15,7 @@ Favorite Locations are the best way to keep your timeline organized and easy to 
 
 There are two types of favorites you can create:
 
-*   **Favorite Point:** A single, specific location on the map. All your GPS points within **75 meters** of this point will be associated with this favorite. This is perfect for smaller, well-defined places.
+*   **Favorite Point:** A single, specific location on the map. All your GPS points within your configured **Stay Detection Radius** of this point will be associated with this favorite. This is perfect for smaller, well-defined places.
 *   **Favorite Area:** A rectangular zone that you draw on the map. Any GPS points that fall **inside this rectangle** will be associated with this favorite. This is ideal for larger areas where you might move around, such as a university campus, a large park, or a shopping mall.
 
 ### The Favorites Management Page
