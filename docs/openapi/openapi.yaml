@@ -200,6 +200,36 @@ components:
         visits:
           format: int32
           type: integer
+    ColotaLocationMessage:
+      type: object
+      properties:
+        lat:
+          format: double
+          type: number
+        lon:
+          format: double
+          type: number
+        acc:
+          format: double
+          type: number
+        tst:
+          format: int64
+          type: integer
+        alt:
+          format: double
+          type: number
+        vel:
+          format: double
+          type: number
+        batt:
+          format: double
+          type: number
+        bs:
+          format: int32
+          type: integer
+        bear:
+          format: double
+          type: number
     ConnectionType:
       enum:
       - HTTP
@@ -584,12 +614,14 @@ components:
       - OWNTRACKS
       - GPSLOGGER
       - OVERLAND
+      - TRACCAR
       - GOOGLE_TIMELINE
       - GPX
       - DAWARICH
       - HOME_ASSISTANT
       - GEOJSON
       - CSV
+      - COLOTA
       type: string
     HomeAssistantBattery:
       type: object
@@ -690,6 +722,65 @@ components:
           $ref: "#/components/schemas/Achievements"
         distanceTraveled:
           $ref: "#/components/schemas/DistanceTraveled"
+    JsonNode:
+      type: object
+      properties:
+        empty:
+          type: boolean
+        valueNode:
+          type: boolean
+        containerNode:
+          type: boolean
+        missingNode:
+          type: boolean
+        array:
+          type: boolean
+        object:
+          type: boolean
+        nodeType:
+          $ref: "#/components/schemas/JsonNodeType"
+        pojo:
+          type: boolean
+        number:
+          type: boolean
+        integralNumber:
+          type: boolean
+        floatingPointNumber:
+          type: boolean
+        short:
+          type: boolean
+        int:
+          type: boolean
+        long:
+          type: boolean
+        float:
+          type: boolean
+        double:
+          type: boolean
+        bigDecimal:
+          type: boolean
+        bigInteger:
+          type: boolean
+        textual:
+          type: boolean
+        boolean:
+          type: boolean
+        "null":
+          type: boolean
+        binary:
+          type: boolean
+    JsonNodeType:
+      enum:
+      - ARRAY
+      - BINARY
+      - BOOLEAN
+      - MISSING
+      - "NULL"
+      - NUMBER
+      - OBJECT
+      - POJO
+      - STRING
+      type: string
     LinkAccountWithPasswordRequest:
       required:
       - email
@@ -876,6 +967,99 @@ components:
         refreshToken:
           pattern: \S
           type: string
+    TraccarDevice:
+      type: object
+      properties:
+        id:
+          format: int64
+          type: integer
+        attributes:
+          type: object
+          additionalProperties: {}
+        groupId:
+          format: int64
+          type: integer
+        calendarId:
+          format: int64
+          type: integer
+        name:
+          type: string
+        uniqueId:
+          type: string
+        status:
+          type: string
+        lastUpdate:
+          $ref: "#/components/schemas/JsonNode"
+        positionId:
+          format: int64
+          type: integer
+        phone:
+          type: string
+        model:
+          type: string
+        contact:
+          type: string
+        category:
+          type: string
+        disabled:
+          type: boolean
+        expirationTime:
+          $ref: "#/components/schemas/JsonNode"
+    TraccarPosition:
+      type: object
+      properties:
+        id:
+          format: int64
+          type: integer
+        protocol:
+          type: string
+        deviceId:
+          format: int64
+          type: integer
+        valid:
+          type: boolean
+        latitude:
+          format: double
+          type: number
+        longitude:
+          format: double
+          type: number
+        altitude:
+          format: double
+          type: number
+        speed:
+          format: double
+          type: number
+        course:
+          format: double
+          type: number
+        address:
+          type: string
+        accuracy:
+          format: double
+          type: number
+        network: {}
+        geofenceIds:
+          type: array
+          items:
+            format: int64
+            type: integer
+        serverTime:
+          $ref: "#/components/schemas/JsonNode"
+        deviceTime:
+          $ref: "#/components/schemas/JsonNode"
+        fixTime:
+          $ref: "#/components/schemas/JsonNode"
+        attributes:
+          type: object
+          additionalProperties: {}
+    TraccarPositionData:
+      type: object
+      properties:
+        position:
+          $ref: "#/components/schemas/TraccarPosition"
+        device:
+          $ref: "#/components/schemas/TraccarDevice"
     TripMovementTypeUpdateRequest:
       type: object
       properties:
@@ -1081,6 +1265,9 @@ components:
           type: integer
         pathAdaptiveSimplification:
           type: boolean
+        defaultDateRangePreset:
+          pattern: ^(today|yesterday|lastWeek|lastMonth)?$
+          type: string
     UpdateTimelinePreferencesRequest:
       type: object
       properties:
@@ -2316,6 +2503,22 @@ paths:
       summary: Get Auth Status
       tags:
       - Authentication Resource
+  /api/colota:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColotaLocationMessage"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle Colota
+      tags:
+      - Colota Resource
   /api/coverage/cells:
     get:
       parameters:
@@ -3175,6 +3378,31 @@ paths:
       summary: Reject Invitation
       tags:
       - Friend Invitation Resource
+      security:
+      - jwt: []
+  /api/friends/location/trails:
+    get:
+      parameters:
+      - name: endTime
+        in: query
+        schema:
+          type: string
+      - name: minutes
+        in: query
+        schema:
+          format: int32
+          default: "60"
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Friends Location Trails
+      tags:
+      - Friend Resource
       security:
       - jwt: []
   /api/friends/permissions:
@@ -5392,6 +5620,22 @@ paths:
       - Streaming Timeline Resource
       security:
       - jwt: []
+  /api/traccar:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TraccarPositionData"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+      summary: Handle Traccar
+      tags:
+      - Traccar Resource
   /api/users/changePassword:
     post:
       requestBody:
@@ -6143,7 +6387,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.20.0
+  version: 1.21.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o

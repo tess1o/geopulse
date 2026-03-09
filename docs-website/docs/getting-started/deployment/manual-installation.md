@@ -390,7 +390,7 @@ Set your desired version (check [GitHub Releases](https://github.com/tess1o/geop
 :::
 
 ```bash
-VERSION=1.20.0
+VERSION=1.21.0
 ```
 
 Create a temporary download directory:
@@ -458,8 +458,8 @@ sha256sum -c SHA256SUMS --ignore-missing
 
 You should see:
 ```
-geopulse-frontend-1.20.0.tar.gz: OK
-geopulse-backend-native-amd64-1.20.0: OK
+geopulse-frontend-1.21.0.tar.gz: OK
+geopulse-backend-native-amd64-1.21.0: OK
 ```
 
 :::caution Checksum Verification
@@ -1169,7 +1169,7 @@ sudo nginx -t
 
 ```bash
 # Set new version
-NEW_VERSION=1.20.0
+NEW_VERSION=1.21.0
 
 # Create temporary directory
 mkdir -p /tmp/geopulse-upgrade
