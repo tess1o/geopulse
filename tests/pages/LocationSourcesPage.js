@@ -11,6 +11,7 @@ export class LocationSourcesPage {
         owntracks: 'button:has-text("Setup OwnTracks")',
         gpslogger: 'button:has-text("Setup GPSLogger")',
         overland: 'button:has-text("Setup Overland")',
+        traccar: 'button:has-text("Setup Traccar")',
         dawarich: 'button:has-text("Setup Dawarich")',
         home_assistant: 'button:has-text("Setup Home Assistant")'
       },
@@ -21,6 +22,7 @@ export class LocationSourcesPage {
           owntracks: '.source-type-option:has-text("OwnTracks")',
           gpslogger: '.source-type-option:has-text("GPSLogger")',
           overland: '.source-type-option:has-text("Overland")',
+          traccar: '.source-type-option:has-text("Traccar")',
           dawarich: '.source-type-option:has-text("Dawarich")',
           home_assistant: '.source-type-option:has-text("Home Assistant")'
         },
@@ -32,6 +34,7 @@ export class LocationSourcesPage {
           username: '#location-source-username',
           password: '#location-source-password input',
           overlandToken: '#location-source-token-overland',
+          traccarToken: '#location-source-token-traccar',
           dawarichApiKey: '#location-source-token-dawarich',
           homeAssistantToken: '#location-source-token-ha'
         },
@@ -128,6 +131,7 @@ export class LocationSourcesPage {
       owntracks: 'OwnTracks',
       gpslogger: 'GPSLogger',
       overland: 'Overland',
+      traccar: 'Traccar',
       dawarich: 'Dawarich',
       home_assistant: 'Home Assistant'
     };
@@ -173,6 +177,13 @@ export class LocationSourcesPage {
    */
   async fillOverlandForm(token) {
     await this.page.fill(this.selectors.dialog.fields.overlandToken, token);
+  }
+
+  /**
+   * Fill Traccar form fields
+   */
+  async fillTraccarForm(token) {
+    await this.page.fill(this.selectors.dialog.fields.traccarToken, token);
   }
 
   /**
@@ -360,6 +371,16 @@ export class LocationSourcesPage {
     await this.waitForDialog();
     await this.selectSourceType('OVERLAND');
     await this.fillOverlandForm(token);
+    await this.clickSave();
+    await this.waitForSuccessToast();
+    await this.waitForDialogClose();
+  }
+
+  async createTraccarSource(token) {
+    await this.clickAddNewSource();
+    await this.waitForDialog();
+    await this.selectSourceType('TRACCAR');
+    await this.fillTraccarForm(token);
     await this.clickSave();
     await this.waitForSuccessToast();
     await this.waitForDialogClose();

@@ -8,6 +8,7 @@ import org.github.tess1o.geopulse.gps.integrations.colota.model.ColotaLocationMe
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichLocation;
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -260,6 +261,50 @@ public class GpsPointService {
         GpsPointEntity entity = gpsPointMapper.toEntity(message, user, sourceType);
 
         // Filter and persist
+        filterAndPersistGpsPoint(entity, config);
+    }
+
+    @Transactional
+    public void saveTraccarGpsPoint(TraccarPositionData data, UUID userId, GpsSourceType sourceType, GpsSourceConfigEntity config) {
+        if (data == null || data.getPosition() == null) {
+            log.warn("Skipping Traccar payload for user {}: missing position", userId);
+            return;
+        }
+
+        var position = data.getPosition();
+        if (position.getLatitude() == null || position.getLongitude() == null) {
+            log.warn("Skipping Traccar payload for user {}: missing latitude/longitude", userId);
+            return;
+        }
+
+        Instant timestamp = position.resolveTimestamp();
+        if (timestamp == null) {
+            log.warn("Skipping Traccar payload for user {}: missing timestamp", userId);
+            return;
+        }
+
+        double lat = position.getLatitude();
+        double lon = position.getLongitude();
+
+        if (config.isEnableDuplicateDetection()) {
+            int threshold = config.getDuplicateDetectionThresholdMinutes() != null
+                    ? config.getDuplicateDetectionThresholdMinutes()
+                    : globalDuplicateDetectionThresholdMinutes;
+
+            if (duplicateDetectionService.isLocationDuplicate(userId, lat, lon, timestamp, sourceType, threshold)) {
+                log.info("Skipping Traccar GPS point for user {} at coordinates ({}, {}): duplicate location detected within {} minutes window",
+                        userId, lat, lon, threshold);
+                return;
+            }
+        } else {
+            if (duplicateDetectionService.isDuplicatePoint(userId, timestamp, sourceType)) {
+                log.info("Skipping duplicate Traccar GPS point for user {} at timestamp {}", userId, timestamp);
+                return;
+            }
+        }
+
+        UserEntity user = em.getReference(UserEntity.class, userId);
+        GpsPointEntity entity = gpsPointMapper.toEntity(data, user, sourceType);
         filterAndPersistGpsPoint(entity, config);
     }
 

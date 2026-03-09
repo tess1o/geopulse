@@ -135,6 +135,33 @@
           </div>
         </div>
 
+        <div v-if="activeTab === 'traccar' && hasTraccarSource">
+          <div class="instruction-content">
+            <h3 class="instruction-title">Traccar Position Forwarding (JSON)</h3>
+            <div class="instruction-steps">
+              <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                  <div class="step-title">Update <code>traccar.xml</code> Position Forwarding settings</div>
+                  <div class="step-value">
+                    Set <code>forward.url</code>, <code>forward.type=json</code>, and <code>forward.header</code> (Bearer token) in <code>traccar.xml</code>:
+                  </div>
+                  <div class="copy-field">
+                    <pre class="yaml-config">{{ traccarXmlSnippet }}</pre>
+                    <Button icon="pi pi-copy" size="small" outlined @click="emitCopy(traccarXmlSnippet)" />
+                  </div>
+                  <small class="text-muted">
+                    Official docs:
+                    <a href="https://www.traccar.org/forward/" target="_blank" rel="noopener noreferrer">
+                      https://www.traccar.org/forward/
+                    </a>
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="activeTab === 'gpslogger' && hasGpsLoggerSource">
           <div class="instruction-content">
             <h3 class="instruction-title">GPSLogger Configuration</h3>
@@ -356,6 +383,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  hasTraccarSource: {
+    type: Boolean,
+    default: false
+  },
   hasGpsLoggerSource: {
     type: Boolean,
     default: false
@@ -386,9 +417,15 @@ const mqttHost = computed(() => (
 
 const owntracksUrl = computed(() => `${browserOrigin.value}/api/owntracks`)
 const overlandUrl = computed(() => `${browserOrigin.value}/api/overland`)
+const traccarUrl = computed(() => `${browserOrigin.value}/api/traccar`)
 const gpsLoggerUrl = computed(() => `${browserOrigin.value}/api/gpslogger`)
 const dawarichUrl = computed(() => `${browserOrigin.value}/api/dawarich`)
 const colotaUrl = computed(() => `${browserOrigin.value}/api/colota`)
+
+const traccarXmlSnippet = computed(() => `<entry key='forward.enable'>true</entry>
+<entry key='forward.type'>json</entry>
+<entry key='forward.url'>${traccarUrl.value}</entry>
+<entry key='forward.header'>Authorization: Bearer YOUR_CONFIGURED_TOKEN</entry>`)
 
 const colotaPayloadExample = computed(() => `{
   "lat": 48.135,

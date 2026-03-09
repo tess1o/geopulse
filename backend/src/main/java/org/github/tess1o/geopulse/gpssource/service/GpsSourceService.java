@@ -89,12 +89,17 @@ public class GpsSourceService implements GpsSourceConfigProvider {
                 throw new IllegalArgumentException(msg);
             }
         } else if (newConfig.getType() == GpsSourceType.OVERLAND) {
-            boolean isUnique = isOverlandSourceUnique(newConfig);
+            boolean isUnique = isTokenSourceUnique(newConfig, GpsSourceType.OVERLAND);
             if (!isUnique) {
                 throw new IllegalArgumentException("Overland token is already used");
             }
+        } else if (newConfig.getType() == GpsSourceType.TRACCAR) {
+            boolean isUnique = isTokenSourceUnique(newConfig, GpsSourceType.TRACCAR);
+            if (!isUnique) {
+                throw new IllegalArgumentException("Traccar token is already used");
+            }
         } else if (newConfig.getType() == GpsSourceType.HOME_ASSISTANT) {
-            boolean isUnique = isHomeAssistantSourceUnique(newConfig);
+            boolean isUnique = isTokenSourceUnique(newConfig, GpsSourceType.HOME_ASSISTANT);
             if (!isUnique) {
                 throw new IllegalArgumentException("Home assistant username is already used");
             }
@@ -109,16 +114,8 @@ public class GpsSourceService implements GpsSourceConfigProvider {
         return configs.stream().noneMatch(config -> config.getUsername().equals(newConfig.getUsername()));
     }
 
-    private boolean isOverlandSourceUnique(CreateGpsSourceConfigDto newConfig) {
-        List<GpsSourceConfigEntity> configs = gpsSourceRepository.findByUserIdAndSourceType(newConfig.getUserId(), GpsSourceType.OVERLAND);
-        if (configs == null || configs.isEmpty()) {
-            return true;
-        }
-        return configs.stream().noneMatch(config -> config.getToken().equals(newConfig.getToken()));
-    }
-
-    private boolean isHomeAssistantSourceUnique(CreateGpsSourceConfigDto newConfig) {
-        List<GpsSourceConfigEntity> configs = gpsSourceRepository.findByUserIdAndSourceType(newConfig.getUserId(), GpsSourceType.HOME_ASSISTANT);
+    private boolean isTokenSourceUnique(CreateGpsSourceConfigDto newConfig, GpsSourceType sourceType) {
+        List<GpsSourceConfigEntity> configs = gpsSourceRepository.findByUserIdAndSourceType(newConfig.getUserId(), sourceType);
         if (configs == null || configs.isEmpty()) {
             return true;
         }
@@ -146,6 +143,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
             }
         }
         if (dbConfig.getSourceType() == GpsSourceType.OVERLAND ||
+                dbConfig.getSourceType() == GpsSourceType.TRACCAR ||
                 dbConfig.getSourceType() == GpsSourceType.DAWARICH ||
                 dbConfig.getSourceType() == GpsSourceType.HOME_ASSISTANT) {
             // Only update token if a new one is provided
@@ -191,6 +189,11 @@ public class GpsSourceService implements GpsSourceConfigProvider {
     @Override
     public Optional<GpsSourceConfigEntity> findByToken(String token) {
         return gpsSourceRepository.findByToken(token);
+    }
+
+    @Override
+    public Optional<GpsSourceConfigEntity> findByTokenAndSourceType(String token, GpsSourceType sourceType) {
+        return gpsSourceRepository.findByTokenAndSourceType(token, sourceType);
     }
 
     @Override

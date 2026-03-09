@@ -22,6 +22,9 @@ import org.github.tess1o.geopulse.gps.integrations.overland.model.Properties;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.ConfigurationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.StatusMessage;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarDevice;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoundary;
 
@@ -51,6 +54,9 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
         Properties.class,
         OverlandLocations.class,
         OverlandResultResponse.class,
+        TraccarPositionData.class,
+        TraccarPosition.class,
+        TraccarDevice.class,
         DawarichGeometry.class,
         DawarichLocation.class,
         DawarichPayload.class,

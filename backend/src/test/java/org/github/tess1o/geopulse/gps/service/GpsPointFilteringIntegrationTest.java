@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.service;
 
+import com.fasterxml.jackson.databind.node.TextNode;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantBattery;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
@@ -8,6 +9,9 @@ import org.github.tess1o.geopulse.gps.integrations.overland.model.Geometry;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.OverlandLocationMessage;
 import org.github.tess1o.geopulse.gps.integrations.overland.model.Properties;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarDevice;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPosition;
+import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.service.filter.GpsDataFilteringService;
@@ -20,6 +24,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -178,6 +183,35 @@ class GpsPointFilteringIntegrationTest {
         assertTrue(result.getRejectionReason().contains("150"));
     }
     @Test
+    void testTraccar_SpeedConvertedFromKnotsToKmh() {
+        // Given: Traccar position with speed in knots
+        TraccarPositionData data = createTraccarMessage(
+                50.0,  // 50m accuracy - should pass
+                30.0   // 30 knots = 55.56 km/h - should pass
+        );
+        // When: Map and filter
+        GpsPointEntity entity = mapper.toEntity(data, testUser, GpsSourceType.TRACCAR);
+        GpsFilterResult result = filteringService.filter(entity, config);
+        // Then: Point is accepted and speed is converted
+        assertTrue(result.isAccepted());
+        assertEquals(55.56, entity.getVelocity(), 0.1);
+    }
+    @Test
+    void testTraccar_ExcessiveSpeedInKnots_RejectedAfterConversion() {
+        // Given: 160 knots from Traccar should become 296.32 km/h and be rejected
+        TraccarPositionData data = createTraccarMessage(
+                50.0,
+                160.0
+        );
+        // When
+        GpsPointEntity entity = mapper.toEntity(data, testUser, GpsSourceType.TRACCAR);
+        GpsFilterResult result = filteringService.filter(entity, config);
+        // Then
+        assertTrue(result.isRejected());
+        assertEquals(296.32, entity.getVelocity(), 0.1);
+        assertTrue(result.getRejectionReason().toLowerCase(Locale.ROOT).contains("speed"));
+    }
+    @Test
     void testMultipleSources_ConsistentFiltering() {
         // Given: Messages from different sources with same effective speed
         // 30 m/s = 108 km/h (should all pass 250 km/h threshold)
@@ -268,6 +302,24 @@ class GpsPointFilteringIntegrationTest {
         HomeAssistantBattery battery = new HomeAssistantBattery();
         battery.setLevel(80);
         data.setBattery(battery);
+        return data;
+    }
+    private TraccarPositionData createTraccarMessage(Double accuracy, Double speedKnots) {
+        TraccarPosition position = new TraccarPosition();
+        position.setLatitude(40.7128);
+        position.setLongitude(-74.0060);
+        position.setAltitude(10.0);
+        position.setAccuracy(accuracy);
+        position.setSpeed(speedKnots);
+        position.setFixTime(new TextNode(Instant.now().toString()));
+        position.setAttributes(Map.of("batteryLevel", 80));
+
+        TraccarDevice device = new TraccarDevice();
+        device.setUniqueId("traccar-test-device");
+
+        TraccarPositionData data = new TraccarPositionData();
+        data.setPosition(position);
+        data.setDevice(device);
         return data;
     }
 }

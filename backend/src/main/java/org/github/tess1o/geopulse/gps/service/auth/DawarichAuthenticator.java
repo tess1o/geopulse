@@ -20,7 +20,7 @@ public class DawarichAuthenticator extends AbstractGpsIntegrationAuthenticator {
     @Override
     protected Optional<GpsSourceConfigEntity> findConfig(String value) {
         String apiKey = getApiKey(value);
-        return configProvider.findByToken(apiKey);
+        return configProvider.findByTokenAndSourceType(apiKey, GpsSourceType.DAWARICH);
     }
 
     @Override

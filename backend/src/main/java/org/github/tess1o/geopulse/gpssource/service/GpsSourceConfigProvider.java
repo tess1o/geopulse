@@ -28,6 +28,11 @@ public interface GpsSourceConfigProvider {
     Optional<GpsSourceConfigEntity> findByToken(String token);
 
     /**
+     * Find GPS source configuration by token and source type (for token-based integrations).
+     */
+    Optional<GpsSourceConfigEntity> findByTokenAndSourceType(String token, GpsSourceType sourceType);
+
+    /**
      * Find GPS source configuration by username and connection type (for MQTT support)
      *
      * @param username The username to search for

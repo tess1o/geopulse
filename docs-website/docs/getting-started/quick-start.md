@@ -88,6 +88,7 @@ GeoPulse supports multiple GPS tracking apps. Choose the one that works best for
 |-----|----------|----------|----------------|
 | **OwnTracks** | iOS, Android | Full-featured tracking, highly customizable | Medium |
 | **Overland** | iOS | Simple setup, reliable iOS tracking | Low |
+| **Traccar** | Any | Existing Traccar server deployments with Position Forwarding | Varies |
 | **GPS Logger** | Android | Lightweight, battery-efficient | Low |
 | **Dawarich** | iOS, Android | Privacy-focused, API key authentication | Low-Medium |
 | **Home Assistant** | Any | Smart home integration, existing HA users | Varies |
@@ -121,6 +122,7 @@ GeoPulse supports multiple GPS tracking apps. Choose the one that works best for
 For step-by-step instructions for each app, see:
 - [OwnTracks Setup Guide](/docs/user-guide/gps-sources/owntracks)
 - [Overland Setup Guide](/docs/user-guide/gps-sources/overland)
+- [Traccar Setup Guide](/docs/user-guide/gps-sources/traccar)
 - [GPS Logger Setup Guide](/docs/user-guide/gps-sources/gps_logger)
 - [Dawarich Setup Guide](/docs/user-guide/gps-sources/dawarich)
 - [Home Assistant Integration](/docs/user-guide/gps-sources/home_assistant)

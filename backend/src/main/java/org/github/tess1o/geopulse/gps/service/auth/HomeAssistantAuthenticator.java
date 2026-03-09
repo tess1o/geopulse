@@ -19,7 +19,7 @@ public class HomeAssistantAuthenticator extends AbstractGpsIntegrationAuthentica
     @Override
     protected Optional<GpsSourceConfigEntity> findConfig(String authHeader) {
         String token = extractBearerToken(authHeader);
-        return configProvider.findByToken(token);
+        return configProvider.findByTokenAndSourceType(token, GpsSourceType.HOME_ASSISTANT);
     }
 
     @Override

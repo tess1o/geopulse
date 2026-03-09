@@ -138,6 +138,41 @@ test.describe('Location Sources Management', () => {
       expect(dbSource.active).toBe(true);
     });
 
+    test('should create Traccar source', async ({page, isolatedUsers, dbManager}) => {
+      const loginPage = new LoginPage(page);
+      const locationSourcesPage = new LocationSourcesPage(page);
+      const testUser = await isolatedUsers.create(page);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await locationSourcesPage.navigate();
+      await locationSourcesPage.waitForPageLoad();
+
+      // Create Traccar source using helper method
+      await locationSourcesPage.createTraccarSource('traccar-token-12345');
+
+      expect(await locationSourcesPage.getSourceCount()).toBe(1);
+      expect(await locationSourcesPage.areInstructionsVisible()).toBe(true);
+
+      const sourceType = await locationSourcesPage.getSourceType(0);
+      expect(sourceType).toBe('Traccar');
+
+      const sourceIdentifier = await locationSourcesPage.getSourceIdentifier(0);
+      expect(sourceIdentifier).toContain('Token:');
+
+      // Verify source exists in database
+      const user = await dbManager.getUserByEmail(testUser.email);
+      const dbSourceCount = await LocationSourcesPage.getGpsSourceCountFromDb(dbManager, user.id);
+      expect(dbSourceCount).toBe(1);
+
+      const dbSource = await LocationSourcesPage.getGpsSourceFromDb(dbManager, user.id, 'TRACCAR', 'traccar-token-12345');
+      expect(dbSource).toBeTruthy();
+      expect(dbSource.source_type).toBe('TRACCAR');
+      expect(dbSource.token).toBe('traccar-token-12345');
+      expect(dbSource.active).toBe(true);
+    });
+
     test('should create Dawarich source', async ({page, isolatedUsers, dbManager}) => {
       const loginPage = new LoginPage(page);
       const locationSourcesPage = new LocationSourcesPage(page);
@@ -556,6 +591,30 @@ test.describe('Location Sources Management', () => {
       
       // Check for validation error
       const tokenError = await page.locator('.error-message').filter({hasText: 'Access token is required'});
+      expect(await tokenError.isVisible()).toBe(true);
+    });
+
+    test('should validate required fields for Traccar', async ({page, isolatedUsers}) => {
+      const loginPage = new LoginPage(page);
+      const locationSourcesPage = new LocationSourcesPage(page);
+      const testUser = await isolatedUsers.create(page);
+      await loginPage.navigate();
+      await loginPage.login(testUser.email, testUser.password);
+      await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+      await locationSourcesPage.navigate();
+      await locationSourcesPage.waitForPageLoad();
+
+      // Try to create source without required fields
+      await locationSourcesPage.clickAddNewSource();
+      await locationSourcesPage.waitForDialog();
+      await locationSourcesPage.selectSourceType('TRACCAR');
+
+      // Try to save without token
+      await locationSourcesPage.clickSave();
+
+      // Check for validation error
+      const tokenError = await page.locator('.error-message').filter({hasText: 'Forwarding token is required'});
       expect(await tokenError.isVisible()).toBe(true);
     });
 
