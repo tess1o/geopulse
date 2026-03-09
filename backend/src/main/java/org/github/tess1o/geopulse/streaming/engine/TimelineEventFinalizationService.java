@@ -148,6 +148,13 @@ public class TimelineEventFinalizationService {
         stay.setLocationName(locationResult.getLocationName());
         stay.setFavoriteId(locationResult.getFavoriteId());
         stay.setGeocodingId(locationResult.getGeocodingId());
+
+        // Anchor stays matched to favorite points to the favorite coordinates.
+        // This prevents map scatter for "Home/Work" style locations.
+        if (locationResult.hasAnchoredCoordinates()) {
+            stay.setLatitude(locationResult.getAnchorLatitude());
+            stay.setLongitude(locationResult.getAnchorLongitude());
+        }
     }
 
     /**

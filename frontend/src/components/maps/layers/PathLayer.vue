@@ -194,6 +194,26 @@ const clearHighlightedTripLayers = () => {
   }
 }
 
+const resolveTripMarkerPoint = (trip, type, fallbackPoint) => {
+  if (type === 'start') {
+    const lat = Number(trip?.latitude)
+    const lon = Number(trip?.longitude)
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { latitude: lat, longitude: lon }
+    }
+  }
+
+  if (type === 'end') {
+    const lat = Number(trip?.endLatitude)
+    const lon = Number(trip?.endLongitude)
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      return { latitude: lat, longitude: lon }
+    }
+  }
+
+  return fallbackPoint
+}
+
 // Watch for trip highlighting
 watch(() => props.highlightedTrip, (newTrip) => {
   // Remove previous trip path and markers
@@ -206,7 +226,15 @@ watch(() => props.highlightedTrip, (newTrip) => {
       return
     }
 
+    const startPoint = resolveTripMarkerPoint(newTrip, 'start', tripPath[0])
+    const endPoint = resolveTripMarkerPoint(newTrip, 'end', tripPath[tripPath.length - 1])
     const tripCoords = tripPath.map(point => [point.latitude, point.longitude])
+
+    // Keep highlighted polyline endpoints aligned with start/end markers.
+    if (tripCoords.length >= 2) {
+      tripCoords[0] = [startPoint.latitude, startPoint.longitude]
+      tripCoords[tripCoords.length - 1] = [endPoint.latitude, endPoint.longitude]
+    }
 
     tripPathLayer.value = L.polyline(tripCoords, {
       color: '#ff6b6b',
@@ -214,9 +242,6 @@ watch(() => props.highlightedTrip, (newTrip) => {
       opacity: 1,
       dashArray: '10, 5'
     })
-
-    const startPoint = tripPath[0]
-    const endPoint = tripPath[tripPath.length - 1]
 
     tripStartMarker.value = createHighlightedPathStartMarker(
         startPoint.latitude,

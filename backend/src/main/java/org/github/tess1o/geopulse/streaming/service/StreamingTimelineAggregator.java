@@ -13,6 +13,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.converters.StreamingTimelineConverter;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -171,6 +172,10 @@ public class StreamingTimelineAggregator {
             timeline.getTrips().add(tripDTO);
         }
 
+        // Align trip start/end pins with nearby favorite stays when available.
+        // This keeps trip pins consistent with anchored stay pins on map.
+        snapTripEndpointsToAdjacentFavoriteStays(timeline.getTrips(), timeline.getStays());
+
         // Get data gaps with boundary expansion
         var gapEntities = timelineDataGapRepository.findByUserIdAndTimeRangeWithExpansion(userId, startTime, endTime);
         for (var gapEntity : gapEntities) {
@@ -183,6 +188,84 @@ public class StreamingTimelineAggregator {
                 timeline.getStaysCount(), timeline.getTripsCount(), timeline.getDataGapsCount());
 
         return timeline;
+    }
+
+    private void snapTripEndpointsToAdjacentFavoriteStays(
+            List<TimelineTripDTO> trips,
+            List<TimelineStayLocationDTO> stays
+    ) {
+        if (trips == null || trips.isEmpty() || stays == null || stays.isEmpty()) {
+            return;
+        }
+
+        for (TimelineTripDTO trip : trips) {
+            if (trip == null || trip.getTimestamp() == null) {
+                continue;
+            }
+
+            Instant tripStart = trip.getTimestamp();
+            Instant tripEnd = tripStart.plusSeconds(Math.max(0L, trip.getTripDuration()));
+
+            TimelineStayLocationDTO origin = findClosestOriginStay(stays, tripStart);
+            if (origin != null && origin.getFavoriteId() != null) {
+                trip.setLatitude(origin.getLatitude());
+                trip.setLongitude(origin.getLongitude());
+            }
+
+            TimelineStayLocationDTO destination = findClosestDestinationStay(stays, tripEnd);
+            if (destination != null && destination.getFavoriteId() != null) {
+                trip.setEndLatitude(destination.getLatitude());
+                trip.setEndLongitude(destination.getLongitude());
+            }
+        }
+    }
+
+    private TimelineStayLocationDTO findClosestOriginStay(List<TimelineStayLocationDTO> stays, Instant tripStart) {
+        TimelineStayLocationDTO origin = null;
+        long minGapSeconds = Long.MAX_VALUE;
+
+        for (TimelineStayLocationDTO stay : stays) {
+            if (stay == null || stay.getTimestamp() == null) {
+                continue;
+            }
+
+            Instant stayEnd = stay.getTimestamp().plusSeconds(Math.max(0L, stay.getStayDuration()));
+            if (stayEnd.isAfter(tripStart)) {
+                continue;
+            }
+
+            long gap = Duration.between(stayEnd, tripStart).toSeconds();
+            if (gap < minGapSeconds) {
+                minGapSeconds = gap;
+                origin = stay;
+            }
+        }
+
+        return origin;
+    }
+
+    private TimelineStayLocationDTO findClosestDestinationStay(List<TimelineStayLocationDTO> stays, Instant tripEnd) {
+        TimelineStayLocationDTO destination = null;
+        long minGapSeconds = Long.MAX_VALUE;
+
+        for (TimelineStayLocationDTO stay : stays) {
+            if (stay == null || stay.getTimestamp() == null) {
+                continue;
+            }
+
+            Instant stayStart = stay.getTimestamp();
+            if (stayStart.isBefore(tripEnd)) {
+                continue;
+            }
+
+            long gap = Duration.between(tripEnd, stayStart).toSeconds();
+            if (gap < minGapSeconds) {
+                minGapSeconds = gap;
+                destination = stay;
+            }
+        }
+
+        return destination;
     }
 
     /**

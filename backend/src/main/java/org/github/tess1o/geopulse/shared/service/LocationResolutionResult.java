@@ -27,6 +27,14 @@ public class LocationResolutionResult {
      * Will be null if location came from user's favorites.
      */
     private Long geocodingId;
+
+    /**
+     * Optional anchored coordinates to use for map rendering.
+     * Set when a stay/trip should be visually snapped to a stable location
+     * (for example, a favorite point).
+     */
+    private Double anchorLatitude;
+    private Double anchorLongitude;
     
     /**
      * Create a result from a favorite location
@@ -35,6 +43,23 @@ public class LocationResolutionResult {
         return LocationResolutionResult.builder()
                 .locationName(locationName)
                 .favoriteId(favoriteId)
+                .build();
+    }
+
+    /**
+     * Create a result from a favorite location with explicit anchored coordinates.
+     */
+    public static LocationResolutionResult fromFavorite(
+            String locationName,
+            Long favoriteId,
+            Double anchorLatitude,
+            Double anchorLongitude
+    ) {
+        return LocationResolutionResult.builder()
+                .locationName(locationName)
+                .favoriteId(favoriteId)
+                .anchorLatitude(anchorLatitude)
+                .anchorLongitude(anchorLongitude)
                 .build();
     }
     
@@ -46,5 +71,9 @@ public class LocationResolutionResult {
                 .locationName(locationName)
                 .geocodingId(geocodingId)
                 .build();
+    }
+
+    public boolean hasAnchoredCoordinates() {
+        return anchorLatitude != null && anchorLongitude != null;
     }
 }
