@@ -1,5 +1,21 @@
 <template>
   <div class="timeline-page">
+    <Message v-if="matchingTripWorkspace" severity="info" :closable="false" class="trip-workspace-banner">
+      <div class="trip-workspace-banner-content">
+        <span>
+          Current date range matches trip plan:
+          <strong>{{ matchingTripWorkspace.name }}</strong>
+        </span>
+        <Button
+          label="Open Trip Planner"
+          icon="pi pi-briefcase"
+          size="small"
+          outlined
+          @click="openMatchingTripWorkspace"
+        />
+      </div>
+    </Message>
+
     <!-- Large Dataset Warning -->
     <TimelineLargeDatasetWarning
       v-if="showLargeDatasetWarning"
@@ -89,6 +105,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, computed, inject } from 'vue'
+import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
@@ -96,6 +113,8 @@ import { TimelineContainer } from '@/components/timeline'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineLargeDatasetWarning from '@/components/timeline/TimelineLargeDatasetWarning.vue'
 import ProgressSpinner from 'primevue/progressspinner'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 import { useTimezone } from '@/composables/useTimezone'
 import apiService from '@/utils/apiService'
 import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
@@ -111,8 +130,10 @@ import { useGeocodingStore } from '@/stores/geocoding'
 import { useLocationStore } from '@/stores/location'
 import { useTimelineStore } from '@/stores/timeline'
 import { useHighlightStore } from '@/stores/highlight'
+import { useTripsStore } from '@/stores/trips'
 
 const toast = useToast()
+const router = useRouter()
 
 const dateRangeStore = useDateRangeStore()
 const favoritesStore = useFavoritesStore()
@@ -120,6 +141,7 @@ const geocodingStore = useGeocodingStore()
 const locationStore = useLocationStore()
 const timelineStore = useTimelineStore()
 const highlightStore = useHighlightStore()
+const tripsStore = useTripsStore()
 const confirm = useConfirm()
 
 // Favorite editor composable
@@ -490,6 +512,21 @@ const handleTagClicked = (tag) => {
   })
 }
 
+const openMatchingTripWorkspace = () => {
+  if (!matchingTripWorkspace.value?.id || !dateRange.value || dateRange.value.length !== 2) {
+    return
+  }
+
+  const [startDate, endDate] = dateRange.value
+  router.push({
+    path: `/app/trips/${matchingTripWorkspace.value.id}`,
+    query: {
+      start: timezone.formatUrlDate(startDate),
+      end: timezone.formatUrlDate(endDate)
+    }
+  })
+}
+
 const handleTimelinePhotoShowOnMap = (photo) => {
   mapViewRef.value?.focusOnPhoto?.(photo)
 }
@@ -548,6 +585,9 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 // Lifecycle
 onMounted(async () => {
   await favoritesStore.fetchFavoritePlaces()
+  tripsStore.fetchTrips().catch(() => {
+    // Best-effort fetch for trip plan quick navigation banner
+  })
 })
 
 // Watchers
@@ -574,6 +614,27 @@ watch([mapDataLoading, mapNoData], ([newLoading, newNoData], [oldLoading, oldNoD
 })
 
 // Computed properties
+const matchingTripWorkspace = computed(() => {
+  if (!dateRange.value || !Array.isArray(dateRange.value) || dateRange.value.length !== 2) {
+    return null
+  }
+
+  const [rangeStart, rangeEnd] = dateRange.value
+  if (!rangeStart || !rangeEnd) {
+    return null
+  }
+
+  const selectedStart = timezone.formatUrlDate(rangeStart)
+  const selectedEnd = timezone.formatUrlDate(rangeEnd)
+  const trips = Array.isArray(tripsStore.trips) ? tripsStore.trips : []
+
+  return trips.find((trip) => {
+    if (!trip?.startTime || !trip?.endTime) return false
+    return timezone.formatUrlDate(trip.startTime) === selectedStart &&
+      timezone.formatUrlDate(trip.endTime) === selectedEnd
+  }) || null
+})
+
 const isToday = computed(() => {
   if (!dateRange.value || !Array.isArray(dateRange.value) || dateRange.value.length !== 2) {
     return false
@@ -637,6 +698,18 @@ watch(pathData, () => {
   flex-direction: column;
   height: calc(100vh - 160px); /* Account for navbar (60px) + tabs (40px) + padding (60px) */
   overflow: hidden;
+}
+
+.trip-workspace-banner {
+  margin: 0.5rem 0.5rem 0 0.5rem;
+}
+
+.trip-workspace-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gp-spacing-sm);
+  flex-wrap: wrap;
 }
 
 /* Center the warning when shown */

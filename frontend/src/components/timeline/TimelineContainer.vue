@@ -423,7 +423,7 @@ const loadPeriodTags = async () => {
         props.dateRange[1]
       )
     } catch (error) {
-      console.error('Failed to load period tags:', error)
+      console.error('Failed to load timeline labels:', error)
     }
   }
 }

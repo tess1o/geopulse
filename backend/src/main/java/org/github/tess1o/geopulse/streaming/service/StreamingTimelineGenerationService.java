@@ -5,6 +5,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.streaming.config.TimelineConfig;
 import org.github.tess1o.geopulse.streaming.engine.StreamingTimelineProcessor;
@@ -19,6 +20,7 @@ import org.github.tess1o.geopulse.streaming.merge.MovementTimelineMerger;
 import org.github.tess1o.geopulse.streaming.repository.TimelineDataGapRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
+import org.github.tess1o.geopulse.trips.service.TripVisitAutoMatchService;
 import org.github.tess1o.geopulse.user.model.TimelineStatus;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.insight.service.BadgeRecalculationService;
@@ -73,6 +75,12 @@ public class StreamingTimelineGenerationService {
 
     @Inject
     TimelineJobProgressService jobProgressService;
+
+    @Inject
+    TripVisitAutoMatchService tripVisitAutoMatchService;
+
+    @ConfigProperty(name = "geopulse.trip.visit-matching.auto-apply-on-timeline-regeneration", defaultValue = "true")
+    boolean autoApplyVisitMatchingOnRegeneration;
 
     /**
      * Regenerates timeline starting from the earliest affected GPS point timestamp.
@@ -182,6 +190,16 @@ public class StreamingTimelineGenerationService {
 
             // Step 9: Finalizing (95%)
             updateProgress(jobId, "Finalizing timeline generation", 9, 95, null);
+
+            if (autoApplyVisitMatchingOnRegeneration) {
+                try {
+                    updateProgress(jobId, "Auto-matching planned visits", 9, 97, null);
+                    tripVisitAutoMatchService.evaluateAllTrips(userId, true);
+                } catch (Exception ex) {
+                    log.error("Failed to auto-match trip plan items for user {} after timeline regeneration: {}",
+                            userId, ex.getMessage(), ex);
+                }
+            }
 
             log.info("Successfully completed timeline regeneration for user {} " + "from timestamp {} in {} seconds",
                     userId, earliestAffectedTimestamp, (System.currentTimeMillis() - startTime) / 1000.0d);

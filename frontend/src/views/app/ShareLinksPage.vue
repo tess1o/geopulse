@@ -128,6 +128,19 @@
                           <Tag :value="link.timeline_status"
                                :severity="getTimelineStatusSeverity(link.timeline_status)" />
                         </div>
+                        <div v-if="getShareLinkedTrip(link)" class="setting-item trip-workspace-setting">
+                          <span class="setting-label">Trip Planner:</span>
+                          <span class="setting-value trip-workspace-value">
+                            <Button
+                              :label="getShareLinkedTripLabel(getShareLinkedTrip(link))"
+                              icon="pi pi-compass"
+                              outlined
+                              size="small"
+                              class="trip-workspace-btn"
+                              @click="openTripWorkspace(getShareLinkedTrip(link))"
+                            />
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -526,8 +539,10 @@
 
 <script setup>
 import {ref, reactive, onMounted, computed, watch} from 'vue'
+import { useRouter } from 'vue-router'
 import {useToast} from 'primevue/usetoast'
 import {useShareLinksStore} from '@/stores/shareLinks'
+import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -535,11 +550,14 @@ import TimelineShareDialog from '@/components/sharing/TimelineShareDialog.vue'
 import Menu from 'primevue/menu'
 import Message from 'primevue/message'
 import { copyToClipboard as copyTextToClipboard } from '@/utils/clipboardUtils'
+import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 
 const timezone = useTimezone()
 
+const router = useRouter()
 const toast = useToast()
 const shareLinksStore = useShareLinksStore()
+const tripsStore = useTripsStore()
 
 // Create menu items for dropdown
 const createMenuItems = ref([
@@ -813,10 +831,45 @@ const expiredLiveLocationShares = computed(() =>
   shareLinksStore.getExpiredLinks.filter(link => link.share_type !== 'TIMELINE')
 )
 
+const shareLinksTripContextById = computed(() => {
+  const result = new Map()
+  const allTimelineShares = (shareLinksStore.links || []).filter((link) => link.share_type === 'TIMELINE')
+
+  for (const link of allTimelineShares) {
+    result.set(link.id, findMatchingTripForShareLink(link, tripsStore.trips))
+  }
+
+  return result
+})
+
+const getShareLinkedTrip = (link) => {
+  return shareLinksTripContextById.value.get(link?.id) || null
+}
+
+const getShareLinkedTripLabel = (trip) => {
+  if (!trip) return ''
+  return trip.name || `Trip #${trip.id}`
+}
+
+const openTripWorkspace = (trip) => {
+  if (!trip?.id) return
+  router.push(`/app/trips/${trip.id}`)
+}
+
 // Lifecycle
 onMounted(async () => {
   try {
-    await shareLinksStore.fetchShareLinks()
+    const [linksResult, tripsResult] = await Promise.allSettled([
+      shareLinksStore.fetchShareLinks(),
+      tripsStore.fetchTrips()
+    ])
+
+    if (linksResult.status === 'rejected') {
+      throw linksResult.reason
+    }
+    if (tripsResult.status === 'rejected') {
+      console.error('Failed to load trips for share link context:', tripsResult.reason)
+    }
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -1293,5 +1346,38 @@ onMounted(async () => {
   flex: 1;
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.trip-workspace-setting {
+  align-items: center;
+}
+
+.trip-workspace-value {
+  display: inline-flex;
+  align-items: center;
+}
+
+.trip-workspace-btn {
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 8%, var(--gp-surface-white));
+  color: var(--gp-primary);
+  white-space: nowrap;
+}
+
+.trip-workspace-btn:hover {
+  border-color: color-mix(in srgb, var(--gp-primary) 55%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 14%, var(--gp-surface-white));
+  color: var(--gp-primary-hover);
+}
+
+.trip-workspace-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
+  outline-offset: 2px;
+}
+
+.p-dark .trip-workspace-btn {
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-dark));
+  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-dark));
 }
 </style>

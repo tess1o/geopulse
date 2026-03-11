@@ -169,6 +169,18 @@ const mainItems = computed(() => [
     key: 'timeline'
   },
   {
+    label: 'Timeline Labels',
+    icon: 'pi pi-calendar-times',
+    to: '/app/timeline-labels',
+    key: 'period-tags'
+  },
+  {
+    label: 'Trip Plans',
+    icon: 'pi pi-briefcase',
+    to: '/app/trips',
+    key: 'trips'
+  },
+  {
     label: 'Dashboard',
     icon: 'pi pi-chart-bar',
     to: '/app/dashboard',
@@ -256,12 +268,6 @@ const accountItems = computed(() => [
     icon: 'pi pi-heart',
     to: '/app/favorites-management',
     key: 'favorites-management'
-  },
-  {
-    label: 'Period Tags',
-    icon: 'pi pi-calendar-times',
-    to: '/app/period-tags',
-    key: 'period-tags'
   },
   {
     label: 'Timeline Preferences',
