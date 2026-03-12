@@ -1237,8 +1237,7 @@ watch(workspaceTabs, () => {
   gap: 0.1rem;
 }
 
-.pane-loading,
-.pane-empty {
+.pane-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1246,11 +1245,6 @@ watch(workspaceTabs, () => {
   height: 100%;
   color: var(--gp-text-secondary);
   gap: var(--gp-spacing-sm);
-}
-
-.pane-empty-icon {
-  font-size: 2.5rem;
-  color: var(--gp-text-muted);
 }
 
 .field-label {

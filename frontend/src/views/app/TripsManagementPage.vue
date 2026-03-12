@@ -838,11 +838,6 @@ onMounted(async () => {
   min-width: 0;
 }
 
-.trip-name {
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
 .trip-name-link {
   border: 0;
   background: transparent;

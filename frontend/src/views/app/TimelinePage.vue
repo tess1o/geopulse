@@ -54,7 +54,6 @@
 
       <div class="right-pane">
         <TimelineContainer
-            ref="timelineRef"
             :timelineData="timelineData"
             :timelineNoData="timelineNoData"
             :timelineDataLoading="timelineDataLoading"
@@ -165,17 +164,14 @@ const { timelineData } = storeToRefs(timelineStore)
 
 // Template refs
 const mapViewRef = ref(null)
-const timelineRef = ref(null)
 
 // Reactive state
 const mapDataLoading = ref(false)
 const mapNoData = ref(false)
 const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
-const lastHighlightedPath = ref(null)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
-const geolocationError = ref(null)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -216,12 +212,10 @@ const handleHighlightedPathClick = (data) => {
 const handleTimelineItemClick = (item) => {
   // Check if this item is already highlighted
   if (highlightStore.isItemHighlighted(item)) {
-    lastHighlightedPath.value = null
     highlightStore.clearAllHighlights()
     return
   }
 
-  lastHighlightedPath.value = item
   highlightStore.setHighlightedItem(item)
 }
 
@@ -461,7 +455,6 @@ const fetchTimelineData = async (startDate, endDate) => {
 const getCurrentLocation = () => {
   if (!pathData.value || !pathData.value.points || pathData.value.points.length === 0) {
     currentLocation.value = null
-    geolocationError.value = 'No location data available'
     return
   }
 
@@ -474,10 +467,8 @@ const getCurrentLocation = () => {
       longitude: latestPoint.longitude,
       timestamp: latestPoint.timestamp
     }
-    geolocationError.value = null
   } else {
     currentLocation.value = null
-    geolocationError.value = 'Invalid location data'
   }
 }
 
@@ -551,7 +542,6 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
     // Clear stale map/timeline highlights immediately on date-range change.
     // Otherwise the previously selected trip path can remain visible while the
     // new range loads, which is confusing UX.
-    lastHighlightedPath.value = null
     highlightStore.clearAllHighlights()
 
     const shouldProceed = await checkDatasetSize(startDate, endDate)

@@ -332,7 +332,6 @@ const dateRangeStore = useDateRangeStore()
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
   handlePathClick: baseHandlePathClick,
-  handleFriendClick: baseHandleFriendClick,
   handleFavoriteClick: baseHandleFavoriteClick,
   handleMapClick: baseHandleMapClick,
   handleMapContextMenu: baseHandleMapContextMenu
@@ -665,11 +664,6 @@ const handleTripMarkerClick = (event) => {
     highlightTimelineItem(event.tripData)
   }
 }
-
-// const handleFriendClick = (event) => {
-//   baseHandleFriendClick(event)
-// }
-
 
 const handleFavoriteClick = (event) => {
   baseHandleFavoriteClick(event)

@@ -185,7 +185,6 @@
             </div>
             <TimelineMap
                 v-else
-                ref="mapRef"
                 :pathData="pathData"
                 :timelineData="timelineData"
                 :currentLocation="currentLocation"
@@ -207,7 +206,6 @@
             </div>
             <TimelineContainer
                 v-else
-                ref="timelineRef"
                 :timeline-data="timelineData"
                 :is-public-view="true"
                 @timeline-item-click="handleTimelineItemClick"
@@ -261,9 +259,6 @@ const pathData = ref(null)
 const currentLocation = ref(null)
 
 // Component refs
-const mapRef = ref(null)
-const timelineRef = ref(null)
-
 // Date filter state
 const filterStartDate = ref(null)
 const filterEndDate = ref(null)

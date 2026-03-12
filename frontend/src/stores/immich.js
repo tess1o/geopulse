@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import { useDateRangeStore } from '@/stores/dateRange'
-import { useTimezone } from "@/composables/useTimezone";
 
 let inFlightConfigRequest = null
 let inFlightPhotosRequest = null
@@ -32,65 +31,16 @@ export const useImmichStore = defineStore('immich', {
     photos: [],
     photosLoading: false,
     photosError: null,
-    lastFetchedRange: null,
-    
-    // UI state
-    showPhotos: false
+    lastFetchedRange: null
   }),
 
   getters: {
     // Configuration getters
     isConfigured: (state) => !!(state.config && state.config.enabled),
     hasConfig: (state) => !!state.config,
-    serverUrl: (state) => state.config?.serverUrl || null,
-    isEnabled: (state) => state.config?.enabled || false,
 
     // Photos getters
-    hasPhotos: (state) => state.photos && state.photos.length > 0,
-    photoCount: (state) => state.photos?.length || 0,
-    
-    // Photos grouped by location for map display
-    photoGroups: (state) => {
-      if (!state.photos || state.photos.length === 0) return []
-      
-      const groups = new Map()
-      
-      state.photos.forEach(photo => {
-        if (!photo.latitude || !photo.longitude) return
-        
-        // Group photos by rounded coordinates (to handle slight GPS variations)
-        const roundedLat = Math.round(photo.latitude * 10000) / 10000
-        const roundedLng = Math.round(photo.longitude * 10000) / 10000
-        const key = `${roundedLat},${roundedLng}`
-        
-        if (!groups.has(key)) {
-          groups.set(key, {
-            latitude: roundedLat,
-            longitude: roundedLng,
-            photos: []
-          })
-        }
-        
-        groups.get(key).photos.push(photo)
-      })
-      
-      return Array.from(groups.values())
-    },
-    
-    // Check if photos need to be fetched for current date range
-    needsRefresh: (state) => {
-      const dateRangeStore = useDateRangeStore()
-      const currentRange = dateRangeStore.getCurrentDateRange
-      
-      if (!currentRange || !state.lastFetchedRange) return true
-      
-      const [currentStart, currentEnd] = currentRange
-      const [lastStart, lastEnd] = state.lastFetchedRange
-      
-      const timezone = useTimezone()
-      return !timezone.fromUtc(currentStart).isSame(timezone.fromUtc(lastStart)) || 
-             !timezone.fromUtc(currentEnd).isSame(timezone.fromUtc(lastEnd))
-    }
+    hasPhotos: (state) => state.photos && state.photos.length > 0
   },
 
   actions: {
@@ -257,34 +207,6 @@ export const useImmichStore = defineStore('immich', {
       return inFlightPhotosRequest
     },
 
-    // UI actions
-    async togglePhotos(value) {
-      this.showPhotos = value !== undefined ? value : !this.showPhotos
-      
-      // Auto-fetch photos when enabling if configured
-      if (this.showPhotos && this.isConfigured && this.needsRefresh) {
-        try {
-          await this.fetchPhotos()
-        } catch (error) {
-          // Error handling is already done in fetchPhotos, just log here
-          console.warn('Failed to auto-fetch photos on toggle:', error)
-        }
-      }
-    },
-
-    // Retry mechanism for failed requests
-    async retryLastOperation() {
-      if (this.photosError && !this.photosLoading) {
-        console.log('Retrying last photo fetch operation')
-        await this.fetchPhotos(null, null, true) // Force refresh
-      }
-      
-      if (this.configError && !this.configLoading) {
-        console.log('Retrying config fetch operation')
-        await this.fetchConfig()
-      }
-    },
-
     // Utility actions
     clearPhotos() {
       this.photos = []
@@ -295,15 +217,6 @@ export const useImmichStore = defineStore('immich', {
     clearErrors() {
       this.configError = null
       this.photosError = null
-    },
-
-    // Utility methods for constructing API endpoints (if needed)
-    getThumbnailEndpoint(photoId) {
-      return `/users/me/immich/photos/${photoId}/thumbnail`
-    },
-
-    getDownloadEndpoint(photoId) {
-      return `/users/me/immich/photos/${photoId}/download`
     }
   }
 })

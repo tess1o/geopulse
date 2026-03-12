@@ -69,21 +69,14 @@ export const useTripsStore = defineStore('trips', {
       trips: false,
       trip: false,
       summary: false,
-      planItems: false,
-      workspaceTimeline: false,
-      workspacePath: false,
-      suggestions: false,
-      poiSuggestion: false
+      planItems: false
     },
     error: null
   }),
 
   getters: {
     hasTrips: (state) => Array.isArray(state.trips) && state.trips.length > 0,
-    hasWorkspaceTimeline: (state) => Array.isArray(state.workspaceTimeline) && state.workspaceTimeline.length > 0,
-    hasWorkspacePath: (state) => Array.isArray(state.workspacePath?.points) && state.workspacePath.points.length > 0,
-    getTripById: (state) => (tripId) => state.trips.find((trip) => Number(trip.id) === Number(tripId)) || null,
-    getPlanItemById: (state) => (planItemId) => state.tripPlanItems.find((item) => Number(item.id) === Number(planItemId)) || null
+    getTripById: (state) => (tripId) => state.trips.find((trip) => Number(trip.id) === Number(tripId)) || null
   },
 
   actions: {
@@ -264,7 +257,6 @@ export const useTripsStore = defineStore('trips', {
     },
 
     async fetchWorkspaceTimeline(tripId, startTime = null, endTime = null) {
-      this.loading.workspaceTimeline = true
       this.error = null
       try {
         const params = {}
@@ -280,13 +272,10 @@ export const useTripsStore = defineStore('trips', {
       } catch (error) {
         this.error = error.message || 'Failed to load trip timeline'
         throw error
-      } finally {
-        this.loading.workspaceTimeline = false
       }
     },
 
     async fetchWorkspacePath(tripId, startTime = null, endTime = null) {
-      this.loading.workspacePath = true
       this.error = null
       try {
         const params = {}
@@ -302,13 +291,10 @@ export const useTripsStore = defineStore('trips', {
       } catch (error) {
         this.error = error.message || 'Failed to load trip path'
         throw error
-      } finally {
-        this.loading.workspacePath = false
       }
     },
 
     async fetchVisitSuggestions(tripId) {
-      this.loading.suggestions = true
       this.error = null
       try {
         const response = await apiService.get(`/trips/${tripId}/visit-suggestions`)
@@ -317,13 +303,10 @@ export const useTripsStore = defineStore('trips', {
       } catch (error) {
         this.error = error.message || 'Failed to load visit suggestions'
         throw error
-      } finally {
-        this.loading.suggestions = false
       }
     },
 
     async getPlanSuggestion(lat, lon) {
-      this.loading.poiSuggestion = true
       this.error = null
       try {
         const response = await apiService.get('/trips/plan-suggestion', {
@@ -334,8 +317,6 @@ export const useTripsStore = defineStore('trips', {
       } catch (error) {
         this.error = error.message || 'Failed to resolve plan suggestion'
         throw error
-      } finally {
-        this.loading.poiSuggestion = false
       }
     }
   }

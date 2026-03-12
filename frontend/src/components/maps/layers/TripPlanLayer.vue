@@ -31,7 +31,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['plan-item-click', 'plan-item-contextmenu'])
+const emit = defineEmits(['plan-item-contextmenu'])
 
 const baseLayerRef = ref(null)
 const planMarkers = ref([])
@@ -81,15 +81,6 @@ const renderPlanMarkers = () => {
       planItem: item,
       planIndex: index,
       ...props.markerOptions
-    })
-
-    marker.on('click', (e) => {
-      emit('plan-item-click', {
-        item,
-        index,
-        marker,
-        event: e
-      })
     })
 
     marker.on('contextmenu', (e) => {

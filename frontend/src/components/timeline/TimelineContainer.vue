@@ -583,18 +583,6 @@ watch(() => props.dateRange, () => {
   background: var(--gp-warning);
 }
 
-.timeline-marker.marker-overnight-stay {
-  background: var(--gp-primary-dark);
-}
-
-.timeline-marker.marker-overnight-trip {
-  background: var(--gp-success-dark);
-}
-
-.timeline-marker.marker-overnight-data-gap {
-  background: var(--gp-warning-dark);
-}
-
 /* Dark mode adjustments */
 .p-dark .timeline-header {
   color: var(--gp-primary);
