@@ -32,11 +32,10 @@ public class TripVisitMatchingResource {
     }
 
     @GET
-    public Response getVisitSuggestions(@PathParam("tripId") Long tripId,
-                                        @QueryParam("applyAuto") @DefaultValue("false") boolean applyAuto) {
+    public Response getVisitSuggestions(@PathParam("tripId") Long tripId) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
-            List<TripVisitSuggestionDto> suggestions = tripVisitAutoMatchService.evaluate(userId, tripId, applyAuto);
+            List<TripVisitSuggestionDto> suggestions = tripVisitAutoMatchService.getStoredSuggestions(userId, tripId);
             return Response.ok(ApiResponse.success(suggestions)).build();
         } catch (NotFoundException e) {
             return Response.status(Response.Status.NOT_FOUND)
@@ -54,4 +53,3 @@ public class TripVisitMatchingResource {
         }
     }
 }
-

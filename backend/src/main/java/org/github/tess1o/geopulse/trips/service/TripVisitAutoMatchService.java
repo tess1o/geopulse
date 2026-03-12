@@ -15,8 +15,10 @@ import org.github.tess1o.geopulse.trips.repository.TripRepository;
 import java.time.Instant;
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -85,6 +87,78 @@ public class TripVisitAutoMatchService {
         for (TripEntity trip : trips) {
             evaluate(userId, trip.getId(), applyAutoMatches);
         }
+    }
+
+    @Transactional
+    public List<TripVisitSuggestionDto> getStoredSuggestions(UUID userId, Long tripId) {
+        tripService.getTripEntityOrThrow(userId, tripId);
+
+        List<TripPlanItemEntity> planItems = tripPlanItemRepository.findByTripId(tripId);
+        List<TripPlaceVisitMatchEntity> storedMatches = tripPlaceVisitMatchRepository.findByTripId(tripId);
+
+        Map<Long, TripPlaceVisitMatchEntity> latestMatchByPlanItem = new HashMap<>();
+        for (TripPlaceVisitMatchEntity match : storedMatches) {
+            Long planItemId = match.getPlanItem() != null ? match.getPlanItem().getId() : null;
+            if (planItemId != null && !latestMatchByPlanItem.containsKey(planItemId)) {
+                latestMatchByPlanItem.put(planItemId, match);
+            }
+        }
+
+        List<TripVisitSuggestionDto> suggestions = new ArrayList<>();
+        for (TripPlanItemEntity item : planItems) {
+            suggestions.add(toStoredSuggestion(item, latestMatchByPlanItem.get(item.getId())));
+        }
+        return suggestions;
+    }
+
+    private TripVisitSuggestionDto toStoredSuggestion(TripPlanItemEntity item, TripPlaceVisitMatchEntity match) {
+        if (item.getLatitude() == null || item.getLongitude() == null) {
+            return TripVisitSuggestionDto.builder()
+                    .planItemId(item.getId())
+                    .planItemTitle(item.getTitle())
+                    .decision(DECISION_NO_COORDINATES)
+                    .applied(false)
+                    .reason("Plan item has no coordinates")
+                    .build();
+        }
+
+        if (item.getManualOverrideState() != null) {
+            return TripVisitSuggestionDto.builder()
+                    .planItemId(item.getId())
+                    .planItemTitle(item.getTitle())
+                    .decision(DECISION_MANUAL_OVERRIDE)
+                    .applied(false)
+                    .reason("Manual override is set")
+                    .build();
+        }
+
+        if (match == null) {
+            return TripVisitSuggestionDto.builder()
+                    .planItemId(item.getId())
+                    .planItemTitle(item.getTitle())
+                    .decision(DECISION_NO_MATCH)
+                    .applied(false)
+                    .reason("No matching stay found")
+                    .build();
+        }
+
+        boolean applied = DECISION_AUTO_MATCHED.equals(match.getDecision())
+                && Boolean.TRUE.equals(item.getIsVisited())
+                && item.getVisitSource() == TripPlanItemVisitSource.AUTO;
+
+        return TripVisitSuggestionDto.builder()
+                .planItemId(item.getId())
+                .planItemTitle(item.getTitle())
+                .matchedStayId(match.getStay() != null ? match.getStay().getId() : null)
+                .matchedLocationName(match.getStay() != null ? match.getStay().getLocationName() : null)
+                .matchedStayStart(match.getStay() != null ? match.getStay().getTimestamp() : null)
+                .matchedStayDurationSeconds(match.getDwellSeconds())
+                .distanceMeters(match.getDistanceMeters())
+                .confidence(match.getConfidence())
+                .decision(match.getDecision())
+                .applied(applied)
+                .reason(DECISION_NO_MATCH.equals(match.getDecision()) ? "No matching stay found" : null)
+                .build();
     }
 
     private TripVisitSuggestionDto matchItem(TripEntity trip,

@@ -67,11 +67,6 @@ public class TripPlanItemEntity {
     @Column(name = "manual_override_state")
     private TripPlanItemOverrideState manualOverrideState;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "replacement_item_id")
-    @ToString.Exclude
-    private TripPlanItemEntity replacementItem;
-
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

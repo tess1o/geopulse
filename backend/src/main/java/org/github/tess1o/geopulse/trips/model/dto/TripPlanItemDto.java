@@ -30,7 +30,6 @@ public class TripPlanItemDto {
     private TripPlanItemVisitSource visitSource;
     private Instant visitedAt;
     private TripPlanItemOverrideState manualOverrideState;
-    private Long replacementItemId;
     private Instant createdAt;
     private Instant updatedAt;
 }

@@ -91,15 +91,6 @@ public class TripPlanItemService {
         entity.setVisitedAt(dto.getVisitedAt());
         entity.setManualOverrideState(dto.getManualOverrideState());
 
-        if (dto.getReplacementItemId() != null) {
-            TripPlanItemEntity replacement = tripPlanItemRepository.findByIdAndTripIdAndUserId(
-                            dto.getReplacementItemId(), tripId, userId)
-                    .orElseThrow(() -> new IllegalArgumentException("Replacement item not found in this trip"));
-            entity.setReplacementItem(replacement);
-        } else {
-            entity.setReplacementItem(null);
-        }
-
         tripPlanItemRepository.persist(entity);
         log.info("Updated trip plan item {} for trip {} and user {}", itemId, tripId, userId);
         return toDto(entity);
@@ -175,7 +166,6 @@ public class TripPlanItemService {
                 .visitSource(entity.getVisitSource())
                 .visitedAt(entity.getVisitedAt())
                 .manualOverrideState(entity.getManualOverrideState())
-                .replacementItemId(entity.getReplacementItem() != null ? entity.getReplacementItem().getId() : null)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

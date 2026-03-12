@@ -307,11 +307,11 @@ export const useTripsStore = defineStore('trips', {
       }
     },
 
-    async fetchVisitSuggestions(tripId, applyAuto = false) {
+    async fetchVisitSuggestions(tripId) {
       this.loading.suggestions = true
       this.error = null
       try {
-        const response = await apiService.get(`/trips/${tripId}/visit-suggestions`, { applyAuto })
+        const response = await apiService.get(`/trips/${tripId}/visit-suggestions`)
         this.visitSuggestions = Array.isArray(response.data) ? response.data : []
         return this.visitSuggestions
       } catch (error) {

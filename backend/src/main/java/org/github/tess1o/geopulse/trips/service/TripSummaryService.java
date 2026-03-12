@@ -9,12 +9,12 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.trips.model.dto.TripSummaryDto;
 import org.github.tess1o.geopulse.trips.model.entity.TripEntity;
 import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemEntity;
-import org.github.tess1o.geopulse.trips.model.entity.TripPlanItemVisitSource;
-import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
 import org.github.tess1o.geopulse.trips.repository.TripPlanItemRepository;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @ApplicationScoped
 public class TripSummaryService {
@@ -51,12 +51,6 @@ public class TripSummaryService {
         List<TripPlanItemEntity> planItems = tripPlanItemRepository.findByTripId(tripId);
         int totalPlanItems = planItems.size();
         int visitedPlanItems = (int) planItems.stream().filter(item -> Boolean.TRUE.equals(item.getIsVisited())).count();
-        int visitedAuto = (int) planItems.stream()
-                .filter(item -> Boolean.TRUE.equals(item.getIsVisited()) && item.getVisitSource() == TripPlanItemVisitSource.AUTO)
-                .count();
-        int visitedManual = (int) planItems.stream()
-                .filter(item -> Boolean.TRUE.equals(item.getIsVisited()) && item.getVisitSource() == TripPlanItemVisitSource.MANUAL)
-                .count();
         double completionRate = totalPlanItems == 0 ? 0.0 : (visitedPlanItems * 100.0) / totalPlanItems;
 
         Map<String, Long> timelineCounts = timelineAggregator.getTimelineItemCounts(userId, start, end);
@@ -69,28 +63,9 @@ public class TripSummaryService {
                 .mapToLong(TimelineTripEntity::getTripDuration)
                 .sum();
 
-        Map<String, Long> movementTypeCounts = new TreeMap<>();
-        for (TimelineTripEntity timelineTrip : trips) {
-            String movementType = timelineTrip.getMovementType() == null || timelineTrip.getMovementType().isBlank()
-                    ? "UNKNOWN"
-                    : timelineTrip.getMovementType();
-            movementTypeCounts.merge(movementType, 1L, Long::sum);
-        }
-
         var places = locationAnalyticsService.getMapPlaces(
                 userId, start, end, null, null, null, null, placesPage, placesPageSize
         );
-
-        Set<String> uniqueCities = new HashSet<>();
-        Set<String> uniqueCountries = new HashSet<>();
-        places.forEach(place -> {
-            if (place.getCity() != null && !place.getCity().isBlank()) {
-                uniqueCities.add(place.getCity());
-            }
-            if (place.getCountry() != null && !place.getCountry().isBlank()) {
-                uniqueCountries.add(place.getCountry());
-            }
-        });
 
         return TripSummaryDto.builder()
                 .tripId(trip.getId())
@@ -100,18 +75,12 @@ public class TripSummaryService {
                 .endTime(end)
                 .planItemsTotal(totalPlanItems)
                 .planItemsVisited(visitedPlanItems)
-                .planItemsVisitedAuto(visitedAuto)
-                .planItemsVisitedManual(visitedManual)
                 .planCompletionRate(completionRate)
                 .timelineStays(timelineCounts.getOrDefault("stays", 0L))
                 .timelineTrips(timelineCounts.getOrDefault("trips", 0L))
-                .timelineDataGaps(timelineCounts.getOrDefault("dataGaps", 0L))
                 .totalDistanceMeters(totalDistanceMeters)
                 .totalTripDurationSeconds(totalTripDurationSeconds)
-                .movementTypeCounts(movementTypeCounts)
                 .actualPlacesCount(places.size())
-                .actualCitiesCount(uniqueCities.size())
-                .actualCountriesCount(uniqueCountries.size())
                 .build();
     }
 }

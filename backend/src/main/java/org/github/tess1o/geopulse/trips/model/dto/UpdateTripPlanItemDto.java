@@ -49,6 +49,4 @@ public class UpdateTripPlanItemDto {
     private Instant visitedAt;
 
     private TripPlanItemOverrideState manualOverrideState;
-
-    private Long replacementItemId;
 }

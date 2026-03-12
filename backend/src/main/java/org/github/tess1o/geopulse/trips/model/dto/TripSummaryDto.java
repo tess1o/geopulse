@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
 
 import java.time.Instant;
-import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -22,19 +21,12 @@ public class TripSummaryDto {
 
     private int planItemsTotal;
     private int planItemsVisited;
-    private int planItemsVisitedAuto;
-    private int planItemsVisitedManual;
     private double planCompletionRate;
 
     private long timelineStays;
     private long timelineTrips;
-    private long timelineDataGaps;
     private long totalDistanceMeters;
     private long totalTripDurationSeconds;
-    private Map<String, Long> movementTypeCounts;
 
     private int actualPlacesCount;
-    private int actualCitiesCount;
-    private int actualCountriesCount;
 }
-

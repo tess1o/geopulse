@@ -202,6 +202,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  loadImmichPhotos: {
+    type: Boolean,
+    default: true
+  },
   showTimelineLabels: {
     type: Boolean,
     default: true
@@ -441,6 +445,10 @@ const loadPeriodTags = async () => {
 }
 
 const loadImmichPhotosForCards = async () => {
+  if (!props.loadImmichPhotos) {
+    return
+  }
+
   if (!props.dateRange || props.dateRange.length !== 2) {
     return
   }
