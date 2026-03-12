@@ -111,6 +111,12 @@
             <template #body="{ data }">
               <div class="trip-actions-row">
                 <Button
+                  icon="pi pi-briefcase"
+                  class="p-button-text p-button-sm"
+                  @click="openWorkspace(data)"
+                  v-tooltip.top="'Open trip planner'"
+                />
+                <Button
                   v-if="isLinkedToLabel(data)"
                   icon="pi pi-tag"
                   class="p-button-text p-button-sm"
@@ -123,12 +129,6 @@
                   class="p-button-text p-button-sm"
                   @click="unlinkTripFromLabel(data)"
                   v-tooltip.top="'Unlink timeline label'"
-                />
-                <Button
-                  icon="pi pi-briefcase"
-                  class="p-button-text p-button-sm"
-                  @click="openWorkspace(data)"
-                  v-tooltip.top="'Open trip planner'"
                 />
                 <Button
                   icon="pi pi-pencil"

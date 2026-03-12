@@ -42,7 +42,18 @@
       </Message>
 
       <template v-else>
-        <div v-if="!isPlanningMode" class="summary-strip">
+        <div class="workspace-tabs">
+          <Button
+            v-for="tab in workspaceTabs"
+            :key="tab.key"
+            :label="tab.label"
+            :icon="tab.icon"
+            :class="{ 'active-workspace-tab': activeWorkspaceTab === tab.key }"
+            @click="selectWorkspaceTab(tab.key)"
+          />
+        </div>
+
+        <div v-if="showOverviewSection" class="summary-strip">
           <div class="summary-chip">
             <span>Completion</span>
             <strong>{{ summaryCompletion }}</strong>
@@ -61,7 +72,7 @@
           </div>
         </div>
 
-        <BaseCard class="workspace-card">
+        <BaseCard v-if="showOverviewSection || showPlanningPanelMode" class="workspace-card">
           <div class="workspace-layout">
             <div class="workspace-map">
               <div v-if="workspaceLoading" class="pane-loading">
@@ -74,6 +85,7 @@
                 :timelineData="workspaceTimeline"
                 :plannedItemsData="tripPlanMapItems"
                 :showFavoritesByDefault="false"
+                :showImmichByDefault="true"
                 :showPlanToVisitAction="true"
                 :showFavoritesContextActions="false"
                 :showHeatmapControl="false"
@@ -89,13 +101,13 @@
               <div v-if="workspaceLoading" class="pane-loading">
                 <ProgressSpinner />
               </div>
-              <div v-else-if="isPlanningMode" class="planning-panel">
+              <div v-else-if="showPlanningPanelMode" class="planning-panel">
                 <div class="planning-callout">
                   <i class="pi pi-calendar planning-panel-icon"></i>
                   <div class="planning-callout-content">
-                    <h4>Future trip planning mode</h4>
-                    <p>This trip has no actual timeline data yet.</p>
-                    <p>Right-click on the map and use <strong>Plan to visit here</strong> to add planned stops.</p>
+                    <h4>{{ planningPanelTitle }}</h4>
+                    <p>{{ planningPanelPrimaryText }}</p>
+                    <p>{{ planningPanelHintText }}</p>
                   </div>
                 </div>
                 <div v-if="planningPanelItems.length > 0" class="planning-list">
@@ -150,12 +162,21 @@
                 :timelineNoData="!workspaceTimeline.length"
                 :timelineDataLoading="workspaceLoading"
                 :dateRange="activeDateRangeArray"
+                :showTimelineLabels="false"
               />
             </div>
           </div>
         </BaseCard>
 
-        <BaseCard class="plan-card" :title="comparisonCardTitle">
+        <ImmichLatestPhotosSection
+          v-if="showTripPhotosSection"
+          title="Trip Photos"
+          :search-params="tripImmichSearchParams"
+          empty-message="No Immich photos found for this trip range."
+          @show-on-map="handleTripPhotoShowOnMap"
+        />
+
+        <BaseCard v-if="showPlanSection || isPlanningMode" class="plan-card" :title="comparisonCardTitle">
           <template #header>
             <div class="workspace-card-header">
               <h3 class="workspace-title">{{ comparisonCardTitle }}</h3>
@@ -163,116 +184,121 @@
             </div>
           </template>
 
-          <DataTable
-            :value="sortedTripPlanItems"
-            :paginator="true"
-            :rows="10"
-            :rowsPerPageOptions="[10, 25, 50]"
-            stripedRows
-          >
-            <Column field="title" header="Title" sortable>
-              <template #body="{ data }">
-                <div class="plan-item-title">
-                  <button
-                    type="button"
-                    class="plan-item-link"
-                    :disabled="typeof data.latitude !== 'number' || typeof data.longitude !== 'number'"
-                    @click="focusPlannedItemOnMap(data)"
-                  >
-                    {{ data.title }}
-                  </button>
-                  <small v-if="data.notes">{{ data.notes }}</small>
-                  <small>
-                    {{ formatPlannedDay(data.plannedDay) }}
-                  </small>
-                </div>
-              </template>
-            </Column>
+          <div class="plan-content">
+            <div class="plan-content-table">
+              <DataTable
+                :value="sortedTripPlanItems"
+                :paginator="true"
+                :rows="10"
+                :rowsPerPageOptions="[10, 25, 50]"
+                stripedRows
+              >
+                <Column field="title" header="Title" sortable>
+                  <template #body="{ data }">
+                    <div class="plan-item-title">
+                      <button
+                        type="button"
+                        class="plan-item-link"
+                        :disabled="typeof data.latitude !== 'number' || typeof data.longitude !== 'number'"
+                        @click="focusPlannedItemOnMap(data)"
+                      >
+                        {{ data.title }}
+                      </button>
+                      <small v-if="data.notes">{{ data.notes }}</small>
+                      <small>
+                        {{ formatPlannedDay(data.plannedDay) }}
+                      </small>
+                    </div>
+                  </template>
+                </Column>
 
-            <Column field="priority" header="Priority" sortable style="width: 8rem">
-              <template #body="{ data }">
-                <Tag
-                  :value="data.priority || 'OPTIONAL'"
-                  :severity="getPrioritySeverity(data.priority)"
-                />
-              </template>
-            </Column>
-
-            <Column v-if="!isPlanningMode" header="Matched Stay">
-              <template #body="{ data }">
-                <div class="actual-visit-cell">
-                  <template v-if="hasMatchedStay(data)">
-                    <strong>{{ getMatchedStayTitle(data) }}</strong>
-                    <small>{{ getMatchedStayTimeLabel(data) }}</small>
+                <Column field="priority" header="Priority" sortable style="width: 8rem">
+                  <template #body="{ data }">
                     <Tag
-                      v-if="getMatchedConfidenceBadge(data)"
-                      class="matched-confidence-badge"
-                      :value="getMatchedConfidenceBadge(data).label"
-                      :severity="getMatchedConfidenceBadge(data).severity"
+                      :value="data.priority || 'OPTIONAL'"
+                      :severity="getPrioritySeverity(data.priority)"
                     />
                   </template>
-                  <span v-else class="matched-stay-empty">—</span>
-                </div>
-              </template>
-            </Column>
+                </Column>
 
-            <Column field="isVisited" header="Status" sortable style="width: 11rem">
-              <template #body="{ data }">
-                <Tag
-                  :severity="getVisitStatusMeta(data).severity"
-                  :value="getVisitStatusMeta(data).label"
-                />
-                <small class="confidence-text" v-if="getVisitStatusMeta(data).subtext">
-                  {{ getVisitStatusMeta(data).subtext }}
-                </small>
-              </template>
-            </Column>
+                <Column v-if="!isPlanningMode" header="Matched Stay">
+                  <template #body="{ data }">
+                    <div class="actual-visit-cell">
+                      <template v-if="hasMatchedStay(data)">
+                        <strong>{{ getMatchedStayTitle(data) }}</strong>
+                        <small>{{ getMatchedStayTimeLabel(data) }}</small>
+                        <Tag
+                          v-if="getMatchedConfidenceBadge(data)"
+                          class="matched-confidence-badge"
+                          :value="getMatchedConfidenceBadge(data).label"
+                          :severity="getMatchedConfidenceBadge(data).severity"
+                        />
+                      </template>
+                      <span v-else class="matched-stay-empty">—</span>
+                    </div>
+                  </template>
+                </Column>
 
-            <Column header="Actions" style="width: 13rem">
-              <template #body="{ data }">
-                <Button
-                  icon="pi pi-check"
-                  class="p-button-text p-button-sm"
-                  v-tooltip.top="'Mark visited'"
-                  @click="applyVisitOverride(data, 'CONFIRM_VISITED')"
-                />
-                <Button
-                  icon="pi pi-times"
-                  class="p-button-text p-button-sm"
-                  v-tooltip.top="'Mark not visited'"
-                  @click="applyVisitOverride(data, 'REJECT_VISIT')"
-                />
-                <Button
-                  icon="pi pi-undo"
-                  class="p-button-text p-button-sm"
-                  v-tooltip.top="'Reset visit state'"
-                  @click="applyVisitOverride(data, 'RESET_TO_AUTO')"
-                />
-                <Button
-                  icon="pi pi-pencil"
-                  class="p-button-text p-button-sm"
-                  v-tooltip.top="'Edit item'"
-                  @click="openEditPlanItemDialog(data)"
-                />
-                <Button
-                  icon="pi pi-trash"
-                  class="p-button-text p-button-sm"
-                  severity="danger"
-                  v-tooltip.top="'Delete item'"
-                  @click="confirmDeletePlanItem(data)"
-                />
-              </template>
-            </Column>
+                <Column field="isVisited" header="Status" sortable style="width: 11rem">
+                  <template #body="{ data }">
+                    <Tag
+                      :severity="getVisitStatusMeta(data).severity"
+                      :value="getVisitStatusMeta(data).label"
+                    />
+                    <small class="confidence-text" v-if="getVisitStatusMeta(data).subtext">
+                      {{ getVisitStatusMeta(data).subtext }}
+                    </small>
+                  </template>
+                </Column>
 
-            <template #empty>
-              <div class="empty-state">
-                <i class="pi pi-list-check empty-state-icon"></i>
-                <p>No plan items yet.</p>
-                <small>Add places from map context menu to compare planned vs actual visits.</small>
-              </div>
-            </template>
-          </DataTable>
+                <Column header="Actions" style="width: 13rem">
+                  <template #body="{ data }">
+                    <Button
+                      icon="pi pi-check"
+                      class="p-button-text p-button-sm"
+                      v-tooltip.top="'Mark visited'"
+                      @click="applyVisitOverride(data, 'CONFIRM_VISITED')"
+                    />
+                    <Button
+                      icon="pi pi-times"
+                      class="p-button-text p-button-sm"
+                      v-tooltip.top="'Mark not visited'"
+                      @click="applyVisitOverride(data, 'REJECT_VISIT')"
+                    />
+                    <Button
+                      icon="pi pi-undo"
+                      class="p-button-text p-button-sm"
+                      v-tooltip.top="'Reset visit state'"
+                      @click="applyVisitOverride(data, 'RESET_TO_AUTO')"
+                    />
+                    <Button
+                      icon="pi pi-pencil"
+                      class="p-button-text p-button-sm"
+                      v-tooltip.top="'Edit item'"
+                      @click="openEditPlanItemDialog(data)"
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      class="p-button-text p-button-sm"
+                      severity="danger"
+                      v-tooltip.top="'Delete item'"
+                      @click="confirmDeletePlanItem(data)"
+                    />
+                  </template>
+                </Column>
+
+                <template #empty>
+                  <div class="empty-state">
+                    <i class="pi pi-list-check empty-state-icon"></i>
+                    <p>No plan items yet.</p>
+                    <small>Add places from map context menu to compare planned vs actual visits.</small>
+                  </div>
+                </template>
+              </DataTable>
+            </div>
+          </div>
         </BaseCard>
+
       </template>
     </PageContainer>
 
@@ -362,7 +388,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -370,11 +396,13 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useTimezone } from '@/composables/useTimezone'
 import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 import { useTripsStore } from '@/stores/trips'
+import { useImmichStore } from '@/stores/immich'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
+import ImmichLatestPhotosSection from '@/components/location-analytics/ImmichLatestPhotosSection.vue'
 import Button from 'primevue/button'
 import DatePicker from 'primevue/datepicker'
 import Tag from 'primevue/tag'
@@ -395,6 +423,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const timezone = useTimezone()
 const tripsStore = useTripsStore()
+const immichStore = useImmichStore()
 
 const {
   currentTrip,
@@ -411,6 +440,7 @@ const pageError = ref(null)
 const selectedDateRange = ref(null)
 const activeRange = ref({ start: null, end: null })
 const timelineMapRef = ref(null)
+const activeWorkspaceTab = ref('overview')
 
 const showPlanItemDialog = ref(false)
 const editingPlanItemId = ref(null)
@@ -463,7 +493,26 @@ const isFutureTrip = computed(() => {
   return timezone.fromUtc(currentTrip.value.startTime).isAfter(timezone.now())
 })
 const isPlanningMode = computed(() => isFutureTrip.value && !hasPathData.value && !hasTimelineData.value)
-const comparisonCardTitle = computed(() => (isPlanningMode.value ? 'Planned Stops' : 'Plan vs Actual'))
+const isActiveTrip = computed(() => String(currentTrip.value?.status || '').toUpperCase() === 'ACTIVE')
+const showOverviewSection = computed(() => activeWorkspaceTab.value === 'overview' && !isFutureTrip.value)
+const showPlanSection = computed(() => activeWorkspaceTab.value === 'plan')
+const showPlanningPanelMode = computed(() => isPlanningMode.value || (showPlanSection.value && isActiveTrip.value))
+const workspaceTabs = computed(() => {
+  const tabs = []
+  if (!isFutureTrip.value) {
+    tabs.push({ key: 'overview', label: 'Overview', icon: 'pi pi-chart-line' })
+  }
+  tabs.push({ key: 'plan', label: 'Plan', icon: 'pi pi-list-check' })
+  return tabs
+})
+const comparisonCardTitle = computed(() => ((isPlanningMode.value || isActiveTrip.value) ? 'Planned Stops' : 'Plan vs Actual'))
+const planningPanelTitle = computed(() => (isPlanningMode.value ? 'Future trip planning mode' : 'Active trip planning mode'))
+const planningPanelPrimaryText = computed(() => (
+  isPlanningMode.value
+    ? 'This trip has no actual timeline data yet.'
+    : 'This trip is in progress. Keep adding planned stops while actual visits are matched automatically.'
+))
+const planningPanelHintText = computed(() => 'Right-click on the map and use Plan to visit here to add planned stops.')
 const sortPlanItems = (items) => {
   const safeItems = Array.isArray(items) ? items : []
   const priorityRank = (priority) => (String(priority || '').toUpperCase() === 'MUST' ? 0 : 1)
@@ -521,6 +570,18 @@ const activeDateRangeArray = computed(() => {
   }
   return [activeRange.value.start, activeRange.value.end]
 })
+
+const tripImmichSearchParams = computed(() => {
+  if (isFutureTrip.value || !immichStore.isConfigured) return null
+  const start = activeRange.value.start || currentTrip.value?.startTime
+  const end = activeRange.value.end || currentTrip.value?.endTime
+  if (!start || !end) return null
+  return {
+    startDate: start,
+    endDate: end
+  }
+})
+const showTripPhotosSection = computed(() => showOverviewSection.value && Boolean(tripImmichSearchParams.value))
 
 const formatDateTime = (value) => {
   if (!value) return '—'
@@ -619,6 +680,38 @@ const getVisitStatusMeta = (item) => {
   return { label: 'Missed', severity: 'secondary', subtext: suggestion?.reason || null }
 }
 
+const getPhotoCoordinates = (photo) => {
+  if (!photo) return null
+  if (typeof photo.latitude === 'number' && typeof photo.longitude === 'number') {
+    return { latitude: photo.latitude, longitude: photo.longitude }
+  }
+  const exif = photo.exifInfo || photo.exif || {}
+  if (typeof exif.latitude === 'number' && typeof exif.longitude === 'number') {
+    return { latitude: exif.latitude, longitude: exif.longitude }
+  }
+  return null
+}
+
+const ensureImmichConfig = async () => {
+  if (immichStore.hasConfig || immichStore.configLoading) return
+  try {
+    await immichStore.fetchConfig()
+  } catch (error) {
+    // Keep workspace usable without Immich
+  }
+}
+
+const ensureActiveWorkspaceTab = () => {
+  const availableTabKeys = workspaceTabs.value.map((tab) => tab.key)
+  if (!availableTabKeys.includes(activeWorkspaceTab.value)) {
+    activeWorkspaceTab.value = isFutureTrip.value ? 'plan' : (availableTabKeys[0] || 'plan')
+  }
+}
+
+const selectWorkspaceTab = (tabKey) => {
+  activeWorkspaceTab.value = tabKey
+}
+
 const clampRangeToTrip = (startTime, endTime, trip = currentTrip.value) => {
   if (!trip?.startTime || !trip?.endTime) {
     return { start: startTime, end: endTime }
@@ -699,6 +792,24 @@ const refreshVisitComparisons = async () => {
   } catch (error) {
     // Non-blocking: comparison hints should not break workspace load.
   }
+}
+
+const handleTripPhotoShowOnMap = (photo) => {
+  const coords = getPhotoCoordinates(photo)
+  if (!photo || !coords) {
+    return
+  }
+
+  if (activeWorkspaceTab.value !== 'overview' && !isFutureTrip.value) {
+    activeWorkspaceTab.value = 'overview'
+  }
+
+  const mapInstance = timelineMapRef.value?.map?.value || timelineMapRef.value?.map
+  if (!mapInstance || typeof mapInstance.setView !== 'function') {
+    return
+  }
+
+  mapInstance.setView([coords.latitude, coords.longitude], 16, { animate: true })
 }
 
 const loadWorkspace = async () => {
@@ -1004,8 +1115,16 @@ const applyVisitOverride = async (item, action) => {
 }
 
 onMounted(async () => {
-  await loadWorkspace()
+  await Promise.all([
+    loadWorkspace(),
+    ensureImmichConfig()
+  ])
+  ensureActiveWorkspaceTab()
 })
+
+watch(workspaceTabs, () => {
+  ensureActiveWorkspaceTab()
+}, { deep: true })
 </script>
 
 <style scoped>
@@ -1038,6 +1157,33 @@ onMounted(async () => {
   font-size: 1rem;
   color: var(--gp-text-secondary);
   line-height: 1.4;
+}
+
+.workspace-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--gp-spacing-sm);
+  margin-bottom: var(--gp-spacing-sm);
+}
+
+.workspace-tabs .p-button {
+  min-width: 108px;
+  background: transparent;
+  border: 1px solid var(--gp-border-light);
+  color: var(--gp-text-secondary);
+  box-shadow: none;
+}
+
+.workspace-tabs .active-workspace-tab {
+  background: var(--gp-primary);
+  border-color: var(--gp-primary);
+  color: var(--gp-surface-white);
+}
+
+.workspace-tabs .p-button:not(.active-workspace-tab):hover {
+  background: var(--gp-surface-light);
+  border-color: var(--gp-primary);
+  color: var(--gp-text-primary);
 }
 
 .summary-strip {
@@ -1073,6 +1219,14 @@ onMounted(async () => {
 .workspace-card,
 .plan-card {
   margin-bottom: var(--gp-spacing-md);
+}
+
+.plan-content {
+  display: block;
+}
+
+.plan-content-table {
+  min-width: 0;
 }
 
 .workspace-card :deep(.p-card-body) {
@@ -1399,9 +1553,14 @@ onMounted(async () => {
     min-width: 0;
     max-width: none;
   }
+
 }
 
 @media (max-width: 768px) {
+  .workspace-tabs {
+    flex-wrap: wrap;
+  }
+
   .summary-strip {
     grid-template-columns: 1fr;
   }

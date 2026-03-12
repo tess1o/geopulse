@@ -269,6 +269,10 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  showImmichByDefault: {
+    type: Boolean,
+    default: false
+  },
   defaultCenterWhenEmpty: {
     type: Array,
     default: () => [51.505, -0.09]
@@ -1188,6 +1192,9 @@ watch(
 onMounted(() => {
   if (props.showFavoritesByDefault) {
     toggleFavorites(true)
+  }
+  if (props.showImmichByDefault) {
+    toggleImmich(true)
   }
 })
 
