@@ -261,12 +261,12 @@ Favorites are important locations you want to track:
 When timeline processing detects you stayed at a favorite location, it automatically labels the stay. Manage favorites
 in **Favorites Management** page.
 
-### What are Period Tags?
+### What are Timeline Labels?
 
-Period Tags let you annotate time ranges with labels (e.g., "Vacation in Italy", "Business Trip"). They help organize
+Timeline Labels let you annotate time ranges with labels (e.g., "Vacation in Italy", "Business Trip"). They help organize
 and filter timeline data by meaningful events.
 
-Create period tags in **Period Tags Management** page and view them overlaid on your timeline.
+Create labels in **Timeline Labels** page and view them overlaid on your timeline.
 
 ### Can I export my data?
 
