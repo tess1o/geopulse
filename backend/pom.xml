@@ -346,7 +346,6 @@
                         --add-opens java.base/java.lang=ALL-UNNAMED
                         -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
                     </argLine>
-                    <groups>io.quarkus.test.junit.QuarkusTest</groups>
                     <excludedGroups>unit</excludedGroups>
                     <includes>
                         <include>**/*Test.java</include>
@@ -356,7 +355,7 @@
                     <forkCount>1</forkCount>
                     <properties>
                         <configurationParameters>
-                            junit.jupiter.tags.include=io.quarkus.test.junit.QuarkusTest
+                            junit.jupiter.tags.exclude=unit
                         </configurationParameters>
                     </properties>
                     <systemPropertyVariables>

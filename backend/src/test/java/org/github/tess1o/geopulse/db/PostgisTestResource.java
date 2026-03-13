@@ -12,7 +12,6 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.regex.Matcher;
 
 public class PostgisTestResource implements QuarkusTestResourceLifecycleManager {
 
@@ -20,41 +19,41 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
     private static PostgreSQLContainer<?> postgreSQLContainer;
     private static int startedReferences = 0;
 
-    private String schemaName;
+    private String databaseName;
     private String adminJdbcUrl;
+    private String databaseJdbcUrl;
     private String adminUsername;
     private String adminPassword;
 
     @Override
     public Map<String, String> start() {
-        String ciEnv = System.getenv("CI");
         String existingDbUrl = System.getenv("QUARKUS_DATASOURCE_JDBC_URL");
+        String existingUsername = System.getenv("QUARKUS_DATASOURCE_USERNAME");
+        String existingPassword = System.getenv("QUARKUS_DATASOURCE_PASSWORD");
 
-        if ("true".equals(ciEnv) || existingDbUrl != null) {
-            String username = System.getenv("QUARKUS_DATASOURCE_USERNAME");
-            String password = System.getenv("QUARKUS_DATASOURCE_PASSWORD");
-            if (existingDbUrl == null || username == null || password == null) {
-                // Running in CI with externally provided DB settings.
-                return Map.of();
-            }
-            return createSchemaConfig(existingDbUrl, username, password);
+        if (isNonBlank(existingDbUrl) && isNonBlank(existingUsername) && isNonBlank(existingPassword)) {
+            return createDatabaseConfig(existingDbUrl, existingUsername, existingPassword);
         }
 
         synchronized (LOCK) {
             if (postgreSQLContainer == null) {
-                var postgis = DockerImageName.parse("postgis/postgis:17-3.5")
+                String postgisImage = System.getenv("GEOPULSE_TEST_POSTGIS_IMAGE");
+                if (postgisImage == null || postgisImage.isBlank()) {
+                    // Keep test DB behavior aligned with CI and production.
+                    postgisImage = "postgis/postgis:17-3.5";
+                }
+                var postgis = DockerImageName.parse(postgisImage)
                         .asCompatibleSubstituteFor("postgres");
                 postgreSQLContainer = new PostgreSQLContainer<>(postgis)
                         .withDatabaseName("test")
                         .withUsername("postgres")
-                        .withPassword("password")
-                        .withReuse(true);
+                        .withPassword("password");
                 postgreSQLContainer.start();
             }
             startedReferences++;
         }
 
-        return createSchemaConfig(
+        return createDatabaseConfig(
                 postgreSQLContainer.getJdbcUrl(),
                 postgreSQLContainer.getUsername(),
                 postgreSQLContainer.getPassword()
@@ -64,7 +63,7 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
     @Override
     public void stop() {
         synchronized (LOCK) {
-            dropSchemaIfNeeded();
+            dropDatabaseIfNeeded();
             if (startedReferences > 0) {
                 startedReferences--;
             }
@@ -72,30 +71,30 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
         }
     }
 
-    private Map<String, String> createSchemaConfig(String jdbcUrl, String username, String password) {
-        schemaName = "gp_test_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        adminJdbcUrl = jdbcUrl;
+    private Map<String, String> createDatabaseConfig(String jdbcUrl, String username, String password) {
+        databaseName = "gp_test_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        adminJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, "postgres");
+        databaseJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, databaseName);
         adminUsername = username;
         adminPassword = password;
 
-        String postgisSchema;
-        try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password);
+        try (Connection connection = DriverManager.getConnection(adminJdbcUrl, username, password);
              Statement statement = connection.createStatement()) {
-            statement.execute("CREATE SCHEMA IF NOT EXISTS " + quoteIdentifier(schemaName));
-            postgisSchema = ensurePostgisSchema(connection);
+            statement.execute("CREATE DATABASE " + quoteIdentifier(databaseName));
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to prepare test schema: " + schemaName, e);
+            throw new IllegalStateException("Failed to prepare test database: " + databaseName, e);
         }
 
-        String jdbcWithSchema = withSchema(jdbcUrl, schemaName, postgisSchema);
+        try (Connection connection = DriverManager.getConnection(databaseJdbcUrl, username, password)) {
+            ensurePostgisSchema(connection);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to initialize test database extensions: " + databaseName, e);
+        }
 
         Map<String, String> config = new HashMap<>();
-        config.put("quarkus.datasource.jdbc.url", jdbcWithSchema);
+        config.put("quarkus.datasource.jdbc.url", databaseJdbcUrl);
         config.put("quarkus.datasource.username", username);
         config.put("quarkus.datasource.password", password);
-        config.put("quarkus.flyway.schemas", schemaName);
-        config.put("quarkus.flyway.default-schema", schemaName);
-        config.put("quarkus.hibernate-orm.database.default-schema", schemaName);
         return config;
     }
 
@@ -103,16 +102,15 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
         String schema = findExtensionSchema(connection, "postgis");
         if (schema == null) {
             try (Statement statement = connection.createStatement()) {
-                statement.execute("CREATE EXTENSION IF NOT EXISTS postgis SCHEMA public");
-                statement.execute("CREATE EXTENSION IF NOT EXISTS postgis_topology SCHEMA public");
+                statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
             }
-            return "public";
+            schema = "public";
         }
 
-        // Keep topology present in the same extension schema when possible.
         if (findExtensionSchema(connection, "postgis_topology") == null) {
             try (Statement statement = connection.createStatement()) {
-                statement.execute("CREATE EXTENSION IF NOT EXISTS postgis_topology SCHEMA " + quoteIdentifier(schema));
+                statement.execute("CREATE SCHEMA IF NOT EXISTS topology");
+                statement.execute("CREATE EXTENSION IF NOT EXISTS postgis_topology SCHEMA topology");
             }
         }
 
@@ -137,49 +135,52 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
         }
     }
 
-    private void dropSchemaIfNeeded() {
-        if (schemaName == null || adminJdbcUrl == null || adminUsername == null || adminPassword == null) {
+    private void dropDatabaseIfNeeded() {
+        if (databaseName == null || adminJdbcUrl == null || adminUsername == null || adminPassword == null) {
             return;
         }
 
         try (Connection connection = DriverManager.getConnection(adminJdbcUrl, adminUsername, adminPassword);
              Statement statement = connection.createStatement()) {
-            statement.execute("DROP SCHEMA IF EXISTS " + quoteIdentifier(schemaName) + " CASCADE");
+            statement.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = "
+                    + quoteLiteral(databaseName) + " AND pid <> pg_backend_pid()");
+            statement.execute("DROP DATABASE IF EXISTS " + quoteIdentifier(databaseName));
         } catch (Exception ignored) {
             // Ignore cleanup failures to avoid masking test outcomes.
         } finally {
-            schemaName = null;
+            databaseName = null;
             adminJdbcUrl = null;
+            databaseJdbcUrl = null;
             adminUsername = null;
             adminPassword = null;
         }
     }
 
-    private static String withSchema(String jdbcUrl, String schema, String postgisSchema) {
-        StringBuilder searchPath = new StringBuilder(schema);
-        if (postgisSchema != null
-                && !postgisSchema.isBlank()
-                && !postgisSchema.equals(schema)
-                && !postgisSchema.equals("public")) {
-            searchPath.append(',').append(postgisSchema);
-        }
-        if (!"public".equals(schema)) {
-            searchPath.append(",public");
-        }
+    private static String jdbcUrlWithDatabase(String jdbcUrl, String database) {
+        String sanitized = jdbcUrl.replaceFirst("([?&])currentSchema=[^&]*", "$1")
+                .replace("?&", "?")
+                .replaceAll("[?&]$", "");
 
-        String value = searchPath.toString();
-        if (jdbcUrl.contains("currentSchema=")) {
-            return jdbcUrl.replaceFirst(
-                    "currentSchema=[^&]*",
-                    "currentSchema=" + Matcher.quoteReplacement(value)
-            );
+        int schemeSeparator = sanitized.indexOf("://");
+        int pathStart = sanitized.indexOf('/', schemeSeparator + 3);
+        if (pathStart < 0) {
+            return sanitized + "/" + database;
         }
-
-        String separator = jdbcUrl.contains("?") ? "&" : "?";
-        return jdbcUrl + separator + "currentSchema=" + value;
+        int queryStart = sanitized.indexOf('?', pathStart);
+        String prefix = sanitized.substring(0, pathStart + 1);
+        String suffix = queryStart >= 0 ? sanitized.substring(queryStart) : "";
+        return prefix + database + suffix;
     }
 
     private static String quoteIdentifier(String identifier) {
         return '"' + identifier.replace("\"", "\"\"") + '"';
+    }
+
+    private static String quoteLiteral(String value) {
+        return '\'' + value.replace("'", "''") + '\'';
+    }
+
+    private static boolean isNonBlank(String value) {
+        return value != null && !value.isBlank();
     }
 }
