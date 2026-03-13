@@ -10,6 +10,9 @@ import {UserProfilePage} from "../pages/UserProfilePage.js";
 import {FavoritesManagementPage} from "../pages/FavoritesManagementPage.js";
 import {GeocodingManagementPage} from "../pages/GeocodingManagementPage.js";
 import {PeriodTagsManagementPage} from "../pages/PeriodTagsManagementPage.js";
+import {TimelineLabelsManagementPage} from "../pages/TimelineLabelsManagementPage.js";
+import {TripsManagementPage} from "../pages/TripsManagementPage.js";
+import {TripWorkspacePage} from "../pages/TripWorkspacePage.js";
 import {DateFormatTestHelper} from './date-format-test-helper.js';
 
 /**
@@ -821,6 +824,42 @@ export class TestSetupHelper {
   }
 
   /**
+   * Login user and navigate to Timeline Labels page
+   * @returns {Promise<{timelineLabelsPage, user, testUser}>}
+   */
+  static async loginAndNavigateToTimelineLabelsPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const timelineLabelsPage = new TimelineLabelsManagementPage(page);
+    await timelineLabelsPage.navigate();
+    await timelineLabelsPage.waitForPageLoad();
+    return {timelineLabelsPage, user, testUser};
+  }
+
+  /**
+   * Login user and navigate to Trip Plans page
+   * @returns {Promise<{tripsPage, user, testUser}>}
+   */
+  static async loginAndNavigateToTripsPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const tripsPage = new TripsManagementPage(page);
+    await tripsPage.navigate();
+    await tripsPage.waitForPageLoad();
+    return {tripsPage, user, testUser};
+  }
+
+  /**
+   * Login user and navigate to specific Trip Workspace page
+   * @returns {Promise<{tripWorkspacePage, user, testUser}>}
+   */
+  static async loginAndNavigateToTripWorkspacePage(page, dbManager, tripId, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const tripWorkspacePage = new TripWorkspacePage(page);
+    await tripWorkspacePage.navigate(tripId);
+    await tripWorkspacePage.waitForPageLoad();
+    return {tripWorkspacePage, user, testUser};
+  }
+
+  /**
    * Create a period tag for a user
    * @param {Object} dbManager - Database manager
    * @param {string} userId - User ID
@@ -838,14 +877,15 @@ export class TestSetupHelper {
       startTime,
       endTime = null,
       source = 'manual',
-      isActive = false
+      isActive = false,
+      color = null
     } = options;
 
     const result = await dbManager.client.query(`
-      INSERT INTO period_tags (user_id, tag_name, start_time, end_time, source, is_active, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      INSERT INTO period_tags (user_id, tag_name, start_time, end_time, source, is_active, color, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       RETURNING id
-    `, [userId, tagName, startTime, endTime, source, isActive]);
+    `, [userId, tagName, startTime, endTime, source, isActive, color]);
 
     return result.rows[0].id;
   }
@@ -912,7 +952,7 @@ export class TestSetupHelper {
    */
   static async getPeriodTagById(dbManager, tagId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, tag_name, start_time, end_time, source, created_at
+      SELECT id, user_id, tag_name, start_time, end_time, source, is_active, color, created_at
       FROM period_tags
       WHERE id = $1
     `, [tagId]);
@@ -928,7 +968,7 @@ export class TestSetupHelper {
    */
   static async getPeriodTagsByUser(dbManager, userId) {
     const result = await dbManager.client.query(`
-      SELECT id, user_id, tag_name, start_time, end_time, source, created_at
+      SELECT id, user_id, tag_name, start_time, end_time, source, is_active, color, created_at
       FROM period_tags
       WHERE user_id = $1
       ORDER BY start_time DESC
@@ -1440,5 +1480,264 @@ export class TestSetupHelper {
     `, [userId]);
 
     return result.rows;
+  }
+
+  // ==================== TRIP PLANNER TEST HELPERS ====================
+
+  /**
+   * Create trip for user
+   * @returns {Promise<number>} trip ID
+   */
+  static async createTrip(dbManager, userId, options) {
+    const {
+      name = 'Test Trip',
+      startTime,
+      endTime,
+      status = 'UPCOMING',
+      color = '#3B82F6',
+      notes = null,
+      periodTagId = null
+    } = options;
+
+    const result = await dbManager.client.query(`
+      INSERT INTO trips (
+        user_id, period_tag_id, name, start_time, end_time, status, color, notes, created_at, updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      RETURNING id
+    `, [userId, periodTagId, name, startTime, endTime, status, color, notes]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Get trip by ID
+   */
+  static async getTripById(dbManager, tripId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, period_tag_id, name, start_time, end_time, status, color, notes
+      FROM trips
+      WHERE id = $1
+    `, [tripId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get trip by name
+   */
+  static async getTripByName(dbManager, userId, name) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, period_tag_id, name, start_time, end_time, status, color, notes
+      FROM trips
+      WHERE user_id = $1 AND name = $2
+      ORDER BY id DESC
+      LIMIT 1
+    `, [userId, name]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Count trips for user
+   */
+  static async countTrips(dbManager, userId) {
+    const result = await dbManager.client.query(`
+      SELECT COUNT(*)::int AS count
+      FROM trips
+      WHERE user_id = $1
+    `, [userId]);
+
+    return result.rows[0].count;
+  }
+
+  /**
+   * Get trip by linked period tag id
+   */
+  static async getTripByPeriodTagId(dbManager, periodTagId) {
+    const result = await dbManager.client.query(`
+      SELECT id, user_id, period_tag_id, name, start_time, end_time, status, color, notes
+      FROM trips
+      WHERE period_tag_id = $1
+      ORDER BY id DESC
+      LIMIT 1
+    `, [periodTagId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Create a trip plan item
+   * @returns {Promise<number>} plan item ID
+   */
+  static async createTripPlanItem(dbManager, tripId, options = {}) {
+    const {
+      title = 'Planned stop',
+      notes = null,
+      latitude = null,
+      longitude = null,
+      plannedDay = null,
+      priority = 'OPTIONAL',
+      orderIndex = 0,
+      isVisited = false,
+      visitConfidence = null,
+      visitSource = null,
+      visitedAt = null,
+      manualOverrideState = null
+    } = options;
+
+    const result = await dbManager.client.query(`
+      INSERT INTO trip_plan_items (
+        trip_id, title, notes, latitude, longitude, planned_day, priority, order_index, is_visited,
+        visit_confidence, visit_source, visited_at, manual_override_state, created_at, updated_at
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, $11, $12, $13, NOW(), NOW()
+      )
+      RETURNING id
+    `, [
+      tripId,
+      title,
+      notes,
+      latitude,
+      longitude,
+      plannedDay,
+      priority,
+      orderIndex,
+      isVisited,
+      visitConfidence,
+      visitSource,
+      visitedAt,
+      manualOverrideState
+    ]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Get trip plan item by ID
+   */
+  static async getTripPlanItemById(dbManager, planItemId) {
+    const result = await dbManager.client.query(`
+      SELECT id, trip_id, title, notes, latitude, longitude, planned_day, priority, order_index,
+             is_visited, visit_confidence, visit_source, visited_at, manual_override_state
+      FROM trip_plan_items
+      WHERE id = $1
+    `, [planItemId]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get trip plan item by title for a trip
+   */
+  static async getTripPlanItemByTitle(dbManager, tripId, title) {
+    const result = await dbManager.client.query(`
+      SELECT id, trip_id, title, notes, latitude, longitude, planned_day, priority, order_index,
+             is_visited, visit_confidence, visit_source, visited_at, manual_override_state
+      FROM trip_plan_items
+      WHERE trip_id = $1 AND title = $2
+      ORDER BY id DESC
+      LIMIT 1
+    `, [tripId, title]);
+
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Count trip plan items for trip
+   */
+  static async countTripPlanItems(dbManager, tripId) {
+    const result = await dbManager.client.query(`
+      SELECT COUNT(*)::int AS count
+      FROM trip_plan_items
+      WHERE trip_id = $1
+    `, [tripId]);
+
+    return result.rows[0].count;
+  }
+
+  /**
+   * Create precomputed trip visit match
+   */
+  static async createTripVisitMatch(dbManager, options) {
+    const {
+      tripId,
+      planItemId,
+      stayId = null,
+      distanceMeters = 0,
+      dwellSeconds = 0,
+      confidence = 0.9,
+      decision = 'AUTO_MATCHED'
+    } = options;
+
+    const result = await dbManager.client.query(`
+      INSERT INTO trip_place_visit_match (
+        trip_id, plan_item_id, stay_id, distance_meters, dwell_seconds, confidence, decision, created_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+      RETURNING id
+    `, [tripId, planItemId, stayId, distanceMeters, dwellSeconds, confidence, decision]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create timeline stay at specific timestamp
+   */
+  static async createTimelineStayAt(dbManager, userId, options = {}) {
+    const {
+      timestamp,
+      durationSeconds = 1800,
+      latitude = 51.5007,
+      longitude = -0.1246,
+      locationName = 'Matched Stay',
+      locationSource = 'GEOCODING'
+    } = options;
+
+    const result = await dbManager.client.query(`
+      INSERT INTO timeline_stays (
+        user_id, timestamp, stay_duration, location, location_name, location_source, created_at, last_updated
+      )
+      VALUES (
+        $1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6, $7, NOW(), NOW()
+      )
+      RETURNING id
+    `, [userId, timestamp, durationSeconds, longitude, latitude, locationName, locationSource]);
+
+    return result.rows[0].id;
+  }
+
+  /**
+   * Create linked label + trip seed
+   */
+  static async createLinkedLabelAndTrip(dbManager, userId, options = {}) {
+    const now = new Date();
+    const startTime = options.startTime || new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+    const endTime = options.endTime || new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+    const name = options.name || 'Linked Trip';
+    const color = options.color || '#7C3AED';
+
+    const periodTagId = await this.createPeriodTag(dbManager, userId, {
+      tagName: name,
+      startTime,
+      endTime,
+      source: options.periodTagSource || 'manual'
+    });
+
+    await dbManager.client.query('UPDATE period_tags SET color = $1 WHERE id = $2', [color, periodTagId]);
+
+    const tripId = await this.createTrip(dbManager, userId, {
+      name,
+      startTime,
+      endTime,
+      status: options.tripStatus || 'COMPLETED',
+      color,
+      notes: options.notes || null,
+      periodTagId
+    });
+
+    return { periodTagId, tripId };
   }
 }
