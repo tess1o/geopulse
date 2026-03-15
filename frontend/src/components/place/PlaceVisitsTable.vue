@@ -105,17 +105,17 @@
           <span
             v-if="getVisitTripTag(slotProps.data)"
             class="trip-tag-chip"
-            :style="{ '--trip-tag-color': getVisitTripTagColor(slotProps.data) }"
-            :title="`Part of trip: ${getVisitTripTag(slotProps.data).tagName}`"
+            :style="{ '--trip-tag-color': getVisitTripColor(slotProps.data) }"
+            :title="`Visit is linked to trip planner: ${getVisitTripLabel(slotProps.data)}`"
             role="button"
             tabindex="0"
-            :aria-label="`View ${getVisitTripTag(slotProps.data).tagName} period in timeline`"
+            :aria-label="`Open trip planner ${getVisitTripLabel(slotProps.data)}`"
             @click.stop="handleTripTagClick(getVisitTripTag(slotProps.data))"
             @keydown.enter="handleTripTagClick(getVisitTripTag(slotProps.data))"
             @keydown.space.prevent="handleTripTagClick(getVisitTripTag(slotProps.data))"
           >
             <span class="trip-tag-dot"></span>
-            {{ getVisitTripTag(slotProps.data).tagName }}
+            {{ getVisitTripLabel(slotProps.data) }}
           </span>
           <span v-else class="trip-tag-empty">-</span>
         </template>
@@ -197,16 +197,12 @@ import ProgressSpinner from 'primevue/progressspinner'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import { formatDurationSmart } from '@/utils/calculationsHelpers'
 import { useTimezone } from '@/composables/useTimezone'
-import apiService from '@/utils/apiService'
-import {
-  buildTimelineQueryForPeriodTag,
-  findMatchingPeriodTagForVisit,
-  getEpochMs,
-  normalizePeriodTagColor
-} from '@/utils/periodTagHelpers'
+import { useTripsStore } from '@/stores/trips'
+import { findMatchingTripForVisit, normalizeTripColor } from '@/utils/tripHelpers'
 
 const timezone = useTimezone()
 const router = useRouter()
+const tripsStore = useTripsStore()
 
 const props = defineProps({
   visits: {
@@ -244,14 +240,12 @@ const emit = defineEmits(['page-change', 'sort-change', 'export'])
 const firstRow = ref(0)
 const sortField = ref('timestamp')
 const sortOrder = ref(-1) // -1 for desc, 1 for asc
-const periodTags = ref([])
-const lastPeriodTagsRangeKey = ref('')
-let periodTagsRequestToken = 0
 
 const visitTripTagsByKey = computed(() => {
   const result = new Map()
+  const trips = Array.isArray(tripsStore.trips) ? tripsStore.trips : []
   for (const visit of props.visits || []) {
-    result.set(getVisitKey(visit), findMatchingPeriodTagForVisit(visit, periodTags.value))
+    result.set(getVisitKey(visit), findMatchingTripForVisit(visit, trips))
   }
   return result
 })
@@ -285,8 +279,14 @@ const getVisitTripTag = (visit) => {
   return visitTripTagsByKey.value.get(getVisitKey(visit)) || null
 }
 
-const getVisitTripTagColor = (visit) => {
-  return normalizePeriodTagColor(getVisitTripTag(visit)?.color)
+const getVisitTripColor = (visit) => {
+  return normalizeTripColor(getVisitTripTag(visit)?.color)
+}
+
+const getVisitTripLabel = (visit) => {
+  const trip = getVisitTripTag(visit)
+  if (!trip) return ''
+  return trip.name || `Trip #${trip.id}`
 }
 
 const getEndDate = (visit) => {
@@ -334,69 +334,25 @@ const handleCityClick = (cityName) => {
   }
 }
 
-const handleTripTagClick = (tag) => {
-  const query = buildTimelineQueryForPeriodTag(tag)
-  if (!query) return
-
-  router.push({
-    path: '/app/timeline',
-    query
-  })
+const handleTripTagClick = (trip) => {
+  if (!trip?.id) return
+  router.push(`/app/trips/${trip.id}`)
 }
 
-const loadPeriodTagsForVisibleVisits = async () => {
-  const visits = Array.isArray(props.visits) ? props.visits : []
-  if (!visits.length) {
-    periodTags.value = []
-    lastPeriodTagsRangeKey.value = ''
-    return
-  }
-
-  let minStartMs = Number.POSITIVE_INFINITY
-  let maxEndMs = Number.NEGATIVE_INFINITY
-
-  for (const visit of visits) {
-    const startMs = getEpochMs(visit?.timestamp)
-    if (startMs === null) continue
-
-    const durationSeconds = Number(visit?.stayDuration || 0)
-    const endMs = durationSeconds > 0 ? startMs + (durationSeconds * 1000) : startMs
-
-    if (startMs < minStartMs) minStartMs = startMs
-    if (endMs > maxEndMs) maxEndMs = endMs
-  }
-
-  if (!Number.isFinite(minStartMs) || !Number.isFinite(maxEndMs)) {
-    periodTags.value = []
-    lastPeriodTagsRangeKey.value = ''
-    return
-  }
-
-  const rangeKey = `${minStartMs}:${maxEndMs}`
-  if (rangeKey === lastPeriodTagsRangeKey.value) return
-  lastPeriodTagsRangeKey.value = rangeKey
-
-  const requestToken = ++periodTagsRequestToken
-
+const ensureTripsLoaded = async () => {
+  if (Array.isArray(tripsStore.trips) && tripsStore.trips.length > 0) return
+  if (tripsStore.loading?.trips) return
   try {
-    const response = await apiService.get('/period-tags', {
-      startDate: minStartMs,
-      endDate: maxEndMs
-    })
-
-    if (requestToken !== periodTagsRequestToken) return
-    periodTags.value = Array.isArray(response?.data) ? response.data : []
+    await tripsStore.fetchTrips()
   } catch (error) {
-    if (requestToken !== periodTagsRequestToken) return
-    console.error('Failed to load period tags for visits table:', error)
-    periodTags.value = []
+    console.error('Failed to load trips for visit table trip associations:', error)
   }
 }
 
 watch(
   () => props.visits,
   () => {
-    void loadPeriodTagsForVisibleVisits()
+    void ensureTripsLoaded()
   },
   { immediate: true }
 )

@@ -97,8 +97,18 @@ const sidebars = {
                         },
                         {
                             type: 'doc',
-                            id: 'user-guide/core-features/period-tags',
-                            label: 'Period Tags',
+                            id: 'user-guide/core-features/timeline-labels',
+                            label: 'Timeline Labels',
+                        },
+                        {
+                            type: 'doc',
+                            id: 'user-guide/core-features/trip-plans',
+                            label: 'Trip Plans',
+                        },
+                        {
+                            type: 'doc',
+                            id: 'user-guide/core-features/trip-workspace',
+                            label: 'Trip Workspace',
                         },
                     ],
                 },

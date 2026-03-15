@@ -32,20 +32,22 @@
         <div class="date-separator">
           <div class="date-separator-line"></div>
           <div class="date-separator-text">{{ dateGroup.dateLabel }}</div>
-          <span
-            v-for="tag in getPeriodsForDate(dateGroup.date)"
-            :key="tag.id"
-            class="gp-period-badge gp-period-badge--clickable"
-            :style="{ backgroundColor: tag.color }"
-            @click.stop="handleTagClick(tag)"
-            role="button"
-            :aria-label="`View ${tag.tagName} period`"
-            tabindex="0"
-            @keydown.enter="handleTagClick(tag)"
-            @keydown.space.prevent="handleTagClick(tag)"
-          >
-            {{ tag.tagName }}
-          </span>
+          <template v-if="showTimelineLabels">
+            <span
+              v-for="tag in getPeriodsForDate(dateGroup.date)"
+              :key="tag.id"
+              class="gp-period-badge gp-period-badge--clickable"
+              :style="{ backgroundColor: tag.color }"
+              @click.stop="handleTagClick(tag)"
+              role="button"
+              :aria-label="`View ${tag.tagName} period`"
+              tabindex="0"
+              @keydown.enter="handleTagClick(tag)"
+              @keydown.space.prevent="handleTagClick(tag)"
+            >
+              {{ tag.tagName }}
+            </span>
+          </template>
           <div class="date-separator-line"></div>
         </div>
 
@@ -199,6 +201,14 @@ const props = defineProps({
   dateRange: {
     type: Array,
     default: () => []
+  },
+  loadImmichPhotos: {
+    type: Boolean,
+    default: true
+  },
+  showTimelineLabels: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -249,6 +259,9 @@ const getMarkerClassForItem = computed(() => (item, dateKey) => {
 
 // Get period tags for a specific date
 const getPeriodsForDate = (dateString) => {
+  if (!props.showTimelineLabels) {
+    return []
+  }
   return periodTagsStore.getPeriodsForDate(dateString)
 }
 
@@ -416,6 +429,9 @@ const handleMovementTypeUpdated = (updated) => {
 
 // Load period tags when dateRange changes
 const loadPeriodTags = async () => {
+  if (!props.showTimelineLabels) {
+    return
+  }
   if (props.dateRange && props.dateRange.length === 2) {
     try {
       await periodTagsStore.fetchPeriodTagsForTimeRange(
@@ -423,12 +439,16 @@ const loadPeriodTags = async () => {
         props.dateRange[1]
       )
     } catch (error) {
-      console.error('Failed to load period tags:', error)
+      console.error('Failed to load timeline labels:', error)
     }
   }
 }
 
 const loadImmichPhotosForCards = async () => {
+  if (!props.loadImmichPhotos) {
+    return
+  }
+
   if (!props.dateRange || props.dateRange.length !== 2) {
     return
   }
@@ -561,18 +581,6 @@ watch(() => props.dateRange, () => {
 
 .timeline-marker.marker-data-gap {
   background: var(--gp-warning);
-}
-
-.timeline-marker.marker-overnight-stay {
-  background: var(--gp-primary-dark);
-}
-
-.timeline-marker.marker-overnight-trip {
-  background: var(--gp-success-dark);
-}
-
-.timeline-marker.marker-overnight-data-gap {
-  background: var(--gp-warning-dark);
 }
 
 /* Dark mode adjustments */

@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.periods.model.dto.*;
 import org.github.tess1o.geopulse.periods.model.entity.PeriodTagEntity;
 import org.github.tess1o.geopulse.periods.repository.PeriodTagRepository;
+import org.github.tess1o.geopulse.trips.model.entity.TripStatus;
+import org.github.tess1o.geopulse.trips.repository.TripRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -21,11 +23,15 @@ public class PeriodTagService {
 
     private final PeriodTagRepository repository;
     private final UserRepository userRepository;
+    private final TripRepository tripRepository;
+    private static final String TRIP_SOURCE = "trip";
 
     public PeriodTagService(PeriodTagRepository repository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            TripRepository tripRepository) {
         this.repository = repository;
         this.userRepository = userRepository;
+        this.tripRepository = tripRepository;
     }
 
     public List<PeriodTagDto> getPeriodTags(UUID userId) {
@@ -102,7 +108,7 @@ public class PeriodTagService {
         }
 
         // Validate
-        validatePeriodTag(dto);
+        validatePeriodTag(dto, TRIP_SOURCE.equalsIgnoreCase(entity.getSource()));
 
         // Update fields
         entity.setTagName(dto.getTagName());
@@ -111,13 +117,28 @@ public class PeriodTagService {
         entity.setColor(dto.getColor());
 
         repository.persist(entity);
+        syncLinkedTrip(userId, entity);
 
         log.info("Updated period tag {}", id);
         return toDto(entity);
     }
 
     @Transactional
-    public void deletePeriodTag(UUID userId, Long id) {
+    public PeriodTagDto unlinkPeriodTagFromTrip(UUID userId, Long id) {
+        PeriodTagEntity entity = repository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Period tag not found"));
+
+        tripRepository.findByPeriodTagIdAndUserId(id, userId).ifPresent(linkedTrip -> {
+            linkedTrip.setPeriodTag(null);
+            tripRepository.persist(linkedTrip);
+        });
+
+        log.info("Unlinked period tag {} from trip for user {}", id, userId);
+        return toDto(entity);
+    }
+
+    @Transactional
+    public void deletePeriodTag(UUID userId, Long id, boolean deleteBoth) {
         log.info("Deleting period tag {} for user {}", id, userId);
 
         PeriodTagEntity entity = repository.findByIdAndUserId(id, userId)
@@ -128,8 +149,43 @@ public class PeriodTagService {
             throw new IllegalArgumentException("Cannot delete active OwnTracks tag. It is currently being managed by the OwnTracks app. You can delete it after it's completed.");
         }
 
+        tripRepository.findByPeriodTagIdAndUserId(id, userId).ifPresent(linkedTrip -> {
+            if (deleteBoth) {
+                tripRepository.delete(linkedTrip);
+            } else {
+                linkedTrip.setPeriodTag(null);
+                tripRepository.persist(linkedTrip);
+            }
+        });
+
         repository.delete(entity);
         log.info("Deleted period tag {}", id);
+    }
+
+    private void syncLinkedTrip(UUID userId, PeriodTagEntity periodTag) {
+        tripRepository.findByPeriodTagIdAndUserId(periodTag.getId(), userId).ifPresent(linkedTrip -> {
+            linkedTrip.setName(periodTag.getTagName());
+            linkedTrip.setStartTime(periodTag.getStartTime());
+            linkedTrip.setEndTime(periodTag.getEndTime());
+            linkedTrip.setColor(periodTag.getColor());
+
+            if (linkedTrip.getStatus() != TripStatus.CANCELLED) {
+                linkedTrip.setStatus(deriveTemporalStatus(periodTag.getStartTime(), periodTag.getEndTime()));
+            }
+
+            tripRepository.persist(linkedTrip);
+        });
+    }
+
+    private TripStatus deriveTemporalStatus(Instant startTime, Instant endTime) {
+        Instant now = Instant.now();
+        if (now.isBefore(startTime)) {
+            return TripStatus.UPCOMING;
+        }
+        if (now.isAfter(endTime)) {
+            return TripStatus.COMPLETED;
+        }
+        return TripStatus.ACTIVE;
     }
 
     // Validation
@@ -171,7 +227,7 @@ public class PeriodTagService {
         }
     }
 
-    private void validatePeriodTag(UpdatePeriodTagDto dto) {
+    private void validatePeriodTag(UpdatePeriodTagDto dto, boolean allowFutureStart) {
         if (dto.getTagName() == null || dto.getTagName().trim().isEmpty()) {
             throw new IllegalArgumentException("Tag name cannot be empty");
         }
@@ -190,7 +246,7 @@ public class PeriodTagService {
         }
 
         Instant now = Instant.now();
-        if (dto.getStartTime().isAfter(now)) {
+        if (!allowFutureStart && dto.getStartTime().isAfter(now)) {
             throw new IllegalArgumentException("Start time cannot be in the future");
         }
 

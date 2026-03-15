@@ -24,6 +24,16 @@
             <i class="pi pi-clock"></i>
             Expires {{ formatExpiration() }}
           </span>
+          <span v-if="linkedTripWorkspace" class="meta-separator">•</span>
+          <Button
+            v-if="linkedTripWorkspace"
+            :label="getLinkedTripLabel()"
+            icon="pi pi-compass"
+            outlined
+            size="small"
+            class="meta-trip-link"
+            @click="openLinkedTripWorkspace"
+          />
         </div>
 
         <!-- Row 3: Date Filter and Actions -->
@@ -175,7 +185,6 @@
             </div>
             <TimelineMap
                 v-else
-                ref="mapRef"
                 :pathData="pathData"
                 :timelineData="timelineData"
                 :currentLocation="currentLocation"
@@ -197,7 +206,6 @@
             </div>
             <TimelineContainer
                 v-else
-                ref="timelineRef"
                 :timeline-data="timelineData"
                 :is-public-view="true"
                 @timeline-item-click="handleTimelineItemClick"
@@ -211,11 +219,13 @@
 
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useShareLinksStore } from '@/stores/shareLinks'
 import { useDateRangeStore } from '@/stores/dateRange'
 import { useHighlightStore } from '@/stores/highlight'
+import { useTripsStore } from '@/stores/trips'
 import { useTimezone } from '@/composables/useTimezone'
+import { findMatchingTripForShareLink } from '@/utils/tripHelpers'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Password from 'primevue/password'
@@ -227,9 +237,11 @@ import TimelineMap from '@/components/maps/TimelineMap.vue'
 import TimelineContainer from '@/components/timeline/TimelineContainer.vue'
 
 const route = useRoute()
+const router = useRouter()
 const shareLinksStore = useShareLinksStore()
 const dateRangeStore = useDateRangeStore()
 const highlightStore = useHighlightStore()
+const tripsStore = useTripsStore()
 const timezone = useTimezone()
 
 const linkId = route.params.linkId
@@ -247,9 +259,6 @@ const pathData = ref(null)
 const currentLocation = ref(null)
 
 // Component refs
-const mapRef = ref(null)
-const timelineRef = ref(null)
-
 // Date filter state
 const filterStartDate = ref(null)
 const filterEndDate = ref(null)
@@ -261,6 +270,11 @@ const hasTimelineData = computed(() => {
 
 const hasPathData = computed(() => {
   return pathData.value && pathData.value.points && pathData.value.points.length > 0
+})
+
+const linkedTripWorkspace = computed(() => {
+  if (!shareInfo.value || shareInfo.value.share_type !== 'TIMELINE') return null
+  return findMatchingTripForShareLink(shareInfo.value, tripsStore.trips)
 })
 
 // Computed properties for share date range
@@ -347,6 +361,7 @@ async function loadShareInfo() {
   try {
     // Fetch share info (public, no auth required)
     shareInfo.value = await shareLinksStore.fetchSharedLocationInfo(linkId)
+    void preloadTripWorkspaceContext()
 
     console.log('Share info loaded:', {
       has_password: shareInfo.value.has_password,
@@ -391,6 +406,15 @@ async function loadShareInfo() {
     error.value = err.userMessage || err.message || 'Link not found or expired'
   } finally {
     loading.value = false
+  }
+}
+
+async function preloadTripWorkspaceContext() {
+  if (shareInfo.value?.share_type !== 'TIMELINE') return
+  try {
+    await tripsStore.fetchTrips()
+  } catch (err) {
+    console.debug('Trip workspace context unavailable for shared timeline:', err?.message || err)
   }
 }
 
@@ -510,6 +534,16 @@ function getStatusSeverity() {
   return 'secondary'
 }
 
+function getLinkedTripLabel() {
+  if (!linkedTripWorkspace.value) return ''
+  return linkedTripWorkspace.value.name || `Trip #${linkedTripWorkspace.value.id}`
+}
+
+function openLinkedTripWorkspace() {
+  if (!linkedTripWorkspace.value?.id) return
+  router.push(`/app/trips/${linkedTripWorkspace.value.id}`)
+}
+
 async function resetDateFilter() {
   filterStartDate.value = null
   filterEndDate.value = null
@@ -618,6 +652,7 @@ function handleTimelineItemClick(item) {
 .header-row-2 {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.5rem;
   font-size: 0.875rem;
   color: var(--gp-text-secondary);
@@ -641,6 +676,30 @@ function handleTimelineItemClick(item) {
   color: var(--gp-text-secondary);
   opacity: 0.5;
   margin: 0 0.25rem;
+}
+
+.meta-trip-link {
+  border-radius: 999px;
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
+  color: var(--gp-primary);
+  white-space: nowrap;
+}
+
+.meta-trip-link:hover {
+  border-color: color-mix(in srgb, var(--gp-primary) 52%, var(--gp-border-light));
+  background: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
+  color: var(--gp-primary-hover);
+}
+
+.meta-trip-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gp-primary) 40%, white);
+  outline-offset: 2px;
+}
+
+.p-dark .meta-trip-link {
+  border-color: color-mix(in srgb, var(--gp-primary) 35%, var(--gp-border-dark));
+  background: color-mix(in srgb, var(--gp-primary) 18%, var(--gp-surface-dark));
 }
 
 /* Row 3: Date Filter and Actions (before theme switcher on desktop) */

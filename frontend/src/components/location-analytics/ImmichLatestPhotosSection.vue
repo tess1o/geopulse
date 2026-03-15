@@ -175,6 +175,10 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  useStorePhotos: {
+    type: Boolean,
+    default: false
+  },
   latestMaxOnPage: {
     type: Number,
     default: 100
@@ -555,6 +559,15 @@ const clearPhotoBlobs = () => {
   photoBlobLoadingIds.value = new Set()
 }
 
+const sortPhotosByTakenAtDesc = (photos) => {
+  return [...(Array.isArray(photos) ? photos : [])].sort((a, b) => {
+    const takenAtA = a?.takenAt || ''
+    const takenAtB = b?.takenAt || ''
+    if (takenAtA === takenAtB) return 0
+    return takenAtA < takenAtB ? 1 : -1
+  })
+}
+
 const buildSearchParams = (limit = currentLimit.value) => {
   const baseParams = normalizedBaseParams.value
   if (!baseParams) {
@@ -569,7 +582,28 @@ const buildSearchParams = (limit = currentLimit.value) => {
   return params
 }
 
+const fetchStoreBackedPhotos = async () => {
+  const baseParams = normalizedBaseParams.value
+  if (!baseParams?.startDate || !baseParams?.endDate) {
+    return []
+  }
+
+  await immichStore.fetchPhotos(baseParams.startDate, baseParams.endDate)
+  return sortPhotosByTakenAtDesc((immichStore.photos || []).map(normalizePhoto))
+}
+
 const searchPhotos = async (limit = currentLimit.value) => {
+  if (props.useStorePhotos) {
+    const allPhotos = await fetchStoreBackedPhotos()
+    const visiblePhotos = typeof limit === 'number' && Number.isFinite(limit) && limit > 0
+      ? allPhotos.slice(0, limit)
+      : allPhotos
+    return {
+      photos: visiblePhotos,
+      totalCount: allPhotos.length
+    }
+  }
+
   const params = buildSearchParams(limit)
   if (!params) {
     return { photos: [], totalCount: 0 }
@@ -583,6 +617,24 @@ const searchPhotos = async (limit = currentLimit.value) => {
 }
 
 const searchPhotoMapMarkers = async () => {
+  if (props.useStorePhotos) {
+    const allPhotos = await fetchStoreBackedPhotos()
+    const markers = buildMarkerGroupsFromPhotos(allPhotos, { includePhotos: false }).map((marker) => ({
+      latitude: marker.latitude,
+      longitude: marker.longitude,
+      count: Number(marker.count || 0),
+      latestTakenAt: marker.latestTakenAt || null,
+      markerKey: marker.markerKey
+    }))
+    const geotaggedPhotos = markers.reduce((acc, marker) => acc + Number(marker.count || 0), 0)
+
+    return {
+      markers,
+      totalPhotos: allPhotos.length,
+      geotaggedPhotos
+    }
+  }
+
   const params = buildSearchParams(null)
   if (!params) {
     return { markers: [], totalPhotos: 0, geotaggedPhotos: 0 }
@@ -633,6 +685,20 @@ const getKnownPhotosById = () => {
 }
 
 const searchPhotosForMarker = async ({ markerLatitude, markerLongitude, limit = null }) => {
+  if (props.useStorePhotos) {
+    const allPhotos = await fetchStoreBackedPhotos()
+    const markerKey = buildMarkerKey(markerLatitude, markerLongitude)
+    const markerPhotos = allPhotos.filter((photo) => buildMarkerKey(photo?.latitude, photo?.longitude) === markerKey)
+    const photos = typeof limit === 'number' && Number.isFinite(limit) && limit > 0
+      ? markerPhotos.slice(0, limit)
+      : markerPhotos
+
+    return {
+      photos,
+      totalCount: markerPhotos.length
+    }
+  }
+
   const params = buildSearchParams(null)
   if (!params) {
     return { photos: [], totalCount: 0 }

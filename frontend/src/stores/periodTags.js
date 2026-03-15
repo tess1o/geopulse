@@ -188,14 +188,29 @@ export const usePeriodTagsStore = defineStore('periodTags', {
         },
 
         // Delete period tag
-        async deletePeriodTag(id) {
+        async deletePeriodTag(id, mode = 'unlink_only') {
             this.isLoading = true
             this.error = null
             try {
-                await apiService.delete(`/period-tags/${id}`)
+                await apiService.delete(`/period-tags/${id}?mode=${encodeURIComponent(mode)}`)
 
                 // Remove from local state
                 this.periodTags = this.periodTags.filter(tag => tag.id !== id)
+            } catch (error) {
+                this.error = error.message
+                throw error
+            } finally {
+                this.isLoading = false
+            }
+        },
+
+        async unlinkPeriodTagFromTrip(id) {
+            this.isLoading = true
+            this.error = null
+            try {
+                const response = await apiService.post(`/period-tags/${id}/unlink`)
+                await this.fetchPeriodTags()
+                return response.data || null
             } catch (error) {
                 this.error = error.message
                 throw error

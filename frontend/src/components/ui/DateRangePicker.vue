@@ -191,7 +191,7 @@ const useGroupedPresets = computed(() => periodPresets.value.length > 0)
 const presetOptions = computed(() => {
   if (!useGroupedPresets.value) return defaultPresetOptions.value
   return [
-    { label: 'Period Tags', items: periodPresets.value },
+    { label: 'Timeline Labels', items: periodPresets.value },
     { label: 'Presets', items: defaultPresetOptions.value }
   ]
 })
@@ -296,7 +296,7 @@ function getPeriodDateRange(tag) {
 }
 
 function formatPeriodPresetLabel(tag) {
-  const tagName = truncatePresetName(tag.tagName || 'Period')
+  const tagName = truncatePresetName(tag.tagName || 'Label')
   const dateRangeLabel = formatPeriodPresetDateLabel(tag)
   return `${tagName} (${dateRangeLabel})`
 }
@@ -327,7 +327,7 @@ onMounted(async () => {
   try {
     await periodTagsStore.fetchPeriodTags()
   } catch (error) {
-    console.warn('Failed to load period tags for presets:', error)
+    console.warn('Failed to load timeline labels for presets:', error)
   }
 })
 </script>

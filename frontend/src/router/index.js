@@ -20,6 +20,8 @@ import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
 import FavoritesManagementPage from "@/views/app/FavoritesManagementPage.vue";
 import PeriodTagsManagementPage from "@/views/app/PeriodTagsManagementPage.vue";
+import TripsManagementPage from "@/views/app/TripsManagementPage.vue";
+import TripWorkspacePage from "@/views/app/TripWorkspacePage.vue";
 import CoverageExplorerPage from "@/views/app/CoverageExplorerPage.vue";
 import AIChatPage from "@/views/app/AIChatPage.vue";
 import TimeDigestPage from "@/views/app/TimeDigestPage.vue";
@@ -284,9 +286,28 @@ const routes = [
     },
     {
         path: '/app/period-tags',
-        name: 'Period Tags',
+        redirect: '/app/timeline-labels',
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/timeline-labels',
+        name: 'Timeline Labels',
         component: PeriodTagsManagementPage,
-        meta: {title: 'Period Tags'},
+        meta: {title: 'Timeline Labels'},
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/trips',
+        name: 'Trip Plans',
+        component: TripsManagementPage,
+        meta: {title: 'Trip Plans'},
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/trips/:tripId',
+        name: 'Trip Planner',
+        component: TripWorkspacePage,
+        meta: {title: 'Trip Planner'},
         beforeEnter: requireAuth
     },
     {

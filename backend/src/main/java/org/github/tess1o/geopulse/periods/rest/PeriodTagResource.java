@@ -154,22 +154,50 @@ public class PeriodTagResource {
 
     @DELETE
     @Path("/{id}")
-    public Response deletePeriodTag(@PathParam("id") Long id) {
+    public Response deletePeriodTag(@PathParam("id") Long id,
+                                    @QueryParam("mode") @DefaultValue("unlink_only") String mode) {
         try {
             UUID userId = currentUserService.getCurrentUserId();
             log.info("User {} deleting period tag {}", userId, id);
 
-            service.deletePeriodTag(userId, id);
+            if (!"unlink_only".equalsIgnoreCase(mode) && !"delete_both".equalsIgnoreCase(mode)) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity(ApiResponse.error("Invalid delete mode. Supported values: unlink_only, delete_both"))
+                        .build();
+            }
+
+            service.deletePeriodTag(userId, id, "delete_both".equalsIgnoreCase(mode));
             return Response.ok(ApiResponse.success("Period tag deleted successfully")).build();
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request to delete period tag {}: {}", id, e.getMessage());
-            return Response.status(Response.Status.NOT_FOUND)
-                    .entity(ApiResponse.error("Period tag not found"))
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
             log.error("Failed to delete period tag {}", id, e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to delete period tag: " + e.getMessage()))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/{id}/unlink")
+    public Response unlinkPeriodTag(@PathParam("id") Long id) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            log.info("User {} unlinking period tag {}", userId, id);
+            PeriodTagDto updated = service.unlinkPeriodTagFromTrip(userId, id);
+            return Response.ok(ApiResponse.success(updated)).build();
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid request to unlink period tag {}: {}", id, e.getMessage());
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to unlink period tag {}", id, e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to unlink period tag: " + e.getMessage()))
                     .build();
         }
     }

@@ -24,7 +24,7 @@
           :show-timeline="showTimeline"
           :show-path="showPath"
           :show-immich="showImmich"
-          :show-heatmap="!props.isPublicView"
+          :show-heatmap="props.showHeatmapControl && !props.isPublicView"
           :heatmap-enabled="heatmapEnabled"
           :heatmap-layer="heatmapLayer"
           :heatmap-available="heatmapAvailable"
@@ -96,6 +96,15 @@
           @favorite-contextmenu="handleFavoriteContextMenu"
         />
 
+        <TripPlanLayer
+          v-if="map && isReady"
+          ref="tripPlanLayerRef"
+          :map="map"
+          :planned-items-data="processedPlannedItemsData"
+          :visible="true"
+          @plan-item-contextmenu="handlePlannedItemContextMenu"
+        />
+
         <!-- Immich Photos Layer -->
         <ImmichLayer
           v-if="map && isReady && shouldShowImmich"
@@ -127,6 +136,12 @@
         <ContextMenu
           ref="favoriteContextMenuRef"
           :model="favoriteMenuItems"
+          :popup="true"
+        />
+
+        <ContextMenu
+          ref="plannedItemContextMenuRef"
+          :model="plannedItemMenuItems"
           :popup="true"
         />
 
@@ -181,7 +196,7 @@ import { usePhotoMapMarkers } from '@/composables/usePhotoMapMarkers'
 import '@/styles/photo-map-markers.css'
 
 // Map components
-import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer} from '@/components/maps'
+import {FavoritesLayer, HeatmapLayer, MapContainer, MapControls, PathLayer, TimelineLayer, CurrentLocationLayer, ImmichLayer, TripPlanLayer} from '@/components/maps'
 
 import PhotoViewerDialog from '@/components/dialogs/PhotoViewerDialog.vue'
 import TimelineRegenerationModal from '@/components/dialogs/TimelineRegenerationModal.vue'
@@ -210,6 +225,10 @@ const props = defineProps({
     type: Object,
     default: () => null
   },
+  plannedItemsData: {
+    type: Array,
+    default: () => []
+  },
   currentLocation: {
     type: Object,
     default: () => null
@@ -233,6 +252,34 @@ const props = defineProps({
   isSharedView: {
     type: Boolean,
     default: false
+  },
+  showPlanToVisitAction: {
+    type: Boolean,
+    default: false
+  },
+  showFavoritesContextActions: {
+    type: Boolean,
+    default: true
+  },
+  showHeatmapControl: {
+    type: Boolean,
+    default: true
+  },
+  showFavoritesByDefault: {
+    type: Boolean,
+    default: false
+  },
+  showImmichByDefault: {
+    type: Boolean,
+    default: false
+  },
+  defaultCenterWhenEmpty: {
+    type: Array,
+    default: () => [51.505, -0.09]
+  },
+  enableFavoriteContextMenu: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -243,7 +290,11 @@ const emit = defineEmits([
   'edit-favorite',
   'delete-favorite',
   'highlighted-path-click',
-  'timeline-marker-click'
+  'timeline-marker-click',
+  'map-click',
+  'plan-to-visit',
+  'plan-item-edit',
+  'plan-item-delete'
 ])
 
 // Router
@@ -281,7 +332,6 @@ const dateRangeStore = useDateRangeStore()
 const {
   handleTimelineMarkerClick: baseHandleTimelineMarkerClick,
   handlePathClick: baseHandlePathClick,
-  handleFriendClick: baseHandleFriendClick,
   handleFavoriteClick: baseHandleFavoriteClick,
   handleMapClick: baseHandleMapClick,
   handleMapContextMenu: baseHandleMapContextMenu
@@ -307,9 +357,11 @@ const mapContainerRef = ref(null)
 const pathLayerRef = ref(null)
 const timelineLayerRef = ref(null)
 const favoritesLayerRef = ref(null)
+const tripPlanLayerRef = ref(null)
 const immichLayerRef = ref(null)
 const mapContextMenuRef = ref(null)
 const favoriteContextMenuRef = ref(null)
+const plannedItemContextMenuRef = ref(null)
 
 const confirm = useConfirm()
 const toast = useToast()
@@ -328,6 +380,7 @@ const dialogState = ref({
   addToFavoritesVisible: false,
   addAreaVisible: false,
   selectedFavorite: null,
+  selectedPlannedItem: null,
   addToFavoritesLatLng: null
 })
 
@@ -384,7 +437,7 @@ const mapCenter = computed(() => {
   if (dataBounds.value && dataBounds.value.length > 0) {
     return dataBounds.value[0]
   }
-  return null
+  return props.defaultCenterWhenEmpty
 })
 const mapZoom = ref(13)
 
@@ -430,22 +483,43 @@ const heatmapGradient = {
 }
 
 // Context menu items
-const mapMenuItems = ref([
-  {
-    label: 'Add to Favorites',
-    icon: 'pi pi-star',
-    command: () => {
-      dialogState.value.addToFavoritesVisible = true
-    }
-  },
-  {
-    label: 'Add an area to Favorites',
-    icon: 'pi pi-star',
-    command: () => {
-      startDrawing()
-    }
+const mapMenuItems = computed(() => {
+  const items = []
+
+  if (props.showPlanToVisitAction) {
+    items.push({
+      label: 'Plan to visit here',
+      icon: 'pi pi-map-marker',
+      command: () => {
+        if (!dialogState.value.addToFavoritesLatLng) {
+          return
+        }
+        emit('plan-to-visit', { latlng: dialogState.value.addToFavoritesLatLng })
+      }
+    })
   }
-])
+
+  if (props.showFavoritesContextActions) {
+    items.push(
+      {
+        label: 'Add to Favorites',
+        icon: 'pi pi-star',
+        command: () => {
+          dialogState.value.addToFavoritesVisible = true
+        }
+      },
+      {
+        label: 'Add an area to Favorites',
+        icon: 'pi pi-star',
+        command: () => {
+          startDrawing()
+        }
+      }
+    )
+  }
+
+  return items
+})
 
 // Favorite context menu items
 const favoriteMenuItems = ref([
@@ -481,6 +555,27 @@ const favoriteMenuItems = ref([
   }
 ])
 
+const plannedItemMenuItems = ref([
+  {
+    label: 'Edit planned item',
+    icon: 'pi pi-pencil',
+    command: () => {
+      if (dialogState.value.selectedPlannedItem) {
+        emit('plan-item-edit', dialogState.value.selectedPlannedItem)
+      }
+    }
+  },
+  {
+    label: 'Delete planned item',
+    icon: 'pi pi-trash',
+    command: () => {
+      if (dialogState.value.selectedPlannedItem) {
+        emit('plan-item-delete', dialogState.value.selectedPlannedItem)
+      }
+    }
+  }
+])
+
 // Map event handlers
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
@@ -506,6 +601,7 @@ const handleMapReady = (mapInstance) => {
 const handleMapClick = (event) => {
   dialogState.value.addToFavoritesLatLng = event.latlng
   baseHandleMapClick(event)
+  emit('map-click', event)
   
   // Clear all highlights when clicking on empty map
   clearAllMapHighlights()
@@ -515,6 +611,10 @@ const handleMapClick = (event) => {
 const handleMapContextMenu = (event) => {
   // Don't show context menu in public view
   if (props.isPublicView) {
+    return
+  }
+
+  if (!mapMenuItems.value || mapMenuItems.value.length === 0) {
     return
   }
 
@@ -564,11 +664,6 @@ const handleTripMarkerClick = (event) => {
     highlightTimelineItem(event.tripData)
   }
 }
-
-// const handleFriendClick = (event) => {
-//   baseHandleFriendClick(event)
-// }
-
 
 const handleFavoriteClick = (event) => {
   baseHandleFavoriteClick(event)
@@ -639,6 +734,10 @@ const handleFavoriteDelete = (event) => {
 }
 
 const handleFavoriteContextMenu = (event) => {
+  if (!props.enableFavoriteContextMenu) {
+    return
+  }
+
   // Set flag to prevent map context menu
   favoriteContextMenuActive.value = true
 
@@ -658,6 +757,28 @@ const handleFavoriteContextMenu = (event) => {
     setTimeout(() => {
       favoriteContextMenuRef.value.show(event.event)
       // Reset the flag after a short delay
+      setTimeout(() => {
+        favoriteContextMenuActive.value = false
+      }, 100)
+    }, 10)
+  }
+}
+
+const handlePlannedItemContextMenu = (event) => {
+  // Set flag to prevent map context menu
+  favoriteContextMenuActive.value = true
+
+  if (event.event) {
+    event.event.preventDefault()
+    event.event.stopPropagation()
+    event.event.stopImmediatePropagation()
+  }
+
+  dialogState.value.selectedPlannedItem = event
+
+  if (plannedItemContextMenuRef.value && event.event) {
+    setTimeout(() => {
+      plannedItemContextMenuRef.value.show(event.event)
       setTimeout(() => {
         favoriteContextMenuActive.value = false
       }, 100)
@@ -946,10 +1067,15 @@ const processedFavoritesData = computed(() => {
   return []
 })
 
+const processedPlannedItemsData = computed(() => {
+  return Array.isArray(props.plannedItemsData) ? props.plannedItemsData : []
+})
+
 const hasAnyData = computed(() => {
   return processedPathData.value.length > 0 ||
          processedTimelineData.value.length > 0 ||
-         processedFavoritesData.value.length > 0
+         processedFavoritesData.value.length > 0 ||
+         processedPlannedItemsData.value.length > 0
 })
 
 const dataBounds = computed(() => {
@@ -988,6 +1114,15 @@ const dataBounds = computed(() => {
             bounds.push(coord)
           }
         })
+      }
+    })
+  }
+
+  // Add planned items bounds
+  if (processedPlannedItemsData.value.length > 0) {
+    processedPlannedItemsData.value.forEach(item => {
+      if (item.latitude && item.longitude) {
+        bounds.push([item.latitude, item.longitude])
       }
     })
   }
@@ -1049,7 +1184,12 @@ watch(
 
 // Lifecycle
 onMounted(() => {
-  // Any additional initialization
+  if (props.showFavoritesByDefault) {
+    toggleFavorites(true)
+  }
+  if (props.showImmichByDefault) {
+    toggleImmich(true)
+  }
 })
 
 onUnmounted(() => {

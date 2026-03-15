@@ -111,20 +111,46 @@
                 <div class="map-place-timeline">
                   Last visit: {{ formatLastVisitFull(place.lastVisit) }}
                 </div>
-                <div v-if="getMapPlaceTripTag(place)" class="map-place-trip">
+                <div v-if="getMapPlacePeriodTag(place) || getMapPlaceTrip(place)" class="map-place-trip">
                   <span
-                    class="map-place-trip-chip"
-                    :style="{ '--trip-tag-color': getPeriodTagColor(getMapPlaceTripTag(place)) }"
-                    :title="`Last visit was part of trip: ${getMapPlaceTripTag(place).tagName}`"
+                    v-if="getMapPlacePeriodTag(place)"
+                    class="map-place-tag-chip"
+                    :style="{ '--tag-color': getPeriodTagColor(getMapPlacePeriodTag(place)) }"
+                    title="Timeline label match. Click to open timeline range."
                     role="button"
                     tabindex="0"
-                    :aria-label="`View ${getMapPlaceTripTag(place).tagName} period in timeline`"
-                    @click.stop="handleMapPlaceTripTagClick(getMapPlaceTripTag(place))"
-                    @keydown.enter="handleMapPlaceTripTagClick(getMapPlaceTripTag(place))"
-                    @keydown.space.prevent="handleMapPlaceTripTagClick(getMapPlaceTripTag(place))"
+                    aria-label="Open timeline label range"
+                    @click.stop="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
+                    @keydown.enter="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
+                    @keydown.space.prevent="handleMapPlacePeriodTagClick(getMapPlacePeriodTag(place))"
+                  >
+                    <span class="map-place-tag-dot"></span>
+                    {{ getMapPlacePeriodTagLabel(getMapPlacePeriodTag(place)) }}
+                  </span>
+                  <Button
+                    v-if="showSecondaryTripAction(place)"
+                    icon="pi pi-briefcase"
+                    class="map-place-chip-action"
+                    text
+                    rounded
+                    title="Open linked trip planner"
+                    aria-label="Open linked trip planner"
+                    @click.stop="handleMapPlaceTripClick(getMapPlaceTrip(place))"
+                  />
+                  <span
+                    v-if="showStandaloneTripChip(place)"
+                    class="map-place-trip-chip"
+                    :style="{ '--trip-tag-color': getTripColor(getMapPlaceTrip(place)) }"
+                    title="Trip plan match. Click to open trip planner."
+                    role="button"
+                    tabindex="0"
+                    aria-label="Open trip planner"
+                    @click.stop="handleMapPlaceTripClick(getMapPlaceTrip(place))"
+                    @keydown.enter="handleMapPlaceTripClick(getMapPlaceTrip(place))"
+                    @keydown.space.prevent="handleMapPlaceTripClick(getMapPlaceTrip(place))"
                   >
                     <span class="map-place-trip-dot"></span>
-                    {{ getMapPlaceTripTag(place).tagName }}
+                    {{ getMapPlaceTripLabel(getMapPlaceTrip(place)) }}
                   </span>
                 </div>
               </div>
@@ -244,11 +270,15 @@ import LocationSearchBar from '@/components/search/LocationSearchBar.vue'
 import LocationAnalyticsMap from '@/components/location-analytics/LocationAnalyticsMap.vue'
 
 import { useLocationAnalyticsStore } from '@/stores/locationAnalytics'
-import apiService from '@/utils/apiService'
+import { usePeriodTagsStore } from '@/stores/periodTags'
+import { useTripsStore } from '@/stores/trips'
+import {
+  findMatchingTripForTimestamp,
+  normalizeTripColor
+} from '@/utils/tripHelpers'
 import {
   buildTimelineQueryForPeriodTag,
   findMatchingPeriodTagForTimestamp,
-  getEpochMs,
   normalizePeriodTagColor
 } from '@/utils/periodTagHelpers'
 
@@ -256,6 +286,8 @@ const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const store = useLocationAnalyticsStore()
+const periodTagsStore = usePeriodTagsStore()
+const tripsStore = useTripsStore()
 const timezone = useTimezone()
 
 const {
@@ -266,6 +298,7 @@ const {
   citiesLoading,
   countriesLoading
 } = storeToRefs(store)
+const { periodTags } = storeToRefs(periodTagsStore)
 
 const TAB_MAP = 'map'
 const TAB_CITIES = 'cities'
@@ -289,10 +322,7 @@ const canScrollRailRight = ref(false)
 const mapPlaceRefs = new Map()
 const hoveredMapPlaceKey = ref(null)
 const selectedMapPlaceFocusMode = ref('pan')
-const mapPlacesPeriodTags = ref([])
-const lastMapPlacesPeriodTagsRangeKey = ref('')
 let mapFetchTimer = null
-let mapPlacesPeriodTagsRequestToken = 0
 
 const getPlaceKey = (place) => `${place.type}-${place.id}`
 
@@ -346,10 +376,19 @@ const sortedMapPlaces = computed(() => {
 const mapPlacesPreview = computed(() => sortedMapPlaces.value.slice(0, 60))
 const citiesTabLabel = computed(() => (citiesLoaded.value ? `Cities (${cities.value.length})` : 'Cities'))
 const countriesTabLabel = computed(() => (countriesLoaded.value ? `Countries (${countries.value.length})` : 'Countries'))
-const mapPlaceTripTagsByKey = computed(() => {
+const mapPlaceTripsByKey = computed(() => {
   const result = new Map()
+  const trips = Array.isArray(tripsStore.trips) ? tripsStore.trips : []
   for (const place of mapPlacesPreview.value) {
-    result.set(getPlaceKey(place), findMatchingPeriodTagForTimestamp(place?.lastVisit, mapPlacesPeriodTags.value))
+    result.set(getPlaceKey(place), findMatchingTripForTimestamp(place?.lastVisit, trips))
+  }
+  return result
+})
+const mapPlacePeriodTagsByKey = computed(() => {
+  const result = new Map()
+  const tags = Array.isArray(periodTags.value) ? periodTags.value : []
+  for (const place of mapPlacesPreview.value) {
+    result.set(getPlaceKey(place), findMatchingPeriodTagForTimestamp(place?.lastVisit, tags))
   }
   return result
 })
@@ -359,20 +398,64 @@ const formatLastVisitFull = (timestamp) => {
   return timezone.formatDateDisplay(timestamp)
 }
 
-const getMapPlaceTripTag = (place) => {
-  return mapPlaceTripTagsByKey.value.get(getPlaceKey(place)) || null
+const getMapPlaceTrip = (place) => {
+  return mapPlaceTripsByKey.value.get(getPlaceKey(place)) || null
 }
 
+const getMapPlacePeriodTag = (place) => {
+  return mapPlacePeriodTagsByKey.value.get(getPlaceKey(place)) || null
+}
+
+const getMapPlaceTripLabel = (trip) => {
+  if (!trip) return ''
+  return trip.name || `Trip #${trip.id}`
+}
+
+const getMapPlacePeriodTagLabel = (tag) => {
+  if (!tag) return ''
+  return tag.tagName || `Label #${tag.id}`
+}
+
+const isLinkedPair = (tag, trip) => {
+  if (!tag || !trip) return false
+  return Number(trip.periodTagId) === Number(tag.id)
+}
+
+const showStandaloneTripChip = (place) => {
+  const tag = getMapPlacePeriodTag(place)
+  const trip = getMapPlaceTrip(place)
+  if (!trip) return false
+  return !isLinkedPair(tag, trip)
+}
+
+const showSecondaryTripAction = (place) => {
+  const tag = getMapPlacePeriodTag(place)
+  const trip = getMapPlaceTrip(place)
+  return isLinkedPair(tag, trip)
+}
+
+const getTripColor = (trip) => normalizeTripColor(trip?.color)
 const getPeriodTagColor = (tag) => normalizePeriodTagColor(tag?.color)
 
-const handleMapPlaceTripTagClick = (tag) => {
-  const query = buildTimelineQueryForPeriodTag(tag)
-  if (!query) return
+const handleMapPlaceTripClick = (trip) => {
+  if (!trip?.id) return
+  const resolvedRoute = router.resolve(`/app/trips/${trip.id}`)
 
-  const resolvedRoute = router.resolve({
-    path: '/app/timeline',
-    query
-  })
+  const newWindow = window.open(resolvedRoute.href, '_blank')
+  if (!newWindow) {
+    router.push(resolvedRoute.fullPath)
+    return
+  }
+
+  newWindow.opener = null
+}
+
+const handleMapPlacePeriodTagClick = (tag) => {
+  if (!tag) return
+  const timelineQuery = buildTimelineQueryForPeriodTag(tag)
+  const resolvedRoute = timelineQuery
+    ? router.resolve({ path: '/app/timeline', query: timelineQuery })
+    : router.resolve('/app/timeline-labels')
 
   const newWindow = window.open(resolvedRoute.href, '_blank')
   if (!newWindow) {
@@ -389,6 +472,26 @@ const setMapPlaceRef = (place, element) => {
     mapPlaceRefs.set(key, element)
   } else {
     mapPlaceRefs.delete(key)
+  }
+}
+
+const ensureTripsLoaded = async () => {
+  if (Array.isArray(tripsStore.trips) && tripsStore.trips.length > 0) return
+  if (tripsStore.loading?.trips) return
+  try {
+    await tripsStore.fetchTrips()
+  } catch (error) {
+    console.error('Failed to load trips for location analytics trip association:', error)
+  }
+}
+
+const ensurePeriodTagsLoaded = async () => {
+  if (Array.isArray(periodTags.value) && periodTags.value.length > 0) return
+  if (periodTagsStore.isLoading) return
+  try {
+    await periodTagsStore.fetchPeriodTags()
+  } catch (error) {
+    console.error('Failed to load timeline labels for location analytics associations:', error)
   }
 }
 
@@ -502,51 +605,6 @@ const fetchMapPlaces = async (force = false) => {
   }
 }
 
-const loadMapPlacePeriodTags = async (places) => {
-  if (!Array.isArray(places) || places.length === 0) {
-    mapPlacesPeriodTags.value = []
-    lastMapPlacesPeriodTagsRangeKey.value = ''
-    return
-  }
-
-  let minTimestampMs = Number.POSITIVE_INFINITY
-  let maxTimestampMs = Number.NEGATIVE_INFINITY
-
-  for (const place of places) {
-    const timestampMs = getEpochMs(place?.lastVisit)
-    if (timestampMs === null) continue
-
-    if (timestampMs < minTimestampMs) minTimestampMs = timestampMs
-    if (timestampMs > maxTimestampMs) maxTimestampMs = timestampMs
-  }
-
-  if (!Number.isFinite(minTimestampMs) || !Number.isFinite(maxTimestampMs)) {
-    mapPlacesPeriodTags.value = []
-    lastMapPlacesPeriodTagsRangeKey.value = ''
-    return
-  }
-
-  const rangeKey = `${minTimestampMs}:${maxTimestampMs}`
-  if (rangeKey === lastMapPlacesPeriodTagsRangeKey.value) return
-  lastMapPlacesPeriodTagsRangeKey.value = rangeKey
-
-  const requestToken = ++mapPlacesPeriodTagsRequestToken
-
-  try {
-    const response = await apiService.get('/period-tags', {
-      startDate: minTimestampMs,
-      endDate: maxTimestampMs
-    })
-
-    if (requestToken !== mapPlacesPeriodTagsRequestToken) return
-    mapPlacesPeriodTags.value = Array.isArray(response?.data) ? response.data : []
-  } catch (error) {
-    if (requestToken !== mapPlacesPeriodTagsRequestToken) return
-    console.error('Failed to load period tags for map places rail:', error)
-    mapPlacesPeriodTags.value = []
-  }
-}
-
 const handleMapViewportChange = (viewport) => {
   currentMapViewport.value = viewport
 
@@ -627,10 +685,9 @@ watch(() => route.query.tab, (queryTab) => {
   }
 })
 
-watch(mapPlacesPreview, async (places) => {
+watch(mapPlacesPreview, async () => {
   await nextTick()
   updateRailScrollState()
-  void loadMapPlacePeriodTags(places)
 })
 
 watch(selectedMapPlaceKey, async (selectedKey) => {
@@ -650,6 +707,8 @@ onMounted(() => {
   void syncTabQuery(activeTab.value)
   window.addEventListener('resize', updateRailScrollState, { passive: true })
   void prefetchTabCounts()
+  void ensureTripsLoaded()
+  void ensurePeriodTagsLoaded()
 })
 
 onBeforeUnmount(() => {
@@ -858,6 +917,48 @@ onBeforeUnmount(() => {
 
 .map-place-trip {
   margin-top: 0.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.map-place-tag-chip {
+  --tag-color: var(--gp-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--tag-color) 55%, white);
+  background: color-mix(in srgb, var(--tag-color) 10%, white);
+  color: color-mix(in srgb, var(--tag-color) 78%, black);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.map-place-tag-dot {
+  width: 0.38rem;
+  height: 0.38rem;
+  border-radius: 999px;
+  background: var(--tag-color);
+  flex: 0 0 auto;
+}
+
+.map-place-chip-action {
+  width: 1.45rem;
+  height: 1.45rem;
+  color: var(--gp-text-secondary);
+}
+
+.map-place-chip-action:hover {
+  color: var(--gp-primary);
 }
 
 .map-place-trip-chip {
@@ -890,6 +991,11 @@ onBeforeUnmount(() => {
 
 .map-place-trip-chip:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--trip-tag-color) 65%, white);
+  outline-offset: 2px;
+}
+
+.map-place-tag-chip:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tag-color) 65%, white);
   outline-offset: 2px;
 }
 
@@ -933,6 +1039,16 @@ onBeforeUnmount(() => {
   border-color: color-mix(in srgb, var(--trip-tag-color) 45%, var(--gp-border-dark));
   background: color-mix(in srgb, var(--trip-tag-color) 18%, var(--gp-surface-dark));
   color: color-mix(in srgb, var(--trip-tag-color) 70%, white);
+}
+
+.p-dark .map-place-tag-chip {
+  border-color: color-mix(in srgb, var(--tag-color) 45%, var(--gp-border-dark));
+  background: color-mix(in srgb, var(--tag-color) 18%, var(--gp-surface-dark));
+  color: color-mix(in srgb, var(--tag-color) 70%, white);
+}
+
+.p-dark .map-place-chip-action {
+  color: var(--gp-text-secondary);
 }
 
 .loading-container {
