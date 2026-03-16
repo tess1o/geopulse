@@ -44,6 +44,11 @@ const sidebars = {
                 },
                 {
                     type: 'doc',
+                    id: 'getting-started/deployment/environment-variables',
+                    label: 'Environment Variables Reference',
+                },
+                {
+                    type: 'doc',
                     id: 'getting-started/deployment/manual-installation',
                     label: 'Manual Installation (Advanced)',
                 },

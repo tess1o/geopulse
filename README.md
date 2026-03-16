@@ -90,6 +90,8 @@ to:
 
 GeoPulse can be deployed using **Docker Compose** or **Kubernetes (Helm)** in under 5 minutes.
 
+For the complete list of frontend/backend/deployment variables, see **[Environment Variables Reference](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)**.
+
 ### Docker Compose
 
 **Choose your deployment scenario:**

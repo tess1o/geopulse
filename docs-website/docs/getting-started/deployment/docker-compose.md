@@ -1,5 +1,7 @@
 # Docker Deployment
 
+> Canonical env var reference: [Environment Variables Reference](./environment-variables.md)
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:

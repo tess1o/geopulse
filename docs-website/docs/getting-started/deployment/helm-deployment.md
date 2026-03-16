@@ -8,6 +8,8 @@ description: Complete reference for deploying and configuring GeoPulse using Hel
 
 This comprehensive guide covers manual Helm installation, configuration options, and advanced customization for GeoPulse on Kubernetes.
 
+> Canonical env var reference: [Environment Variables Reference](./environment-variables.md)
+
 :::tip Quick Start
 For an interactive, guided installation experience, see the [Kubernetes Quick Start Guide](./kubernetes-helm.md) which uses automated scripts.
 :::
