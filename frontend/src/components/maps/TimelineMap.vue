@@ -69,6 +69,7 @@
           :visible="showPath"
           @path-click="handlePathClick"
           @trip-marker-click="handleTripMarkerClick"
+          @highlighted-trip-click="handleHighlightedTripClick"
         />
         
 
@@ -663,6 +664,10 @@ const handleTripMarkerClick = (event) => {
     // Use simplified highlighting (store only)
     highlightTimelineItem(event.tripData)
   }
+}
+
+const handleHighlightedTripClick = () => {
+  clearAllMapHighlights()
 }
 
 const handleFavoriteClick = (event) => {
