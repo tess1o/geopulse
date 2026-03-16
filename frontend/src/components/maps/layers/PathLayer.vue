@@ -14,6 +14,12 @@ import BaseLayer from './BaseLayer.vue'
 import {createHighlightedPathStartMarker, createHighlightedPathEndMarker} from '@/utils/mapHelpers'
 import {formatDuration, formatDistance} from "@/utils/calculationsHelpers";
 import {useTimezone} from '@/composables/useTimezone'
+import {
+  normalizePathPoints,
+  reconstructTripPathPoints,
+  resolveTripMarkerPoint,
+  areSameCoordinate
+} from '@/utils/tripPathReconstruction'
 
 const timezone = useTimezone()
 
@@ -192,35 +198,6 @@ const clearHighlightedTripLayers = () => {
     baseLayerRef.value?.removeFromLayer(tripEndMarker.value)
     tripEndMarker.value = null
   }
-}
-
-const areSameCoordinate = (first, second) => {
-  if (!first || !second) return false
-  const epsilon = 1e-7
-  return (
-    Math.abs(first.latitude - second.latitude) <= epsilon &&
-    Math.abs(first.longitude - second.longitude) <= epsilon
-  )
-}
-
-const resolveTripMarkerPoint = (trip, type, fallbackPoint) => {
-  if (type === 'start') {
-    const lat = Number(trip?.latitude)
-    const lon = Number(trip?.longitude)
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      return { latitude: lat, longitude: lon }
-    }
-  }
-
-  if (type === 'end') {
-    const lat = Number(trip?.endLatitude)
-    const lon = Number(trip?.endLongitude)
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      return { latitude: lat, longitude: lon }
-    }
-  }
-
-  return fallbackPoint
 }
 
 // Watch for trip highlighting
@@ -402,21 +379,9 @@ const reconstructTripPath = (trip) => {
     return null
   }
 
-  // Calculate trip end time
-  const tripStartTime = new Date(trip.timestamp)
-  const tripEndTime = new Date(tripStartTime.getTime() + (trip.tripDuration * 1000))
-
-  // Filter GPS points by trip time range
-  // pathData is array of arrays (one array per "segment")
-  // Flatten and filter
-  const allPoints = props.pathData.flat()
-
-  const tripPoints = allPoints.filter(point => {
-    const pointTime = new Date(point.timestamp)
-    return pointTime >= tripStartTime && pointTime <= tripEndTime
-  })
-
-  return tripPoints
+  const normalizedPoints = normalizePathPoints(props.pathData)
+  const { points } = reconstructTripPathPoints(trip, normalizedPoints)
+  return points
 }
 
 watch(() => props.pathOptions, () => {

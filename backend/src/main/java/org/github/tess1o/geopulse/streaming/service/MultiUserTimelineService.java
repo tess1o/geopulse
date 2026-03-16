@@ -7,8 +7,12 @@ import jakarta.ws.rs.ForbiddenException;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
+import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.streaming.model.dto.MultiUserTimelineDTO;
 import org.github.tess1o.geopulse.streaming.model.dto.MovementTimelineDTO;
+import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
@@ -51,6 +55,9 @@ public class MultiUserTimelineService {
 
     @Inject
     UserRepository userRepository;
+
+    @Inject
+    GpsPointService gpsPointService;
 
     /**
      * Get timeline data for multiple users with authorization checks.
@@ -171,7 +178,12 @@ public class MultiUserTimelineService {
     /**
      * Fetch timeline for a single user.
      */
-    private MultiUserTimelineDTO.UserTimelineDTO fetchUserTimeline(UUID userId, Instant startTime, Instant endTime, String color) {
+    private MultiUserTimelineDTO.UserTimelineDTO fetchUserTimeline(
+            UUID userId,
+            Instant startTime,
+            Instant endTime,
+            String color
+    ) {
         log.debug("Fetching timeline for user {} with color {}", userId, color);
 
         // Get user info
@@ -187,6 +199,8 @@ public class MultiUserTimelineService {
         // Calculate stats
         MultiUserTimelineDTO.TimelineStats stats = calculateStats(timeline);
 
+        List<List<GpsPointPathPointDTO>> pathSegments = getSimplifiedPathSegments(userId, startTime, endTime);
+
         return MultiUserTimelineDTO.UserTimelineDTO.builder()
                 .userId(userId)
                 .fullName(user.getFullName())
@@ -194,8 +208,48 @@ public class MultiUserTimelineService {
                 .avatar(user.getAvatar())
                 .assignedColor(color)
                 .timeline(timeline)
+                .pathSegments(pathSegments)
                 .stats(stats)
                 .build();
+    }
+
+    private List<List<GpsPointPathPointDTO>> getSimplifiedPathSegments(UUID userId, Instant startTime, Instant endTime) {
+        GpsPointPathDTO path = gpsPointService.getGpsPointPath(userId, startTime, endTime);
+        if (path == null || path.getPoints() == null || path.getPoints().isEmpty()) {
+            return List.of();
+        }
+
+        List<GpsPointPathPointDTO> normalizedPoints = new ArrayList<>();
+        for (GpsPoint point : path.getPoints()) {
+            GpsPointPathPointDTO dtoPoint = toPathPointDto(point, userId);
+            if (dtoPoint.getTimestamp() != null) {
+                normalizedPoints.add(dtoPoint);
+            }
+        }
+
+        if (normalizedPoints.isEmpty()) {
+            return List.of();
+        }
+
+        return List.of(normalizedPoints);
+    }
+
+    private GpsPointPathPointDTO toPathPointDto(GpsPoint point, UUID userId) {
+        if (point instanceof GpsPointPathPointDTO dtoPoint) {
+            return dtoPoint;
+        }
+
+        return new GpsPointPathPointDTO(
+                0L,
+                point.getLongitude(),
+                point.getLatitude(),
+                point.getTimestamp(),
+                null,
+                null,
+                null,
+                userId,
+                null
+        );
     }
 
     /**

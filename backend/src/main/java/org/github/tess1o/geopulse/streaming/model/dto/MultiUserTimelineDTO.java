@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 
 import java.time.Instant;
 import java.util.List;
@@ -38,6 +39,11 @@ public class MultiUserTimelineDTO {
         private String avatar;
         private String assignedColor;  // Color assigned by backend for consistency
         private MovementTimelineDTO timeline;
+        /**
+         * Segmented path data for rendering real movement lines on friends map.
+         * May be empty when no path points are available for the requested period.
+         */
+        private List<List<GpsPointPathPointDTO>> pathSegments;
         private TimelineStats stats;
     }
 
