@@ -217,7 +217,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, onMounted, computed } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -239,6 +239,9 @@ const currentMessage = ref('')
 const isLoading = ref(false)
 const messagesContainer = ref(null)
 const hasExpiredConversation = ref(false)
+const initialScrollTimeouts = []
+let previousScrollRestoration = null
+let removeWindowLoadListener = null
 const aiSettings = ref({
   enabled: false,
   openaiApiKeyConfigured: false,
@@ -383,10 +386,6 @@ const sendMessage = async (messageText) => {
   // Clear input
   currentMessage.value = ''
   
-  // Scroll to bottom
-  await nextTick()
-  scrollToBottom()
-
   // Set loading state
   isLoading.value = true
 
@@ -407,10 +406,6 @@ const sendMessage = async (messageText) => {
     
     // Save updated conversation to localStorage
     saveMessagesToStorage(messages.value)
-
-    // Scroll to bottom
-    await nextTick()
-    scrollToBottom()
 
   } catch (error) {
     console.error('Error sending message:', error)
@@ -448,10 +443,98 @@ const handleSendMessage = () => {
   sendMessage()
 }
 
-const scrollToBottom = () => {
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+const findScrollableAncestor = (element) => {
+  let parent = element?.parentElement
+
+  while (parent) {
+    const style = window.getComputedStyle(parent)
+    const overflowY = style.overflowY
+    const canScrollByStyle = overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay'
+    if (canScrollByStyle && parent.scrollHeight > parent.clientHeight) {
+      return parent
+    }
+    parent = parent.parentElement
   }
+
+  return null
+}
+
+const isAtBottom = (container) => {
+  if (!container) return false
+  const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop
+  return Math.abs(distanceToBottom) <= 2
+}
+
+const scrollToBottomUntilSettled = async (maxAttempts = 10) => {
+  await nextTick()
+
+  let attempts = 0
+  const attemptScroll = () => {
+    scrollToBottom()
+    attempts += 1
+
+    const container = messagesContainer.value
+    if (attempts >= maxAttempts || isAtBottom(container)) return
+
+    const delayMs = attempts < 4 ? 16 : 80
+    window.setTimeout(() => {
+      requestAnimationFrame(attemptScroll)
+    }, delayMs)
+  }
+
+  requestAnimationFrame(attemptScroll)
+}
+
+const scrollToBottom = () => {
+  if (!messagesContainer.value) return
+
+  const container = messagesContainer.value
+  container.scrollTop = container.scrollHeight
+
+  const ancestorScroller = findScrollableAncestor(container)
+  if (ancestorScroller) {
+    ancestorScroller.scrollTop = ancestorScroller.scrollHeight
+  }
+
+  const docScroller = document.scrollingElement || document.documentElement || document.body
+  if (docScroller && docScroller !== ancestorScroller) {
+    docScroller.scrollTop = docScroller.scrollHeight
+  }
+}
+
+const scheduleInitialScrollRetries = () => {
+  initialScrollTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId))
+  initialScrollTimeouts.length = 0
+
+  ;[60, 180, 360, 720, 1200].forEach((delay) => {
+    const timeoutId = window.setTimeout(() => {
+      scrollToBottomUntilSettled()
+    }, delay)
+    initialScrollTimeouts.push(timeoutId)
+  })
+}
+
+const scheduleAfterWindowLoadScroll = () => {
+  if (removeWindowLoadListener) {
+    removeWindowLoadListener()
+    removeWindowLoadListener = null
+  }
+
+  const run = () => {
+    scrollToBottomUntilSettled()
+  }
+
+  if (document.readyState === 'complete') {
+    window.setTimeout(run, 0)
+    return
+  }
+
+  const onLoad = () => {
+    run()
+  }
+
+  window.addEventListener('load', onLoad, { once: true })
+  removeWindowLoadListener = () => window.removeEventListener('load', onLoad)
 }
 
 const isErrorMessage = (content) => {
@@ -525,8 +608,21 @@ const sanitizeAndFormatMessage = (content) => {
   return sanitized
 }
 
+watch(
+  () => [messages.value.length, isLoading.value],
+  () => {
+    scrollToBottomUntilSettled()
+  },
+  { flush: 'post' }
+)
+
 // Check AI configuration and load saved messages on mount
 onMounted(async () => {
+  if ('scrollRestoration' in history) {
+    previousScrollRestoration = history.scrollRestoration
+    history.scrollRestoration = 'manual'
+  }
+
   await checkAIAvailability()
   
   // Load saved messages and handle expiration
@@ -535,6 +631,9 @@ onMounted(async () => {
   if (savedMessages.length > 0) {
     messages.value = savedMessages
     console.log(`Loaded ${savedMessages.length} messages from localStorage`)
+    scrollToBottomUntilSettled()
+    scheduleInitialScrollRetries()
+    scheduleAfterWindowLoadScroll()
   }
   
   // Check if we had expired messages
@@ -558,6 +657,17 @@ onMounted(async () => {
       detail,
       life: 6000
     })
+  }
+})
+
+onBeforeUnmount(() => {
+  initialScrollTimeouts.forEach((timeoutId) => window.clearTimeout(timeoutId))
+  if (removeWindowLoadListener) {
+    removeWindowLoadListener()
+    removeWindowLoadListener = null
+  }
+  if ('scrollRestoration' in history && previousScrollRestoration) {
+    history.scrollRestoration = previousScrollRestoration
   }
 })
 </script>

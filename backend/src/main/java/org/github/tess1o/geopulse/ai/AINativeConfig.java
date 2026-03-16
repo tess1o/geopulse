@@ -18,6 +18,11 @@ import org.github.tess1o.geopulse.ai.service.GeoPulseOpenAIClient;
                 AITimelineStayDTO.class,
                 AITimelineTripDTO.class,
                 AITripStatsDTO.class,
+                AITimelineTargetScope.class,
+                AITimelineFriendCandidateDTO.class,
+                AITimelineTargetResolution.class,
+                AIFriendLiveCandidateDTO.class,
+                AIFriendLiveLocationDTO.class,
 
                 // REST API DTOs
                 AIResource.ChatRequest.class,
