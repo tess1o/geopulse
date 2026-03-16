@@ -537,6 +537,69 @@
           }
         }
       },
+      "CreateTripDto" : {
+        "required" : [ "name", "startTime", "endTime" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 150,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "color" : {
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          },
+          "notes" : {
+            "maxLength" : 4000,
+            "type" : "string"
+          }
+        }
+      },
+      "CreateTripPlanItemDto" : {
+        "required" : [ "title" ],
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "maxLength" : 255,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "notes" : {
+            "maxLength" : 2000,
+            "type" : "string"
+          },
+          "latitude" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          },
+          "plannedDay" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "priority" : {
+            "$ref" : "#/components/schemas/TripPlanItemPriority"
+          },
+          "orderIndex" : {
+            "format" : "int32",
+            "minimum" : 0,
+            "type" : "integer"
+          }
+        }
+      },
       "DawarichGeometry" : {
         "type" : "object",
         "properties" : {
@@ -828,6 +891,48 @@
         "enum" : [ "OWNTRACKS", "GPSLOGGER", "OVERLAND", "TRACCAR", "GOOGLE_TIMELINE", "GPX", "DAWARICH", "HOME_ASSISTANT", "GEOJSON", "CSV", "COLOTA" ],
         "type" : "string"
       },
+      "GpsTelemetryMappingEntry" : {
+        "type" : "object",
+        "properties" : {
+          "key" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "unit" : {
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "order" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "trueValues" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "falseValues" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "showInGpsData" : {
+            "type" : "boolean"
+          },
+          "showInCurrentPopup" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "HomeAssistantBattery" : {
         "type" : "object",
         "properties" : {
@@ -1049,6 +1154,11 @@
             "type" : "string"
           }
         }
+      },
+      "LocalDate" : {
+        "format" : "date",
+        "type" : "string",
+        "example" : "2022-03-10"
       },
       "LoginRequest" : {
         "type" : "object",
@@ -1414,6 +1524,33 @@
           }
         }
       },
+      "TripPlanItemOverrideState" : {
+        "enum" : [ "CONFIRMED", "REJECTED" ],
+        "type" : "string"
+      },
+      "TripPlanItemPriority" : {
+        "enum" : [ "OPTIONAL", "MUST" ],
+        "type" : "string"
+      },
+      "TripPlanItemVisitSource" : {
+        "enum" : [ "AUTO", "MANUAL" ],
+        "type" : "string"
+      },
+      "TripStatus" : {
+        "enum" : [ "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED" ],
+        "type" : "string"
+      },
+      "TripVisitOverrideRequestDto" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "visitedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          }
+        }
+      },
       "UUID" : {
         "format" : "uuid",
         "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
@@ -1689,6 +1826,9 @@
           "defaultDateRangePreset" : {
             "pattern" : "^(today|yesterday|lastWeek|lastMonth)?$",
             "type" : "string"
+          },
+          "showCurrentLocationTelemetry" : {
+            "type" : "boolean"
           }
         }
       },
@@ -1927,6 +2067,90 @@
             "maximum" : 900.0,
             "minimum" : 400.0,
             "type" : "number"
+          }
+        }
+      },
+      "UpdateTripDto" : {
+        "required" : [ "name", "startTime", "endTime" ],
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "maxLength" : 150,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "startTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "endTime" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "color" : {
+            "pattern" : "^#[0-9A-Fa-f]{6}$",
+            "type" : "string"
+          },
+          "notes" : {
+            "maxLength" : 4000,
+            "type" : "string"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/TripStatus"
+          }
+        }
+      },
+      "UpdateTripPlanItemDto" : {
+        "required" : [ "title" ],
+        "type" : "object",
+        "properties" : {
+          "title" : {
+            "maxLength" : 255,
+            "pattern" : "\\S",
+            "type" : "string"
+          },
+          "notes" : {
+            "maxLength" : 2000,
+            "type" : "string"
+          },
+          "latitude" : {
+            "format" : "double",
+            "maximum" : 90.0,
+            "minimum" : -90.0,
+            "type" : "number"
+          },
+          "longitude" : {
+            "format" : "double",
+            "maximum" : 180.0,
+            "minimum" : -180.0,
+            "type" : "number"
+          },
+          "plannedDay" : {
+            "$ref" : "#/components/schemas/LocalDate"
+          },
+          "priority" : {
+            "$ref" : "#/components/schemas/TripPlanItemPriority"
+          },
+          "orderIndex" : {
+            "format" : "int32",
+            "minimum" : 0,
+            "type" : "integer"
+          },
+          "isVisited" : {
+            "type" : "boolean"
+          },
+          "visitConfidence" : {
+            "format" : "double",
+            "maximum" : 1.0,
+            "minimum" : 0.0,
+            "type" : "number"
+          },
+          "visitSource" : {
+            "$ref" : "#/components/schemas/TripPlanItemVisitSource"
+          },
+          "visitedAt" : {
+            "$ref" : "#/components/schemas/Instant"
+          },
+          "manualOverrideState" : {
+            "$ref" : "#/components/schemas/TripPlanItemOverrideState"
           }
         }
       },
@@ -5654,6 +5878,102 @@
         } ]
       }
     },
+    "/api/gps/source/telemetry/{sourceType}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "sourceType",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/GpsTelemetryMappingEntry"
+                }
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Upsert Telemetry Mapping",
+        "tags" : [ "Gps Source Config Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "sourceType",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Reset Telemetry Mapping",
+        "tags" : [ "Gps Source Config Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "sourceType",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Telemetry Mapping",
+        "tags" : [ "Gps Source Config Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/gps/source/{id}" : {
       "delete" : {
         "parameters" : [ {
@@ -6959,6 +7279,13 @@
             "format" : "int64",
             "type" : "integer"
           }
+        }, {
+          "name" : "mode",
+          "in" : "query",
+          "schema" : {
+            "default" : "unlink_only",
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -6972,6 +7299,35 @@
           }
         },
         "summary" : "Delete Period Tag",
+        "tags" : [ "Period Tag Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/period-tags/{id}/unlink" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Unlink Period Tag",
         "tags" : [ "Period Tag Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -7896,6 +8252,604 @@
         },
         "summary" : "Handle Traccar",
         "tags" : [ "Traccar Resource" ]
+      }
+    },
+    "/api/trips" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trips",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTripDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Trip",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/from-period-tag/{periodTagId}" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "periodTagId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Create Trip From Period Tag",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/plan-suggestion" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "lat",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        }, {
+          "name" : "lon",
+          "in" : "query",
+          "schema" : {
+            "format" : "double",
+            "type" : "number"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Plan Suggestion",
+        "tags" : [ "Plan Suggestion Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{id}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTripDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Trip",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "get" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trip",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "mode",
+          "in" : "query",
+          "schema" : {
+            "default" : "unlink_only",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Delete Trip",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{id}/unlink" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Unlink Trip From Period Tag",
+        "tags" : [ "Trip Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/path" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trip Path",
+        "tags" : [ "Trip Workspace Data Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/plan-items" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Plan Items",
+        "tags" : [ "Trip Plan Item Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "post" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateTripPlanItemDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Create Plan Item",
+        "tags" : [ "Trip Plan Item Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/plan-items/{itemId}" : {
+      "put" : {
+        "parameters" : [ {
+          "name" : "itemId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UpdateTripPlanItemDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Update Plan Item",
+        "tags" : [ "Trip Plan Item Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      },
+      "delete" : {
+        "parameters" : [ {
+          "name" : "itemId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Delete Plan Item",
+        "tags" : [ "Trip Plan Item Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/plan-items/{itemId}/visit-override" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "itemId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TripVisitOverrideRequestDto"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Apply Visit Override",
+        "tags" : [ "Trip Plan Item Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/summary" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trip Summary",
+        "tags" : [ "Trip Summary Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/timeline" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "name" : "endTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "startTime",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Trip Timeline",
+        "tags" : [ "Trip Workspace Data Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/trips/{tripId}/visit-suggestions" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "tripId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Visit Suggestions",
+        "tags" : [ "Trip Visit Matching Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
       }
     },
     "/api/users/changePassword" : {
@@ -8979,7 +9933,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.21.0",
+    "version" : "1.22.0",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
