@@ -9,7 +9,7 @@ Before you begin, ensure you have the following installed:
 - [Docker](https://docs.docker.com/get-docker/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
 
-## Overview about the system components
+## System Components Overview
 
 GeoPulse consists of 3 mandatory services and one optional service:
 
@@ -31,65 +31,48 @@ and stops automatically, no manual steps are required.
 
 This section guides you through deploying GeoPulse using Docker Compose.
 
-### 1. Download Configuration Files
+### 1. Quick Start
 
-First, download the necessary configuration files.
-
-#### Step 1.1: Download `.env` configuration and `generate-keys.sh` script
-
-**Using wget:**
+#### Option A: Regular install (without MQTT)
 
 ```bash
-wget -O .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
-wget https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
-chmod +x generate-keys.sh
-```
-
-**Using curl:**
-
-```bash
+# 1) Download .env
 curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
-curl -L -o generate-keys.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/generate-keys.sh
-chmod +x generate-keys.sh
-```
 
-#### Step 1.2: Choose your deployment type
+# 2) Configure .env (optional for local evaluation, required for production/security)
+# nano .env
 
-**Option A: Basic deployment (without MQTT broker)**
-
-Download the basic docker-compose.yml:
-
-Using wget:
-
-```bash
-wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
-```
-
-Using curl:
-
-```bash
+# 3) Download docker-compose
 curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose.yml
+
+# 4) Start
+docker compose up -d
 ```
 
-**Option B: Full deployment (with MQTT broker for OwnTracks)**
-
-Download the complete docker-compose.yml and mosquitto entrypoint script:
-
-Using wget:
+#### Option B: Install with MQTT
 
 ```bash
-wget -O docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
-wget -O mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
-chmod +x mosquitto_entrypoint.sh
-```
+# 1) Download .env
+curl -L -o .env https://raw.githubusercontent.com/tess1o/GeoPulse/main/.env.example
 
-Using curl:
+# 2) Configure .env (optional for local evaluation, required for production/security)
+# For MQTT usage, set GEOPULSE_MQTT_ENABLED=true
+# nano .env
 
-```bash
+# 3) Download docker-compose with MQTT
 curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/main/docker-compose-complete.yml
-curl -L -o mosquitto_entrypoint.sh https://raw.githubusercontent.com/tess1o/GeoPulse/main/mosquitto_entrypoint.sh
-chmod +x mosquitto_entrypoint.sh
+
+# 4) Start
+docker compose up -d
 ```
+
+#### After Start
+
+- Open GeoPulse UI: `http://localhost:5555`
+- Check backend health: `curl http://localhost:8080/api/health`
+- Follow logs if needed: `docker compose logs -f`
+
+If these checks pass, your deployment is up and running. The sections below are optional tuning and production guidance.
 
 > #### A Note on Docker Image Source
 > By default, GeoPulse uses images from Docker Hub. We also publish images to GitHub Container Registry (GHCR).
@@ -152,7 +135,8 @@ It is highly recommended to set strong, unique passwords for your services.
 
 #### MQTT Configuration
 
-- `GEOPULSE_MQTT_ENABLED`: Set to `true` to enable the OwnTracks MQTT integration. This requires using the full deployment `docker-compose.yml`.
+- `GEOPULSE_MQTT_ENABLED`: Set to `true` to enable backend OwnTracks MQTT integration.
+  Use this together with the MQTT compose file (`docker-compose-complete.yml`, Quick Start option B), which adds the Mosquitto service.
   ```env
   GEOPULSE_MQTT_ENABLED=true
   ```
@@ -161,55 +145,34 @@ It is highly recommended to set strong, unique passwords for your services.
 
 These variables control how users access the GeoPulse frontend and how authentication cookies are handled.
 
-- `GEOPULSE_UI_URL`: A comma-separated list of URLs that can be used to access the frontend. This is crucial for CORS (Cross-Origin Resource Sharing) to work correctly.
-- `GEOPULSE_COOKIE_DOMAIN`: The domain for authentication cookies. **Keep empty for standard deployments** (see details below).
+- `GEOPULSE_CORS_ENABLED`: Enables/disables backend CORS handling.
+- `GEOPULSE_CORS_ORIGINS`: Comma-separated list of allowed origins when CORS is enabled.
+- `GEOPULSE_PUBLIC_BASE_URL`: Public base URL used for generated callback/link URLs (recommended for OIDC).
+- `GEOPULSE_UI_URL`: Legacy fallback variable kept for backward compatibility (deprecated).
+- `GEOPULSE_COOKIE_DOMAIN`: The domain for authentication cookies. **Keep empty for standard deployments**.
 - `GEOPULSE_AUTH_SECURE_COOKIES`: Set to `true` to ensure cookies are only sent over HTTPS.
 
-##### Understanding GEOPULSE_COOKIE_DOMAIN
+##### CORS Defaults
 
-**In GeoPulse's architecture**, nginx acts as a reverse proxy that serves both the frontend and proxies API requests to the backend. From the browser's perspective, all requests (frontend assets and API calls) come from the same origin (e.g., `geopulse.yourdomain.com`). This is called **same-origin**, and authentication cookies work automatically without setting a cookie domain.
+For standard docker-compose deployments, frontend and backend are served from the same origin through nginx (`/api` proxy).  
+Because of this, `.env.example` sets:
 
-**When to keep GEOPULSE_COOKIE_DOMAIN empty (recommended):**
-- ✅ All standard Docker deployments using docker-compose
-- ✅ Localhost access: `http://localhost:5555`
-- ✅ Homelab IP access: `http://192.168.1.100:5555`
-- ✅ Single domain production: `https://geopulse.yourdomain.com`
-- ✅ Any deployment where nginx proxies both frontend and backend (standard GeoPulse setup)
+```env
+GEOPULSE_CORS_ENABLED=false
+```
 
-**Why keep it empty?**
-- Browser automatically handles cookies for same-origin requests
-- More secure (cookies won't leak to other subdomains)
-- Simpler configuration with fewer potential issues
+Only enable CORS if you intentionally deploy frontend and backend on different origins.
 
-**When to set GEOPULSE_COOKIE_DOMAIN (rare scenarios):**
-- ❌ Only if deploying WITHOUT nginx proxy AND using separate subdomains
-- ❌ Example: Frontend at `app.yourdomain.com`, Backend at `api.yourdomain.com`
-- ❌ In this case, set `GEOPULSE_COOKIE_DOMAIN=.yourdomain.com`
-- ⚠️ **Warning**: This is NOT a standard GeoPulse deployment and requires additional configuration changes
+For cross-origin deployments, enable CORS explicitly and set the allowed origins:
 
-**Scenario-based examples:**
+```env
+GEOPULSE_CORS_ENABLED=true
+GEOPULSE_CORS_ORIGINS=https://app.yourdomain.com
+```
 
-- **Localhost-only access:**
-  ```env
-  GEOPULSE_UI_URL=http://localhost:5555
-  GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
-  GEOPULSE_AUTH_SECURE_COOKIES=false
-  ```
-
-- **Homelab access (via IP address and/or local domain):**
-  ```env
-  # Allows access via localhost, a local network IP, and a local domain
-  GEOPULSE_UI_URL=http://localhost:5555,http://192.168.1.100:5555,http://geopulse.local
-  GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
-  GEOPULSE_AUTH_SECURE_COOKIES=false
-  ```
-
-- **Production access (with a domain and HTTPS):**
-  ```env
-  GEOPULSE_UI_URL=https://geopulse.yourdomain.com
-  GEOPULSE_COOKIE_DOMAIN=           # Leave empty - nginx proxies everything
-  GEOPULSE_AUTH_SECURE_COOKIES=true
-  ```
+`GEOPULSE_COOKIE_DOMAIN` is usually not needed in standard docker-compose deployments because nginx serves a same-origin app and API.
+Set it only for advanced split-subdomain setups (for example `app.yourdomain.com` + `api.yourdomain.com`).
+For full cookie-domain guidance, see [Authentication Configuration](../../system-administration/configuration/authentication.md).
 
 #### Advanced Performance Tuning
 
@@ -328,21 +291,6 @@ WHERE tablename LIKE '%gps%'
 ```
 
 </details>
-
-### 3. Start GeoPulse
-
-Once you have configured your `.env` file, you can start the application.
-
-```bash
-docker compose up -d
-```
-
-**Access:**
-
-- Frontend: http://localhost:5555 (or your configured URL)
-- API: http://localhost:8080/api
-
----
 
 ## Production Deployment Example: Reverse Proxy
 
@@ -501,6 +449,17 @@ Both containers work seamlessly with Kubernetes `runAsUser` and OpenShift's auto
 
 ---
 
+## Backward Compatibility
+
+Existing `.env` files continue to work without mandatory changes.
+
+- `GEOPULSE_UI_URL` is still supported as a legacy fallback for CORS/OIDC behavior.
+- New deployments should use `GEOPULSE_CORS_ENABLED`, `GEOPULSE_CORS_ORIGINS`, and `GEOPULSE_PUBLIC_BASE_URL`.
+- For OIDC callback URLs, prefer explicit `GEOPULSE_OIDC_CALLBACK_BASE_URL`.
+- Detailed migration guidance is available in [Updating GeoPulse](../../system-administration/maintenance/updating.md).
+
+---
+
 ## Troubleshooting
 
 **Non-root user issues:**
@@ -537,20 +496,20 @@ curl http://localhost:8080/api/health
 - For HTTP deployments: `GEOPULSE_AUTH_SECURE_COOKIES=false`
 - For HTTPS deployments: `GEOPULSE_AUTH_SECURE_COOKIES=true`
 - Verify JWT keys exist in `keys/` directory
-- See the "Understanding GEOPULSE_COOKIE_DOMAIN" section above for detailed cookie configuration
+- For split-subdomain setups, see [Authentication Configuration](../../system-administration/configuration/authentication.md)
 
 **Network/Proxy issues:**
 
 - API requests failing: Check that frontend nginx proxy is configured correctly
-- Multiple access methods not working: Ensure `GEOPULSE_UI_URL` includes all required URLs (comma-separated)
-- CORS errors: Verify backend `GEOPULSE_UI_URL` matches your access URLs
+- Cross-origin browser requests failing: Enable CORS with `GEOPULSE_CORS_ENABLED=true` and configure `GEOPULSE_CORS_ORIGINS`
+- OIDC callback URL is wrong: Set `GEOPULSE_OIDC_CALLBACK_BASE_URL` (preferred) or `GEOPULSE_PUBLIC_BASE_URL`
 - Development proxy issues: Ensure Vite dev server is running with proxy configuration
 
 **Configuration issues:**
 
 - Check `.env` file is properly formatted and readable by containers
 - Verify `GEOPULSE_BACKEND_URL` uses correct container name (`http://geopulse-backend:8080` for Docker)
-- For homelab: Use your actual IP addresses in `GEOPULSE_UI_URL`
+- For homelab/public deployment: Set `GEOPULSE_PUBLIC_BASE_URL` to your externally reachable URL
 
 **Key generation issues:**
 

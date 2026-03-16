@@ -5,8 +5,23 @@ services:
     restart: "no"
     volumes:
       - ./keys:/keys
-      - ./generate-keys.sh:/generate-keys.sh
-    command: sh /generate-keys.sh
+    command:
+      - sh
+      - -ec
+      - |
+        set -e
+        mkdir -p /keys
+        if [ ! -f /keys/jwt-private-key.pem ] || [ ! -f /keys/jwt-public-key.pem ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl genpkey -algorithm RSA -out /keys/jwt-private-key.pem
+          openssl rsa -pubout -in /keys/jwt-private-key.pem -out /keys/jwt-public-key.pem
+          chmod 644 /keys/jwt-private-key.pem /keys/jwt-public-key.pem
+        fi
+        if [ ! -f /keys/ai-encryption-key.txt ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl rand -base64 32 > /keys/ai-encryption-key.txt
+          chmod 644 /keys/ai-encryption-key.txt
+        fi
 
   geopulse-backend:
     image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native

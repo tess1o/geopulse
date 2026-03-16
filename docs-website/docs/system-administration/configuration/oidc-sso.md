@@ -45,8 +45,14 @@ authentication. All providers should use the callback URL: `http://your-ip-addre
 `https://geopulse.mydomain.com/oidc/callback`.
 
 Additionally you might need to update `GEOPULSE_OIDC_CALLBACK_BASE_URL` environment variable to match your frontend
-URL. By default it's set to `GEOPULSE_UI_URL` but in case if you have multiple domains you might need to change it to a
-single one.
+URL.
+
+Callback URL base resolution order:
+1. `GEOPULSE_OIDC_CALLBACK_BASE_URL` (recommended)
+2. `GEOPULSE_PUBLIC_BASE_URL`
+3. `GEOPULSE_UI_URL` (legacy fallback, deprecated)
+
+For stable OIDC behavior, set `GEOPULSE_OIDC_CALLBACK_BASE_URL` explicitly.
 
 ## Supported Providers
 
@@ -206,8 +212,11 @@ If an external URL or local path icon fails to load, the system automatically fa
 # ⚠️ REQUIRED: Enable OIDC authentication globally
 GEOPULSE_OIDC_ENABLED=true
 
-# ⚠️ REQUIRED: Callback URL base (should match your frontend URL)
-GEOPULSE_UI_URL=https://your-domain.com
+# Recommended: set callback URL base explicitly
+GEOPULSE_OIDC_CALLBACK_BASE_URL=https://your-domain.com
+
+# Optional fallback for generated links/callbacks
+GEOPULSE_PUBLIC_BASE_URL=https://your-domain.com
 ```
 
 **Optional Settings:**

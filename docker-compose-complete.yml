@@ -5,8 +5,23 @@ services:
     restart: "no"
     volumes:
       - ./keys:/keys
-      - ./generate-keys.sh:/generate-keys.sh
-    command: sh /generate-keys.sh
+    command:
+      - sh
+      - -ec
+      - |
+        set -e
+        mkdir -p /keys
+        if [ ! -f /keys/jwt-private-key.pem ] || [ ! -f /keys/jwt-public-key.pem ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl genpkey -algorithm RSA -out /keys/jwt-private-key.pem
+          openssl rsa -pubout -in /keys/jwt-private-key.pem -out /keys/jwt-public-key.pem
+          chmod 644 /keys/jwt-private-key.pem /keys/jwt-public-key.pem
+        fi
+        if [ ! -f /keys/ai-encryption-key.txt ]; then
+          command -v openssl >/dev/null 2>&1 || apk add --no-cache openssl
+          openssl rand -base64 32 > /keys/ai-encryption-key.txt
+          chmod 644 /keys/ai-encryption-key.txt
+        fi
 
   geopulse-backend:
     image: tess1o/geopulse-backend:${GEOPULSE_VERSION}-native
@@ -93,12 +108,79 @@ services:
     ports:
       - "1883:1883"
     volumes:
-      - ./mosquitto_entrypoint.sh:/entrypoint.sh
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
-    entrypoint: ["/entrypoint.sh"]
-    command: /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        set -e
+        CONF_FILE="/mosquitto/config/mosquitto.conf"
+        ADMIN_USER_FILE="/mosquitto/config/admin_user"
+        ADMIN_ACL_FILE="/mosquitto/config/admin_acl"
+
+        if [ ! -f "$$CONF_FILE" ]; then
+          : "$${GEOPULSE_MQTT_USERNAME:?GEOPULSE_MQTT_USERNAME is not set.}"
+          : "$${GEOPULSE_MQTT_PASSWORD:?GEOPULSE_MQTT_PASSWORD is not set.}"
+          : "$${GEOPULSE_POSTGRES_HOST:?GEOPULSE_POSTGRES_HOST is not set.}"
+          : "$${GEOPULSE_POSTGRES_PORT:?GEOPULSE_POSTGRES_PORT is not set.}"
+          : "$${GEOPULSE_POSTGRES_DB:?GEOPULSE_POSTGRES_DB is not set.}"
+          : "$${GEOPULSE_POSTGRES_USERNAME:?GEOPULSE_POSTGRES_USERNAME is not set.}"
+          : "$${GEOPULSE_POSTGRES_PASSWORD:?GEOPULSE_POSTGRES_PASSWORD is not set.}"
+
+          cat > "$$CONF_FILE" <<EOF
+        listener 1883
+        allow_anonymous false
+        persistence true
+        persistence_location /mosquitto/data/
+        log_dest file /mosquitto/log/mosquitto.log
+        log_type all
+        connection_messages true
+        log_timestamp true
+        auth_plugin /mosquitto/go-auth.so
+        auth_opt_log_dest stdout
+        auth_opt_log_level debug
+        auth_opt_backends files,postgres
+        auth_opt_files_acl_path $${ADMIN_ACL_FILE}
+        auth_opt_check_prefix false
+        auth_opt_files_password_path $${ADMIN_USER_FILE}
+        auth_opt_files_hasher bcrypt
+        auth_opt_pg_host $${GEOPULSE_POSTGRES_HOST}
+        auth_opt_pg_port $${GEOPULSE_POSTGRES_PORT}
+        auth_opt_pg_dbname $${GEOPULSE_POSTGRES_DB}
+        auth_opt_pg_user $${GEOPULSE_POSTGRES_USERNAME}
+        auth_opt_pg_password $${GEOPULSE_POSTGRES_PASSWORD}
+        auth_opt_pg_sslmode disable
+        auth_opt_pg_connect_tries 10
+        auth_opt_pg_userquery SELECT password_hash FROM gps_source_config WHERE username = \$1 AND connection_type = 'MQTT' AND source_type = 'OWNTRACKS' AND active = true LIMIT 1
+        auth_opt_pg_aclquery SELECT CONCAT('owntracks/', username, '/+') as topic FROM gps_source_config WHERE username = \$1 AND active = true AND connection_type = 'MQTT' and \$2 = \$2 LIMIT 1
+        auth_opt_pg_hasher bcrypt
+        auth_opt_pg_hasher_cost 12
+        EOF
+
+          ADMIN_PASSWORD_HASH=$$(perl -e '
+            my $$password = $$ARGV[0];
+            my $$cost = "12";
+            my @chars = (".", "/", 0..9, "A".."Z", "a".."z");
+            my $$salt_chars = join("", map { $$chars[rand @chars] } 1..22);
+            my $$bcrypt_salt = "\$$2b\$$$$cost\$$$$salt_chars";
+            my $$hash = crypt($$password, $$bcrypt_salt);
+            if ($$hash eq $$bcrypt_salt || length($$hash) < 30) {
+              print "\$$2b\$$$$cost\$$$$salt_chars" . substr(crypt($$password, "salt"), 0, 31);
+            } else {
+              print $$hash;
+            }
+          ' "$$GEOPULSE_MQTT_PASSWORD")
+
+          echo "$$GEOPULSE_MQTT_USERNAME:$$ADMIN_PASSWORD_HASH" > "$$ADMIN_USER_FILE"
+          cat > "$$ADMIN_ACL_FILE" <<EOF
+        user $$GEOPULSE_MQTT_USERNAME
+        topic readwrite #
+        EOF
+        fi
+
+        exec /usr/sbin/mosquitto -c /mosquitto/config/mosquitto.conf -v
     depends_on:
       geopulse-postgres:
         condition: service_healthy

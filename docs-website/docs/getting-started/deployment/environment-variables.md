@@ -27,15 +27,18 @@ Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
 - Runtime env changes require backend restart to take effect.
 
-### Core and Database (5)
+### Core and Database (8)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
+| `GEOPULSE_CORS_ENABLED` | `true` | Enables/disables backend CORS handling. Property: `quarkus.http.cors.enabled`. New `.env.example` sets this to `false` for same-origin nginx deployments. | `true` or `false`. | Backend restart |
+| `GEOPULSE_CORS_ORIGINS` | `(falls back to GEOPULSE_UI_URL)` | Comma-separated CORS origins when CORS is enabled. Property: `quarkus.http.cors.origins`. | One URL or comma-separated URLs. | Backend restart |
 | `GEOPULSE_DATABASE_TRANSACTION_TIMEOUT_MINUTES` | `60` | Transaction configuration for large imports Property: \`quarkus.transaction-manager.default-transaction-timeout\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_POSTGRES_PASSWORD` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_POSTGRES_URL` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.jdbc.url\`. | Valid PostgreSQL JDBC URL (\`jdbc:postgresql://...\`). | Backend restart |
 | `GEOPULSE_POSTGRES_USERNAME` | `(required/no default)` | PostgreSQL configuration Property: \`quarkus.datasource.username\`. | Required; no default value is provided. | Backend restart |
-| `GEOPULSE_UI_URL` | `http://localhost:5555` | CORS configuration for allowed frontend origins (comma-separated list). Property: \`quarkus.http.cors.origins\`. | One URL or comma-separated URLs. | Backend restart |
+| `GEOPULSE_PUBLIC_BASE_URL` | `(empty)` | Public base URL used for callback/link generation. Property: `geopulse.public-base-url`. | Valid URL. | Backend restart |
+| `GEOPULSE_UI_URL` | `http://localhost:5555` | Legacy fallback variable for CORS origins and OIDC callback fallback. Deprecated: use `GEOPULSE_CORS_ORIGINS` and `GEOPULSE_PUBLIC_BASE_URL`. | One URL or comma-separated URLs. | Backend restart |
 
 ### Authentication and Access (17)
 
@@ -64,7 +67,7 @@ Notes:
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS` | `false` | Account Linking Security When true, automatically links OIDC accounts to existing users with matching emails WARNING: Only enable this if you fully trust your OIDC providers to... Property: \`geopulse.oidc.auto-link-accounts\`. | \`true\` or \`false\`. | Backend restart |
-| `GEOPULSE_OIDC_CALLBACK_BASE_URL` | `(empty)` | OIDC Configuration Callback base URL is optional - if not set or empty, falls back to UI URL (GEOPULSE_UI_URL) Property: \`geopulse.oidc.callback-base-url\`. | Valid URL. | Backend restart |
+| `GEOPULSE_OIDC_CALLBACK_BASE_URL` | `(empty)` | OIDC callback base URL. Fallback order: `GEOPULSE_PUBLIC_BASE_URL`, then legacy `GEOPULSE_UI_URL`. Property: `geopulse.oidc.callback-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_OIDC_CLEANUP_ENABLED` | `true` | OIDC Cleanup Configuration Property: \`geopulse.oidc.cleanup.session-states.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_ENABLED` | `false` | OIDC Configuration Property: \`geopulse.oidc.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS` | `24` | JWKS (signing keys) caching Lower TTL recommended to handle provider key rotation Property: \`geopulse.oidc.jwks-cache.ttl-hours\`. | Non-negative numeric value. | Backend restart |

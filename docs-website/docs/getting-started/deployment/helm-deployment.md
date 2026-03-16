@@ -93,11 +93,16 @@ helm install geopulse ./helm/geopulse -f my-values.yaml
 
 #### Core Configuration
 
-| Feature        | values.yaml Path           | Environment Variable           | Default                 |
-|----------------|----------------------------|--------------------------------|-------------------------|
-| Frontend URL   | `config.uiUrl`             | `GEOPULSE_UI_URL`              | `http://localhost:5555` |
-| Cookie Domain  | `config.cookieDomain`      | `GEOPULSE_COOKIE_DOMAIN`       | `""` (empty)            |
-| Secure Cookies | `config.authSecureCookies` | `GEOPULSE_AUTH_SECURE_COOKIES` | `false`                 |
+| Feature             | values.yaml Path            | Environment Variable            | Default                 |
+|---------------------|-----------------------------|---------------------------------|-------------------------|
+| CORS Enabled        | `config.cors.enabled`       | `GEOPULSE_CORS_ENABLED`         | `true`                  |
+| CORS Origins        | `config.cors.origins`       | `GEOPULSE_CORS_ORIGINS`         | `http://localhost:5555` |
+| Public Base URL     | `config.publicBaseUrl`      | `GEOPULSE_PUBLIC_BASE_URL`      | `""` (empty)            |
+| Frontend URL (legacy) | `config.uiUrl`            | `GEOPULSE_UI_URL`               | `http://localhost:5555` |
+| Cookie Domain       | `config.cookieDomain`       | `GEOPULSE_COOKIE_DOMAIN`        | `""` (empty)            |
+| Secure Cookies      | `config.authSecureCookies`  | `GEOPULSE_AUTH_SECURE_COOKIES`  | `false`                 |
+
+`config.uiUrl` / `GEOPULSE_UI_URL` is a legacy compatibility fallback and is deprecated for new deployments.
 
 #### Admin Configuration
 
@@ -275,6 +280,7 @@ config:
 | Feature            | values.yaml Path               | Environment Variable               | Default |
 |--------------------|--------------------------------|------------------------------------|---------|
 | OIDC Enabled       | `config.oidc.enabled`          | `GEOPULSE_OIDC_ENABLED`            | `false` |
+| Callback Base URL  | `config.oidc.callbackBaseUrl`  | `GEOPULSE_OIDC_CALLBACK_BASE_URL`  | `""`    |
 | Auto-Link Accounts | `config.oidc.autoLinkAccounts` | `GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS` | `false` |
 | Cleanup Enabled    | `config.oidc.cleanupEnabled`   | `GEOPULSE_OIDC_CLEANUP_ENABLED`    | `true`  |
 

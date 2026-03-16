@@ -326,11 +326,24 @@ keygen:
 
 # Application configuration
 config:
-  # Frontend URLs - used in CORS policies (comma-separated)
+  # Frontend URL (legacy fallback)
   # Examples:
   # - Local: http://localhost:5555
   # - Production: https://geopulse.yourdomain.com
+  # Deprecated: prefer config.cors.origins and config.publicBaseUrl
   uiUrl: "http://localhost:5555"
+
+  # Public base URL for callback/link generation (optional)
+  # Example: https://geopulse.yourdomain.com
+  publicBaseUrl: ""
+
+  # CORS configuration
+  cors:
+    # Keep true for backward compatibility with existing Helm deployments.
+    # For same-origin nginx deployments, this can be disabled.
+    enabled: true
+    # Comma-separated allowed origins when CORS is enabled.
+    origins: "http://localhost:5555"
 
   # Cookie domain for authentication
   # IMPORTANT: Keep empty for standard nginx-based deployments (recommended for 99% of cases)
@@ -477,6 +490,8 @@ config:
   # OIDC Configuration (Optional)
   oidc:
     enabled: false
+    # Explicit callback base URL (recommended for stable OIDC callback generation)
+    callbackBaseUrl: ""
     # Auto-link OIDC accounts with existing accounts by email (default: false)
     autoLinkAccounts: false
     # Enable cleanup of stale OIDC sessions (default: true)
