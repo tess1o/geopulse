@@ -8,7 +8,12 @@
     @click="$emit('click', $event)"
   >
     <template #subtitle>
-      🔄 Transition to new place
+      <template v-if="transitionDestinationName">
+        🔄 Transition to <span class="transition-destination">{{ transitionDestinationName }}</span>
+      </template>
+      <template v-else>
+        🔄 Transition to new place
+      </template>
     </template>
 
     <template #content>
@@ -37,6 +42,10 @@ const props = defineProps({
   item: {
     type: Object,
     required: true
+  },
+  nextItem: {
+    type: Object,
+    default: null
   },
   userName: {
     type: String,
@@ -74,6 +83,21 @@ const movementLabel = computed(() => {
   return movementTypeMap[type]?.label || 'Trip'
 })
 
+const transitionDestinationName = computed(() => {
+  if (props.nextItem?.type !== 'stay') {
+    return ''
+  }
+
+  const locationName = typeof props.nextItem.locationName === 'string'
+    ? props.nextItem.locationName.trim()
+    : ''
+  if (!locationName) {
+    return ''
+  }
+
+  return locationName
+})
+
 const hasEndLocation = computed(() => {
   return props.item.endLocationName && props.item.endLocationName.trim().length > 0
 })
@@ -85,6 +109,10 @@ const hasEndLocation = computed(() => {
   color: var(--gp-text-primary);
   margin: 0;
   line-height: 1.4;
+}
+
+.transition-destination {
+  font-weight: 700;
 }
 
 .trip-detail--secondary {

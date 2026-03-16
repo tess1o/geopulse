@@ -31,6 +31,7 @@
         <FriendTripCard
           v-else-if="item.type === 'trip'"
           :item="item"
+          :next-item="getNextTimelineItemForUser(item)"
           :user-name="item.userFullName"
           :user-avatar="item.userAvatar"
           :user-color="item.userColor"
@@ -107,6 +108,37 @@ const displayLimit = ref(50)
 const displayedItems = computed(() => {
   return props.timelineItems.slice(0, displayLimit.value)
 })
+
+const nextItemByUserTimelineOrder = computed(() => {
+  const map = new Map()
+  const itemsByUser = new Map()
+
+  for (const item of props.timelineItems) {
+    if (!item?.userId || !item?.timestamp) {
+      continue
+    }
+
+    if (!itemsByUser.has(item.userId)) {
+      itemsByUser.set(item.userId, [])
+    }
+
+    itemsByUser.get(item.userId).push(item)
+  }
+
+  for (const items of itemsByUser.values()) {
+    items.sort((a, b) => timezone.fromUtc(a.timestamp).valueOf() - timezone.fromUtc(b.timestamp).valueOf())
+
+    for (let i = 0; i < items.length - 1; i++) {
+      map.set(items[i], items[i + 1])
+    }
+  }
+
+  return map
+})
+
+function getNextTimelineItemForUser(item) {
+  return nextItemByUserTimelineOrder.value.get(item) || null
+}
 
 function loadMore() {
   displayLimit.value = Math.min(displayLimit.value + 50, props.timelineItems.length)

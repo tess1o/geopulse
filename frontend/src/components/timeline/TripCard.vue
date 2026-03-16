@@ -19,7 +19,12 @@
     <template #subtitle>
       <div class="timeline-subtitle">
         <p class="transition-title">
-          🔄 Transition to new place
+          <template v-if="transitionDestinationName">
+            🔄 Transition to <span class="transition-destination">{{ transitionDestinationName }}</span>
+          </template>
+          <template v-else>
+            🔄 Transition to new place
+          </template>
         </p>
       </div>
     </template>
@@ -79,6 +84,10 @@ const props = defineProps({
   tripItem: {
     type: Object,
     required: true
+  },
+  nextItem: {
+    type: Object,
+    default: null
   },
   immichPhotos: {
     type: Array,
@@ -140,6 +149,21 @@ const movementTypeSource = computed(() => props.tripItem.movementTypeSource || '
 const movementType = computed(() => props.tripItem.movementType || 'UNKNOWN')
 const isUnknownAuto = computed(() => movementType.value === 'UNKNOWN' && movementTypeSource.value === 'AUTO')
 const showInlineEditIcon = computed(() => !isUnknownAuto.value)
+
+const transitionDestinationName = computed(() => {
+  if (props.nextItem?.type !== 'stay') {
+    return ''
+  }
+
+  const locationName = typeof props.nextItem.locationName === 'string'
+    ? props.nextItem.locationName.trim()
+    : ''
+  if (!locationName) {
+    return ''
+  }
+
+  return locationName
+})
 
 const handleClick = () => {
   emit('click', props.tripItem)
@@ -236,10 +260,14 @@ const formattedTimestamp = computed(() => {
 
 .transition-title {
   color: var(--gp-primary);
-  font-weight: 700;
+  font-weight: 500;
   margin: 0;
   font-size: 0.9rem;
   line-height: 1.3;
+}
+
+.transition-destination {
+  font-weight: 700;
 }
 
 .trip-content {

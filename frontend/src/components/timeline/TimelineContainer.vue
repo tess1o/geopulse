@@ -102,6 +102,7 @@
             <TripCard
               v-else-if="slotProps.item.type === 'trip'"
               :trip-item="slotProps.item"
+              :next-item="getNextTimelineItem(slotProps.item)"
               :immich-photos="immichPhotosForCards"
               @click="handleTimelineItemClick"
               @export-gpx="handleExportTripAsGpx"
@@ -331,6 +332,21 @@ const immichPhotosForCards = computed(() => {
 
   return Array.isArray(immichStore.photos) ? immichStore.photos : []
 })
+
+const nextItemByTimelineOrder = computed(() => {
+  const map = new Map()
+  const items = props.timelineData || []
+
+  for (let i = 0; i < items.length - 1; i++) {
+    map.set(items[i], items[i + 1])
+  }
+
+  return map
+})
+
+const getNextTimelineItem = (item) => {
+  return nextItemByTimelineOrder.value.get(item) || null
+}
 
 // Methods
 const loadMore = () => {
