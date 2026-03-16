@@ -40,6 +40,45 @@ const props = defineProps({
 // Local state
 let marker = null
 
+const escapeHtml = (value) => {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('\"', '&quot;')
+    .replaceAll('\'', '&#39;')
+}
+
+const formatTelemetryValue = (item) => {
+  if (!item) return '-'
+  const value = item.value ?? '-'
+  if (!item.unit) return value
+  if (item.unit === '%') return `${value}${item.unit}`
+  return `${value} ${item.unit}`
+}
+
+const buildTelemetryHtml = () => {
+  if (!Array.isArray(props.shareData?.telemetry) || props.shareData.telemetry.length === 0) {
+    return ''
+  }
+
+  const rows = props.shareData.telemetry
+    .map((item) => `
+      <div class=\"shared-telemetry-row\">
+        <span class=\"shared-telemetry-label\">${escapeHtml(item.label)}:</span>
+        <span class=\"shared-telemetry-value\">${escapeHtml(formatTelemetryValue(item))}</span>
+      </div>
+    `)
+    .join('')
+
+  return `
+    <div class=\"shared-telemetry\">
+      <div class=\"shared-telemetry-title\">Telemetry</div>
+      ${rows}
+    </div>
+  `
+}
+
 const createMarker = () => {
   if (marker) {
     props.map.removeLayer(marker)
@@ -67,10 +106,11 @@ const createMarker = () => {
 
   marker.addTo(props.map)
       .bindPopup(`
-      <div style="text-align: center;">
-        <strong>${props.shareData.sharedBy}</strong><br/>
-        ${props.shareData.description ? `<em>${props.shareData.description}</em><br/>` : ''}
-        <small>Last seen ${timezone.timeAgo(props.shareData.sharedAt)}</small>
+      <div class="shared-marker-popup">
+        <strong>${escapeHtml(props.shareData.sharedBy)}</strong><br/>
+        ${props.shareData.description ? `<em>${escapeHtml(props.shareData.description)}</em><br/>` : ''}
+        <small>Last seen ${escapeHtml(timezone.timeAgo(props.shareData.sharedAt))}</small>
+        ${buildTelemetryHtml()}
       </div>
     `)
 
@@ -101,5 +141,40 @@ onUnmounted(() => {
   border-radius: 50%;
   border: 3px solid #ffffff;
   box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+}
+
+.shared-marker-popup {
+  text-align: center;
+}
+
+.shared-telemetry {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #e5e7eb;
+  text-align: left;
+  min-width: 180px;
+}
+
+.shared-telemetry-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.shared-telemetry-row {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.shared-telemetry-label {
+  color: #4b5563;
+  margin-right: 0.25rem;
+}
+
+.shared-telemetry-value {
+  color: #111827;
+  font-weight: 600;
 }
 </style>

@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * DTO for individual GPS points with coordinates object structure.
@@ -21,6 +22,19 @@ public class GpsPointDTO {
     private Double velocity;
     private Double altitude;
     private String sourceType;
+    private List<GpsTelemetryDisplayDTO> telemetryGpsData;
+    private List<GpsTelemetryDisplayDTO> telemetryCurrentPopup;
+
+    public GpsPointDTO(long id,
+                       Instant timestamp,
+                       CoordinatesDTO coordinates,
+                       Double accuracy,
+                       Double battery,
+                       Double velocity,
+                       Double altitude,
+                       String sourceType) {
+        this(id, timestamp, coordinates, accuracy, battery, velocity, altitude, sourceType, null, null);
+    }
 
     @Data
     @NoArgsConstructor

@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.gps.rest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
@@ -46,6 +48,7 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 @Slf4j
 public class GpsPointResource {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final GpsPointService gpsPointService;
     private final CurrentUserService currentUserService;
@@ -328,9 +331,9 @@ public class GpsPointResource {
                 try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
                     // Write CSV header
                     if (user.getMeasureUnit() == MeasureUnit.METRIC) {
-                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType\n");
+                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(km/h),altitude,sourceType,telemetry\n");
                     } else {
-                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType\n");
+                        writer.write("timestamp,latitude,longitude,accuracy,battery,velocity(mph),altitude,sourceType,telemetry\n");
                     }
 
                     // Stream GPS points in batches of 1000
@@ -416,16 +419,47 @@ public class GpsPointResource {
             velocity = velocity * 0.621371; // Convert km/h to mph
         }
 
-        row.append(point.getTimestamp().toString()).append(",");
-        row.append(point.getLatitude()).append(",");
-        row.append(point.getLongitude()).append(",");
-        row.append(point.getAccuracy() != null ? point.getAccuracy() : "").append(",");
-        row.append(point.getBattery() != null ? point.getBattery() : "").append(",");
-        row.append(velocity).append(",");
-        row.append(point.getAltitude() != null ? point.getAltitude() : "").append(",");
-        row.append(point.getSourceType().name()).append("\n");
+        appendCsvValue(row, point.getTimestamp().toString());
+        appendCsvValue(row, point.getLatitude());
+        appendCsvValue(row, point.getLongitude());
+        appendCsvValue(row, point.getAccuracy());
+        appendCsvValue(row, point.getBattery());
+        appendCsvValue(row, velocity);
+        appendCsvValue(row, point.getAltitude());
+        appendCsvValue(row, point.getSourceType() != null ? point.getSourceType().name() : "");
+        appendCsvValue(row, telemetryToJson(point.getTelemetry()));
+        row.append("\n");
 
         return row.toString();
+    }
+
+    private String telemetryToJson(Map<String, Object> telemetry) {
+        if (telemetry == null || telemetry.isEmpty()) {
+            return "";
+        }
+
+        try {
+            return OBJECT_MAPPER.writeValueAsString(telemetry);
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize telemetry to JSON for CSV export", e);
+            return "";
+        }
+    }
+
+    private void appendCsvValue(StringBuilder row, Object value) {
+        if (row.length() > 0) {
+            row.append(",");
+        }
+        String raw = value != null ? value.toString() : "";
+        row.append(escapeCsv(raw));
+    }
+
+    private String escapeCsv(String value) {
+        boolean shouldQuote = value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r");
+        if (!shouldQuote) {
+            return value;
+        }
+        return "\"" + value.replace("\"", "\"\"") + "\"";
     }
 
     /**

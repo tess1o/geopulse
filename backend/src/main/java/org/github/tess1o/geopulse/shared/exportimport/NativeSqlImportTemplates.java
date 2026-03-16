@@ -94,8 +94,8 @@ public final class NativeSqlImportTemplates {
      */
     public static final String GPS_POINTS_INSERT_OR_UPDATE = """
         INSERT INTO gps_points
-        (user_id, device_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
-        VALUES (?::uuid, ?, ST_GeomFromText(?, 4326), ?, ?, ?, ?, ?, ?, ?)
+        (user_id, device_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at, telemetry)
+        VALUES (?::uuid, ?, ST_GeomFromText(?, 4326), ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
         ON CONFLICT (user_id, timestamp, coordinates) DO NOTHING
         """;
     

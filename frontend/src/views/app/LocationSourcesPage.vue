@@ -528,5 +528,6 @@ onMounted(async () => {
     flex-direction: column;
     align-items: stretch;
   }
+
 }
 </style>

@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -25,4 +26,18 @@ public class GpsPointPathPointDTO implements GpsPoint {
     private Double velocity;
     private UUID userId;
     private String sourceType;
+    private List<GpsTelemetryDisplayDTO> telemetryGpsData;
+    private List<GpsTelemetryDisplayDTO> telemetryCurrentPopup;
+
+    public GpsPointPathPointDTO(long id,
+                                double longitude,
+                                double latitude,
+                                Instant timestamp,
+                                Double accuracy,
+                                Double altitude,
+                                Double velocity,
+                                UUID userId,
+                                String sourceType) {
+        this(id, longitude, latitude, timestamp, accuracy, altitude, velocity, userId, sourceType, null, null);
+    }
 }

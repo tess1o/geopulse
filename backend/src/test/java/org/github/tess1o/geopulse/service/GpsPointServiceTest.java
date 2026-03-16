@@ -11,11 +11,17 @@ import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.gps.model.GpsPointFilterDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathDTO;
+import org.github.tess1o.geopulse.gps.model.GpsPointPathPointDTO;
 import org.github.tess1o.geopulse.gps.model.GpsPointSummaryDTO;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
 import org.github.tess1o.geopulse.gps.service.GpsPointService;
 import org.github.tess1o.geopulse.gpssource.model.GpsSourceConfigEntity;
+import org.github.tess1o.geopulse.gpssource.model.GpsTelemetryMappingEntry;
 import org.github.tess1o.geopulse.gpssource.repository.GpsSourceRepository;
+import org.github.tess1o.geopulse.gpssource.repository.GpsSourceTypeTelemetryConfigRepository;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfigService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -33,6 +39,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -54,6 +61,10 @@ public class GpsPointServiceTest {
     GpsSourceRepository gpsSourceRepository;
     @Inject
     EntityManager em;
+    @Inject
+    GpsSourceTypeTelemetryConfigService telemetryConfigService;
+    @Inject
+    GpsSourceTypeTelemetryConfigRepository telemetryConfigRepository;
     @BeforeEach
     @Transactional
     public void setup() {
@@ -61,6 +72,7 @@ public class GpsPointServiceTest {
         gpsPointRepository.deleteAll();
         // Clean up GPS source configs
         gpsSourceRepository.deleteAll();
+        telemetryConfigRepository.deleteAll();
         // Clean up users
         userRepository.deleteAll();
         // Create fresh test user
@@ -223,6 +235,103 @@ public class GpsPointServiceTest {
         assertEquals(0, summary.getPointsToday());
         assertNull(summary.getFirstPointDate());
         assertNull(summary.getLastPointDate());
+    }
+
+    @Test
+    @Transactional
+    public void testSaveOwnTracksGpsPoint_TelemetryPersistedWhenPresent() {
+        long tst = Instant.now().plusSeconds(20000).getEpochSecond();
+
+        OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
+                .type("location")
+                .lat(40.0)
+                .lon(-74.0)
+                .tst(tst)
+                .ext(Map.of(
+                        "ignition", 1,
+                        "batt_v", 12.6
+                ))
+                .build();
+
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
+        GpsPointEntity savedPoint = gpsPointRepository.findAll().firstResult();
+        assertNotNull(savedPoint.getTelemetry());
+        assertEquals(1, savedPoint.getTelemetry().get("ignition"));
+        assertEquals(12.6, ((Number) savedPoint.getTelemetry().get("batt_v")).doubleValue(), 0.000001);
+    }
+
+    @Test
+    @Transactional
+    public void testTelemetryVisibilityRulesAppliedToGpsDataAndCurrentPopup() {
+        long tst = Instant.now().plusSeconds(20000).getEpochSecond();
+
+        List<GpsTelemetryMappingEntry> mapping = List.of(
+                GpsTelemetryMappingEntry.builder()
+                        .key("ignition")
+                        .label("Ignition")
+                        .type("boolean")
+                        .enabled(true)
+                        .order(10)
+                        .showInGpsData(true)
+                        .showInCurrentPopup(false)
+                        .build(),
+                GpsTelemetryMappingEntry.builder()
+                        .key("batt_v")
+                        .label("Battery")
+                        .type("number")
+                        .unit("V")
+                        .enabled(true)
+                        .order(20)
+                        .showInGpsData(false)
+                        .showInCurrentPopup(true)
+                        .build(),
+                GpsTelemetryMappingEntry.builder()
+                        .key("geofence_lat")
+                        .label("Geofence Lat")
+                        .type("number")
+                        .enabled(false)
+                        .order(30)
+                        .showInGpsData(true)
+                        .showInCurrentPopup(true)
+                        .build()
+        );
+
+        telemetryConfigService.upsertConfig(userId, GpsSourceType.OWNTRACKS, mapping);
+
+        OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
+                .type("location")
+                .lat(40.0)
+                .lon(-74.0)
+                .tst(tst)
+                .ext(Map.of(
+                        "ignition", 1,
+                        "batt_v", 12.55,
+                        "geofence_lat", 49.1
+                ))
+                .build();
+
+        gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
+
+        var page = gpsPointService.getGpsPointsPageWithFilters(
+                userId,
+                GpsPointFilterDTO.builder().build(),
+                1,
+                10,
+                "timestamp",
+                "desc"
+        );
+        assertEquals(1, page.getData().size());
+        assertNotNull(page.getData().get(0).getTelemetryGpsData());
+        assertEquals(1, page.getData().get(0).getTelemetryGpsData().size());
+        assertEquals("ignition", page.getData().get(0).getTelemetryGpsData().get(0).getKey());
+
+        GpsPointPathDTO path = gpsPointService.getGpsPointPath(userId, Instant.EPOCH, Instant.now().plusSeconds(30000));
+        assertEquals(1, path.getPoints().size());
+        GpsPointPathPointDTO pathPoint = (GpsPointPathPointDTO) path.getPoints().get(0);
+        assertNotNull(pathPoint.getTelemetryCurrentPopup());
+        assertEquals(1, pathPoint.getTelemetryCurrentPopup().size());
+        assertEquals("batt_v", pathPoint.getTelemetryCurrentPopup().get(0).getKey());
+        assertTrue(pathPoint.getTelemetryCurrentPopup().stream().noneMatch(item -> "geofence_lat".equals(item.getKey())));
     }
     private void createTestGpsPoint(Instant timestamp) {
         OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()

@@ -103,6 +103,36 @@ const escapeHtml = (value) => {
     .replaceAll("'", '&#39;')
 }
 
+const formatTelemetryValue = (item) => {
+  if (!item) return '-'
+  const value = item.value ?? '-'
+  if (!item.unit) return value
+  if (item.unit === '%') return `${value}${item.unit}`
+  return `${value} ${item.unit}`
+}
+
+const buildTelemetryPopupHtml = (telemetryItems) => {
+  if (!Array.isArray(telemetryItems) || telemetryItems.length === 0) {
+    return ''
+  }
+
+  const rows = telemetryItems
+    .map((telemetryItem) => `
+      <div class="popup-telemetry-row">
+        <span class="popup-telemetry-label">${escapeHtml(telemetryItem.label || telemetryItem.key || 'Value')}:</span>
+        <span class="popup-telemetry-value">${escapeHtml(formatTelemetryValue(telemetryItem))}</span>
+      </div>
+    `)
+    .join('')
+
+  return `
+    <div class="popup-telemetry">
+      <div class="popup-telemetry-title">Telemetry</div>
+      ${rows}
+    </div>
+  `
+}
+
 const stackMovementTypeMap = {
   WALK: { label: 'Walk', icon: '🚶' },
   BICYCLE: { label: 'Bicycle', icon: '🚴' },
@@ -384,12 +414,14 @@ const createPopupContent = (item) => {
   if (item.type === 'stay') {
     const durationText = item.stayDuration ? formatDuration(item.stayDuration) : null
     const locationName = item.locationName || 'Unknown Location'
+    const telemetryHtml = buildTelemetryPopupHtml(item.telemetryCurrentPopup)
 
     return `
       <div class="timeline-popup">
         <div class="popup-location">${locationName}</div>
         <div class="popup-time">${dateStr}</div>
         ${durationText ? `<div class="popup-duration">Stay duration: ${durationText}</div>` : ''}
+        ${telemetryHtml}
       </div>
     `.trim()
   } else if (item.type === 'trip') {
@@ -660,6 +692,35 @@ defineExpose({
   font-size: 0.8rem;
 }
 
+.popup-telemetry {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.popup-telemetry-title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  margin-bottom: 0.2rem;
+}
+
+.popup-telemetry-row {
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.popup-telemetry-label {
+  color: #4b5563;
+  margin-right: 0.25rem;
+}
+
+.popup-telemetry-value {
+  color: #111827;
+  font-weight: 600;
+}
+
 /* Dark theme overrides for popups */
 .p-dark .leaflet-popup-content-wrapper {
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9)) !important;
@@ -691,6 +752,19 @@ defineExpose({
 
 .p-dark .timeline-popup .popup-activity {
   color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.p-dark .timeline-popup .popup-telemetry {
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.p-dark .timeline-popup .popup-telemetry-title,
+.p-dark .timeline-popup .popup-telemetry-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.p-dark .timeline-popup .popup-telemetry-value {
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* Light theme - ensure good contrast */

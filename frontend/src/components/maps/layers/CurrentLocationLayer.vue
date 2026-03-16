@@ -34,7 +34,8 @@ const shareData = computed(() => ({
   shareName: 'Your Current Location',
   sharedBy: 'You',
   description: '',
-  sharedAt: props.location?.timestamp || timezone.now().toISOString()
+  sharedAt: props.location?.timestamp || timezone.now().toISOString(),
+  telemetry: props.location?.telemetryCurrentPopup || []
 }))
 </script>
 

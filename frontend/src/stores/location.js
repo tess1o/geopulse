@@ -101,7 +101,8 @@ export const useLocationStore = defineStore('location', {
                 return {
                     lat: data.coordinates.lat,
                     lon: data.coordinates.lng,
-                    timestamp: data.timestamp
+                    timestamp: data.timestamp,
+                    telemetryCurrentPopup: data.telemetryCurrentPopup || []
                 }
             }
             return null;

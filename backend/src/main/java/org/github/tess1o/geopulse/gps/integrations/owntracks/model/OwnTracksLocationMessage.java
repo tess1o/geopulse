@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Builder
@@ -37,6 +39,8 @@ public class OwnTracksLocationMessage {
     private String tid;
     private String bssid;
     private String ssid;
+    @JsonProperty("ext")
+    private Map<String, Object> ext;
     @JsonProperty("created_at")
     private Long createdAt;
 }

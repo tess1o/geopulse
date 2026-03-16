@@ -4,6 +4,59 @@ import {GpsDataPage} from '../pages/GpsDataPage.js';
 import {TestHelpers} from '../utils/test-helpers.js';
 import {GpsDataFactory} from '../utils/gps-data-factory.js';
 import {DateFormatTestHelper, DateFormatValues} from '../utils/date-format-test-helper.js';
+import { randomUUID } from 'crypto';
+import { readFile } from 'node:fs/promises';
+
+const insertGlobalTelemetryConfig = async (dbManager, userId, sourceType, {
+    telemetryMapping = []
+} = {}) => {
+    const telemetryConfigId = randomUUID();
+
+    await dbManager.client.query(`
+        INSERT INTO gps_source_type_telemetry_config (
+            id,
+            user_id,
+            source_type,
+            mapping
+        )
+        VALUES ($1, $2, $3, $4::jsonb)
+    `, [telemetryConfigId, userId, sourceType, JSON.stringify(telemetryMapping)]);
+};
+
+const getTelemetryKeys = async (page) => {
+    const keyInputs = page.locator('.telemetry-table tbody tr td:first-child input');
+    const keyCount = await keyInputs.count();
+    const keys = [];
+
+    for (let i = 0; i < keyCount; i++) {
+        const key = (await keyInputs.nth(i).inputValue()).trim();
+        if (key) {
+            keys.push(key);
+        }
+    }
+
+    return keys;
+};
+
+const findTelemetryRowByKey = async (page, keyToFind) => {
+    const rows = page.locator('.telemetry-table tbody tr');
+    const rowCount = await rows.count();
+
+    for (let i = 0; i < rowCount; i++) {
+        const row = rows.nth(i);
+        const keyInput = row.locator('td').first().locator('input');
+        if (await keyInput.count() === 0) {
+            continue;
+        }
+
+        const key = (await keyInput.inputValue()).trim();
+        if (key === keyToFind) {
+            return row;
+        }
+    }
+
+    throw new Error(`Telemetry mapping row not found for key: ${keyToFind}`);
+};
 
 test.describe('GPS Data Page', () => {
 
@@ -483,6 +536,249 @@ test.describe('GPS Data Page', () => {
         });
     });
 
+    test.describe('Telemetry Rendering', () => {
+        test('should expose global OwnTracks telemetry defaults and persist mapping changes', async ({ page, isolatedUsers, dbManager }) => {
+            const loginPage = new LoginPage(page);
+            const gpsDataPage = new GpsDataPage(page);
+            const testUser = await isolatedUsers.create(page);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await gpsDataPage.navigate();
+            await gpsDataPage.waitForPageLoad();
+
+            const telemetrySection = page.locator('.telemetry-mapping-section');
+            await expect(telemetrySection).toBeVisible();
+            await expect(telemetrySection.locator('.telemetry-mapping-content')).toHaveCount(0);
+
+            await telemetrySection.locator('button:has-text("Show Mapping")').click();
+            await expect(telemetrySection.locator('.telemetry-mapping-content')).toBeVisible();
+
+            const telemetryKeys = await getTelemetryKeys(page);
+            expect(telemetryKeys).toHaveLength(13);
+            expect(telemetryKeys).toEqual(expect.arrayContaining([
+                'ignition',
+                'armed',
+                'doors',
+                'batt_v',
+                'batt_ina',
+                'sats',
+                'rssi',
+                'lte_pct',
+                'pitch',
+                'roll',
+                'geofence_lat',
+                'geofence_lon',
+                'geofence_radius'
+            ]));
+
+            const ignitionRow = await findTelemetryRowByKey(page, 'ignition');
+            await ignitionRow
+                .locator('.telemetry-check-cell')
+                .nth(1)
+                .locator('input.p-checkbox-input')
+                .setChecked(false);
+
+            await page.locator('.telemetry-mapping-actions button:has-text("Save Mapping")').click();
+            await gpsDataPage.waitForSuccessToast();
+
+            const user = await dbManager.getUserByEmail(testUser.email);
+            const mappingResult = await dbManager.client.query(`
+                SELECT mapping
+                FROM gps_source_type_telemetry_config
+                WHERE user_id = $1
+                  AND source_type = 'OWNTRACKS'
+            `, [user.id]);
+
+            expect(mappingResult.rows.length).toBe(1);
+            const persistedMapping = mappingResult.rows[0].mapping;
+            expect(Array.isArray(persistedMapping)).toBe(true);
+
+            const ignitionMapping = persistedMapping.find(entry => entry.key === 'ignition');
+            expect(ignitionMapping).toBeTruthy();
+            expect(ignitionMapping.showInGpsData).toBe(true);
+            expect(ignitionMapping.showInCurrentPopup).toBe(false);
+            expect(ignitionMapping.enabled).toBe(true);
+
+            const geofenceLatMapping = persistedMapping.find(entry => entry.key === 'geofence_lat');
+            expect(geofenceLatMapping).toBeTruthy();
+            expect(geofenceLatMapping.enabled).toBe(false);
+        });
+
+        test('should show only GPS Data telemetry fields enabled by mapping', async ({ page, isolatedUsers, dbManager }) => {
+            const loginPage = new LoginPage(page);
+            const gpsDataPage = new GpsDataPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const user = await dbManager.getUserByEmail(testUser.email);
+
+            await insertGlobalTelemetryConfig(dbManager, user.id, 'OWNTRACKS', {
+                telemetryMapping: [
+                    {
+                        key: 'ignition',
+                        label: 'Ignition',
+                        type: 'boolean',
+                        enabled: true,
+                        order: 10,
+                        trueValues: ['1', 'true', 'yes', 'on'],
+                        falseValues: ['0', 'false', 'no', 'off'],
+                        showInGpsData: true,
+                        showInCurrentPopup: true
+                    },
+                    {
+                        key: 'lte_pct',
+                        label: 'LTE Signal',
+                        type: 'number',
+                        unit: '%',
+                        enabled: true,
+                        order: 20,
+                        showInGpsData: false,
+                        showInCurrentPopup: true
+                    },
+                    {
+                        key: 'geofence_lat',
+                        label: 'Geofence Latitude',
+                        type: 'number',
+                        unit: 'deg',
+                        enabled: false,
+                        order: 30,
+                        showInGpsData: true,
+                        showInCurrentPopup: true
+                    }
+                ]
+            });
+
+            await dbManager.client.query(`
+                INSERT INTO gps_points (
+                    device_id, user_id, coordinates, timestamp, accuracy, battery,
+                    velocity, altitude, source_type, created_at, telemetry
+                )
+                VALUES (
+                    'telemetry-device', $1, ST_GeomFromText('POINT(-0.1278 51.5074)', 4326),
+                    '2025-08-10T10:00:00Z', 5.0, 95, 0.0, 25.0, 'OWNTRACKS',
+                    '2025-08-10T10:00:00Z', $2::jsonb
+                )
+            `, [user.id, JSON.stringify({
+                ignition: 1,
+                lte_pct: 72,
+                geofence_lat: 51.5074
+            })]);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await gpsDataPage.navigate();
+            await gpsDataPage.waitForPageLoad();
+
+            const telemetryCell = page.locator('.gps-data-table tbody tr').first().locator('.telemetry-cell');
+            await expect(telemetryCell).toBeVisible();
+            await expect(telemetryCell).toContainText('Ignition:');
+            await expect(telemetryCell).toContainText('Yes');
+            await expect(telemetryCell).not.toContainText('LTE Signal');
+            await expect(telemetryCell).not.toContainText('Geofence Latitude');
+            await expect(telemetryCell.locator('.telemetry-item')).toHaveCount(1);
+        });
+
+        test('should render telemetry for OwnTracks points without any source config link', async ({ page, isolatedUsers, dbManager }) => {
+            const loginPage = new LoginPage(page);
+            const gpsDataPage = new GpsDataPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const user = await dbManager.getUserByEmail(testUser.email);
+
+            await dbManager.client.query(`
+                INSERT INTO gps_points (
+                    device_id, user_id, coordinates, timestamp, accuracy, battery,
+                    velocity, altitude, source_type, created_at, telemetry
+                )
+                VALUES (
+                    'imported-owntracks', $1, ST_GeomFromText('POINT(-0.1200 51.5000)', 4326),
+                    '2025-08-10T11:00:00Z', 5.0, 90, 0.0, 20.0, 'OWNTRACKS',
+                    '2025-08-10T11:00:00Z', $2::jsonb
+                )
+            `, [user.id, JSON.stringify({
+                ignition: 1,
+                lte_pct: 72
+            })]);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await gpsDataPage.navigate();
+            await gpsDataPage.waitForPageLoad();
+
+            const telemetryCell = page.locator('.gps-data-table tbody tr').first().locator('.telemetry-cell');
+            await expect(telemetryCell).toBeVisible();
+            await expect(telemetryCell).toContainText('Ignition:');
+            await expect(telemetryCell).toContainText('LTE Signal:');
+        });
+
+        test('should keep telemetry rendering after deleting and recreating OwnTracks source config', async ({ page, isolatedUsers, dbManager }) => {
+            const loginPage = new LoginPage(page);
+            const gpsDataPage = new GpsDataPage(page);
+            const testUser = await isolatedUsers.create(page);
+            const user = await dbManager.getUserByEmail(testUser.email);
+
+            await insertGlobalTelemetryConfig(dbManager, user.id, 'OWNTRACKS', {
+                telemetryMapping: [
+                    {
+                        key: 'ignition',
+                        label: 'Ignition',
+                        type: 'boolean',
+                        enabled: true,
+                        order: 10,
+                        trueValues: ['1'],
+                        falseValues: ['0'],
+                        showInGpsData: true,
+                        showInCurrentPopup: true
+                    }
+                ]
+            });
+
+            const firstSourceId = randomUUID();
+            const secondSourceId = randomUUID();
+            await dbManager.client.query(`
+                INSERT INTO gps_source_config (
+                    id, user_id, source_type, username, password_hash, active, connection_type
+                )
+                VALUES ($1, $2, 'OWNTRACKS', 'before-recreate', '', true, 'HTTP')
+            `, [firstSourceId, user.id]);
+
+            await dbManager.client.query(`
+                INSERT INTO gps_points (
+                    device_id, user_id, coordinates, timestamp, accuracy, battery,
+                    velocity, altitude, source_type, created_at, telemetry
+                )
+                VALUES (
+                    'telemetry-device', $1, ST_GeomFromText('POINT(-0.1278 51.5074)', 4326),
+                    '2025-08-10T10:00:00Z', 5.0, 95, 0.0, 25.0, 'OWNTRACKS',
+                    '2025-08-10T10:00:00Z', $2::jsonb
+                )
+            `, [user.id, JSON.stringify({ ignition: 1 })]);
+
+            await dbManager.client.query(`DELETE FROM gps_source_config WHERE id = $1`, [firstSourceId]);
+            await dbManager.client.query(`
+                INSERT INTO gps_source_config (
+                    id, user_id, source_type, username, password_hash, active, connection_type
+                )
+                VALUES ($1, $2, 'OWNTRACKS', 'after-recreate', '', true, 'HTTP')
+            `, [secondSourceId, user.id]);
+
+            await loginPage.navigate();
+            await loginPage.login(testUser.email, testUser.password);
+            await TestHelpers.waitForNavigation(page, '**/app/timeline');
+
+            await gpsDataPage.navigate();
+            await gpsDataPage.waitForPageLoad();
+
+            const telemetryCell = page.locator('.gps-data-table tbody tr').first().locator('.telemetry-cell');
+            await expect(telemetryCell).toBeVisible();
+            await expect(telemetryCell).toContainText('Ignition:');
+        });
+    });
+
     test.describe('User Data Isolation', () => {
         test('should only show GPS data for the authenticated user', async ({ page, isolatedUsers, dbManager}) => {
             const loginPage = new LoginPage(page);
@@ -563,6 +859,20 @@ test.describe('GPS Data Page', () => {
 
             const gpsTestData = GpsDataFactory.generateTestData(user.id, 'test-device');
             await GpsDataFactory.insertGpsData(dbManager, gpsTestData.allPoints);
+            await dbManager.client.query(
+                `
+                    UPDATE gps_points
+                    SET telemetry = $1::jsonb
+                    WHERE id = (
+                        SELECT id
+                        FROM gps_points
+                        WHERE user_id = $2
+                        ORDER BY timestamp ASC
+                        LIMIT 1
+                    )
+                `,
+                [JSON.stringify({ ignition: 1, batt_v: 12.6 }), user.id]
+            );
 
             // Login and navigate
             await loginPage.navigate();
@@ -596,6 +906,12 @@ test.describe('GPS Data Page', () => {
             // Verify file content (optional - save to temp location and check)
             const downloadPath = await download.path();
             expect(downloadPath).toBeTruthy();
+
+            const csvContent = await readFile(downloadPath, 'utf-8');
+            const [headerLine] = csvContent.split('\n');
+            expect(headerLine).toContain('telemetry');
+            expect(csvContent).toContain('""ignition"":1');
+            expect(csvContent).toContain('""batt_v"":12.6');
         });
 
         test('should export filtered GPS data to CSV', async ({ page, isolatedUsers, dbManager}) => {

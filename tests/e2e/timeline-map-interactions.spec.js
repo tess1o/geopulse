@@ -5,6 +5,164 @@ import * as TimelineTestData from '../utils/timeline-test-data.js';
 import * as MapTestData from '../utils/map-test-data.js';
 import {DateFormatTestHelper, DateFormatValues, KnownDateStrings} from '../utils/date-format-test-helper.js';
 import {buildManagedUser as createManagedUser} from '../utils/isolated-user-helper.js';
+import { randomUUID } from 'crypto';
+
+const insertCurrentLocationTelemetryScenario = async (dbManager, userId, showCurrentLocationTelemetry = true) => {
+  await TimelineTestData.insertRegularStaysTestData(dbManager, userId);
+
+  const telemetryConfigId = randomUUID();
+  const telemetryMapping = [
+    {
+      key: 'ignition',
+      label: 'Ignition',
+      type: 'boolean',
+      enabled: true,
+      order: 10,
+      trueValues: ['1', 'true', 'yes', 'on'],
+      falseValues: ['0', 'false', 'no', 'off'],
+      showInGpsData: false,
+      showInCurrentPopup: true
+    },
+    {
+      key: 'lte_pct',
+      label: 'LTE Signal',
+      type: 'number',
+      unit: '%',
+      enabled: true,
+      order: 20,
+      showInGpsData: false,
+      showInCurrentPopup: false
+    }
+  ];
+
+  await dbManager.client.query(`
+    INSERT INTO gps_source_type_telemetry_config (
+      id,
+      user_id,
+      source_type,
+      mapping
+    )
+    VALUES ($1, $2, 'OWNTRACKS', $3::jsonb)
+  `, [telemetryConfigId, userId, JSON.stringify(telemetryMapping)]);
+
+  await dbManager.client.query(`
+    UPDATE gps_points
+    SET source_type = 'OWNTRACKS',
+        telemetry = $2::jsonb
+    WHERE id = (
+      SELECT id
+      FROM gps_points
+      WHERE user_id = $1
+      ORDER BY timestamp DESC
+      LIMIT 1
+    )
+  `, [userId, JSON.stringify({ ignition: 1, lte_pct: 72 })]);
+
+  // Ensure at least one latest point exists "today" so current-location marker renders.
+  await dbManager.client.query(`
+    UPDATE gps_points
+    SET timestamp = NOW(),
+        created_at = NOW(),
+        source_type = 'OWNTRACKS',
+        telemetry = $2::jsonb
+    WHERE id = (
+      SELECT id
+      FROM gps_points
+      WHERE user_id = $1
+      ORDER BY timestamp DESC
+      LIMIT 1
+    )
+  `, [userId, JSON.stringify({ ignition: 1, lte_pct: 72 })]);
+
+  await dbManager.client.query(`
+    UPDATE users
+    SET timeline_display_show_current_location_telemetry = $2
+    WHERE id = $1
+  `, [userId, showCurrentLocationTelemetry]);
+};
+
+const insertStayPopupTelemetryScenario = async (dbManager, userId, showCurrentLocationTelemetry = true) => {
+  await TimelineTestData.insertRegularStaysTestData(dbManager, userId);
+
+  const telemetryConfigId = randomUUID();
+  const telemetryMapping = [
+    {
+      key: 'ignition',
+      label: 'Ignition',
+      type: 'boolean',
+      enabled: true,
+      order: 10,
+      trueValues: ['1', 'true', 'yes', 'on'],
+      falseValues: ['0', 'false', 'no', 'off'],
+      showInGpsData: false,
+      showInCurrentPopup: true
+    }
+  ];
+
+  await dbManager.client.query(`
+    INSERT INTO gps_source_type_telemetry_config (
+      id,
+      user_id,
+      source_type,
+      mapping
+    )
+    VALUES ($1, $2, 'OWNTRACKS', $3::jsonb)
+  `, [telemetryConfigId, userId, JSON.stringify(telemetryMapping)]);
+
+  await dbManager.client.query(`
+    UPDATE gps_points
+    SET source_type = 'OWNTRACKS',
+        telemetry = $2::jsonb
+    WHERE user_id = $1
+  `, [userId, JSON.stringify({ ignition: 1 })]);
+
+  await dbManager.client.query(`
+    UPDATE users
+    SET timeline_display_show_current_location_telemetry = $2
+    WHERE id = $1
+  `, [userId, showCurrentLocationTelemetry]);
+};
+
+const openCurrentLocationPopup = async (page) => {
+  const opened = await page.evaluate(() => {
+    const mapContainer = document.querySelector('.leaflet-container');
+    const map = mapContainer?._leaflet_map;
+    if (!map) {
+      return false;
+    }
+
+    let popupOpened = false;
+    map.eachLayer((layer) => {
+      if (popupOpened || typeof layer.getPopup !== 'function' || typeof layer.openPopup !== 'function') {
+        return;
+      }
+
+      const popup = layer.getPopup();
+      const content = popup && typeof popup.getContent === 'function' ? popup.getContent() : null;
+      const contentHtml = typeof content === 'string'
+        ? content
+        : (content && typeof content.innerHTML === 'string' ? content.innerHTML : '');
+      if (contentHtml.includes('shared-marker-popup')) {
+        layer.openPopup();
+        popupOpened = true;
+      }
+    });
+
+    return popupOpened;
+  });
+
+  if (!opened) {
+    const markerCandidates = page.locator(
+      '.leaflet-overlay-pane path[fill="#9c27b0"], .leaflet-overlay-pane path[style*="156, 39, 176"]'
+    );
+    const count = await markerCandidates.count();
+    if (count > 0) {
+      await markerCandidates.first().click({ force: true });
+    }
+  }
+
+  await expect(page.locator('.leaflet-popup-content .shared-marker-popup')).toBeVisible({ timeout: 10000 });
+};
 
 test.describe('Timeline Map Interactions', () => {
   test('should display timeline marker popup timestamps using user date format', async ({page, isolatedUsers, dbManager}) => {
@@ -31,6 +189,108 @@ test.describe('Timeline Map Interactions', () => {
       KnownDateStrings.sep21_2025.DMY,
       KnownDateStrings.sep21_2025.MDY
     );
+  });
+
+  test.describe('Current Location Telemetry', () => {
+    test('should show current-location telemetry from latest point when enabled', async ({page, isolatedUsers, dbManager}) => {
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+      const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
+
+      await timelinePage.setupTimelineWithData(
+        dbManager,
+        async (manager, userId) => insertCurrentLocationTelemetryScenario(manager, userId, true),
+        testUser,
+        {
+          startDate: new Date(),
+          endDate: new Date()
+        }
+      );
+
+      await mapPage.waitForMapReady();
+      await openCurrentLocationPopup(page);
+
+      const popup = page.locator('.leaflet-popup-content').first();
+      await expect(popup.locator('.shared-telemetry')).toBeVisible();
+      await expect(popup).toContainText('Ignition:');
+      await expect(popup).toContainText('Yes');
+      await expect(popup).not.toContainText('LTE Signal');
+    });
+
+    test('should hide current-location telemetry when display toggle is disabled', async ({page, isolatedUsers, dbManager}) => {
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+      const testUser = createManagedUser(isolatedUsers, { timezone: 'UTC' });
+
+      await timelinePage.setupTimelineWithData(
+        dbManager,
+        async (manager, userId) => insertCurrentLocationTelemetryScenario(manager, userId, false),
+        testUser,
+        {
+          startDate: new Date(),
+          endDate: new Date()
+        }
+      );
+
+      await mapPage.waitForMapReady();
+      await openCurrentLocationPopup(page);
+
+      const popup = page.locator('.leaflet-popup-content').first();
+      await expect(popup.locator('.shared-telemetry')).toHaveCount(0);
+    });
+
+    test('should show telemetry in stay popup when clicking a StayCard', async ({page, isolatedUsers, dbManager}) => {
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+      const testUser = createManagedUser(isolatedUsers);
+
+      await timelinePage.setupTimelineWithData(
+        dbManager,
+        async (manager, userId) => insertStayPopupTelemetryScenario(manager, userId),
+        testUser,
+        {
+          startDate: new Date('2025-09-21'),
+          endDate: new Date('2025-09-21')
+        }
+      );
+
+      await mapPage.waitForMapReady();
+      const firstStayCard = timelinePage.getTimelineCards('stays').first();
+      await expect(firstStayCard).toBeVisible();
+      await firstStayCard.click();
+
+      const popup = page.locator('.leaflet-popup-content').first();
+      await expect(popup).toBeVisible({ timeout: 15000 });
+      await expect(popup.locator('.popup-telemetry')).toBeVisible();
+      await expect(popup).toContainText('Ignition:');
+      await expect(popup).toContainText('Yes');
+    });
+
+    test('should hide telemetry in stay popup when display toggle is disabled', async ({page, isolatedUsers, dbManager}) => {
+      const timelinePage = new TimelinePage(page);
+      const mapPage = new TimelineMapPage(page);
+      const testUser = createManagedUser(isolatedUsers);
+
+      await timelinePage.setupTimelineWithData(
+        dbManager,
+        async (manager, userId) => insertStayPopupTelemetryScenario(manager, userId, false),
+        testUser,
+        {
+          startDate: new Date('2025-09-21'),
+          endDate: new Date('2025-09-21')
+        }
+      );
+
+      await mapPage.waitForMapReady();
+      const firstStayCard = timelinePage.getTimelineCards('stays').first();
+      await expect(firstStayCard).toBeVisible();
+      await firstStayCard.click();
+
+      const popup = page.locator('.leaflet-popup-content').first();
+      await expect(popup).toBeVisible({ timeout: 15000 });
+      await expect(popup.locator('.popup-telemetry')).toHaveCount(0);
+      await expect(popup).not.toContainText('Ignition:');
+    });
   });
 
   test.describe('Context Menus', () => {

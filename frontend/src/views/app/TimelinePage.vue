@@ -41,7 +41,7 @@
             v-show="!mapNoData && !mapDataLoading"
             ref="mapViewRef"
             :pathData="pathData"
-            :timelineData="timelineData"
+            :timelineData="timelineDataWithStayTelemetry"
             :favoritePlaces="favoritePlaces"
             :currentLocation="currentLocation"
             :showCurrentLocation="isToday"
@@ -52,9 +52,9 @@
         />
       </div>
 
-      <div class="right-pane">
+        <div class="right-pane">
         <TimelineContainer
-            :timelineData="timelineData"
+            :timelineData="timelineDataWithStayTelemetry"
             :timelineNoData="timelineNoData"
             :timelineDataLoading="timelineDataLoading"
             :dateRange="dateRange"
@@ -172,6 +172,7 @@ const timelineNoData = ref(false)
 const timelineDataLoading = ref(true)
 const lastFetchedRange = ref(null)
 const currentLocation = ref(null)
+const showCurrentLocationTelemetry = ref(true)
 const isFetching = ref(false) // Flag to prevent concurrent fetches
 const pendingFetchKey = ref(null) // Track the currently pending fetch
 const queuedFetchRange = ref(null) // Keep latest requested range while a fetch is running
@@ -461,11 +462,16 @@ const getCurrentLocation = () => {
   // Get the latest location from pathData (last point in the array)
   const latestPoint = pathData.value.points[pathData.value.points.length - 1]
   
-  if (latestPoint && latestPoint.latitude && latestPoint.longitude) {
+  if (latestPoint &&
+    latestPoint.latitude !== null && latestPoint.latitude !== undefined &&
+    latestPoint.longitude !== null && latestPoint.longitude !== undefined) {
     currentLocation.value = {
       latitude: latestPoint.latitude,
       longitude: latestPoint.longitude,
-      timestamp: latestPoint.timestamp
+      timestamp: latestPoint.timestamp,
+      telemetryCurrentPopup: showCurrentLocationTelemetry.value
+        ? (latestPoint.telemetryCurrentPopup || [])
+        : []
     }
   } else {
     currentLocation.value = null
@@ -522,6 +528,16 @@ const handleTimelinePhotoShowOnMap = (photo) => {
   mapViewRef.value?.focusOnPhoto?.(photo)
 }
 
+const loadTimelineDisplaySettings = async () => {
+  try {
+    const response = await apiService.get('/users/preferences/timeline/display')
+    const data = response?.data || response
+    showCurrentLocationTelemetry.value = data?.showCurrentLocationTelemetry ?? true
+  } catch (error) {
+    showCurrentLocationTelemetry.value = true
+  }
+}
+
 const queueLatestFetchRange = (startDate, endDate, rangeKey) => {
   queuedFetchRange.value = { startDate, endDate, rangeKey }
   console.info('Fetch in progress, queued latest range:', rangeKey)
@@ -574,6 +590,7 @@ const executeFetchForRange = async (startDate, endDate, rangeKey) => {
 
 // Lifecycle
 onMounted(async () => {
+  await loadTimelineDisplaySettings()
   await favoritesStore.fetchFavoritePlaces()
   tripsStore.fetchTrips().catch(() => {
     // Best-effort fetch for trip plan quick navigation banner
@@ -641,6 +658,93 @@ const isToday = computed(() => {
   return start.isSame(today) && end.isSame(today);
 })
 
+const telemetryPathPoints = computed(() => {
+  const points = Array.isArray(pathData.value?.points) ? pathData.value.points : []
+  return points
+    .filter(point => (
+      point?.timestamp &&
+      Array.isArray(point?.telemetryCurrentPopup) &&
+      point.telemetryCurrentPopup.length > 0
+    ))
+    .map(point => ({
+      timestampMs: new Date(point.timestamp).getTime(),
+      telemetryCurrentPopup: point.telemetryCurrentPopup
+    }))
+    .filter(point => Number.isFinite(point.timestampMs))
+    .sort((a, b) => a.timestampMs - b.timestampMs)
+})
+
+const getStayTelemetrySnapshot = (stayItem, telemetryPoints) => {
+  if (!stayItem?.timestamp || telemetryPoints.length === 0) {
+    return []
+  }
+
+  const startMs = new Date(stayItem.timestamp).getTime()
+  if (!Number.isFinite(startMs)) {
+    return []
+  }
+
+  const durationSeconds = Number(stayItem.stayDuration) || 0
+  const endMs = startMs + Math.max(0, durationSeconds * 1000)
+
+  // Prefer latest telemetry point inside this stay window.
+  for (let index = telemetryPoints.length - 1; index >= 0; index -= 1) {
+    const point = telemetryPoints[index]
+    if (point.timestampMs > endMs) {
+      continue
+    }
+    if (point.timestampMs >= startMs) {
+      return point.telemetryCurrentPopup || []
+    }
+    break
+  }
+
+  // Fall back to nearest telemetry sample to stay start if close enough.
+  let nearestPoint = null
+  let nearestDiffMs = Number.POSITIVE_INFINITY
+  for (const point of telemetryPoints) {
+    const diff = Math.abs(point.timestampMs - startMs)
+    if (diff < nearestDiffMs) {
+      nearestDiffMs = diff
+      nearestPoint = point
+    }
+  }
+
+  return nearestPoint && nearestDiffMs <= 5 * 60 * 1000
+    ? (nearestPoint.telemetryCurrentPopup || [])
+    : []
+}
+
+const timelineDataWithStayTelemetry = computed(() => {
+  const items = Array.isArray(timelineData.value) ? timelineData.value : []
+
+  if (!showCurrentLocationTelemetry.value) {
+    return items.map(item => (
+      item?.type === 'stay'
+        ? { ...item, telemetryCurrentPopup: [] }
+        : item
+    ))
+  }
+
+  const telemetryPoints = telemetryPathPoints.value
+
+  if (items.length === 0 || telemetryPoints.length === 0) {
+    return items
+  }
+
+  return items.map(item => {
+    if (item?.type !== 'stay') {
+      return item
+    }
+
+    const telemetryCurrentPopup = getStayTelemetrySnapshot(item, telemetryPoints)
+    return {
+      ...item,
+      telemetryCurrentPopup
+    }
+  })
+})
+
 watch(dateRange, async (newValue) => {
   if (!newValue || !timezone.isValidDataRange(newValue)) return
 
@@ -679,6 +783,12 @@ watch(pathData, () => {
     getCurrentLocation()
   }
 }, { deep: true })
+
+watch(showCurrentLocationTelemetry, () => {
+  if (isToday.value) {
+    getCurrentLocation()
+  }
+})
 </script>
 
 <style scoped>

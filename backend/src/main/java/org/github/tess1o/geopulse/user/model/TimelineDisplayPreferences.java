@@ -57,4 +57,10 @@ public class TimelineDisplayPreferences {
      * Default: null (falls back to today/today behavior)
      */
     private String defaultDateRangePreset;
+
+    /**
+     * Show telemetry in the current-location popup on Timeline map.
+     * Default: true
+     */
+    private Boolean showCurrentLocationTelemetry;
 }

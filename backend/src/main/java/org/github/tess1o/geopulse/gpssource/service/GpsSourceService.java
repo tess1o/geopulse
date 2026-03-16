@@ -151,7 +151,7 @@ public class GpsSourceService implements GpsSourceConfigProvider {
                 dbConfig.setToken(config.getToken());
             }
         }
-        if (dbConfig.getConnectionType() != null) {
+        if (config.getConnectionType() != null) {
             dbConfig.setConnectionType(config.getConnectionType());
         }
         // Update filtering settings

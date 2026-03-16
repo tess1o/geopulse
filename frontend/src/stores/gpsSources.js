@@ -5,13 +5,16 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
     state: () => ({
         gpsSourceConfigs: [],
         // Will be populated from backend API - no hardcoded defaults
-        defaultFilteringValues: null
+        defaultFilteringValues: null,
+        telemetryMappingsByType: {}
     }),
 
     getters: {
         // Direct access getters
         getGpsSourceConfigs: (state) => state.gpsSourceConfigs,
         getDefaultFilteringValues: (state) => state.defaultFilteringValues,
+        getTelemetryMappingsByType: (state) => state.telemetryMappingsByType,
+        getTelemetryMappingByType: (state) => (sourceType) => state.telemetryMappingsByType[sourceType] || null,
 
         // Computed getters for additional functionality
         hasGpsConfigs: (state) => state.gpsSourceConfigs.length > 0,
@@ -42,6 +45,7 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         // Clear all GPS data
         clearGpsData() {
             this.gpsSourceConfigs = []
+            this.telemetryMappingsByType = {}
         },
 
         // Update a single config in the store (optimistic update)
@@ -55,6 +59,13 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         // Remove config from store (optimistic update)
         removeConfigFromStore(configId) {
             this.gpsSourceConfigs = this.gpsSourceConfigs.filter(config => config.id !== configId)
+        },
+
+        setTelemetryMapping(sourceType, config) {
+            this.telemetryMappingsByType = {
+                ...this.telemetryMappingsByType,
+                [sourceType]: config
+            }
         },
 
         // API Actions
@@ -80,7 +91,9 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
         },
 
 
-        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP', filterInaccurateData, maxAllowedAccuracy, maxAllowedSpeed, enableDuplicateDetection, duplicateDetectionThresholdMinutes) {
+        async addGpsConfigSource(type, username, password, token, connectionType = 'HTTP',
+                                 filterInaccurateData, maxAllowedAccuracy, maxAllowedSpeed,
+                                 enableDuplicateDetection, duplicateDetectionThresholdMinutes) {
             try {
                 // Note: Removed userId parameter as per your security discussion
                 await apiService.post('/gps/source', {
@@ -189,6 +202,35 @@ export const useGpsSourcesStore = defineStore('gpsSources', {
                 await this.fetchGpsConfigSources()
                 throw error
             }
-        }
+        },
+
+        async fetchTelemetryMapping(sourceType) {
+            try {
+                const response = await apiService.get(`/gps/source/telemetry/${sourceType}`)
+                this.setTelemetryMapping(sourceType, response)
+                return response
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async updateTelemetryMapping(sourceType, mapping) {
+            try {
+                const response = await apiService.put(`/gps/source/telemetry/${sourceType}`, mapping)
+                this.setTelemetryMapping(sourceType, response)
+                return response
+            } catch (error) {
+                throw error
+            }
+        },
+
+        async resetTelemetryMapping(sourceType) {
+            try {
+                await apiService.delete(`/gps/source/telemetry/${sourceType}`, {})
+                return await this.fetchTelemetryMapping(sourceType)
+            } catch (error) {
+                throw error
+            }
+        },
     }
 })

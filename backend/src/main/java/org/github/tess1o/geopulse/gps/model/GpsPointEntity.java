@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.gps.model;
 
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -7,9 +8,11 @@ import lombok.Setter;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.shared.geo.GpsPoint;
 import org.github.tess1o.geopulse.user.model.UserEntity;
+import org.hibernate.annotations.Type;
 import org.locationtech.jts.geom.Point;
 
 import java.time.Instant;
+import java.util.Map;
 
 
 @Entity
@@ -45,6 +48,10 @@ public class GpsPointEntity implements GpsPoint {
 
     @Column(name = "created_at")
     private Instant createdAt;
+
+    @Type(JsonType.class)
+    @Column(name = "telemetry", columnDefinition = "jsonb")
+    private Map<String, Object> telemetry;
 
     // Implementation of GpsPoint interface
     @Override

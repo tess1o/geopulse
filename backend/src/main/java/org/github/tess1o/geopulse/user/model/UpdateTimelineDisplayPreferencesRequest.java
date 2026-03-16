@@ -61,4 +61,9 @@ public class UpdateTimelineDisplayPreferencesRequest {
     @Pattern(regexp = "^(today|yesterday|lastWeek|lastMonth)?$",
             message = "Default date range preset must be one of: today, yesterday, lastWeek, lastMonth")
     private String defaultDateRangePreset;
+
+    /**
+     * Show telemetry in the current-location popup on Timeline map.
+     */
+    private Boolean showCurrentLocationTelemetry;
 }

@@ -125,6 +125,10 @@ public class UserEntity extends PanacheEntityBase {
     @Column(name = "timeline_display_path_adaptive_simplification")
     private Boolean timelineDisplayPathAdaptiveSimplification;
 
+    @Column(name = "timeline_display_show_current_location_telemetry")
+    @Builder.Default
+    private Boolean timelineDisplayShowCurrentLocationTelemetry = true;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @ToString.Exclude
     private List<GpsPointEntity> gpsPoints;

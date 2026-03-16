@@ -9,7 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.gpssource.model.*;
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceService;
+import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfigService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
+import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,10 +25,14 @@ import java.util.UUID;
 public class GpsSourceConfigResource {
 
     private final GpsSourceService gpsSourceService;
+    private final GpsSourceTypeTelemetryConfigService telemetryConfigService;
     private final CurrentUserService currentUserService;
 
-    public GpsSourceConfigResource(GpsSourceService gpsSourceService, CurrentUserService currentUserService) {
+    public GpsSourceConfigResource(GpsSourceService gpsSourceService,
+                                   GpsSourceTypeTelemetryConfigService telemetryConfigService,
+                                   CurrentUserService currentUserService) {
         this.gpsSourceService = gpsSourceService;
+        this.telemetryConfigService = telemetryConfigService;
         this.currentUserService = currentUserService;
     }
 
@@ -49,6 +55,51 @@ public class GpsSourceConfigResource {
             "duplicateDetectionThresholdMinutes", gpsSourceService.getDefaultDuplicateDetectionThresholdMinutes()
         );
         return Response.ok(defaults).build();
+    }
+
+    @Path("/telemetry/{sourceType}")
+    @GET
+    public Response getTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            GpsSourceType sourceType = parseSourceType(sourceTypeValue);
+            return Response.ok(telemetryConfigService.getResolvedConfig(userId, sourceType)).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        }
+    }
+
+    @Path("/telemetry/{sourceType}")
+    @PUT
+    public Response upsertTelemetryMapping(@PathParam("sourceType") String sourceTypeValue,
+                                           List<GpsTelemetryMappingEntry> mapping) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            GpsSourceType sourceType = parseSourceType(sourceTypeValue);
+            GpsSourceTypeTelemetryConfigDTO result = telemetryConfigService.upsertConfig(userId, sourceType, mapping);
+            return Response.ok(result).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        }
+    }
+
+    @Path("/telemetry/{sourceType}")
+    @DELETE
+    public Response resetTelemetryMapping(@PathParam("sourceType") String sourceTypeValue) {
+        try {
+            UUID userId = currentUserService.getCurrentUserId();
+            GpsSourceType sourceType = parseSourceType(sourceTypeValue);
+            telemetryConfigService.resetConfig(userId, sourceType);
+            return Response.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
+        }
     }
 
     @Path("/")
@@ -120,5 +171,17 @@ public class GpsSourceConfigResource {
                     .build();
         }
         return Response.ok().build();
+    }
+
+    private GpsSourceType parseSourceType(String sourceTypeValue) {
+        if (sourceTypeValue == null || sourceTypeValue.isBlank()) {
+            throw new IllegalArgumentException("Source type is required");
+        }
+
+        try {
+            return GpsSourceType.valueOf(sourceTypeValue.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unsupported source type: " + sourceTypeValue);
+        }
     }
 }

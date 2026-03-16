@@ -37,6 +37,7 @@ import org.github.tess1o.geopulse.gps.service.simplification.TimelineSegmentBoun
         BulkDeleteGpsPointsDto.class,
         EditGpsPointDto.class,
         GpsPointDTO.class,
+        GpsTelemetryDisplayDTO.class,
         GpsPointPageDTO.class,
         GpsPointPaginationDTO.class,
         GpxFile.class,

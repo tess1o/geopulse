@@ -69,6 +69,27 @@
           </div>
         </div>
 
+        <div class="section">
+          <h3 class="section-title">Current Location Popup</h3>
+          <p class="section-description">
+            Control whether telemetry from the latest point is shown in the current-location popup
+          </p>
+
+          <SettingCard
+            title="Show Telemetry In Current Location Popup"
+            description="Display mapped telemetry values in the map popup for your current location"
+            details="This affects only popup visibility. Telemetry storage and GPS Data table are unchanged."
+          >
+            <template #control>
+              <div class="control-value">{{ form.showCurrentLocationTelemetry ? 'Enabled' : 'Hidden' }}</div>
+              <ToggleSwitch
+                v-model="form.showCurrentLocationTelemetry"
+                class="toggle-control"
+              />
+            </template>
+          </SettingCard>
+        </div>
+
         <!-- GPS Path Simplification Section -->
         <div class="section">
           <h3 class="section-title">GPS Path Simplification</h3>
@@ -205,7 +226,8 @@ const form = ref({
   pathSimplificationEnabled: true,
   pathSimplificationTolerance: 15.0,
   pathMaxPoints: 0,
-  pathAdaptiveSimplification: true
+  pathAdaptiveSimplification: true,
+  showCurrentLocationTelemetry: true
 })
 
 const errors = ref({
@@ -231,7 +253,8 @@ watch(
         pathSimplificationEnabled: newPrefs.pathSimplificationEnabled ?? true,
         pathSimplificationTolerance: newPrefs.pathSimplificationTolerance ?? 15.0,
         pathMaxPoints: newPrefs.pathMaxPoints ?? 0,
-        pathAdaptiveSimplification: newPrefs.pathAdaptiveSimplification ?? true
+        pathAdaptiveSimplification: newPrefs.pathAdaptiveSimplification ?? true,
+        showCurrentLocationTelemetry: newPrefs.showCurrentLocationTelemetry ?? true
       }
     }
   },
@@ -293,7 +316,8 @@ const handleSubmit = async () => {
       pathSimplificationEnabled: form.value.pathSimplificationEnabled,
       pathSimplificationTolerance: form.value.pathSimplificationTolerance,
       pathMaxPoints: form.value.pathMaxPoints,
-      pathAdaptiveSimplification: form.value.pathAdaptiveSimplification
+      pathAdaptiveSimplification: form.value.pathAdaptiveSimplification,
+      showCurrentLocationTelemetry: form.value.showCurrentLocationTelemetry
     })
   } finally {
     loading.value = false
@@ -307,7 +331,8 @@ const handleReset = () => {
     pathSimplificationEnabled: true,
     pathSimplificationTolerance: 15.0,
     pathMaxPoints: 0,
-    pathAdaptiveSimplification: true
+    pathAdaptiveSimplification: true,
+    showCurrentLocationTelemetry: true
   }
   errors.value = {
     customMapTileUrl: null

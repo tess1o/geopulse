@@ -42,6 +42,12 @@ public class GpsPointMapper {
         entity.setAltitude(message.getAlt());
         entity.setSourceType(sourceType);
         entity.setCreatedAt(Instant.now());
+        if ((sourceType == GpsSourceType.OWNTRACKS || sourceType == GpsSourceType.GPSLOGGER)
+                && message.getExt() != null && !message.getExt().isEmpty()) {
+            entity.setTelemetry(message.getExt());
+        } else {
+            entity.setTelemetry(null);
+        }
 
         return entity;
     }
@@ -184,7 +190,9 @@ public class GpsPointMapper {
                 entity.getAltitude(),
                 entity.getVelocity(),
                 entity.getUser().getId(),
-                entity.getSourceType().name()
+                entity.getSourceType().name(),
+                null,
+                null
         );
     }
 
@@ -225,6 +233,7 @@ public class GpsPointMapper {
                 .alt(entity.getAltitude())
                 .type("location")
                 .tid(entity.getDeviceId())
+                .ext(entity.getTelemetry())
                 .createdAt(entity.getCreatedAt().getEpochSecond())
                 .build();
     }
@@ -269,7 +278,9 @@ public class GpsPointMapper {
                 entity.getBattery(),
                 entity.getVelocity(),
                 entity.getAltitude(),
-                entity.getSourceType().name()
+                entity.getSourceType().name(),
+                null,
+                null
         );
     }
 

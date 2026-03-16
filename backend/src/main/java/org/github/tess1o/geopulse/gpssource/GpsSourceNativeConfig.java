@@ -9,6 +9,9 @@ import org.github.tess1o.geopulse.gpssource.model.*;
         CreateGpsSourceConfigDto.class,
         GpsSourceConfigDTO.class,
         UpdateGpsSourceConfigDto.class,
+        GpsTelemetryMappingEntry.class,
+        GpsSourceTypeTelemetryConfigEntity.class,
+        GpsSourceTypeTelemetryConfigDTO.class,
 })
 public class GpsSourceNativeConfig {
 }

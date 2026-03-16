@@ -93,7 +93,8 @@ const timelineDisplayPrefs = ref({
   pathSimplificationTolerance: 15.0,
   pathMaxPoints: 0,
   pathAdaptiveSimplification: true,
-  defaultDateRangePreset: defaultDateRangePreset.value || ''
+  defaultDateRangePreset: defaultDateRangePreset.value || '',
+  showCurrentLocationTelemetry: true
 })
 
 // Tab configuration
@@ -377,7 +378,8 @@ const loadTimelineDisplayPreferences = async () => {
         pathSimplificationTolerance: data.pathSimplificationTolerance ?? 15.0,
         pathMaxPoints: data.pathMaxPoints ?? 0,
         pathAdaptiveSimplification: data.pathAdaptiveSimplification ?? true,
-        defaultDateRangePreset: data.defaultDateRangePreset || ''
+        defaultDateRangePreset: data.defaultDateRangePreset || '',
+        showCurrentLocationTelemetry: data.showCurrentLocationTelemetry ?? true
       }
     }
   } catch (error) {

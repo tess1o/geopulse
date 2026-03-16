@@ -42,6 +42,7 @@ public class GpsPointService {
     private final EntityManager em;
     private final StreamingTimelineGenerationService streamingTimelineGenerationService;
     private final GpsDataFilteringService filteringService;
+    private final GpsTelemetryRenderingService telemetryRenderingService;
 
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
     int globalDuplicateDetectionThresholdMinutes;
@@ -50,13 +51,15 @@ public class GpsPointService {
     public GpsPointService(GpsPointMapper gpsPointMapper, GpsPointRepository gpsPointRepository,
                            GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em,
                            StreamingTimelineGenerationService streamingTimelineGenerationService,
-                           GpsDataFilteringService filteringService) {
+                           GpsDataFilteringService filteringService,
+                           GpsTelemetryRenderingService telemetryRenderingService) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
         this.em = em;
         this.streamingTimelineGenerationService = streamingTimelineGenerationService;
         this.filteringService = filteringService;
+        this.telemetryRenderingService = telemetryRenderingService;
     }
 
     /**
@@ -320,6 +323,7 @@ public class GpsPointService {
     public GpsPointPathDTO getGpsPointPath(UUID userId, Instant startTime, Instant endTime) {
         List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(userId, startTime, endTime);
         List<GpsPointPathPointDTO> pathPoints = gpsPointMapper.toPathPoints(gpsPoints);
+        applyTelemetryToPathPoints(userId, gpsPoints, pathPoints);
 
         return new GpsPointPathDTO(userId, pathPoints);
     }
@@ -492,7 +496,11 @@ public class GpsPointService {
     }
 
     public Optional<GpsPointDTO> getLastKnownPosition(UUID userId) {
-        return gpsPointRepository.findLatest(userId).map(gpsPointMapper::toGpsPointDTO);
+        return gpsPointRepository.findLatest(userId).map(point -> {
+            GpsPointDTO dto = gpsPointMapper.toGpsPointDTO(point);
+            applyTelemetryToGpsPoints(userId, List.of(point), List.of(dto));
+            return dto;
+        });
     }
 
     /**
@@ -515,6 +523,7 @@ public class GpsPointService {
         long total = gpsPointRepository.countByUserAndFilters(userId, filters);
 
         List<GpsPointDTO> pointDTOs = gpsPointMapper.toGpsPointDTOs(points);
+        applyTelemetryToGpsPoints(userId, points, pointDTOs);
 
         long totalPages = (total + limit - 1) / limit; // Ceiling division
         GpsPointPaginationDTO pagination = new GpsPointPaginationDTO(page, limit, total, totalPages);
@@ -601,5 +610,45 @@ public class GpsPointService {
                 .executeUpdate();
 
         log.info("Successfully deleted all GPS and timeline data for user {}", userId);
+    }
+
+    private void applyTelemetryToGpsPoints(UUID userId, List<GpsPointEntity> sourcePoints, List<GpsPointDTO> targetDtos) {
+        if (sourcePoints == null || sourcePoints.isEmpty() || targetDtos == null || targetDtos.isEmpty()) {
+            return;
+        }
+
+        var telemetryByPointId = telemetryRenderingService.renderForPoints(userId, sourcePoints);
+        if (telemetryByPointId.isEmpty()) {
+            return;
+        }
+
+        for (GpsPointDTO dto : targetDtos) {
+            GpsTelemetryRenderingService.RenderedTelemetry rendered = telemetryByPointId.get(dto.getId());
+            if (rendered == null) {
+                continue;
+            }
+            dto.setTelemetryGpsData(rendered.gpsData());
+            dto.setTelemetryCurrentPopup(rendered.currentPopup());
+        }
+    }
+
+    private void applyTelemetryToPathPoints(UUID userId, List<GpsPointEntity> sourcePoints, List<GpsPointPathPointDTO> targetDtos) {
+        if (sourcePoints == null || sourcePoints.isEmpty() || targetDtos == null || targetDtos.isEmpty()) {
+            return;
+        }
+
+        var telemetryByPointId = telemetryRenderingService.renderForPoints(userId, sourcePoints);
+        if (telemetryByPointId.isEmpty()) {
+            return;
+        }
+
+        for (GpsPointPathPointDTO dto : targetDtos) {
+            GpsTelemetryRenderingService.RenderedTelemetry rendered = telemetryByPointId.get(dto.getId());
+            if (rendered == null) {
+                continue;
+            }
+            dto.setTelemetryGpsData(rendered.gpsData());
+            dto.setTelemetryCurrentPopup(rendered.currentPopup());
+        }
     }
 }

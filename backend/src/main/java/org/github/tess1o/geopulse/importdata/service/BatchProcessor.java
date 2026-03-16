@@ -1,5 +1,7 @@
 package org.github.tess1o.geopulse.importdata.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
@@ -24,6 +26,9 @@ public class BatchProcessor {
 
     @Inject
     SystemSettingsService settingsService;
+
+    @Inject
+    ObjectMapper objectMapper;
     
     /**
      * Process a batch of GPS points using intelligent upsert logic.
@@ -155,6 +160,7 @@ public class BatchProcessor {
             query.setParameter(paramIndex++, point.getAltitude());
             query.setParameter(paramIndex++, point.getSourceType() != null ? point.getSourceType().name() : null);
             query.setParameter(paramIndex++, point.getCreatedAt());
+            query.setParameter(paramIndex++, toJson(point.getTelemetry()));
         }
 
         // Execute and get number of rows affected (inserts + updates)
@@ -165,6 +171,19 @@ public class BatchProcessor {
         entityManager.clear();
 
         return rowsAffected;
+    }
+
+    private String toJson(Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            log.warn("Unable to serialize import telemetry payload. Skipping telemetry field.", e);
+            return null;
+        }
     }
 
     /**

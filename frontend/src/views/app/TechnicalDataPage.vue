@@ -247,6 +247,146 @@
       </div>
     </BaseCard>
 
+    <BaseCard class="filter-section telemetry-mapping-section">
+      <div class="filter-header">
+        <h3 class="filter-title">Telemetry Mapping (Optional)</h3>
+        <div class="filter-header-actions">
+          <small class="text-muted">Global per source type for GPS Data and timeline popups.</small>
+          <Button
+            :icon="showTelemetryMappingAdvanced ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+            :label="showTelemetryMappingAdvanced ? 'Hide Mapping' : 'Show Mapping'"
+            text
+            size="small"
+            @click="showTelemetryMappingAdvanced = !showTelemetryMappingAdvanced"
+          />
+        </div>
+      </div>
+
+      <div v-if="showTelemetryMappingAdvanced" class="advanced-filters telemetry-mapping-content">
+        <div class="telemetry-mapping-controls">
+          <div class="telemetry-mapping-select">
+            <label class="filter-label" for="telemetry-source-type">Source Type</label>
+            <Select
+              id="telemetry-source-type"
+              v-model="selectedTelemetrySourceType"
+              :options="telemetrySourceTypeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="telemetry-source-select"
+            />
+          </div>
+
+          <div class="telemetry-mapping-actions">
+            <Button
+              label="Reset to Defaults"
+              icon="pi pi-refresh"
+              text
+              :loading="telemetryResetting"
+              @click="resetTelemetryMapping"
+            />
+            <Button
+              label="Add Row"
+              icon="pi pi-plus"
+              outlined
+              @click="addTelemetryMappingRow"
+            />
+            <Button
+              label="Save Mapping"
+              icon="pi pi-save"
+              :loading="telemetrySaving"
+              @click="saveTelemetryMapping"
+            />
+          </div>
+        </div>
+
+        <div v-if="telemetryLoading" class="telemetry-loading">
+          Loading telemetry mapping...
+        </div>
+
+        <div v-else class="telemetry-table-wrapper">
+          <table class="telemetry-table">
+            <thead>
+            <tr>
+              <th>Key</th>
+              <th>Label</th>
+              <th>Type</th>
+              <th>Unit</th>
+              <th>GPS Data</th>
+              <th>Current Popup</th>
+              <th>Order</th>
+              <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-if="telemetryMappingRows.length === 0">
+              <td colspan="8" class="telemetry-empty">No telemetry mappings configured.</td>
+            </tr>
+            <tr v-for="(entry, index) in telemetryMappingRows" :key="`${entry.key || 'new'}-${index}`">
+              <td>
+                <InputText v-model="entry.key" placeholder="ext key" class="telemetry-input" />
+              </td>
+              <td>
+                <InputText v-model="entry.label" placeholder="Label" class="telemetry-input" />
+              </td>
+              <td>
+                <Select
+                  v-model="entry.type"
+                  :options="telemetryTypeOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  class="telemetry-input"
+                />
+              </td>
+              <td>
+                <InputText v-model="entry.unit" placeholder="Unit" class="telemetry-input telemetry-unit" />
+              </td>
+              <td class="telemetry-check-cell">
+                <Checkbox v-model="entry.showInGpsData" binary />
+              </td>
+              <td class="telemetry-check-cell">
+                <Checkbox v-model="entry.showInCurrentPopup" binary />
+              </td>
+              <td>
+                <InputNumber v-model="entry.order" :min="0" :step="10" class="telemetry-input telemetry-order" />
+              </td>
+              <td class="telemetry-remove-cell">
+                <Button
+                  icon="pi pi-trash"
+                  severity="danger"
+                  text
+                  size="small"
+                  @click="removeTelemetryMappingRow(index)"
+                />
+              </td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="telemetry-boolean-grid" v-if="telemetryBooleanRows.length > 0">
+          <div
+            v-for="(entry, index) in telemetryBooleanRows"
+            :key="`bool-${entry.key || index}`"
+            class="telemetry-boolean-row"
+          >
+            <div class="telemetry-boolean-title">{{ entry.label || entry.key || `Boolean ${index + 1}` }}</div>
+            <div class="telemetry-boolean-fields">
+              <InputText
+                v-model="entry.trueValues"
+                placeholder="True values (e.g. 1,true,on)"
+                class="telemetry-input"
+              />
+              <InputText
+                v-model="entry.falseValues"
+                placeholder="False values (e.g. 0,false,off)"
+                class="telemetry-input"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </BaseCard>
+
     <!-- Filtered Results Banner -->
     <BaseCard v-if="hasActiveFilters && filteredRecordsText" class="filtered-banner">
       <div class="filtered-banner-content">
@@ -378,6 +518,25 @@
         <Column field="battery" header="Battery" sortable class="numeric-col" v-if="!isMobile && !isTablet">
           <template #body="slotProps">
             <span v-if="slotProps.data.battery !== null && slotProps.data.battery >= 0">{{ Math.round(slotProps.data.battery) }}%</span>
+            <span v-else class="null-value">-</span>
+          </template>
+        </Column>
+
+        <Column header="Telemetry" class="telemetry-col">
+          <template #body="slotProps">
+            <div
+              v-if="slotProps.data.telemetryGpsData && slotProps.data.telemetryGpsData.length > 0"
+              class="telemetry-cell"
+            >
+              <div
+                v-for="item in slotProps.data.telemetryGpsData"
+                :key="`${slotProps.data.id}-${item.key}`"
+                class="telemetry-item"
+              >
+                <span class="telemetry-label">{{ item.label }}:</span>
+                <span class="telemetry-value">{{ formatTelemetryValue(item) }}</span>
+              </div>
+            </div>
             <span v-else class="null-value">-</span>
           </template>
         </Column>
@@ -528,6 +687,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useTechnicalDataStore } from '@/stores/technicalData'
+import { useGpsSourcesStore } from '@/stores/gpsSources'
 import { useTimezone } from '@/composables/useTimezone'
 
 const timezone = useTimezone()
@@ -556,6 +716,7 @@ import {formatDistance, formatSpeed} from "../../utils/calculationsHelpers";
 
 // Store and utils
 const technicalDataStore = useTechnicalDataStore()
+const gpsSourcesStore = useGpsSourcesStore()
 const toast = useToast()
 
 // Reactive state
@@ -569,6 +730,7 @@ const sortOrder = ref(-1) // -1 for descending, 1 for ascending
 
 // Advanced filters
 const showAdvancedFilters = ref(false)
+const showTelemetryMappingAdvanced = ref(false)
 const filters = ref({
   sourceTypes: [],
   accuracyMin: null,
@@ -617,6 +779,22 @@ const deleteAllLoading = ref(false)
 
 // Shift-click selection tracking
 const lastSelectedIndex = ref(null)
+const telemetryLoading = ref(false)
+const telemetrySaving = ref(false)
+const telemetryResetting = ref(false)
+const selectedTelemetrySourceType = ref('OWNTRACKS')
+const telemetryMappingRows = ref([])
+
+const telemetrySourceTypeOptions = [
+  { label: 'OwnTracks', value: 'OWNTRACKS' },
+  { label: 'GPSLogger', value: 'GPSLOGGER' }
+]
+
+const telemetryTypeOptions = [
+  { label: 'Boolean', value: 'boolean' },
+  { label: 'Number', value: 'number' },
+  { label: 'String', value: 'string' }
+]
 
 // Computed properties
 const summaryStats = computed(() => technicalDataStore.summaryStats)
@@ -689,6 +867,10 @@ const totalPages = computed(() => {
   return Math.ceil(totalRecords.value / pageSize.value)
 })
 
+const telemetryBooleanRows = computed(() =>
+  telemetryMappingRows.value.filter(entry => entry.type === 'boolean')
+)
+
 // Removed - using timezone composable directly
 
 // Methods
@@ -708,6 +890,14 @@ const formatTimestamp = (timestamp) => {
     date: timezone.formatDateDisplay(timestamp),
     time: timezone.format(timestamp, 'HH:mm')
   }
+}
+
+const formatTelemetryValue = (item) => {
+  if (!item) return '-'
+  const value = item.value ?? '-'
+  if (!item.unit) return value
+  if (item.unit === '%') return `${value}${item.unit}`
+  return `${value} ${item.unit}`
 }
 
 const formatDateRange = (range) => {
@@ -739,6 +929,139 @@ const getSourceSeverity = (sourceType) => {
     'GPX': 'contrast'
   }
   return severityMap[sourceType] || 'contrast'
+}
+
+const cloneTelemetryRows = (rows = []) => {
+  if (!Array.isArray(rows)) return []
+  return rows.map((entry, index) => ({
+    key: entry.key || '',
+    label: entry.label || entry.key || '',
+    type: entry.type || 'string',
+    unit: entry.unit || '',
+    order: Number.isFinite(entry.order) ? entry.order : (index + 1) * 10,
+    trueValues: Array.isArray(entry.trueValues) ? [...entry.trueValues] : (entry.trueValues || ''),
+    falseValues: Array.isArray(entry.falseValues) ? [...entry.falseValues] : (entry.falseValues || ''),
+    showInGpsData: entry.enabled === false ? false : (entry.showInGpsData ?? true),
+    showInCurrentPopup: entry.enabled === false ? false : (entry.showInCurrentPopup ?? true)
+  }))
+}
+
+const serializeTelemetryValues = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(v => String(v || '').trim()).filter(v => v.length > 0)
+  }
+  if (!value) return []
+  return String(value)
+    .split(',')
+    .map(v => v.trim())
+    .filter(v => v.length > 0)
+}
+
+const buildTelemetryPayload = () => telemetryMappingRows.value
+  .filter(entry => String(entry.key || '').trim().length > 0)
+  .map((entry, index) => ({
+    key: String(entry.key || '').trim(),
+    label: String(entry.label || entry.key || '').trim(),
+    type: entry.type || 'string',
+    unit: entry.unit ? String(entry.unit).trim() : null,
+    enabled: Boolean(entry.showInGpsData || entry.showInCurrentPopup),
+    order: Number.isFinite(entry.order) ? entry.order : (index + 1) * 10,
+    trueValues: serializeTelemetryValues(entry.trueValues),
+    falseValues: serializeTelemetryValues(entry.falseValues),
+    showInGpsData: entry.showInGpsData ?? true,
+    showInCurrentPopup: entry.showInCurrentPopup ?? true
+  }))
+
+const loadTelemetryMapping = async (sourceType = selectedTelemetrySourceType.value) => {
+  telemetryLoading.value = true
+  try {
+    const response = await gpsSourcesStore.fetchTelemetryMapping(sourceType)
+    telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
+  } catch (error) {
+    console.error('Error loading telemetry mapping:', error)
+    telemetryMappingRows.value = []
+    toast.add({
+      severity: 'error',
+      summary: 'Telemetry Load Failed',
+      detail: error.response?.data?.message || error.message || 'Failed to load telemetry mapping',
+      life: 5000
+    })
+  } finally {
+    telemetryLoading.value = false
+  }
+}
+
+const addTelemetryMappingRow = () => {
+  const nextOrder = ((telemetryMappingRows.value.length || 0) + 1) * 10
+  telemetryMappingRows.value = [
+    ...telemetryMappingRows.value,
+    {
+      key: '',
+      label: '',
+      type: 'string',
+      unit: '',
+      order: nextOrder,
+      trueValues: [],
+      falseValues: [],
+      showInGpsData: true,
+      showInCurrentPopup: true
+    }
+  ]
+}
+
+const removeTelemetryMappingRow = (index) => {
+  const next = [...telemetryMappingRows.value]
+  next.splice(index, 1)
+  telemetryMappingRows.value = next
+}
+
+const saveTelemetryMapping = async () => {
+  telemetrySaving.value = true
+  try {
+    const response = await gpsSourcesStore.updateTelemetryMapping(
+      selectedTelemetrySourceType.value,
+      buildTelemetryPayload()
+    )
+    telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
+    toast.add({
+      severity: 'success',
+      summary: 'Telemetry Saved',
+      detail: 'Telemetry mapping updated successfully',
+      life: 3000
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Save Failed',
+      detail: error.response?.data?.message || error.message || 'Failed to save telemetry mapping',
+      life: 5000
+    })
+  } finally {
+    telemetrySaving.value = false
+  }
+}
+
+const resetTelemetryMapping = async () => {
+  telemetryResetting.value = true
+  try {
+    const response = await gpsSourcesStore.resetTelemetryMapping(selectedTelemetrySourceType.value)
+    telemetryMappingRows.value = cloneTelemetryRows(response?.mapping)
+    toast.add({
+      severity: 'success',
+      summary: 'Telemetry Reset',
+      detail: 'Telemetry mapping reset to defaults',
+      life: 3000
+    })
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Reset Failed',
+      detail: error.response?.data?.message || error.message || 'Failed to reset telemetry mapping',
+      life: 5000
+    })
+  } finally {
+    telemetryResetting.value = false
+  }
 }
 
 const handleResize = () => {
@@ -1183,7 +1506,8 @@ onMounted(async () => {
   
   await Promise.all([
     loadSummaryStats(),
-    loadGPSPoints()
+    loadGPSPoints(),
+    loadTelemetryMapping(selectedTelemetrySourceType.value)
   ])
 })
 
@@ -1195,6 +1519,10 @@ onUnmounted(() => {
 watch(pageSize, async () => {
   currentPage.value = 0
   await loadGPSPoints()
+})
+
+watch(selectedTelemetrySourceType, async (type) => {
+  await loadTelemetryMapping(type)
 })
 
 // Watch filters for changes
@@ -1315,6 +1643,132 @@ watch(filters, async () => {
   max-width: 600px;
 }
 
+.telemetry-mapping-section {
+  margin-bottom: var(--gp-spacing-lg);
+}
+
+.telemetry-mapping-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.telemetry-mapping-controls {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.telemetry-mapping-select {
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.telemetry-source-select {
+  width: 220px;
+}
+
+.telemetry-mapping-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.telemetry-loading {
+  color: var(--gp-text-secondary);
+  font-size: 0.9rem;
+}
+
+.telemetry-table-wrapper {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+  overflow-x: auto;
+  background: var(--gp-surface-white);
+}
+
+.telemetry-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.telemetry-table th,
+.telemetry-table td {
+  border-bottom: 1px solid var(--gp-border-light);
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 0.82rem;
+}
+
+.telemetry-table th {
+  white-space: nowrap;
+  color: var(--gp-text-secondary);
+  font-weight: 600;
+  background: var(--gp-surface-light);
+}
+
+.telemetry-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.telemetry-input {
+  width: 100%;
+}
+
+.telemetry-unit {
+  min-width: 72px;
+}
+
+.telemetry-order {
+  max-width: 90px;
+}
+
+.telemetry-check-cell {
+  text-align: center;
+}
+
+.telemetry-remove-cell {
+  text-align: center;
+}
+
+.telemetry-empty {
+  text-align: center;
+  color: var(--gp-text-muted, #6b7280);
+  font-style: italic;
+}
+
+.telemetry-boolean-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.telemetry-boolean-row {
+  border: 1px solid var(--gp-border-light);
+  border-radius: var(--gp-radius-small);
+  padding: 0.6rem;
+  background: var(--gp-surface-white);
+}
+
+.telemetry-boolean-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gp-text-primary);
+  margin-bottom: 0.45rem;
+}
+
+.telemetry-boolean-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
 /* Large screen filter optimizations */
 @media (min-width: 1440px) {
   .filter-controls {
@@ -1402,6 +1856,22 @@ watch(filters, async () => {
   .gps-data-table :deep(.p-paginator .p-paginator-page:nth-child(n+8)) {
     display: none !important;
   }
+
+  .telemetry-mapping-controls {
+    align-items: stretch;
+  }
+
+  .telemetry-source-select {
+    width: 100%;
+  }
+
+  .telemetry-mapping-actions {
+    width: 100%;
+  }
+
+  .telemetry-boolean-fields {
+    grid-template-columns: 1fr;
+  }
 }
 
 .table-header {
@@ -1443,6 +1913,11 @@ watch(filters, async () => {
   width: 100px;
 }
 
+.gps-data-table :deep(.telemetry-col) {
+  min-width: 190px;
+  width: 190px;
+}
+
 .gps-data-table :deep(.selection-col) {
   width: 3rem;
   min-width: 3rem;
@@ -1476,6 +1951,11 @@ watch(filters, async () => {
     min-width: 120px;
     width: 120px;
   }
+
+  .gps-data-table :deep(.telemetry-col) {
+    min-width: 220px;
+    width: 220px;
+  }
 }
 
 /* Cell Content */
@@ -1507,6 +1987,27 @@ watch(filters, async () => {
   font-family: monospace;
   font-size: 0.8rem;
   color: var(--gp-text-primary);
+}
+
+.telemetry-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.telemetry-item {
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.telemetry-label {
+  color: var(--gp-text-secondary);
+  margin-right: 0.25rem;
+}
+
+.telemetry-value {
+  color: var(--gp-text-primary);
+  font-weight: 500;
 }
 
 .null-value {
@@ -1766,6 +2267,14 @@ watch(filters, async () => {
 }
 
 .p-dark .coordinate-line {
+  color: var(--gp-text-primary);
+}
+
+.p-dark .telemetry-label {
+  color: var(--gp-text-muted);
+}
+
+.p-dark .telemetry-value {
   color: var(--gp-text-primary);
 }
 
