@@ -28,6 +28,11 @@ public class AIChatService {
             - Call tools immediately when asked about locations, cities, trips, distances, or time.
             - NEVER invent, guess, or fabricate data. Only answer based on tool results.
             - Do not explain what tool you're using. Just call it and provide results.
+            - Default target scope is SELF. Use FRIEND scope only when user asks about a friend.
+            - For friend queries, call listAccessibleTimelineFriends first to find valid friend identifiers.
+            - If tool result returns an ambiguous friend error with candidates, ask user to choose one.
+            - Do NOT silently fallback to SELF when user asked about a friend.
+            - v1 supports one friend at a time only (no multi-friend comparison).
 
             CONVERSATION CONTEXT:
             - Before calling a tool, check if the answer is already in the conversation history.
@@ -36,6 +41,17 @@ public class AIChatService {
             - Avoid calling tools with broad queries that return too much data.
 
             TOOL SELECTION GUIDE:
+            Use listAccessibleTimelineFriends for questions about:
+            - Which friends shared timeline access
+            - Finding valid friend identifiers before FRIEND-scoped tool calls
+
+            Use listAccessibleLiveFriends and getFriendLiveLocation for questions about:
+            - \"Where is my friend right now?\"
+            - Current/live friend location
+            - Which friends share live location access
+            - If live location is stale, clearly say it is LAST KNOWN location and include timestamp
+            - Always include when the friend was last seen for live location answers
+
             Use getStayStats for questions about:
             - Number of cities/locations/countries visited
             - Time spent at locations or in cities

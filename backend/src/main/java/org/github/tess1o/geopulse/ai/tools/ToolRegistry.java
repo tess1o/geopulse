@@ -10,49 +10,51 @@ import org.github.tess1o.geopulse.ai.client.dto.FunctionDefinition;
 import org.github.tess1o.geopulse.ai.client.dto.FunctionSpec;
 import org.github.tess1o.geopulse.ai.model.StayGroupBy;
 import org.github.tess1o.geopulse.ai.model.TripGroupBy;
+import org.github.tess1o.geopulse.ai.service.AIFriendLiveTools;
 import org.github.tess1o.geopulse.ai.service.AITimelineTools;
+import org.github.tess1o.geopulse.ai.service.AIToolException;
 import org.github.tess1o.geopulse.ai.service.SimpleAITools;
-import org.github.tess1o.geopulse.auth.service.CurrentUserService;
-import org.github.tess1o.geopulse.statistics.service.RoutesAnalysisService;
-import org.github.tess1o.geopulse.streaming.service.StreamingTimelineAggregator;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 @ApplicationScoped
 @Slf4j
 public class ToolRegistry {
 
-    @Inject
-    StreamingTimelineAggregator streamingTimelineAggregator;
-
-    @Inject
-    CurrentUserService currentUserService;
-
-    @Inject
-    RoutesAnalysisService routesAnalysisService;
-
-    @Inject
-    ObjectMapper objectMapper;
-
-    private AITimelineTools aiTimelineTools;
-    private SimpleAITools simpleAITools;
+    private final AITimelineTools aiTimelineTools;
+    private final AIFriendLiveTools aiFriendLiveTools;
+    private final SimpleAITools simpleAITools;
+    private final ObjectMapper objectMapper;
     private final Map<String, RegisteredTool> tools = new LinkedHashMap<>();
+
+    @Inject
+    public ToolRegistry(AITimelineTools aiTimelineTools,
+                        AIFriendLiveTools aiFriendLiveTools,
+                        SimpleAITools simpleAITools,
+                        ObjectMapper objectMapper) {
+        this.aiTimelineTools = aiTimelineTools;
+        this.aiFriendLiveTools = aiFriendLiveTools;
+        this.simpleAITools = simpleAITools;
+        this.objectMapper = objectMapper;
+    }
 
     @PostConstruct
     public void registerTools() {
-        aiTimelineTools = new AITimelineTools(streamingTimelineAggregator, currentUserService, routesAnalysisService);
-        simpleAITools = new SimpleAITools();
-
         register("queryTimeline", this::invokeQueryTimeline, createQueryTimelineSpec());
         register("getVisitedLocations", this::invokeGetVisitedLocations, createGetVisitedLocationsSpec());
         register("getTripMovements", this::invokeTripMovements, createTripMovementsSpec());
         register("getStayStats", this::invokeGetStayStats, createGetStayStatsSpec());
         register("getTripStats", this::invokeGetTripStats, createGetTripStatsSpec());
         register("getRoutePatterns", this::invokeGetRoutePatterns, createRoutePatternsSpec());
+        register("listAccessibleTimelineFriends", this::invokeListAccessibleTimelineFriends, createListAccessibleTimelineFriendsSpec());
+        register("listAccessibleLiveFriends", this::invokeListAccessibleLiveFriends, createListAccessibleLiveFriendsSpec());
+        register("getFriendLiveLocation", this::invokeGetFriendLiveLocation, createGetFriendLiveLocationSpec());
         register("getTodayDate", this::invokeGetTodayDate, createGetTodayDateSpec());
 
-        log.info("Registered " + tools.size() + " AI tools");
+        log.info("Registered {} AI tools", tools.size());
     }
 
     private void register(String name, Function<String, String> invoker, FunctionDefinition definition) {
@@ -73,93 +75,153 @@ public class ToolRegistry {
         return tool.invoker().apply(argumentsJson);
     }
 
-    // Tool invocation methods
-
     private String invokeQueryTimeline(String argumentsJson) {
         try {
-            JsonNode args = objectMapper.readTree(argumentsJson);
-            String startDate = args.get("startDate").asText();
-            String endDate = args.get("endDate").asText();
+            JsonNode args = parseArgs(argumentsJson);
+            String startDate = getRequiredText(args, "startDate");
+            String endDate = getRequiredText(args, "endDate");
+            String targetScope = getOptionalText(args, "targetScope");
+            String targetUser = getOptionalText(args, "targetUser");
 
-            Object result = aiTimelineTools.queryTimeline(startDate, endDate);
+            Object result = aiTimelineTools.queryTimeline(startDate, endDate, targetScope, targetUser);
             return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
         } catch (Exception e) {
             log.error("Error invoking queryTimeline", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
         }
     }
 
     private String invokeGetVisitedLocations(String argumentsJson) {
         try {
-            JsonNode args = objectMapper.readTree(argumentsJson);
-            String startDate = args.get("startDate").asText();
-            String endDate = args.get("endDate").asText();
+            JsonNode args = parseArgs(argumentsJson);
+            String startDate = getRequiredText(args, "startDate");
+            String endDate = getRequiredText(args, "endDate");
+            String targetScope = getOptionalText(args, "targetScope");
+            String targetUser = getOptionalText(args, "targetUser");
 
-            Object result = aiTimelineTools.getVisitedLocations(startDate, endDate);
+            Object result = aiTimelineTools.getVisitedLocations(startDate, endDate, targetScope, targetUser);
             return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
         } catch (Exception e) {
             log.error("Error invoking getVisitedLocations", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
         }
     }
 
     private String invokeTripMovements(String argumentsJson) {
         try {
-            JsonNode args = objectMapper.readTree(argumentsJson);
-            String startDate = args.get("startDate").asText();
-            String endDate = args.get("endDate").asText();
+            JsonNode args = parseArgs(argumentsJson);
+            String startDate = getRequiredText(args, "startDate");
+            String endDate = getRequiredText(args, "endDate");
+            String targetScope = getOptionalText(args, "targetScope");
+            String targetUser = getOptionalText(args, "targetUser");
 
-            Object result = aiTimelineTools.getTripMovements(startDate, endDate);
+            Object result = aiTimelineTools.getTripMovements(startDate, endDate, targetScope, targetUser);
             return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
         } catch (Exception e) {
             log.error("Error invoking getTripMovements", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
         }
     }
 
     private String invokeGetStayStats(String argumentsJson) {
         try {
-            JsonNode args = objectMapper.readTree(argumentsJson);
-            String startDate = args.get("startDate").asText();
-            String endDate = args.get("endDate").asText();
-            String groupByStr = args.get("groupBy").asText();
+            JsonNode args = parseArgs(argumentsJson);
+            String startDate = getRequiredText(args, "startDate");
+            String endDate = getRequiredText(args, "endDate");
+            String groupByStr = getRequiredText(args, "groupBy");
+            String targetScope = getOptionalText(args, "targetScope");
+            String targetUser = getOptionalText(args, "targetUser");
             StayGroupBy groupBy = StayGroupBy.valueOf(groupByStr);
 
-            Object result = aiTimelineTools.getStayStats(startDate, endDate, groupBy);
+            Object result = aiTimelineTools.getStayStats(startDate, endDate, groupBy, targetScope, targetUser);
             return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
         } catch (Exception e) {
             log.error("Error invoking getStayStats", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
         }
     }
 
     private String invokeGetTripStats(String argumentsJson) {
         try {
-            JsonNode args = objectMapper.readTree(argumentsJson);
-            String startDate = args.get("startDate").asText();
-            String endDate = args.get("endDate").asText();
-            String groupByStr = args.get("groupBy").asText();
+            JsonNode args = parseArgs(argumentsJson);
+            String startDate = getRequiredText(args, "startDate");
+            String endDate = getRequiredText(args, "endDate");
+            String groupByStr = getRequiredText(args, "groupBy");
+            String targetScope = getOptionalText(args, "targetScope");
+            String targetUser = getOptionalText(args, "targetUser");
             TripGroupBy groupBy = TripGroupBy.valueOf(groupByStr);
 
-            Object result = aiTimelineTools.getTripStats(startDate, endDate, groupBy);
+            Object result = aiTimelineTools.getTripStats(startDate, endDate, groupBy, targetScope, targetUser);
             return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
         } catch (Exception e) {
             log.error("Error invoking getTripStats", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
         }
     }
 
     private String invokeGetRoutePatterns(String argumentsJson) {
         try {
-            JsonNode args = objectMapper.readTree(argumentsJson);
-            String startDate = args.get("startDate").asText();
-            String endDate = args.get("endDate").asText();
+            JsonNode args = parseArgs(argumentsJson);
+            String startDate = getRequiredText(args, "startDate");
+            String endDate = getRequiredText(args, "endDate");
+            String targetScope = getOptionalText(args, "targetScope");
+            String targetUser = getOptionalText(args, "targetUser");
 
-            Object result = aiTimelineTools.getRoutePatterns(startDate, endDate);
+            Object result = aiTimelineTools.getRoutePatterns(startDate, endDate, targetScope, targetUser);
             return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
         } catch (Exception e) {
             log.error("Error invoking getRoutePatterns", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
+        }
+    }
+
+    private String invokeListAccessibleTimelineFriends(String argumentsJson) {
+        try {
+            Object result = aiTimelineTools.listAccessibleTimelineFriends();
+            return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
+        } catch (Exception e) {
+            log.error("Error invoking listAccessibleTimelineFriends", e);
+            return unsafeFallbackErrorJson(e);
+        }
+    }
+
+    private String invokeListAccessibleLiveFriends(String argumentsJson) {
+        try {
+            Object result = aiFriendLiveTools.listAccessibleLiveFriends();
+            return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
+        } catch (Exception e) {
+            log.error("Error invoking listAccessibleLiveFriends", e);
+            return unsafeFallbackErrorJson(e);
+        }
+    }
+
+    private String invokeGetFriendLiveLocation(String argumentsJson) {
+        try {
+            JsonNode args = parseArgs(argumentsJson);
+            String targetUser = getOptionalText(args, "targetUser");
+            Object result = aiFriendLiveTools.getFriendLiveLocation(targetUser);
+            return objectMapper.writeValueAsString(result);
+        } catch (AIToolException e) {
+            return serializeToolError(e);
+        } catch (Exception e) {
+            log.error("Error invoking getFriendLiveLocation", e);
+            return unsafeFallbackErrorJson(e);
         }
     }
 
@@ -169,11 +231,9 @@ public class ToolRegistry {
             return objectMapper.writeValueAsString(result);
         } catch (Exception e) {
             log.error("Error invoking getTodayDate", e);
-            return "{\"error\": \"" + e.getMessage() + "\"}";
+            return unsafeFallbackErrorJson(e);
         }
     }
-
-    // Function schema creation methods
 
     private FunctionDefinition createQueryTimelineSpec() {
         return new FunctionDefinition(
@@ -182,10 +242,10 @@ public class ToolRegistry {
                         "queryTimeline",
                         "Gets complete timeline with all stays and trips in chronological order. Use when listing specific events or detailed activity.",
                         createParametersSchema(
-                                Map.of(
+                                withTargetProperties(Map.of(
                                         "startDate", propertySpec("string", "Start date (YYYY-MM-DD)"),
                                         "endDate", propertySpec("string", "End date (YYYY-MM-DD)")
-                                ),
+                                )),
                                 List.of("startDate", "endDate")
                         )
                 )
@@ -199,10 +259,10 @@ public class ToolRegistry {
                         "getVisitedLocations",
                         "Lists all places stayed at with timestamps. Use ONLY for listing specific places, NOT for counting. For counts use getStayStats.",
                         createParametersSchema(
-                                Map.of(
+                                withTargetProperties(Map.of(
                                         "startDate", propertySpec("string", "Start date (YYYY-MM-DD)"),
                                         "endDate", propertySpec("string", "End date (YYYY-MM-DD)")
-                                ),
+                                )),
                                 List.of("startDate", "endDate")
                         )
                 )
@@ -216,10 +276,10 @@ public class ToolRegistry {
                         "getTripMovements",
                         "Lists all individual trips with details. Use ONLY for listing specific trips, NOT for totals or distances. For aggregations use getTripStats.",
                         createParametersSchema(
-                                Map.of(
+                                withTargetProperties(Map.of(
                                         "startDate", propertySpec("string", "Start date (YYYY-MM-DD)"),
                                         "endDate", propertySpec("string", "End date (YYYY-MM-DD)")
-                                ),
+                                )),
                                 List.of("startDate", "endDate")
                         )
                 )
@@ -233,13 +293,13 @@ public class ToolRegistry {
                         "getStayStats",
                         "Calculates aggregated stay statistics: total time, visit counts, number of unique cities/locations/countries. Use for counting cities, comparing time spent, and statistical analysis grouped by location, city, country, day, week, or month.",
                         createParametersSchema(
-                                Map.of(
+                                withTargetProperties(Map.of(
                                         "startDate", propertySpec("string", "Start date (YYYY-MM-DD)"),
                                         "endDate", propertySpec("string", "End date (YYYY-MM-DD)"),
                                         "groupBy", enumPropertySpec("string",
                                                 "Group by: LOCATION_NAME, CITY, COUNTRY, DAY, WEEK, or MONTH",
                                                 List.of("LOCATION_NAME", "CITY", "COUNTRY", "DAY", "WEEK", "MONTH"))
-                                ),
+                                )),
                                 List.of("startDate", "endDate", "groupBy")
                         )
                 )
@@ -253,13 +313,13 @@ public class ToolRegistry {
                         "getTripStats",
                         "Calculates aggregated trip statistics: total distance, duration, trip counts by transportation mode. Use for comparing walking vs driving, analyzing travel patterns grouped by movement type, origin, destination, day, week, or month.",
                         createParametersSchema(
-                                Map.of(
+                                withTargetProperties(Map.of(
                                         "startDate", propertySpec("string", "Start date (YYYY-MM-DD)"),
                                         "endDate", propertySpec("string", "End date (YYYY-MM-DD)"),
                                         "groupBy", enumPropertySpec("string",
                                                 "Group by: MOVEMENT_TYPE, ORIGIN_LOCATION_NAME, DESTINATION_LOCATION_NAME, DAY, WEEK, or MONTH",
                                                 List.of("MOVEMENT_TYPE", "ORIGIN_LOCATION_NAME", "DESTINATION_LOCATION_NAME", "DAY", "WEEK", "MONTH"))
-                                ),
+                                )),
                                 List.of("startDate", "endDate", "groupBy")
                         )
                 )
@@ -273,11 +333,49 @@ public class ToolRegistry {
                         "getRoutePatterns",
                         "Analyzes route patterns: most common routes, unique route count, average/longest trip. Use for route frequency and travel diversity. NOT for transport modes or location visits.",
                         createParametersSchema(
-                                Map.of(
+                                withTargetProperties(Map.of(
                                         "startDate", propertySpec("string", "Start date (YYYY-MM-DD)"),
                                         "endDate", propertySpec("string", "End date (YYYY-MM-DD)")
-                                ),
+                                )),
                                 List.of("startDate", "endDate")
+                        )
+                )
+        );
+    }
+
+    private FunctionDefinition createListAccessibleTimelineFriendsSpec() {
+        return new FunctionDefinition(
+                "function",
+                new FunctionSpec(
+                        "listAccessibleTimelineFriends",
+                        "Lists friends who granted timeline access. Use this before FRIEND-scoped timeline queries to pick a valid email/full name.",
+                        createParametersSchema(Map.of(), List.of())
+                )
+        );
+    }
+
+    private FunctionDefinition createListAccessibleLiveFriendsSpec() {
+        return new FunctionDefinition(
+                "function",
+                new FunctionSpec(
+                        "listAccessibleLiveFriends",
+                        "Lists friends who granted live location access. Use this before asking where a friend is right now.",
+                        createParametersSchema(Map.of(), List.of())
+                )
+        );
+    }
+
+    private FunctionDefinition createGetFriendLiveLocationSpec() {
+        return new FunctionDefinition(
+                "function",
+                new FunctionSpec(
+                        "getFriendLiveLocation",
+                        "Gets the latest known live location for one friend, including timestamp, recency fields (secondsAgo/liveNow/stale), and coordinates. If targetUser is omitted and exactly one friend shared live location, that friend is selected automatically.",
+                        createParametersSchema(
+                                Map.of(
+                                        "targetUser", propertySpec("string", "Optional friend identifier (email or full name).")
+                                ),
+                                List.of()
                         )
                 )
         );
@@ -297,8 +395,6 @@ public class ToolRegistry {
         );
     }
 
-    // Helper methods for schema creation
-
     private Map<String, Object> createParametersSchema(Map<String, Map<String, Object>> properties, List<String> required) {
         Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
@@ -307,6 +403,16 @@ public class ToolRegistry {
             schema.put("required", required);
         }
         return schema;
+    }
+
+    private Map<String, Map<String, Object>> withTargetProperties(Map<String, Map<String, Object>> baseProperties) {
+        Map<String, Map<String, Object>> properties = new LinkedHashMap<>(baseProperties);
+        properties.put("targetScope", enumPropertySpec("string",
+                "Optional target scope. SELF (default) queries your timeline. FRIEND queries a friend's timeline.",
+                List.of("SELF", "FRIEND")));
+        properties.put("targetUser", propertySpec("string",
+                "Optional friend identifier (email or full name). Required for FRIEND scope unless exactly one friend has shared timeline access."));
+        return properties;
     }
 
     private Map<String, Object> propertySpec(String type, String description) {
@@ -324,7 +430,47 @@ public class ToolRegistry {
         return property;
     }
 
-    // Inner record for registered tools
+    private JsonNode parseArgs(String argumentsJson) throws Exception {
+        if (argumentsJson == null || argumentsJson.isBlank()) {
+            return objectMapper.createObjectNode();
+        }
+        return objectMapper.readTree(argumentsJson);
+    }
+
+    private String getRequiredText(JsonNode args, String fieldName) {
+        String value = getOptionalText(args, fieldName);
+        if (value == null) {
+            throw new IllegalArgumentException("Missing required argument: " + fieldName);
+        }
+        return value;
+    }
+
+    private String getOptionalText(JsonNode args, String fieldName) {
+        if (args == null || args.isMissingNode()) {
+            return null;
+        }
+        JsonNode value = args.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        String text = value.asText();
+        return text != null && !text.isBlank() ? text.trim() : null;
+    }
+
+    private String serializeToolError(AIToolException e) {
+        try {
+            return objectMapper.writeValueAsString(e.toErrorPayload());
+        } catch (Exception serializationError) {
+            log.error("Failed to serialize structured AI tool error", serializationError);
+            return unsafeFallbackErrorJson(e);
+        }
+    }
+
+    private String unsafeFallbackErrorJson(Exception e) {
+        String message = e.getMessage() == null ? "Unknown tool error" : e.getMessage().replace("\"", "'");
+        return "{\"error\": {\"code\": \"TOOL_EXECUTION_ERROR\", \"message\": \"" + message + "\"}}";
+    }
+
     private record RegisteredTool(FunctionDefinition definition, Function<String, String> invoker) {
     }
 }
