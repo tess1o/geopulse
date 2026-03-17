@@ -97,14 +97,14 @@ the [Docker Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-sta
 *Global travel statistics, milestones, and badges.*
 
 ### Monthly Trends
-![Monthly movement stats and heatmap](docsmages/month_stats.jpg)
+![Monthly movement stats and heatmap](images/month_stats.jpg)
 *Monthly summaries and movement heatmap.*
 
 ### Location Analytics
 ![Location analytics map view](images/location_analytics_map.jpeg)
 *Map-first analytics similar to Timeline views.*
 
-### Country Stats
+### Country/City Stats
 ![Country and city travel statistics](images/location_analytics_countries.png)
 *Track travels by country and city.*
 
@@ -118,34 +118,6 @@ the [Docker Deployment Guide](https://tess1o.github.io/geopulse/docs/getting-sta
 
 </details>
 
-
-## 📸 Feature Tour
-
-<details>
-<summary>Click to expand gallery</summary>
-
-|                 **Dashboard**                  |                    **Journey Insights**                    |
-|:----------------------------------------------:|:----------------------------------------------------------:|
-| <img src="images/dashboard.png" width="400" /> | <img src="images/journey_insights_full.jpg" width="400" /> |
-|     *High-level overview of your activity*     | *Global statistics for your journeys, milestones, badges*  |
-
-|                **Monthly Trends**                |                    **Journey Insights**                    |
-|:------------------------------------------------:|:----------------------------------------------------------:|
-| <img src="images/month_stats.jpg" width="400" /> | <img src="images/journey_insights_full.jpg" width="400" /> |
-| *Monthly summaries and movement stats, heatmap*  | *Global statistics for your journeys, milestones, badges*  |
-
-|                    **Location Analytics**                    |                         **Country Stats**                         |
-|:------------------------------------------------------------:|:-----------------------------------------------------------------:|
-| <img src="images/location_analytics_map.jpeg" width="400" /> | <img src="images/location_analytics_countries.png" width="400" /> | <img src="images/month_stats.jpg" width="400" /> |
-|                    *Like Google Timeline*                    |             *Track your travels by country and city*              
-
-|            **GPS Data Management**            |               **AI Assistant**               |
-|:---------------------------------------------:|:--------------------------------------------:|
-| <img src="images/gps_data.png" width="400" /> | <img src="images/AI_Chat.png" width="400" /> |
-|            *See your raw GPS data*            |   *Natural language queries for your data*   |
-
-</details>
---- 
 
 ## Deployment Options
 
