@@ -24,7 +24,7 @@ searchable timeline of stays, trips, and movement patterns. It runs fully on you
 
 ---
 
-## 🚀 1-Minute Install
+## Quick installation
 
 ```bash
 # Create directory and download config
