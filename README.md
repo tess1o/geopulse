@@ -149,12 +149,9 @@ helm install my-geopulse geopulse/geopulse
 
 * **New users:** [Quick Start Guide](https://tess1o.github.io/geopulse/docs/getting-started/quick-start)
 * **GPS setup:** [GPS Sources Overview](https://tess1o.github.io/geopulse/docs/user-guide/gps-sources/overview)
-* **Deployment:
-  ** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
-* **Administration:
-  ** [Admin Panel](https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://tess1o.github.io/geopulse/docs/system-administration/configuration/oidc-sso)
-* **Maintenance:
-  ** [Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore) | [Updating](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/updating)
+* **Deployment:** [Docker](https://tess1o.github.io/geopulse/docs/getting-started/deployment/docker-compose) | [Kubernetes](https://tess1o.github.io/geopulse/docs/getting-started/deployment/kubernetes-helm) | [Env Variables](https://tess1o.github.io/geopulse/docs/getting-started/deployment/environment-variables)
+* **Administration:** [Admin Panel](https://tess1o.github.io/geopulse/docs/system-administration/configuration/admin-panel) | [OIDC/SSO](https://tess1o.github.io/geopulse/docs/system-administration/configuration/oidc-sso)
+* **Maintenance:** [Backup & Restore](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/backup-restore) | [Updating](https://tess1o.github.io/geopulse/docs/system-administration/maintenance/updating)
 * **Full documentation:** [Documentation Portal](https://tess1o.github.io/geopulse/)
 
 ---
