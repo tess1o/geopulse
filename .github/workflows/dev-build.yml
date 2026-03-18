@@ -91,7 +91,7 @@ jobs:
             ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}-arm64
 
   build-backend-native-amd64:
-    name: Build Backend Native AMD64 (dev)
+    name: Build Backend Native AMD64 Compatible (dev)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -106,7 +106,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Backend Native AMD64 (dev)
+      - name: Build and push Backend Native AMD64 Compatible (dev)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -115,14 +115,14 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ env.DEV_VERSION }}-native
-            QUARKUS_NATIVE_BUILD_ARGS=
+            QUARKUS_NATIVE_BUILD_ARGS=,-march=x86-64-v2
           tags: |
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native-amd64
-          cache-from: type=gha,scope=dev-backend-native-amd64
-          cache-to: type=gha,mode=max,scope=dev-backend-native-amd64
+          cache-from: type=gha,scope=dev-backend-native-amd64-compat
+          cache-to: type=gha,mode=max,scope=dev-backend-native-amd64-compat
 
   build-backend-native-arm64:
-    name: Build Backend Native ARM64 (dev)
+    name: Build Backend Native ARM64 Compatible (dev)
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
@@ -137,7 +137,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Backend Native ARM64 (dev)
+      - name: Build and push Backend Native ARM64 Compatible (dev)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -146,11 +146,11 @@ jobs:
           push: true
           build-args: |
             VERSION=${{ env.DEV_VERSION }}-native
-            QUARKUS_NATIVE_BUILD_ARGS=
+            QUARKUS_NATIVE_BUILD_ARGS=,-march=armv8-a+nolse
           tags: |
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native-arm64
-          cache-from: type=gha,scope=dev-backend-native-arm64
-          cache-to: type=gha,mode=max,scope=dev-backend-native-arm64
+          cache-from: type=gha,scope=dev-backend-native-arm64-compat
+          cache-to: type=gha,mode=max,scope=dev-backend-native-arm64-compat
 
   create-backend-native-manifest:
     name: Create Backend Native Multi-Arch Manifest (dev)
