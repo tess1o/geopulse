@@ -12,15 +12,12 @@ permissions:
   contents: read
 
 jobs:
-  build-frontend:
-    name: Build Frontend Multi-Arch (dev)
+  build-frontend-amd64:
+    name: Build Frontend AMD64 (dev)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -31,29 +28,26 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Frontend Multi-Arch (dev)
+      - name: Build and push Frontend AMD64 (dev)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           build-args: |
             VERSION=${{ env.DEV_VERSION }}
           tags: |
-            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}
-          cache-from: type=gha,scope=dev-frontend-multiarch
-          cache-to: type=gha,mode=max,scope=dev-frontend-multiarch
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}-amd64
+          cache-from: type=gha,scope=dev-frontend-amd64
+          cache-to: type=gha,mode=max,scope=dev-frontend-amd64
 
-  build-backend-native:
-    name: Build Backend Native Multi-Arch (dev)
-    runs-on: ubuntu-latest
+  build-frontend-arm64:
+    name: Build Frontend ARM64 (dev)
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -64,17 +58,114 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Backend Native Multi-Arch (dev)
+      - name: Build and push Frontend ARM64 (dev)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ env.DEV_VERSION }}
+          tags: |
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}-arm64
+          cache-from: type=gha,scope=dev-frontend-arm64
+          cache-to: type=gha,mode=max,scope=dev-frontend-arm64
+
+  create-frontend-manifest:
+    name: Create Frontend Multi-Arch Manifest (dev)
+    needs: [build-frontend-amd64, build-frontend-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push Frontend manifest (dev)
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }} \
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}-amd64 \
+            ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}-arm64
+
+  build-backend-native-amd64:
+    name: Build Backend Native AMD64 (dev)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Backend Native AMD64 (dev)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: backend/Dockerfile.native
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           build-args: |
             VERSION=${{ env.DEV_VERSION }}-native
             QUARKUS_NATIVE_BUILD_ARGS=
           tags: |
-            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native
-          cache-from: type=gha,scope=dev-backend-native-multiarch
-          cache-to: type=gha,mode=max,scope=dev-backend-native-multiarch
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native-amd64
+          cache-from: type=gha,scope=dev-backend-native-amd64
+          cache-to: type=gha,mode=max,scope=dev-backend-native-amd64
+
+  build-backend-native-arm64:
+    name: Build Backend Native ARM64 (dev)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Backend Native ARM64 (dev)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: backend/Dockerfile.native
+          platforms: linux/arm64
+          push: true
+          build-args: |
+            VERSION=${{ env.DEV_VERSION }}-native
+            QUARKUS_NATIVE_BUILD_ARGS=
+          tags: |
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native-arm64
+          cache-from: type=gha,scope=dev-backend-native-arm64
+          cache-to: type=gha,mode=max,scope=dev-backend-native-arm64
+
+  create-backend-native-manifest:
+    name: Create Backend Native Multi-Arch Manifest (dev)
+    needs: [build-backend-native-amd64, build-backend-native-arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Create and push Backend Native manifest (dev)
+        run: |
+          docker buildx imagetools create \
+            -t ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native-amd64 \
+            ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native-arm64
