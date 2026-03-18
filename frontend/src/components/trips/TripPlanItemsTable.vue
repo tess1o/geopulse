@@ -62,7 +62,7 @@
       </template>
     </Column>
 
-    <Column header="Actions" style="width: 13rem">
+    <Column header="Actions" style="width: 16rem">
       <template #body="{ data }">
         <Button
           icon="pi pi-check"
@@ -87,6 +87,13 @@
           class="p-button-text p-button-sm"
           v-tooltip.top="'Edit item'"
           @click="emitEditItem(data)"
+        />
+        <Button
+          icon="pi pi-map-marker"
+          class="p-button-text p-button-sm"
+          v-tooltip.top="'Open in Google Maps'"
+          :disabled="!hasCoordinates(data)"
+          @click="openGoogleMaps(data)"
         />
         <Button
           icon="pi pi-trash"
@@ -257,6 +264,20 @@ const emitFocusItem = (item) => emit('focus-item', item)
 const emitEditItem = (item) => emit('edit-item', item)
 const emitDeleteItem = (item) => emit('delete-item', item)
 const emitOverride = (item, action) => emit('override', { item, action })
+
+const hasCoordinates = (item) => {
+  return typeof item?.latitude === 'number' &&
+    Number.isFinite(item.latitude) &&
+    typeof item?.longitude === 'number' &&
+    Number.isFinite(item.longitude)
+}
+
+const openGoogleMaps = (item) => {
+  if (!hasCoordinates(item)) return
+
+  const url = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
 </script>
 
 <style scoped>
