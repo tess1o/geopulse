@@ -314,18 +314,10 @@ const apiService = {
      * @returns {Promise} - Response data
      */
     async _performSecureRequest(method, endpoint, data = null, options = {}) {
-        const publicEndpoints = [
-            '/auth/login',
-            '/users/register',  
-            '/auth/refresh',
-            '/auth/refresh-cookie'
-        ];
-
-        // Skip CSRF for public endpoints
-        const isPublicEndpoint = publicEndpoints.some(pe => endpoint.startsWith(pe));
-
         try {
-            const headers = isPublicEndpoint ? {} : this.getSecureHeaders();
+            // Always attach CSRF header for state-changing requests when token cookie exists.
+            // Public endpoints (e.g. login/register) also require CSRF validation when cookie is present.
+            const headers = this.getSecureHeaders();
             const mergedHeaders = {...headers, ...options.headers};
 
 

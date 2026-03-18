@@ -67,6 +67,8 @@ services:
 
   geopulse-postgres:
     image: postgis/postgis:17-3.5
+    #for ARM64 use the below image
+    #image: imresamu/postgis:17-3.5-alpine
     container_name: geopulse-postgres
     restart: unless-stopped
     environment:
