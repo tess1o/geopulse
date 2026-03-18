@@ -5,8 +5,11 @@ metadata:
   labels:
     {{- include "geopulse.labels" . | nindent 4 }}
 data:
-  # Frontend URLs
+  # Frontend URL (legacy fallback)
   GEOPULSE_UI_URL: {{ .Values.config.uiUrl | quote }}
+  GEOPULSE_PUBLIC_BASE_URL: {{ .Values.config.publicBaseUrl | quote }}
+  GEOPULSE_CORS_ENABLED: {{ .Values.config.cors.enabled | quote }}
+  GEOPULSE_CORS_ORIGINS: {{ .Values.config.cors.origins | quote }}
 
   # Cookie configuration
   GEOPULSE_COOKIE_DOMAIN: {{ .Values.config.cookieDomain | quote }}
@@ -90,6 +93,7 @@ data:
 
   # OIDC Configuration
   GEOPULSE_OIDC_ENABLED: {{ .Values.config.oidc.enabled | quote }}
+  GEOPULSE_OIDC_CALLBACK_BASE_URL: {{ .Values.config.oidc.callbackBaseUrl | quote }}
   GEOPULSE_OIDC_AUTO_LINK_ACCOUNTS: {{ .Values.config.oidc.autoLinkAccounts | quote }}
   GEOPULSE_OIDC_CLEANUP_ENABLED: {{ .Values.config.oidc.cleanupEnabled | quote }}
   GEOPULSE_OIDC_JWKS_CACHE_TTL_HOURS: {{ .Values.config.oidc.jwksCacheTtlHours | default "24" | quote }}

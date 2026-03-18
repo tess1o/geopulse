@@ -576,11 +576,14 @@ Create `/etc/geopulse/geopulse.env`:
 sudo tee /etc/geopulse/geopulse.env > /dev/null << 'EOF'
 # GeoPulse Configuration
 
-# ⚠️ REQUIRED: Frontend URL - MUST be updated or the application will not work!
-# Use your server's IP address or domain name. For multiple domains, separate with commas.
-# Examples:
-#   Single domain: GEOPULSE_UI_URL=http://192.168.1.100
-#   Multiple:      GEOPULSE_UI_URL=http://192.168.1.100,http://example.com,https://example.com
+# Recommended public base URL (used for callbacks/links)
+GEOPULSE_PUBLIC_BASE_URL=http://your-server-ip
+
+# CORS (manual install uses nginx same-origin by default)
+GEOPULSE_CORS_ENABLED=false
+GEOPULSE_CORS_ORIGINS=
+
+# Legacy fallback (deprecated)
 GEOPULSE_UI_URL=http://your-server-ip
 
 # Backend port
@@ -620,11 +623,10 @@ sudo nano /etc/geopulse/geopulse.env
 
 **Required changes:**
 
-1. **GEOPULSE_UI_URL** (line 8) - Replace `http://your-server-ip` with your actual server IP or domain
-   - Without this, you will get **"Request failed with status code 403"** CORS errors
-   - Example: `GEOPULSE_UI_URL=http://192.168.1.100`
+1. **GEOPULSE_PUBLIC_BASE_URL** - Replace `http://your-server-ip` with your actual server IP or domain
+   - Example: `GEOPULSE_PUBLIC_BASE_URL=http://192.168.1.100`
 
-2. **GEOPULSE_POSTGRES_PASSWORD** (line 21) - Replace `your_secure_password_here` with the password you set in step 6
+2. **GEOPULSE_POSTGRES_PASSWORD** - Replace `your_secure_password_here` with the password you set in step 6
 :::
 
 **Set secure permissions:**
@@ -1105,8 +1107,9 @@ Changes to environment variables require a service restart. Frontend changes (Ng
 
 #### Add Allowed Origins (CORS)
 
-1. Update `GEOPULSE_UI_URL` in `/etc/geopulse/geopulse.env` (separate multiple domains with commas)
-2. Restart backend: `sudo systemctl restart geopulse-backend`
+1. Set `GEOPULSE_CORS_ENABLED=true` in `/etc/geopulse/geopulse.env`
+2. Set `GEOPULSE_CORS_ORIGINS` to your allowed origins (comma-separated)
+3. Restart backend: `sudo systemctl restart geopulse-backend`
 
 ---
 
@@ -1365,13 +1368,15 @@ This error means the backend is rejecting requests from your frontend URL due to
 
 :::tip How to Fix
 
-1. Add your domain/IP to `GEOPULSE_UI_URL` in `/etc/geopulse/geopulse.env`:
+1. Enable CORS and configure origins in `/etc/geopulse/geopulse.env`:
    ```bash
+   GEOPULSE_CORS_ENABLED=true
+
    # Single domain
-   GEOPULSE_UI_URL=http://your-server-ip
+   GEOPULSE_CORS_ORIGINS=http://your-server-ip
 
    # Multiple domains (separate with commas)
-   GEOPULSE_UI_URL=http://192.168.1.100,http://example.com,https://example.com
+   GEOPULSE_CORS_ORIGINS=http://192.168.1.100,http://example.com,https://example.com
    ```
 
 2. Restart backend:

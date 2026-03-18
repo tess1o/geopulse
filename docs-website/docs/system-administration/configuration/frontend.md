@@ -7,6 +7,8 @@ description: Configure upload limits and DNS resolvers for the GeoPulse frontend
 
 This page describes the available environment variables for customizing the Nginx frontend used by GeoPulse.
 
+> Canonical env var reference: [Environment Variables Reference](/docs/getting-started/deployment/environment-variables)
+
 ---
 
 ## 🧩 Overview

@@ -79,9 +79,13 @@ public class OidcAuthenticationService {
     @StaticInitSafe
     Optional<String> callbackBaseUrl;
 
-    @ConfigProperty(name = "quarkus.http.cors.origins", defaultValue = "http://localhost:5555")
+    @ConfigProperty(name = "geopulse.public-base-url")
     @StaticInitSafe
-    String uiUrl;
+    Optional<String> publicBaseUrl;
+
+    @ConfigProperty(name = "geopulse.ui.url")
+    @StaticInitSafe
+    Optional<String> uiUrl;
 
     @ConfigProperty(name = "geopulse.oidc.state-token.expiry-minutes", defaultValue = "10")
     @StaticInitSafe
@@ -115,17 +119,35 @@ public class OidcAuthenticationService {
         }
 
         String effectiveUrl = getEffectiveCallbackBaseUrl();
+        Optional<String> callback = firstConfiguredUrl(callbackBaseUrl);
+        Optional<String> publicBase = firstConfiguredUrl(publicBaseUrl);
+        Optional<String> legacyUiUrl = firstConfiguredUrl(uiUrl);
 
-        // Warn if using fallback URL with multiple origins
-        if (callbackBaseUrl.isEmpty() || callbackBaseUrl.filter(url -> !url.isBlank()).isEmpty()) {
-            if (uiUrl.contains(",")) {
-                log.warn("OIDC CONFIGURATION WARNING: No explicit callback URL set and UI URL contains multiple origins: {}", uiUrl);
-                log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
-                log.warn("To specify an explicit callback URL, set GEOPULSE_OIDC_CALLBACK_BASE_URL environment variable.");
-            }
-        } else if (callbackBaseUrl.filter(url -> url.contains(",")).isPresent()) {
+        // Warn if configured value contains multiple URLs
+        if (callbackBaseUrl.filter(url -> !url.isBlank() && url.contains(",")).isPresent()) {
             log.warn("OIDC CONFIGURATION WARNING: geopulse.oidc.callback-base-url contains multiple URLs: {}", callbackBaseUrl.get());
             log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
+        } else if (publicBaseUrl.filter(url -> !url.isBlank() && url.contains(",")).isPresent()) {
+            log.warn("OIDC CONFIGURATION WARNING: geopulse.public-base-url contains multiple URLs: {}", publicBaseUrl.get());
+            log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
+        } else if (uiUrl.filter(url -> !url.isBlank() && url.contains(",")).isPresent()) {
+            log.warn("OIDC CONFIGURATION WARNING: Legacy GEOPULSE_UI_URL contains multiple URLs: {}", uiUrl.get());
+            log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
+        }
+
+        if (callback.isPresent()) {
+            log.info("OIDC callback URL source: GEOPULSE_OIDC_CALLBACK_BASE_URL");
+        } else if (publicBase.isPresent()) {
+            log.info("OIDC callback URL source: GEOPULSE_PUBLIC_BASE_URL");
+        } else if (legacyUiUrl.isPresent()) {
+            log.warn("OIDC CONFIGURATION WARNING: Falling back to deprecated GEOPULSE_UI_URL for OIDC callback URL.");
+            if (uiUrl.filter(url -> url.contains(",")).isPresent()) {
+                log.warn("Only the first URL '{}' will be used for OIDC callbacks.", effectiveUrl);
+            }
+            log.warn("Set GEOPULSE_OIDC_CALLBACK_BASE_URL (preferred) or GEOPULSE_PUBLIC_BASE_URL.");
+        } else {
+            log.warn("OIDC CONFIGURATION WARNING: No callback base URL configured. Falling back to http://localhost:5555.");
+            log.warn("Set GEOPULSE_OIDC_CALLBACK_BASE_URL (preferred) or GEOPULSE_PUBLIC_BASE_URL.");
         }
 
         log.info("OIDC callback URL: {}/oidc/callback", effectiveUrl);
@@ -504,20 +526,38 @@ public class OidcAuthenticationService {
     }
 
     private String getEffectiveCallbackBaseUrl() {
-        // Use explicit callback URL if set, otherwise fallback to UI URL (from CORS origins)
-        String baseUrl = callbackBaseUrl
-                .filter(url -> !url.isBlank())
-                .orElse(uiUrl);
-
-        // If contains multiple URLs (comma-separated), use the first one
-        if (baseUrl.contains(",")) {
-            return baseUrl.split(",")[0].trim();
+        Optional<String> callback = firstConfiguredUrl(callbackBaseUrl);
+        if (callback.isPresent()) {
+            return callback.get();
         }
-        return baseUrl;
+
+        Optional<String> publicBase = firstConfiguredUrl(publicBaseUrl);
+        if (publicBase.isPresent()) {
+            return publicBase.get();
+        }
+
+        Optional<String> legacyUiUrl = firstConfiguredUrl(uiUrl);
+        if (legacyUiUrl.isPresent()) {
+            return legacyUiUrl.get();
+        }
+
+        return "http://localhost:5555";
     }
 
     private String getCallbackUrl() {
         return getEffectiveCallbackBaseUrl() + "/oidc/callback";
+    }
+
+    private Optional<String> firstConfiguredUrl(Optional<String> value) {
+        if (value.isEmpty() || value.get().isBlank()) {
+            return Optional.empty();
+        }
+
+        String first = value.get().split(",")[0].trim();
+        if (first.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.of(first);
     }
 
     private OidcTokenResponse exchangeCodeForTokens(OidcProviderConfiguration provider, String code) {

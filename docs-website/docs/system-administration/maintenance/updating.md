@@ -54,6 +54,21 @@ Save this script as `update-geopulse.sh`, make it executable with `chmod +x upda
 
 Database migrations are handled automatically when the backend starts up. You don't need to run any manual migration commands.
 
+### CORS/OIDC Variable Migration (Compatibility)
+
+Recent versions introduced explicit CORS and public base URL variables while keeping legacy behavior for existing setups.
+
+| Purpose | New variables | Legacy fallback | Compatibility behavior |
+|---|---|---|---|
+| CORS enable/disable | `GEOPULSE_CORS_ENABLED` | none | If not set, backend keeps compatibility default (`true`). New `.env.example` sets `false`. |
+| CORS origins | `GEOPULSE_CORS_ORIGINS` | `GEOPULSE_UI_URL` | Legacy fallback still works, but is deprecated. |
+| OIDC callback base URL | `GEOPULSE_OIDC_CALLBACK_BASE_URL` | `GEOPULSE_PUBLIC_BASE_URL`, then `GEOPULSE_UI_URL` | Existing setups continue working; explicit callback URL is recommended. |
+
+Recommended post-upgrade actions:
+1. Set `GEOPULSE_PUBLIC_BASE_URL` to your external URL.
+2. Keep `GEOPULSE_CORS_ENABLED=false` for standard nginx same-origin deployments.
+3. Use `GEOPULSE_OIDC_CALLBACK_BASE_URL` explicitly for OIDC deployments.
+
 ## Kubernetes/Helm Deployments
 
 ### Step 1: Update Chart Values
