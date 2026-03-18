@@ -12,12 +12,15 @@ permissions:
   contents: read
 
 jobs:
-  build-frontend-amd64:
-    name: Build Frontend AMD64 (dev)
+  build-frontend:
+    name: Build Frontend Multi-Arch (dev)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -28,26 +31,29 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Frontend AMD64 (dev)
+      - name: Build and push Frontend Multi-Arch (dev)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: frontend/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
             VERSION=${{ env.DEV_VERSION }}
           tags: |
             ${{ env.DOCKERHUB_FRONTEND_IMAGE }}:${{ env.DEV_VERSION }}
-          cache-from: type=gha,scope=dev-frontend-amd64
-          cache-to: type=gha,mode=max,scope=dev-frontend-amd64
+          cache-from: type=gha,scope=dev-frontend-multiarch
+          cache-to: type=gha,mode=max,scope=dev-frontend-multiarch
 
-  build-backend-native-amd64:
-    name: Build Backend Native AMD64 (dev)
+  build-backend-native:
+    name: Build Backend Native Multi-Arch (dev)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -58,17 +64,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Backend Native AMD64 (dev)
+      - name: Build and push Backend Native Multi-Arch (dev)
         uses: docker/build-push-action@v5
         with:
           context: .
           file: backend/Dockerfile.native
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
             VERSION=${{ env.DEV_VERSION }}-native
             QUARKUS_NATIVE_BUILD_ARGS=
           tags: |
             ${{ env.DOCKERHUB_BACKEND_IMAGE }}:${{ env.DEV_VERSION }}-native
-          cache-from: type=gha,scope=dev-backend-native-amd64
-          cache-to: type=gha,mode=max,scope=dev-backend-native-amd64
+          cache-from: type=gha,scope=dev-backend-native-multiarch
+          cache-to: type=gha,mode=max,scope=dev-backend-native-multiarch
