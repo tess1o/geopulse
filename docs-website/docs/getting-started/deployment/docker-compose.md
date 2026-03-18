@@ -66,6 +66,34 @@ curl -L -o docker-compose.yml https://raw.githubusercontent.com/tess1o/GeoPulse/
 docker compose up -d
 ```
 
+#### Optional: Add Apprise (Geofence External Notifications)
+
+Apprise is optional and is **not bundled** into the main compose files.
+
+Create an overlay file named `docker-compose.apprise.yml`:
+
+```yaml
+services:
+  geopulse-apprise:
+    image: caronc/apprise:latest
+    container_name: geopulse-apprise
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+```
+
+Then start with the overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.apprise.yml up -d
+```
+
+After startup, configure Apprise in GeoPulse Admin UI:
+
+- `Admin Dashboard > System Settings > System > Apprise Notifications`
+- Set API URL to `http://apprise-api:8000` (same Docker network name)
+- Enable Apprise and run a connection test
+
 #### After Start
 
 - Open GeoPulse UI: `http://localhost:5555`

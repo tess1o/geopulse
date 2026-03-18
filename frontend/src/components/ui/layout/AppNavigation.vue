@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import Drawer from 'primevue/drawer'
@@ -139,6 +139,8 @@ const { receivedInvitesCount } = storeToRefs(friendsStore)
 // Local state
 const visible = ref(false)
 const appVersion = ref('')
+const geofenceUnreadCount = ref(0)
+let geofenceUnreadInterval = null
 
 // Computed
 const drawerClasses = computed(() => ({
@@ -270,6 +272,14 @@ const accountItems = computed(() => [
     key: 'favorites-management'
   },
   {
+    label: 'Geofences',
+    icon: 'pi pi-bell',
+    to: '/app/geofences',
+    key: 'geofences',
+    badge: geofenceUnreadCount.value > 0 ? geofenceUnreadCount.value : null,
+    badgeType: 'danger'
+  },
+  {
     label: 'Timeline Preferences',
     icon: 'pi pi-cog',
     to: '/app/timeline/preferences',
@@ -355,6 +365,24 @@ const fetchVersion = async () => {
   }
 }
 
+const fetchGeofenceUnreadCount = async () => {
+  try {
+    const response = await apiService.get('/geofences/events/unread-count')
+    geofenceUnreadCount.value = Number(response?.data?.count || 0)
+  } catch (error) {
+    console.warn('Failed to fetch geofence unread count:', error)
+  }
+}
+
+const handleGeofenceUnreadUpdated = (event) => {
+  const count = Number(event?.detail?.count)
+  if (Number.isFinite(count) && count >= 0) {
+    geofenceUnreadCount.value = count
+    return
+  }
+  void fetchGeofenceUnreadCount()
+}
+
 // Load friends data and version
 onMounted(async () => {
   // Load received invitations count for badge display
@@ -368,6 +396,21 @@ onMounted(async () => {
 
   // Load app version
   await fetchVersion()
+
+  // Load geofence unread badge data
+  await fetchGeofenceUnreadCount()
+  geofenceUnreadInterval = window.setInterval(() => {
+    void fetchGeofenceUnreadCount()
+  }, 30000)
+  window.addEventListener('geofence-unread-count-updated', handleGeofenceUnreadUpdated)
+})
+
+onUnmounted(() => {
+  if (geofenceUnreadInterval) {
+    window.clearInterval(geofenceUnreadInterval)
+    geofenceUnreadInterval = null
+  }
+  window.removeEventListener('geofence-unread-count-updated', handleGeofenceUnreadUpdated)
 })
 </script>
 

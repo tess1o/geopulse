@@ -205,6 +205,28 @@ export const SETTING_METADATA = {
   'export.temp-file-retention-hours': {
     label: 'Temp File Retention (Hours)',
     description: 'How long to keep temporary export files before cleanup'
+  },
+
+  // System / Notifications Settings
+  'system.notifications.apprise.enabled': {
+    label: 'Enable Apprise Notifications',
+    description: 'Enable delivery of geofence alerts to Apprise destinations'
+  },
+  'system.notifications.apprise.api-url': {
+    label: 'Apprise API URL',
+    description: 'Base URL of the Apprise API service (for example http://apprise-api:8000)'
+  },
+  'system.notifications.apprise.auth-token': {
+    label: 'Apprise API Token',
+    description: 'Optional API token/key used for authenticating with Apprise (encrypted)'
+  },
+  'system.notifications.apprise.timeout-ms': {
+    label: 'Apprise Timeout (ms)',
+    description: 'HTTP request timeout when sending notifications to Apprise'
+  },
+  'system.notifications.apprise.verify-tls': {
+    label: 'Verify TLS Certificates',
+    description: 'Whether HTTPS certificate validation is enabled for Apprise requests'
   }
 }
 

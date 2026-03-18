@@ -16,6 +16,9 @@ import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.GeocodingValidationService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
+import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
+import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.ArrayList;
@@ -48,6 +51,9 @@ public class AdminSettingsResource {
 
     @Inject
     GeocodingValidationService geocodingValidationService;
+
+    @Inject
+    AppriseNotificationService appriseNotificationService;
 
     /**
      * Get all settings grouped by category.
@@ -196,5 +202,29 @@ public class AdminSettingsResource {
 
         // 4. If we reach here, all saves succeeded (transaction commits)
         return Response.ok(Map.of("success", true, "updated", orderedSettings.size())).build();
+    }
+
+    /**
+     * Test Apprise connectivity using current system settings.
+     */
+    @POST
+    @Path("/system/notifications/apprise/test")
+    public Response testAppriseConnection(AppriseTestRequest request) {
+        AppriseClientResult result = appriseNotificationService.testConnection(request);
+        if (result.isSuccess()) {
+            return Response.ok(Map.of(
+                    "success", true,
+                    "statusCode", result.getStatusCode(),
+                    "message", result.getMessage()
+            )).build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(Map.of(
+                        "success", false,
+                        "statusCode", result.getStatusCode(),
+                        "message", result.getMessage()
+                ))
+                .build();
     }
 }

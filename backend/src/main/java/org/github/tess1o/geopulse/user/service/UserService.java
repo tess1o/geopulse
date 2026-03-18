@@ -9,6 +9,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.auth.config.AuthConfigurationService;
 import org.github.tess1o.geopulse.auth.exceptions.InvalidPasswordException;
+import org.github.tess1o.geopulse.geofencing.service.DefaultNotificationTemplateService;
 import org.github.tess1o.geopulse.streaming.events.TimelinePreferencesUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TravelClassificationUpdatedEvent;
 import org.github.tess1o.geopulse.streaming.events.TimelineStructureUpdatedEvent;
@@ -38,6 +39,7 @@ public class UserService {
     private final Event<TimelineStructureUpdatedEvent> structureUpdatedEvent;
     private final AuthConfigurationService authConfigurationService;
     private final AsyncTimelineGenerationService asyncTimelineGenerationService;
+    private final DefaultNotificationTemplateService defaultNotificationTemplateService;
 
     @ConfigProperty(name = "geopulse.admin.email")
     Optional<String> adminEmail;
@@ -61,7 +63,8 @@ public class UserService {
                        Event<TravelClassificationUpdatedEvent> classificationUpdatedEvent,
                        Event<TimelineStructureUpdatedEvent> structureUpdatedEvent,
                        AuthConfigurationService authConfigurationService,
-                       AsyncTimelineGenerationService asyncTimelineGenerationService) {
+                       AsyncTimelineGenerationService asyncTimelineGenerationService,
+                       DefaultNotificationTemplateService defaultNotificationTemplateService) {
         this.userRepository = userRepository;
         this.securePasswordUtils = securePasswordUtils;
         this.preferencesUpdater = preferencesUpdater;
@@ -70,6 +73,7 @@ public class UserService {
         this.structureUpdatedEvent = structureUpdatedEvent;
         this.authConfigurationService = authConfigurationService;
         this.asyncTimelineGenerationService = asyncTimelineGenerationService;
+        this.defaultNotificationTemplateService = defaultNotificationTemplateService;
     }
 
     /**
@@ -115,7 +119,7 @@ public class UserService {
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
-        userRepository.persist(user);
+        persist(user);
         return user;
     }
 
@@ -165,7 +169,7 @@ public class UserService {
                 .coverageEnabled(coverageEnabledByDefault)
                 .build();
 
-        userRepository.persist(user);
+        persist(user);
         log.info("User {} registered via invitation token {}", email, invitationToken.substring(0, 8) + "...");
         return user;
     }
@@ -179,7 +183,15 @@ public class UserService {
     }
 
     public void persist(UserEntity user) {
-        this.userRepository.persist(user);
+        boolean isNewUser = user.getId() == null;
+        if (isNewUser) {
+            this.userRepository.persistAndFlush(user);
+        } else {
+            this.userRepository.persist(user);
+        }
+        if (isNewUser) {
+            defaultNotificationTemplateService.ensureDefaultsForUser(user.getId());
+        }
     }
 
     /**

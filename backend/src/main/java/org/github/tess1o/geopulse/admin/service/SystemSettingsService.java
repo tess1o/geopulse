@@ -155,6 +155,16 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.timeline.processing.thread-pool-size", "2", ValueType.INTEGER, "system", "Timeline processing threads"));
         SETTING_DEFINITIONS.put("system.timeline.view.item-limit",
                 new SettingDefinition("geopulse.timeline.view.item-limit", "150", ValueType.INTEGER, "system", "Max timeline items in view"));
+        SETTING_DEFINITIONS.put("system.notifications.apprise.enabled",
+                new SettingDefinition("geopulse.notifications.apprise.enabled", "false", ValueType.BOOLEAN, "system", "Enable/disable Apprise external notifications"));
+        SETTING_DEFINITIONS.put("system.notifications.apprise.api-url",
+                new SettingDefinition("geopulse.notifications.apprise.api-url", "", ValueType.STRING, "system", "Apprise API base URL (for example http://apprise-api:8000)"));
+        SETTING_DEFINITIONS.put("system.notifications.apprise.auth-token",
+                new SettingDefinition("geopulse.notifications.apprise.auth-token", "", ValueType.ENCRYPTED, "system", "Optional Apprise API key/token"));
+        SETTING_DEFINITIONS.put("system.notifications.apprise.timeout-ms",
+                new SettingDefinition("geopulse.notifications.apprise.timeout-ms", "5000", ValueType.INTEGER, "system", "Apprise HTTP timeout in milliseconds"));
+        SETTING_DEFINITIONS.put("system.notifications.apprise.verify-tls",
+                new SettingDefinition("geopulse.notifications.apprise.verify-tls", "true", ValueType.BOOLEAN, "system", "Verify TLS certificates when connecting to Apprise"));
 
         // AI Assistant settings
         SETTING_DEFINITIONS.put("ai.default-system-message",

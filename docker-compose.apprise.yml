@@ -1,0 +1,7 @@
+services:
+  apprise-api:
+    image: caronc/apprise:latest
+    container_name: geopulse-apprise
+    restart: unless-stopped
+    ports:
+      - "8000:8000"

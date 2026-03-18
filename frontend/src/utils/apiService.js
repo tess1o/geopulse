@@ -280,6 +280,13 @@ const apiService = {
         });
     },
 
+    async patch(endpoint, data = {}) {
+        return this._requestWithRetry(async () => {
+            await this.checkAuthExpired(endpoint);
+            return await this._performSecureRequest('patch', endpoint, data);
+        });
+    },
+
     /**
      * Perform a POST request with token refresh if needed
      * @param {string} endpoint - API endpoint
@@ -344,6 +351,8 @@ const apiService = {
             let response;
             if (method === 'post') {
                 response = await axios.post(`${API_BASE_URL}${endpoint}`, data, axiosOptions);
+            } else if (method === 'patch') {
+                response = await axios.patch(`${API_BASE_URL}${endpoint}`, data, axiosOptions);
             } else if (method === 'put') {
                 response = await axios.put(`${API_BASE_URL}${endpoint}`, data, axiosOptions);
             } else if (method === 'delete') {
@@ -356,6 +365,8 @@ const apiService = {
                 } else {
                     response = await axios.delete(`${API_BASE_URL}${endpoint}`, axiosOptions);
                 }
+            } else {
+                throw new Error(`Unsupported secure request method: ${method}`);
             }
 
             // For blob responses, return the full response object

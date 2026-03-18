@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.Dawarich
 import org.github.tess1o.geopulse.gps.integrations.dawarich.model.point.DawarichPayload;
 import org.github.tess1o.geopulse.gps.integrations.homeassistant.model.HomeAssistantGpsData;
 import org.github.tess1o.geopulse.gps.integrations.traccar.model.TraccarPositionData;
+import org.github.tess1o.geopulse.geofencing.service.GeofenceEvaluationService;
 import org.github.tess1o.geopulse.gps.mapper.GpsPointMapper;
 import org.github.tess1o.geopulse.gps.model.*;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -43,6 +44,7 @@ public class GpsPointService {
     private final StreamingTimelineGenerationService streamingTimelineGenerationService;
     private final GpsDataFilteringService filteringService;
     private final GpsTelemetryRenderingService telemetryRenderingService;
+    private final GeofenceEvaluationService geofenceEvaluationService;
 
     @ConfigProperty(name = "geopulse.gps.duplicate-detection.location-time-threshold-minutes", defaultValue = "2")
     int globalDuplicateDetectionThresholdMinutes;
@@ -52,7 +54,8 @@ public class GpsPointService {
                            GpsPointDuplicateDetectionService duplicateDetectionService, EntityManager em,
                            StreamingTimelineGenerationService streamingTimelineGenerationService,
                            GpsDataFilteringService filteringService,
-                           GpsTelemetryRenderingService telemetryRenderingService) {
+                           GpsTelemetryRenderingService telemetryRenderingService,
+                           GeofenceEvaluationService geofenceEvaluationService) {
         this.gpsPointMapper = gpsPointMapper;
         this.gpsPointRepository = gpsPointRepository;
         this.duplicateDetectionService = duplicateDetectionService;
@@ -60,6 +63,7 @@ public class GpsPointService {
         this.streamingTimelineGenerationService = streamingTimelineGenerationService;
         this.filteringService = filteringService;
         this.telemetryRenderingService = telemetryRenderingService;
+        this.geofenceEvaluationService = geofenceEvaluationService;
     }
 
     /**
@@ -91,6 +95,7 @@ public class GpsPointService {
         } else {
             // Persist the new entity
             gpsPointRepository.persist(entity);
+            geofenceEvaluationService.handlePersistedPoint(entity);
             log.info("Saved {} GPS point for user {} at timestamp {}", entity.getSourceType(), entity.getUser().getId(), entity.getTimestamp());
             return true;
         }
