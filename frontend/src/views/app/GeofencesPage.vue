@@ -11,406 +11,74 @@
         :activeIndex="activeTabIndex"
         @tab-change="onTabChange"
       >
-        <div v-if="activeTab === 'rules'" class="tab-panel">
-          <BaseCard class="panel-card">
-            <h3>{{ editingRuleId ? 'Edit Rule' : 'Create Rule' }}</h3>
-            <div class="form-grid">
-              <div class="rules-top-row wide">
-                <div class="field">
-                  <label>Name</label>
-                  <InputText
-                    v-model="ruleForm.name"
-                    placeholder="Home area"
-                    :class="{ 'p-invalid': !!ruleFormErrors.name }"
-                  />
-                  <small v-if="ruleFormErrors.name" class="error-text">{{ ruleFormErrors.name }}</small>
-                </div>
+        <GeofenceRulesTab
+          v-if="activeTab === 'rules'"
+          :editingRuleId="editingRuleId"
+          :ruleForm="ruleForm"
+          :ruleFormErrors="ruleFormErrors"
+          :subjectOptions="subjectOptions"
+          :mapCenter="mapCenter"
+          :mapZoom="mapZoom"
+          :selectedAreaSummary="selectedAreaSummary"
+          :statusOptions="statusOptions"
+          :enterTemplateOptions="enterTemplateOptions"
+          :leaveTemplateOptions="leaveTemplateOptions"
+          :hasEnabledDefaultEnterTemplate="hasEnabledDefaultEnterTemplate"
+          :enabledDefaultEnterTemplate="enabledDefaultEnterTemplate"
+          :hasEnabledDefaultLeaveTemplate="hasEnabledDefaultLeaveTemplate"
+          :enabledDefaultLeaveTemplate="enabledDefaultLeaveTemplate"
+          :savingRule="savingRule"
+          :rules="rules"
+          :eventSummary="eventSummary"
+          @start-rectangle-draw="startRectangleDraw"
+          @map-ready="handleMapReady"
+          @save-rule="saveRule"
+          @reset-rule-form="resetRuleForm"
+          @load-rules="loadRules"
+          @edit-rule="editRule"
+          @delete-rule="deleteRule"
+        />
 
-                <div class="field">
-                  <label>Subject</label>
-                  <Select
-                    v-model="ruleForm.subjectUserId"
-                    :options="subjectOptions"
-                    optionLabel="label"
-                    optionValue="value"
-                    placeholder="Select subject"
-                    :class="{ 'p-invalid': !!ruleFormErrors.subjectUserId }"
-                  />
-                  <small v-if="ruleFormErrors.subjectUserId" class="error-text">{{ ruleFormErrors.subjectUserId }}</small>
-                </div>
+        <GeofenceTemplatesTab
+          v-else-if="activeTab === 'templates'"
+          :editingTemplateId="editingTemplateId"
+          :templateForm="templateForm"
+          :templateFormErrors="templateFormErrors"
+          :templateNameInput="templateNameInput"
+          :templateDestinationInput="templateDestinationInput"
+          :templateTitleInput="templateTitleInput"
+          :templateBodyInput="templateBodyInput"
+          :templatePreview="templatePreview"
+          :templateMacros="templateMacros"
+          :currentDefaultEnterName="currentDefaultEnterName"
+          :currentDefaultLeaveName="currentDefaultLeaveName"
+          :savingTemplate="savingTemplate"
+          :templates="templates"
+          :formatDestination="formatDestination"
+          :defaultSummary="defaultSummary"
+          @focus-template-field="setFocusedTemplateField"
+          @insert-macro="insertMacro"
+          @save-template="saveTemplate"
+          @reset-template-form="resetTemplateForm"
+          @load-templates="loadTemplates"
+          @edit-template="editTemplate"
+          @delete-template="deleteTemplate"
+        />
 
-                <div class="field area-button-field">
-                  <label>Area Picker</label>
-                  <Button
-                    label="Draw Rectangle on Map"
-                    icon="pi pi-pencil"
-                    severity="secondary"
-                    outlined
-                    @click="startRectangleDraw"
-                  />
-                </div>
-              </div>
-
-              <div class="field wide">
-                <label>Area Map</label>
-                <div class="map-picker">
-                  <BaseMap
-                    mapId="geofence-rule-map"
-                    :center="mapCenter"
-                    :zoom="mapZoom"
-                    height="260px"
-                    width="100%"
-                    @map-ready="handleMapReady"
-                  />
-                </div>
-                <small v-if="selectedAreaSummary" class="muted-text">{{ selectedAreaSummary }}</small>
-                <small v-if="ruleFormErrors.area" class="error-text">{{ ruleFormErrors.area }}</small>
-              </div>
-
-              <div class="field toggle-field">
-                <label>Monitor Enter</label>
-                <InputSwitch v-model="ruleForm.monitorEnter" />
-              </div>
-
-              <div class="field toggle-field">
-                <label>Monitor Leave</label>
-                <InputSwitch v-model="ruleForm.monitorLeave" />
-              </div>
-              <div v-if="ruleFormErrors.monitoring" class="field wide">
-                <small class="error-text">{{ ruleFormErrors.monitoring }}</small>
-              </div>
-
-              <div class="field">
-                <label class="field-label-with-help">
-                  <span>Cooldown (seconds)</span>
-                  <i
-                    class="pi pi-info-circle help-icon"
-                    v-tooltip.bottom="'Prevents repeated Enter/Leave notifications for this rule during the cooldown window.'"
-                  />
-                </label>
-                <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" />
-                <small class="muted-text">Minimum delay between notifications for this rule.</small>
-              </div>
-
-              <div class="field">
-                <label>Enter Template</label>
-                <Select
-                  v-model="ruleForm.enterTemplateId"
-                  :options="enterTemplateOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  :placeholder="hasEnabledDefaultEnterTemplate ? 'Use default enter template' : 'Select enter template'"
-                />
-                <small v-if="hasEnabledDefaultEnterTemplate" class="muted-text">
-                  If empty, your default ENTER template ({{ enabledDefaultEnterTemplate?.name }}) is used.
-                </small>
-                <small v-else class="muted-text">
-                  No default ENTER template configured. Empty value uses built-in in-app message.
-                </small>
-              </div>
-
-              <div class="field">
-                <label>Leave Template</label>
-                <Select
-                  v-model="ruleForm.leaveTemplateId"
-                  :options="leaveTemplateOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  :placeholder="hasEnabledDefaultLeaveTemplate ? 'Use default leave template' : 'Select leave template'"
-                />
-                <small v-if="hasEnabledDefaultLeaveTemplate" class="muted-text">
-                  If empty, your default LEAVE template ({{ enabledDefaultLeaveTemplate?.name }}) is used.
-                </small>
-                <small v-else class="muted-text">
-                  No default LEAVE template configured. Empty value uses built-in in-app message.
-                </small>
-              </div>
-
-              <div class="field">
-                <label>Status</label>
-                <Select
-                  v-model="ruleForm.status"
-                  :options="statusOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                />
-              </div>
-            </div>
-
-            <div class="actions-row">
-              <Button
-                :label="editingRuleId ? 'Update Rule' : 'Create Rule'"
-                icon="pi pi-save"
-                @click="saveRule"
-                :loading="savingRule"
-              />
-              <Button
-                v-if="editingRuleId"
-                label="Cancel"
-                severity="secondary"
-                outlined
-                @click="resetRuleForm"
-              />
-            </div>
-          </BaseCard>
-
-          <BaseCard class="panel-card">
-            <div class="table-header">
-              <h3>Rules</h3>
-              <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined @click="loadRules" />
-            </div>
-            <DataTable :value="rules" dataKey="id" responsiveLayout="scroll">
-              <Column field="name" header="Name" />
-              <Column field="subjectDisplayName" header="Subject" />
-              <Column header="Events">
-                <template #body="slotProps">
-                  <span>{{ eventSummary(slotProps.data) }}</span>
-                </template>
-              </Column>
-              <Column field="cooldownSeconds" header="Cooldown" />
-              <Column field="status" header="Status">
-                <template #body="slotProps">
-                  <Tag :value="slotProps.data.status" :severity="slotProps.data.status === 'ACTIVE' ? 'success' : 'secondary'" />
-                </template>
-              </Column>
-              <Column header="Actions">
-                <template #body="slotProps">
-                  <div class="row-actions">
-                    <Button icon="pi pi-pencil" text @click="editRule(slotProps.data)" />
-                    <Button icon="pi pi-trash" text severity="danger" @click="deleteRule(slotProps.data)" />
-                  </div>
-                </template>
-              </Column>
-            </DataTable>
-          </BaseCard>
-        </div>
-
-        <div v-else-if="activeTab === 'templates'" class="tab-panel">
-          <BaseCard class="panel-card">
-            <h3>{{ editingTemplateId ? 'Edit Template' : 'Create Template' }}</h3>
-            <div class="form-grid">
-              <div class="field">
-                <label>Name</label>
-                <InputText
-                  ref="templateNameInput"
-                  v-model="templateForm.name"
-                  placeholder="Telegram Enter Alert"
-                  :class="{ 'p-invalid': !!templateFormErrors.name }"
-                />
-                <small v-if="templateFormErrors.name" class="error-text">{{ templateFormErrors.name }}</small>
-              </div>
-              <div class="field wide">
-                <label>Destination URL(s) (optional)</label>
-                <Textarea
-                  ref="templateDestinationInput"
-                  v-model="templateForm.destination"
-                  rows="3"
-                  autoResize
-                  placeholder="tgram://TOKEN/CHAT_ID&#10;discord://WEBHOOK_TOKEN"
-                  :class="{ 'p-invalid': !!templateFormErrors.destination }"
-                />
-                <small class="muted-text">One destination URL per line. Leave empty for in-app only notifications.</small>
-                <small v-if="templateFormErrors.destination" class="error-text">{{ templateFormErrors.destination }}</small>
-              </div>
-              <div class="field wide">
-                <label>Title Template</label>
-                <InputText
-                  ref="templateTitleInput"
-                  v-model="templateForm.titleTemplate"
-                  placeholder="{{subjectName}} {{eventVerb}} {{geofenceName}}"
-                  :class="{ 'p-invalid': !!templateFormErrors.titleTemplate }"
-                  @focus="setFocusedTemplateField('titleTemplate')"
-                />
-                <small v-if="templateFormErrors.titleTemplate" class="error-text">{{ templateFormErrors.titleTemplate }}</small>
-              </div>
-              <div class="field wide">
-                <label>Body Template</label>
-                <Textarea
-                  ref="templateBodyInput"
-                  v-model="templateForm.bodyTemplate"
-                  rows="4"
-                  autoResize
-                  :class="{ 'p-invalid': !!templateFormErrors.bodyTemplate }"
-                  @focus="setFocusedTemplateField('bodyTemplate')"
-                />
-                <small v-if="templateFormErrors.bodyTemplate" class="error-text">{{ templateFormErrors.bodyTemplate }}</small>
-                <div class="template-preview">
-                  <div class="template-preview-title">Preview (sample event)</div>
-                  <small class="muted-text">Using sample values and your current date/time format.</small>
-                  <div class="preview-row">
-                    <span class="preview-label">Title</span>
-                    <span class="preview-value">{{ templatePreview.title || '-' }}</span>
-                  </div>
-                  <div class="preview-row">
-                    <span class="preview-label">Body</span>
-                    <span class="preview-value">{{ templatePreview.body || '-' }}</span>
-                  </div>
-                </div>
-              </div>
-              <div class="field wide">
-                <div class="macro-help">
-                  <div class="macro-help-header">
-                    <div class="macro-help-title">Available macros</div>
-                    <small class="muted-text">Click a macro to insert into the focused Title/Body field.</small>
-                  </div>
-                  <div class="macro-grid">
-                    <div v-for="macro in templateMacros" :key="macro.key" class="macro-item">
-                      <button
-                        type="button"
-                        class="macro-chip"
-                        @click="insertMacro(macro.key)"
-                      >
-                        <code>{{ macro.key }}</code>
-                      </button>
-                      <span class="macro-description">{{ macro.description }}</span>
-                      <small class="muted-text">Example: {{ macro.example }}</small>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="field toggle-field">
-                <label>Default for Enter</label>
-                <InputSwitch v-model="templateForm.defaultForEnter" />
-                <small class="muted-text">Current default: {{ currentDefaultEnterName }}</small>
-                <small v-if="templateFormErrors.defaultForEnter" class="error-text">{{ templateFormErrors.defaultForEnter }}</small>
-              </div>
-              <div class="field toggle-field">
-                <label>Default for Leave</label>
-                <InputSwitch v-model="templateForm.defaultForLeave" />
-                <small class="muted-text">Current default: {{ currentDefaultLeaveName }}</small>
-                <small v-if="templateFormErrors.defaultForLeave" class="error-text">{{ templateFormErrors.defaultForLeave }}</small>
-              </div>
-              <div class="field toggle-field">
-                <label>Enabled</label>
-                <InputSwitch v-model="templateForm.enabled" />
-              </div>
-              <div v-if="templateFormErrors.general" class="field wide">
-                <small class="error-text">{{ templateFormErrors.general }}</small>
-              </div>
-            </div>
-
-            <div class="actions-row">
-              <Button
-                :label="editingTemplateId ? 'Update Template' : 'Create Template'"
-                icon="pi pi-save"
-                @click="saveTemplate"
-                :loading="savingTemplate"
-              />
-              <Button
-                v-if="editingTemplateId"
-                label="Cancel"
-                severity="secondary"
-                outlined
-                @click="resetTemplateForm"
-              />
-            </div>
-          </BaseCard>
-
-          <BaseCard class="panel-card">
-            <div class="table-header">
-              <h3>Templates</h3>
-              <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined @click="loadTemplates" />
-            </div>
-            <DataTable :value="templates" dataKey="id" responsiveLayout="scroll">
-              <Column field="name" header="Name" />
-              <Column header="Destination">
-                <template #body="slotProps">
-                  <span>{{ formatDestination(slotProps.data.destination) }}</span>
-                </template>
-              </Column>
-              <Column header="Defaults">
-                <template #body="slotProps">
-                  <span>
-                    {{ defaultSummary(slotProps.data) }}
-                  </span>
-                </template>
-              </Column>
-              <Column field="enabled" header="Enabled">
-                <template #body="slotProps">
-                  <Tag :value="slotProps.data.enabled ? 'Yes' : 'No'" :severity="slotProps.data.enabled ? 'success' : 'warning'" />
-                </template>
-              </Column>
-              <Column header="Actions">
-                <template #body="slotProps">
-                  <div class="row-actions">
-                    <Button icon="pi pi-pencil" text @click="editTemplate(slotProps.data)" />
-                    <Button icon="pi pi-trash" text severity="danger" @click="deleteTemplate(slotProps.data)" />
-                  </div>
-                </template>
-              </Column>
-            </DataTable>
-          </BaseCard>
-        </div>
-
-        <div v-else class="tab-panel">
-          <BaseCard class="panel-card">
-            <div class="table-header">
-              <div class="table-header-left">
-                <h3>Events</h3>
-                <Tag v-if="unreadCount > 0" :value="`${unreadCount} unread`" severity="danger" />
-              </div>
-              <div class="table-header-actions">
-                <div class="inline-toggle">
-                  <label for="unreadOnlyToggle">Unread only</label>
-                  <InputSwitch
-                    inputId="unreadOnlyToggle"
-                    v-model="unreadOnly"
-                    @update:modelValue="handleUnreadOnlyToggle"
-                  />
-                </div>
-                <Button
-                  icon="pi pi-check"
-                  label="Mark all seen"
-                  severity="secondary"
-                  outlined
-                  :disabled="unreadCount === 0"
-                  :loading="markingAllSeen"
-                  @click="markAllEventsSeen"
-                />
-                <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined @click="refreshEvents" />
-              </div>
-            </div>
-            <DataTable :value="events" dataKey="id" responsiveLayout="scroll">
-              <Column field="occurredAt" header="Time">
-                <template #body="slotProps">
-                  {{ formatDate(slotProps.data.occurredAt) }}
-                </template>
-              </Column>
-              <Column field="title" header="Title" />
-              <Column field="subjectDisplayName" header="Subject" />
-              <Column field="ruleName" header="Rule" />
-              <Column field="eventType" header="Event" />
-              <Column field="message" header="Message" />
-              <Column header="Seen">
-                <template #body="slotProps">
-                  <Tag
-                    :value="slotProps.data.seen ? 'Seen' : 'New'"
-                    :severity="slotProps.data.seen ? 'secondary' : 'danger'"
-                  />
-                </template>
-              </Column>
-              <Column field="deliveryStatus" header="Delivery">
-                <template #body="slotProps">
-                  <Tag :value="slotProps.data.deliveryStatus" :severity="deliverySeverity(slotProps.data.deliveryStatus)" />
-                </template>
-              </Column>
-              <Column header="Actions">
-                <template #body="slotProps">
-                  <Button
-                    v-if="!slotProps.data.seen"
-                    icon="pi pi-check"
-                    label="Mark seen"
-                    size="small"
-                    severity="secondary"
-                    outlined
-                    :loading="markingEventId === slotProps.data.id"
-                    @click="markEventSeen(slotProps.data)"
-                  />
-                </template>
-              </Column>
-            </DataTable>
-          </BaseCard>
-        </div>
+        <GeofenceEventsTab
+          v-else
+          :events="events"
+          :unreadCount="unreadCount"
+          :unreadOnly="unreadOnly"
+          :markingAllSeen="markingAllSeen"
+          :markingEventId="markingEventId"
+          :formatDate="formatDate"
+          :deliverySeverity="deliverySeverity"
+          @toggle-unread-only="handleUnreadOnlyToggle"
+          @mark-all-events-seen="markAllEventsSeen"
+          @refresh-events="refreshEvents"
+          @mark-event-seen="markEventSeen"
+        />
       </TabContainer>
 
     </PageContainer>
@@ -432,18 +100,10 @@ import { useTimezone } from '@/composables/useTimezone'
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
-import BaseCard from '@/components/ui/base/BaseCard.vue'
-import BaseMap from '@/components/maps/BaseMap.vue'
-import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
-import Select from 'primevue/select'
-import InputSwitch from 'primevue/inputswitch'
-import Button from 'primevue/button'
-import DataTable from 'primevue/datatable'
-import Column from 'primevue/column'
-import Tag from 'primevue/tag'
 import ConfirmDialog from 'primevue/confirmdialog'
+import GeofenceRulesTab from '@/components/geofences/tabs/GeofenceRulesTab.vue'
+import GeofenceTemplatesTab from '@/components/geofences/tabs/GeofenceTemplatesTab.vue'
+import GeofenceEventsTab from '@/components/geofences/tabs/GeofenceEventsTab.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -1294,7 +954,8 @@ async function markAllEventsSeen() {
   }
 }
 
-function handleUnreadOnlyToggle() {
+function handleUnreadOnlyToggle(nextValue) {
+  unreadOnly.value = !!nextValue
   void refreshEvents()
 }
 
@@ -1512,215 +1173,3 @@ watch(
   }
 )
 </script>
-
-<style scoped>
-.tab-panel {
-  display: grid;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.panel-card {
-  padding: 1rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.75rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.field.wide {
-  grid-column: 1 / -1;
-}
-
-.rules-top-row {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) auto;
-  gap: 0.75rem;
-  align-items: end;
-}
-
-.area-button-field {
-  min-width: 220px;
-}
-
-.map-picker {
-  width: 100%;
-  border: 1px solid var(--surface-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.field label {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.field-label-with-help {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.help-icon {
-  color: var(--text-color-secondary);
-  cursor: help;
-  font-size: 0.85rem;
-}
-
-.muted-text {
-  color: var(--text-color-secondary);
-  font-size: 0.8rem;
-}
-
-.error-text {
-  color: var(--red-500);
-  font-size: 0.78rem;
-}
-
-.macro-help {
-  border: 1px solid var(--surface-border);
-  border-radius: 8px;
-  padding: 1rem;
-  background: var(--surface-50);
-}
-
-.macro-help-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.macro-help-title {
-  font-weight: 600;
-}
-
-.macro-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 0.6rem 0.75rem;
-  margin-top: 0.75rem;
-}
-
-.macro-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.55rem;
-  border-radius: 8px;
-  border: 1px solid var(--surface-border);
-  background: var(--surface-card);
-}
-
-.macro-chip {
-  align-self: flex-start;
-  border: 1px solid var(--primary-300);
-  background: var(--surface-50);
-  color: var(--text-color);
-  border-radius: 999px;
-  padding: 0.22rem 0.6rem;
-  cursor: pointer;
-}
-
-.macro-chip:hover {
-  border-color: var(--primary-500);
-}
-
-.macro-description {
-  font-size: 0.82rem;
-}
-
-.template-preview {
-  border: 1px solid var(--surface-border);
-  border-radius: 8px;
-  padding: 0.8rem;
-  background: var(--surface-50);
-  display: grid;
-  gap: 0.5rem;
-}
-
-.template-preview-title {
-  font-weight: 600;
-}
-
-.preview-row {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.preview-label {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-color-secondary);
-}
-
-.preview-value {
-  font-size: 0.9rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.toggle-field {
-  align-items: flex-start;
-}
-
-.actions-row {
-  margin-top: 1rem;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.table-header-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.table-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.inline-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.row-actions {
-  display: flex;
-  gap: 0.35rem;
-}
-
-@media (max-width: 768px) {
-  .tab-panel {
-    padding: 0.5rem;
-  }
-
-  .panel-card {
-    padding: 0.75rem;
-  }
-
-  .rules-top-row {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
