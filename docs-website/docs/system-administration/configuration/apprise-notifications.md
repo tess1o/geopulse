@@ -1,63 +1,99 @@
 # Apprise Notifications
 
-GeoPulse can deliver geofence alerts to external channels through [Apprise](https://github.com/caronc/apprise-api).
+GeoPulse can send geofence alerts to external channels through [Apprise](https://github.com/caronc/apprise-api).
 
-This integration is optional. GeoPulse always stores geofence events in-app; Apprise adds external delivery.
+Apprise is optional. Geofence events are always stored in-app.
 
-## What is configured where
+For the full geofence user workflow, see [Geofences](../../user-guide/core-features/geofences).
 
-- **Admin (global transport settings):** Apprise API endpoint, auth token, timeout, TLS behavior.
-- **User (per-template destinations):** destination URL(s) and message templates.
+## 1. Install Apprise (Docker Compose Overlay)
 
-## Admin UI Configuration
+GeoPulse does not add Apprise to main compose bundles by default.
+
+Use an overlay compose file (recommended):
+
+```yaml
+services:
+  apprise-api:
+    image: caronc/apprise:latest
+    container_name: geopulse-apprise
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+```
+
+Start with overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.apprise.yml up -d
+```
+
+See full deployment context in [Docker Compose Deployment](../../getting-started/deployment/docker-compose#optional-add-apprise-geofence-external-notifications).
+
+## 2. Choose the Correct Apprise API URL
+
+Set `system.notifications.apprise.api-url` (Admin UI) based on where backend runs:
+
+- **Backend + Apprise in same Docker Compose network:** `http://apprise-api:8000`
+- **Backend running on host machine, Apprise exposed on host port 8000:** `http://localhost:8000`
+- **Backend in another environment/network:** use reachable URL for that backend (for example `http://<apprise-host>:8000`)
+
+## 3. Configure Admin Settings
 
 Go to:
 
 `Admin Dashboard > System Settings > Notifications`
 
-Configure these settings:
+Configure:
 
 | Setting Key | Description |
 |---|---|
-| `system.notifications.apprise.enabled` | Master switch for Apprise delivery |
-| `system.notifications.apprise.api-url` | Base URL of Apprise API (for example `http://apprise-api:8000`) |
-| `system.notifications.apprise.auth-token` | Optional API token/key (encrypted) |
-| `system.notifications.apprise.timeout-ms` | Request timeout in milliseconds |
+| `system.notifications.apprise.enabled` | Master switch for external Apprise delivery |
+| `system.notifications.apprise.api-url` | Base URL of Apprise API |
+| `system.notifications.apprise.auth-token` | Optional token/key (encrypted at rest) |
+| `system.notifications.apprise.timeout-ms` | HTTP timeout in milliseconds |
 | `system.notifications.apprise.verify-tls` | TLS certificate verification toggle |
 
-Use **Test Apprise** to validate connectivity. You can optionally provide a destination to send a live test notification.
+Use **Test Apprise** to verify reachability/auth before enabling production delivery.
 
-## Geofence Event Cleanup
+## 4. User Templates vs Admin Transport
 
-In the same Notifications tab, you can configure retention cleanup for in-app geofence events:
+Apprise config is split between admin and users:
+
+- **Admin (global transport):** endpoint/auth/timeout/TLS
+- **User templates (per user):** destination URLs + message templates
+
+Template destination rules:
+
+- One Apprise URL per line
+- Leave destination empty for in-app only template
+
+## 5. Delivery + In-App Behavior
+
+- Every geofence event is persisted in-app.
+- Apprise delivery is additional (never replaces in-app events).
+- Delivery status is metadata on event records:
+  - `PENDING`
+  - `SENT`
+  - `FAILED`
+  - `SKIPPED`
+
+## 6. Geofence Event Cleanup Settings
+
+In the same Notifications tab:
 
 | Setting Key | Description |
 |---|---|
-| `system.notifications.geofence-events.cleanup.enabled` | Enable/disable automatic cleanup job |
-| `system.notifications.geofence-events.cleanup.interval-days` | How often cleanup runs (in days) |
+| `system.notifications.geofence-events.cleanup.enabled` | Enable/disable automatic cleanup |
 | `system.notifications.geofence-events.retention-days` | Delete events older than this number of days |
 
-## User Template Configuration
+Cleanup scheduler cadence is environment/property-based and requires backend restart:
 
-On the Geofences page, users create templates with:
-
-- Destination URL(s)
-- Optional title template
-- Optional body template
-- Default flags for enter/leave
-
-Geofence rules can select dedicated enter/leave templates, or rely on user defaults.
-
-## Delivery Behavior
-
-- Geofence events are persisted in-app.
-- If a matching enabled template has destination URL(s), event delivery is queued to Apprise.
-- Delivery status is tracked per event: `PENDING`, `SENT`, `FAILED`, `SKIPPED`.
-- Failed deliveries retry until max attempts is reached.
+- `geopulse.notifications.geofence-events.cleanup.scheduler-cadence` (default `12h`)
 
 ## Troubleshooting
 
-- **Test fails with 401/403:** verify API token and endpoint.
-- **Events remain `SKIPPED`:** check template enabled flag and destination URL(s).
-- **Events move to `FAILED`:** inspect event delivery error text and Apprise logs.
-- **No external delivery at all:** ensure `system.notifications.apprise.enabled=true` and API URL is configured.
+- **Test fails with 401/403:** verify auth token and endpoint.
+- **No external messages:** verify `apprise.enabled`, API URL, and template destinations.
+- **Events are `SKIPPED`:** destination missing/disabled template/non-deliverable path for that event.
+- **Events are `FAILED`:** inspect delivery error details and Apprise service logs.

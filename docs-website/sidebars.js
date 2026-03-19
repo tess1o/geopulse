@@ -137,6 +137,11 @@ const sidebars = {
                 },
                 {
                     type: 'doc',
+                    id: 'user-guide/core-features/geofences',
+                    label: 'Geofences',
+                },
+                {
+                    type: 'doc',
                     id: 'user-guide/using-geopulse/ai-assistant',
                     label: 'AI Assistant',
                 },

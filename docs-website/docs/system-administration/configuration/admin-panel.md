@@ -319,7 +319,7 @@ The Notifications tab includes **Apprise Notifications** configuration:
 - Set optional encrypted API token
 - Configure request timeout and TLS verification
 - Run connectivity tests directly from the Admin UI
-- Configure geofence event cleanup interval/retention
+- Configure geofence event cleanup enabled/retention settings
 
 For full setup guidance, see [Apprise Notifications](./apprise-notifications).
 

@@ -74,7 +74,7 @@ Create an overlay file named `docker-compose.apprise.yml`:
 
 ```yaml
 services:
-  geopulse-apprise:
+  apprise-api:
     image: caronc/apprise:latest
     container_name: geopulse-apprise
     restart: unless-stopped
@@ -90,9 +90,16 @@ docker compose -f docker-compose.yml -f docker-compose.apprise.yml up -d
 
 After startup, configure Apprise in GeoPulse Admin UI:
 
-- `Admin Dashboard > System Settings > System > Apprise Notifications`
-- Set API URL to `http://apprise-api:8000` (same Docker network name)
-- Enable Apprise and run a connection test
+- Open `Admin Dashboard > System Settings > Notifications`
+- Set API URL:
+  - `http://apprise-api:8000` when backend and Apprise run in the same docker-compose stack/network
+  - `http://localhost:8000` only when backend runs on host and Apprise is exposed on host port `8000`
+- Enable Apprise and run **Test Apprise**
+
+For full admin/user configuration, templates, and in-app behavior, see:
+
+- [Apprise Notifications](../../system-administration/configuration/apprise-notifications)
+- [Geofences Guide](../../user-guide/core-features/geofences)
 
 #### After Start
 
