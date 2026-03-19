@@ -179,6 +179,10 @@ export class GeofencesPage {
     return await row.count() > 0;
   }
 
+  async waitForRuleRowState(ruleName, shouldExist = true, timeout = 10000) {
+    await expect.poll(async () => await this.ruleRowExists(ruleName), { timeout }).toBe(shouldExist);
+  }
+
   async fillTemplateName(name) {
     await this.page.locator('input[placeholder="Telegram Enter Alert"]').fill(name);
   }
@@ -247,6 +251,10 @@ export class GeofencesPage {
     return await row.count() > 0;
   }
 
+  async waitForTemplateRowState(templateName, shouldExist = true, timeout = 10000) {
+    await expect.poll(async () => await this.templateRowExists(templateName), { timeout }).toBe(shouldExist);
+  }
+
   async markAllEventsSeen() {
     await this.page.getByRole('button', { name: 'Mark all seen' }).first().click();
   }
@@ -254,6 +262,10 @@ export class GeofencesPage {
   async eventRowExists(text) {
     const row = this.page.locator(this.selectors.tableRows).filter({ hasText: text });
     return await row.count() > 0;
+  }
+
+  async waitForEventRowState(text, shouldExist = true, timeout = 10000) {
+    await expect.poll(async () => await this.eventRowExists(text), { timeout }).toBe(shouldExist);
   }
 
   async openNotificationBell() {

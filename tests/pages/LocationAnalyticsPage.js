@@ -360,6 +360,7 @@ export class LocationAnalyticsPage {
   async loginAndNavigate(userData) {
     const LoginPage = (await import('./LoginPage.js')).LoginPage;
     const TestData = (await import('../fixtures/test-data.js')).TestData;
+    const TestHelpers = (await import('../utils/test-helpers.js')).TestHelpers;
     const UserFactory = (await import('../utils/user-factory.js')).UserFactory;
 
     const loginPage = new LoginPage(this.page);
@@ -370,7 +371,7 @@ export class LocationAnalyticsPage {
     await loginPage.login(testUser.email, testUser.password);
 
     // Wait for redirect to timeline
-    await this.page.waitForURL('**/app/timeline', { timeout: 10000 });
+    await TestHelpers.waitForNavigation(this.page, '**/app/timeline');
 
     // Navigate to location analytics
     await this.navigate();

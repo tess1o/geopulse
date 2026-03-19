@@ -24,6 +24,11 @@ async function insertGeofenceEvent(dbManager, {
   deliveryStatus = 'SKIPPED',
   occurredAt = new Date().toISOString()
 }) {
+  const normalizedRuleId = Number(ruleId);
+  if (!Number.isFinite(normalizedRuleId)) {
+    throw new Error(`insertGeofenceEvent requires numeric ruleId, got: ${ruleId}`);
+  }
+
   const result = await dbManager.client.query(`
     INSERT INTO geofence_events (
       owner_user_id,
@@ -37,9 +42,9 @@ async function insertGeofenceEvent(dbManager, {
       created_at,
       seen_at
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NULL)
+    VALUES ($1::uuid, $2::uuid, $3::bigint, $4::text, $5::timestamptz, $6::text, $7::text, $8::text, NOW(), NULL)
     RETURNING id
-  `, [ownerUserId, subjectUserId, ruleId, eventType, occurredAt, title, message, deliveryStatus]);
+  `, [ownerUserId, subjectUserId, normalizedRuleId, eventType, occurredAt, title, message, deliveryStatus]);
 
   const geofenceEventId = Number(result.rows[0].id);
 
@@ -59,29 +64,29 @@ async function insertGeofenceEvent(dbManager, {
       created_at
     )
     SELECT
-      $1,
+      $1::uuid,
       'GEOFENCE',
       CASE WHEN $4 = 'ENTER' THEN 'GEOFENCE_ENTER' ELSE 'GEOFENCE_LEAVE' END,
-      $6,
-      $7,
-      $5,
+      $6::text,
+      $7::text,
+      $5::timestamptz,
       NULL,
-      $8,
+      $8::text,
       $9::text,
       jsonb_build_object(
-        'ruleId', $3,
+        'ruleId', $3::bigint,
         'ruleName', gr.name,
-        'subjectUserId', $2,
+        'subjectUserId', $2::uuid,
         'subjectDisplayName', COALESCE(NULLIF(TRIM(u.full_name), ''), u.email),
-        'eventCode', $4,
+        'eventCode', $4::text,
         'eventVerb', CASE WHEN $4 = 'ENTER' THEN 'entered' ELSE 'left' END
       ),
       CONCAT('geofence-event:', $9),
       NOW()
     FROM geofence_rules gr
-    JOIN users u ON u.id = $2
-    WHERE gr.id = $3
-  `, [ownerUserId, subjectUserId, ruleId, eventType, occurredAt, title, message, deliveryStatus, geofenceEventId]);
+    JOIN users u ON u.id = $2::uuid
+    WHERE gr.id = $3::bigint
+  `, [ownerUserId, subjectUserId, normalizedRuleId, eventType, occurredAt, title, message, deliveryStatus, geofenceEventId]);
 
   return geofenceEventId;
 }
@@ -140,20 +145,20 @@ test.describe('Geofences UI', () => {
     await geofencesPage.waitForAreaSelected();
     await geofencesPage.saveRule();
     await geofencesPage.waitForSuccessToast('Rule created');
-    expect(await geofencesPage.ruleRowExists(ruleName)).toBe(true);
+    await geofencesPage.waitForRuleRowState(ruleName, true, 15000);
 
     await geofencesPage.editRule(ruleName);
     await geofencesPage.fillRuleName(updatedRuleName);
     await geofencesPage.setRuleCooldown(300);
     await geofencesPage.saveRule();
     await geofencesPage.waitForSuccessToast('Rule updated');
-    expect(await geofencesPage.ruleRowExists(updatedRuleName)).toBe(true);
-    expect(await geofencesPage.ruleRowExists(ruleName)).toBe(false);
+    await geofencesPage.waitForRuleRowState(updatedRuleName, true, 15000);
+    await geofencesPage.waitForRuleRowState(ruleName, false, 15000);
 
     await geofencesPage.deleteRule(updatedRuleName);
     await geofencesPage.acceptConfirmDialog();
     await geofencesPage.waitForSuccessToast('Rule deleted');
-    expect(await geofencesPage.ruleRowExists(updatedRuleName)).toBe(false);
+    await geofencesPage.waitForRuleRowState(updatedRuleName, false, 15000);
   });
 
   test('should support templates CRUD and reflect default enter template changes in Rules tab', async ({ page, isolatedUsers, dbManager }) => {
@@ -176,14 +181,14 @@ test.describe('Geofences UI', () => {
     await geofencesPage.acceptConfirmDialog();
     await geofencesPage.saveTemplate();
     await geofencesPage.waitForSuccessToast('Template created');
-    expect(await geofencesPage.templateRowExists(templateName)).toBe(true);
+    await geofencesPage.waitForTemplateRowState(templateName, true, 15000);
 
     await geofencesPage.editTemplate(templateName);
     await geofencesPage.fillTemplateName(updatedTemplateName);
     await geofencesPage.fillTemplateBody('{{subjectName}} {{eventVerb}} {{geofenceName}} @ {{timestamp}}');
     await geofencesPage.saveTemplate();
     await geofencesPage.waitForSuccessToast('Template updated');
-    expect(await geofencesPage.templateRowExists(updatedTemplateName)).toBe(true);
+    await geofencesPage.waitForTemplateRowState(updatedTemplateName, true, 15000);
 
     await geofencesPage.switchToTab('Rules');
     await geofencesPage.openSelectForField('Enter Template');
@@ -195,7 +200,7 @@ test.describe('Geofences UI', () => {
     await geofencesPage.deleteTemplate(updatedTemplateName);
     await geofencesPage.acceptConfirmDialog();
     await geofencesPage.waitForSuccessToast('Template deleted');
-    expect(await geofencesPage.templateRowExists(updatedTemplateName)).toBe(false);
+    await geofencesPage.waitForTemplateRowState(updatedTemplateName, false, 15000);
 
     await geofencesPage.switchToTab('Rules');
     await geofencesPage.openSelectForField('Enter Template');
@@ -267,8 +272,8 @@ test.describe('Geofences UI', () => {
     await geofencesPage.closeNotificationBell();
 
     await geofencesPage.switchToTab('Events');
-    expect(await geofencesPage.eventRowExists('E2E ENTER notification')).toBe(true);
-    expect(await geofencesPage.eventRowExists('E2E LEAVE notification')).toBe(true);
+    await geofencesPage.waitForEventRowState('E2E ENTER notification', true, 15000);
+    await geofencesPage.waitForEventRowState('E2E LEAVE notification', true, 15000);
 
     await geofencesPage.markAllEventsSeen();
     await geofencesPage.expectBellBadgeHidden();
