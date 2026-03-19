@@ -41,4 +41,8 @@ public class GeofenceEventRepository implements PanacheRepository<GeofenceEventE
                 .page(0, Math.max(1, limit))
                 .list();
     }
+
+    public long deleteOlderThan(Instant cutoff) {
+        return delete("occurredAt < ?1", cutoff);
+    }
 }

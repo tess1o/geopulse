@@ -227,6 +227,18 @@ export const SETTING_METADATA = {
   'system.notifications.apprise.verify-tls': {
     label: 'Verify TLS Certificates',
     description: 'Whether HTTPS certificate validation is enabled for Apprise requests'
+  },
+  'system.notifications.geofence-events.cleanup.enabled': {
+    label: 'Enable Geofence Event Cleanup',
+    description: 'Enable automatic cleanup of old geofence notification events'
+  },
+  'system.notifications.geofence-events.cleanup.interval-days': {
+    label: 'Cleanup Interval (Days)',
+    description: 'How often old geofence notification events should be deleted'
+  },
+  'system.notifications.geofence-events.retention-days': {
+    label: 'Retention (Days)',
+    description: 'Delete geofence notification events older than this number of days'
   }
 }
 

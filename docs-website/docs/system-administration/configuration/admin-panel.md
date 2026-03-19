@@ -310,15 +310,16 @@ Configure reverse geocoding providers:
 - Custom URLs for self-hosted providers (Nominatim, Photon)
 - API keys for commercial providers (Google Maps, Mapbox)
 
-### System Tab
+### Notifications Tab
 
-The System tab now includes **Apprise Notifications** configuration:
+The Notifications tab includes **Apprise Notifications** configuration:
 
 - Enable/disable Apprise delivery
 - Configure Apprise API URL
 - Set optional encrypted API token
 - Configure request timeout and TLS verification
 - Run connectivity tests directly from the Admin UI
+- Configure geofence event cleanup interval/retention
 
 For full setup guidance, see [Apprise Notifications](./apprise-notifications).
 

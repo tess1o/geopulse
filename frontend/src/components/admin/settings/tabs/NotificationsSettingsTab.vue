@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="Apprise Notifications">
+    <SettingSection v-if="appriseSettings.length" title="Apprise Notifications">
       <SettingItem
         v-for="setting in appriseSettings"
         :key="setting.key"
@@ -16,7 +16,7 @@
           <InputNumber
             v-else-if="setting.valueType === 'INTEGER'"
             v-model="setting.currentValue"
-            :min="0"
+            :min="integerMin(setting)"
             @update:modelValue="handleUpdate(setting)"
             style="width: 180px"
           />
@@ -37,6 +37,36 @@
             }"
             @change="handleUpdate(setting)"
             style="width: 280px"
+          />
+          <InputText
+            v-else
+            v-model="setting.currentValue"
+            @change="handleUpdate(setting)"
+            style="width: 300px"
+          />
+        </template>
+      </SettingItem>
+    </SettingSection>
+
+    <SettingSection v-if="cleanupSettings.length" title="Geofence Event Cleanup">
+      <SettingItem
+        v-for="setting in cleanupSettings"
+        :key="setting.key"
+        :setting="setting"
+        @reset="handleReset(setting)"
+      >
+        <template #control="{ setting }">
+          <InputSwitch
+            v-if="setting.valueType === 'BOOLEAN'"
+            v-model="setting.currentValue"
+            @change="handleUpdate(setting)"
+          />
+          <InputNumber
+            v-else-if="setting.valueType === 'INTEGER'"
+            v-model="setting.currentValue"
+            :min="integerMin(setting)"
+            @update:modelValue="handleUpdate(setting)"
+            style="width: 180px"
           />
           <InputText
             v-else
@@ -153,6 +183,10 @@ const appriseSettings = computed(() =>
   systemSettings.value.filter(setting => setting.key.startsWith('system.notifications.apprise.'))
 )
 
+const cleanupSettings = computed(() =>
+  systemSettings.value.filter(setting => setting.key.startsWith('system.notifications.geofence-events.'))
+)
+
 const reloadSettings = async () => {
   systemSettings.value = await loadSettings('system')
 }
@@ -168,6 +202,12 @@ const handleUpdate = async (setting) => {
 const handleReset = async (setting) => {
   await resetSetting(setting)
 }
+
+const integerMin = (setting) => (
+  setting?.key?.includes('cleanup.interval-days') || setting?.key?.includes('retention-days')
+    ? 1
+    : 0
+)
 
 const openTestDialog = () => {
   lastTestResult.value = null

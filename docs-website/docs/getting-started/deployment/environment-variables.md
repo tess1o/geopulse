@@ -241,7 +241,7 @@ Notes:
 | `GEOPULSE_MQTT_PASSWORD` | `geopulse_mqtt_pass_123` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_MQTT_USERNAME` | `geopulse_mqtt_admin` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.username\`. | String value. Follow subsystem documentation. | Backend restart |
 
-### Notifications / Apprise (5)
+### Notifications / Apprise (8)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -250,6 +250,9 @@ Notes:
 | `GEOPULSE_NOTIFICATIONS_APPRISE_AUTH_TOKEN` | `(empty)` | Optional API token for Apprise. Property: \`geopulse.notifications.apprise.auth-token\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_NOTIFICATIONS_APPRISE_TIMEOUT_MS` | `5000` | HTTP timeout for Apprise requests in milliseconds. Property: \`geopulse.notifications.apprise.timeout-ms\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_NOTIFICATIONS_APPRISE_VERIFY_TLS` | `true` | Whether TLS certificate verification is enabled for Apprise calls. Property: \`geopulse.notifications.apprise.verify-tls\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_CLEANUP_ENABLED` | `true` | Enables/disables scheduled cleanup of geofence notification events. Property: \`geopulse.notifications.geofence-events.cleanup.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_CLEANUP_INTERVAL_DAYS` | `1` | Number of days between cleanup runs. Property: \`geopulse.notifications.geofence-events.cleanup.interval-days\`. | Integer >= 1. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_RETENTION_DAYS` | `90` | Deletes geofence events older than this many days. Property: \`geopulse.notifications.geofence-events.retention-days\`. | Integer >= 1. | Backend restart |
 
 ### Prometheus (8)
 

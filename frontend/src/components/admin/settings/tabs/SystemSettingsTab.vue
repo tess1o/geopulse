@@ -54,7 +54,7 @@ const systemSettings = ref([])
 
 const reloadSettings = async () => {
   const loaded = await loadSettings('system')
-  systemSettings.value = loaded.filter(setting => !setting.key.startsWith('system.notifications.apprise.'))
+  systemSettings.value = loaded.filter(setting => !setting.key.startsWith('system.notifications.'))
 }
 
 onMounted(async () => {

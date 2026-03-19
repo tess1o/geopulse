@@ -165,6 +165,12 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.notifications.apprise.timeout-ms", "5000", ValueType.INTEGER, "system", "Apprise HTTP timeout in milliseconds"));
         SETTING_DEFINITIONS.put("system.notifications.apprise.verify-tls",
                 new SettingDefinition("geopulse.notifications.apprise.verify-tls", "true", ValueType.BOOLEAN, "system", "Verify TLS certificates when connecting to Apprise"));
+        SETTING_DEFINITIONS.put("system.notifications.geofence-events.cleanup.enabled",
+                new SettingDefinition("geopulse.notifications.geofence-events.cleanup.enabled", "true", ValueType.BOOLEAN, "system", "Enable scheduled cleanup of old geofence notification events"));
+        SETTING_DEFINITIONS.put("system.notifications.geofence-events.cleanup.interval-days",
+                new SettingDefinition("geopulse.notifications.geofence-events.cleanup.interval-days", "1", ValueType.INTEGER, "system", "Run geofence event cleanup every N days"));
+        SETTING_DEFINITIONS.put("system.notifications.geofence-events.retention-days",
+                new SettingDefinition("geopulse.notifications.geofence-events.retention-days", "90", ValueType.INTEGER, "system", "Delete geofence events older than N days"));
 
         // AI Assistant settings
         SETTING_DEFINITIONS.put("ai.default-system-message",
@@ -281,6 +287,7 @@ public class SystemSettingsService {
 
         // Validate value type
         validateValue(value, def.valueType());
+        validateSettingConstraints(key, value);
 
         // Encrypt if type is ENCRYPTED
         String storedValue = value;
@@ -406,6 +413,16 @@ public class SystemSettingsService {
             case ENCRYPTED:
                 // Any string is valid
                 break;
+        }
+    }
+
+    private void validateSettingConstraints(String key, String value) {
+        if ("system.notifications.geofence-events.cleanup.interval-days".equals(key)
+                || "system.notifications.geofence-events.retention-days".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 1) {
+                throw new IllegalArgumentException("Setting " + key + " must be at least 1 day");
+            }
         }
     }
 }

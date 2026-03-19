@@ -229,6 +229,7 @@ onUnmounted(() => {
   z-index: 1200;
   display: flex;
   flex-direction: column;
+  color: var(--text-color);
 }
 
 .gp-notification-panel-header {
@@ -242,6 +243,7 @@ onUnmounted(() => {
 
 .gp-notification-panel-title {
   font-weight: 700;
+  color: inherit;
 }
 
 .gp-notification-filters {
@@ -261,6 +263,7 @@ onUnmounted(() => {
 .gp-notification-browser-label {
   font-size: 0.85rem;
   font-weight: 600;
+  color: inherit;
 }
 
 .gp-notification-browser-help {
@@ -282,6 +285,7 @@ onUnmounted(() => {
   color: var(--gp-text-secondary);
   padding: 0.9rem;
   font-size: 0.88rem;
+  background: color-mix(in srgb, var(--gp-surface-white) 92%, var(--gp-primary));
 }
 
 .gp-notification-item {
@@ -304,6 +308,7 @@ onUnmounted(() => {
   padding: 0;
   text-align: left;
   cursor: pointer;
+  color: inherit;
 }
 
 .gp-notification-item-row {
@@ -345,10 +350,66 @@ onUnmounted(() => {
 .p-dark .gp-notification-panel {
   background: var(--gp-surface-dark);
   border-color: var(--gp-border-dark);
+  color: #e5e7eb;
+  box-shadow: 0 14px 38px rgba(2, 6, 23, 0.65);
+}
+
+.p-dark .gp-notification-panel-header,
+.p-dark .gp-notification-footer {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.p-dark .gp-notification-panel-title,
+.p-dark .gp-notification-browser-label,
+.p-dark .gp-notification-item-title {
+  color: #f8fafc;
 }
 
 .p-dark .gp-notification-item {
-  border-color: var(--gp-border-dark);
+  border-color: rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.p-dark .gp-notification-item-message {
+  color: #cbd5e1;
+}
+
+.p-dark .gp-notification-item-time,
+.p-dark .gp-notification-browser-help {
+  color: #94a3b8;
+}
+
+.p-dark .gp-notification-empty {
+  border-color: rgba(148, 163, 184, 0.45);
+  background: rgba(30, 41, 59, 0.55);
+  color: #cbd5e1;
+}
+
+.p-dark .gp-notification-item--unread {
+  border-color: color-mix(in srgb, var(--gp-primary) 70%, #ffffff);
+  background: color-mix(in srgb, var(--gp-primary) 18%, rgba(15, 23, 42, 0.35));
+}
+
+.p-dark .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary) {
+  color: #e2e8f0;
+  border-color: rgba(203, 213, 225, 0.82);
+  background: rgba(30, 41, 59, 0.25);
+}
+
+.p-dark .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:hover) {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: #93c5fd;
+  color: #f8fafc;
+}
+
+.p-dark .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:disabled) {
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.p-dark .gp-notification-panel :deep(.p-inputswitch.p-disabled) {
+  opacity: 0.9;
 }
 
 @media (max-width: 640px) {

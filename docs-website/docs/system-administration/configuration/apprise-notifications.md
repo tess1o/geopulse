@@ -13,7 +13,7 @@ This integration is optional. GeoPulse always stores geofence events in-app; App
 
 Go to:
 
-`Admin Dashboard > System Settings > System > Apprise Notifications`
+`Admin Dashboard > System Settings > Notifications`
 
 Configure these settings:
 
@@ -26,6 +26,16 @@ Configure these settings:
 | `system.notifications.apprise.verify-tls` | TLS certificate verification toggle |
 
 Use **Test Apprise** to validate connectivity. You can optionally provide a destination to send a live test notification.
+
+## Geofence Event Cleanup
+
+In the same Notifications tab, you can configure retention cleanup for in-app geofence events:
+
+| Setting Key | Description |
+|---|---|
+| `system.notifications.geofence-events.cleanup.enabled` | Enable/disable automatic cleanup job |
+| `system.notifications.geofence-events.cleanup.interval-days` | How often cleanup runs (in days) |
+| `system.notifications.geofence-events.retention-days` | Delete events older than this number of days |
 
 ## User Template Configuration
 
