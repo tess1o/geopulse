@@ -14,6 +14,7 @@ import {TimelineLabelsManagementPage} from "../pages/TimelineLabelsManagementPag
 import {TripsManagementPage} from "../pages/TripsManagementPage.js";
 import {TripWorkspacePage} from "../pages/TripWorkspacePage.js";
 import {DateFormatTestHelper} from './date-format-test-helper.js';
+import {GeofencesPage} from "../pages/GeofencesPage.js";
 
 /**
  * Centralized test setup utilities to eliminate duplication
@@ -348,6 +349,18 @@ export class TestSetupHelper {
   }
 
   // ==================== FAVORITES TEST HELPERS ====================
+
+  /**
+   * Login user and navigate to Geofences page
+   * @returns {Promise<{geofencesPage, user, testUser}>}
+   */
+  static async loginAndNavigateToGeofencesPage(page, dbManager, userData = null) {
+    const {user, testUser} = await this.createAndLoginUser(page, dbManager, userData);
+    const geofencesPage = new GeofencesPage(page);
+    await geofencesPage.navigate();
+    await geofencesPage.waitForPageLoad();
+    return {geofencesPage, user, testUser};
+  }
 
   /**
    * Login user and navigate to Favorites Management page

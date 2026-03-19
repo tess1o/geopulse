@@ -24,6 +24,7 @@ const isolatedSpecs = [
   '**/trip-workspace.spec.js',
   '**/friends.spec.js',
   '**/favorites-management.spec.js',
+  '**/geofences.spec.js',
   '**/timeline-map-interactions.spec.js',
   '**/timeline-reports.spec.js',
   '**/user-profile.spec.js',
