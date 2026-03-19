@@ -58,10 +58,10 @@
         >
           <button type="button" class="gp-notification-item-main" @click="openEventsView">
             <div class="gp-notification-item-row">
-              <span class="gp-notification-item-title">{{ item.title || `Geofence ${item.eventType || 'Event'}` }}</span>
+              <span class="gp-notification-item-title">{{ itemTitle(item) }}</span>
               <Tag :value="item.deliveryStatus || 'UNKNOWN'" :severity="deliverySeverity(item.deliveryStatus)" />
             </div>
-            <div class="gp-notification-item-message">{{ item.message || 'New geofence event.' }}</div>
+            <div class="gp-notification-item-message">{{ item.message || 'New notification.' }}</div>
             <div class="gp-notification-item-time">{{ formatOccurredAt(item.occurredAt) }}</div>
           </button>
           <Button
@@ -182,6 +182,19 @@ const deliverySeverity = (status) => {
   if (status === 'FAILED') return 'danger'
   if (status === 'PENDING') return 'info'
   return 'secondary'
+}
+
+const itemTitle = (item) => {
+  if (item?.title) {
+    return item.title
+  }
+  if (item?.source && item?.type) {
+    return `${item.source}: ${item.type}`
+  }
+  if (item?.source) {
+    return `${item.source} notification`
+  }
+  return 'Notification'
 }
 
 const handleClickOutside = (event) => {

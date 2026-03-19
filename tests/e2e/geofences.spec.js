@@ -41,7 +41,49 @@ async function insertGeofenceEvent(dbManager, {
     RETURNING id
   `, [ownerUserId, subjectUserId, ruleId, eventType, occurredAt, title, message, deliveryStatus]);
 
-  return Number(result.rows[0].id);
+  const geofenceEventId = Number(result.rows[0].id);
+
+  await dbManager.client.query(`
+    INSERT INTO user_notifications (
+      owner_user_id,
+      source,
+      type,
+      title,
+      message,
+      occurred_at,
+      seen_at,
+      delivery_status,
+      object_ref,
+      metadata,
+      dedupe_key,
+      created_at
+    )
+    SELECT
+      $1,
+      'GEOFENCE',
+      CASE WHEN $4 = 'ENTER' THEN 'GEOFENCE_ENTER' ELSE 'GEOFENCE_LEAVE' END,
+      $6,
+      $7,
+      $5,
+      NULL,
+      $8,
+      $9::text,
+      jsonb_build_object(
+        'ruleId', $3,
+        'ruleName', gr.name,
+        'subjectUserId', $2,
+        'subjectDisplayName', COALESCE(NULLIF(TRIM(u.full_name), ''), u.email),
+        'eventCode', $4,
+        'eventVerb', CASE WHEN $4 = 'ENTER' THEN 'entered' ELSE 'left' END
+      ),
+      CONCAT('geofence-event:', $9),
+      NOW()
+    FROM geofence_rules gr
+    JOIN users u ON u.id = $2
+    WHERE gr.id = $3
+  `, [ownerUserId, subjectUserId, ruleId, eventType, occurredAt, title, message, deliveryStatus, geofenceEventId]);
+
+  return geofenceEventId;
 }
 
 test.describe('Geofences UI', () => {

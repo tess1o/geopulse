@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleStateRepository;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
+import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
@@ -42,6 +43,7 @@ public class GeofenceEvaluationService {
     private final FriendshipRepository friendshipRepository;
     private final UserFriendPermissionRepository permissionRepository;
     private final GeofenceTemplateRenderer templateRenderer;
+    private final GeofenceNotificationProjectionService notificationProjectionService;
 
     @Inject
     public GeofenceEvaluationService(GeofenceRuleRepository ruleRepository,
@@ -50,7 +52,8 @@ public class GeofenceEvaluationService {
                                      NotificationTemplateRepository templateRepository,
                                      FriendshipRepository friendshipRepository,
                                      UserFriendPermissionRepository permissionRepository,
-                                     GeofenceTemplateRenderer templateRenderer) {
+                                     GeofenceTemplateRenderer templateRenderer,
+                                     GeofenceNotificationProjectionService notificationProjectionService) {
         this.ruleRepository = ruleRepository;
         this.stateRepository = stateRepository;
         this.eventRepository = eventRepository;
@@ -58,6 +61,7 @@ public class GeofenceEvaluationService {
         this.friendshipRepository = friendshipRepository;
         this.permissionRepository = permissionRepository;
         this.templateRenderer = templateRenderer;
+        this.notificationProjectionService = notificationProjectionService;
     }
 
     @Transactional
@@ -235,6 +239,19 @@ public class GeofenceEvaluationService {
         }
 
         eventRepository.persist(event);
+        eventRepository.flush();
+
+        Map<String, Object> metadataSnapshot = new LinkedHashMap<>();
+        metadataSnapshot.put("ruleId", rule.getId());
+        metadataSnapshot.put("ruleName", rule.getName());
+        metadataSnapshot.put("subjectUserId", subject.getId());
+        metadataSnapshot.put("subjectDisplayName", subjectName);
+        metadataSnapshot.put("eventCode", eventCode);
+        metadataSnapshot.put("eventVerb", eventVerb);
+        metadataSnapshot.put("lat", point.getCoordinates().getY());
+        metadataSnapshot.put("lon", point.getCoordinates().getX());
+
+        notificationProjectionService.publishSnapshot(event, metadataSnapshot);
     }
 
     private NotificationTemplateEntity resolveTemplate(GeofenceRuleEntity rule, GeofenceEventType eventType) {
@@ -294,13 +311,13 @@ public class GeofenceEvaluationService {
 
     private DateTimeFormatter resolveDateTimeFormatter(String dateFormat) {
         if (dateFormat == null || dateFormat.isBlank()) {
-            return DATE_TIME_FORMAT_YMD;
+            return DATE_TIME_FORMAT_MDY;
         }
         return switch (dateFormat.trim().toUpperCase(Locale.ROOT)) {
-            case "MDY" -> DATE_TIME_FORMAT_MDY;
-            case "DMY" -> DATE_TIME_FORMAT_DMY;
-            case "YMD" -> DATE_TIME_FORMAT_YMD;
-            default -> DATE_TIME_FORMAT_YMD;
+            case "MDY", "US", "MM/DD/YYYY", "MM-DD-YYYY" -> DATE_TIME_FORMAT_MDY;
+            case "DMY", "EU", "DD/MM/YYYY", "DD-MM-YYYY" -> DATE_TIME_FORMAT_DMY;
+            case "YMD", "ISO", "YYYY-MM-DD" -> DATE_TIME_FORMAT_YMD;
+            default -> DATE_TIME_FORMAT_MDY;
         };
     }
 }

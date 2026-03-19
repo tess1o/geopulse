@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceDeliveryStatus
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
+import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,12 +24,15 @@ public class GeofenceDeliveryService {
 
     private final GeofenceEventRepository eventRepository;
     private final AppriseNotificationService appriseNotificationService;
+    private final GeofenceNotificationProjectionService notificationProjectionService;
 
     @Inject
     public GeofenceDeliveryService(GeofenceEventRepository eventRepository,
-                                   AppriseNotificationService appriseNotificationService) {
+                                   AppriseNotificationService appriseNotificationService,
+                                   GeofenceNotificationProjectionService notificationProjectionService) {
         this.eventRepository = eventRepository;
         this.appriseNotificationService = appriseNotificationService;
+        this.notificationProjectionService = notificationProjectionService;
     }
 
     @Scheduled(every = "${geopulse.geofence.delivery.interval:30s}")
@@ -70,6 +74,7 @@ public class GeofenceDeliveryService {
             event.setDeliveryStatus(GeofenceDeliveryStatus.SENT);
             event.setDeliveredAt(Instant.now());
             event.setLastDeliveryError(null);
+            syncNotificationDeliveryStatus(event);
             return;
         }
 
@@ -79,11 +84,24 @@ public class GeofenceDeliveryService {
         } else {
             event.setDeliveryStatus(GeofenceDeliveryStatus.PENDING);
         }
+        syncNotificationDeliveryStatus(event);
     }
 
     private void markSkipped(GeofenceEventEntity event, String reason) {
         event.setDeliveryStatus(GeofenceDeliveryStatus.SKIPPED);
         event.setDeliveredAt(Instant.now());
         event.setLastDeliveryError(reason);
+        syncNotificationDeliveryStatus(event);
+    }
+
+    private void syncNotificationDeliveryStatus(GeofenceEventEntity event) {
+        if (event.getOwnerUser() == null || event.getOwnerUser().getId() == null || event.getId() == null) {
+            return;
+        }
+        notificationProjectionService.syncDeliveryStatus(
+                event.getOwnerUser().getId(),
+                event.getId(),
+                event.getDeliveryStatus()
+        );
     }
 }

@@ -118,7 +118,7 @@ watch(
       notificationsStore.startPolling()
       return
     }
-    notificationsStore.resetSessionState()
+    notificationsStore.resetSessionState({ clearBacklogWatermark: true })
   }
 )
 

@@ -1,8 +1,10 @@
 import { defineStore } from 'pinia'
 import apiService from '@/utils/apiService'
 import router from '@/router'
+import { readUserSnapshot } from '@/utils/authSnapshotStorage'
 
 const BROWSER_PREF_KEY = 'gp.notifications.browser.enabled'
+const BACKLOG_WATERMARK_PREFIX = 'gp.notifications.backlog.watermark.'
 const POLL_INTERVAL_MS = 10000
 const MAX_BACKOFF_MS = 60000
 const MAX_TRACKED_IDS = 2000
@@ -19,13 +21,19 @@ function shouldEmitInAppToasts() {
   return !document.hidden && hasFocus
 }
 
+function normalizeSource(source) {
+  if (typeof source !== 'string' || !source.trim()) {
+    return null
+  }
+  return source.trim().toUpperCase()
+}
+
 export const useNotificationsStore = defineStore('notifications', {
   state: () => ({
     items: [],
     unreadCount: 0,
     isPolling: false,
     initialized: false,
-    startupSummaryShown: false,
     knownIds: [],
     pollTimerId: null,
     pollBackoffMs: POLL_INTERVAL_MS,
@@ -33,6 +41,10 @@ export const useNotificationsStore = defineStore('notifications', {
     browserNotificationsEnabled: false,
     browserNotificationsSupported: canUseBrowserNotifications(),
     browserNotificationWarningShown: false,
+    _onVisibilityChange: null,
+    _onWindowFocus: null,
+    currentUserId: null,
+    backlogWatermark: null,
     _toastHandler: null
   }),
 
@@ -59,8 +71,6 @@ export const useNotificationsStore = defineStore('notifications', {
           return
         }
 
-        // Preference was enabled previously, but permission is no longer granted.
-        // Keep UI state accurate so the user can explicitly enable again.
         this.browserNotificationsEnabled = false
         this.persistBrowserPreference(false)
       } else if (stored === '0') {
@@ -76,12 +86,83 @@ export const useNotificationsStore = defineStore('notifications', {
       this._toastHandler = null
     },
 
+    resolveCurrentUserId() {
+      return readUserSnapshot()?.id || null
+    },
+
+    getBacklogWatermarkKey(userId) {
+      if (!userId) {
+        return null
+      }
+      return `${BACKLOG_WATERMARK_PREFIX}${userId}`
+    },
+
+    loadBacklogWatermark() {
+      this.currentUserId = this.resolveCurrentUserId()
+      this.backlogWatermark = null
+
+      if (typeof window === 'undefined' || !this.currentUserId) {
+        return
+      }
+
+      const key = this.getBacklogWatermarkKey(this.currentUserId)
+      const raw = key ? window.localStorage.getItem(key) : null
+      if (!raw) {
+        return
+      }
+
+      const parsed = Number(raw)
+      if (Number.isFinite(parsed) && parsed > 0) {
+        this.backlogWatermark = parsed
+      }
+    },
+
+    advanceBacklogWatermark(candidateId) {
+      const parsed = Number(candidateId)
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return
+      }
+
+      const nextValue = this.backlogWatermark && this.backlogWatermark > parsed
+        ? this.backlogWatermark
+        : parsed
+
+      this.backlogWatermark = nextValue
+
+      if (typeof window === 'undefined' || !this.currentUserId) {
+        return
+      }
+
+      const key = this.getBacklogWatermarkKey(this.currentUserId)
+      if (key) {
+        window.localStorage.setItem(key, String(nextValue))
+      }
+    },
+
+    clearBacklogWatermarkForCurrentUser() {
+      if (typeof window === 'undefined') {
+        this.backlogWatermark = null
+        this.currentUserId = null
+        return
+      }
+
+      const userId = this.currentUserId || this.resolveCurrentUserId()
+      const key = this.getBacklogWatermarkKey(userId)
+      if (key) {
+        window.localStorage.removeItem(key)
+      }
+
+      this.backlogWatermark = null
+      this.currentUserId = null
+    },
+
     startPolling() {
       if (this.isPolling) {
         return
       }
 
       this.initPreferences()
+      this.loadBacklogWatermark()
       this.isPolling = true
       this.pollBackoffMs = POLL_INTERVAL_MS
       this.ensureVisibilityListeners()
@@ -103,12 +184,16 @@ export const useNotificationsStore = defineStore('notifications', {
       this.detachVisibilityListeners()
     },
 
-    resetSessionState() {
+    resetSessionState({ clearBacklogWatermark = false } = {}) {
       this.stopPolling()
+
+      if (clearBacklogWatermark) {
+        this.clearBacklogWatermarkForCurrentUser()
+      }
+
       this.items = []
       this.unreadCount = 0
       this.initialized = false
-      this.startupSummaryShown = false
       this.knownIds = []
       this.pollBackoffMs = POLL_INTERVAL_MS
       this.browserNotificationWarningShown = false
@@ -184,19 +269,59 @@ export const useNotificationsStore = defineStore('notifications', {
       this.visibilityListenerAttached = false
     },
 
+    async fetchNotifications({ limit = 100, unreadOnly = false, source = null } = {}) {
+      const params = {
+        limit,
+        unreadOnly: !!unreadOnly
+      }
+      const normalizedSource = normalizeSource(source)
+      if (normalizedSource) {
+        params.source = normalizedSource
+      }
+
+      const response = await apiService.get('/notifications', params)
+      return Array.isArray(response?.data) ? response.data : []
+    },
+
+    async fetchUnreadCount({ source = null } = {}) {
+      const params = {}
+      const normalizedSource = normalizeSource(source)
+      if (normalizedSource) {
+        params.source = normalizedSource
+      }
+
+      const response = await apiService.get('/notifications/unread-count', params)
+      const count = Number(response?.data?.count || 0)
+      const latestUnreadIdRaw = response?.data?.latestUnreadId
+      const latestUnreadId = Number.isFinite(Number(latestUnreadIdRaw))
+        ? Number(latestUnreadIdRaw)
+        : null
+
+      return {
+        count,
+        latestUnreadId
+      }
+    },
+
     async refresh({
       emitToasts = false,
       emitBrowser = false,
       emitStartupSummary = false
     } = {}) {
-      const [eventsResponse, countResponse] = await Promise.all([
-        apiService.get('/geofences/events', { limit: 100, unreadOnly: false }),
-        apiService.get('/geofences/events/unread-count')
+      const [events, countInfo] = await Promise.all([
+        this.fetchNotifications({ limit: 100, unreadOnly: false }),
+        this.fetchUnreadCount()
       ])
 
-      const events = Array.isArray(eventsResponse?.data) ? eventsResponse.data : []
-      const unreadCount = Number(countResponse?.data?.count || 0)
-      const incomingIds = events.map(event => Number(event.id)).filter(Number.isFinite)
+      const unreadCount = Number(countInfo?.count || 0)
+      const latestUnreadId = Number.isFinite(Number(countInfo?.latestUnreadId))
+        ? Number(countInfo.latestUnreadId)
+        : null
+
+      const incomingIds = events
+        .map(event => Number(event.id))
+        .filter(Number.isFinite)
+
       const knownIdsSet = new Set(this.knownIds)
       const nextKnownIdsSet = new Set(knownIdsSet)
       incomingIds.forEach(id => nextKnownIdsSet.add(id))
@@ -207,15 +332,22 @@ export const useNotificationsStore = defineStore('notifications', {
         this.items = events
         this.unreadCount = unreadCount
 
-        if (emitStartupSummary && unreadCount > 0 && !this.startupSummaryShown) {
-          this.startupSummaryShown = true
-          this.emitToast({
-            summary: 'Unread notifications',
-            detail: `You have ${unreadCount} unread geofence notifications.`,
-            life: 6500,
-            data: { action: 'open-events' }
-          })
+        const startupBaselineId = latestUnreadId
+          || (incomingIds.length > 0 ? Math.max(...incomingIds) : null)
+
+        if (emitStartupSummary && unreadCount > 0 && Number.isFinite(startupBaselineId)) {
+          const shouldShowSummary = this.backlogWatermark == null || startupBaselineId > this.backlogWatermark
+          if (shouldShowSummary) {
+            this.emitToast({
+              summary: 'Unread notifications',
+              detail: `You have ${unreadCount} unread notifications.`,
+              life: 6500,
+              data: { action: 'open-events' }
+            })
+            this.advanceBacklogWatermark(startupBaselineId)
+          }
         }
+
         return
       }
 
@@ -234,14 +366,15 @@ export const useNotificationsStore = defineStore('notifications', {
       for (const event of newEvents) {
         if (emitToasts) {
           this.emitToast({
-            summary: event.title || `Geofence ${event.eventType}`,
-            detail: event.message || 'New geofence notification',
+            summary: event.title || this.fallbackTitle(event),
+            detail: event.message || 'New notification',
             life: 7000,
             data: {
               action: 'open-events',
-              eventId: event.id
+              notificationId: event.id
             }
           })
+          this.advanceBacklogWatermark(event.id)
         }
 
         if (emitBrowser) {
@@ -250,12 +383,22 @@ export const useNotificationsStore = defineStore('notifications', {
       }
     },
 
-    async markSeen(eventId) {
-      const normalizedEventId = Number(eventId)
-      const existing = this.items.find(item => Number(item.id) === normalizedEventId)
-      const wasUnread = existing ? !existing.seen : true
+    fallbackTitle(event) {
+      if (event?.source && event?.type) {
+        return `${event.source}: ${event.type}`
+      }
+      if (event?.source) {
+        return `${event.source} notification`
+      }
+      return 'New notification'
+    },
 
-      const response = await apiService.post(`/geofences/events/${eventId}/seen`, {})
+    async markSeen(notificationId) {
+      const normalizedId = Number(notificationId)
+      const existing = this.items.find(item => Number(item.id) === normalizedId)
+      const wasUnread = existing ? !existing.seen : false
+
+      const response = await apiService.post(`/notifications/${notificationId}/seen`, {})
       const updated = response?.data || null
       if (updated) {
         this.items = this.items.map(item => Number(item.id) === Number(updated.id) ? updated : item)
@@ -266,14 +409,34 @@ export const useNotificationsStore = defineStore('notifications', {
       return updated
     },
 
-    async markAllSeen() {
-      await apiService.post('/geofences/events/seen-all', {})
-      this.items = this.items.map(item => ({
-        ...item,
-        seen: true,
-        seenAt: item.seenAt || new Date().toISOString()
-      }))
-      this.unreadCount = 0
+    async markAllSeen(source = null) {
+      const normalizedSource = normalizeSource(source)
+      const options = normalizedSource ? { params: { source: normalizedSource } } : {}
+      await apiService.post('/notifications/seen-all', {}, options)
+
+      if (!normalizedSource) {
+        this.items = this.items.map(item => ({
+          ...item,
+          seen: true,
+          seenAt: item.seenAt || new Date().toISOString()
+        }))
+        this.unreadCount = 0
+        return
+      }
+
+      this.items = this.items.map(item => {
+        if (item.source === normalizedSource) {
+          return {
+            ...item,
+            seen: true,
+            seenAt: item.seenAt || new Date().toISOString()
+          }
+        }
+        return item
+      })
+
+      const countInfo = await this.fetchUnreadCount()
+      this.unreadCount = Number(countInfo?.count || 0)
     },
 
     async setBrowserNotificationsEnabled(enabled) {
@@ -359,9 +522,9 @@ export const useNotificationsStore = defineStore('notifications', {
       }
 
       try {
-        const notification = new Notification(event.title || `Geofence ${event.eventType}`, {
-          body: event.message || 'New geofence notification',
-          tag: `geofence-event-${event.id}`,
+        const notification = new Notification(event.title || this.fallbackTitle(event), {
+          body: event.message || 'New notification',
+          tag: `notification-${event.id}`,
           renotify: false
         })
 

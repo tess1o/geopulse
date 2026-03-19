@@ -169,6 +169,10 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.notifications.geofence-events.cleanup.enabled", "true", ValueType.BOOLEAN, "system", "Enable scheduled cleanup of old geofence notification events"));
         SETTING_DEFINITIONS.put("system.notifications.geofence-events.retention-days",
                 new SettingDefinition("geopulse.notifications.geofence-events.retention-days", "90", ValueType.INTEGER, "system", "Delete geofence events older than N days"));
+        SETTING_DEFINITIONS.put("system.notifications.user-notifications.cleanup.enabled",
+                new SettingDefinition("geopulse.notifications.user-notifications.cleanup.enabled", "true", ValueType.BOOLEAN, "system", "Enable scheduled cleanup of old user inbox notifications"));
+        SETTING_DEFINITIONS.put("system.notifications.user-notifications.retention-days",
+                new SettingDefinition("geopulse.notifications.user-notifications.retention-days", "90", ValueType.INTEGER, "system", "Delete user inbox notifications older than N days"));
 
         // AI Assistant settings
         SETTING_DEFINITIONS.put("ai.default-system-message",
@@ -416,6 +420,12 @@ public class SystemSettingsService {
 
     private void validateSettingConstraints(String key, String value) {
         if ("system.notifications.geofence-events.retention-days".equals(key)) {
+            int parsed = Integer.parseInt(value);
+            if (parsed < 1) {
+                throw new IllegalArgumentException("Setting " + key + " must be at least 1 day");
+            }
+        }
+        if ("system.notifications.user-notifications.retention-days".equals(key)) {
             int parsed = Integer.parseInt(value);
             if (parsed < 1) {
                 throw new IllegalArgumentException("Setting " + key + " must be at least 1 day");

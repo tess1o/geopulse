@@ -112,6 +112,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const timezone = useTimezone()
+const GEOFENCE_SOURCE = 'GEOFENCE'
 
 const tabs = computed(() => [
   { label: 'Rules', icon: 'pi pi-map', key: 'rules' },
@@ -137,6 +138,9 @@ const savingTemplate = ref(false)
 const unreadOnly = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
+const geofenceEvents = ref([])
+const geofenceUnreadCount = ref(0)
+const refreshingEvents = ref(false)
 const ruleFormErrors = ref({
   name: '',
   subjectUserId: '',
@@ -164,12 +168,12 @@ const PREVIEW_TIMESTAMP_UTC = '2026-03-24T00:04:47Z'
 
 const events = computed(() => {
   if (unreadOnly.value) {
-    return notificationsStore.items.filter(item => !item.seen)
+    return geofenceEvents.value.filter(item => !item.seen)
   }
-  return notificationsStore.items
+  return geofenceEvents.value
 })
 
-const unreadCount = computed(() => notificationsStore.unreadCount)
+const unreadCount = computed(() => geofenceUnreadCount.value)
 
 const editingRuleId = ref(null)
 const editingTemplateId = ref(null)
@@ -708,11 +712,26 @@ async function loadTemplates() {
 }
 
 async function refreshEvents() {
-  await notificationsStore.refresh({
-    emitToasts: false,
-    emitBrowser: false,
-    emitStartupSummary: false
-  })
+  if (refreshingEvents.value) {
+    return
+  }
+
+  refreshingEvents.value = true
+  try {
+    const [items, countInfo] = await Promise.all([
+      notificationsStore.fetchNotifications({
+        limit: 100,
+        unreadOnly: false,
+        source: GEOFENCE_SOURCE
+      }),
+      notificationsStore.fetchUnreadCount({ source: GEOFENCE_SOURCE })
+    ])
+
+    geofenceEvents.value = items.map(mapGeofenceNotificationEvent)
+    geofenceUnreadCount.value = Number(countInfo?.count || 0)
+  } finally {
+    refreshingEvents.value = false
+  }
 }
 
 async function loadFriends() {
@@ -926,6 +945,7 @@ async function markEventSeen(event) {
   markingEventId.value = event.id
   try {
     await notificationsStore.markSeen(event.id)
+    await refreshEvents()
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -941,7 +961,8 @@ async function markEventSeen(event) {
 async function markAllEventsSeen() {
   markingAllSeen.value = true
   try {
-    await notificationsStore.markAllSeen()
+    await notificationsStore.markAllSeen(GEOFENCE_SOURCE)
+    await refreshEvents()
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -1009,6 +1030,30 @@ function deliverySeverity(status) {
   return 'secondary'
 }
 
+function mapGeofenceNotificationEvent(item) {
+  const metadata = item?.metadata || {}
+  const eventCode = metadata.eventCode || inferEventCode(item?.type)
+  return {
+    ...item,
+    ruleName: metadata.ruleName || '-',
+    subjectDisplayName: metadata.subjectDisplayName || '-',
+    eventType: eventCode
+  }
+}
+
+function inferEventCode(type) {
+  if (!type || typeof type !== 'string') {
+    return '-'
+  }
+  if (type.endsWith('_ENTER')) {
+    return 'ENTER'
+  }
+  if (type.endsWith('_LEAVE')) {
+    return 'LEAVE'
+  }
+  return type
+}
+
 function handleDefaultToggleChange(type, enabled) {
   if (!enabled || suppressDefaultToggleWatch.value) {
     return
@@ -1069,6 +1114,13 @@ watch(
     if (activeTab.value === 'events') {
       void refreshEvents()
     }
+  }
+)
+
+watch(
+  () => [notificationsStore.items.length, notificationsStore.unreadCount],
+  () => {
+    void refreshEvents()
   }
 )
 

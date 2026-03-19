@@ -10,13 +10,11 @@ import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
 import org.github.tess1o.geopulse.geofencing.model.dto.*;
-import org.github.tess1o.geopulse.geofencing.service.GeofenceEventService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceRuleService;
 import org.github.tess1o.geopulse.geofencing.service.NotificationTemplateService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Path("/api/geofences")
@@ -29,17 +27,14 @@ public class GeofenceResource {
 
     private final GeofenceRuleService ruleService;
     private final NotificationTemplateService templateService;
-    private final GeofenceEventService eventService;
     private final CurrentUserService currentUserService;
 
     @Inject
     public GeofenceResource(GeofenceRuleService ruleService,
                             NotificationTemplateService templateService,
-                            GeofenceEventService eventService,
                             CurrentUserService currentUserService) {
         this.ruleService = ruleService;
         this.templateService = templateService;
-        this.eventService = eventService;
         this.currentUserService = currentUserService;
     }
 
@@ -192,68 +187,4 @@ public class GeofenceResource {
         }
     }
 
-    @GET
-    @Path("/events")
-    public Response getEvents(@QueryParam("limit") @DefaultValue("50") int limit,
-                              @QueryParam("unreadOnly") @DefaultValue("false") boolean unreadOnly) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            List<GeofenceEventDto> events = eventService.listEvents(userId, limit, unreadOnly);
-            return Response.ok(ApiResponse.success(events)).build();
-        } catch (Exception e) {
-            log.error("Failed to load geofence events", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load geofence events"))
-                    .build();
-        }
-    }
-
-    @GET
-    @Path("/events/unread-count")
-    public Response getUnreadEventsCount() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            long count = eventService.countUnread(userId);
-            return Response.ok(ApiResponse.success(Map.of("count", count))).build();
-        } catch (Exception e) {
-            log.error("Failed to load unread geofence event count", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to load unread geofence event count"))
-                    .build();
-        }
-    }
-
-    @POST
-    @Path("/events/{eventId}/seen")
-    public Response markEventSeen(@PathParam("eventId") Long eventId) {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            GeofenceEventDto updated = eventService.markSeen(userId, eventId);
-            return Response.ok(ApiResponse.success(updated)).build();
-        } catch (IllegalArgumentException e) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity(ApiResponse.error(e.getMessage()))
-                    .build();
-        } catch (Exception e) {
-            log.error("Failed to mark geofence event {} as seen", eventId, e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark geofence event as seen"))
-                    .build();
-        }
-    }
-
-    @POST
-    @Path("/events/seen-all")
-    public Response markAllEventsSeen() {
-        try {
-            UUID userId = currentUserService.getCurrentUserId();
-            long updatedCount = eventService.markAllSeen(userId);
-            return Response.ok(ApiResponse.success(Map.of("updatedCount", updatedCount))).build();
-        } catch (Exception e) {
-            log.error("Failed to mark all geofence events as seen", e);
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                    .entity(ApiResponse.error("Failed to mark all geofence events as seen"))
-                    .build();
-        }
-    }
 }

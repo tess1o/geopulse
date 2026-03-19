@@ -48,10 +48,11 @@
       </SettingItem>
     </SettingSection>
 
-    <SettingSection v-if="cleanupSettings.length" title="Geofence Event Cleanup">
+    <SettingSection v-if="cleanupSettings.length" title="Notification Cleanup">
       <p class="text-muted cleanup-note">
-        Cleanup scheduler cadence is configured via
+        Cleanup scheduler cadences are configured via
         <code>geopulse.notifications.geofence-events.cleanup.scheduler-cadence</code>
+        and <code>geopulse.notifications.user-notifications.cleanup.scheduler-cadence</code>
         and requires backend restart.
       </p>
       <SettingItem
@@ -189,7 +190,10 @@ const appriseSettings = computed(() =>
 )
 
 const cleanupSettings = computed(() =>
-  systemSettings.value.filter(setting => setting.key.startsWith('system.notifications.geofence-events.'))
+  systemSettings.value.filter(setting =>
+    setting.key.startsWith('system.notifications.geofence-events.')
+    || setting.key.startsWith('system.notifications.user-notifications.')
+  )
 )
 
 const reloadSettings = async () => {
