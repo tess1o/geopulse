@@ -1,6 +1,19 @@
 <template>
   <div class="gp-app-layout" :class="layoutClasses">
     <Toast />
+    <Toast group="gp-notifications" position="top-right">
+      <template #message="slotProps">
+        <button
+          type="button"
+          class="gp-notification-toast"
+          @click="handleNotificationToastClick(slotProps.message)"
+        >
+          <div class="gp-notification-toast-summary">{{ slotProps.message.summary }}</div>
+          <div v-if="slotProps.message.detail" class="gp-notification-toast-detail">{{ slotProps.message.detail }}</div>
+          <div class="gp-notification-toast-hint">Open Geofence Events</div>
+        </button>
+      </template>
+    </Toast>
     
     <!-- Navbar Slot -->
     <header class="gp-app-navbar">
@@ -28,9 +41,12 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import Toast from 'primevue/toast'
+import { useToast } from 'primevue/usetoast'
 import AppNavbar from './AppNavbar.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 
 const props = defineProps({
   variant: {
@@ -62,12 +78,54 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['invite-friend', 'toggle-location-sharing'])
+const toast = useToast()
+const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
 
 const layoutClasses = computed(() => ({
   [`gp-app-layout--${props.variant}`]: props.variant !== 'default',
   'gp-app-layout--full-height': props.fullHeight,
   [`gp-app-layout--padding-${props.padding}`]: props.padding !== 'default'
 }))
+
+const emitNotificationToast = (payload = {}) => {
+  toast.add({
+    severity: payload.severity || 'info',
+    summary: payload.summary || 'Notification',
+    detail: payload.detail || '',
+    life: payload.life ?? 7000,
+    group: 'gp-notifications',
+    data: payload.data
+  })
+}
+
+const handleNotificationToastClick = (message) => {
+  notificationsStore.handleToastClick(message?.data)
+}
+
+onMounted(() => {
+  notificationsStore.setToastHandler(emitNotificationToast)
+
+  if (authStore.isAuthenticated) {
+    notificationsStore.startPolling()
+  }
+})
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      notificationsStore.startPolling()
+      return
+    }
+    notificationsStore.stopPolling()
+  }
+)
+
+onUnmounted(() => {
+  notificationsStore.clearToastHandler()
+  notificationsStore.stopPolling()
+})
 </script>
 
 <style scoped>
@@ -151,6 +209,31 @@ const layoutClasses = computed(() => ({
 
 .gp-app-layout--minimal .gp-app-main {
   background: transparent;
+}
+
+.gp-notification-toast {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.gp-notification-toast-summary {
+  font-weight: 700;
+}
+
+.gp-notification-toast-detail {
+  color: var(--gp-text-secondary);
+}
+
+.gp-notification-toast-hint {
+  font-size: 0.75rem;
+  color: var(--gp-primary);
 }
 
 /* Dark Mode */

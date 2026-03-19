@@ -102,7 +102,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import Drawer from 'primevue/drawer'
@@ -112,6 +112,7 @@ import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import { useThemeMode } from '@/composables/useThemeMode'
 import { useAuthStore } from '@/stores/auth'
 import { useFriendsStore } from '@/stores/friends'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import apiService from '@/utils/apiService'
 
@@ -129,18 +130,18 @@ const emit = defineEmits(['navigate'])
 const router = useRouter()
 const authStore = useAuthStore()
 const friendsStore = useFriendsStore()
+const notificationsStore = useNotificationsStore()
 const { handleError } = useErrorHandler()
 const { themeMode, themeModes } = useThemeMode()
 
 // Store refs
 const { userName, isAdmin } = storeToRefs(authStore)
 const { receivedInvitesCount } = storeToRefs(friendsStore)
+const { unreadCount: geofenceUnreadCount } = storeToRefs(notificationsStore)
 
 // Local state
 const visible = ref(false)
 const appVersion = ref('')
-const geofenceUnreadCount = ref(0)
-let geofenceUnreadInterval = null
 
 // Computed
 const drawerClasses = computed(() => ({
@@ -365,24 +366,6 @@ const fetchVersion = async () => {
   }
 }
 
-const fetchGeofenceUnreadCount = async () => {
-  try {
-    const response = await apiService.get('/geofences/events/unread-count')
-    geofenceUnreadCount.value = Number(response?.data?.count || 0)
-  } catch (error) {
-    console.warn('Failed to fetch geofence unread count:', error)
-  }
-}
-
-const handleGeofenceUnreadUpdated = (event) => {
-  const count = Number(event?.detail?.count)
-  if (Number.isFinite(count) && count >= 0) {
-    geofenceUnreadCount.value = count
-    return
-  }
-  void fetchGeofenceUnreadCount()
-}
-
 // Load friends data and version
 onMounted(async () => {
   // Load received invitations count for badge display
@@ -396,21 +379,6 @@ onMounted(async () => {
 
   // Load app version
   await fetchVersion()
-
-  // Load geofence unread badge data
-  await fetchGeofenceUnreadCount()
-  geofenceUnreadInterval = window.setInterval(() => {
-    void fetchGeofenceUnreadCount()
-  }, 30000)
-  window.addEventListener('geofence-unread-count-updated', handleGeofenceUnreadUpdated)
-})
-
-onUnmounted(() => {
-  if (geofenceUnreadInterval) {
-    window.clearInterval(geofenceUnreadInterval)
-    geofenceUnreadInterval = null
-  }
-  window.removeEventListener('geofence-unread-count-updated', handleGeofenceUnreadUpdated)
 })
 </script>
 

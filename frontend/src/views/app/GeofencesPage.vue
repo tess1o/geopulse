@@ -339,16 +339,17 @@
         </div>
       </TabContainer>
 
-      <Toast />
     </PageContainer>
   </AppLayout>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import dayjs from 'dayjs'
 import { useToast } from 'primevue/usetoast'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useNotificationsStore } from '@/stores/notifications'
 import apiService from '@/utils/apiService'
 import L from 'leaflet'
 import { useRectangleDrawing } from '@/composables/useRectangleDrawing'
@@ -358,7 +359,6 @@ import PageContainer from '@/components/ui/layout/PageContainer.vue'
 import TabContainer from '@/components/ui/layout/TabContainer.vue'
 import BaseCard from '@/components/ui/base/BaseCard.vue'
 import BaseMap from '@/components/maps/BaseMap.vue'
-import Toast from 'primevue/toast'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -370,7 +370,10 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 
 const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
 
 const tabs = computed(() => [
   { label: 'Rules', icon: 'pi pi-map', key: 'rules' },
@@ -389,15 +392,22 @@ const activeTabIndex = computed(() => tabs.value.findIndex(t => t.key === active
 
 const rules = ref([])
 const templates = ref([])
-const events = ref([])
 const friends = ref([])
 
 const savingRule = ref(false)
 const savingTemplate = ref(false)
 const unreadOnly = ref(false)
-const unreadCount = ref(0)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
+
+const events = computed(() => {
+  if (unreadOnly.value) {
+    return notificationsStore.items.filter(item => !item.seen)
+  }
+  return notificationsStore.items
+})
+
+const unreadCount = computed(() => notificationsStore.unreadCount)
 
 const editingRuleId = ref(null)
 const editingTemplateId = ref(null)
@@ -492,6 +502,19 @@ function defaultTemplateForm() {
   }
 }
 
+const availableTabs = new Set(['rules', 'templates', 'events'])
+
+function normalizeTabKey(value) {
+  if (typeof value !== 'string') {
+    return 'rules'
+  }
+  return availableTabs.has(value) ? value : 'rules'
+}
+
+function syncActiveTabFromRoute(tabValue) {
+  activeTab.value = normalizeTabKey(tabValue)
+}
+
 function onTabChange(event) {
   const selected = tabs.value[event.index]
   if (!selected) {
@@ -499,9 +522,13 @@ function onTabChange(event) {
   }
   activeTab.value = selected.key
 
-  if (selected.key === 'events') {
-    refreshEvents()
+  const nextQuery = { ...route.query }
+  if (selected.key === 'rules') {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = selected.key
   }
+  router.replace({ query: nextQuery }).catch(() => {})
 }
 
 function handleMapReady(map) {
@@ -555,24 +582,12 @@ async function loadTemplates() {
   templates.value = response?.data || []
 }
 
-async function loadEvents() {
-  const response = await apiService.get('/geofences/events', {
-    limit: 100,
-    unreadOnly: unreadOnly.value
-  })
-  events.value = response?.data || []
-}
-
-async function loadUnreadCount() {
-  const response = await apiService.get('/geofences/events/unread-count')
-  unreadCount.value = Number(response?.data?.count || 0)
-  window.dispatchEvent(new CustomEvent('geofence-unread-count-updated', {
-    detail: { count: unreadCount.value }
-  }))
-}
-
 async function refreshEvents() {
-  await Promise.all([loadEvents(), loadUnreadCount()])
+  await notificationsStore.refresh({
+    emitToasts: false,
+    emitBrowser: false,
+    emitStartupSummary: false
+  })
 }
 
 async function loadFriends() {
@@ -735,14 +750,7 @@ async function markEventSeen(event) {
 
   markingEventId.value = event.id
   try {
-    const response = await apiService.post(`/geofences/events/${event.id}/seen`, {})
-    const updated = response?.data
-    if (unreadOnly.value) {
-      events.value = events.value.filter(item => item.id !== event.id)
-    } else if (updated) {
-      events.value = events.value.map(item => item.id === event.id ? updated : item)
-    }
-    await loadUnreadCount()
+    await notificationsStore.markSeen(event.id)
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -758,8 +766,7 @@ async function markEventSeen(event) {
 async function markAllEventsSeen() {
   markingAllSeen.value = true
   try {
-    await apiService.post('/geofences/events/seen-all', {})
-    await refreshEvents()
+    await notificationsStore.markAllSeen()
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -773,7 +780,7 @@ async function markAllEventsSeen() {
 }
 
 function handleUnreadOnlyToggle() {
-  refreshEvents()
+  void refreshEvents()
 }
 
 function eventSummary(rule) {
@@ -808,6 +815,7 @@ function deliverySeverity(status) {
 
 onMounted(async () => {
   try {
+    syncActiveTabFromRoute(route.query.tab)
     await Promise.all([loadFriends(), loadTemplates(), loadRules(), refreshEvents()])
     if (!ruleForm.value.subjectUserId && authStore.userId) {
       ruleForm.value.subjectUserId = authStore.userId
@@ -821,6 +829,16 @@ onMounted(async () => {
     })
   }
 })
+
+watch(
+  () => route.query.tab,
+  (tab) => {
+    syncActiveTabFromRoute(tab)
+    if (activeTab.value === 'events') {
+      void refreshEvents()
+    }
+  }
+)
 </script>
 
 <style scoped>
