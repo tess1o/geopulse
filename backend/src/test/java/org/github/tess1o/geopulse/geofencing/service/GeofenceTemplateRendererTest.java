@@ -14,15 +14,27 @@ class GeofenceTemplateRendererTest {
 
     @Test
     void shouldReplaceKnownPlaceholders() {
-        String template = "{{subjectName}} {{eventType}} {{geofenceName}} at {{timestamp}}";
+        String template = "{{subjectName}} {{eventCode}} {{geofenceName}} at {{timestamp}}";
         String result = renderer.render(template, Map.of(
                 "subjectName", "Alice",
-                "eventType", "ENTER",
+                "eventCode", "ENTER",
                 "geofenceName", "Home",
-                "timestamp", "2026-03-18T12:00:00Z"
+                "timestamp", "03/18/2026 12:00:00"
         ));
 
-        assertThat(result).isEqualTo("Alice ENTER Home at 2026-03-18T12:00:00Z");
+        assertThat(result).isEqualTo("Alice ENTER Home at 03/18/2026 12:00:00");
+    }
+
+    @Test
+    void shouldSupportWhitespaceInsidePlaceholders() {
+        String template = "{{ subjectName }} {{ eventVerb }} {{ geofenceName }}";
+        String result = renderer.render(template, Map.of(
+                "subjectName", "Peter",
+                "eventVerb", "entered",
+                "geofenceName", "Home"
+        ));
+
+        assertThat(result).isEqualTo("Peter entered Home");
     }
 
     @Test

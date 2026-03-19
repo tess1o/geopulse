@@ -22,6 +22,7 @@ import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -211,20 +212,31 @@ public class AdminSettingsResource {
     @Path("/system/notifications/apprise/test")
     public Response testAppriseConnection(AppriseTestRequest request) {
         AppriseClientResult result = appriseNotificationService.testConnection(request);
+        if (result == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of(
+                            "success", false,
+                            "statusCode", 0,
+                            "message", "Apprise test failed: no response from client"
+                    ))
+                    .build();
+        }
+
+        String message = result.getMessage() != null && !result.getMessage().isBlank()
+                ? result.getMessage()
+                : (result.isSuccess() ? "Apprise endpoint is reachable" : "Apprise test failed");
+
+        Map<String, Object> responsePayload = new LinkedHashMap<>();
+        responsePayload.put("success", result.isSuccess());
+        responsePayload.put("statusCode", result.getStatusCode());
+        responsePayload.put("message", message);
+
         if (result.isSuccess()) {
-            return Response.ok(Map.of(
-                    "success", true,
-                    "statusCode", result.getStatusCode(),
-                    "message", result.getMessage()
-            )).build();
+            return Response.ok(responsePayload).build();
         }
 
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity(Map.of(
-                        "success", false,
-                        "statusCode", result.getStatusCode(),
-                        "message", result.getMessage()
-                ))
+                .entity(responsePayload)
                 .build();
     }
 }

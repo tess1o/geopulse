@@ -14,10 +14,14 @@ import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepo
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,6 +30,10 @@ import java.util.UUID;
 @ApplicationScoped
 @Slf4j
 public class GeofenceEvaluationService {
+
+    private static final DateTimeFormatter DATE_TIME_FORMAT_MDY = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm:ss");
+    private static final DateTimeFormatter DATE_TIME_FORMAT_DMY = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+    private static final DateTimeFormatter DATE_TIME_FORMAT_YMD = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final GeofenceRuleRepository ruleRepository;
     private final GeofenceRuleStateRepository stateRepository;
@@ -171,23 +179,28 @@ public class GeofenceEvaluationService {
 
     private void emitEvent(GeofenceRuleEntity rule, GpsPointEntity point, GeofenceEventType eventType) {
         NotificationTemplateEntity template = resolveTemplate(rule, eventType);
+        UserEntity owner = rule.getOwnerUser();
 
         UserEntity subject = rule.getSubjectUser();
         String subjectName = subject.getFullName() != null && !subject.getFullName().isBlank()
                 ? subject.getFullName()
                 : subject.getEmail();
+        String eventCode = eventType.name();
+        String eventVerb = eventType == GeofenceEventType.ENTER ? "entered" : "left";
+        String timestampLocal = formatTimestampForOwner(point.getTimestamp(), owner);
 
         Map<String, String> placeholders = new LinkedHashMap<>();
         placeholders.put("subjectName", subjectName);
-        placeholders.put("eventType", eventType.name());
+        placeholders.put("eventCode", eventCode);
+        placeholders.put("eventVerb", eventVerb);
         placeholders.put("geofenceName", rule.getName());
-        placeholders.put("timestamp", point.getTimestamp().toString());
+        placeholders.put("timestamp", timestampLocal);
+        placeholders.put("timestampUtc", point.getTimestamp().toString());
         placeholders.put("lat", String.valueOf(point.getCoordinates().getY()));
         placeholders.put("lon", String.valueOf(point.getCoordinates().getX()));
 
-        String defaultTitle = "Geofence " + eventType.name() + ": " + rule.getName();
-        String eventVerb = eventType == GeofenceEventType.ENTER ? "entered" : "left";
-        String defaultMessage = subjectName + " " + eventVerb + " geofence '" + rule.getName() + "' at " + point.getTimestamp();
+        String defaultTitle = "Geofence Alert: " + rule.getName();
+        String defaultMessage = subjectName + " " + eventVerb + " geofence '" + rule.getName() + "' at " + timestampLocal;
 
         String title = template != null && template.getTitleTemplate() != null && !template.getTitleTemplate().isBlank()
                 ? templateRenderer.render(template.getTitleTemplate(), placeholders)
@@ -260,5 +273,34 @@ public class GeofenceEvaluationService {
         double westLon = Math.min(rule.getNorthEastLon(), rule.getSouthWestLon());
 
         return lat >= southLat && lat <= northLat && lon >= westLon && lon <= eastLon;
+    }
+
+    private String formatTimestampForOwner(Instant timestamp, UserEntity owner) {
+        ZoneId zoneId = resolveZoneId(owner != null ? owner.getTimezone() : null);
+        DateTimeFormatter formatter = resolveDateTimeFormatter(owner != null ? owner.getDateFormat() : null);
+        return timestamp.atZone(zoneId).format(formatter);
+    }
+
+    private ZoneId resolveZoneId(String timezone) {
+        if (timezone == null || timezone.isBlank()) {
+            return ZoneId.of("UTC");
+        }
+        try {
+            return ZoneId.of(timezone);
+        } catch (DateTimeException ignored) {
+            return ZoneId.of("UTC");
+        }
+    }
+
+    private DateTimeFormatter resolveDateTimeFormatter(String dateFormat) {
+        if (dateFormat == null || dateFormat.isBlank()) {
+            return DATE_TIME_FORMAT_YMD;
+        }
+        return switch (dateFormat.trim().toUpperCase(Locale.ROOT)) {
+            case "MDY" -> DATE_TIME_FORMAT_MDY;
+            case "DMY" -> DATE_TIME_FORMAT_DMY;
+            case "YMD" -> DATE_TIME_FORMAT_YMD;
+            default -> DATE_TIME_FORMAT_YMD;
+        };
     }
 }

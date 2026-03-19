@@ -15,12 +15,12 @@ public class DefaultNotificationTemplateService {
 
     private static final String DEFAULT_ENTER_NAME = "In-App Enter (Default)";
     private static final String DEFAULT_LEAVE_NAME = "In-App Leave (Default)";
-    private static final String DEFAULT_ENTER_TITLE = "Geofence ENTER: {{geofenceName}}";
-    private static final String DEFAULT_LEAVE_TITLE = "Geofence LEAVE: {{geofenceName}}";
+    private static final String DEFAULT_ENTER_TITLE = "Geofence Alert: {{geofenceName}}";
+    private static final String DEFAULT_LEAVE_TITLE = "Geofence Alert: {{geofenceName}}";
     private static final String DEFAULT_ENTER_BODY =
-            "{{subjectName}} entered {{geofenceName}} at {{timestamp}} ({{lat}}, {{lon}})";
+            "{{subjectName}} {{eventVerb}} {{geofenceName}} at {{timestamp}} ({{lat}}, {{lon}})";
     private static final String DEFAULT_LEAVE_BODY =
-            "{{subjectName}} left {{geofenceName}} at {{timestamp}} ({{lat}}, {{lon}})";
+            "{{subjectName}} {{eventVerb}} {{geofenceName}} at {{timestamp}} ({{lat}}, {{lon}})";
 
     private final NotificationTemplateRepository templateRepository;
     private final EntityManager entityManager;

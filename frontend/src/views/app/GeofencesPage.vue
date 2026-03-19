@@ -1,5 +1,6 @@
 <template>
   <AppLayout variant="default">
+    <ConfirmDialog />
     <PageContainer
       title="Geofences"
       subtitle="Monitor enter/leave events for you and friends"
@@ -14,25 +15,32 @@
           <BaseCard class="panel-card">
             <h3>{{ editingRuleId ? 'Edit Rule' : 'Create Rule' }}</h3>
             <div class="form-grid">
-              <div class="field">
-                <label>Name</label>
-                <InputText v-model="ruleForm.name" placeholder="Home area" />
-              </div>
+              <div class="rules-top-row wide">
+                <div class="field">
+                  <label>Name</label>
+                  <InputText
+                    v-model="ruleForm.name"
+                    placeholder="Home area"
+                    :class="{ 'p-invalid': !!ruleFormErrors.name }"
+                  />
+                  <small v-if="ruleFormErrors.name" class="error-text">{{ ruleFormErrors.name }}</small>
+                </div>
 
-              <div class="field">
-                <label>Subject</label>
-                <Select
-                  v-model="ruleForm.subjectUserId"
-                  :options="subjectOptions"
-                  optionLabel="label"
-                  optionValue="value"
-                  placeholder="Select subject"
-                />
-              </div>
+                <div class="field">
+                  <label>Subject</label>
+                  <Select
+                    v-model="ruleForm.subjectUserId"
+                    :options="subjectOptions"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select subject"
+                    :class="{ 'p-invalid': !!ruleFormErrors.subjectUserId }"
+                  />
+                  <small v-if="ruleFormErrors.subjectUserId" class="error-text">{{ ruleFormErrors.subjectUserId }}</small>
+                </div>
 
-              <div class="field wide">
-                <label>Area Picker</label>
-                <div class="map-picker-toolbar">
+                <div class="field area-button-field">
+                  <label>Area Picker</label>
                   <Button
                     label="Draw Rectangle on Map"
                     icon="pi pi-pencil"
@@ -41,6 +49,10 @@
                     @click="startRectangleDraw"
                   />
                 </div>
+              </div>
+
+              <div class="field wide">
+                <label>Area Map</label>
                 <div class="map-picker">
                   <BaseMap
                     mapId="geofence-rule-map"
@@ -51,26 +63,8 @@
                     @map-ready="handleMapReady"
                   />
                 </div>
-              </div>
-
-              <div class="field">
-                <label>North-East Latitude</label>
-                <InputNumber v-model="ruleForm.northEastLat" :min="-90" :max="90" :maxFractionDigits="6" />
-              </div>
-
-              <div class="field">
-                <label>North-East Longitude</label>
-                <InputNumber v-model="ruleForm.northEastLon" :min="-180" :max="180" :maxFractionDigits="6" />
-              </div>
-
-              <div class="field">
-                <label>South-West Latitude</label>
-                <InputNumber v-model="ruleForm.southWestLat" :min="-90" :max="90" :maxFractionDigits="6" />
-              </div>
-
-              <div class="field">
-                <label>South-West Longitude</label>
-                <InputNumber v-model="ruleForm.southWestLon" :min="-180" :max="180" :maxFractionDigits="6" />
+                <small v-if="selectedAreaSummary" class="muted-text">{{ selectedAreaSummary }}</small>
+                <small v-if="ruleFormErrors.area" class="error-text">{{ ruleFormErrors.area }}</small>
               </div>
 
               <div class="field toggle-field">
@@ -82,32 +76,54 @@
                 <label>Monitor Leave</label>
                 <InputSwitch v-model="ruleForm.monitorLeave" />
               </div>
+              <div v-if="ruleFormErrors.monitoring" class="field wide">
+                <small class="error-text">{{ ruleFormErrors.monitoring }}</small>
+              </div>
 
               <div class="field">
-                <label>Cooldown (seconds)</label>
+                <label class="field-label-with-help">
+                  <span>Cooldown (seconds)</span>
+                  <i
+                    class="pi pi-info-circle help-icon"
+                    v-tooltip.bottom="'Prevents repeated Enter/Leave notifications for this rule during the cooldown window.'"
+                  />
+                </label>
                 <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" />
+                <small class="muted-text">Minimum delay between notifications for this rule.</small>
               </div>
 
               <div class="field">
                 <label>Enter Template</label>
                 <Select
                   v-model="ruleForm.enterTemplateId"
-                  :options="templateOptions"
+                  :options="enterTemplateOptions"
                   optionLabel="label"
                   optionValue="value"
-                  placeholder="Default"
+                  :placeholder="hasEnabledDefaultEnterTemplate ? 'Use default enter template' : 'Select enter template'"
                 />
+                <small v-if="hasEnabledDefaultEnterTemplate" class="muted-text">
+                  If empty, your default ENTER template ({{ enabledDefaultEnterTemplate?.name }}) is used.
+                </small>
+                <small v-else class="muted-text">
+                  No default ENTER template configured. Empty value uses built-in in-app message.
+                </small>
               </div>
 
               <div class="field">
                 <label>Leave Template</label>
                 <Select
                   v-model="ruleForm.leaveTemplateId"
-                  :options="templateOptions"
+                  :options="leaveTemplateOptions"
                   optionLabel="label"
                   optionValue="value"
-                  placeholder="Default"
+                  :placeholder="hasEnabledDefaultLeaveTemplate ? 'Use default leave template' : 'Select leave template'"
                 />
+                <small v-if="hasEnabledDefaultLeaveTemplate" class="muted-text">
+                  If empty, your default LEAVE template ({{ enabledDefaultLeaveTemplate?.name }}) is used.
+                </small>
+                <small v-else class="muted-text">
+                  No default LEAVE template configured. Empty value uses built-in in-app message.
+                </small>
               </div>
 
               <div class="field">
@@ -175,28 +191,79 @@
             <div class="form-grid">
               <div class="field">
                 <label>Name</label>
-                <InputText v-model="templateForm.name" placeholder="Telegram Enter Alert" />
+                <InputText
+                  ref="templateNameInput"
+                  v-model="templateForm.name"
+                  placeholder="Telegram Enter Alert"
+                  :class="{ 'p-invalid': !!templateFormErrors.name }"
+                />
+                <small v-if="templateFormErrors.name" class="error-text">{{ templateFormErrors.name }}</small>
               </div>
               <div class="field wide">
                 <label>Destination URL(s) (optional)</label>
-                <InputText v-model="templateForm.destination" placeholder="tgram://TOKEN/CHAT_ID" />
-                <small class="muted-text">Leave empty for in-app notifications only (no Apprise delivery).</small>
+                <Textarea
+                  ref="templateDestinationInput"
+                  v-model="templateForm.destination"
+                  rows="3"
+                  autoResize
+                  placeholder="tgram://TOKEN/CHAT_ID&#10;discord://WEBHOOK_TOKEN"
+                  :class="{ 'p-invalid': !!templateFormErrors.destination }"
+                />
+                <small class="muted-text">One destination URL per line. Leave empty for in-app only notifications.</small>
+                <small v-if="templateFormErrors.destination" class="error-text">{{ templateFormErrors.destination }}</small>
               </div>
               <div class="field wide">
                 <label>Title Template</label>
-                <InputText v-model="templateForm.titleTemplate" placeholder="{{eventType}}: {{geofenceName}}" />
+                <InputText
+                  ref="templateTitleInput"
+                  v-model="templateForm.titleTemplate"
+                  placeholder="{{subjectName}} {{eventVerb}} {{geofenceName}}"
+                  :class="{ 'p-invalid': !!templateFormErrors.titleTemplate }"
+                  @focus="setFocusedTemplateField('titleTemplate')"
+                />
+                <small v-if="templateFormErrors.titleTemplate" class="error-text">{{ templateFormErrors.titleTemplate }}</small>
               </div>
               <div class="field wide">
                 <label>Body Template</label>
-                <Textarea v-model="templateForm.bodyTemplate" rows="4" autoResize />
+                <Textarea
+                  ref="templateBodyInput"
+                  v-model="templateForm.bodyTemplate"
+                  rows="4"
+                  autoResize
+                  :class="{ 'p-invalid': !!templateFormErrors.bodyTemplate }"
+                  @focus="setFocusedTemplateField('bodyTemplate')"
+                />
+                <small v-if="templateFormErrors.bodyTemplate" class="error-text">{{ templateFormErrors.bodyTemplate }}</small>
+                <div class="template-preview">
+                  <div class="template-preview-title">Preview (sample event)</div>
+                  <small class="muted-text">Using sample values and your current date/time format.</small>
+                  <div class="preview-row">
+                    <span class="preview-label">Title</span>
+                    <span class="preview-value">{{ templatePreview.title || '-' }}</span>
+                  </div>
+                  <div class="preview-row">
+                    <span class="preview-label">Body</span>
+                    <span class="preview-value">{{ templatePreview.body || '-' }}</span>
+                  </div>
+                </div>
               </div>
               <div class="field wide">
                 <div class="macro-help">
-                  <div class="macro-help-title">Available macros</div>
+                  <div class="macro-help-header">
+                    <div class="macro-help-title">Available macros</div>
+                    <small class="muted-text">Click a macro to insert into the focused Title/Body field.</small>
+                  </div>
                   <div class="macro-grid">
                     <div v-for="macro in templateMacros" :key="macro.key" class="macro-item">
-                      <code>{{ macro.key }}</code>
-                      <span>{{ macro.description }}</span>
+                      <button
+                        type="button"
+                        class="macro-chip"
+                        @click="insertMacro(macro.key)"
+                      >
+                        <code>{{ macro.key }}</code>
+                      </button>
+                      <span class="macro-description">{{ macro.description }}</span>
+                      <small class="muted-text">Example: {{ macro.example }}</small>
                     </div>
                   </div>
                 </div>
@@ -204,14 +271,21 @@
               <div class="field toggle-field">
                 <label>Default for Enter</label>
                 <InputSwitch v-model="templateForm.defaultForEnter" />
+                <small class="muted-text">Current default: {{ currentDefaultEnterName }}</small>
+                <small v-if="templateFormErrors.defaultForEnter" class="error-text">{{ templateFormErrors.defaultForEnter }}</small>
               </div>
               <div class="field toggle-field">
                 <label>Default for Leave</label>
                 <InputSwitch v-model="templateForm.defaultForLeave" />
+                <small class="muted-text">Current default: {{ currentDefaultLeaveName }}</small>
+                <small v-if="templateFormErrors.defaultForLeave" class="error-text">{{ templateFormErrors.defaultForLeave }}</small>
               </div>
               <div class="field toggle-field">
                 <label>Enabled</label>
                 <InputSwitch v-model="templateForm.enabled" />
+              </div>
+              <div v-if="templateFormErrors.general" class="field wide">
+                <small class="error-text">{{ templateFormErrors.general }}</small>
               </div>
             </div>
 
@@ -344,15 +418,16 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
-import dayjs from 'dayjs'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
 import apiService from '@/utils/apiService'
 import L from 'leaflet'
 import { useRectangleDrawing } from '@/composables/useRectangleDrawing'
+import { useTimezone } from '@/composables/useTimezone'
 
 import AppLayout from '@/components/ui/layout/AppLayout.vue'
 import PageContainer from '@/components/ui/layout/PageContainer.vue'
@@ -368,12 +443,15 @@ import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 const toast = useToast()
+const confirm = useConfirm()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const timezone = useTimezone()
 
 const tabs = computed(() => [
   { label: 'Rules', icon: 'pi pi-map', key: 'rules' },
@@ -399,6 +477,30 @@ const savingTemplate = ref(false)
 const unreadOnly = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
+const ruleFormErrors = ref({
+  name: '',
+  subjectUserId: '',
+  area: '',
+  monitoring: ''
+})
+const templateFormErrors = ref({
+  name: '',
+  destination: '',
+  titleTemplate: '',
+  bodyTemplate: '',
+  defaultForEnter: '',
+  defaultForLeave: '',
+  general: ''
+})
+const templateNameInput = ref(null)
+const templateDestinationInput = ref(null)
+const templateTitleInput = ref(null)
+const templateBodyInput = ref(null)
+const focusedTemplateField = ref('bodyTemplate')
+const suppressDefaultToggleWatch = ref(false)
+const TEMPLATE_MACRO_PATTERN = /\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*}}/g
+const DESTINATION_URL_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.+$/
+const PREVIEW_TIMESTAMP_UTC = '2026-03-24T00:04:47Z'
 
 const events = computed(() => {
   if (unreadOnly.value) {
@@ -425,6 +527,7 @@ const ruleForm = ref(defaultRuleForm())
 const templateForm = ref(defaultTemplateForm())
 const rectangleDrawing = useRectangleDrawing({
   onRectangleCreated: ({ bounds, layer }) => {
+    ruleFormErrors.value.area = ''
     ruleForm.value.northEastLat = Number(bounds.getNorthEast().lat.toFixed(6))
     ruleForm.value.northEastLon = Number(bounds.getNorthEast().lng.toFixed(6))
     ruleForm.value.southWestLat = Number(bounds.getSouthWest().lat.toFixed(6))
@@ -456,22 +559,130 @@ const subjectOptions = computed(() => {
   return items
 })
 
-const templateOptions = computed(() => {
-  const opts = [{ label: 'Default', value: null }]
-  templates.value.forEach(template => {
-    opts.push({ label: template.name, value: template.id })
+const templateOptionItems = computed(() => {
+  return templates.value.map(template => ({
+    label: template.enabled ? template.name : `${template.name} (Disabled)`,
+    value: template.id
+  }))
+})
+const enabledDefaultEnterTemplate = computed(() =>
+  templates.value.find(template => template.defaultForEnter && template.enabled) || null
+)
+const enabledDefaultLeaveTemplate = computed(() =>
+  templates.value.find(template => template.defaultForLeave && template.enabled) || null
+)
+const hasEnabledDefaultEnterTemplate = computed(() => !!enabledDefaultEnterTemplate.value)
+const hasEnabledDefaultLeaveTemplate = computed(() => !!enabledDefaultLeaveTemplate.value)
+
+const enterTemplateOptions = computed(() => {
+  const options = [...templateOptionItems.value]
+  if (enabledDefaultEnterTemplate.value) {
+    options.unshift({
+      label: `Use default ENTER template (${enabledDefaultEnterTemplate.value.name})`,
+      value: null
+    })
+  }
+  return options
+})
+
+const leaveTemplateOptions = computed(() => {
+  const options = [...templateOptionItems.value]
+  if (enabledDefaultLeaveTemplate.value) {
+    options.unshift({
+      label: `Use default LEAVE template (${enabledDefaultLeaveTemplate.value.name})`,
+      value: null
+    })
+  }
+  return options
+})
+
+function hasValidAreaBounds(form) {
+  return ['northEastLat', 'northEastLon', 'southWestLat', 'southWestLon'].every((key) => {
+    const value = form[key]
+    return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
   })
-  return opts
+}
+
+const selectedAreaSummary = computed(() => {
+  const { northEastLat, northEastLon, southWestLat, southWestLon } = ruleForm.value
+  if (!hasValidAreaBounds(ruleForm.value)) {
+    return ''
+  }
+
+  return `Selected area: NE (${Number(northEastLat).toFixed(5)}, ${Number(northEastLon).toFixed(5)}), SW (${Number(southWestLat).toFixed(5)}, ${Number(southWestLon).toFixed(5)})`
 })
 
 const templateMacros = [
-  { key: '{{subjectName}}', description: 'Tracked subject display name' },
-  { key: '{{eventType}}', description: 'Event type (ENTER or LEAVE)' },
-  { key: '{{geofenceName}}', description: 'Geofence rule name' },
-  { key: '{{timestamp}}', description: 'Event timestamp (UTC ISO-8601)' },
-  { key: '{{lat}}', description: 'Point latitude' },
-  { key: '{{lon}}', description: 'Point longitude' }
+  {
+    key: '{{subjectName}}',
+    placeholder: 'subjectName',
+    description: 'Tracked subject display name',
+    example: 'Peter'
+  },
+  {
+    key: '{{eventCode}}',
+    placeholder: 'eventCode',
+    description: 'Event code (ENTER or LEAVE)',
+    example: 'ENTER'
+  },
+  {
+    key: '{{eventVerb}}',
+    placeholder: 'eventVerb',
+    description: 'Event verb (entered or left)',
+    example: 'entered'
+  },
+  {
+    key: '{{geofenceName}}',
+    placeholder: 'geofenceName',
+    description: 'Geofence rule name',
+    example: 'Home'
+  },
+  {
+    key: '{{timestamp}}',
+    placeholder: 'timestamp',
+    description: 'Event timestamp in your timezone/date format',
+    example: '03/24/2026 02:04:47'
+  },
+  {
+    key: '{{timestampUtc}}',
+    placeholder: 'timestampUtc',
+    description: 'Event timestamp in UTC ISO-8601',
+    example: PREVIEW_TIMESTAMP_UTC
+  },
+  {
+    key: '{{lat}}',
+    placeholder: 'lat',
+    description: 'Point latitude',
+    example: '49.547085'
+  },
+  {
+    key: '{{lon}}',
+    placeholder: 'lon',
+    description: 'Point longitude',
+    example: '25.595918'
+  }
 ]
+const allowedTemplateMacroNames = new Set(templateMacros.map(macro => macro.placeholder))
+const currentDefaultEnterTemplate = computed(() => templates.value.find(template => template.defaultForEnter) || null)
+const currentDefaultLeaveTemplate = computed(() => templates.value.find(template => template.defaultForLeave) || null)
+const currentDefaultEnterName = computed(() => currentDefaultEnterTemplate.value?.name || 'None')
+const currentDefaultLeaveName = computed(() => currentDefaultLeaveTemplate.value?.name || 'None')
+const templatePreviewContext = computed(() => ({
+  subjectName: authStore.userName || authStore.userEmail || 'Peter',
+  eventCode: 'ENTER',
+  eventVerb: 'entered',
+  geofenceName: 'Home',
+  timestamp: formatDate(PREVIEW_TIMESTAMP_UTC),
+  timestampUtc: PREVIEW_TIMESTAMP_UTC,
+  lat: '49.547085',
+  lon: '25.595918'
+}))
+const templatePreview = computed(() => {
+  return {
+    title: renderTemplateWithContext(templateForm.value.titleTemplate, templatePreviewContext.value),
+    body: renderTemplateWithContext(templateForm.value.bodyTemplate, templatePreviewContext.value)
+  }
+})
 
 function defaultRuleForm() {
   return {
@@ -500,6 +711,260 @@ function defaultTemplateForm() {
     defaultForLeave: false,
     enabled: true
   }
+}
+
+function clearRuleFormErrors() {
+  ruleFormErrors.value = {
+    name: '',
+    subjectUserId: '',
+    area: '',
+    monitoring: ''
+  }
+}
+
+function clearTemplateFormErrors() {
+  templateFormErrors.value = {
+    name: '',
+    destination: '',
+    titleTemplate: '',
+    bodyTemplate: '',
+    defaultForEnter: '',
+    defaultForLeave: '',
+    general: ''
+  }
+}
+
+function setFocusedTemplateField(field) {
+  focusedTemplateField.value = field
+}
+
+function resolveInputElement(field) {
+  const source = field === 'titleTemplate' ? templateTitleInput.value : templateBodyInput.value
+  if (!source) {
+    return null
+  }
+
+  if (source.$el) {
+    return source.$el.querySelector('input, textarea') || source.$el
+  }
+  if (source.$refs?.input) {
+    return source.$refs.input
+  }
+  return source
+}
+
+function splitDestinationLines(destination, allowLegacySeparators = false) {
+  const input = typeof destination === 'string' ? destination : ''
+  const rawSegments = allowLegacySeparators
+    ? input.replace(/;/g, '\n').replace(/,/g, '\n').split(/\r?\n/)
+    : input.split(/\r?\n/)
+
+  return rawSegments
+    .map(segment => segment.trim())
+    .filter(segment => segment.length > 0)
+}
+
+function normalizeDestination(destination) {
+  return splitDestinationLines(destination).join('\n')
+}
+
+function confirmAction({
+  message,
+  header = 'Confirmation',
+  acceptLabel = 'Confirm',
+  rejectLabel = 'Cancel',
+  acceptClass = 'p-button-danger'
+}) {
+  return new Promise((resolve) => {
+    let settled = false
+    const settle = (value) => {
+      if (!settled) {
+        settled = true
+        resolve(value)
+      }
+    }
+
+    confirm.require({
+      message,
+      header,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel,
+      rejectLabel,
+      acceptClass,
+      rejectClass: 'p-button-text p-button-secondary',
+      accept: () => settle(true),
+      reject: () => settle(false),
+      onHide: () => settle(false)
+    })
+  })
+}
+
+function validateTemplateSyntax(template, fieldLabel) {
+  if (!template || !template.trim()) {
+    return ''
+  }
+
+  const unknownMacros = new Set()
+  let match
+  TEMPLATE_MACRO_PATTERN.lastIndex = 0
+  while ((match = TEMPLATE_MACRO_PATTERN.exec(template)) !== null) {
+    const macroName = match[1]
+    if (!allowedTemplateMacroNames.has(macroName)) {
+      unknownMacros.add(macroName)
+    }
+  }
+
+  if (unknownMacros.size > 0) {
+    return `${fieldLabel} has unsupported macros: ${Array.from(unknownMacros).join(', ')}.`
+  }
+
+  TEMPLATE_MACRO_PATTERN.lastIndex = 0
+  const withoutValidMacros = template.replace(TEMPLATE_MACRO_PATTERN, '')
+  if (withoutValidMacros.includes('{{') || withoutValidMacros.includes('}}')) {
+    return `${fieldLabel} has invalid macro syntax. Use {{macroName}}.`
+  }
+
+  return ''
+}
+
+function focusFirstTemplateError(errors) {
+  const orderedFields = ['name', 'destination', 'titleTemplate', 'bodyTemplate']
+  const firstField = orderedFields.find(field => errors[field])
+  if (!firstField) {
+    return
+  }
+
+  nextTick(() => {
+    if (firstField === 'name') {
+      const target = templateNameInput.value?.$el || templateNameInput.value
+      target?.focus?.()
+      return
+    }
+    if (firstField === 'destination') {
+      const target = templateDestinationInput.value?.$el || templateDestinationInput.value
+      target?.focus?.()
+      return
+    }
+    const input = resolveInputElement(firstField)
+    input?.focus?.()
+  })
+}
+
+function validateTemplateForm() {
+  clearTemplateFormErrors()
+  const errors = {}
+  const form = templateForm.value
+
+  const normalizedName = (form.name || '').trim()
+  if (!normalizedName) {
+    errors.name = 'Template name is required.'
+  } else if (normalizedName.length > 120) {
+    errors.name = 'Template name must be 120 characters or less.'
+  }
+
+  const destinationLines = splitDestinationLines(form.destination)
+  for (let index = 0; index < destinationLines.length; index += 1) {
+    const line = destinationLines[index]
+    if (line.includes(',') || line.includes(';')) {
+      errors.destination = `Line ${index + 1} contains multiple URLs. Use one destination per line.`
+      break
+    }
+    if (!DESTINATION_URL_PATTERN.test(line)) {
+      errors.destination = `Line ${index + 1} must be a valid URL (scheme://...).`
+      break
+    }
+  }
+
+  const titleSyntaxError = validateTemplateSyntax(form.titleTemplate, 'Title template')
+  if (titleSyntaxError) {
+    errors.titleTemplate = titleSyntaxError
+  }
+
+  const bodySyntaxError = validateTemplateSyntax(form.bodyTemplate, 'Body template')
+  if (bodySyntaxError) {
+    errors.bodyTemplate = bodySyntaxError
+  }
+
+  templateFormErrors.value = {
+    ...templateFormErrors.value,
+    ...errors
+  }
+  if (Object.keys(errors).length > 0) {
+    focusFirstTemplateError(errors)
+    return false
+  }
+  return true
+}
+
+function renderTemplateWithContext(template, context) {
+  if (!template || !template.trim()) {
+    return ''
+  }
+  TEMPLATE_MACRO_PATTERN.lastIndex = 0
+  return template.replace(TEMPLATE_MACRO_PATTERN, (_, macroName) => context[macroName] ?? '')
+}
+
+function insertMacro(macroKey) {
+  const targetField = focusedTemplateField.value === 'titleTemplate' ? 'titleTemplate' : 'bodyTemplate'
+  const currentValue = templateForm.value[targetField] || ''
+  const input = resolveInputElement(targetField)
+
+  if (input && typeof input.selectionStart === 'number' && typeof input.selectionEnd === 'number') {
+    const start = input.selectionStart
+    const end = input.selectionEnd
+    const updated = `${currentValue.slice(0, start)}${macroKey}${currentValue.slice(end)}`
+    templateForm.value[targetField] = updated
+    nextTick(() => {
+      input.focus()
+      const cursor = start + macroKey.length
+      input.setSelectionRange(cursor, cursor)
+    })
+  } else if (!currentValue) {
+    templateForm.value[targetField] = macroKey
+  } else {
+    templateForm.value[targetField] = `${currentValue} ${macroKey}`
+  }
+
+  if (templateFormErrors.value[targetField]) {
+    templateFormErrors.value[targetField] = ''
+  }
+}
+
+function extractApiErrorMessage(error, fallback) {
+  return error?.response?.data?.message
+    || error?.response?.data?.error
+    || error?.response?.data?.data?.message
+    || error?.userMessage
+    || error?.message
+    || fallback
+}
+
+function validateRuleForm() {
+  clearRuleFormErrors()
+  const errors = {}
+  const form = ruleForm.value
+
+  if (!form.name || !form.name.trim()) {
+    errors.name = 'Rule name is required.'
+  }
+
+  if (!form.subjectUserId) {
+    errors.subjectUserId = 'Please select who this rule tracks.'
+  }
+
+  if (!hasValidAreaBounds(form)) {
+    errors.area = 'Please draw a rectangle on the map.'
+  }
+
+  if (!form.monitorEnter && !form.monitorLeave) {
+    errors.monitoring = 'Enable at least one event type (Enter or Leave).'
+  }
+
+  ruleFormErrors.value = {
+    ...ruleFormErrors.value,
+    ...errors
+  }
+  return Object.keys(errors).length === 0
 }
 
 const availableTabs = new Set(['rules', 'templates', 'events'])
@@ -597,10 +1062,21 @@ async function loadFriends() {
 }
 
 async function saveRule() {
+  if (!validateRuleForm()) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Validation Error',
+      detail: 'Please fix the highlighted fields before saving.',
+      life: 4000
+    })
+    return
+  }
+
   savingRule.value = true
   try {
     const payload = {
-      ...ruleForm.value
+      ...ruleForm.value,
+      name: ruleForm.value.name.trim()
     }
 
     if (editingRuleId.value) {
@@ -618,7 +1094,7 @@ async function saveRule() {
     toast.add({
       severity: 'error',
       summary: 'Rule Error',
-      detail: error?.response?.data?.message || error?.message || 'Failed to save rule',
+      detail: extractApiErrorMessage(error, 'Failed to save rule'),
       life: 5000
     })
   } finally {
@@ -627,6 +1103,7 @@ async function saveRule() {
 }
 
 function editRule(rule) {
+  clearRuleFormErrors()
   editingRuleId.value = rule.id
   ruleForm.value = {
     name: rule.name,
@@ -646,7 +1123,13 @@ function editRule(rule) {
 }
 
 async function deleteRule(rule) {
-  const confirmed = window.confirm(`Delete geofence rule "${rule.name}"?`)
+  const confirmed = await confirmAction({
+    header: 'Delete Rule',
+    message: `Delete geofence rule "${rule.name}"?`,
+    acceptLabel: 'Delete',
+    rejectLabel: 'Cancel',
+    acceptClass: 'p-button-danger'
+  })
   if (!confirmed) {
     return
   }
@@ -659,7 +1142,7 @@ async function deleteRule(rule) {
     toast.add({
       severity: 'error',
       summary: 'Delete Error',
-      detail: error?.response?.data?.message || error?.message || 'Failed to delete rule',
+      detail: extractApiErrorMessage(error, 'Failed to delete rule'),
       life: 5000
     })
   }
@@ -668,6 +1151,7 @@ async function deleteRule(rule) {
 function resetRuleForm() {
   editingRuleId.value = null
   ruleForm.value = defaultRuleForm()
+  clearRuleFormErrors()
   if (geofenceMap.value && rectangleLayer.value) {
     geofenceMap.value.removeLayer(rectangleLayer.value)
     rectangleLayer.value = null
@@ -675,10 +1159,24 @@ function resetRuleForm() {
 }
 
 async function saveTemplate() {
+  if (!validateTemplateForm()) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Validation Error',
+      detail: 'Please fix template form errors before saving.',
+      life: 4500
+    })
+    return
+  }
+
   savingTemplate.value = true
   try {
     const payload = {
-      ...templateForm.value
+      ...templateForm.value,
+      name: templateForm.value.name.trim(),
+      destination: normalizeDestination(templateForm.value.destination),
+      titleTemplate: templateForm.value.titleTemplate?.trim() || '',
+      bodyTemplate: templateForm.value.bodyTemplate?.trim() || ''
     }
 
     if (editingTemplateId.value) {
@@ -693,10 +1191,11 @@ async function saveTemplate() {
     await loadTemplates()
     await loadRules()
   } catch (error) {
+    templateFormErrors.value.general = extractApiErrorMessage(error, 'Failed to save template')
     toast.add({
       severity: 'error',
       summary: 'Template Error',
-      detail: error?.response?.data?.message || error?.message || 'Failed to save template',
+      detail: templateFormErrors.value.general,
       life: 5000
     })
   } finally {
@@ -705,6 +1204,7 @@ async function saveTemplate() {
 }
 
 function editTemplate(template) {
+  clearTemplateFormErrors()
   editingTemplateId.value = template.id
   templateForm.value = {
     name: template.name,
@@ -718,7 +1218,20 @@ function editTemplate(template) {
 }
 
 async function deleteTemplate(template) {
-  const confirmed = window.confirm(`Delete template "${template.name}"?`)
+  const usages = rules.value.filter(rule =>
+    rule.enterTemplateId === template.id || rule.leaveTemplateId === template.id
+  )
+  const warning = usages.length > 0
+    ? `\n\nWarning: this template is currently used by ${usages.length} rule(s).`
+    : ''
+
+  const confirmed = await confirmAction({
+    header: 'Delete Template',
+    message: `Delete template "${template.name}"?${warning}`,
+    acceptLabel: 'Delete',
+    rejectLabel: 'Cancel',
+    acceptClass: 'p-button-danger'
+  })
   if (!confirmed) {
     return
   }
@@ -732,7 +1245,7 @@ async function deleteTemplate(template) {
     toast.add({
       severity: 'error',
       summary: 'Delete Error',
-      detail: error?.response?.data?.message || error?.message || 'Failed to delete template',
+      detail: extractApiErrorMessage(error, 'Failed to delete template'),
       life: 5000
     })
   }
@@ -741,6 +1254,8 @@ async function deleteTemplate(template) {
 function resetTemplateForm() {
   editingTemplateId.value = null
   templateForm.value = defaultTemplateForm()
+  clearTemplateFormErrors()
+  focusedTemplateField.value = 'bodyTemplate'
 }
 
 async function markEventSeen(event) {
@@ -755,7 +1270,7 @@ async function markEventSeen(event) {
     toast.add({
       severity: 'error',
       summary: 'Event Error',
-      detail: error?.response?.data?.message || error?.message || 'Failed to mark event as seen',
+      detail: extractApiErrorMessage(error, 'Failed to mark event as seen'),
       life: 5000
     })
   } finally {
@@ -771,7 +1286,7 @@ async function markAllEventsSeen() {
     toast.add({
       severity: 'error',
       summary: 'Event Error',
-      detail: error?.response?.data?.message || error?.message || 'Failed to mark events as seen',
+      detail: extractApiErrorMessage(error, 'Failed to mark events as seen'),
       life: 5000
     })
   } finally {
@@ -798,12 +1313,32 @@ function defaultSummary(template) {
 }
 
 function formatDestination(destination) {
-  return destination && destination.trim() ? destination : 'In-app only'
+  const destinations = splitDestinationLines(destination, true)
+  if (destinations.length === 0) {
+    return 'In-app only'
+  }
+  const firstMasked = maskDestination(destinations[0])
+  if (destinations.length === 1) {
+    return firstMasked
+  }
+  return `${firstMasked} (+${destinations.length - 1} more)`
+}
+
+function maskDestination(destination) {
+  const normalized = String(destination || '').trim()
+  if (!normalized) {
+    return '***'
+  }
+  const matched = normalized.match(/^([a-zA-Z][a-zA-Z0-9+.-]*:\/\/).+$/)
+  if (matched) {
+    return `${matched[1]}***`
+  }
+  return '***'
 }
 
 function formatDate(value) {
   if (!value) return '-'
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
+  return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
 }
 
 function deliverySeverity(status) {
@@ -811,6 +1346,42 @@ function deliverySeverity(status) {
   if (status === 'FAILED') return 'danger'
   if (status === 'PENDING') return 'info'
   return 'secondary'
+}
+
+function handleDefaultToggleChange(type, enabled) {
+  if (!enabled || suppressDefaultToggleWatch.value) {
+    return
+  }
+
+  const currentDefault = type === 'enter' ? currentDefaultEnterTemplate.value : currentDefaultLeaveTemplate.value
+  if (!currentDefault) {
+    return
+  }
+
+  if (editingTemplateId.value && currentDefault.id === editingTemplateId.value) {
+    return
+  }
+
+  void confirmAction({
+    header: 'Set Default Template',
+    message: `Set this as default ${type.toUpperCase()} template? Current default "${currentDefault.name}" will be unset.`,
+    acceptLabel: 'Set Default',
+    rejectLabel: 'Cancel',
+    acceptClass: 'p-button-primary'
+  }).then((confirmed) => {
+    if (confirmed) {
+      return
+    }
+    suppressDefaultToggleWatch.value = true
+    if (type === 'enter') {
+      templateForm.value.defaultForEnter = false
+    } else {
+      templateForm.value.defaultForLeave = false
+    }
+    nextTick(() => {
+      suppressDefaultToggleWatch.value = false
+    })
+  })
 }
 
 onMounted(async () => {
@@ -824,7 +1395,7 @@ onMounted(async () => {
     toast.add({
       severity: 'error',
       summary: 'Load Error',
-      detail: error?.message || 'Failed to load geofence data',
+      detail: extractApiErrorMessage(error, 'Failed to load geofence data'),
       life: 5000
     })
   }
@@ -836,6 +1407,107 @@ watch(
     syncActiveTabFromRoute(tab)
     if (activeTab.value === 'events') {
       void refreshEvents()
+    }
+  }
+)
+
+watch(
+  () => ruleForm.value.name,
+  (value) => {
+    if (ruleFormErrors.value.name && value && value.trim()) {
+      ruleFormErrors.value.name = ''
+    }
+  }
+)
+
+watch(
+  () => ruleForm.value.subjectUserId,
+  (value) => {
+    if (ruleFormErrors.value.subjectUserId && value) {
+      ruleFormErrors.value.subjectUserId = ''
+    }
+  }
+)
+
+watch(
+  () => [ruleForm.value.monitorEnter, ruleForm.value.monitorLeave],
+  ([monitorEnter, monitorLeave]) => {
+    if (ruleFormErrors.value.monitoring && (monitorEnter || monitorLeave)) {
+      ruleFormErrors.value.monitoring = ''
+    }
+  }
+)
+
+watch(
+  () => templateForm.value.name,
+  (value) => {
+    if (templateFormErrors.value.name && value && value.trim()) {
+      templateFormErrors.value.name = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+  }
+)
+
+watch(
+  () => templateForm.value.destination,
+  () => {
+    if (templateFormErrors.value.destination) {
+      templateFormErrors.value.destination = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+  }
+)
+
+watch(
+  () => templateForm.value.titleTemplate,
+  () => {
+    if (templateFormErrors.value.titleTemplate) {
+      templateFormErrors.value.titleTemplate = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+  }
+)
+
+watch(
+  () => templateForm.value.bodyTemplate,
+  () => {
+    if (templateFormErrors.value.bodyTemplate) {
+      templateFormErrors.value.bodyTemplate = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+  }
+)
+
+watch(
+  () => templateForm.value.defaultForEnter,
+  (enabled) => {
+    handleDefaultToggleChange('enter', enabled)
+    if (templateFormErrors.value.defaultForEnter && enabled) {
+      templateFormErrors.value.defaultForEnter = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+  }
+)
+
+watch(
+  () => templateForm.value.defaultForLeave,
+  (enabled) => {
+    handleDefaultToggleChange('leave', enabled)
+    if (templateFormErrors.value.defaultForLeave && enabled) {
+      templateFormErrors.value.defaultForLeave = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
     }
   }
 )
@@ -868,8 +1540,15 @@ watch(
   grid-column: 1 / -1;
 }
 
-.map-picker-toolbar {
-  margin-bottom: 0.5rem;
+.rules-top-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.area-button-field {
+  min-width: 220px;
 }
 
 .map-picker {
@@ -884,33 +1563,110 @@ watch(
   font-size: 0.9rem;
 }
 
+.field-label-with-help {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.help-icon {
+  color: var(--text-color-secondary);
+  cursor: help;
+  font-size: 0.85rem;
+}
+
 .muted-text {
   color: var(--text-color-secondary);
   font-size: 0.8rem;
 }
 
+.error-text {
+  color: var(--red-500);
+  font-size: 0.78rem;
+}
+
 .macro-help {
   border: 1px solid var(--surface-border);
   border-radius: 8px;
-  padding: 0.75rem;
+  padding: 1rem;
   background: var(--surface-50);
+}
+
+.macro-help-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .macro-help-title {
   font-weight: 600;
-  margin-bottom: 0.5rem;
 }
 
 .macro-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.5rem 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.6rem 0.75rem;
+  margin-top: 0.75rem;
 }
 
 .macro-item {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.3rem;
+  padding: 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+}
+
+.macro-chip {
+  align-self: flex-start;
+  border: 1px solid var(--primary-300);
+  background: var(--surface-50);
+  color: var(--text-color);
+  border-radius: 999px;
+  padding: 0.22rem 0.6rem;
+  cursor: pointer;
+}
+
+.macro-chip:hover {
+  border-color: var(--primary-500);
+}
+
+.macro-description {
+  font-size: 0.82rem;
+}
+
+.template-preview {
+  border: 1px solid var(--surface-border);
+  border-radius: 8px;
+  padding: 0.8rem;
+  background: var(--surface-50);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.template-preview-title {
+  font-weight: 600;
+}
+
+.preview-row {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.preview-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-color-secondary);
+}
+
+.preview-value {
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .toggle-field {
@@ -961,6 +1717,10 @@ watch(
 
   .panel-card {
     padding: 0.75rem;
+  }
+
+  .rules-top-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -50,8 +50,9 @@ public class AppriseHttpClient {
                 log.info("Apprise ping returned HTTP 204 with invalid content-length header; treating as reachable");
                 return new AppriseClientResult(true, 204, "Apprise endpoint is reachable");
             }
-            log.warn("Apprise ping failed: {}", e.getMessage());
-            return new AppriseClientResult(false, 0, e.getMessage());
+            String detail = buildErrorMessage(e, "Apprise ping failed");
+            log.warn("Apprise ping failed: {}", detail);
+            return new AppriseClientResult(false, 0, detail);
         }
     }
 
@@ -105,9 +106,28 @@ public class AppriseHttpClient {
                 log.info("Apprise notify returned HTTP 204 with invalid content-length header; treating as delivered");
                 return new AppriseClientResult(true, 204, "Delivered");
             }
-            log.warn("Apprise notify failed: {}", e.getMessage());
-            return new AppriseClientResult(false, 0, e.getMessage());
+            String detail = buildErrorMessage(e, "Apprise notify failed");
+            log.warn("Apprise notify failed: {}", detail);
+            return new AppriseClientResult(false, 0, detail);
         }
+    }
+
+    private String buildErrorMessage(Throwable error, String fallback) {
+        if (error == null) {
+            return fallback;
+        }
+
+        Throwable current = error;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && !message.isBlank()) {
+                return message;
+            }
+            current = current.getCause();
+        }
+
+        String type = error.getClass().getSimpleName();
+        return fallback + (type == null || type.isBlank() ? "" : " (" + type + ")");
     }
 
     private boolean isUnexpectedContentLengthOn204(Throwable error) {
