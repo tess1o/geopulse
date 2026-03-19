@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.geofencing.service;
 import jakarta.persistence.EntityManager;
 import org.github.tess1o.geopulse.geofencing.model.dto.CreateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.dto.NotificationTemplateDto;
+import org.github.tess1o.geopulse.geofencing.model.dto.UpdateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -16,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -88,6 +90,28 @@ class NotificationTemplateServiceTest {
     }
 
     @Test
+    void shouldDefaultTemplateEnabledToTrueWhenOmitted() {
+        UUID userId = UUID.randomUUID();
+        UserEntity user = new UserEntity();
+        user.setId(userId);
+        when(entityManager.getReference(eq(UserEntity.class), eq(userId))).thenReturn(user);
+
+        CreateNotificationTemplateRequest request = new CreateNotificationTemplateRequest();
+        request.setName("Default Enabled");
+        request.setDestination("");
+        request.setTitleTemplate("Title");
+        request.setBodyTemplate("Body");
+        request.setDefaultForEnter(false);
+        request.setDefaultForLeave(false);
+
+        service.createTemplate(userId, request);
+
+        ArgumentCaptor<NotificationTemplateEntity> captor = ArgumentCaptor.forClass(NotificationTemplateEntity.class);
+        verify(templateRepository).persist(captor.capture());
+        assertThat(captor.getValue().getEnabled()).isTrue();
+    }
+
+    @Test
     void shouldRejectUnsupportedTemplateMacro() {
         UUID userId = UUID.randomUUID();
 
@@ -147,5 +171,32 @@ class NotificationTemplateServiceTest {
         inOrder.verify(entityManager).flush();
         inOrder.verify(templateRepository).persist(any(NotificationTemplateEntity.class));
         verify(entityManager, times(2)).flush();
+    }
+
+    @Test
+    void shouldPreserveEnabledOnUpdateWhenOmitted() {
+        UUID userId = UUID.randomUUID();
+        long templateId = 42L;
+
+        NotificationTemplateEntity entity = NotificationTemplateEntity.builder()
+                .id(templateId)
+                .name("Existing")
+                .destination("")
+                .titleTemplate("Title")
+                .bodyTemplate("Body")
+                .defaultForEnter(false)
+                .defaultForLeave(false)
+                .enabled(false)
+                .build();
+
+        when(templateRepository.findByIdAndUser(templateId, userId)).thenReturn(Optional.of(entity));
+
+        UpdateNotificationTemplateRequest request = new UpdateNotificationTemplateRequest();
+        request.setName("Updated Name");
+
+        service.updateTemplate(userId, templateId, request);
+
+        assertThat(entity.getEnabled()).isFalse();
+        verify(entityManager).flush();
     }
 }

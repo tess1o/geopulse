@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
+import org.github.tess1o.geopulse.geofencing.util.NotificationDestinationParser;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -67,7 +68,7 @@ public class AppriseHttpClient {
             URI endpoint = normalizeNotifyUrl(baseUrl);
             HttpClient client = buildHttpClient(timeoutMs, verifyTls);
 
-            List<String> urls = parseDestinations(destination);
+            List<String> urls = NotificationDestinationParser.parseUrls(destination);
             if (urls.isEmpty()) {
                 return new AppriseClientResult(false, 0, "No destination URLs provided");
             }
@@ -163,25 +164,6 @@ public class AppriseHttpClient {
             return URI.create(raw.substring(0, raw.length() - 1));
         }
         return URI.create(raw + "notify");
-    }
-
-    private List<String> parseDestinations(String destination) {
-        if (destination == null || destination.isBlank()) {
-            return List.of();
-        }
-
-        String[] segments = destination
-                .replace(';', ',')
-                .split("[\\n,]");
-
-        List<String> urls = new ArrayList<>();
-        for (String segment : segments) {
-            String trimmed = segment.trim();
-            if (!trimmed.isEmpty()) {
-                urls.add(trimmed);
-            }
-        }
-        return urls;
     }
 
     private HttpClient buildHttpClient(int timeoutMs, boolean verifyTls) throws Exception {

@@ -10,6 +10,7 @@ import org.github.tess1o.geopulse.geofencing.model.dto.NotificationTemplateDto;
 import org.github.tess1o.geopulse.geofencing.model.dto.UpdateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
+import org.github.tess1o.geopulse.geofencing.util.NotificationDestinationParser;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.util.ArrayList;
@@ -25,7 +26,6 @@ import java.util.regex.Pattern;
 public class NotificationTemplateService {
 
     private static final Pattern TEMPLATE_MACRO_PATTERN = Pattern.compile("\\{\\{\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*}}");
-    private static final Pattern DESTINATION_URL_PATTERN = Pattern.compile("^[a-zA-Z][a-zA-Z0-9+.-]*://.+$");
     private static final Set<String> ALLOWED_TEMPLATE_MACROS = Set.of(
             "subjectName",
             "eventCode",
@@ -53,43 +53,14 @@ public class NotificationTemplateService {
 
     @Transactional
     public NotificationTemplateDto createTemplate(UUID userId, CreateNotificationTemplateRequest request) {
-        String name = request.getName() == null ? null : request.getName().trim();
-        String destination = normalizeDestination(request.getDestination());
-        String titleTemplate = normalizeTemplate(request.getTitleTemplate());
-        String bodyTemplate = normalizeTemplate(request.getBodyTemplate());
-        boolean defaultForEnter = Boolean.TRUE.equals(request.getDefaultForEnter());
-        boolean defaultForLeave = Boolean.TRUE.equals(request.getDefaultForLeave());
+        TemplateWriteInput writeInput = buildCreateWriteInput(request);
+        validateTemplateRequest(writeInput.name(), writeInput.destination(), writeInput.titleTemplate(), writeInput.bodyTemplate());
 
-        validateTemplateRequest(name, destination, titleTemplate, bodyTemplate);
+        NotificationTemplateEntity entity = NotificationTemplateEntity.builder()
+                .user(entityManager.getReference(UserEntity.class, userId))
+                .build();
 
-        try {
-            if (defaultForEnter || defaultForLeave) {
-                clearDefaultsAndFlush(userId, null, defaultForEnter, defaultForLeave);
-            }
-
-            NotificationTemplateEntity entity = NotificationTemplateEntity.builder()
-                    .user(entityManager.getReference(UserEntity.class, userId))
-                    .name(name)
-                    .destination(destination)
-                    .titleTemplate(titleTemplate)
-                    .bodyTemplate(bodyTemplate)
-                    .defaultForEnter(defaultForEnter)
-                    .defaultForLeave(defaultForLeave)
-                    .enabled(Boolean.TRUE.equals(request.getEnabled()))
-                    .build();
-
-            templateRepository.persist(entity);
-            entityManager.flush();
-            return toDto(entity);
-        } catch (PersistenceException e) {
-            throw translatePersistenceException(e);
-        } catch (RuntimeException e) {
-            IllegalArgumentException translated = tryTranslateConstraintException(e);
-            if (translated != null) {
-                throw translated;
-            }
-            throw e;
-        }
+        return persistTemplate(userId, entity, writeInput, true);
     }
 
     @Transactional
@@ -97,52 +68,9 @@ public class NotificationTemplateService {
         NotificationTemplateEntity entity = templateRepository.findByIdAndUser(templateId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification template not found"));
 
-        String name = request.getName() != null ? request.getName().trim() : entity.getName();
-        String destination = request.getDestination() != null
-                ? normalizeDestination(request.getDestination())
-                : entity.getDestination();
-        String titleTemplate = request.getTitleTemplate() != null
-                ? normalizeTemplate(request.getTitleTemplate())
-                : entity.getTitleTemplate();
-        String bodyTemplate = request.getBodyTemplate() != null
-                ? normalizeTemplate(request.getBodyTemplate())
-                : entity.getBodyTemplate();
-        boolean defaultForEnter = request.getDefaultForEnter() != null
-                ? request.getDefaultForEnter()
-                : Boolean.TRUE.equals(entity.getDefaultForEnter());
-        boolean defaultForLeave = request.getDefaultForLeave() != null
-                ? request.getDefaultForLeave()
-                : Boolean.TRUE.equals(entity.getDefaultForLeave());
-        boolean enabled = request.getEnabled() != null
-                ? request.getEnabled()
-                : Boolean.TRUE.equals(entity.getEnabled());
-
-        validateTemplateRequest(name, destination, titleTemplate, bodyTemplate);
-
-        try {
-            if (defaultForEnter || defaultForLeave) {
-                clearDefaultsAndFlush(userId, entity.getId(), defaultForEnter, defaultForLeave);
-            }
-
-            entity.setName(name);
-            entity.setDestination(destination);
-            entity.setTitleTemplate(titleTemplate);
-            entity.setBodyTemplate(bodyTemplate);
-            entity.setEnabled(enabled);
-            entity.setDefaultForEnter(defaultForEnter);
-            entity.setDefaultForLeave(defaultForLeave);
-
-            entityManager.flush();
-            return toDto(entity);
-        } catch (PersistenceException e) {
-            throw translatePersistenceException(e);
-        } catch (RuntimeException e) {
-            IllegalArgumentException translated = tryTranslateConstraintException(e);
-            if (translated != null) {
-                throw translated;
-            }
-            throw e;
-        }
+        TemplateWriteInput writeInput = buildUpdateWriteInput(entity, request);
+        validateTemplateRequest(writeInput.name(), writeInput.destination(), writeInput.titleTemplate(), writeInput.bodyTemplate());
+        return persistTemplate(userId, entity, writeInput, false);
     }
 
     @Transactional
@@ -195,25 +123,7 @@ public class NotificationTemplateService {
     }
 
     private void validateDestination(String destination) {
-        if (destination == null || destination.isBlank()) {
-            return;
-        }
-
-        String[] lines = destination.split("\\R");
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i].trim();
-            if (line.isEmpty()) {
-                continue;
-            }
-            if (line.contains(",") || line.contains(";")) {
-                throw new IllegalArgumentException("Destination line " + (i + 1)
-                        + " must contain exactly one URL. Use one destination per line.");
-            }
-            if (!DESTINATION_URL_PATTERN.matcher(line).matches()) {
-                throw new IllegalArgumentException("Destination line " + (i + 1)
-                        + " must be a valid URL in the format scheme://...");
-            }
-        }
+        NotificationDestinationParser.parseUrls(destination);
     }
 
     private void validateTemplateSyntax(String fieldName, String template) {
@@ -273,19 +183,7 @@ public class NotificationTemplateService {
     }
 
     private String normalizeDestination(String destination) {
-        if (destination == null || destination.isBlank()) {
-            return "";
-        }
-
-        String[] lines = destination.split("\\R");
-        List<String> normalized = new ArrayList<>();
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                normalized.add(trimmed);
-            }
-        }
-        return String.join("\n", normalized);
+        return NotificationDestinationParser.normalize(destination);
     }
 
     private String normalizeTemplate(String template) {
@@ -309,5 +207,75 @@ public class NotificationTemplateService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    private TemplateWriteInput buildCreateWriteInput(CreateNotificationTemplateRequest request) {
+        return new TemplateWriteInput(
+                request.getName() == null ? null : request.getName().trim(),
+                normalizeDestination(request.getDestination()),
+                normalizeTemplate(request.getTitleTemplate()),
+                normalizeTemplate(request.getBodyTemplate()),
+                Boolean.TRUE.equals(request.getDefaultForEnter()),
+                Boolean.TRUE.equals(request.getDefaultForLeave()),
+                request.getEnabled() == null || request.getEnabled()
+        );
+    }
+
+    private TemplateWriteInput buildUpdateWriteInput(NotificationTemplateEntity entity,
+                                                     UpdateNotificationTemplateRequest request) {
+        return new TemplateWriteInput(
+                request.getName() != null ? request.getName().trim() : entity.getName(),
+                request.getDestination() != null ? normalizeDestination(request.getDestination()) : entity.getDestination(),
+                request.getTitleTemplate() != null ? normalizeTemplate(request.getTitleTemplate()) : entity.getTitleTemplate(),
+                request.getBodyTemplate() != null ? normalizeTemplate(request.getBodyTemplate()) : entity.getBodyTemplate(),
+                request.getDefaultForEnter() != null ? request.getDefaultForEnter() : Boolean.TRUE.equals(entity.getDefaultForEnter()),
+                request.getDefaultForLeave() != null ? request.getDefaultForLeave() : Boolean.TRUE.equals(entity.getDefaultForLeave()),
+                request.getEnabled() != null ? request.getEnabled() : Boolean.TRUE.equals(entity.getEnabled())
+        );
+    }
+
+    private NotificationTemplateDto persistTemplate(UUID userId,
+                                                    NotificationTemplateEntity entity,
+                                                    TemplateWriteInput writeInput,
+                                                    boolean isCreate) {
+        try {
+            if (writeInput.defaultForEnter() || writeInput.defaultForLeave()) {
+                clearDefaultsAndFlush(userId, isCreate ? null : entity.getId(), writeInput.defaultForEnter(), writeInput.defaultForLeave());
+            }
+
+            applyWriteInput(entity, writeInput);
+            if (isCreate) {
+                templateRepository.persist(entity);
+            }
+            entityManager.flush();
+            return toDto(entity);
+        } catch (PersistenceException e) {
+            throw translatePersistenceException(e);
+        } catch (RuntimeException e) {
+            IllegalArgumentException translated = tryTranslateConstraintException(e);
+            if (translated != null) {
+                throw translated;
+            }
+            throw e;
+        }
+    }
+
+    private void applyWriteInput(NotificationTemplateEntity entity, TemplateWriteInput writeInput) {
+        entity.setName(writeInput.name());
+        entity.setDestination(writeInput.destination());
+        entity.setTitleTemplate(writeInput.titleTemplate());
+        entity.setBodyTemplate(writeInput.bodyTemplate());
+        entity.setDefaultForEnter(writeInput.defaultForEnter());
+        entity.setDefaultForLeave(writeInput.defaultForLeave());
+        entity.setEnabled(writeInput.enabled());
+    }
+
+    private record TemplateWriteInput(String name,
+                                      String destination,
+                                      String titleTemplate,
+                                      String bodyTemplate,
+                                      boolean defaultForEnter,
+                                      boolean defaultForLeave,
+                                      boolean enabled) {
     }
 }

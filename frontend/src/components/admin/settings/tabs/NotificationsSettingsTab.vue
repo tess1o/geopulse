@@ -49,6 +49,11 @@
     </SettingSection>
 
     <SettingSection v-if="cleanupSettings.length" title="Geofence Event Cleanup">
+      <p class="text-muted cleanup-note">
+        Cleanup scheduler cadence is configured via
+        <code>geopulse.notifications.geofence-events.cleanup.scheduler-cadence</code>
+        and requires backend restart.
+      </p>
       <SettingItem
         v-for="setting in cleanupSettings"
         :key="setting.key"
@@ -204,7 +209,7 @@ const handleReset = async (setting) => {
 }
 
 const integerMin = (setting) => (
-  setting?.key?.includes('cleanup.interval-days') || setting?.key?.includes('retention-days')
+  setting?.key?.includes('retention-days')
     ? 1
     : 0
 )
@@ -265,6 +270,10 @@ const testAppriseConnection = async () => {
 .test-card {
   margin: 1rem;
   padding: 1rem;
+}
+
+.cleanup-note {
+  margin: 0 1rem 0.75rem 1rem;
 }
 
 .test-card-header {

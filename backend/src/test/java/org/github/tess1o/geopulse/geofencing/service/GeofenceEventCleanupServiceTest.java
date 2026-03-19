@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geofencing.service;
 
+import io.quarkus.scheduler.Scheduled;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,14 +42,12 @@ class GeofenceEventCleanupServiceTest {
         cleanupService.cleanupOldEvents();
 
         verifyNoInteractions(eventRepository);
-        verify(settingsService, never()).getInteger(GeofenceEventCleanupService.KEY_INTERVAL_DAYS);
         verify(settingsService, never()).getInteger(GeofenceEventCleanupService.KEY_RETENTION_DAYS);
     }
 
     @Test
     void shouldDeleteEventsOlderThanRetentionWindow() {
         when(settingsService.getBoolean(GeofenceEventCleanupService.KEY_ENABLED)).thenReturn(true);
-        when(settingsService.getInteger(GeofenceEventCleanupService.KEY_INTERVAL_DAYS)).thenReturn(1);
         when(settingsService.getInteger(GeofenceEventCleanupService.KEY_RETENTION_DAYS)).thenReturn(90);
         when(eventRepository.deleteOlderThan(any())).thenReturn(5L);
 
@@ -67,15 +66,25 @@ class GeofenceEventCleanupServiceTest {
     }
 
     @Test
-    void shouldRespectCleanupIntervalDays() {
+    void shouldRunCleanupOnEachTickWhenEnabled() {
         when(settingsService.getBoolean(GeofenceEventCleanupService.KEY_ENABLED)).thenReturn(true);
-        when(settingsService.getInteger(GeofenceEventCleanupService.KEY_INTERVAL_DAYS)).thenReturn(2);
         when(settingsService.getInteger(GeofenceEventCleanupService.KEY_RETENTION_DAYS)).thenReturn(90);
         when(eventRepository.deleteOlderThan(any())).thenReturn(0L);
 
         cleanupService.cleanupOldEvents();
         cleanupService.cleanupOldEvents();
 
-        verify(eventRepository, times(1)).deleteOlderThan(any());
+        verify(eventRepository, times(2)).deleteOlderThan(any());
+    }
+
+    @Test
+    void shouldUseEnvConfigurableSchedulerCadence() throws Exception {
+        Scheduled scheduled = GeofenceEventCleanupService.class
+                .getMethod("cleanupOldEvents")
+                .getAnnotation(Scheduled.class);
+
+        assertThat(scheduled).isNotNull();
+        assertThat(scheduled.every())
+                .isEqualTo("${geopulse.notifications.geofence-events.cleanup.scheduler-cadence:12h}");
     }
 }
