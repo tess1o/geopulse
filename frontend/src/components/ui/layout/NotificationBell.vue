@@ -222,10 +222,60 @@ onUnmounted(() => {
 <style scoped>
 .gp-notification-bell {
   position: relative;
+  --gp-bell-trigger-fg: var(--gp-text-primary);
+  --gp-bell-trigger-bg: var(--gp-surface-white);
+  --gp-bell-trigger-border: var(--gp-border-medium);
+  --gp-bell-trigger-shadow: var(--gp-shadow-subtle);
+  --gp-bell-trigger-fg-hover: var(--gp-primary-dark);
+  --gp-bell-trigger-bg-hover: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
+  --gp-bell-trigger-border-hover: color-mix(in srgb, var(--gp-primary) 42%, var(--gp-border-medium));
+  --gp-bell-trigger-bg-active: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
+  --gp-bell-trigger-border-active: color-mix(in srgb, var(--gp-primary) 58%, var(--gp-border-medium));
+
+  --gp-mark-seen-fg: var(--gp-primary-dark);
+  --gp-mark-seen-border: color-mix(in srgb, var(--gp-primary) 42%, var(--gp-border-medium));
+  --gp-mark-seen-bg: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
+  --gp-mark-seen-fg-hover: var(--gp-primary);
+  --gp-mark-seen-border-hover: color-mix(in srgb, var(--gp-primary) 58%, var(--gp-border-medium));
+  --gp-mark-seen-bg-hover: color-mix(in srgb, var(--gp-primary) 16%, var(--gp-surface-white));
+
+  --gp-footer-btn-fg: var(--gp-text-primary);
+  --gp-footer-btn-border: var(--gp-border-medium);
+  --gp-footer-btn-bg: var(--gp-surface-white);
+  --gp-footer-btn-fg-hover: var(--gp-primary-dark);
+  --gp-footer-btn-border-hover: color-mix(in srgb, var(--gp-primary) 45%, var(--gp-border-medium));
+  --gp-footer-btn-bg-hover: color-mix(in srgb, var(--gp-primary) 9%, var(--gp-surface-white));
+  --gp-footer-btn-fg-disabled: var(--gp-text-muted);
+  --gp-footer-btn-border-disabled: var(--gp-border-medium);
+  --gp-footer-btn-bg-disabled: var(--gp-surface-gray);
 }
 
 .gp-bell-trigger {
   position: relative;
+  color: var(--gp-bell-trigger-fg) !important;
+  background: var(--gp-bell-trigger-bg) !important;
+  border: 1px solid var(--gp-bell-trigger-border) !important;
+  box-shadow: var(--gp-bell-trigger-shadow) !important;
+}
+
+.gp-bell-trigger :deep(.p-button-icon) {
+  color: inherit !important;
+}
+
+.gp-bell-trigger:hover {
+  color: var(--gp-bell-trigger-fg-hover) !important;
+  background: var(--gp-bell-trigger-bg-hover) !important;
+  border-color: var(--gp-bell-trigger-border-hover) !important;
+}
+
+.gp-bell-trigger:focus-visible {
+  outline: 2px solid var(--gp-primary-light);
+  outline-offset: 2px;
+}
+
+.gp-bell-trigger:active {
+  background: var(--gp-bell-trigger-bg-active) !important;
+  border-color: var(--gp-bell-trigger-border-active) !important;
 }
 
 .gp-bell-badge {
@@ -236,8 +286,8 @@ onUnmounted(() => {
   height: 1.1rem;
   border-radius: 999px;
   padding: 0 0.3rem;
-  background: #dc2626;
-  color: #fff;
+  background: var(--gp-danger-dark);
+  color: var(--gp-neutral-white);
   font-size: 0.68rem;
   font-weight: 700;
   line-height: 1.1rem;
@@ -255,11 +305,11 @@ onUnmounted(() => {
   border: 1px solid var(--gp-border-light);
   border-radius: 12px;
   background: var(--gp-surface-white);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.16);
+  box-shadow: var(--gp-shadow-medium);
   z-index: 1200;
   display: flex;
   flex-direction: column;
-  color: var(--text-color);
+  color: var(--gp-text-primary);
 }
 
 .gp-notification-panel-header {
@@ -377,65 +427,94 @@ onUnmounted(() => {
   gap: 0.55rem;
 }
 
-.p-dark .gp-notification-panel {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: #e5e7eb;
-  box-shadow: 0 14px 38px rgba(2, 6, 23, 0.65);
+.gp-notification-panel :deep(.p-button.p-button-text.gp-notification-item-action) {
+  color: var(--gp-mark-seen-fg);
+  border: 1px solid var(--gp-mark-seen-border);
+  background: var(--gp-mark-seen-bg);
+  border-radius: 10px;
+  padding: 0.3rem 0.75rem;
 }
 
-.p-dark .gp-notification-panel-header,
-.p-dark .gp-notification-footer {
-  border-color: rgba(148, 163, 184, 0.35);
+.gp-notification-panel :deep(.p-button.p-button-text.gp-notification-item-action .p-button-label) {
+  color: inherit;
+  font-weight: 600;
 }
 
-.p-dark .gp-notification-panel-title,
-.p-dark .gp-notification-browser-label,
-.p-dark .gp-notification-item-title {
-  color: #f8fafc;
+.gp-notification-panel :deep(.p-button.p-button-text.gp-notification-item-action:hover) {
+  color: var(--gp-mark-seen-fg-hover);
+  border-color: var(--gp-mark-seen-border-hover);
+  background: var(--gp-mark-seen-bg-hover);
 }
 
-.p-dark .gp-notification-item {
-  border-color: rgba(148, 163, 184, 0.38);
-  background: rgba(15, 23, 42, 0.28);
+.gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary) {
+  color: var(--gp-footer-btn-fg);
+  border-color: var(--gp-footer-btn-border);
+  background: var(--gp-footer-btn-bg);
 }
 
-.p-dark .gp-notification-item-message {
-  color: #cbd5e1;
+.gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:hover) {
+  color: var(--gp-footer-btn-fg-hover);
+  border-color: var(--gp-footer-btn-border-hover);
+  background: var(--gp-footer-btn-bg-hover);
 }
 
-.p-dark .gp-notification-item-time,
-.p-dark .gp-notification-browser-help {
-  color: #94a3b8;
+.gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:disabled) {
+  color: var(--gp-footer-btn-fg-disabled);
+  border-color: var(--gp-footer-btn-border-disabled);
+  background: var(--gp-footer-btn-bg-disabled);
 }
 
-.p-dark .gp-notification-empty {
-  border-color: rgba(148, 163, 184, 0.45);
-  background: rgba(30, 41, 59, 0.55);
-  color: #cbd5e1;
+.gp-notification-panel :deep(.p-tag) {
+  font-weight: 700;
 }
 
-.p-dark .gp-notification-item--unread {
-  border-color: color-mix(in srgb, var(--gp-primary) 70%, #ffffff);
-  background: color-mix(in srgb, var(--gp-primary) 18%, rgba(15, 23, 42, 0.35));
+.gp-notification-panel :deep(.p-tag.p-tag-success) {
+  background: var(--gp-success-light);
+  color: var(--gp-success-dark);
 }
 
-.p-dark .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary) {
-  color: #e2e8f0;
-  border-color: rgba(203, 213, 225, 0.82);
-  background: rgba(30, 41, 59, 0.25);
+.gp-notification-panel :deep(.p-tag.p-tag-info) {
+  background: var(--gp-info-light);
+  color: var(--gp-info-dark);
 }
 
-.p-dark .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:hover) {
-  background: rgba(59, 130, 246, 0.2);
-  border-color: #93c5fd;
-  color: #f8fafc;
+.gp-notification-panel :deep(.p-tag.p-tag-secondary) {
+  background: var(--gp-surface-gray);
+  color: var(--gp-text-primary);
 }
 
-.p-dark .gp-notification-panel :deep(.p-button.p-button-outlined.p-button-secondary:disabled) {
-  color: #94a3b8;
-  border-color: rgba(148, 163, 184, 0.55);
-  background: rgba(15, 23, 42, 0.22);
+.gp-notification-panel :deep(.p-tag.p-tag-danger) {
+  background: var(--gp-danger-light);
+  color: var(--gp-danger-dark);
+}
+
+.p-dark .gp-notification-bell {
+  --gp-bell-trigger-fg: var(--gp-primary-light);
+  --gp-bell-trigger-bg: color-mix(in srgb, var(--gp-surface-darker) 80%, var(--gp-primary) 20%);
+  --gp-bell-trigger-border: color-mix(in srgb, var(--gp-border-medium) 70%, var(--gp-primary) 30%);
+  --gp-bell-trigger-shadow: var(--gp-shadow-subtle);
+  --gp-bell-trigger-fg-hover: var(--gp-neutral-white);
+  --gp-bell-trigger-bg-hover: color-mix(in srgb, var(--gp-surface-darker) 55%, var(--gp-primary) 45%);
+  --gp-bell-trigger-border-hover: color-mix(in srgb, var(--gp-border-medium) 50%, var(--gp-primary-light) 50%);
+  --gp-bell-trigger-bg-active: color-mix(in srgb, var(--gp-surface-darker) 45%, var(--gp-primary) 55%);
+  --gp-bell-trigger-border-active: color-mix(in srgb, var(--gp-border-medium) 40%, var(--gp-primary-light) 60%);
+
+  --gp-mark-seen-fg: var(--gp-primary-light);
+  --gp-mark-seen-border: color-mix(in srgb, var(--gp-primary-light) 65%, var(--gp-border-medium));
+  --gp-mark-seen-bg: color-mix(in srgb, var(--gp-primary) 26%, var(--gp-surface-dark));
+  --gp-mark-seen-fg-hover: var(--gp-neutral-white);
+  --gp-mark-seen-border-hover: color-mix(in srgb, var(--gp-primary-light) 85%, var(--gp-border-medium));
+  --gp-mark-seen-bg-hover: color-mix(in srgb, var(--gp-primary) 36%, var(--gp-surface-dark));
+
+  --gp-footer-btn-fg: var(--gp-text-primary);
+  --gp-footer-btn-border: var(--gp-border-medium);
+  --gp-footer-btn-bg: color-mix(in srgb, var(--gp-surface-dark) 75%, var(--gp-surface-darker));
+  --gp-footer-btn-fg-hover: var(--gp-neutral-white);
+  --gp-footer-btn-border-hover: color-mix(in srgb, var(--gp-primary-light) 55%, var(--gp-border-medium));
+  --gp-footer-btn-bg-hover: color-mix(in srgb, var(--gp-primary) 22%, var(--gp-surface-dark));
+  --gp-footer-btn-fg-disabled: var(--gp-text-muted);
+  --gp-footer-btn-border-disabled: var(--gp-border-medium);
+  --gp-footer-btn-bg-disabled: color-mix(in srgb, var(--gp-surface-dark) 88%, var(--gp-surface-darker));
 }
 
 .p-dark .gp-notification-panel :deep(.p-inputswitch.p-disabled) {
