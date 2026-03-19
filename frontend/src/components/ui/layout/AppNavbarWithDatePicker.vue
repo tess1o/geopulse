@@ -33,6 +33,7 @@
               @date-change="handleDateChange"
           />
         </div>
+        <NotificationBell />
 
         <!-- Additional end content -->
         <slot name="end-after"/>
@@ -45,6 +46,7 @@
 import { computed } from 'vue'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
+import NotificationBell from './NotificationBell.vue'
 import DateRangePicker from '@/components/ui/DateRangePicker.vue'
 
 const props = defineProps({

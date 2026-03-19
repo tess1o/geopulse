@@ -112,6 +112,7 @@ import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import { useThemeMode } from '@/composables/useThemeMode'
 import { useAuthStore } from '@/stores/auth'
 import { useFriendsStore } from '@/stores/friends'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 import apiService from '@/utils/apiService'
 
@@ -129,12 +130,14 @@ const emit = defineEmits(['navigate'])
 const router = useRouter()
 const authStore = useAuthStore()
 const friendsStore = useFriendsStore()
+const notificationsStore = useNotificationsStore()
 const { handleError } = useErrorHandler()
 const { themeMode, themeModes } = useThemeMode()
 
 // Store refs
 const { userName, isAdmin } = storeToRefs(authStore)
 const { receivedInvitesCount } = storeToRefs(friendsStore)
+const { unreadCount: geofenceUnreadCount } = storeToRefs(notificationsStore)
 
 // Local state
 const visible = ref(false)
@@ -268,6 +271,14 @@ const accountItems = computed(() => [
     icon: 'pi pi-heart',
     to: '/app/favorites-management',
     key: 'favorites-management'
+  },
+  {
+    label: 'Geofences',
+    icon: 'pi pi-bell',
+    to: '/app/geofences',
+    key: 'geofences',
+    badge: geofenceUnreadCount.value > 0 ? geofenceUnreadCount.value : null,
+    badgeType: 'danger'
   },
   {
     label: 'Timeline Preferences',

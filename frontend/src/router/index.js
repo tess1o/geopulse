@@ -19,6 +19,7 @@ import TimelineReportsPage from "@/views/app/TimelineReportsPage.vue";
 import TechnicalDataPage from "@/views/app/TechnicalDataPage.vue";
 import GeocodingManagementPage from "@/views/app/GeocodingManagementPage.vue";
 import FavoritesManagementPage from "@/views/app/FavoritesManagementPage.vue";
+import GeofencesPage from "@/views/app/GeofencesPage.vue";
 import PeriodTagsManagementPage from "@/views/app/PeriodTagsManagementPage.vue";
 import TripsManagementPage from "@/views/app/TripsManagementPage.vue";
 import TripWorkspacePage from "@/views/app/TripWorkspacePage.vue";
@@ -282,6 +283,13 @@ const routes = [
         name: 'Favorites Management',
         component: FavoritesManagementPage,
         meta: {title: 'Favorites'},
+        beforeEnter: requireAuth
+    },
+    {
+        path: '/app/geofences',
+        name: 'Geofences',
+        component: GeofencesPage,
+        meta: {title: 'Geofences'},
         beforeEnter: requireAuth
     },
     {

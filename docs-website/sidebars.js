@@ -137,6 +137,11 @@ const sidebars = {
                 },
                 {
                     type: 'doc',
+                    id: 'user-guide/core-features/geofences',
+                    label: 'Geofences',
+                },
+                {
+                    type: 'doc',
                     id: 'user-guide/using-geopulse/ai-assistant',
                     label: 'AI Assistant',
                 },
@@ -183,6 +188,7 @@ const sidebars = {
                         'system-administration/configuration/gps-data-filtering',
                         'system-administration/configuration/owntracks-additional-config',
                         'system-administration/configuration/location-sharing',
+                        'system-administration/configuration/apprise-notifications',
                         'system-administration/configuration/frontend',
                         {
                             type: 'doc',

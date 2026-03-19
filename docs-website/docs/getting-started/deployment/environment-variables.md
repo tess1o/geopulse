@@ -241,6 +241,19 @@ Notes:
 | `GEOPULSE_MQTT_PASSWORD` | `geopulse_mqtt_pass_123` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_MQTT_USERNAME` | `geopulse_mqtt_admin` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.username\`. | String value. Follow subsystem documentation. | Backend restart |
 
+### Notifications / Apprise (8)
+
+| Variable | Default | Comment | Restrictions | Restart |
+|---|---|---|---|---|
+| `GEOPULSE_NOTIFICATIONS_APPRISE_ENABLED` | `false` | Enables/disables external Apprise delivery for geofence alerts. Property: \`geopulse.notifications.apprise.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_APPRISE_API_URL` | `(empty)` | Base URL for Apprise API service. Property: \`geopulse.notifications.apprise.api-url\`. | Valid URL (for example `http://apprise-api:8000`). | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_APPRISE_AUTH_TOKEN` | `(empty)` | Optional API token for Apprise. Property: \`geopulse.notifications.apprise.auth-token\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_APPRISE_TIMEOUT_MS` | `5000` | HTTP timeout for Apprise requests in milliseconds. Property: \`geopulse.notifications.apprise.timeout-ms\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_APPRISE_VERIFY_TLS` | `true` | Whether TLS certificate verification is enabled for Apprise calls. Property: \`geopulse.notifications.apprise.verify-tls\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_CLEANUP_ENABLED` | `true` | Enables/disables scheduled cleanup of geofence notification events. Property: \`geopulse.notifications.geofence-events.cleanup.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_CLEANUP_SCHEDULER_CADENCE` | `12h` | Scheduler cadence for cleanup job ticks. Property: \`geopulse.notifications.geofence-events.cleanup.scheduler-cadence\`. | Quarkus duration expression (for example \`30m\`, \`12h\`, \`1d\`). | Backend restart |
+| `GEOPULSE_NOTIFICATIONS_GEOFENCE_EVENTS_RETENTION_DAYS` | `90` | Deletes geofence events older than this many days. Property: \`geopulse.notifications.geofence-events.retention-days\`. | Integer >= 1. | Backend restart |
+
 ### Prometheus (8)
 
 | Variable | Default | Comment | Restrictions | Restart |

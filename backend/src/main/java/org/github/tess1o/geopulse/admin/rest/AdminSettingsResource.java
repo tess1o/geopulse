@@ -16,9 +16,13 @@ import org.github.tess1o.geopulse.admin.service.AuditLogService;
 import org.github.tess1o.geopulse.admin.service.GeocodingValidationService;
 import org.github.tess1o.geopulse.admin.service.SystemSettingsService;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
+import org.github.tess1o.geopulse.geofencing.model.dto.AppriseTestRequest;
+import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.shared.api.UserIpAddress;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +52,9 @@ public class AdminSettingsResource {
 
     @Inject
     GeocodingValidationService geocodingValidationService;
+
+    @Inject
+    AppriseNotificationService appriseNotificationService;
 
     /**
      * Get all settings grouped by category.
@@ -196,5 +203,40 @@ public class AdminSettingsResource {
 
         // 4. If we reach here, all saves succeeded (transaction commits)
         return Response.ok(Map.of("success", true, "updated", orderedSettings.size())).build();
+    }
+
+    /**
+     * Test Apprise connectivity using current system settings.
+     */
+    @POST
+    @Path("/system/notifications/apprise/test")
+    public Response testAppriseConnection(AppriseTestRequest request) {
+        AppriseClientResult result = appriseNotificationService.testConnection(request);
+        if (result == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(Map.of(
+                            "success", false,
+                            "statusCode", 0,
+                            "message", "Apprise test failed: no response from client"
+                    ))
+                    .build();
+        }
+
+        String message = result.getMessage() != null && !result.getMessage().isBlank()
+                ? result.getMessage()
+                : (result.isSuccess() ? "Apprise endpoint is reachable" : "Apprise test failed");
+
+        Map<String, Object> responsePayload = new LinkedHashMap<>();
+        responsePayload.put("success", result.isSuccess());
+        responsePayload.put("statusCode", result.getStatusCode());
+        responsePayload.put("message", message);
+
+        if (result.isSuccess()) {
+            return Response.ok(responsePayload).build();
+        }
+
+        return Response.status(Response.Status.BAD_REQUEST)
+                .entity(responsePayload)
+                .build();
     }
 }

@@ -39,6 +39,7 @@ import AISettingsTab from '@/components/admin/settings/tabs/AISettingsTab.vue'
 import GPSProcessingSettingsTab from '@/components/admin/settings/tabs/GPSProcessingSettingsTab.vue'
 import ImportSettingsTab from '@/components/admin/settings/tabs/ImportSettingsTab.vue'
 import ExportSettingsTab from '@/components/admin/settings/tabs/ExportSettingsTab.vue'
+import NotificationsSettingsTab from '@/components/admin/settings/tabs/NotificationsSettingsTab.vue'
 import SystemSettingsTab from '@/components/admin/settings/tabs/SystemSettingsTab.vue'
 
 const router = useRouter()
@@ -92,13 +93,18 @@ const tabItems = ref([
     key: 'export'
   },
   {
+    label: 'Notifications',
+    icon: 'pi pi-bell',
+    key: 'notifications'
+  },
+  {
     label: 'System',
     icon: 'pi pi-server',
     key: 'system'
   }
 ])
 
-const validTabs = ['authentication', 'geocoding', 'ai', 'gps', 'import', 'export', 'system']
+const validTabs = ['authentication', 'geocoding', 'ai', 'gps', 'import', 'export', 'notifications', 'system']
 
 const activeTabIndex = computed(() => {
   return tabItems.value.findIndex(tab => tab.key === activeTab.value)
@@ -112,6 +118,7 @@ const currentTabComponent = computed(() => {
     gps: GPSProcessingSettingsTab,
     import: ImportSettingsTab,
     export: ExportSettingsTab,
+    notifications: NotificationsSettingsTab,
     system: SystemSettingsTab
   }
   return components[activeTab.value]

@@ -112,8 +112,7 @@ test.describe('Geocoding Management Page', () => {
       await geocodingPage.fillSearchInput('Coffee');
 
       // Verify only matching result is shown
-      const searchRowCount = await geocodingPage.getTableRowCount();
-      expect(searchRowCount).toBe(1);
+      await expect.poll(async () => geocodingPage.getTableRowCount()).toBe(1);
 
       const rowData = await geocodingPage.getTableRowData(0);
       expect(rowData.name).toContain('Coffee');
@@ -144,8 +143,7 @@ test.describe('Geocoding Management Page', () => {
       await geocodingPage.fillSearchInput('Boston');
 
       // Verify only Boston result is shown
-      const searchRowCount = await geocodingPage.getTableRowCount();
-      expect(searchRowCount).toBe(1);
+      await expect.poll(async () => geocodingPage.getTableRowCount()).toBe(1);
     });
 
     test('should search by country', async ({page, isolatedUsers, dbManager}) => {

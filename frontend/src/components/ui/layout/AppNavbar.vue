@@ -40,6 +40,7 @@
           aria-label="Invite Friend"
           :class="inviteButtonClass"
         />
+        <NotificationBell />
         <slot name="end" />
       </div>
     </template>
@@ -50,6 +51,7 @@
 import { computed } from 'vue'
 import Toolbar from 'primevue/toolbar'
 import AppNavigation from './AppNavigation.vue'
+import NotificationBell from './NotificationBell.vue'
 
 const props = defineProps({
   variant: {
