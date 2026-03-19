@@ -16,7 +16,7 @@ function shouldEmitInAppToasts() {
     return true
   }
   const hasFocus = typeof document.hasFocus === 'function' ? document.hasFocus() : false
-  return !document.hidden || hasFocus
+  return !document.hidden && hasFocus
 }
 
 export const useNotificationsStore = defineStore('notifications', {
@@ -96,11 +96,22 @@ export const useNotificationsStore = defineStore('notifications', {
 
     stopPolling() {
       this.isPolling = false
-      if (this.pollTimerId) {
+      if (this.pollTimerId && typeof window !== 'undefined') {
         window.clearTimeout(this.pollTimerId)
         this.pollTimerId = null
       }
       this.detachVisibilityListeners()
+    },
+
+    resetSessionState() {
+      this.stopPolling()
+      this.items = []
+      this.unreadCount = 0
+      this.initialized = false
+      this.startupSummaryShown = false
+      this.knownIds = []
+      this.pollBackoffMs = POLL_INTERVAL_MS
+      this.browserNotificationWarningShown = false
     },
 
     scheduleNextPoll(delayMs = POLL_INTERVAL_MS) {
@@ -168,6 +179,8 @@ export const useNotificationsStore = defineStore('notifications', {
       if (this._onWindowFocus) {
         window.removeEventListener('focus', this._onWindowFocus)
       }
+      this._onVisibilityChange = null
+      this._onWindowFocus = null
       this.visibilityListenerAttached = false
     },
 
@@ -176,8 +189,6 @@ export const useNotificationsStore = defineStore('notifications', {
       emitBrowser = false,
       emitStartupSummary = false
     } = {}) {
-      const shouldAnnounce = emitToasts || emitBrowser
-      const previousUnreadCount = this.unreadCount
       const [eventsResponse, countResponse] = await Promise.all([
         apiService.get('/geofences/events', { limit: 100, unreadOnly: false }),
         apiService.get('/geofences/events/unread-count')
@@ -187,11 +198,12 @@ export const useNotificationsStore = defineStore('notifications', {
       const unreadCount = Number(countResponse?.data?.count || 0)
       const incomingIds = events.map(event => Number(event.id)).filter(Number.isFinite)
       const knownIdsSet = new Set(this.knownIds)
+      const nextKnownIdsSet = new Set(knownIdsSet)
+      incomingIds.forEach(id => nextKnownIdsSet.add(id))
 
       if (!this.initialized) {
         this.initialized = true
-        incomingIds.forEach(id => knownIdsSet.add(id))
-        this.knownIds = Array.from(knownIdsSet).slice(-MAX_TRACKED_IDS)
+        this.knownIds = Array.from(nextKnownIdsSet).slice(-MAX_TRACKED_IDS)
         this.items = events
         this.unreadCount = unreadCount
 
@@ -217,11 +229,7 @@ export const useNotificationsStore = defineStore('notifications', {
 
       this.items = events
       this.unreadCount = unreadCount
-
-      if (shouldAnnounce) {
-        incomingIds.forEach(id => knownIdsSet.add(id))
-        this.knownIds = Array.from(knownIdsSet).slice(-MAX_TRACKED_IDS)
-      }
+      this.knownIds = Array.from(nextKnownIdsSet).slice(-MAX_TRACKED_IDS)
 
       for (const event of newEvents) {
         if (emitToasts) {
@@ -239,16 +247,6 @@ export const useNotificationsStore = defineStore('notifications', {
         if (emitBrowser) {
           this.emitBrowserNotification(event)
         }
-      }
-
-      if (emitToasts && newEvents.length === 0 && unreadCount > previousUnreadCount) {
-        const delta = unreadCount - previousUnreadCount
-        this.emitToast({
-          summary: 'New notifications',
-          detail: `You have ${delta} new geofence notification${delta > 1 ? 's' : ''}.`,
-          life: 6000,
-          data: { action: 'open-events' }
-        })
       }
     },
 

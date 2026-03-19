@@ -98,13 +98,16 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import dayjs from 'dayjs'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import InputSwitch from 'primevue/inputswitch'
+import { useToast } from 'primevue/usetoast'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useTimezone } from '@/composables/useTimezone'
 
+const toast = useToast()
+const timezone = useTimezone()
 const notificationsStore = useNotificationsStore()
 const { items, unreadCount, browserNotificationsEnabled, browserNotificationsSupported } = storeToRefs(notificationsStore)
 
@@ -138,11 +141,29 @@ const openEventsView = () => {
 }
 
 const markSeen = async (eventId) => {
-  await notificationsStore.markSeen(eventId)
+  try {
+    await notificationsStore.markSeen(eventId)
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Notification Error',
+      detail: extractApiErrorMessage(error, 'Failed to mark notification as seen'),
+      life: 5000
+    })
+  }
 }
 
 const markAllSeen = async () => {
-  await notificationsStore.markAllSeen()
+  try {
+    await notificationsStore.markAllSeen()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Notification Error',
+      detail: extractApiErrorMessage(error, 'Failed to mark all notifications as seen'),
+      life: 5000
+    })
+  }
 }
 
 const toggleBrowserNotifications = async (enabled) => {
@@ -153,7 +174,7 @@ const formatOccurredAt = (value) => {
   if (!value) {
     return '-'
   }
-  return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
+  return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
 }
 
 const deliverySeverity = (status) => {
@@ -177,6 +198,15 @@ const handleKeydown = (event) => {
     closePanel()
   }
 }
+
+const extractApiErrorMessage = (error, fallback) => (
+  error?.response?.data?.message
+  || error?.response?.data?.error
+  || error?.response?.data?.data?.message
+  || error?.userMessage
+  || error?.message
+  || fallback
+)
 
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside)

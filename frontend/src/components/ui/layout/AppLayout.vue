@@ -118,7 +118,23 @@ watch(
       notificationsStore.startPolling()
       return
     }
-    notificationsStore.stopPolling()
+    notificationsStore.resetSessionState()
+  }
+)
+
+watch(
+  () => authStore.userId,
+  (newUserId, oldUserId) => {
+    if (!authStore.isAuthenticated) {
+      return
+    }
+
+    if (!oldUserId || !newUserId || oldUserId === newUserId) {
+      return
+    }
+
+    notificationsStore.resetSessionState()
+    notificationsStore.startPolling()
   }
 )
 
