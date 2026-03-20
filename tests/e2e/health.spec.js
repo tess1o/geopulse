@@ -11,13 +11,15 @@ test.describe('Health Check', () => {
     // Wait for the page to load
     await page.waitForLoadState('networkidle');
     
+    const homePage = page.locator('.home-page');
+    await expect(homePage).toBeVisible();
 
-    // Should show the GeoPulse logo
-    const logo = page.locator('.logo-container');
+    // Should show the updated home hero content
+    const logo = page.getByRole('img', { name: 'GeoPulse logo' });
     await expect(logo).toBeVisible();
 
-    const homeTitle = page.locator('.home-page');
-    await expect(homeTitle).toBeVisible();
+    const heroTitle = page.getByRole('heading', { level: 1, name: /Your movement history, on your server\./ });
+    await expect(heroTitle).toBeVisible();
   });
 
   test('should access backend health endpoint', async ({ page }) => {

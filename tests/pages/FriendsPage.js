@@ -554,7 +554,6 @@ export class FriendsPage {
     // Insert GPS point for friend using GpsDataFactory
     const now = new Date().toISOString();
     const gpsPoint = {
-      id: Date.now(), // Use timestamp as unique ID
       device_id: 'test-device',
       user_id: friendId,
       coordinates: `POINT (${longitude} ${latitude})`,
@@ -568,10 +567,9 @@ export class FriendsPage {
     };
 
     await dbManager.client.query(`
-      INSERT INTO gps_points (id, device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     `, [
-      gpsPoint.id,
       gpsPoint.device_id,
       gpsPoint.user_id,
       gpsPoint.coordinates,

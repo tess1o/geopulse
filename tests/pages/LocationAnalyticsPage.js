@@ -190,7 +190,25 @@ export class LocationAnalyticsPage {
   }
 
   async isEmptyStateVisible() {
-    return await this.page.locator(this.selectors.emptyState).isVisible().catch(() => false);
+    const emptyState = this.page.locator(this.selectors.emptyState).first();
+    const locationCards = this.page.locator(this.selectors.locationCard);
+    const timeoutMs = 10000;
+    const pollMs = 250;
+    const deadline = Date.now() + timeoutMs;
+
+    while (Date.now() < deadline) {
+      if (await emptyState.isVisible().catch(() => false)) {
+        return true;
+      }
+
+      if (await locationCards.count() > 0) {
+        return false;
+      }
+
+      await this.page.waitForTimeout(pollMs);
+    }
+
+    return await emptyState.isVisible().catch(() => false);
   }
 
   async getEmptyStateText() {

@@ -34,7 +34,7 @@ const isolatedSpecs = [
 ];
 
 const parallelWorkers = Number.parseInt(
-  process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? '4' : '4'),
+  process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? '4' : '6'),
   10
 );
 

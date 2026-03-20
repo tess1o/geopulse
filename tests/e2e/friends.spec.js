@@ -872,10 +872,9 @@ test.describe('Friends Page', () => {
       // Insert a newer GPS point for the same friend (same source of truth used by /api/friends).
       const newerTimestamp = new Date(Date.now() + 60_000).toISOString();
       await dbManager.client.query(`
-        INSERT INTO gps_points (id, device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        INSERT INTO gps_points (device_id, user_id, coordinates, timestamp, accuracy, battery, velocity, altitude, source_type, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [
-        Date.now() + 100000,
         'polling-test-device',
         friendId,
         'POINT (30.5334 50.4601)',
