@@ -65,6 +65,15 @@ components:
         message:
           type: string
         data: {}
+    AppriseTestRequest:
+      type: object
+      properties:
+        destination:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
     Badge:
       type: object
       properties:
@@ -275,6 +284,59 @@ components:
         options:
           type: object
           additionalProperties: {}
+    CreateGeofenceRuleRequest:
+      required:
+      - name
+      - subjectUserId
+      - northEastLat
+      - northEastLon
+      - southWestLat
+      - southWestLon
+      - monitorEnter
+      - monitorLeave
+      - cooldownSeconds
+      type: object
+      properties:
+        name:
+          maxLength: 120
+          pattern: \S
+          type: string
+        subjectUserId:
+          $ref: "#/components/schemas/UUID"
+        northEastLat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        northEastLon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+        southWestLat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        southWestLon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+        monitorEnter:
+          type: boolean
+        monitorLeave:
+          type: boolean
+        cooldownSeconds:
+          format: int32
+          minimum: 0
+          type: integer
+        enterTemplateId:
+          format: int64
+          type: integer
+        leaveTemplateId:
+          format: int64
+          type: integer
     CreateGpsSourceConfigDto:
       type: object
       properties:
@@ -308,6 +370,30 @@ components:
       properties:
         expiresAt:
           $ref: "#/components/schemas/Instant"
+    CreateNotificationTemplateRequest:
+      required:
+      - name
+      - defaultForEnter
+      - defaultForLeave
+      - enabled
+      type: object
+      properties:
+        name:
+          maxLength: 120
+          pattern: \S
+          type: string
+        destination:
+          type: string
+        titleTemplate:
+          type: string
+        bodyTemplate:
+          type: string
+        defaultForEnter:
+          type: boolean
+        defaultForLeave:
+          type: boolean
+        enabled:
+          type: boolean
     CreateOidcProviderRequest:
       required:
       - name
@@ -639,6 +725,11 @@ components:
           $ref: "#/components/schemas/FavoriteLocationType"
         filterBySearchText:
           type: string
+    GeofenceRuleStatus:
+      enum:
+      - ACTIVE
+      - PAUSED
+      type: string
     GeographicInsights:
       type: object
       properties:
@@ -1181,6 +1272,50 @@ components:
       format: uuid
       pattern: "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}"
       type: string
+    UpdateGeofenceRuleRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 120
+          type: string
+        subjectUserId:
+          $ref: "#/components/schemas/UUID"
+        northEastLat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        northEastLon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+        southWestLat:
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+          type: number
+        southWestLon:
+          format: double
+          maximum: 180.0
+          minimum: -180.0
+          type: number
+        monitorEnter:
+          type: boolean
+        monitorLeave:
+          type: boolean
+        cooldownSeconds:
+          format: int32
+          minimum: 0
+          type: integer
+        enterTemplateId:
+          format: int64
+          type: integer
+        leaveTemplateId:
+          format: int64
+          type: integer
+        status:
+          $ref: "#/components/schemas/GeofenceRuleStatus"
     UpdateGpsSourceConfigDto:
       type: object
       properties:
@@ -1235,6 +1370,24 @@ components:
       type: object
       properties:
         shareLiveLocation:
+          type: boolean
+    UpdateNotificationTemplateRequest:
+      type: object
+      properties:
+        name:
+          maxLength: 120
+          type: string
+        destination:
+          type: string
+        titleTemplate:
+          type: string
+        bodyTemplate:
+          type: string
+        defaultForEnter:
+          type: boolean
+        defaultForLeave:
+          type: boolean
+        enabled:
           type: boolean
     UpdateOidcProviderRequest:
       required:
@@ -2092,6 +2245,28 @@ paths:
         "400":
           description: Bad Request
       summary: Bulk Update Settings
+      tags:
+      - Admin Settings Resource
+      security:
+      - jwt: []
+  /api/admin/settings/system/notifications/apprise/test:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AppriseTestRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Test Apprise Connection
       tags:
       - Admin Settings Resource
       security:
@@ -3956,6 +4131,170 @@ paths:
       - Reverse Geocoding Resource
       security:
       - jwt: []
+  /api/geofences/rules:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Rules
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGeofenceRuleRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Rule
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+  /api/geofences/rules/{ruleId}:
+    patch:
+      parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateGeofenceRuleRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Update Rule
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+    delete:
+      parameters:
+      - name: ruleId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Rule
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+  /api/geofences/templates:
+    get:
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Templates
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNotificationTemplateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+        "400":
+          description: Bad Request
+      summary: Create Template
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+  /api/geofences/templates/{templateId}:
+    patch:
+      parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationTemplateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Update Template
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
+    delete:
+      parameters:
+      - name: templateId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Delete Template
+      tags:
+      - Geofence Resource
+      security:
+      - jwt: []
   /api/gps:
     get:
       parameters:
@@ -5056,6 +5395,95 @@ paths:
       summary: Search
       tags:
       - Location Analytics Resource
+      security:
+      - jwt: []
+  /api/notifications:
+    get:
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          format: int32
+          default: 50
+          type: integer
+      - name: source
+        in: query
+        schema:
+          type: string
+      - name: unreadOnly
+        in: query
+        schema:
+          default: false
+          type: boolean
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Notifications
+      tags:
+      - Notification Resource
+      security:
+      - jwt: []
+  /api/notifications/seen-all:
+    post:
+      parameters:
+      - name: source
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Mark All Seen
+      tags:
+      - Notification Resource
+      security:
+      - jwt: []
+  /api/notifications/unread-count:
+    get:
+      parameters:
+      - name: source
+        in: query
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Get Unread Count
+      tags:
+      - Notification Resource
+      security:
+      - jwt: []
+  /api/notifications/{notificationId}/seen:
+    post:
+      parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Not Authorized
+        "403":
+          description: Not Allowed
+      summary: Mark Seen
+      tags:
+      - Notification Resource
       security:
       - jwt: []
   /api/overland:
@@ -7087,7 +7515,7 @@ paths:
       - Version Resource
 info:
   title: GeoPulse API
-  version: 1.22.0
+  version: 1.23.0
   description: GeoPulse backend REST API documentation.
   contact:
     name: tess1o
