@@ -50,8 +50,7 @@ RUN mkdir -p /var/cache/nginx/osm \
     # and write the new default.conf
     chmod -R 777 /var/cache/nginx /var/run /var/log/nginx /app/config /etc/nginx
 
-COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY --chmod=755 frontend/docker-entrypoint.sh /docker-entrypoint.sh
 
 # Copy the built assets
 COPY --from=build /app/dist /usr/share/nginx/html
