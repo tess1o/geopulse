@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="friends-map-tab">
     <!-- Loading State -->
     <div v-if="loading" class="loading-state">
       <div class="loading-content">
@@ -48,21 +48,46 @@
       </div>
     </div>
 
-    <div v-else class="map-wrapper">
-      <FriendsMap
-          ref="friendsMapRef"
+    <div v-else class="map-layout">
+      <LiveFriendsFilter
+          v-model="selectedFriendKeysState"
           :friends="friendsWithLocation"
-          :friend-trails="friendTrails"
-          :show-friend-location-trails="showFriendLocationTrails"
-          :current-user="currentUser"
-          :initial-friend-email="initialFriendEmailToZoom"
-          :key="`friends-map-${friendsWithLocation.length}`"
-          @friend-located="$emit('friend-located', $event)"
-          @refresh="$emit('refresh')"
-          @show-all="$emit('show-all')"
-          @toggle-trails="$emit('toggle-trails', $event)"
-          class="friends-map"
+          class="live-friends-filter"
       />
+
+      <div v-if="showSelectionEmptyState" class="empty-state selection-empty-state">
+        <div class="empty-icon">
+          <i class="pi pi-filter"></i>
+        </div>
+        <h3 class="empty-title">No Friends Selected</h3>
+        <p class="empty-description">
+          Choose at least one friend in the filter to show locations on the map.
+        </p>
+        <div class="empty-actions">
+          <Button
+              label="Show All Friends"
+              icon="pi pi-users"
+              @click="resetSelectionToAll"
+          />
+        </div>
+      </div>
+
+      <div v-else class="map-wrapper">
+        <FriendsMap
+            ref="friendsMapRef"
+            :friends="filteredFriendsWithLocation"
+            :friend-trails="friendTrails"
+            :show-friend-location-trails="showFriendLocationTrails"
+            :current-user="currentUser"
+            :initial-friend-email="initialFriendEmailToZoom"
+            :key="`friends-map-${filteredFriendsWithLocation.length}`"
+            @friend-located="$emit('friend-located', $event)"
+            @refresh="$emit('refresh')"
+            @show-all="$emit('show-all')"
+            @toggle-trails="$emit('toggle-trails', $event)"
+            class="friends-map"
+        />
+      </div>
     </div>
   </div>
 </template>
@@ -70,11 +95,20 @@
 <script setup>
 import { computed, ref, watch, nextTick } from 'vue'
 import FriendsMap from '@/components/maps/FriendsMap.vue'
+import LiveFriendsFilter from '@/components/friends/LiveFriendsFilter.vue'
 
 const props = defineProps({
   friends: {
     type: Array,
     default: () => []
+  },
+  selectedFriendKeys: {
+    type: Array,
+    default: () => []
+  },
+  useDefaultSelection: {
+    type: Boolean,
+    default: true
   },
   currentUser: {
     type: Object,
@@ -102,20 +136,103 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all', 'toggle-trails'])
+const emit = defineEmits(['invite-friend', 'refresh', 'friend-located', 'show-all', 'toggle-trails', 'selection-change'])
 
 const friendsMapRef = ref(null)
 
+const getFriendFilterKey = (friend) => {
+  const key = friend?.friendId || friend?.userId || friend?.id || friend?.email
+  return key !== null && key !== undefined ? String(key) : null
+}
+
+const hasValidCoordinate = (value) => {
+  return typeof value === 'number' && !Number.isNaN(value)
+}
+
 const friendsWithLocation = computed(() => {
   return props.friends?.filter(friend =>
-      friend.lastLatitude &&
-      friend.lastLongitude &&
-      typeof friend.lastLatitude === 'number' &&
-      typeof friend.lastLongitude === 'number' &&
-      !isNaN(friend.lastLatitude) &&
-      !isNaN(friend.lastLongitude)
+      hasValidCoordinate(friend.lastLatitude) &&
+      hasValidCoordinate(friend.lastLongitude)
   ) || []
 })
+
+const availableFriendKeys = computed(() => {
+  const seenKeys = new Set()
+  const keys = []
+
+  friendsWithLocation.value.forEach(friend => {
+    const key = getFriendFilterKey(friend)
+    if (!key || seenKeys.has(key)) {
+      return
+    }
+
+    seenKeys.add(key)
+    keys.push(key)
+  })
+
+  return keys
+})
+
+const normalizeSelectedKeys = (selectedKeys, availableKeys) => {
+  if (!Array.isArray(selectedKeys)) {
+    return []
+  }
+
+  const normalizedSelection = new Set(
+      selectedKeys
+          .map(key => (key !== null && key !== undefined ? String(key) : null))
+          .filter(Boolean)
+  )
+
+  return availableKeys.filter(key => normalizedSelection.has(key))
+}
+
+const areKeyArraysEqual = (left, right) => {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((value, index) => value === right[index])
+}
+
+const selectedFriendKeysState = ref([])
+
+watch([() => props.selectedFriendKeys, () => props.useDefaultSelection, availableFriendKeys], ([incomingSelection, useDefaultSelection, availableKeys]) => {
+  const nextSelection = useDefaultSelection
+      ? [...availableKeys]
+      : normalizeSelectedKeys(incomingSelection, availableKeys)
+
+  if (!areKeyArraysEqual(selectedFriendKeysState.value, nextSelection)) {
+    selectedFriendKeysState.value = nextSelection
+  }
+}, { immediate: true })
+
+watch(selectedFriendKeysState, (newSelection) => {
+  emit('selection-change', {
+    selectedKeys: [...newSelection],
+    availableKeys: [...availableFriendKeys.value]
+  })
+})
+
+const filteredFriendsWithLocation = computed(() => {
+  if (!friendsWithLocation.value.length || selectedFriendKeysState.value.length === 0) {
+    return []
+  }
+
+  const selectedKeySet = new Set(selectedFriendKeysState.value)
+  return friendsWithLocation.value.filter(friend => {
+    const key = getFriendFilterKey(friend)
+    return key && selectedKeySet.has(key)
+  })
+})
+
+const showSelectionEmptyState = computed(() => {
+  return friendsWithLocation.value.length > 0 && filteredFriendsWithLocation.value.length === 0
+})
+
+const resetSelectionToAll = () => {
+  selectedFriendKeysState.value = [...availableFriendKeys.value]
+}
 
 const zoomToFriend = (friend) => {
   if (friendsMapRef.value) {
@@ -145,6 +262,10 @@ defineExpose({
 </script>
 
 <style scoped>
+.friends-map-tab {
+  width: 100%;
+}
+
 /* Loading State */
 .loading-state {
   display: flex;
@@ -225,8 +346,25 @@ defineExpose({
   flex-wrap: wrap;
 }
 
-.map-wrapper {
+.map-layout {
   height: 75vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.live-friends-filter {
+  flex-shrink: 0;
+}
+
+.selection-empty-state {
+  margin: 0;
+  flex: 1;
+}
+
+.map-wrapper {
+  flex: 1;
+  min-height: 320px;
 }
 
 .friends-map {
@@ -238,8 +376,9 @@ defineExpose({
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .map-wrapper {
+  .map-layout {
     height: 70vh;
+    gap: 0.5rem;
   }
 }
 </style>

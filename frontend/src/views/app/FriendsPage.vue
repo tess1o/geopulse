@@ -1,4 +1,3 @@
-x
 <template>
   <AppLayout
     :showInviteFriendButton="true"
@@ -130,6 +129,115 @@ const friendsWithTimeline = computed(() => {
   return friends.value?.filter(f => f.friendSharesTimeline === true) || []
 })
 
+const LIVE_FRIEND_FILTER_NONE_QUERY_VALUE = 'none'
+
+const getLiveFriendFilterKey = (friend) => {
+  const key = friend?.friendId || friend?.userId || friend?.id || friend?.email
+  return key !== null && key !== undefined ? String(key) : null
+}
+
+const getFirstQueryValue = (value) => {
+  if (Array.isArray(value)) {
+    return value[0] ?? null
+  }
+
+  return value ?? null
+}
+
+const uniqueNormalizedKeys = (keys) => {
+  const normalized = []
+  const seen = new Set()
+
+  if (!Array.isArray(keys)) {
+    return normalized
+  }
+
+  keys.forEach((key) => {
+    const normalizedKey = key !== null && key !== undefined ? String(key).trim() : null
+    if (!normalizedKey || seen.has(normalizedKey)) {
+      return
+    }
+
+    seen.add(normalizedKey)
+    normalized.push(normalizedKey)
+  })
+
+  return normalized
+}
+
+const filterSelectionByAvailableKeys = (selectedKeys, availableKeys) => {
+  const normalizedAvailableKeys = uniqueNormalizedKeys(availableKeys)
+  const selectedSet = new Set(uniqueNormalizedKeys(selectedKeys))
+  return normalizedAvailableKeys.filter(key => selectedSet.has(key))
+}
+
+const parseLiveFriendSelectionFromQuery = (queryValue) => {
+  const rawValue = getFirstQueryValue(queryValue)
+  if (rawValue === null || rawValue === undefined) {
+    return null
+  }
+
+  const normalizedValue = String(rawValue).trim()
+  if (!normalizedValue) {
+    return null
+  }
+
+  if (normalizedValue.toLowerCase() === LIVE_FRIEND_FILTER_NONE_QUERY_VALUE) {
+    return []
+  }
+
+  return uniqueNormalizedKeys(normalizedValue.split(','))
+}
+
+const areArraysEqual = (left, right) => {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((value, index) => value === right[index])
+}
+
+const areQueriesEqual = (left, right) => {
+  const leftKeys = Object.keys(left || {}).sort()
+  const rightKeys = Object.keys(right || {}).sort()
+
+  if (!areArraysEqual(leftKeys, rightKeys)) {
+    return false
+  }
+
+  return leftKeys.every((key) => String(left[key]) === String(right[key]))
+}
+
+const liveFriendFilterAvailableKeys = computed(() => {
+  const keys = []
+  const seen = new Set()
+
+  friendsWithLiveLocation.value.forEach((friend) => {
+    const key = getLiveFriendFilterKey(friend)
+    if (!key || seen.has(key)) {
+      return
+    }
+
+    seen.add(key)
+    keys.push(key)
+  })
+
+  return keys
+})
+
+const selectedLiveFriendKeysFromQuery = computed(() => {
+  const parsedSelection = parseLiveFriendSelectionFromQuery(route.query.friends)
+  if (parsedSelection === null) {
+    return null
+  }
+
+  return filterSelectionByAvailableKeys(parsedSelection, liveFriendFilterAvailableKeys.value)
+})
+
+const hasLiveFriendFilterQuery = computed(() => {
+  return parseLiveFriendSelectionFromQuery(route.query.friends) !== null
+})
+
 // State
 const activeTab = ref()
 const showInviteDialog = ref(false)
@@ -185,6 +293,8 @@ const currentTabConfig = computed(() => {
       component: FriendsMapTab,
       props: {
         friends: friendsWithLiveLocation.value,  // Only friends who shared live location
+        selectedFriendKeys: selectedLiveFriendKeysFromQuery.value || [],
+        useDefaultSelection: !hasLiveFriendFilterQuery.value,
         currentUser: currentUser.value,
         initialFriendEmailToZoom: initialFriendEmailToZoom.value,
         refreshing: refreshing.value,
@@ -197,7 +307,8 @@ const currentTabConfig = computed(() => {
         onRefresh: refreshFriendsData,
         onFriendLocated: handleFriendLocated,
         onShowAll: handleShowAll,
-        onToggleTrails: handleToggleFriendLocationTrails
+        onToggleTrails: handleToggleFriendLocationTrails,
+        onSelectionChange: handleLiveFriendSelectionChange
       }
     },
     timeline: {
@@ -289,6 +400,53 @@ const bulkActionsLoading = reactive({
 })
 let friendTrailFetchInFlight = false
 
+const updateLiveFriendFilterQuery = (selectedKeys, availableKeys) => {
+  const routeTab = typeof route.params.tab === 'string' ? route.params.tab : null
+  const targetTab = ['live', 'timeline', 'friends', 'invites'].includes(routeTab) ? routeTab : 'live'
+  const normalizedAvailableKeys = uniqueNormalizedKeys(availableKeys)
+  const normalizedSelection = filterSelectionByAvailableKeys(selectedKeys, normalizedAvailableKeys)
+
+  let nextFriendsQueryValue
+  if (normalizedSelection.length === normalizedAvailableKeys.length) {
+    nextFriendsQueryValue = undefined
+  } else if (normalizedSelection.length === 0) {
+    nextFriendsQueryValue = LIVE_FRIEND_FILTER_NONE_QUERY_VALUE
+  } else {
+    nextFriendsQueryValue = normalizedSelection.join(',')
+  }
+
+  const nextQuery = { ...route.query }
+
+  if (nextFriendsQueryValue === undefined) {
+    delete nextQuery.friends
+  } else {
+    nextQuery.friends = nextFriendsQueryValue
+  }
+
+  const focusedFriendEmail = getFirstQueryValue(nextQuery.friend)
+  if (focusedFriendEmail) {
+    const focusedFriend = friendsWithLiveLocation.value.find(friend => friend.email === focusedFriendEmail)
+    const focusedFriendKey = focusedFriend ? getLiveFriendFilterKey(focusedFriend) : null
+    const hasActiveFilter = nextFriendsQueryValue !== undefined
+
+    if (!hasActiveFilter || !focusedFriendKey || normalizedSelection.includes(focusedFriendKey)) {
+      // Keep focused friend query when it matches current filter.
+    } else {
+      delete nextQuery.friend
+    }
+  }
+
+  if (areQueriesEqual(route.query, nextQuery)) {
+    return
+  }
+
+  router.replace({
+    name: 'Friends',
+    params: { tab: targetTab },
+    query: nextQuery
+  })
+}
+
 // Methods
 const handleTabChange = (event) => {
   const selectedTab = tabItems.value[event.index]
@@ -326,6 +484,20 @@ watch(() => route.params.tab, (newTab) => {
 watch(() => route.query.friend, (newFriendEmail) => {
   initialFriendEmailToZoom.value = newFriendEmail || null
 }, {immediate: true})
+
+watch([() => route.query.friends, liveFriendFilterAvailableKeys], ([queryValue, availableKeys]) => {
+  const parsedSelection = parseLiveFriendSelectionFromQuery(queryValue)
+  if (parsedSelection === null) {
+    return
+  }
+
+  const normalizedSelection = filterSelectionByAvailableKeys(parsedSelection, availableKeys)
+  if (areArraysEqual(parsedSelection, normalizedSelection)) {
+    return
+  }
+
+  updateLiveFriendFilterQuery(normalizedSelection, availableKeys)
+}, { immediate: true })
 
 // Watch for when all invites are cleared while on the invites tab
 watch([receivedInvites, sentInvites], () => {
@@ -629,6 +801,15 @@ const handleShowAll = () => {
     params: {tab: 'live'},
     query: nextQuery
   })
+}
+
+const handleLiveFriendSelectionChange = (payload = {}) => {
+  const selectedKeys = Array.isArray(payload.selectedKeys) ? payload.selectedKeys : []
+  const availableKeys = Array.isArray(payload.availableKeys)
+      ? payload.availableKeys
+      : liveFriendFilterAvailableKeys.value
+
+  updateLiveFriendFilterQuery(selectedKeys, availableKeys)
 }
 
 const handleToggleFriendLocationTrails = (value) => {
