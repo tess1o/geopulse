@@ -118,8 +118,6 @@
                   :icon="action.icon"
                   as="router-link"
                   :to="action.to"
-                  severity="secondary"
-                  outlined
                   class="quick-action-button"
                 />
               </div>
@@ -405,6 +403,18 @@ onBeforeUnmount(() => {
   --home-accent-hover: var(--gp-primary-hover, #0d615a);
   --home-accent-soft: rgba(15, 118, 110, 0.14);
   --home-focus: rgba(13, 148, 136, 0.28);
+  --home-hero-gradient: linear-gradient(145deg, #f8fbff 0%, #edf3ff 52%, #e8f0ff 100%);
+  --home-hero-glow: radial-gradient(ellipse at 24% 14%, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0) 58%),
+    radial-gradient(ellipse at 80% 88%, rgba(14, 165, 233, 0.16) 0%, rgba(14, 165, 233, 0) 62%);
+  --home-continue-bg: linear-gradient(155deg, rgba(37, 99, 235, 0.12) 0%, rgba(14, 165, 233, 0.08) 100%);
+  --home-continue-border: rgba(37, 99, 235, 0.24);
+  --home-primary-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+  --home-secondary-bg: rgba(37, 99, 235, 0.05);
+  --home-secondary-hover-bg: rgba(37, 99, 235, 0.11);
+  --home-quick-bg: var(--home-card-bg);
+  --home-quick-hover-bg: rgba(37, 99, 235, 0.08);
+  --home-quick-border: rgba(148, 163, 184, 0.38);
+  --home-quick-hover-border: rgba(37, 99, 235, 0.5);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -416,7 +426,7 @@ onBeforeUnmount(() => {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  background: var(--home-hero-gradient);
   z-index: 0;
 }
 
@@ -424,7 +434,7 @@ onBeforeUnmount(() => {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, rgba(26, 86, 219, 0.1) 0%, transparent 70%);
+  background: var(--home-hero-glow);
   z-index: 1;
 }
 
@@ -632,9 +642,10 @@ onBeforeUnmount(() => {
 }
 
 .cta-primary {
-  background: var(--home-accent);
+  background: linear-gradient(135deg, var(--home-accent) 0%, var(--home-accent-hover) 100%);
   border-color: var(--home-accent);
   color: #ffffff;
+  box-shadow: var(--home-primary-shadow);
 }
 
 .cta-primary:hover {
@@ -649,13 +660,20 @@ onBeforeUnmount(() => {
 .cta-secondary {
   border-color: var(--home-border-strong);
   color: var(--home-text-primary);
+  background: var(--home-secondary-bg);
+}
+
+.cta-secondary:hover {
+  border-color: var(--home-accent);
+  color: var(--home-accent);
+  background: var(--home-secondary-hover-bg);
 }
 
 .continue-card {
-  border: 1px solid var(--home-border);
+  border: 1px solid var(--home-continue-border);
   border-radius: 0.9rem;
   padding: 0.85rem;
-  background: linear-gradient(180deg, rgba(14, 165, 164, 0.08), rgba(255, 255, 255, 0.9));
+  background: var(--home-continue-bg);
 }
 
 .continue-meta {
@@ -684,20 +702,26 @@ onBeforeUnmount(() => {
   gap: 0.6rem;
 }
 
-.quick-action-button {
+.quick-action-button.p-button {
   width: 100%;
   justify-content: flex-start;
   border-radius: 0.76rem;
-  border-color: var(--home-border-strong);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--home-quick-border);
   color: var(--home-text-primary);
+  background: var(--home-quick-bg);
+  font-weight: 600;
+  box-shadow: none;
 }
 
-.quick-action-button:hover {
-  border-color: var(--home-accent);
+.quick-action-button.p-button:not(:disabled):hover {
+  border-color: var(--home-quick-hover-border);
   color: var(--home-accent);
+  background: var(--home-quick-hover-bg);
 }
 
-.quick-action-button:focus {
+.quick-action-button.p-button:focus {
   box-shadow: 0 0 0 3px var(--home-focus);
 }
 
@@ -857,11 +881,40 @@ onBeforeUnmount(() => {
   }
 }
 
+.p-dark .home-page {
+  --home-hero-gradient: linear-gradient(155deg, #0b1220 0%, #101d34 45%, #0d213f 100%);
+  --home-hero-glow: radial-gradient(ellipse at 18% 12%, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0) 60%),
+    radial-gradient(ellipse at 84% 86%, rgba(14, 165, 233, 0.18) 0%, rgba(14, 165, 233, 0) 64%);
+  --home-continue-bg: linear-gradient(155deg, rgba(37, 99, 235, 0.22) 0%, rgba(14, 165, 233, 0.12) 100%);
+  --home-continue-border: rgba(147, 197, 253, 0.32);
+  --home-primary-shadow: 0 12px 26px rgba(30, 64, 175, 0.46);
+  --home-secondary-bg: rgba(59, 130, 246, 0.12);
+  --home-secondary-hover-bg: rgba(96, 165, 250, 0.22);
+  --home-quick-bg: rgba(15, 23, 42, 0.7);
+  --home-quick-hover-bg: rgba(30, 64, 175, 0.24);
+  --home-quick-border: rgba(148, 163, 184, 0.55);
+  --home-quick-hover-border: rgba(96, 165, 250, 0.75);
+}
+
 .p-dark .home-page::before {
-  background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
+  background: var(--home-hero-gradient);
 }
 
 .p-dark .home-page::after {
-  background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  background: var(--home-hero-glow);
+}
+
+.p-dark .cta-secondary {
+  border-color: rgba(148, 163, 184, 0.65);
+  color: var(--home-text-primary);
+}
+
+.p-dark .quick-action-button.p-button {
+  border-color: var(--home-quick-border);
+  color: #e2e8f0;
+}
+
+.p-dark .quick-action-button.p-button:not(:disabled):hover {
+  color: #bfdbfe;
 }
 </style>
