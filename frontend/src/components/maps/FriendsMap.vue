@@ -87,7 +87,6 @@
 import {ref, computed, watch, onMounted, nextTick} from 'vue'
 import {useToast} from 'primevue/usetoast'
 import {ProgressSpinner} from 'primevue'
-import {useRouter, useRoute} from 'vue-router'
 
 // Map components
 import {MapContainer, FriendsLayer, CurrentLocationLayer} from '@/components/maps'
@@ -174,18 +173,25 @@ const getFriendTrailPoints = (friend) => {
       .filter(Boolean)
 }
 
+const hasValidCoordinates = (latitude, longitude) => {
+  return typeof latitude === 'number' &&
+      typeof longitude === 'number' &&
+      !Number.isNaN(latitude) &&
+      !Number.isNaN(longitude)
+}
+
 const dataBounds = computed(() => {
   const bounds = []
 
   if (props.friends) {
     props.friends.forEach(friend => {
-      if (friend.lastLatitude && friend.lastLongitude) {
+      if (hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)) {
         bounds.push([friend.lastLatitude, friend.lastLongitude])
       }
     })
   }
 
-  if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
+  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
     bounds.push([props.currentUser.latitude, props.currentUser.longitude])
   }
 
@@ -201,22 +207,31 @@ const map = ref(null)
 const isLoading = ref(false)
 const mapKey = ref(0) // Force re-render key
 const uniqueMapId = computed(() => `friends-map-${mapKey.value}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+const selectedFriendKey = ref(null)
 
 // Map configuration
-const mapCenter = computed(() => {
-  // Center on the current user if available
-  if (props.currentUser && props.currentUser.latitude && props.currentUser.longitude) {
+const mapCenter = ref((() => {
+  // Start centered on an initially selected friend when possible
+  if (props.initialFriendEmail && props.friends?.length) {
+    const friendToCenter = props.friends.find(friend =>
+        friend?.email === props.initialFriendEmail &&
+        hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)
+    )
+
+    if (friendToCenter) {
+      return [friendToCenter.lastLatitude, friendToCenter.lastLongitude]
+    }
+  }
+
+  // Otherwise center on current user once at initialization
+  if (hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)) {
     return [props.currentUser.latitude, props.currentUser.longitude]
   }
 
   // If we have friends with locations, center on the first friend
-  if (hasLocations.value && props.friends && props.friends.length > 0) {
+  if (props.friends?.length) {
     const firstFriendWithLocation = props.friends.find(friend =>
-        friend &&
-        typeof friend.lastLatitude === 'number' &&
-        typeof friend.lastLongitude === 'number' &&
-        !isNaN(friend.lastLatitude) &&
-        !isNaN(friend.lastLongitude)
+        hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)
     )
 
     if (firstFriendWithLocation) {
@@ -226,37 +241,73 @@ const mapCenter = computed(() => {
 
   // Default to London if no locations
   return [51.505, -0.09]
-})
+})())
 
 const mapZoom = ref(15)
 
 // Computed
 const hasLocations = computed(() => {
   const hasFriendLocation = props.friends?.some(friend =>
-      friend &&
-      typeof friend.lastLatitude === 'number' &&
-      typeof friend.lastLongitude === 'number' &&
-      !isNaN(friend.lastLatitude) &&
-      !isNaN(friend.lastLongitude)
+      hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)
   )
 
-  const hasCurrentUserLocation =
-      props.currentUser &&
-      typeof props.currentUser.latitude === 'number' &&
-      typeof props.currentUser.longitude === 'number' &&
-      !isNaN(props.currentUser.latitude) &&
-      !isNaN(props.currentUser.longitude)
+  const hasCurrentUserLocation = hasValidCoordinates(props.currentUser?.latitude, props.currentUser?.longitude)
 
   return hasFriendLocation || hasCurrentUserLocation
 })
+
+const toFriendKey = (friend) => {
+  const key = getFriendLocationKey(friend)
+  return key !== null && key !== undefined ? String(key) : null
+}
+
+const findFriendByKey = (targetKey) => {
+  if (!targetKey || !props.friends?.length) return null
+
+  return props.friends.find(friend => toFriendKey(friend) === String(targetKey)) || null
+}
+
+const focusOnFriend = (friend, { openPopup = false, zoom = 17 } = {}) => {
+  if (!map.value || !friend) {
+    return false
+  }
+
+  if (friendsLayerRef.value?.focusOnFriend) {
+    const focusedInLayer = friendsLayerRef.value.focusOnFriend(friend, { openPopup, zoom })
+    if (focusedInLayer) {
+      return true
+    }
+  }
+
+  if (hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude)) {
+    map.value.setView([friend.lastLatitude, friend.lastLongitude], zoom)
+    return true
+  }
+
+  return false
+}
 
 // Methods
 const handleMapReady = (mapInstance) => {
   map.value = mapInstance
 
-  // If an initial friend email is provided, try to zoom to that friend
+  // Keep focus on selected friend when possible.
+  if (selectedFriendKey.value) {
+    const selectedFriend = findFriendByKey(selectedFriendKey.value)
+    if (selectedFriend) {
+      nextTick(() => {
+        focusOnFriend(selectedFriend, { openPopup: false, zoom: 17 })
+      })
+      return
+    }
+  }
+
+  // If an initial friend email is provided, try to zoom to that friend.
   if (props.initialFriendEmail) {
-    tryZoomToInitialFriend()
+    const focused = tryZoomToInitialFriend({ openPopup: true })
+    if (focused) {
+      return
+    }
   } else if (hasLocations.value && dataBounds.value) {
     // Otherwise, fit map to all friends data if available
     nextTick(() => {
@@ -267,6 +318,7 @@ const handleMapReady = (mapInstance) => {
 
 const handleFriendClick = (event) => {
   const {friend} = event
+  selectedFriendKey.value = toFriendKey(friend)
   emit('friend-located', friend)
 }
 
@@ -301,6 +353,7 @@ const refreshLocations = () => {
 }
 
 const resetFriendSelections = () => {
+  selectedFriendKey.value = null
   emit('show-all')
 }
 
@@ -320,7 +373,7 @@ const zoomToFriend = (friend) => {
     return false
   }
 
-  if (!friend || !friend.lastLatitude || !friend.lastLongitude) {
+  if (!friend || !hasValidCoordinates(friend.lastLatitude, friend.lastLongitude)) {
     toast.add({
       severity: 'warn',
       summary: 'Location not found',
@@ -330,10 +383,8 @@ const zoomToFriend = (friend) => {
     return false
   }
 
-  // Focus on the friend in the layer
-  if (friendsLayerRef.value) {
-    friendsLayerRef.value.focusOnFriend(friend)
-  }
+  selectedFriendKey.value = toFriendKey(friend)
+  focusOnFriend(friend, { openPopup: true, zoom: 17 })
 
   emit('friend-located', friend)
   return true
@@ -344,7 +395,7 @@ const processFriendsForMap = (friends) => {
   if (!friends || !Array.isArray(friends)) return []
 
   return friends
-      .filter(friend => friend.lastLatitude && friend.lastLongitude)
+      .filter(friend => hasValidCoordinates(friend?.lastLatitude, friend?.lastLongitude))
       .map((friend, index) => ({
         ...friend,
         latitude: friend.lastLatitude,
@@ -359,11 +410,13 @@ const processFriendsForMap = (friends) => {
       }))
 }
 
-// No watchers needed - using computed properties
-
 // Update map center when data changes
 watch(dataBounds, (newBounds, oldBounds) => {
   if (newBounds && map.value) {
+    if (selectedFriendKey.value || props.initialFriendEmail) {
+      return
+    }
+
     // Avoid recentering on every background poll; only auto-fit when locations appear.
     if (oldBounds) {
       return
@@ -385,29 +438,62 @@ watch(() => props.friends, (newFriends) => {
   if (newFriends && newFriends.length > 0 && !map.value) {
     mapKey.value++
   }
+
+  if (!map.value || !newFriends?.length) {
+    return
+  }
+
+  // Keep following the selected friend marker during live refreshes.
+  if (selectedFriendKey.value) {
+    const selectedFriend = findFriendByKey(selectedFriendKey.value)
+    if (selectedFriend) {
+      nextTick(() => {
+        focusOnFriend(selectedFriend, { openPopup: false, zoom: 17 })
+      })
+      return
+    }
+
+    selectedFriendKey.value = null
+  }
+
+  if (props.initialFriendEmail) {
+    nextTick(() => {
+      tryZoomToInitialFriend({ openPopup: false })
+    })
+  }
 }, {deep: true})
 
-const tryZoomToInitialFriend = () => {
+const tryZoomToInitialFriend = ({ openPopup = true } = {}) => {
   if (props.initialFriendEmail && props.friends?.length && map.value) {
-    const friendToZoom = props.friends.find(f => f.email === props.initialFriendEmail)
+    const friendToZoom = props.friends.find(f =>
+        f.email === props.initialFriendEmail &&
+        hasValidCoordinates(f?.lastLatitude, f?.lastLongitude)
+    )
     if (friendToZoom) {
+      selectedFriendKey.value = toFriendKey(friendToZoom)
       // Ensure map is ready before zooming
       nextTick(() => {
-        zoomToFriend(friendToZoom)
+        focusOnFriend(friendToZoom, { openPopup, zoom: 17 })
       })
+      return true
     }
   }
+
+  return false
 }
 
 // Watch for initialFriendEmail prop changes
 watch(() => props.initialFriendEmail, (newEmail) => {
   if (newEmail) {
-    tryZoomToInitialFriend()
+    nextTick(() => {
+      tryZoomToInitialFriend({ openPopup: true })
+    })
   } else if (map.value && dataBounds.value) {
+    selectedFriendKey.value = null
     // If the friend is deselected, fit the map to the data bounds
     nextTick(() => {
-      map.value.fitBounds(dataBounds.value, { padding: [20, 20] });
-    });
+      map.value.fitBounds(dataBounds.value, { padding: [20, 20] })
+    })
   }
 })
 
@@ -420,7 +506,7 @@ onMounted(async () => {
 
   // Attempt to zoom to initial friend if provided, after data is potentially loaded
   if (props.initialFriendEmail) {
-    tryZoomToInitialFriend()
+    tryZoomToInitialFriend({ openPopup: true })
   }
 })
 

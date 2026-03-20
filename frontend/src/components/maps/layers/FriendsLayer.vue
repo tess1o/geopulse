@@ -276,11 +276,18 @@ const getMarkerByFriend = (friendData) => {
   return found?.marker
 }
 
-const focusOnFriend = (friendData) => {
+const focusOnFriend = (friendData, options = {}) => {
   const marker = getMarkerByFriend(friendData)
   if (marker && props.map) {
-    props.map.setView(marker.getLatLng(), 17)
-    marker.openPopup()
+    const {
+      zoom = 17,
+      openPopup = true
+    } = options
+
+    props.map.setView(marker.getLatLng(), zoom)
+    if (openPopup) {
+      marker.openPopup()
+    }
     return true
   }
   return false

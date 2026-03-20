@@ -601,14 +601,34 @@ const handleCancelAllInvites = async () => {
 }
 
 const handleFriendLocated = (friend) => {
-}
+  const friendEmail = friend?.email
+  if (!friendEmail) {
+    return
+  }
 
-const handleShowAll = () => {
+  if (route.params.tab === 'live' && route.query.friend === friendEmail) {
+    return
+  }
+
   router.replace({
     name: 'Friends',
     params: {tab: 'live'},
-    query: {friend: undefined}
-  });
+    query: {
+      ...route.query,
+      friend: friendEmail
+    }
+  })
+}
+
+const handleShowAll = () => {
+  const nextQuery = { ...route.query }
+  delete nextQuery.friend
+
+  router.replace({
+    name: 'Friends',
+    params: {tab: 'live'},
+    query: nextQuery
+  })
 }
 
 const handleToggleFriendLocationTrails = (value) => {
