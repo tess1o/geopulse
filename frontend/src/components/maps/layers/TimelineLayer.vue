@@ -339,7 +339,7 @@ const renderTimelineMarkers = () => {
 
     const icon = isStack
       ? createStackTimelineIcon(markerItems.length, isHighlighted)
-      : (isHighlighted ? createHighlightedTimelineIcon() : createTimelineIcon())
+      : (isHighlighted ? createHighlightedTimelineIcon(primaryItem) : createTimelineIcon(primaryItem))
 
     const marker = L.marker([primaryItem.latitude, primaryItem.longitude], {
       icon,
@@ -528,13 +528,12 @@ const updateHighlightedMarker = () => {
     )
 
     if (shouldBeHighlighted !== isHighlighted) {
+      const focusedItem = items.find((item) => isSameTimelineItem(props.highlightedItem, item)) || items[0]
       const newIcon = isStack
         ? createStackTimelineIcon(items.length, shouldBeHighlighted)
-        : (shouldBeHighlighted ? createHighlightedTimelineIcon() : createTimelineIcon())
+        : (shouldBeHighlighted ? createHighlightedTimelineIcon(focusedItem) : createTimelineIcon(focusedItem))
 
       marker.setIcon(newIcon)
-
-      const focusedItem = items.find((item) => isSameTimelineItem(props.highlightedItem, item)) || items[0]
 
       // If highlighting this marker, only zoom for stay items (trips handle their own zooming)
       if (shouldBeHighlighted && focusedItem && props.map && focusedItem.type !== 'trip') {

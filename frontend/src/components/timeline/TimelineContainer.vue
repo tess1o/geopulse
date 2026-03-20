@@ -162,6 +162,7 @@ import OvernightStayCard from './OvernightStayCard.vue'
 import OvernightTripCard from './OvernightTripCard.vue'
 import OvernightDataGapCard from './OvernightDataGapCard.vue'
 import { useTimezone } from '@/composables/useTimezone'
+import { getTimelineItemIconClass } from '@/utils/timelineIconUtils'
 
 // Lazy load the classification dialog
 const TripClassificationDialog = defineAsyncComponent(() =>
@@ -221,29 +222,13 @@ const timezone = useTimezone()
 
 // Check if an item spans multiple days (overnight)
 const isOvernightItem = (item) => {
-  return timezone.getTotalDaysSpanned(item) > 1;
-};
-
-// Computed properties
-const getMarkerIcon = computed(() => (type) => {
-  if (type === 'stay') return 'pi pi-map-marker'
-  if (type === 'trip') return 'pi pi-car'
-  if (type === 'dataGap') return 'pi pi-question'
-  return 'pi pi-circle'
-})
+  return timezone.getTotalDaysSpanned(item) > 1
+}
 
 // Marker icons based on item type
-const getMarkerIconForItem = computed(() => (item, dateKey) => {
-  // Show moon icon for overnight items
-  if (isOvernightItem(item)) {
-    return 'pi pi-moon';
-  }
-  // Special walking icon for trips
-  if (item.type === 'trip' && item.movementType === 'WALK') {
-    return 'fas fa-walking';
-  }
-  return getMarkerIcon.value(item.type);
-});
+const getMarkerIconForItem = computed(() => (item) => (
+  getTimelineItemIconClass(item, { isOvernight: isOvernightItem(item) })
+))
 
 const getMarkerClass = computed(() => (type) => {
   if (type === 'stay') return 'marker-stay'
@@ -254,8 +239,8 @@ const getMarkerClass = computed(() => (type) => {
 
 // Marker classes based on item type  
 const getMarkerClassForItem = computed(() => (item, dateKey) => {
-  const baseClass = getMarkerClass.value(item.type);
-  return isOvernightItem(item) ? `${baseClass} marker-overnight` : baseClass;
+  const baseClass = getMarkerClass.value(item.type)
+  return isOvernightItem(item) ? `${baseClass} marker-overnight` : baseClass
 })
 
 // Get period tags for a specific date

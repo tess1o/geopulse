@@ -4,6 +4,7 @@
  */
 
 import L from 'leaflet'
+import { getTripMovementIconClass } from '@/utils/timelineIconUtils'
 
 /**
  * Fix Leaflet default marker images import issues in Vite/Webpack
@@ -317,6 +318,7 @@ export const MARKER_COLORS = {
     STAY: '#607D8B',           // Blue Grey - for stay points
     PATH: '#4A90E2',           // Light Blue - for path lines
     TRANSIT: '#003366',        // Dark Blue - for transit points
+    DATA_GAP: '#D97706',       // Amber - for inferred/unknown timeline gaps
     HIGHLIGHT_START: '#2ECC71', // Green - for trip start points
     HIGHLIGHT_END: '#D84315',   // Red Orange - for trip end points
     FRIEND: '#FF9800',         // Orange - for friend locations
@@ -346,6 +348,18 @@ export const MARKER_SIZES = {
         ANCHOR: 20,
         BORDER: 3
     }
+}
+
+const DESKTOP_TIMELINE_BREAKPOINT = 1024
+const DESKTOP_TIMELINE_MARKER_SIZE = {
+    ...MARKER_SIZES.STANDARD,
+    SIZE: 28,
+    ANCHOR: 14
+}
+const DESKTOP_TIMELINE_HIGHLIGHT_MARKER_SIZE = {
+    ...MARKER_SIZES.HIGHLIGHT,
+    SIZE: 44,
+    ANCHOR: 22
 }
 
 /**
@@ -414,8 +428,15 @@ export function createCustomDivIcon({
     let iconContent = ''
     if (icon) {
         const iconSize = Math.floor(size.SIZE * 0.7) // Increased from 0.5 to 0.7
-        if (icon.startsWith('fa-') || icon.includes('fas ') || icon.includes('far ')) {
-            // FontAwesome icon
+        const isCssIconClass = icon.startsWith('pi ') ||
+            icon.startsWith('fas ') ||
+            icon.startsWith('far ') ||
+            icon.startsWith('fal ') ||
+            icon.startsWith('fab ') ||
+            icon.startsWith('fa-')
+
+        if (isCssIconClass) {
+            // CSS class icon (PrimeIcons/FontAwesome)
             iconContent = `<i class="${icon}" style="color: white; font-size: ${iconSize}px; font-weight: bold; ${shape === 'pin' ? 'transform: rotate(45deg);' : ''}"></i>`
         } else {
             // Emoji or text - make emojis even bigger
@@ -659,13 +680,16 @@ export function createFavoriteLocationMarker(latitude, longitude) {
 
 /**
  * Create icon for timeline markers
+ * @param {Object|null} item - Timeline item (stay/trip/dataGap)
  * @returns {L.DivIcon} - Configured timeline icon
  */
-export function createTimelineIcon() {
+export function createTimelineIcon(item = null) {
+    const markerVisual = resolveTimelineMarkerVisual(item)
+
     return createCustomDivIcon({
-        color: MARKER_COLORS.STAY,
-        icon: '📍', // Pin emoji for timeline points
-        size: MARKER_SIZES.STANDARD,
+        color: markerVisual.color,
+        icon: markerVisual.icon,
+        size: getResponsiveTimelineMarkerSize(false),
         className: 'custom-marker timeline-marker',
         shape: 'circle'
     })
@@ -673,20 +697,62 @@ export function createTimelineIcon() {
 
 /**
  * Create highlighted icon for timeline markers
+ * @param {Object|null} item - Timeline item (stay/trip/dataGap)
  * @returns {L.DivIcon} - Configured highlighted timeline icon
  */
-export function createHighlightedTimelineIcon() {
+export function createHighlightedTimelineIcon(item = null) {
+    const markerVisual = resolveTimelineMarkerVisual(item)
+
     return createCustomDivIcon({
-        color: MARKER_COLORS.STAY, // Use the same color as regular timeline markers
-        icon: '📍', // Pin emoji for highlighted timeline points
-        size: MARKER_SIZES.HIGHLIGHT,
+        color: markerVisual.color,
+        icon: markerVisual.icon,
+        size: getResponsiveTimelineMarkerSize(true),
         className: 'custom-marker timeline-marker highlighted',
         shape: 'circle',
         customStyle: {
-            border: '3px solid #22c55e', // Green border to indicate highlighting
-            boxShadow: '0 0 8px rgba(46, 204, 113, 0.4)'
+            boxShadow: `0 0 0 4px ${markerVisual.highlightRingColor}, 0 4px 10px rgba(15, 23, 42, 0.25)`
         }
     })
+}
+
+/**
+ * Resolve the timeline marker visual based on timeline item type.
+ * Mirrors timeline list semantics: stays use location pin, trips use transport.
+ * @param {Object|null} item - Timeline item
+ * @returns {{color: string, icon: string, highlightRingColor: string}}
+ */
+function resolveTimelineMarkerVisual(item) {
+    const itemType = item?.type
+    if (itemType === 'trip') {
+        return {
+            color: '#10B981',
+            icon: getTripMovementIconClass(item?.movementType),
+            highlightRingColor: 'rgba(52, 211, 153, 0.55)'
+        }
+    }
+
+    if (itemType === 'dataGap') {
+        return {
+            color: '#F59E0B',
+            icon: 'pi pi-question',
+            highlightRingColor: 'rgba(251, 191, 36, 0.55)'
+        }
+    }
+
+    return {
+        color: '#1A56DB',
+        icon: 'pi pi-map-marker',
+        highlightRingColor: 'rgba(96, 165, 250, 0.55)'
+    }
+}
+
+function getResponsiveTimelineMarkerSize(highlighted = false) {
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= DESKTOP_TIMELINE_BREAKPOINT
+    if (!isDesktop) {
+        return highlighted ? MARKER_SIZES.HIGHLIGHT : MARKER_SIZES.STANDARD
+    }
+
+    return highlighted ? DESKTOP_TIMELINE_HIGHLIGHT_MARKER_SIZE : DESKTOP_TIMELINE_MARKER_SIZE
 }
 
 /**
