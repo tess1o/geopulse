@@ -15,22 +15,7 @@
             placeholder="Select friends to show"
         >
           <template #option="slotProps">
-            <div class="friend-option">
-              <Avatar
-                  :image="slotProps.option.avatar || '/avatars/avatar1.png'"
-                  size="small"
-                  shape="circle"
-              />
-              <div class="friend-meta">
-                <span class="friend-name">{{ slotProps.option.label }}</span>
-                <span class="friend-email">{{ slotProps.option.email }}</span>
-              </div>
-              <span
-                  class="friend-status-dot"
-                  :class="{ 'friend-status-dot--online': slotProps.option.isOnline }"
-                  :title="slotProps.option.isOnline ? 'Online now' : 'Last seen recently'"
-              ></span>
-            </div>
+            <FriendFilterOptionRow :option="slotProps.option" />
           </template>
 
           <template #value="slotProps">
@@ -45,9 +30,12 @@
       </div>
 
       <div class="filter-actions">
-        <Button label="All" outlined size="small" @click="selectAllFriends" :disabled="totalFriends === 0" />
-        <Button label="None" outlined size="small" @click="clearSelection" :disabled="totalFriends === 0" />
-        <Button label="Online" outlined size="small" @click="selectOnlineFriends" :disabled="totalFriends === 0" />
+        <FriendFilterQuickActions
+            :disabled="totalFriends === 0"
+            @select-all="selectAllFriends"
+            @select-none="clearSelection"
+            @select-online="selectOnlineFriends"
+        />
       </div>
     </div>
 
@@ -87,29 +75,17 @@
             placeholder="Select friends to show"
         >
           <template #option="slotProps">
-            <div class="friend-option">
-              <Avatar
-                  :image="slotProps.option.avatar || '/avatars/avatar1.png'"
-                  size="small"
-                  shape="circle"
-              />
-              <div class="friend-meta">
-                <span class="friend-name">{{ slotProps.option.label }}</span>
-                <span class="friend-email">{{ slotProps.option.email }}</span>
-              </div>
-              <span
-                  class="friend-status-dot"
-                  :class="{ 'friend-status-dot--online': slotProps.option.isOnline }"
-                  :title="slotProps.option.isOnline ? 'Online now' : 'Last seen recently'"
-              ></span>
-            </div>
+            <FriendFilterOptionRow :option="slotProps.option" />
           </template>
         </MultiSelect>
 
         <div class="mobile-actions">
-          <Button label="All" outlined size="small" @click="selectAllFriends" :disabled="totalFriends === 0" />
-          <Button label="None" outlined size="small" @click="clearSelection" :disabled="totalFriends === 0" />
-          <Button label="Online" outlined size="small" @click="selectOnlineFriends" :disabled="totalFriends === 0" />
+          <FriendFilterQuickActions
+              :disabled="totalFriends === 0"
+              @select-all="selectAllFriends"
+              @select-none="clearSelection"
+              @select-online="selectOnlineFriends"
+          />
         </div>
 
         <Button label="Done" class="mobile-done-button" @click="mobileDialogVisible = false" />
@@ -120,6 +96,8 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import FriendFilterOptionRow from '@/components/friends/FriendFilterOptionRow.vue'
+import FriendFilterQuickActions from '@/components/friends/FriendFilterQuickActions.vue'
 
 const ONLINE_WINDOW_MS = 15 * 60 * 1000
 
@@ -300,49 +278,7 @@ const selectOnlineFriends = () => {
 }
 
 .filter-actions {
-  display: flex;
-  gap: 0.5rem;
   flex-shrink: 0;
-}
-
-.friend-option {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  width: 100%;
-}
-
-.friend-meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-
-.friend-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.friend-email {
-  font-size: 0.75rem;
-  color: var(--gp-text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.friend-status-dot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: var(--gp-warning);
-  flex-shrink: 0;
-}
-
-.friend-status-dot--online {
-  background: var(--gp-success);
 }
 
 .selected-summary {
@@ -379,9 +315,7 @@ const selectOnlineFriends = () => {
 }
 
 .mobile-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .mobile-done-button {
