@@ -21,24 +21,30 @@ COPY backend/src src/
 RUN --mount=type=cache,target=/root/.m2 \
     mvn package -DskipTests -Dquarkus.profile=prod
 
-# Stage 2: Create a minimal runtime image
-FROM eclipse-temurin:25-jdk-alpine
+FROM scratch AS app
 WORKDIR /app
 
 # Copy the built application from the build stage
-COPY --from=build /app/backend/target/quarkus-app/lib/ /app/lib/
-COPY --from=build /app/backend/target/quarkus-app/*.jar /app/
-COPY --from=build /app/backend/target/quarkus-app/app/ /app/app/
-COPY --from=build /app/backend/target/quarkus-app/quarkus/ /app/quarkus/
+COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/lib/ /app/lib/
+COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/*.jar /app/
+COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/app/ /app/app/
+COPY --from=build --chown=1001:0 /app/backend/target/quarkus-app/quarkus/ /app/quarkus/
+
+# Stage 2: Create a minimal runtime image
+FROM eclipse-temurin:25-jdk-alpine
+WORKDIR /app
 
 # Create directories and set permissions for arbitrary UIDs and GIDs
 # Supports both OpenShift pattern (any UID with GID 0) and standard docker-compose (any UID:GID)
 # Uses UID 1001 to match native image for consistency
 RUN mkdir -p /app/dumps /app/logs && \
-    addgroup -g 1001 -S appgroup && adduser -u 1001 -G appgroup -S appuser && \
+    addgroup -g 1001 -S appgroup && \
+    adduser -u 1001 -G appgroup -S appuser && \
     chmod 777 /app/dumps /app/logs && \
     chown -R 1001:0 /app && \
     chmod -R g+rwX /app
+
+COPY --from=app /app /app
 
 # Default to appuser (UID 1001), but can be overridden with --user flag
 USER appuser
