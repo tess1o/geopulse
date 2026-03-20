@@ -180,7 +180,8 @@ const DEFAULT_AUTH_STATUS = {
   oidcRegistrationEnabled: false,
   passwordLoginEnabled: true,
   oidcLoginEnabled: true,
-  adminLoginBypassEnabled: true
+  adminLoginBypassEnabled: true,
+  guestRootRedirectToLoginEnabled: false
 }
 
 const KNOWN_DESTINATIONS = {

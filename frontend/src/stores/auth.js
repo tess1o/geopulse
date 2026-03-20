@@ -373,7 +373,8 @@ export const useAuthStore = defineStore('auth', {
                     oidcRegistrationEnabled: false,
                     passwordLoginEnabled: true,
                     oidcLoginEnabled: true,
-                    adminLoginBypassEnabled: true
+                    adminLoginBypassEnabled: true,
+                    guestRootRedirectToLoginEnabled: false
                 }
             } catch (error) {
                 console.error('Failed to get auth status:', error)
@@ -382,7 +383,8 @@ export const useAuthStore = defineStore('auth', {
                     oidcRegistrationEnabled: false,
                     passwordLoginEnabled: true,
                     oidcLoginEnabled: true,
-                    adminLoginBypassEnabled: true
+                    adminLoginBypassEnabled: true,
+                    guestRootRedirectToLoginEnabled: false
                 }
             }
         }

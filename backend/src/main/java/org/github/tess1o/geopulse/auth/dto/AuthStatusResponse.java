@@ -14,4 +14,7 @@ public class AuthStatusResponse {
     private boolean passwordLoginEnabled;
     private boolean oidcLoginEnabled;
     private boolean adminLoginBypassEnabled;
+
+    // Guest root navigation
+    private boolean guestRootRedirectToLoginEnabled;
 }

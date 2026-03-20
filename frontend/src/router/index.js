@@ -137,10 +137,20 @@ const routes = [
                 // If authenticated and has default redirect URL, redirect there
                 if (authStore.isAuthenticated && authStore.defaultRedirectUrl) {
                     next(authStore.defaultRedirectUrl)
-                } else {
-                    // Show home page for non-authenticated users or authenticated users without redirect URL
-                    next()
+                    return
                 }
+
+                // For guests, optionally redirect from / to /login based on global auth setting
+                if (!authStore.isAuthenticated) {
+                    const authStatus = await authStore.getAuthStatus()
+                    if (authStatus?.guestRootRedirectToLoginEnabled) {
+                        next('/login')
+                        return
+                    }
+                }
+
+                // Show home page for guests (default) or authenticated users without redirect URL
+                next()
             } catch (error) {
                 // On error, show home page
                 next()

@@ -55,6 +55,13 @@ public class AuthConfigurationService {
     }
 
     /**
+     * Check if signed-out users should be redirected from "/" to "/login".
+     */
+    public boolean isGuestRootRedirectToLoginEnabled() {
+        return settingsService.getBoolean("auth.guest-root-redirect-to-login.enabled");
+    }
+
+    /**
      * Check if admin login bypass is enabled.
      * When false, admins are subject to the same login restrictions as regular users.
      */

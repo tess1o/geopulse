@@ -40,12 +40,13 @@ Notes:
 | `GEOPULSE_PUBLIC_BASE_URL` | `(empty)` | Public base URL used for callback/link generation. Property: `geopulse.public-base-url`. | Valid URL. | Backend restart |
 | `GEOPULSE_UI_URL` | `http://localhost:5555` | Legacy fallback variable for CORS origins and OIDC callback fallback. Deprecated: use `GEOPULSE_CORS_ORIGINS` and `GEOPULSE_PUBLIC_BASE_URL`. | One URL or comma-separated URLs. | Backend restart |
 
-### Authentication and Access (17)
+### Authentication and Access (18)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_ADMIN_EMAIL` | `(empty)` | Admin configuration Property: \`geopulse.admin.email\`. | Valid email address. | Backend restart |
 | `GEOPULSE_AUTH_ADMIN_LOGIN_BYPASS_ENABLED` | `true` | Property: \`geopulse.auth.admin-login-bypass.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_AUTH_GUEST_ROOT_REDIRECT_TO_LOGIN_ENABLED` | `false` | Redirect signed-out users from `/` to `/login` instead of rendering Home. Property: \`geopulse.auth.guest-root-redirect-to-login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_OIDC_LOGIN_ENABLED` | `true` | Property: \`geopulse.auth.oidc.login.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_AUTH_OIDC_REGISTRATION_ENABLED` | `true` | Property: \`geopulse.auth.oidc.registration.enabled\`. | \`true\` or \`false\`. | Backend restart |

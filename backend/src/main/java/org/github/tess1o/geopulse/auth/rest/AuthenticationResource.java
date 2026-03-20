@@ -259,6 +259,7 @@ public class AuthenticationResource {
                 .passwordLoginEnabled(authConfigurationService.isPasswordLoginEnabled())
                 .oidcLoginEnabled(authConfigurationService.isOidcLoginEnabled())
                 .adminLoginBypassEnabled(authConfigurationService.isAdminLoginBypassEnabled())
+                .guestRootRedirectToLoginEnabled(authConfigurationService.isGuestRootRedirectToLoginEnabled())
                 .build();
         return Response.ok(ApiResponse.success(status)).build();
     }

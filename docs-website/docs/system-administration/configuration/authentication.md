@@ -113,6 +113,11 @@ GeoPulse provides granular control over login methods to restrict access during 
 - **Default:** `true`
 - **Description:** Controls whether admins can bypass login restrictions
 
+#### Guest Root Redirect Control
+- **Variable:** `GEOPULSE_AUTH_GUEST_ROOT_REDIRECT_TO_LOGIN_ENABLED`
+- **Default:** `false`
+- **Description:** When `true`, signed-out users opening `/` are redirected to `/login` instead of seeing the Home page
+
 ### Hierarchical Structure
 
 Login controls use a hierarchical pattern:
@@ -131,7 +136,7 @@ By default (`true`), admin users bypass login restrictions to prevent system loc
 
 Login settings can also be configured via the Admin Panel:
 1. Navigate to **Settings** → **Authentication**
-2. Toggle the login controls as needed
+2. Toggle login controls and guest root redirect behavior as needed
 3. Changes take effect immediately
 
 ### Behavior
@@ -139,6 +144,7 @@ Login settings can also be configured via the Admin Panel:
 - **Existing sessions:** Remain valid when login is disabled. Only NEW logins are blocked.
 - **Token refresh:** Continues to work. Users with valid refresh tokens can extend their sessions.
 - **Frontend:** Shows informative messages explaining why login is disabled.
+- **Guest root navigation:** By default, signed-out users see Home on `/`. If guest root redirect is enabled, they are sent to `/login`.
 
 ### Use Cases
 
@@ -160,3 +166,9 @@ Requires all users to authenticate via OIDC providers.
 GEOPULSE_AUTH_OIDC_LOGIN_ENABLED=false
 ```
 Only allows password-based login for internal users.
+
+**Login-First Guest Entry:**
+```bash
+GEOPULSE_AUTH_GUEST_ROOT_REDIRECT_TO_LOGIN_ENABLED=true
+```
+Signed-out users opening `/` are redirected directly to `/login`.

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SettingSection title="Registration Settings">
+    <SettingSection title="Authentication Settings">
       <SettingItem
         v-for="setting in authSettings"
         :key="setting.key"

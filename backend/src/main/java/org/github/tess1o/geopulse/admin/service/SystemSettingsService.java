@@ -54,6 +54,8 @@ public class SystemSettingsService {
                 new SettingDefinition("geopulse.auth.oidc.login.enabled", "true", ValueType.BOOLEAN, "auth", "Enable/disable OIDC login"));
         SETTING_DEFINITIONS.put("auth.admin-login-bypass.enabled",
                 new SettingDefinition("geopulse.auth.admin-login-bypass.enabled", "true", ValueType.BOOLEAN, "auth", "Allow admins to bypass login restrictions"));
+        SETTING_DEFINITIONS.put("auth.guest-root-redirect-to-login.enabled",
+                new SettingDefinition("geopulse.auth.guest-root-redirect-to-login.enabled", "false", ValueType.BOOLEAN, "auth", "Redirect signed-out users from / to /login"));
 
         // Geocoding settings - General
         SETTING_DEFINITIONS.put("geocoding.primary-provider",

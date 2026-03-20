@@ -37,6 +37,10 @@ export const SETTING_METADATA = {
     label: 'Admin Login Bypass',
     description: 'Allow admins to bypass login restrictions (prevents lockout)'
   },
+  'auth.guest-root-redirect-to-login.enabled': {
+    label: 'Redirect Guests From Root',
+    description: 'Redirect signed-out users from "/" to "/login" instead of showing Home'
+  },
 
   // AI Settings
   'ai.logging.enabled': {
