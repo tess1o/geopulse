@@ -1,146 +1,144 @@
 <template>
   <div class="home-page">
-    <!-- Hero Section -->
-    <section class="hero-section">
-      <div class="hero-background">
-        <div class="hero-gradient"></div>
-      </div>
-      
-      <div class="hero-container">
-        <!-- Theme Switcher -->
-        <div class="theme-switcher">
+    <section class="hero-shell">
+      <div class="home-container">
+        <div class="top-bar">
           <DarkModeSwitcher class="theme-button" />
         </div>
-        
-        <div class="hero-content">
-          <div class="brand-section">
-            <div class="logo-container">
-              <img
-                src="/geopulse-logo.svg"
-                alt="GeoPulse logo"
-                class="logo"
-                loading="eager"
-              />
-            </div>
-            <h1 class="hero-title">GeoPulse</h1>
-            <p class="hero-tagline">Turn Your GPS Data Into Rich Insights</p>
-          </div>
 
-          <div class="hero-description">
-            <p class="description-text">
-              Automatically track stays and trips, visualize your journeys on maps, analyze your movement patterns, and share locations with friends—all with complete privacy control.
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <img
+              src="/geopulse-logo.svg"
+              alt="GeoPulse logo"
+              class="hero-logo"
+              loading="eager"
+            />
+
+            <p class="hero-eyebrow">Self-hosted location timeline</p>
+            <h1 class="hero-title">Your movement history, on your server.</h1>
+            <p class="hero-subtitle">
+              GeoPulse turns raw GPS points into stays, trips, maps, and insights while your data stays under your control.
             </p>
+
           </div>
 
-          <div class="hero-actions">
-            <div v-if="!authStore.isAuthenticated" class="auth-buttons">
-              <!-- Show message when both login and registration are disabled -->
-              <div v-if="!isLoginAvailable && !authStatus.passwordRegistrationEnabled && !authStatus.oidcRegistrationEnabled"
-                   class="access-disabled-message">
+          <div class="hero-panel">
+            <div v-if="isResolvingAuth" class="status-card loading-card">
+              <i class="pi pi-spin pi-spinner"></i>
+              <h2>Preparing your workspace</h2>
+              <p>Checking authentication and available sign-in options.</p>
+            </div>
+
+            <div v-else-if="!authStore.isAuthenticated" class="status-card guest-card">
+              <p class="card-eyebrow">Get started</p>
+              <h2 class="card-title">Welcome to GeoPulse</h2>
+              <p class="card-subtitle">
+                Choose how you want to enter the app.
+              </p>
+
+              <div
+                v-if="!isLoginAvailable && !isRegistrationAvailable"
+                class="status-message status-warning"
+              >
                 <i class="pi pi-lock"></i>
-                <div class="message-text">
-                  <h3>Access Temporarily Unavailable</h3>
-                  <p>Registration and login are currently disabled by the administrator. Please check back later or contact support for assistance.</p>
+                <div>
+                  <h3>Access is temporarily unavailable</h3>
+                  <p>
+                    Login and registration are currently disabled by the administrator.
+                  </p>
                 </div>
               </div>
 
-              <!-- Show buttons when available -->
               <template v-else>
-                <Button
-                  v-if="authStatus.passwordRegistrationEnabled || authStatus.oidcRegistrationEnabled"
-                  label="Start Your Journey"
-                  icon="pi pi-arrow-right"
-                  as="router-link"
-                  to="/register"
-                  class="cta-button primary"
-                  size="large"
-                />
-                <Button
-                  v-if="isLoginAvailable"
-                  label="Sign In"
-                  as="router-link"
-                  to="/login"
-                  severity="secondary"
-                  outlined
-                  class="cta-button secondary"
-                  size="large"
-                />
+                <div v-if="showRegistrationDisabledNotice" class="status-message status-info">
+                  <i class="pi pi-info-circle"></i>
+                  <div>
+                    <h3>Registration is disabled</h3>
+                    <p>Existing users can still sign in to continue.</p>
+                  </div>
+                </div>
+
+                <div class="cta-group">
+                  <Button
+                    v-if="isRegistrationAvailable"
+                    label="Start Your Journey"
+                    icon="pi pi-arrow-right"
+                    as="router-link"
+                    to="/register"
+                    class="cta-button cta-primary"
+                    size="large"
+                  />
+
+                  <Button
+                    v-if="isLoginAvailable"
+                    label="Sign In"
+                    icon="pi pi-sign-in"
+                    as="router-link"
+                    to="/login"
+                    :severity="isRegistrationAvailable ? 'secondary' : undefined"
+                    :outlined="isRegistrationAvailable"
+                    class="cta-button"
+                    :class="isRegistrationAvailable ? 'cta-secondary' : 'cta-primary'"
+                    size="large"
+                  />
+                </div>
               </template>
             </div>
-            <div v-if="authStore.isAuthenticated" class="app-buttons-grid">
-              <Button
-                label="Explore Your Timeline"
-                icon="pi pi-calendar"
-                as="router-link"
-                to="/app/timeline"
-                class="cta-button primary grid-button"
-                size="large"
-              />
-              <Button
-                label="View Your Dashboard"
-                icon="pi pi-chart-bar"
-                as="router-link"
-                to="/app/dashboard"
-                severity="secondary"
-                outlined
-                class="cta-button secondary grid-button"
-                size="large"
-              />
-              <Button
-                label="Journey Insights"
-                icon="pi pi-compass"
-                as="router-link"
-                to="/app/journey-insights"
-                severity="secondary"
-                outlined
-                class="cta-button secondary grid-button"
-                size="large"
-              />
-              <Button
-                label="Connect with Friends"
-                icon="pi pi-users"
-                as="router-link"
-                to="/app/friends"
-                severity="secondary"
-                outlined
-                class="cta-button secondary grid-button"
-                size="large"
-              />
-            </div>
-          </div>
 
-          <div class="hero-badges">
-            <div class="badge">
-              <i class="pi pi-shield"></i>
-              <span>Privacy First</span>
-            </div>
-            <div class="badge">
-              <i class="pi pi-mobile"></i>
-              <span>Cross Platform</span>
-            </div>
-            <div class="badge">
-              <i class="pi pi-github"></i>
-              <span>Open Source</span>
+            <div v-else class="status-card signed-in-card">
+              <p class="card-eyebrow">Welcome back</p>
+              <h2 class="card-title">Continue where you left off</h2>
+              <p class="card-subtitle">
+                Jump straight into your preferred view or pick a quick action.
+              </p>
+
+              <div class="continue-card">
+                <div class="continue-meta">
+                  <p class="continue-label">
+                    {{ hasDefaultRedirectUrl ? 'Your default start page' : 'Recommended start page' }}
+                  </p>
+                  <p class="continue-value">{{ continueDestination.label }}</p>
+                </div>
+                <Button
+                  :label="`Continue to ${continueDestination.label}`"
+                  :icon="continueDestination.icon"
+                  as="router-link"
+                  :to="continueDestination.path"
+                  class="cta-button cta-primary continue-button"
+                  size="large"
+                />
+              </div>
+
+              <div class="quick-actions">
+                <Button
+                  v-for="action in quickActions"
+                  :key="action.to"
+                  :label="action.label"
+                  :icon="action.icon"
+                  as="router-link"
+                  :to="action.to"
+                  severity="secondary"
+                  outlined
+                  class="quick-action-button"
+                />
+              </div>
             </div>
           </div>
         </div>
-        
       </div>
     </section>
 
-    <!-- Features Section -->
     <section class="features-section">
-      <div class="features-container">
+      <div class="home-container">
         <div class="section-header">
-          <h2 class="section-title">Powerful Features</h2>
-          <p class="section-subtitle">
-            Everything you need to understand and visualize your location data
-          </p>
+          <h2>Core capabilities</h2>
+          <p>Built for self-hosted tracking: ingest data, analyze movement, and control sharing.</p>
         </div>
 
-        <div class="features-grid">
+        <div class="feature-track">
           <Card
-            v-for="feature in features"
+            v-for="feature in visibleFeatures"
             :key="feature.id"
             class="feature-card"
           >
@@ -150,799 +148,719 @@
                   <i :class="feature.icon"></i>
                 </div>
                 <div class="feature-text">
-                  <h3 class="feature-title">{{ feature.title }}</h3>
-                  <p class="feature-description">{{ feature.description }}</p>
+                  <h3>{{ feature.title }}</h3>
+                  <p>{{ feature.description }}</p>
                 </div>
               </div>
             </template>
           </Card>
         </div>
+
+        <Button
+          v-if="!isDesktopViewport && hasHiddenFeatures"
+          :label="showAllFeatures ? 'Show fewer' : 'Show all capabilities'"
+          :icon="showAllFeatures ? 'pi pi-angle-up' : 'pi pi-angle-down'"
+          severity="secondary"
+          outlined
+          class="mobile-feature-toggle"
+          @click="toggleFeatureVisibility"
+        />
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 
-// Composables
-const authStore = useAuthStore()
-const authStatus = ref({
+const DEFAULT_AUTH_STATUS = {
   passwordRegistrationEnabled: false,
   oidcRegistrationEnabled: false,
   passwordLoginEnabled: true,
   oidcLoginEnabled: true,
   adminLoginBypassEnabled: true
-});
+}
 
-const oidcProviders = ref([]);
+const KNOWN_DESTINATIONS = {
+  '/app/timeline': { label: 'Timeline', icon: 'pi pi-calendar' },
+  '/app/dashboard': { label: 'Dashboard', icon: 'pi pi-chart-bar' },
+  '/app/journey-insights': { label: 'Journey Insights', icon: 'pi pi-compass' },
+  '/app/friends': { label: 'Friends', icon: 'pi pi-users' },
+  '/app/location-sources': { label: 'Location Sources', icon: 'pi pi-map' },
+  '/app/coverage': { label: 'Coverage Explorer', icon: 'pi pi-globe' },
+  '/app/rewind': { label: 'Rewind', icon: 'pi pi-history' },
+  '/app/gps-data': { label: 'GPS Data', icon: 'pi pi-map-marker' }
+}
 
-// Computed property to check if OIDC is actually available (enabled AND has providers)
-const hasOidcProvidersAvailable = computed(() => {
-  return authStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0;
-});
+const quickActions = [
+  { to: '/app/timeline', label: 'Timeline', icon: 'pi pi-calendar' },
+  { to: '/app/dashboard', label: 'Dashboard', icon: 'pi pi-chart-bar' },
+  { to: '/app/journey-insights', label: 'Journey Insights', icon: 'pi pi-compass' },
+  { to: '/app/friends', label: 'Friends', icon: 'pi pi-users' }
+]
 
-// Computed property to determine if login is available
-// Login is available if:
-// - Password login is enabled, OR
-// - OIDC login is enabled AND providers exist, OR
-// - Admin bypass is enabled (allows admins to login even when login is disabled)
-const isLoginAvailable = computed(() => {
-  return authStatus.value.passwordLoginEnabled ||
-         hasOidcProvidersAvailable.value ||
-         authStatus.value.adminLoginBypassEnabled;
-});
-
-// Features data
 const features = ref([
   {
     id: 1,
-    icon: 'pi pi-mobile',
-    title: 'GPS Data Integration',
-    description: 'Connect with OwnTracks, Overland or Dawarich apps to automatically receive your location data, or import/export your tracking history in OwnTracks format for seamless data management.'
+    icon: 'pi pi-send',
+    title: 'Real-time Tracking Sources',
+    description: 'Ingest live points from OwnTracks (HTTP/MQTT), Overland, GPSLogger, Home Assistant, Traccar, and Colota.'
   },
   {
     id: 2,
-    icon: 'pi pi-map',
-    title: 'Interactive Map Tracking',
-    description: 'View your complete movement history on an interactive map for any selected time period, with detailed routes and location markers.'
+    icon: 'pi pi-download',
+    title: 'Universal Import',
+    description: 'Bulk import history from Google Timeline, GPX, GeoJSON, OwnTracks exports, and CSV.'
   },
   {
     id: 3,
     icon: 'pi pi-calendar',
-    title: 'Smart Timeline Analysis',
-    description: 'Automatically generated timeline that intelligently categorizes your GPS data into stays and trips, showing your daily activities and travel patterns with precise timing.'
+    title: 'Smart Timeline Detection',
+    description: 'Convert raw points into stays, trips, and gaps with configurable sensitivity and movement logic.'
   },
   {
     id: 4,
-    icon: 'pi pi-chart-bar',
-    title: 'Comprehensive Dashboard',
-    description: 'Rich statistics including places visited, total distance traveled, longest journeys, top locations, distance charts, and detailed analytics about your movement patterns.'
+    icon: 'pi pi-chart-line',
+    title: 'Deep Insights',
+    description: 'Explore distance, visit frequency, and movement patterns through dashboard and journey analytics.'
   },
   {
     id: 5,
-    icon: 'pi pi-users',
-    title: 'Friend Network',
-    description: 'Add friends to share locations with each other, see real-time updates, and maintain connections while keeping full control over your privacy settings'
+    icon: 'pi pi-images',
+    title: 'Immich Integration',
+    description: 'Show Immich photos directly on your map and timeline to connect places with memories.'
   },
   {
     id: 6,
-    icon: 'pi pi-share-alt',
-    title: 'Flexible Sharing',
-    description: 'Share your current location with anyone - even non-registered users - through secure, temporary links that you control and can revoke anytime.'
+    icon: 'pi pi-user-edit',
+    title: 'Sharing, Roles, and SSO',
+    description: 'Use friend visibility controls, secure guest links, invitations, audit logs, and OIDC login.'
   }
 ])
 
-// Lifecycle
+const initialVisibleFeatureCount = 3
+const showAllFeatures = ref(false)
+const isDesktopViewport = ref(false)
+
+const authStore = useAuthStore()
+const authStatus = ref({ ...DEFAULT_AUTH_STATUS })
+const oidcProviders = ref([])
+const isResolvingAuth = ref(true)
+
+const visibleFeatures = computed(() => {
+  if (isDesktopViewport.value || showAllFeatures.value) {
+    return features.value
+  }
+  return features.value.slice(0, initialVisibleFeatureCount)
+})
+
+const hasHiddenFeatures = computed(() => {
+  return features.value.length > initialVisibleFeatureCount
+})
+
+const hasOidcProvidersAvailable = computed(() => {
+  return authStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0
+})
+
+const isRegistrationAvailable = computed(() => {
+  return authStatus.value.passwordRegistrationEnabled || authStatus.value.oidcRegistrationEnabled
+})
+
+const isLoginAvailable = computed(() => {
+  return authStatus.value.passwordLoginEnabled ||
+    hasOidcProvidersAvailable.value ||
+    authStatus.value.adminLoginBypassEnabled
+})
+
+const showRegistrationDisabledNotice = computed(() => {
+  return !isRegistrationAvailable.value && isLoginAvailable.value
+})
+
+const hasDefaultRedirectUrl = computed(() => {
+  return typeof authStore.defaultRedirectUrl === 'string' && authStore.defaultRedirectUrl.trim().length > 0
+})
+
+const continueDestination = computed(() => {
+  const preferredPath = hasDefaultRedirectUrl.value
+    ? authStore.defaultRedirectUrl
+    : '/app/timeline'
+  return buildDestination(preferredPath)
+})
+
+const normalizeDestinationPath = (path) => {
+  if (typeof path !== 'string') {
+    return '/app/timeline'
+  }
+
+  const trimmed = path.trim()
+  if (!trimmed || !trimmed.startsWith('/')) {
+    return '/app/timeline'
+  }
+
+  return trimmed
+}
+
+const humanizePath = (path) => {
+  const segmentLabel = path
+    .replace(/^\/+/, '')
+    .split('/')
+    .filter(Boolean)
+    .map((segment) => {
+      return segment
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase())
+    })
+    .join(' / ')
+
+  return segmentLabel || 'Timeline'
+}
+
+const buildDestination = (path) => {
+  const normalizedPath = normalizeDestinationPath(path)
+  const known = KNOWN_DESTINATIONS[normalizedPath]
+
+  if (known) {
+    return {
+      path: normalizedPath,
+      label: known.label,
+      icon: known.icon
+    }
+  }
+
+  return {
+    path: normalizedPath,
+    label: humanizePath(normalizedPath),
+    icon: 'pi pi-arrow-right'
+  }
+}
+
+const updateViewportState = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  isDesktopViewport.value = window.innerWidth >= 1024
+}
+
+const toggleFeatureVisibility = () => {
+  showAllFeatures.value = !showAllFeatures.value
+}
+
 onMounted(async () => {
-  // Check authentication state to display correct buttons
-  await authStore.checkAuth()
+  updateViewportState()
+  window.addEventListener('resize', updateViewportState)
 
-  // Fetch auth status
-  authStore.getAuthStatus().then(status => {
-    authStatus.value = status;
-  });
+  isResolvingAuth.value = true
 
-  // Fetch OIDC providers to check if they actually exist
-  authStore.getOidcProviders().then(providers => {
-    oidcProviders.value = providers;
-  }).catch(err => {
-    console.error("Failed to load OIDC providers", err);
-  });
+  try {
+    await authStore.checkAuth()
+  } catch (error) {
+    console.error('Failed to reconcile auth state on home page:', error)
+  }
+
+  const [authStatusResult, oidcProvidersResult] = await Promise.allSettled([
+    authStore.getAuthStatus(),
+    authStore.getOidcProviders()
+  ])
+
+  if (authStatusResult.status === 'fulfilled' && authStatusResult.value) {
+    authStatus.value = {
+      ...DEFAULT_AUTH_STATUS,
+      ...authStatusResult.value
+    }
+  } else {
+    authStatus.value = { ...DEFAULT_AUTH_STATUS }
+  }
+
+  if (oidcProvidersResult.status === 'fulfilled' && Array.isArray(oidcProvidersResult.value)) {
+    oidcProviders.value = oidcProvidersResult.value
+  } else {
+    oidcProviders.value = []
+  }
+
+  isResolvingAuth.value = false
+})
+
+onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateViewportState)
+  }
 })
 </script>
 
 <style scoped>
 .home-page {
+  --home-bg: var(--gp-surface-light, #f4f8ff);
+  --home-card-bg: var(--gp-surface-white, #ffffff);
+  --home-text-primary: var(--gp-text-primary, #0f172a);
+  --home-text-secondary: var(--gp-text-secondary, #475569);
+  --home-border: var(--gp-border-light, #dbe3ef);
+  --home-border-strong: var(--gp-border-medium, #bcc8db);
+  --home-shadow: var(--gp-shadow-light, 0 8px 30px rgba(15, 23, 42, 0.08));
+  --home-shadow-strong: var(--gp-shadow-medium, 0 18px 40px rgba(15, 23, 42, 0.16));
+  --home-accent: var(--gp-primary, #0f766e);
+  --home-accent-hover: var(--gp-primary-hover, #0d615a);
+  --home-accent-soft: rgba(15, 118, 110, 0.14);
+  --home-focus: rgba(13, 148, 136, 0.28);
   min-height: 100vh;
-  background: var(--gp-surface-light);
-}
-
-/* Hero Section */
-.hero-section {
   position: relative;
-  min-height: 75vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
+  background: var(--home-bg);
+  color: var(--home-text-primary);
 }
 
-.hero-background {
+.home-page::before {
+  content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
+  z-index: 0;
 }
 
-.hero-gradient {
+.home-page::after {
+  content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: radial-gradient(ellipse at center, rgba(26, 86, 219, 0.1) 0%, transparent 70%);
-}
-
-.hero-container {
-  position: relative;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem 1rem 5rem 1rem;
   z-index: 1;
 }
 
-/* Theme Switcher */
-.theme-switcher {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  z-index: 10;
-}
-
-.theme-button :deep(.p-button) {
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  padding: 0 !important;
-  background: var(--gp-surface-white) !important;
-  border: 1px solid var(--gp-border-light) !important;
-  border-radius: 50% !important;
-  box-shadow: var(--gp-shadow-light) !important;
-  backdrop-filter: blur(10px);
-  transition: all 0.2s ease !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.theme-button :deep(.p-button:hover) {
-  box-shadow: var(--gp-shadow-medium) !important;
-  border-color: var(--gp-border-medium) !important;
-  transform: translateY(-1px) !important;
-}
-
-.theme-button :deep(.p-button:focus) {
-  box-shadow: var(--gp-shadow-medium), 0 0 0 3px rgba(26, 86, 219, 0.1) !important;
-}
-
-.theme-button :deep(.p-button-icon) {
-  font-size: 1rem !important;
-  color: var(--gp-text-primary) !important;
-}
-
-.hero-content {
-  text-align: center;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-/* Brand Section */
-.brand-section {
-  margin-bottom: 3rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.logo-container {
-  margin-bottom: 1.5rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.logo {
-  width: 200px;
-  height: auto;
-  filter: drop-shadow(0 4px 8px rgba(26, 86, 219, 0.2));
-  transition: transform 0.3s ease;
-  display: block;
-}
-
-.logo:hover {
-  transform: scale(1.05);
-}
-
-.hero-title {
-  font-size: clamp(2.5rem, 6vw, 4rem);
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: var(--gp-text-primary);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
-.hero-tagline {
-  font-size: clamp(1.1rem, 3vw, 1.5rem);
-  color: var(--gp-text-secondary);
-  margin: 0;
-  font-weight: 500;
-}
-
-/* Hero Description */
-.hero-description {
-  margin-bottom: 3rem;
-}
-
-.description-text {
-  font-size: clamp(1rem, 2.5vw, 1.25rem);
-  line-height: 1.6;
-  color: var(--gp-text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-/* Hero Actions */
-.hero-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.auth-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-}
-
-/* Access Disabled Message */
-.access-disabled-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-  background: var(--gp-surface-white);
-  border: 2px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  max-width: 500px;
-  text-align: center;
-  box-shadow: var(--gp-shadow-light);
-}
-
-.access-disabled-message i {
-  font-size: 3rem;
-  color: var(--orange-500);
-}
-
-.access-disabled-message .message-text h3 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--gp-text-primary);
-}
-
-.access-disabled-message .message-text p {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--gp-text-secondary);
-}
-
-.app-buttons-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  max-width: 600px;
-  width: 100%;
-}
-
-.grid-button {
-  min-width: 200px;
-  text-align: center;
-}
-
-.cta-button {
-  min-width: 200px;
-  padding: 1rem 2rem;
-  font-weight: 600;
-  border-radius: var(--gp-radius-medium);
-  transition: all 0.3s ease;
-}
-
-.cta-button.primary {
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  color: white;
-}
-
-.cta-button.primary:hover {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(26, 86, 219, 0.3);
-}
-
-.cta-button.secondary {
-  border-color: var(--gp-border-medium);
-  color: var(--gp-text-primary);
-}
-
-.cta-button.secondary:hover {
-  border-color: var(--gp-primary);
-  color: var(--gp-primary);
-  transform: translateY(-1px);
-}
-
-/* Hero Badges */
-.hero-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  margin-bottom: 3rem;
-}
-
-.badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--gp-surface-white);
-  border: 1px solid var(--gp-border-light);
-  border-radius: var(--gp-radius-large);
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--gp-text-secondary);
-  box-shadow: var(--gp-shadow-light);
-}
-
-.badge i {
-  color: var(--gp-primary);
-}
-
-
-/* Features Section */
-.features-section {
-  padding: 3rem 0 5rem;
-  background: var(--gp-surface-white);
-}
-
-.features-container {
-  max-width: 1400px;
+.home-container {
+  position: relative;
+  z-index: 2;
+  width: min(1180px, 100%);
   margin: 0 auto;
   padding: 0 1rem;
 }
 
-.section-header {
-  text-align: center;
-  margin-bottom: 4rem;
+.hero-shell {
+  position: relative;
+  border-bottom: 1px solid var(--home-border);
 }
 
-.section-title {
-  font-size: clamp(2rem, 4vw, 3rem);
+.top-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem 0 0.75rem;
+}
+
+.theme-button :deep(.p-button) {
+  width: 2.6rem !important;
+  height: 2.6rem !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 1px solid var(--home-border) !important;
+  background: var(--home-card-bg) !important;
+  box-shadow: var(--home-shadow) !important;
+}
+
+.theme-button :deep(.p-button:hover) {
+  border-color: var(--home-border-strong) !important;
+  box-shadow: var(--home-shadow-strong) !important;
+  transform: translateY(-1px);
+}
+
+.theme-button :deep(.p-button:focus) {
+  box-shadow: var(--home-shadow), 0 0 0 4px var(--home-focus) !important;
+}
+
+.hero-grid {
+  display: grid;
+  gap: 1.2rem;
+  padding: 0.5rem 0 2.5rem;
+}
+
+.hero-copy {
+  position: relative;
+}
+
+.hero-logo {
+  width: clamp(8.5rem, 20vw, 12rem);
+  height: auto;
+  margin-bottom: 0.9rem;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.1));
+}
+
+.hero-eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--home-accent);
+}
+
+.hero-title {
+  margin: 0.45rem 0 0.65rem;
+  max-width: 17ch;
+  font-size: clamp(2rem, 7vw, 3.2rem);
+  line-height: 1.07;
+  letter-spacing: -0.025em;
+  color: var(--home-text-primary);
+}
+
+.hero-subtitle {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--home-text-secondary);
+  font-size: clamp(1rem, 2.1vw, 1.15rem);
+  line-height: 1.56;
+}
+
+.hero-panel {
+  min-width: 0;
+}
+
+.status-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+  background: var(--home-card-bg);
+  border: 1px solid var(--home-border);
+  border-radius: 1.05rem;
+  box-shadow: var(--home-shadow);
+  padding: 1.15rem;
+}
+
+.loading-card {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 16rem;
+}
+
+.loading-card i {
+  font-size: 1.7rem;
+  color: var(--home-accent);
+}
+
+.loading-card h2 {
+  margin: 0;
+  font-size: 1.18rem;
+}
+
+.loading-card p {
+  margin: 0;
+  color: var(--home-text-secondary);
+  line-height: 1.5;
+}
+
+.card-eyebrow {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--home-accent);
+}
+
+.card-title {
+  margin: 0;
+  font-size: clamp(1.3rem, 3.6vw, 1.65rem);
+  line-height: 1.2;
+  color: var(--home-text-primary);
+}
+
+.card-subtitle {
+  margin: 0;
+  color: var(--home-text-secondary);
+  font-size: 0.97rem;
+  line-height: 1.48;
+}
+
+.status-message {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.8rem;
+  align-items: start;
+  border-radius: 0.82rem;
+  border: 1px solid var(--home-border);
+  padding: 0.78rem;
+  background: #f8fafc;
+}
+
+.status-message i {
+  margin-top: 0.15rem;
+  font-size: 1.08rem;
+}
+
+.status-message h3 {
+  margin: 0;
+  font-size: 0.97rem;
+  line-height: 1.3;
+}
+
+.status-message p {
+  margin: 0.28rem 0 0;
+  color: var(--home-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.46;
+}
+
+.status-warning {
+  border-color: #f6d3b3;
+  background: #fff8f1;
+}
+
+.status-warning i {
+  color: #c2410c;
+}
+
+.status-info {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.status-info i {
+  color: #1d4ed8;
+}
+
+.cta-group {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.cta-button {
+  width: 100%;
+  min-height: 2.95rem;
+  border-radius: 0.8rem;
+  font-weight: 700;
+}
+
+.cta-primary {
+  background: var(--home-accent);
+  border-color: var(--home-accent);
+  color: #ffffff;
+}
+
+.cta-primary:hover {
+  background: var(--home-accent-hover);
+  border-color: var(--home-accent-hover);
+}
+
+.cta-primary:focus {
+  box-shadow: 0 0 0 3px var(--home-focus);
+}
+
+.cta-secondary {
+  border-color: var(--home-border-strong);
+  color: var(--home-text-primary);
+}
+
+.continue-card {
+  border: 1px solid var(--home-border);
+  border-radius: 0.9rem;
+  padding: 0.85rem;
+  background: linear-gradient(180deg, rgba(14, 165, 164, 0.08), rgba(255, 255, 255, 0.9));
+}
+
+.continue-meta {
+  margin-bottom: 0.65rem;
+}
+
+.continue-label {
+  margin: 0;
+  color: var(--home-text-secondary);
+  font-size: 0.8rem;
+}
+
+.continue-value {
+  margin: 0.18rem 0 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--home-text-primary);
+}
+
+.continue-button {
+  margin-top: 0.2rem;
+}
+
+.quick-actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.quick-action-button {
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 0.76rem;
+  border-color: var(--home-border-strong);
+  color: var(--home-text-primary);
+}
+
+.quick-action-button:hover {
+  border-color: var(--home-accent);
+  color: var(--home-accent);
+}
+
+.quick-action-button:focus {
+  box-shadow: 0 0 0 3px var(--home-focus);
+}
+
+.features-section {
+  position: relative;
+  z-index: 2;
+  padding: 2.2rem 0 2.8rem;
+}
+
+.section-header {
   margin-bottom: 1rem;
-  color: var(--gp-text-primary);
 }
 
-.section-subtitle {
-  font-size: clamp(1rem, 2.5vw, 1.25rem);
-  color: var(--gp-text-secondary);
-  max-width: 600px;
-  margin: 0 auto;
-  line-height: 1.6;
+.section-header h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3.9vw, 1.95rem);
+  letter-spacing: -0.015em;
 }
 
-.features-grid {
+.section-header p {
+  margin: 0.5rem 0 0;
+  max-width: 56ch;
+  color: var(--home-text-secondary);
+  line-height: 1.5;
+}
+
+.feature-track {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 2rem;
+  gap: 0.8rem;
+  padding-bottom: 0;
 }
 
 .feature-card {
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  transition: all 0.3s ease;
+  width: 100%;
+  border: 1px solid var(--home-border);
+  border-radius: 0.95rem;
+  background: var(--home-card-bg);
+  box-shadow: var(--home-shadow);
 }
 
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--gp-shadow-card);
-  border-color: var(--gp-primary);
+.mobile-feature-toggle {
+  margin-top: 0.9rem;
+  width: 100%;
+  justify-content: center;
+  border-radius: 0.76rem;
+  border-color: var(--home-border-strong);
+}
+
+.feature-card :deep(.p-card-body) {
+  padding: 1.02rem;
+}
+
+.feature-card :deep(.p-card-content) {
+  padding: 0;
 }
 
 .feature-content {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 1.5rem;
-  padding: 2rem 1.5rem;
+  gap: 0.7rem;
 }
 
 .feature-icon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 0.7rem;
+  background: var(--home-accent-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 4rem;
-  height: 4rem;
-  background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-hover));
-  color: white;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  box-shadow: 0 4px 12px rgba(26, 86, 219, 0.3);
+  flex: 0 0 auto;
 }
 
-.feature-text {
-  flex: 1;
+.feature-icon i {
+  font-size: 1.05rem;
+  color: var(--home-accent);
 }
 
-.feature-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: var(--gp-text-primary);
-}
-
-.feature-description {
-  color: var(--gp-text-secondary);
-  line-height: 1.6;
-  font-size: 0.95rem;
-}
-
-/* Benefits Section */
-.benefits-section {
-  padding: 5rem 0;
-  background: var(--gp-surface-light);
-}
-
-.benefits-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.benefits-content {
-  display: flex;
-  flex-direction: column;
-  gap: 3rem;
-}
-
-.benefits-header {
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.benefits-title {
-  font-size: clamp(2rem, 4vw, 2.5rem);
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: var(--gp-text-primary);
-}
-
-.benefits-subtitle {
-  font-size: clamp(1rem, 2.5vw, 1.25rem);
-  color: var(--gp-text-secondary);
-  line-height: 1.6;
+.feature-text h3 {
   margin: 0;
+  font-size: 1rem;
 }
 
-.benefits-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
+.feature-text p {
+  margin: 0.34rem 0 0;
+  color: var(--home-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
-.benefit-card {
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-light);
-  transition: all 0.3s ease;
-}
-
-.benefit-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--gp-shadow-card);
-  border-color: var(--gp-primary);
-}
-
-.benefit-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 1.5rem;
-  padding: 2rem 1.5rem;
-}
-
-.benefit-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 3.5rem;
-  height: 3.5rem;
-  background: linear-gradient(135deg, var(--gp-primary), var(--gp-primary-hover));
-  color: white;
-  border-radius: 50%;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(26, 86, 219, 0.3);
-}
-
-.benefit-text h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: var(--gp-text-primary);
-}
-
-.benefit-text p {
-  color: var(--gp-text-secondary);
-  line-height: 1.6;
-  margin: 0;
-  font-size: 0.95rem;
-}
-
-/* CTA Section */
-.cta-section {
-  padding: 5rem 0;
-  background: var(--gp-surface-white);
-}
-
-.cta-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-.cta-card {
-  border: 1px solid var(--gp-border-light);
-  box-shadow: var(--gp-shadow-card);
-  background: linear-gradient(135deg, var(--gp-surface-white) 0%, var(--gp-surface-light) 100%);
-}
-
-.cta-content {
-  text-align: center;
-  padding: 3rem 2rem;
-}
-
-.cta-title {
-  font-size: clamp(1.75rem, 4vw, 2.5rem);
-  font-weight: 700;
-  margin-bottom: 1rem;
-  color: var(--gp-text-primary);
-}
-
-.cta-description {
-  font-size: clamp(1rem, 2.5vw, 1.25rem);
-  color: var(--gp-text-secondary);
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.cta-actions {
-  display: flex;
-  justify-content: center;
-}
-
-.cta-button-large {
-  padding: 1.25rem 3rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: var(--gp-primary);
-  border-color: var(--gp-primary);
-  border-radius: var(--gp-radius-medium);
-  transition: all 0.3s ease;
-}
-
-.cta-button-large:hover {
-  background: var(--gp-primary-hover);
-  border-color: var(--gp-primary-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(26, 86, 219, 0.3);
-}
-
-/* Responsive Design */
-@media (min-width: 640px) {
-  .auth-buttons {
-    flex-direction: row;
-    justify-content: center;
+@media (min-width: 768px) {
+  .home-container {
+    padding: 0 1.25rem;
   }
-  
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
+
+  .hero-grid {
+    gap: 1.4rem;
+    padding-bottom: 2.8rem;
   }
-  
-  .feature-content {
-    flex-direction: row;
-    text-align: left;
+
+  .status-card {
+    padding: 1.35rem;
   }
-  
-  .feature-icon {
-    flex-shrink: 0;
+
+  .quick-actions {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (min-width: 1024px) {
-  .features-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .top-bar {
+    padding-top: 1.2rem;
   }
-  
-  .benefits-grid {
-    grid-template-columns: repeat(2, 1fr);
+
+  .hero-grid {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+    align-items: start;
+    gap: 2rem;
+    padding-bottom: 3.2rem;
+  }
+
+  .hero-copy {
+    padding-top: 1.2rem;
+  }
+
+  .status-card {
+    min-height: 26.5rem;
+  }
+
+  .feature-track {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .mobile-feature-toggle {
+    display: none;
   }
 }
 
-@media (min-width: 1200px) {
-  .hero-container,
-  .features-container,
-  .benefits-container,
-  .cta-container {
-    padding: 0 2rem;
+@media (max-width: 430px) {
+  .hero-title {
+    max-width: 12ch;
+  }
+
+  .status-card {
+    padding: 1rem;
+    border-radius: 0.95rem;
   }
 }
 
-/* Accessibility */
 @media (prefers-reduced-motion: reduce) {
-  .feature-card,
+  .theme-button :deep(.p-button),
   .cta-button,
-  .logo {
-    transition: none;
-    animation: none;
-  }
-  
-  .feature-card:hover,
-  .cta-button:hover {
-    transform: none;
+  .quick-action-button {
+    transition: none !important;
   }
 }
 
-@media (max-width: 768px) {
-  .hero-section {
-    min-height: 70vh;
-  }
-
-  .theme-switcher {
-    top: 1rem;
-    right: 0.5rem;
-  }
-
-  .theme-button :deep(.p-button) {
-    width: 2.25rem !important;
-    height: 2.25rem !important;
-  }
-
-  .theme-button :deep(.p-button-icon) {
-    font-size: 0.9rem !important;
-  }
-
-  .app-buttons-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .grid-button {
-    min-width: 250px;
-  }
-
-  .access-disabled-message {
-    padding: 1.5rem;
-    margin: 0 1rem;
-  }
-
-  .access-disabled-message i {
-    font-size: 2.5rem;
-  }
-
-  .access-disabled-message .message-text h3 {
-    font-size: 1.1rem;
-  }
-
-  .access-disabled-message .message-text p {
-    font-size: 0.9rem;
-  }
-}
-
-/* Dark Mode Styles */
-.p-dark .home-page {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .hero-background {
+.p-dark .home-page::before {
   background: linear-gradient(135deg, var(--gp-surface-dark) 0%, var(--gp-surface-darker) 100%);
 }
 
-.p-dark .hero-gradient {
+.p-dark .home-page::after {
   background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
-}
-
-.p-dark .theme-button :deep(.p-button) {
-  background: var(--gp-surface-dark) !important;
-  border-color: var(--gp-border-dark) !important;
-}
-
-.p-dark .theme-button :deep(.p-button:hover) {
-  border-color: var(--gp-border-medium) !important;
-}
-
-.p-dark .theme-button :deep(.p-button-icon) {
-  color: var(--gp-text-primary) !important;
-}
-
-.p-dark .badge {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-  color: var(--gp-text-secondary);
-}
-
-.p-dark .access-disabled-message {
-  background: var(--gp-surface-dark);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .features-section {
-  background: var(--gp-surface-dark);
-}
-
-.p-dark .feature-card {
-  background: var(--gp-surface-white);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .feature-card:hover {
-  border-color: var(--gp-primary);
-}
-
-.p-dark .benefit-card {
-  background: var(--gp-surface-white);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .benefit-card:hover {
-  border-color: var(--gp-primary);
-}
-
-.p-dark .cta-card {
-  background: var(--gp-surface-white);
-  border-color: var(--gp-border-dark);
-}
-
-.p-dark .benefits-section {
-  background: var(--gp-surface-darker);
-}
-
-.p-dark .cta-section {
-  background: var(--gp-surface-dark);
-}
-
-/* Focus styles */
-.cta-button:focus-visible {
-  outline: 2px solid var(--gp-primary);
-  outline-offset: 2px;
-}
-
-/* Print styles */
-@media print {
-  .hero-actions,
-  .cta-section {
-    display: none;
-  }
 }
 </style>
