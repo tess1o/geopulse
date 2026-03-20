@@ -20,9 +20,6 @@ WORKDIR /usr/share/nginx/html
 # Remove default nginx static assets
 RUN rm -rf ./*
 
-# Copy the built assets
-COPY --from=build /app/dist /usr/share/nginx/html
-
 # Copy custom configs
 COPY frontend/00-cache.conf /etc/nginx/conf.d/00-cache.conf
 
@@ -55,6 +52,9 @@ RUN mkdir -p /var/cache/nginx/osm \
 
 COPY frontend/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
+
+# Copy the built assets
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80 8080
 ENV API_BASE_URL=/api
