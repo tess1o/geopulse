@@ -27,7 +27,7 @@
           <Button icon="pi pi-refresh" label="Refresh" severity="secondary" outlined @click="$emit('refresh-events')" />
         </div>
       </div>
-      <DataTable :value="events" dataKey="id" responsiveLayout="scroll">
+      <DataTable :value="events" dataKey="id" responsiveLayout="stack" breakpoint="768px">
         <Column field="occurredAt" header="Time">
           <template #body="slotProps">
             {{ formatDate(slotProps.data.occurredAt) }}
@@ -165,6 +165,41 @@ function onUnreadOnlyChange(value) {
 
   .panel-card {
     padding: 0.75rem;
+  }
+
+  .table-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .table-header-left {
+    justify-content: space-between;
+  }
+
+  .table-header-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .inline-toggle {
+    justify-content: space-between;
+  }
+
+  .table-header-actions :deep(.p-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  :deep(.p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td) {
+    text-align: left;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  :deep(.p-datatable.p-datatable-responsive-stack .p-column-title) {
+    font-weight: 600;
   }
 }
 </style>
