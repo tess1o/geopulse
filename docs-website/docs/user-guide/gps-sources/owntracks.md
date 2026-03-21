@@ -52,6 +52,8 @@ This method requires that you have the GeoPulse MQTT broker enabled and accessib
     *   **Host:** Enter the public domain or IP address of your GeoPulse server (do not include `http://` or `https://`).
     *   **Port:** `1883` (or your custom MQTT port if you have changed it).
     *   **Authentication:** Enable this and enter the **Username** and **Password** you created in GeoPulse.
-    *   **TLS:** Ensure that TLS/SSL is **disabled**, as the default GeoPulse broker does not use it.
+    *   **TLS:** For the built-in GeoPulse broker, keep TLS/SSL **disabled** (default setup is plain MQTT on port `1883`).
+      If you use an **external TLS-enabled broker**, configure backend TLS variables and certificates as documented in
+      [External MQTT Broker TLS (OwnTracks)](/docs/system-administration/configuration/owntracks-mqtt-external-tls).
 
 Once saved, the OwnTracks app will begin sending location updates to your GeoPulse account, which will be automatically processed to build your timeline.

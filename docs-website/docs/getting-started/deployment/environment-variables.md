@@ -21,7 +21,7 @@ This page is the canonical environment variable reference for GeoPulse. Every li
 
 ## Backend Runtime Vars
 
-Backend runtime currently includes **176** distinct env vars.
+Backend runtime currently includes **185** distinct env vars.
 
 Notes:
 - `GEOPULSE_AUTH_SIGN_UP_ENABLED` is deprecated but still supported for backward compatibility.
@@ -232,7 +232,7 @@ Notes:
 | `GEOPULSE_GPS_MAX_ALLOWED_ACCURACY` | `100` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-accuracy\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_GPS_MAX_ALLOWED_SPEED` | `250` | GPS Filtering Configuration (per-source defaults) These values are used as defaults when creating new GPS sources Property: \`geopulse.gps.max-allowed-speed\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 
-### MQTT (5)
+### MQTT (14)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
@@ -240,6 +240,15 @@ Notes:
 | `GEOPULSE_MQTT_BROKER_PORT` | `1883` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.broker.port\`. | Integer in range \`1-65535\`. | Backend restart |
 | `GEOPULSE_MQTT_ENABLED` | `false` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.enabled\`. | \`true\` or \`false\`. | Backend restart |
 | `GEOPULSE_MQTT_PASSWORD` | `geopulse_mqtt_pass_123` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
+| `GEOPULSE_MQTT_TLS_ENABLED` | `false` | Enables TLS for external MQTT broker connections. Property: \`geopulse.mqtt.tls.enabled\`. | \`true\` or \`false\`. | Backend restart |
+| `GEOPULSE_MQTT_TLS_PROTOCOL` | `TLSv1.2` | TLS protocol used by MQTT client when TLS is enabled. Property: \`geopulse.mqtt.tls.protocol\`. | Supported JVM TLS protocol (for example \`TLSv1.2\`, \`TLSv1.3\`). | Backend restart |
+| `GEOPULSE_MQTT_TLS_TRUSTSTORE_PATH` | `(empty)` | Optional truststore path for private/self-signed broker cert validation. Property: \`geopulse.mqtt.tls.truststore.path\`. | Readable path in backend container filesystem. | Backend restart |
+| `GEOPULSE_MQTT_TLS_TRUSTSTORE_PASSWORD` | `(empty)` | Truststore password for MQTT TLS. Property: \`geopulse.mqtt.tls.truststore.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
+| `GEOPULSE_MQTT_TLS_TRUSTSTORE_TYPE` | `PKCS12` | Truststore format used by MQTT TLS. Property: \`geopulse.mqtt.tls.truststore.type\`. | Typically \`PKCS12\` or \`JKS\`. | Backend restart |
+| `GEOPULSE_MQTT_TLS_KEYSTORE_PATH` | `(empty)` | Optional client certificate keystore path (required for mTLS brokers). Property: \`geopulse.mqtt.tls.keystore.path\`. | Readable path in backend container filesystem. | Backend restart |
+| `GEOPULSE_MQTT_TLS_KEYSTORE_PASSWORD` | `(empty)` | Keystore password for MQTT TLS client certificate. Property: \`geopulse.mqtt.tls.keystore.password\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
+| `GEOPULSE_MQTT_TLS_KEYSTORE_TYPE` | `PKCS12` | Keystore format for MQTT TLS client cert keypair. Property: \`geopulse.mqtt.tls.keystore.type\`. | Typically \`PKCS12\` or \`JKS\`. | Backend restart |
+| `GEOPULSE_MQTT_TLS_INSECURE_SKIP_HOSTNAME_VERIFICATION` | `false` | Disables TLS hostname verification for MQTT (debugging only). Property: \`geopulse.mqtt.tls.insecure-skip-hostname-verification\`. | \`true\` or \`false\`; keep \`false\` for production. | Backend restart |
 | `GEOPULSE_MQTT_USERNAME` | `geopulse_mqtt_admin` | MQTT Configuration (optional - only active when GEOPULSE_MQTT_ENABLED true) Property: \`geopulse.mqtt.username\`. | String value. Follow subsystem documentation. | Backend restart |
 
 ### Notifications / Apprise (8)

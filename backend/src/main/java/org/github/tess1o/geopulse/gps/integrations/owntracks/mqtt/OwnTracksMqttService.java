@@ -114,7 +114,7 @@ public class OwnTracksMqttService {
         }
     }
 
-    private void initializeMqttClient() throws MqttException {
+    private void initializeMqttClient() throws Exception {
         log.info("Initializing MQTT client for broker: {}", mqttConfig.getBrokerUrl());
 
         // Using MemoryPersistence since we're running in containers
@@ -131,8 +131,19 @@ public class OwnTracksMqttService {
         connectOptions.setExecutorServiceTimeout(30);    // 30 second timeout for operations
         connectOptions.setMqttVersion(MqttConnectOptions.MQTT_VERSION_3_1_1); // Force MQTT 3.1.1
         connectOptions.setServerURIs(new String[]{mqttConfig.getBrokerUrl()}); // Explicit server URI list
-        connectOptions.setHttpsHostnameVerificationEnabled(false); // For internal networks
         connectOptions.setMaxInflight(1000); // Max unacknowledged messages
+
+        if (mqttConfig.isTlsEnabled()) {
+            connectOptions.setSocketFactory(mqttConfig.buildTlsSocketFactory());
+            connectOptions.setHttpsHostnameVerificationEnabled(!mqttConfig.isTlsInsecureSkipHostnameVerification());
+
+            if (mqttConfig.isTlsInsecureSkipHostnameVerification()) {
+                log.warn("MQTT TLS hostname verification is DISABLED via configuration. This should only be used for debugging.");
+            }
+        } else {
+            // Preserve current behavior for plain TCP/internal broker deployments.
+            connectOptions.setHttpsHostnameVerificationEnabled(false);
+        }
 
         if (mqttConfig.hasCredentials()) {
             connectOptions.setUserName(mqttConfig.getUsername());
