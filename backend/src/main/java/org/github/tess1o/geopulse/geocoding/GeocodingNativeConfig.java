@@ -1,6 +1,7 @@
 package org.github.tess1o.geopulse.geocoding;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
+import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
 import org.github.tess1o.geopulse.geocoding.client.GoogleMapsRestClient;
 import org.github.tess1o.geopulse.geocoding.client.MapboxRestClient;
 import org.github.tess1o.geopulse.geocoding.client.NominatimRestClient;
@@ -74,6 +75,7 @@ import org.github.tess1o.geopulse.geocoding.service.ReverseGeocodingManagementSe
         BulkUpdateGeocodingDto.class,
         BulkUpdateGeocodingResult.class,
         DistinctValuesDto.class,
+        CircuitBreakerOpenException.class,
 })
 public class GeocodingNativeConfig {
 }
