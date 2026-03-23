@@ -17,3 +17,7 @@ config:
 Apply with: `helm upgrade geopulse ./helm/geopulse -f custom-values.yaml`
 
 For more details, see the [Helm Configuration Guide](/docs/getting-started/deployment/helm-deployment#owntracks).
+
+## Related
+
+- [External MQTT Broker TLS (OwnTracks)](/docs/system-administration/configuration/owntracks-mqtt-external-tls)

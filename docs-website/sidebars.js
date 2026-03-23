@@ -187,6 +187,7 @@ const sidebars = {
                         'system-administration/configuration/import',
                         'system-administration/configuration/gps-data-filtering',
                         'system-administration/configuration/owntracks-additional-config',
+                        'system-administration/configuration/owntracks-mqtt-external-tls',
                         'system-administration/configuration/location-sharing',
                         'system-administration/configuration/apprise-notifications',
                         'system-administration/configuration/frontend',

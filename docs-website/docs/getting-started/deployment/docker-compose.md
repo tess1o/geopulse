@@ -176,6 +176,29 @@ It is highly recommended to set strong, unique passwords for your services.
   GEOPULSE_MQTT_ENABLED=true
   ```
 
+##### External MQTT Broker with TLS
+
+If you use an **external broker** that only accepts TLS:
+
+- Keep using `GEOPULSE_MQTT_ENABLED=true`
+- Set broker host/port to the external broker (`GEOPULSE_MQTT_BROKER_HOST`, `GEOPULSE_MQTT_BROKER_PORT`, typically `8883`)
+- Set `GEOPULSE_MQTT_TLS_ENABLED=true`
+- If your broker uses private CA/self-signed certs and/or mTLS, mount truststore/keystore files into `geopulse-backend` and set corresponding env vars
+
+Example backend volume mount:
+
+```yaml
+services:
+  geopulse-backend:
+    volumes:
+      - ./keys:/app/keys
+      - ./import-drop:/data/geopulse-import
+      - ./mqtt-certs:/app/mqtt-certs:ro
+```
+
+For full TLS variable list, mandatory/optional matrix, and certificate requirements, see
+[External MQTT Broker TLS (OwnTracks)](../../system-administration/configuration/owntracks-mqtt-external-tls.md).
+
 #### Web Access & Security Configuration
 
 These variables control how users access the GeoPulse frontend and how authentication cookies are handled.
