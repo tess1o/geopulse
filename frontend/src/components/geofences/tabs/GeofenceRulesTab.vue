@@ -2,140 +2,162 @@
   <div class="tab-panel">
     <BaseCard class="panel-card">
       <h3>{{ editingRuleId ? 'Edit Rule' : 'Create Rule' }}</h3>
-      <div class="form-grid">
-        <div class="rules-top-row wide">
-          <div class="field">
-            <label>Name</label>
-            <InputText
-              v-model="ruleForm.name"
-              placeholder="Home area"
-              :class="{ 'p-invalid': !!ruleFormErrors.name }"
-            />
-            <small v-if="ruleFormErrors.name" class="error-text">{{ ruleFormErrors.name }}</small>
+      <div class="form-layout">
+        <section :class="['form-section', 'form-section--area', { 'form-section--needs-area': !selectedAreaSummary }]">
+          <div class="section-header">
+            <h4>Basics</h4>
           </div>
+          <div class="section-grid section-grid--basics">
+            <div class="field field--name">
+              <label>Name</label>
+              <InputText
+                v-model="ruleForm.name"
+                placeholder="Home area"
+                :class="{ 'p-invalid': !!ruleFormErrors.name }"
+              />
+              <small v-if="ruleFormErrors.name" class="error-text">{{ ruleFormErrors.name }}</small>
+            </div>
 
-          <div class="field">
-            <label>Subjects</label>
-            <MultiSelect
-              v-model="ruleForm.subjectUserIds"
-              :options="subjectOptions"
-              optionLabel="label"
-              optionValue="value"
-              filter
-              display="chip"
-              :maxSelectedLabels="3"
-              placeholder="Select subjects"
-              :class="['subjects-select', { 'p-invalid': !!ruleFormErrors.subjectUserIds }]"
-            >
-              <template #option="slotProps">
-                <div class="subject-option" :class="{ 'subject-option--unavailable': slotProps.option.unavailable }">
-                  <span>{{ slotProps.option.label }}</span>
-                  <small v-if="slotProps.option.unavailable" class="subject-option-warning">Unavailable</small>
-                </div>
-              </template>
-            </MultiSelect>
-            <small v-if="ruleFormErrors.subjectUserIds" class="error-text">{{ ruleFormErrors.subjectUserIds }}</small>
+            <div class="field field--subjects">
+              <label>Subjects</label>
+              <MultiSelect
+                v-model="ruleForm.subjectUserIds"
+                :options="subjectOptions"
+                optionLabel="label"
+                optionValue="value"
+                filter
+                display="chip"
+                :maxSelectedLabels="3"
+                placeholder="Select subjects"
+                :class="['subjects-select', { 'p-invalid': !!ruleFormErrors.subjectUserIds }]"
+              >
+                <template #option="slotProps">
+                  <div class="subject-option" :class="{ 'subject-option--unavailable': slotProps.option.unavailable }">
+                    <span>{{ slotProps.option.label }}</span>
+                    <small v-if="slotProps.option.unavailable" class="subject-option-warning">Unavailable</small>
+                  </div>
+                </template>
+              </MultiSelect>
+              <small v-if="ruleFormErrors.subjectUserIds" class="error-text">{{ ruleFormErrors.subjectUserIds }}</small>
+            </div>
+
+            <div class="field field--status">
+              <label>Status</label>
+              <Select
+                v-model="ruleForm.status"
+                :options="statusOptions"
+                optionLabel="label"
+                optionValue="value"
+              />
+            </div>
           </div>
+        </section>
 
-          <div class="field area-button-field">
-            <label>Area Picker</label>
+        <section class="form-section">
+          <div class="section-header section-header--with-action">
+            <h4>
+              Area
+              <span v-if="!selectedAreaSummary" class="required-inline-chip">Required</span>
+            </h4>
             <Button
-              label="Draw Rectangle on Map"
+              :label="selectedAreaSummary ? 'Redraw Rectangle' : 'Draw Rectangle (Required)'"
               icon="pi pi-pencil"
-              severity="secondary"
-              outlined
+              :severity="selectedAreaSummary ? 'secondary' : 'primary'"
+              :outlined="!!selectedAreaSummary"
+              :class="['draw-rectangle-button', { 'draw-rectangle-button--required': !selectedAreaSummary }]"
               @click="$emit('start-rectangle-draw')"
             />
           </div>
-        </div>
-
-        <div class="field wide">
-          <label>Area Map</label>
-          <div class="map-picker">
-            <BaseMap
-              mapId="geofence-rule-map"
-              :center="mapCenter"
-              :zoom="mapZoom"
-              height="clamp(360px, 52vh, 560px)"
-              width="100%"
-              @map-ready="$emit('map-ready', $event)"
-            />
+          <div class="field field--area-map">
+            <div class="map-picker">
+              <BaseMap
+                mapId="geofence-rule-map"
+                :center="mapCenter"
+                :zoom="mapZoom"
+                height="clamp(360px, 52vh, 560px)"
+                width="100%"
+                @map-ready="$emit('map-ready', $event)"
+              />
+            </div>
+            <small v-if="selectedAreaSummary" class="muted-text">{{ selectedAreaSummary }}</small>
+            <small v-if="ruleFormErrors.area" class="error-text">{{ ruleFormErrors.area }}</small>
           </div>
-          <small v-if="selectedAreaSummary" class="muted-text">{{ selectedAreaSummary }}</small>
-          <small v-if="ruleFormErrors.area" class="error-text">{{ ruleFormErrors.area }}</small>
-        </div>
+        </section>
 
-        <div class="field toggle-field">
-          <label>Monitor Enter</label>
-          <InputSwitch v-model="ruleForm.monitorEnter" />
-        </div>
+        <section class="form-section">
+          <div class="section-header">
+            <h4>Behavior</h4>
+          </div>
+          <div class="rule-sentence">
+            <p class="rule-sentence-intro">When a subject...</p>
 
-        <div class="field toggle-field">
-          <label>Monitor Leave</label>
-          <InputSwitch v-model="ruleForm.monitorLeave" />
-        </div>
-        <div v-if="ruleFormErrors.monitoring" class="field wide">
-          <small class="error-text">{{ ruleFormErrors.monitoring }}</small>
-        </div>
+            <div class="rule-sentence-row">
+              <div class="rule-toggle-chip">
+                <span class="rule-toggle-chip-label">
+                  <i class="pi pi-sign-in rule-toggle-chip-icon" />
+                  Enter
+                </span>
+                <InputSwitch v-model="ruleForm.monitorEnter" />
+              </div>
+              <span :class="['rule-sentence-text', { 'rule-sentence-text--inactive': !ruleForm.monitorEnter }]">
+                enters the area, send:
+              </span>
+              <Select
+                v-model="ruleForm.enterTemplateId"
+                :options="enterTemplateOptions"
+                optionLabel="label"
+                optionValue="value"
+                :placeholder="hasEnabledDefaultEnterTemplate ? `Default: ${enabledDefaultEnterTemplate?.name}` : 'Built-in message'"
+                :class="['rule-sentence-template', { 'rule-sentence-template--inactive': !ruleForm.monitorEnter }]"
+              />
+              <i
+                class="pi pi-info-circle rule-sentence-info"
+                v-tooltip.bottom="'If no template is selected, default ENTER template is used; otherwise fallback is built-in in-app message.'"
+              />
+            </div>
 
-        <div class="field">
-          <label class="field-label-with-help">
-            <span>Cooldown (seconds)</span>
-            <i
-              class="pi pi-info-circle help-icon"
-              v-tooltip.bottom="'Prevents repeated Enter/Leave notifications for this rule during the cooldown window.'"
-            />
-          </label>
-          <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" />
-          <small class="muted-text">Minimum delay between notifications for this rule.</small>
-        </div>
+            <div class="rule-sentence-row">
+              <div class="rule-toggle-chip">
+                <span class="rule-toggle-chip-label">
+                  <i class="pi pi-sign-out rule-toggle-chip-icon" />
+                  Leave
+                </span>
+                <InputSwitch v-model="ruleForm.monitorLeave" />
+              </div>
+              <span :class="['rule-sentence-text', { 'rule-sentence-text--inactive': !ruleForm.monitorLeave }]">
+                leaves the area, send:
+              </span>
+              <Select
+                v-model="ruleForm.leaveTemplateId"
+                :options="leaveTemplateOptions"
+                optionLabel="label"
+                optionValue="value"
+                :placeholder="hasEnabledDefaultLeaveTemplate ? `Default: ${enabledDefaultLeaveTemplate?.name}` : 'Built-in message'"
+                :class="['rule-sentence-template', { 'rule-sentence-template--inactive': !ruleForm.monitorLeave }]"
+              />
+              <i
+                class="pi pi-info-circle rule-sentence-info"
+                v-tooltip.bottom="'If no template is selected, default LEAVE template is used; otherwise fallback is built-in in-app message.'"
+              />
+            </div>
 
-        <div class="field">
-          <label>Enter Template</label>
-          <Select
-            v-model="ruleForm.enterTemplateId"
-            :options="enterTemplateOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="hasEnabledDefaultEnterTemplate ? 'Use default enter template' : 'Select enter template'"
-          />
-          <small v-if="hasEnabledDefaultEnterTemplate" class="muted-text">
-            If empty, your default ENTER template ({{ enabledDefaultEnterTemplate?.name }}) is used.
-          </small>
-          <small v-else class="muted-text">
-            No default ENTER template configured. Empty value uses built-in in-app message.
-          </small>
-        </div>
-
-        <div class="field">
-          <label>Leave Template</label>
-          <Select
-            v-model="ruleForm.leaveTemplateId"
-            :options="leaveTemplateOptions"
-            optionLabel="label"
-            optionValue="value"
-            :placeholder="hasEnabledDefaultLeaveTemplate ? 'Use default leave template' : 'Select leave template'"
-          />
-          <small v-if="hasEnabledDefaultLeaveTemplate" class="muted-text">
-            If empty, your default LEAVE template ({{ enabledDefaultLeaveTemplate?.name }}) is used.
-          </small>
-          <small v-else class="muted-text">
-            No default LEAVE template configured. Empty value uses built-in in-app message.
-          </small>
-        </div>
-
-        <div class="field">
-          <label>Status</label>
-          <Select
-            v-model="ruleForm.status"
-            :options="statusOptions"
-            optionLabel="label"
-            optionValue="value"
-          />
-        </div>
+            <div class="rule-sentence-cooldown">
+              <span>Wait at least</span>
+              <InputNumber v-model="ruleForm.cooldownSeconds" :min="0" class="rule-sentence-cooldown-input" />
+              <span>seconds between notifications.</span>
+              <i
+                class="pi pi-info-circle help-icon"
+                v-tooltip.bottom="'Prevents repeated Enter/Leave notifications for this rule during the cooldown window.'"
+              />
+            </div>
+          </div>
+          <div v-if="ruleFormErrors.monitoring" class="field field--monitoring-error">
+            <small class="error-text">{{ ruleFormErrors.monitoring }}</small>
+          </div>
+        </section>
       </div>
 
-      <div class="actions-row">
+      <div class="actions-row sticky-actions">
         <Button
           :label="editingRuleId ? 'Update Rule' : 'Create Rule'"
           icon="pi pi-save"
@@ -323,31 +345,77 @@ function remainingSubjectsCount(rule) {
   padding: 1rem;
 }
 
-.form-grid {
+.form-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+
+.form-section {
+  border: 1px solid var(--surface-border);
+  border-radius: 10px;
+  padding: 0.85rem;
+  display: grid;
   gap: 0.75rem;
+}
+
+.form-section--needs-area {
+  border-color: color-mix(in srgb, var(--primary-color) 48%, var(--surface-border));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 22%, transparent);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.section-header h4 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.required-inline-chip {
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #fff;
+  background: #ef4444;
+  padding: 0.24rem 0.45rem;
+}
+
+.draw-rectangle-button {
+  white-space: nowrap;
+}
+
+.draw-rectangle-button--required {
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary-color) 55%, transparent),
+    0 8px 18px color-mix(in srgb, var(--primary-color) 28%, transparent);
+}
+
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.section-grid > .field {
+  grid-column: span 12;
 }
 
 .field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-}
-
-.field.wide {
-  grid-column: 1 / -1;
-}
-
-.rules-top-row {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) auto;
-  gap: 0.75rem;
-  align-items: end;
-}
-
-.area-button-field {
-  min-width: 220px;
 }
 
 .map-picker {
@@ -384,14 +452,118 @@ function remainingSubjectsCount(rule) {
   font-size: 0.78rem;
 }
 
-.toggle-field {
-  align-items: flex-start;
+.rule-sentence {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.rule-sentence-intro {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.rule-sentence-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(16rem, 30rem) auto;
+  align-items: center;
+  justify-content: start;
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+}
+
+.rule-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 999px;
+  padding: 0.32rem 0.55rem;
+  background: color-mix(in srgb, var(--surface-card) 88%, var(--surface-ground));
+}
+
+.rule-toggle-chip-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  line-height: 1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rule-toggle-chip-icon {
+  font-size: 0.72rem;
+}
+
+.rule-toggle-chip :deep(.p-inputswitch) {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.rule-sentence-text {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.rule-sentence-text--inactive {
+  opacity: 0.5;
+}
+
+.rule-sentence-template {
+  width: clamp(16rem, 36vw, 30rem) !important;
+  max-width: 100%;
+  justify-self: start;
+}
+
+.rule-sentence-template--inactive {
+  opacity: 0.5;
+}
+
+.rule-sentence-info {
+  color: var(--text-color-secondary);
+  font-size: 0.84rem;
+  cursor: help;
+}
+
+.rule-sentence-cooldown {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  align-items: center;
+  justify-content: start;
+  column-gap: 0.65rem;
+  row-gap: 0.35rem;
+  padding-top: 0.2rem;
+}
+
+.rule-sentence-cooldown-input {
+  width: 6.25rem !important;
+  min-width: 6.25rem;
+}
+
+.rule-sentence-cooldown-input :deep(.p-inputnumber-input) {
+  width: 100%;
+}
+
+.field--monitoring-error {
+  margin-top: -0.25rem;
 }
 
 .actions-row {
   margin-top: 1rem;
   display: flex;
   gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.sticky-actions {
+  background: var(--surface-card);
+  border-top: 1px solid var(--surface-border);
+  padding-top: 0.75rem;
 }
 
 .table-header {
@@ -475,6 +647,20 @@ function remainingSubjectsCount(rule) {
   background: rgba(148, 163, 184, 0.38);
 }
 
+@media (min-width: 900px) {
+  .section-grid--basics .field--name {
+    grid-column: span 4;
+  }
+
+  .section-grid--basics .field--subjects {
+    grid-column: span 5;
+  }
+
+  .section-grid--basics .field--status {
+    grid-column: span 3;
+  }
+}
+
 @media (max-width: 768px) {
   .tab-panel {
     padding: 0.5rem;
@@ -484,8 +670,56 @@ function remainingSubjectsCount(rule) {
     padding: 0.75rem;
   }
 
-  .rules-top-row {
+  .form-section {
+    padding: 0.7rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .draw-rectangle-button {
+    width: 100%;
+  }
+
+  .rule-sentence-row {
     grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .rule-sentence-text {
+    white-space: normal;
+  }
+
+  .rule-sentence-template {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .rule-sentence-cooldown {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .rule-sentence-cooldown-input {
+    width: 100%;
+  }
+
+  .actions-row {
+    flex-direction: column;
+    justify-content: stretch;
+  }
+
+  .sticky-actions {
+    position: sticky;
+    bottom: max(0px, env(safe-area-inset-bottom));
+    z-index: 5;
+  }
+
+  .actions-row :deep(.p-button) {
+    width: 100%;
   }
 }
 </style>
