@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.geofencing.model.dto;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -12,8 +13,8 @@ public class CreateGeofenceRuleRequest {
     @Size(max = 120)
     private String name;
 
-    @NotNull
-    private UUID subjectUserId;
+    @NotEmpty
+    private List<@NotNull UUID> subjectUserIds;
 
     @NotNull
     @DecimalMin(value = "-90.0")

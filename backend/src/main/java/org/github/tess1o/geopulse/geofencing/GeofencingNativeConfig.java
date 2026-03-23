@@ -7,7 +7,10 @@ import org.github.tess1o.geopulse.geofencing.model.entity.*;
 
 @RegisterForReflection(targets = {
         GeofenceRuleEntity.class,
+        GeofenceRuleSubjectEntity.class,
+        GeofenceRuleSubjectId.class,
         GeofenceRuleStateEntity.class,
+        GeofenceRuleStateId.class,
         GeofenceEventEntity.class,
         NotificationTemplateEntity.class,
         GeofenceRuleStatus.class,
@@ -15,6 +18,8 @@ import org.github.tess1o.geopulse.geofencing.model.entity.*;
         GeofenceDeliveryStatus.class,
         GeofenceRuleDto.class,
         GeofenceRuleDto.GeofenceRuleDtoBuilder.class,
+        GeofenceRuleSubjectDto.class,
+        GeofenceRuleSubjectDto.GeofenceRuleSubjectDtoBuilder.class,
         CreateGeofenceRuleRequest.class,
         UpdateGeofenceRuleRequest.class,
         GeofenceEventDto.class,

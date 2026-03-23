@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -70,7 +69,8 @@ public class GeofenceEvaluationService {
             return;
         }
 
-        UUID subjectUserId = point.getUser().getId();
+        UserEntity subject = point.getUser();
+        UUID subjectUserId = subject.getId();
         List<GeofenceRuleEntity> rules = ruleRepository.findActiveBySubject(subjectUserId);
         if (rules.isEmpty()) {
             return;
@@ -81,19 +81,23 @@ public class GeofenceEvaluationService {
 
         for (GeofenceRuleEntity rule : rules) {
             try {
-                if (!isSubjectTrackable(rule)) {
+                if (!isSubjectTrackable(rule.getOwnerUser(), subject)) {
                     continue;
                 }
-                evaluateRulePoint(rule, point, latitude, longitude);
+                evaluateRulePoint(rule, subject, point, latitude, longitude);
             } catch (Exception e) {
                 log.warn("Failed to evaluate geofence rule {} for point {}: {}", rule.getId(), point.getId(), e.getMessage());
             }
         }
     }
 
-    private boolean isSubjectTrackable(GeofenceRuleEntity rule) {
-        UUID ownerId = rule.getOwnerUser().getId();
-        UUID subjectId = rule.getSubjectUser().getId();
+    private boolean isSubjectTrackable(UserEntity ownerUser, UserEntity subjectUser) {
+        if (ownerUser == null || ownerUser.getId() == null || subjectUser == null || subjectUser.getId() == null) {
+            return false;
+        }
+
+        UUID ownerId = ownerUser.getId();
+        UUID subjectId = subjectUser.getId();
 
         if (ownerId.equals(subjectId)) {
             return true;
@@ -106,13 +110,20 @@ public class GeofenceEvaluationService {
         return permissionRepository.hasLiveLocationPermission(subjectId, ownerId);
     }
 
-    private void evaluateRulePoint(GeofenceRuleEntity rule, GpsPointEntity point, double latitude, double longitude) {
+    private void evaluateRulePoint(GeofenceRuleEntity rule,
+                                   UserEntity subject,
+                                   GpsPointEntity point,
+                                   double latitude,
+                                   double longitude) {
         boolean inside = isInside(rule, latitude, longitude);
 
-        Optional<GeofenceRuleStateEntity> existingStateOpt = stateRepository.findByIdOptional(rule.getId());
+        GeofenceRuleStateId stateId = new GeofenceRuleStateId(rule.getId(), subject.getId());
+        var existingStateOpt = stateRepository.findByIdOptional(stateId);
         if (existingStateOpt.isEmpty()) {
             GeofenceRuleStateEntity newState = GeofenceRuleStateEntity.builder()
+                    .id(stateId)
                     .rule(rule)
+                    .subjectUser(subject)
                     .currentInside(inside)
                     .lastPoint(point)
                     .lastTransitionAt(point.getTimestamp())
@@ -120,7 +131,7 @@ public class GeofenceEvaluationService {
                     .build();
 
             if (inside && Boolean.TRUE.equals(rule.getMonitorEnter())) {
-                emitEvent(rule, point, GeofenceEventType.ENTER);
+                emitEvent(rule, subject, point, GeofenceEventType.ENTER);
                 newState.setLastNotifiedAt(point.getTimestamp());
                 newState.setLastNotifiedInside(true);
             }
@@ -139,7 +150,7 @@ public class GeofenceEvaluationService {
             GeofenceEventType eventType = inside ? GeofenceEventType.ENTER : GeofenceEventType.LEAVE;
 
             if (isMonitored(rule, eventType)) {
-                maybeEmitWithCooldown(rule, state, point, eventType, inside);
+                maybeEmitWithCooldown(rule, subject, state, point, eventType, inside);
             } else {
                 state.setLastNotifiedInside(inside);
             }
@@ -149,7 +160,7 @@ public class GeofenceEvaluationService {
         if (state.getLastNotifiedInside() == null || !state.getLastNotifiedInside().equals(inside)) {
             GeofenceEventType pendingEventType = inside ? GeofenceEventType.ENTER : GeofenceEventType.LEAVE;
             if (isMonitored(rule, pendingEventType)) {
-                maybeEmitWithCooldown(rule, state, point, pendingEventType, inside);
+                maybeEmitWithCooldown(rule, subject, state, point, pendingEventType, inside);
             } else {
                 state.setLastNotifiedInside(inside);
             }
@@ -157,6 +168,7 @@ public class GeofenceEvaluationService {
     }
 
     private void maybeEmitWithCooldown(GeofenceRuleEntity rule,
+                                       UserEntity subject,
                                        GeofenceRuleStateEntity state,
                                        GpsPointEntity point,
                                        GeofenceEventType eventType,
@@ -165,7 +177,7 @@ public class GeofenceEvaluationService {
             return;
         }
 
-        emitEvent(rule, point, eventType);
+        emitEvent(rule, subject, point, eventType);
         state.setLastNotifiedAt(point.getTimestamp());
         state.setLastNotifiedInside(insideStateAfterEvent);
     }
@@ -181,11 +193,10 @@ public class GeofenceEvaluationService {
         return Duration.between(lastNotifiedAt, now).getSeconds() >= cooldown;
     }
 
-    private void emitEvent(GeofenceRuleEntity rule, GpsPointEntity point, GeofenceEventType eventType) {
+    private void emitEvent(GeofenceRuleEntity rule, UserEntity subject, GpsPointEntity point, GeofenceEventType eventType) {
         NotificationTemplateEntity template = resolveTemplate(rule, eventType);
         UserEntity owner = rule.getOwnerUser();
 
-        UserEntity subject = rule.getSubjectUser();
         String subjectName = subject.getFullName() != null && !subject.getFullName().isBlank()
                 ? subject.getFullName()
                 : subject.getEmail();
@@ -220,7 +231,7 @@ public class GeofenceEvaluationService {
 
         GeofenceEventEntity event = GeofenceEventEntity.builder()
                 .ownerUser(rule.getOwnerUser())
-                .subjectUser(rule.getSubjectUser())
+                .subjectUser(subject)
                 .rule(rule)
                 .template(template)
                 .point(point)

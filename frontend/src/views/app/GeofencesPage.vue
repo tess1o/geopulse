@@ -92,6 +92,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationsStore } from '@/stores/notifications'
+import { useLocationStore } from '@/stores/location'
 import apiService from '@/utils/apiService'
 import L from 'leaflet'
 import { useRectangleDrawing } from '@/composables/useRectangleDrawing'
@@ -111,8 +112,11 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
+const locationStore = useLocationStore()
 const timezone = useTimezone()
 const GEOFENCE_SOURCE = 'GEOFENCE'
+const FALLBACK_GEOFENCE_CENTER = [50.4501, 30.5234]
+const LAST_KNOWN_MAP_ZOOM = 12
 
 const tabs = computed(() => [
   { label: 'Rules', icon: 'pi pi-map', key: 'rules' },
@@ -143,7 +147,7 @@ const geofenceUnreadCount = ref(0)
 const refreshingEvents = ref(false)
 const ruleFormErrors = ref({
   name: '',
-  subjectUserId: '',
+  subjectUserIds: '',
   area: '',
   monitoring: ''
 })
@@ -179,8 +183,13 @@ const editingRuleId = ref(null)
 const editingTemplateId = ref(null)
 const geofenceMap = ref(null)
 const rectangleLayer = ref(null)
-const mapCenter = ref([50.4501, 30.5234])
+const allRuleAreasLayerGroup = ref(null)
+const mapCenter = ref(FALLBACK_GEOFENCE_CENTER)
 const mapZoom = ref(11)
+const lastKnownMapCenter = ref(null)
+const initialRulesLoaded = ref(false)
+const mapViewportInitialized = ref(false)
+const knownSubjectLabels = ref({})
 
 const statusOptions = [
   { label: 'Active', value: 'ACTIVE' },
@@ -209,15 +218,37 @@ const rectangleDrawing = useRectangleDrawing({
 
 const subjectOptions = computed(() => {
   const items = []
+  const seen = new Set()
+
+  const pushOption = (value, label, unavailable = false) => {
+    const normalizedValue = normalizeSubjectId(value)
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      return
+    }
+    seen.add(normalizedValue)
+    if (label) {
+      rememberSubjectLabel(normalizedValue, label)
+    }
+    items.push({ label, value: normalizedValue, unavailable })
+  }
 
   if (authStore.userId) {
     const meLabel = authStore.userName ? `${authStore.userName} (Me)` : `${authStore.userEmail} (Me)`
-    items.push({ label: meLabel, value: authStore.userId })
+    pushOption(authStore.userId, meLabel)
   }
 
   for (const friend of friends.value) {
     const label = friend.fullName || friend.email
-    items.push({ label, value: friend.friendId || friend.userId })
+    pushOption(friend.friendId || friend.userId, label)
+  }
+
+  for (const selectedId of ruleForm.value.subjectUserIds || []) {
+    const normalizedValue = normalizeSubjectId(selectedId)
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      continue
+    }
+    const label = knownSubjectLabels.value[normalizedValue] || `Unknown subject (${normalizedValue.slice(0, 8)})`
+    pushOption(normalizedValue, `${label} (Unavailable)`, true)
   }
 
   return items
@@ -258,6 +289,15 @@ const leaveTemplateOptions = computed(() => {
     })
   }
   return options
+})
+const templateNameById = computed(() => {
+  const map = new Map()
+  for (const template of templates.value) {
+    if (template?.id !== null && template?.id !== undefined) {
+      map.set(String(template.id), template.name || `Template ${template.id}`)
+    }
+  }
+  return map
 })
 
 function hasValidAreaBounds(form) {
@@ -351,7 +391,7 @@ const templatePreview = computed(() => {
 function defaultRuleForm() {
   return {
     name: '',
-    subjectUserId: authStore.userId || null,
+    subjectUserIds: authStore.userId ? [normalizeSubjectId(authStore.userId)] : [],
     northEastLat: null,
     northEastLon: null,
     southWestLat: null,
@@ -380,9 +420,47 @@ function defaultTemplateForm() {
 function clearRuleFormErrors() {
   ruleFormErrors.value = {
     name: '',
-    subjectUserId: '',
+    subjectUserIds: '',
     area: '',
     monitoring: ''
+  }
+}
+
+function normalizeSubjectId(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  return String(value)
+}
+
+function rememberSubjectLabel(subjectId, label) {
+  const normalizedId = normalizeSubjectId(subjectId)
+  if (!normalizedId || !label || knownSubjectLabels.value[normalizedId]) {
+    return
+  }
+  knownSubjectLabels.value = {
+    ...knownSubjectLabels.value,
+    [normalizedId]: label
+  }
+}
+
+function normalizeRule(rule) {
+  const normalizedSubjects = Array.isArray(rule?.subjects)
+    ? rule.subjects
+      .map(subject => ({
+        userId: normalizeSubjectId(subject?.userId),
+        displayName: subject?.displayName || 'Unknown subject'
+      }))
+      .filter(subject => !!subject.userId)
+    : []
+
+  for (const subject of normalizedSubjects) {
+    rememberSubjectLabel(subject.userId, subject.displayName)
+  }
+
+  return {
+    ...rule,
+    subjects: normalizedSubjects
   }
 }
 
@@ -612,8 +690,11 @@ function validateRuleForm() {
     errors.name = 'Rule name is required.'
   }
 
-  if (!form.subjectUserId) {
-    errors.subjectUserId = 'Please select who this rule tracks.'
+  const selectedSubjects = Array.isArray(form.subjectUserIds)
+    ? form.subjectUserIds.map(normalizeSubjectId).filter(Boolean)
+    : []
+  if (selectedSubjects.length === 0) {
+    errors.subjectUserIds = 'Please select at least one subject to track.'
   }
 
   if (!hasValidAreaBounds(form)) {
@@ -662,8 +743,13 @@ function onTabChange(event) {
 
 function handleMapReady(map) {
   geofenceMap.value = map
+  mapViewportInitialized.value = false
+  rectangleLayer.value = null
+  allRuleAreasLayerGroup.value = null
   rectangleDrawing.initialize(map)
   syncMapRectangleFromForm()
+  syncAllRuleAreasOnMap()
+  syncInitialRulesMapViewport()
 }
 
 function startRectangleDraw() {
@@ -701,14 +787,187 @@ function syncMapRectangleFromForm(focus = false) {
   }
 }
 
+function isRuleMapVisible() {
+  return activeTab.value === 'rules' && !!geofenceMap.value
+}
+
+function hasRuleArea(rule) {
+  return ['northEastLat', 'northEastLon', 'southWestLat', 'southWestLon'].every((key) => {
+    const value = Number(rule?.[key])
+    return Number.isFinite(value)
+  })
+}
+
+function getRuleBounds(rule) {
+  if (!hasRuleArea(rule)) {
+    return null
+  }
+
+  return L.latLngBounds(
+    [Number(rule.southWestLat), Number(rule.southWestLon)],
+    [Number(rule.northEastLat), Number(rule.northEastLon)]
+  )
+}
+
+function collectRuleBounds() {
+  const boundsList = []
+  for (const rule of rules.value) {
+    if (
+      editingRuleId.value !== null
+      && Number(rule.id) === Number(editingRuleId.value)
+      && hasValidAreaBounds(ruleForm.value)
+    ) {
+      continue
+    }
+    const bounds = getRuleBounds(rule)
+    if (bounds) {
+      boundsList.push(bounds)
+    }
+  }
+  return boundsList
+}
+
+function ensureRuleAreasLayerGroup() {
+  if (!geofenceMap.value) {
+    return null
+  }
+
+  if (!allRuleAreasLayerGroup.value) {
+    allRuleAreasLayerGroup.value = L.layerGroup().addTo(geofenceMap.value)
+  }
+
+  return allRuleAreasLayerGroup.value
+}
+
+function syncAllRuleAreasOnMap() {
+  if (!isRuleMapVisible()) {
+    return
+  }
+
+  const layerGroup = ensureRuleAreasLayerGroup()
+  if (!layerGroup) {
+    return
+  }
+
+  layerGroup.clearLayers()
+
+  for (const rule of rules.value) {
+    if (
+      editingRuleId.value !== null
+      && Number(rule.id) === Number(editingRuleId.value)
+      && hasValidAreaBounds(ruleForm.value)
+    ) {
+      continue
+    }
+
+    const bounds = getRuleBounds(rule)
+    if (!bounds) {
+      continue
+    }
+
+    L.rectangle(bounds, {
+      color: rule.status === 'ACTIVE' ? '#3b82f6' : '#94a3b8',
+      weight: 2,
+      dashArray: '6 4',
+      fill: true,
+      fillOpacity: 0.06,
+      interactive: true
+    })
+      .bindPopup(buildRuleAreaPopupContent(rule), {
+        maxWidth: 360,
+        className: 'geofence-area-popup'
+      })
+      .addTo(layerGroup)
+  }
+}
+
+function fitMapToAllRuleAreas() {
+  if (!isRuleMapVisible()) {
+    return false
+  }
+
+  const boundsList = collectRuleBounds()
+  if (boundsList.length === 0) {
+    return false
+  }
+
+  const combinedBounds = boundsList[0]
+  for (let index = 1; index < boundsList.length; index += 1) {
+    combinedBounds.extend(boundsList[index])
+  }
+
+  geofenceMap.value.fitBounds(combinedBounds, {
+    padding: [24, 24],
+    maxZoom: 14
+  })
+  return true
+}
+
+async function loadLastKnownMapCenter() {
+  try {
+    const lastPoint = await locationStore.getLastKnownPosition()
+    const lat = Number(lastPoint?.lat)
+    const lon = Number(lastPoint?.lon)
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return
+    }
+
+    lastKnownMapCenter.value = [lat, lon]
+
+    const hasAnyRuleAreas = rules.value.some(rule => hasRuleArea(rule))
+    const shouldUseLastKnownAsPrimaryView = !hasValidAreaBounds(ruleForm.value) && !hasAnyRuleAreas
+
+    if (shouldUseLastKnownAsPrimaryView) {
+      mapCenter.value = [lat, lon]
+      mapZoom.value = LAST_KNOWN_MAP_ZOOM
+      if (isRuleMapVisible()) {
+        geofenceMap.value.setView(lastKnownMapCenter.value, LAST_KNOWN_MAP_ZOOM, { animate: false })
+      }
+    }
+
+    syncInitialRulesMapViewport()
+  } catch (error) {
+    console.warn('Failed to load last known position for geofence map:', error)
+  }
+}
+
+function syncInitialRulesMapViewport() {
+  if (!isRuleMapVisible() || mapViewportInitialized.value || !initialRulesLoaded.value) {
+    return
+  }
+
+  if (hasValidAreaBounds(ruleForm.value)) {
+    syncMapRectangleFromForm(true)
+    mapViewportInitialized.value = true
+    return
+  }
+
+  if (fitMapToAllRuleAreas()) {
+    mapViewportInitialized.value = true
+    return
+  }
+
+  if (lastKnownMapCenter.value) {
+    geofenceMap.value.setView(lastKnownMapCenter.value, mapZoom.value, { animate: false })
+  }
+
+  mapViewportInitialized.value = true
+}
+
 async function loadRules() {
   const response = await apiService.get('/geofences/rules')
-  rules.value = response?.data || []
+  const rawRules = response?.data || []
+  rules.value = rawRules.map(normalizeRule)
+  initialRulesLoaded.value = true
+  syncAllRuleAreasOnMap()
+  syncInitialRulesMapViewport()
 }
 
 async function loadTemplates() {
   const response = await apiService.get('/geofences/templates')
   templates.value = response?.data || []
+  syncAllRuleAreasOnMap()
 }
 
 async function refreshEvents() {
@@ -753,8 +1012,12 @@ async function saveRule() {
 
   savingRule.value = true
   try {
+    const subjectUserIds = Array.isArray(ruleForm.value.subjectUserIds)
+      ? Array.from(new Set(ruleForm.value.subjectUserIds.map(normalizeSubjectId).filter(Boolean)))
+      : []
     const payload = {
       ...ruleForm.value,
+      subjectUserIds,
       name: ruleForm.value.name.trim()
     }
 
@@ -786,7 +1049,9 @@ function editRule(rule) {
   editingRuleId.value = rule.id
   ruleForm.value = {
     name: rule.name,
-    subjectUserId: rule.subjectUserId,
+    subjectUserIds: Array.isArray(rule.subjects)
+      ? rule.subjects.map(subject => normalizeSubjectId(subject.userId)).filter(Boolean)
+      : [],
     northEastLat: rule.northEastLat,
     northEastLon: rule.northEastLon,
     southWestLat: rule.southWestLat,
@@ -798,6 +1063,7 @@ function editRule(rule) {
     leaveTemplateId: rule.leaveTemplateId,
     status: rule.status
   }
+  syncAllRuleAreasOnMap()
   syncMapRectangleFromForm(true)
 }
 
@@ -835,6 +1101,7 @@ function resetRuleForm() {
     geofenceMap.value.removeLayer(rectangleLayer.value)
     rectangleLayer.value = null
   }
+  syncAllRuleAreasOnMap()
 }
 
 async function saveTemplate() {
@@ -1023,6 +1290,76 @@ function formatDate(value) {
   return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
 }
 
+function resolveRuleTemplateLabel(templateId, type) {
+  if (templateId !== null && templateId !== undefined && templateId !== '') {
+    const resolved = templateNameById.value.get(String(templateId))
+    if (resolved) {
+      return resolved
+    }
+    return `Unknown template (${String(templateId).slice(0, 8)})`
+  }
+
+  if (type === 'enter') {
+    return enabledDefaultEnterTemplate.value
+      ? `Default (${enabledDefaultEnterTemplate.value.name})`
+      : 'Built-in message'
+  }
+
+  return enabledDefaultLeaveTemplate.value
+    ? `Default (${enabledDefaultLeaveTemplate.value.name})`
+    : 'Built-in message'
+}
+
+function formatRuleSubjects(rule) {
+  const subjects = Array.isArray(rule?.subjects)
+    ? rule.subjects
+      .map(subject => subject?.displayName)
+      .filter(name => !!name)
+    : []
+
+  if (subjects.length === 0) {
+    return '-'
+  }
+
+  return subjects.join(', ')
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function buildRuleAreaPopupContent(rule) {
+  const rows = [
+    ['Subjects', formatRuleSubjects(rule)],
+    ['Status', rule?.status || '-'],
+    ['Events', eventSummary(rule) || 'None'],
+    ['Cooldown', `${Number(rule?.cooldownSeconds || 0)} sec`],
+    ['Enter template', resolveRuleTemplateLabel(rule?.enterTemplateId, 'enter')],
+    ['Leave template', resolveRuleTemplateLabel(rule?.leaveTemplateId, 'leave')]
+  ]
+
+  const rowsHtml = rows
+    .map(([label, value]) => (
+      `<div class="geofence-area-tooltip__row">
+        <span class="geofence-area-tooltip__label">${escapeHtml(label)}</span>
+        <span class="geofence-area-tooltip__value">${escapeHtml(value)}</span>
+      </div>`
+    ))
+    .join('')
+
+  return `
+    <div class="geofence-area-tooltip">
+      <div class="geofence-area-tooltip__title">${escapeHtml(rule?.name || 'Geofence')}</div>
+      ${rowsHtml}
+    </div>
+  `
+}
+
 function deliverySeverity(status) {
   if (status === 'SENT') return 'success'
   if (status === 'FAILED') return 'danger'
@@ -1093,9 +1430,9 @@ function handleDefaultToggleChange(type, enabled) {
 onMounted(async () => {
   try {
     syncActiveTabFromRoute(route.query.tab)
-    await Promise.all([loadFriends(), loadTemplates(), loadRules(), refreshEvents()])
-    if (!ruleForm.value.subjectUserId && authStore.userId) {
-      ruleForm.value.subjectUserId = authStore.userId
+    await Promise.all([loadFriends(), loadTemplates(), loadRules(), refreshEvents(), loadLastKnownMapCenter()])
+    if ((!Array.isArray(ruleForm.value.subjectUserIds) || ruleForm.value.subjectUserIds.length === 0) && authStore.userId) {
+      ruleForm.value.subjectUserIds = [normalizeSubjectId(authStore.userId)]
     }
   } catch (error) {
     toast.add({
@@ -1134,12 +1471,14 @@ watch(
 )
 
 watch(
-  () => ruleForm.value.subjectUserId,
+  () => ruleForm.value.subjectUserIds,
   (value) => {
-    if (ruleFormErrors.value.subjectUserId && value) {
-      ruleFormErrors.value.subjectUserId = ''
+    const hasSubjects = Array.isArray(value) && value.some(item => !!normalizeSubjectId(item))
+    if (ruleFormErrors.value.subjectUserIds && hasSubjects) {
+      ruleFormErrors.value.subjectUserIds = ''
     }
-  }
+  },
+  { deep: true }
 )
 
 watch(
@@ -1225,3 +1564,56 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+:deep(.geofence-area-popup .leaflet-popup-content-wrapper) {
+  border-radius: 10px;
+}
+
+:deep(.geofence-area-popup .leaflet-popup-content) {
+  margin: 0;
+}
+
+:deep(.geofence-area-tooltip) {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 220px;
+  padding: 0.6rem 0.7rem;
+}
+
+:deep(.geofence-area-tooltip__title) {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+:deep(.geofence-area-tooltip__row) {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+:deep(.geofence-area-tooltip__label) {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-color-secondary);
+}
+
+:deep(.geofence-area-tooltip__value) {
+  font-size: 0.83rem;
+  line-height: 1.25;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+
+:deep(.p-dark .geofence-area-popup .leaflet-popup-content-wrapper) {
+  background: #1e293b;
+}
+
+:deep(.p-dark .geofence-area-popup .leaflet-popup-tip) {
+  background: #1e293b;
+}
+</style>

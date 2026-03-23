@@ -21,6 +21,9 @@ public class GeofenceRuleRepository implements PanacheRepository<GeofenceRuleEnt
     }
 
     public List<GeofenceRuleEntity> findActiveBySubject(UUID subjectUserId) {
-        return list("subjectUser.id = ?1 AND status = ?2", subjectUserId, GeofenceRuleStatus.ACTIVE);
+        return list("SELECT DISTINCT rule " +
+                "FROM GeofenceRuleEntity rule " +
+                "JOIN rule.subjectAssignments assignment " +
+                "WHERE assignment.subjectUser.id = ?1 AND rule.status = ?2", subjectUserId, GeofenceRuleStatus.ACTIVE);
     }
 }

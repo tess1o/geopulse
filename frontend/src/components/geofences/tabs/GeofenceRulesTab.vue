@@ -15,16 +15,26 @@
           </div>
 
           <div class="field">
-            <label>Subject</label>
-            <Select
-              v-model="ruleForm.subjectUserId"
+            <label>Subjects</label>
+            <MultiSelect
+              v-model="ruleForm.subjectUserIds"
               :options="subjectOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Select subject"
-              :class="{ 'p-invalid': !!ruleFormErrors.subjectUserId }"
-            />
-            <small v-if="ruleFormErrors.subjectUserId" class="error-text">{{ ruleFormErrors.subjectUserId }}</small>
+              filter
+              display="chip"
+              :maxSelectedLabels="3"
+              placeholder="Select subjects"
+              :class="['subjects-select', { 'p-invalid': !!ruleFormErrors.subjectUserIds }]"
+            >
+              <template #option="slotProps">
+                <div class="subject-option" :class="{ 'subject-option--unavailable': slotProps.option.unavailable }">
+                  <span>{{ slotProps.option.label }}</span>
+                  <small v-if="slotProps.option.unavailable" class="subject-option-warning">Unavailable</small>
+                </div>
+              </template>
+            </MultiSelect>
+            <small v-if="ruleFormErrors.subjectUserIds" class="error-text">{{ ruleFormErrors.subjectUserIds }}</small>
           </div>
 
           <div class="field area-button-field">
@@ -46,7 +56,7 @@
               mapId="geofence-rule-map"
               :center="mapCenter"
               :zoom="mapZoom"
-              height="260px"
+              height="clamp(360px, 52vh, 560px)"
               width="100%"
               @map-ready="$emit('map-ready', $event)"
             />
@@ -149,7 +159,23 @@
       </div>
       <DataTable :value="rules" dataKey="id" responsiveLayout="scroll">
         <Column field="name" header="Name" />
-        <Column field="subjectDisplayName" header="Subject" />
+        <Column header="Subjects">
+          <template #body="slotProps">
+            <div class="subjects-cell">
+              <Tag
+                v-for="subject in visibleSubjects(slotProps.data)"
+                :key="subject.userId"
+                :value="subject.displayName"
+                severity="info"
+              />
+              <Tag
+                v-if="remainingSubjectsCount(slotProps.data) > 0"
+                :value="`+${remainingSubjectsCount(slotProps.data)} more`"
+                severity="secondary"
+              />
+            </div>
+          </template>
+        </Column>
         <Column header="Events">
           <template #body="slotProps">
             <span>{{ eventSummary(slotProps.data) }}</span>
@@ -180,6 +206,7 @@ import BaseMap from '@/components/maps/BaseMap.vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 import InputSwitch from 'primevue/inputswitch'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -266,6 +293,23 @@ defineEmits([
   'edit-rule',
   'delete-rule'
 ])
+
+const MAX_INLINE_SUBJECTS = 2
+
+function normalizedRuleSubjects(rule) {
+  if (Array.isArray(rule?.subjects)) {
+    return rule.subjects
+  }
+  return []
+}
+
+function visibleSubjects(rule) {
+  return normalizedRuleSubjects(rule).slice(0, MAX_INLINE_SUBJECTS)
+}
+
+function remainingSubjectsCount(rule) {
+  return Math.max(0, normalizedRuleSubjects(rule).length - MAX_INLINE_SUBJECTS)
+}
 </script>
 
 <style scoped>
@@ -360,6 +404,75 @@ defineEmits([
 .row-actions {
   display: flex;
   gap: 0.35rem;
+}
+
+.subject-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.subject-option--unavailable {
+  color: var(--orange-700);
+}
+
+.subject-option-warning {
+  color: var(--orange-600);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.subjects-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.subjects-select :deep(.p-multiselect-label-container) {
+  align-items: flex-start;
+}
+
+.subjects-select :deep(.p-multiselect-label) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding-top: 0.4rem;
+  padding-bottom: 0.4rem;
+  white-space: normal;
+}
+
+.subjects-select :deep(.p-multiselect-token) {
+  max-width: 100%;
+}
+
+.subjects-select :deep(.p-multiselect-token-label) {
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subjects-select :deep(.p-multiselect-token-icon) {
+  color: var(--text-color-secondary);
+  border-radius: 999px;
+}
+
+.subjects-select :deep(.p-multiselect-token-icon:hover) {
+  color: var(--text-color);
+  background: color-mix(in srgb, var(--text-color-secondary) 20%, transparent);
+}
+
+.p-dark .subjects-select :deep(.p-multiselect-token-icon) {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.p-dark .subjects-select :deep(.p-multiselect-token-icon:hover) {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.38);
 }
 
 @media (max-width: 768px) {

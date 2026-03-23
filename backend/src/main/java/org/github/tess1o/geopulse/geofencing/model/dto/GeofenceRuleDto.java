@@ -5,6 +5,7 @@ import lombok.Data;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleStatus;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -13,8 +14,7 @@ public class GeofenceRuleDto {
     private Long id;
     private String name;
     private UUID ownerUserId;
-    private UUID subjectUserId;
-    private String subjectDisplayName;
+    private List<GeofenceRuleSubjectDto> subjects;
     private Double northEastLat;
     private Double northEastLon;
     private Double southWestLat;

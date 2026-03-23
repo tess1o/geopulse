@@ -5,6 +5,8 @@ import lombok.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "geofence_rules")
@@ -25,10 +27,10 @@ public class GeofenceRuleEntity {
     @ToString.Exclude
     private UserEntity ownerUser;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "subject_user_id", nullable = false)
+    @OneToMany(mappedBy = "rule", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
     @ToString.Exclude
-    private UserEntity subjectUser;
+    private Set<GeofenceRuleSubjectEntity> subjectAssignments = new LinkedHashSet<>();
 
     @Column(name = "name", nullable = false, length = 120)
     private String name;
