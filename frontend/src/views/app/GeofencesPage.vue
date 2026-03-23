@@ -48,16 +48,22 @@
           :templateDestinationInput="templateDestinationInput"
           :templateTitleInput="templateTitleInput"
           :templateBodyInput="templateBodyInput"
-          :templatePreview="templatePreview"
+          :templatePreviewToasts="templatePreviewToasts"
           :templateMacros="templateMacros"
           :currentDefaultEnterName="currentDefaultEnterName"
           :currentDefaultLeaveName="currentDefaultLeaveName"
+          :appriseEnabled="appriseEnabled"
+          :appriseConfigured="appriseConfigured"
+          :testingTemplateConnection="testingTemplateConnection"
+          :templateConnectionTestResult="templateConnectionTestResult"
           :savingTemplate="savingTemplate"
           :templates="templates"
           :formatDestination="formatDestination"
           :defaultSummary="defaultSummary"
+          @update-template-field="updateTemplateField"
           @focus-template-field="setFocusedTemplateField"
           @insert-macro="insertMacro"
+          @test-template-connection="testTemplateConnection"
           @save-template="saveTemplate"
           @reset-template-form="resetTemplateForm"
           @load-templates="loadTemplates"
@@ -136,9 +142,14 @@ const activeTabIndex = computed(() => tabs.value.findIndex(t => t.key === active
 const rules = ref([])
 const templates = ref([])
 const friends = ref([])
+const templateDeliveryCapabilities = ref({
+  appriseEnabled: false,
+  appriseConfigured: false
+})
 
 const savingRule = ref(false)
 const savingTemplate = ref(false)
+const testingTemplateConnection = ref(false)
 const unreadOnly = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
@@ -164,6 +175,7 @@ const templateNameInput = ref(null)
 const templateDestinationInput = ref(null)
 const templateTitleInput = ref(null)
 const templateBodyInput = ref(null)
+const templateConnectionTestResult = ref(null)
 const focusedTemplateField = ref('bodyTemplate')
 const suppressDefaultToggleWatch = ref(false)
 const TEMPLATE_MACRO_PATTERN = /\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*}}/g
@@ -299,6 +311,8 @@ const templateNameById = computed(() => {
   }
   return map
 })
+const appriseEnabled = computed(() => !!templateDeliveryCapabilities.value.appriseEnabled)
+const appriseConfigured = computed(() => !!templateDeliveryCapabilities.value.appriseConfigured)
 
 function hasValidAreaBounds(form) {
   return ['northEastLat', 'northEastLon', 'southWestLat', 'southWestLon'].every((key) => {
@@ -371,21 +385,49 @@ const currentDefaultEnterTemplate = computed(() => templates.value.find(template
 const currentDefaultLeaveTemplate = computed(() => templates.value.find(template => template.defaultForLeave) || null)
 const currentDefaultEnterName = computed(() => currentDefaultEnterTemplate.value?.name || 'None')
 const currentDefaultLeaveName = computed(() => currentDefaultLeaveTemplate.value?.name || 'None')
-const templatePreviewContext = computed(() => ({
-  subjectName: authStore.userName || authStore.userEmail || 'Peter',
-  eventCode: 'ENTER',
-  eventVerb: 'entered',
-  geofenceName: 'Home',
-  timestamp: formatDate(PREVIEW_TIMESTAMP_UTC),
-  timestampUtc: PREVIEW_TIMESTAMP_UTC,
-  lat: '49.547085',
-  lon: '25.595918'
-}))
-const templatePreview = computed(() => {
-  return {
-    title: renderTemplateWithContext(templateForm.value.titleTemplate, templatePreviewContext.value),
-    body: renderTemplateWithContext(templateForm.value.bodyTemplate, templatePreviewContext.value)
+const templatePreviewContexts = computed(() => {
+  const base = {
+    subjectName: authStore.userName || authStore.userEmail || 'John Doe',
+    geofenceName: 'Home',
+    timestamp: formatDate(PREVIEW_TIMESTAMP_UTC),
+    timestampUtc: PREVIEW_TIMESTAMP_UTC,
+    lat: '49.547085',
+    lon: '25.595918'
   }
+
+  return [
+    {
+      id: 'enter',
+      severity: 'success',
+      eventLabel: 'ENTER',
+      ...base,
+      eventCode: 'ENTER',
+      eventVerb: 'entered'
+    },
+    {
+      id: 'leave',
+      severity: 'warn',
+      eventLabel: 'LEAVE',
+      ...base,
+      eventCode: 'LEAVE',
+      eventVerb: 'left'
+    }
+  ]
+})
+
+const templatePreviewToasts = computed(() => {
+  return templatePreviewContexts.value.map((context) => {
+    const renderedTitle = renderTemplateWithContext(templateForm.value.titleTemplate, context)
+    const renderedBody = renderTemplateWithContext(templateForm.value.bodyTemplate, context)
+
+    return {
+      id: context.id,
+      severity: context.severity,
+      eventLabel: context.eventLabel,
+      title: renderedTitle,
+      body: renderedBody
+    }
+  })
 })
 
 function defaultRuleForm() {
@@ -411,6 +453,7 @@ function defaultTemplateForm() {
     destination: '',
     titleTemplate: '',
     bodyTemplate: '',
+    sendExternal: false,
     defaultForEnter: false,
     defaultForLeave: false,
     enabled: true
@@ -480,6 +523,13 @@ function setFocusedTemplateField(field) {
   focusedTemplateField.value = field
 }
 
+function updateTemplateField({ field, value }) {
+  if (!field || !Object.prototype.hasOwnProperty.call(templateForm.value, field)) {
+    return
+  }
+  templateForm.value[field] = value
+}
+
 function resolveInputElement(field) {
   const source = field === 'titleTemplate' ? templateTitleInput.value : templateBodyInput.value
   if (!source) {
@@ -508,6 +558,20 @@ function splitDestinationLines(destination, allowLegacySeparators = false) {
 
 function normalizeDestination(destination) {
   return splitDestinationLines(destination).join('\n')
+}
+
+function validateDestinationLines(destination) {
+  const destinationLines = splitDestinationLines(destination)
+  for (let index = 0; index < destinationLines.length; index += 1) {
+    const line = destinationLines[index]
+    if (line.includes(',') || line.includes(';')) {
+      return `Line ${index + 1} contains multiple URLs. Use one destination per line.`
+    }
+    if (!DESTINATION_URL_PATTERN.test(line)) {
+      return `Line ${index + 1} must be a valid URL (scheme://...).`
+    }
+  }
+  return ''
 }
 
 function confirmAction({
@@ -604,16 +668,13 @@ function validateTemplateForm() {
     errors.name = 'Template name must be 120 characters or less.'
   }
 
-  const destinationLines = splitDestinationLines(form.destination)
-  for (let index = 0; index < destinationLines.length; index += 1) {
-    const line = destinationLines[index]
-    if (line.includes(',') || line.includes(';')) {
-      errors.destination = `Line ${index + 1} contains multiple URLs. Use one destination per line.`
-      break
-    }
-    if (!DESTINATION_URL_PATTERN.test(line)) {
-      errors.destination = `Line ${index + 1} must be a valid URL (scheme://...).`
-      break
+  const requiresDestination = appriseEnabled.value && form.sendExternal
+  if (requiresDestination) {
+    const destinationError = validateDestinationLines(form.destination)
+    if (destinationError) {
+      errors.destination = destinationError
+    } else if (splitDestinationLines(form.destination).length === 0) {
+      errors.destination = 'Add at least one destination URL or disable external providers.'
     }
   }
 
@@ -970,6 +1031,93 @@ async function loadTemplates() {
   syncAllRuleAreasOnMap()
 }
 
+async function loadTemplateDeliveryCapabilities() {
+  const response = await apiService.get('/geofences/templates/capabilities')
+  const data = response?.data || {}
+  templateDeliveryCapabilities.value = {
+    appriseEnabled: !!data.appriseEnabled,
+    appriseConfigured: !!data.appriseConfigured
+  }
+}
+
+async function testTemplateConnection() {
+  if (!appriseEnabled.value) {
+    return
+  }
+
+  if (!templateForm.value.sendExternal) {
+    toast.add({
+      severity: 'warn',
+      summary: 'External providers disabled',
+      detail: 'Enable external delivery first to test connection.',
+      life: 3500
+    })
+    return
+  }
+
+  const destinationError = validateDestinationLines(templateForm.value.destination)
+  const destinationLines = splitDestinationLines(templateForm.value.destination)
+  if (destinationError || destinationLines.length === 0) {
+    const detail = destinationError || 'Add at least one destination URL to test connection.'
+    templateFormErrors.value.destination = detail
+    templateConnectionTestResult.value = null
+    toast.add({
+      severity: 'error',
+      summary: 'Invalid Destination URL',
+      detail,
+      life: 4500
+    })
+    focusFirstTemplateError({ destination: detail })
+    return
+  }
+
+  templateConnectionTestResult.value = null
+  testingTemplateConnection.value = true
+  try {
+    const enterPreview = templatePreviewToasts.value.find(item => item.id === 'enter')
+    const payload = {
+      destination: normalizeDestination(templateForm.value.destination),
+      title: enterPreview?.title?.trim() ? enterPreview.title.trim() : null,
+      body: enterPreview?.body?.trim() ? enterPreview.body.trim() : null
+    }
+
+    const response = await apiService.post('/geofences/templates/test-connection', payload)
+    const detail = response?.message || response?.data?.message || 'Connection test succeeded'
+    const statusCode = response?.data?.statusCode ?? null
+
+    templateConnectionTestResult.value = {
+      severity: 'success',
+      summary: 'Connection test succeeded',
+      detail,
+      statusCode
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Connection OK',
+      detail,
+      life: 4000
+    })
+  } catch (error) {
+    const detail = extractApiErrorMessage(error, 'Connection test failed')
+    const statusCode = error?.response?.data?.data?.statusCode ?? null
+    templateConnectionTestResult.value = {
+      severity: 'error',
+      summary: 'Connection test failed',
+      detail,
+      statusCode
+    }
+    toast.add({
+      severity: 'error',
+      summary: 'Connection Failed',
+      detail,
+      life: 5000
+    })
+  } finally {
+    testingTemplateConnection.value = false
+  }
+}
+
 async function refreshEvents() {
   if (refreshingEvents.value) {
     return
@@ -1117,13 +1265,28 @@ async function saveTemplate() {
 
   savingTemplate.value = true
   try {
+    const normalizedDestination = normalizeDestination(templateForm.value.destination)
+    let destination = ''
+    if (appriseEnabled.value) {
+      if (templateForm.value.sendExternal) {
+        destination = normalizedDestination
+      } else if (editingTemplateId.value && !appriseConfigured.value) {
+        destination = normalizedDestination
+      } else {
+        destination = ''
+      }
+    } else {
+      destination = editingTemplateId.value ? normalizedDestination : ''
+    }
+
     const payload = {
       ...templateForm.value,
       name: templateForm.value.name.trim(),
-      destination: normalizeDestination(templateForm.value.destination),
+      destination,
       titleTemplate: templateForm.value.titleTemplate?.trim() || '',
       bodyTemplate: templateForm.value.bodyTemplate?.trim() || ''
     }
+    delete payload.sendExternal
 
     if (editingTemplateId.value) {
       await apiService.patch(`/geofences/templates/${editingTemplateId.value}`, payload)
@@ -1134,7 +1297,7 @@ async function saveTemplate() {
     }
 
     resetTemplateForm()
-    await loadTemplates()
+    await Promise.all([loadTemplates(), loadTemplateDeliveryCapabilities()])
     await loadRules()
   } catch (error) {
     templateFormErrors.value.general = extractApiErrorMessage(error, 'Failed to save template')
@@ -1151,12 +1314,16 @@ async function saveTemplate() {
 
 function editTemplate(template) {
   clearTemplateFormErrors()
+  templateConnectionTestResult.value = null
   editingTemplateId.value = template.id
+  const destination = template.destination || ''
+  const hasExternalDestination = splitDestinationLines(destination, true).length > 0
   templateForm.value = {
     name: template.name,
-    destination: template.destination || '',
+    destination,
     titleTemplate: template.titleTemplate || '',
     bodyTemplate: template.bodyTemplate || '',
+    sendExternal: appriseEnabled.value ? hasExternalDestination : false,
     defaultForEnter: !!template.defaultForEnter,
     defaultForLeave: !!template.defaultForLeave,
     enabled: !!template.enabled
@@ -1201,6 +1368,7 @@ function resetTemplateForm() {
   editingTemplateId.value = null
   templateForm.value = defaultTemplateForm()
   clearTemplateFormErrors()
+  templateConnectionTestResult.value = null
   focusedTemplateField.value = 'bodyTemplate'
 }
 
@@ -1430,7 +1598,14 @@ function handleDefaultToggleChange(type, enabled) {
 onMounted(async () => {
   try {
     syncActiveTabFromRoute(route.query.tab)
-    await Promise.all([loadFriends(), loadTemplates(), loadRules(), refreshEvents(), loadLastKnownMapCenter()])
+    await Promise.all([
+      loadFriends(),
+      loadTemplateDeliveryCapabilities(),
+      loadTemplates(),
+      loadRules(),
+      refreshEvents(),
+      loadLastKnownMapCenter()
+    ])
     if ((!Array.isArray(ruleForm.value.subjectUserIds) || ruleForm.value.subjectUserIds.length === 0) && authStore.userId) {
       ruleForm.value.subjectUserIds = [normalizeSubjectId(authStore.userId)]
     }
@@ -1511,6 +1686,7 @@ watch(
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
     }
+    templateConnectionTestResult.value = null
   }
 )
 
@@ -1523,6 +1699,7 @@ watch(
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
     }
+    templateConnectionTestResult.value = null
   }
 )
 
@@ -1534,6 +1711,47 @@ watch(
     }
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => templateForm.value.sendExternal,
+  (enabled) => {
+    if (!enabled && templateFormErrors.value.destination) {
+      templateFormErrors.value.destination = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => appriseEnabled.value,
+  (enabled) => {
+    if (!enabled && templateForm.value.sendExternal) {
+      templateForm.value.sendExternal = false
+    }
+    if (!enabled && templateFormErrors.value.destination) {
+      templateFormErrors.value.destination = ''
+    }
+    if (!enabled) {
+      templateConnectionTestResult.value = null
+    }
+  }
+)
+
+watch(
+  () => appriseConfigured.value,
+  (configured) => {
+    if (!configured && templateForm.value.sendExternal) {
+      templateForm.value.sendExternal = false
+    }
+    if (!configured) {
+      templateConnectionTestResult.value = null
     }
   }
 )

@@ -9,12 +9,16 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.github.tess1o.geopulse.auth.service.CurrentUserService;
+import org.github.tess1o.geopulse.geofencing.client.AppriseClientResult;
 import org.github.tess1o.geopulse.geofencing.model.dto.*;
+import org.github.tess1o.geopulse.geofencing.service.AppriseNotificationService;
 import org.github.tess1o.geopulse.geofencing.service.GeofenceRuleService;
 import org.github.tess1o.geopulse.geofencing.service.NotificationTemplateService;
 import org.github.tess1o.geopulse.shared.api.ApiResponse;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Path("/api/geofences")
@@ -27,14 +31,17 @@ public class GeofenceResource {
 
     private final GeofenceRuleService ruleService;
     private final NotificationTemplateService templateService;
+    private final AppriseNotificationService appriseNotificationService;
     private final CurrentUserService currentUserService;
 
     @Inject
     public GeofenceResource(GeofenceRuleService ruleService,
                             NotificationTemplateService templateService,
+                            AppriseNotificationService appriseNotificationService,
                             CurrentUserService currentUserService) {
         this.ruleService = ruleService;
         this.templateService = templateService;
+        this.appriseNotificationService = appriseNotificationService;
         this.currentUserService = currentUserService;
     }
 
@@ -123,6 +130,57 @@ public class GeofenceResource {
             log.error("Failed to load notification templates", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity(ApiResponse.error("Failed to load notification templates"))
+                    .build();
+        }
+    }
+
+    @GET
+    @Path("/templates/capabilities")
+    public Response getTemplateCapabilities() {
+        try {
+            TemplateDeliveryCapabilitiesDto capabilities = TemplateDeliveryCapabilitiesDto.builder()
+                    .appriseEnabled(appriseNotificationService.isEnabled())
+                    .appriseConfigured(appriseNotificationService.isConfigured())
+                    .build();
+            return Response.ok(ApiResponse.success(capabilities)).build();
+        } catch (Exception e) {
+            log.error("Failed to load template delivery capabilities", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to load template delivery capabilities"))
+                    .build();
+        }
+    }
+
+    @POST
+    @Path("/templates/test-connection")
+    public Response testTemplateConnection(AppriseTestRequest request) {
+        try {
+            AppriseClientResult result = appriseNotificationService.testConnection(request);
+            if (result == null) {
+                return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                        .entity(ApiResponse.error("Apprise test failed: no response from client"))
+                        .build();
+            }
+
+            String message = result.getMessage() != null && !result.getMessage().isBlank()
+                    ? result.getMessage()
+                    : (result.isSuccess() ? "Apprise endpoint is reachable" : "Apprise test failed");
+
+            Map<String, Object> details = new LinkedHashMap<>();
+            details.put("statusCode", result.getStatusCode());
+            details.put("success", result.isSuccess());
+            details.put("message", message);
+
+            if (result.isSuccess()) {
+                return Response.ok(ApiResponse.success(details)).build();
+            }
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(message, details))
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to test template connection", e);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity(ApiResponse.error("Failed to test template connection"))
                     .build();
         }
     }

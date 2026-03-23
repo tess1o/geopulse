@@ -29,7 +29,8 @@ import org.github.tess1o.geopulse.geofencing.model.entity.*;
         CreateNotificationTemplateRequest.class,
         UpdateNotificationTemplateRequest.class,
         AppriseTestRequest.class,
-        AppriseClientResult.class
+        AppriseClientResult.class,
+        TemplateDeliveryCapabilitiesDto.class
 })
 public class GeofencingNativeConfig {
 }
