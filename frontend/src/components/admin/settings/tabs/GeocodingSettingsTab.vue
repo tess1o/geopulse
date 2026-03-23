@@ -61,6 +61,9 @@
         </template>
       </SettingItem>
     </SettingSection>
+    <Message severity="info" :closable="false" class="provider-switch-note">
+      Changing primary/fallback provider affects new lookups only. Existing cached geocoding records remain unchanged until reconciled.
+    </Message>
 
     <SettingSection title="Provider Availability">
       <SettingItem
@@ -416,6 +419,10 @@ const handleReset = (setting) => {
   color: var(--orange-500);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.provider-switch-note {
+  margin-bottom: 1rem;
 }
 
 @media (max-width: 768px) {

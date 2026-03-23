@@ -9,6 +9,23 @@ configure multiple providers with automatic fallback support. **This configurati
 |-------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `GEOPULSE_GEOCODING_DELAY_MS` | `1000`  | A delay in milliseconds between sending requests to geocoding provider.<br/> Nomatim's default rate limit is 1req/s. For selfhosted solutions change it to lower value |
 
+## Resilience Tuning
+
+These settings tune retry and circuit breaker behavior for geocoding provider calls and reconciliation jobs.
+
+| Property                                            | Default                               | Description                                                 |
+|-----------------------------------------------------|---------------------------------------|-------------------------------------------------------------|
+| `GEOPULSE_GEOCODING_RETRY_MAX_RETRIES`              | `5`                                   | Maximum retry attempts for provider calls                   |
+| `GEOPULSE_GEOCODING_RETRY_DELAY_MS`                 | `1250`                                | Base delay between provider retries (milliseconds)          |
+| `GEOPULSE_GEOCODING_RETRY_JITTER_MS`                | `250`                                 | Random jitter applied to retry delay (milliseconds)         |
+| `GEOPULSE_GEOCODING_CB_FAILURE_RATIO`               | `0.7`                                 | Failure ratio that opens circuit breaker                    |
+| `GEOPULSE_GEOCODING_CB_REQUEST_VOLUME`              | `10`                                  | Circuit breaker rolling window size                         |
+| `GEOPULSE_GEOCODING_CB_DELAY_SECONDS`               | `20`                                  | Time circuit remains open before half-open                  |
+| `GEOPULSE_GEOCODING_CB_SUCCESS_THRESHOLD`           | `2`                                   | Successful calls needed in half-open state to close breaker |
+| `GEOPULSE_GEOCODING_RECONCILE_ITEM_MAX_ATTEMPTS`    | `4`                                   | Max attempts per item during reconciliation jobs            |
+| `GEOPULSE_GEOCODING_RECONCILE_CIRCUIT_OPEN_WAIT_MS` | `20000`                               | Wait time before retry when circuit is open (milliseconds)  |
+| `GEOPULSE_GEOCODING_RECONCILE_INTER_ITEM_DELAY_MS`  | `${GEOPULSE_GEOCODING_DELAY_MS:1000}` | Delay between reconciliation items (milliseconds)           |
+
 ## Available Providers
 
 | Provider        | Free Tier                   | API Key Required | Rate Limits                 |
@@ -34,6 +51,9 @@ configure multiple providers with automatic fallback support. **This configurati
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | _(empty)_                             | Google Maps API key (required for Google Maps)                            |
 | `GEOPULSE_GEOCODING_MAPBOX_ENABLED`      | `false`                               | Enable Mapbox geocoding service                                           |
 | `GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN` | _(empty)_                             | Mapbox access token (required for Mapbox)                                 |
+
+> **Provider switch behavior:** changing primary/fallback provider affects only new lookups.
+> Existing cached geocoding records are reused until you run reconciliation from the Reverse Geocoding Management page.
 
 ## Service Setup
 
@@ -107,6 +127,18 @@ GEOPULSE_GEOCODING_MAPBOX_ACCESS_TOKEN=your_mapbox_token_here
 
 #Delay between requests to geocoding provider
 GEOPULSE_GEOCODING_DELAY_MS=1000
+
+# Resilience tuning (optional)
+GEOPULSE_GEOCODING_RETRY_MAX_RETRIES=5
+GEOPULSE_GEOCODING_RETRY_DELAY_MS=1250
+GEOPULSE_GEOCODING_RETRY_JITTER_MS=250
+GEOPULSE_GEOCODING_CB_FAILURE_RATIO=0.7
+GEOPULSE_GEOCODING_CB_REQUEST_VOLUME=10
+GEOPULSE_GEOCODING_CB_DELAY_SECONDS=20
+GEOPULSE_GEOCODING_CB_SUCCESS_THRESHOLD=2
+GEOPULSE_GEOCODING_RECONCILE_ITEM_MAX_ATTEMPTS=4
+GEOPULSE_GEOCODING_RECONCILE_CIRCUIT_OPEN_WAIT_MS=20000
+GEOPULSE_GEOCODING_RECONCILE_INTER_ITEM_DELAY_MS=1000
 ```
 
 ## Kubernetes / Helm

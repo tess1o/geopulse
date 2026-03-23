@@ -37,6 +37,11 @@
       </div>
     </template>
 
+    <BaseCard class="provider-switch-info">
+      <i class="pi pi-info-circle"></i>
+      <span>Provider changes affect new lookups only. Use Reconcile Selected/Reconcile All to refresh existing cached records.</span>
+    </BaseCard>
+
     <!-- Filters -->
     <BaseCard class="filter-section">
       <div class="filter-controls">
@@ -567,6 +572,19 @@ watch(pageSize, async () => {
   margin-bottom: var(--gp-spacing-lg);
   max-width: 100%;
   overflow: hidden;
+}
+
+.provider-switch-info {
+  margin-bottom: var(--gp-spacing-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gp-spacing-sm);
+  color: var(--gp-text-secondary);
+}
+
+.provider-switch-info i {
+  margin-top: 0.1rem;
+  color: var(--gp-primary);
 }
 
 .filter-controls {

@@ -17,7 +17,6 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.locationtech.jts.geom.Point;
 
 import java.net.URI;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -73,9 +72,10 @@ public class NominatimGeocodingService {
      * @param requestCoordinates The coordinates to reverse geocode
      * @return Structured geocoding result
      */
-    @Retry(delay = 500, delayUnit = ChronoUnit.MILLIS, jitter = 100)
+    // Retry/circuit breaker thresholds are tuned globally via quarkus.fault-tolerance.global.* properties.
+    @Retry
     @Bulkhead(value = 1, waitingTaskQueue = 10) // Max 1 concurrent request, queue up to 10
-    @CircuitBreaker(failureRatio = 0.5, requestVolumeThreshold = 4, delay = 30, delayUnit = ChronoUnit.SECONDS)
+    @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Nominatim provider is disabled"));

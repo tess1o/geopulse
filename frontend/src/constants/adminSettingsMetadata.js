@@ -59,11 +59,11 @@ export const SETTING_METADATA = {
   // Geocoding Settings
   'geocoding.primary-provider': {
     label: 'Primary Provider',
-    description: 'Primary geocoding service'
+    description: 'Primary geocoding service for new lookups only; existing cached records stay unchanged until reconciled'
   },
   'geocoding.fallback-provider': {
     label: 'Fallback Provider',
-    description: 'Fallback geocoding service (optional)'
+    description: 'Fallback for new provider calls only; does not rewrite existing cached records'
   },
   'geocoding.delay-ms': {
     label: 'Request Delay',

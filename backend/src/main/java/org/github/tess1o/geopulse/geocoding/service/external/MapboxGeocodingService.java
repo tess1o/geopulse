@@ -15,8 +15,6 @@ import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.locationtech.jts.geom.Point;
 
-import java.time.temporal.ChronoUnit;
-
 /**
  * Mapbox geocoding service that handles API calls and response transformation.
  * Returns structured FormattableGeocodingResult instead of raw responses.
@@ -47,9 +45,10 @@ public class MapboxGeocodingService {
      * @param requestCoordinates The coordinates to reverse geocode
      * @return Structured geocoding result
      */
-    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS, jitter = 100)
+    // Retry/circuit breaker thresholds are tuned globally via quarkus.fault-tolerance.global.* properties.
+    @Retry
     @Bulkhead(value = 3, waitingTaskQueue = 15) // Max 3 concurrent requests, moderate queue
-    @CircuitBreaker(failureRatio = 0.55, requestVolumeThreshold = 6, delay = 45, delayUnit = ChronoUnit.SECONDS)
+    @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Mapbox provider is disabled"));
