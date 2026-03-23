@@ -15,8 +15,6 @@ import org.github.tess1o.geopulse.geocoding.exception.GeocodingException;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.locationtech.jts.geom.Point;
 
-import java.time.temporal.ChronoUnit;
-
 /**
  * Google Maps geocoding service that handles API calls and response transformation.
  * Returns structured FormattableGeocodingResult instead of raw responses.
@@ -47,9 +45,10 @@ public class GoogleMapsGeocodingService {
      * @param requestCoordinates The coordinates to reverse geocode
      * @return Structured geocoding result
      */
-    @Retry(maxRetries = 3, delay = 500, delayUnit = ChronoUnit.MILLIS, jitter = 100)
+    // Retry/circuit breaker thresholds are tuned globally via quarkus.fault-tolerance.global.* properties.
+    @Retry
     @Bulkhead(value = 5, waitingTaskQueue = 20) // Max 5 concurrent requests, larger queue
-    @CircuitBreaker(failureRatio = 0.6, requestVolumeThreshold = 10, delay = 60, delayUnit = ChronoUnit.SECONDS)
+    @CircuitBreaker
     public Uni<FormattableGeocodingResult> reverseGeocode(Point requestCoordinates) {
         if (!isEnabled()) {
             return Uni.createFrom().failure(new GeocodingException("Google Maps provider is disabled"));

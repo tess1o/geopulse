@@ -41,6 +41,7 @@
           </template>
         </Select>
         <small class="field-hint">The provider will be used to fetch new geocoding data</small>
+        <small class="field-hint">Use Reconcile Selected/Reconcile All to refresh old records with the selected provider after switching providers.</small>
       </div>
 
       <!-- Reconciliation Info -->
@@ -83,6 +84,7 @@
             <li>This will update the display name, city, and country fields</li>
             <li>Changes will be synchronized across all timeline stays</li>
             <li>If reconciliation fails, original data will be kept</li>
+            <li>Provider changes in settings do not rewrite existing cached entries automatically</li>
             <li>This operation cannot be undone</li>
           </ul>
         </div>

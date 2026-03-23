@@ -7,7 +7,9 @@ import jakarta.transaction.Transactional;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
+import org.eclipse.microprofile.faulttolerance.exceptions.CircuitBreakerOpenException;
 import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService;
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
@@ -47,6 +49,15 @@ public class ReverseGeocodingManagementService {
     private final GeocodingCopyOnWriteHandler copyOnWriteHandler;
     private final ReconciliationJobProgressService reconciliationProgressService;
     private final ManagedExecutor managedExecutor;
+
+    @ConfigProperty(name = "geocoding.reconcile.item.max-attempts", defaultValue = "3")
+    int reconcileItemMaxAttempts;
+
+    @ConfigProperty(name = "geocoding.reconcile.circuit-open-wait.ms", defaultValue = "15000")
+    long reconcileCircuitOpenWaitMs;
+
+    @ConfigProperty(name = "geocoding.reconcile.inter-item-delay.ms", defaultValue = "1000")
+    long reconcileInterItemDelayMs;
 
     @Inject
     public ReverseGeocodingManagementService(
@@ -333,13 +344,16 @@ public class ReverseGeocodingManagementService {
 
         for (int i = 0; i < ids.size(); i++) {
             Long id = ids.get(i);
+            if (i > 0) {
+                sleepWithInterruptHandling(Math.max(0, reconcileInterItemDelayMs),
+                        "inter-item reconciliation delay", jobId, id);
+            }
 
-            try {
-                reconcileWithProvider(userId, id, providerName);
+            boolean reconciled = reconcileWithRetry(userId, id, providerName, jobId);
+            if (reconciled) {
                 successCount++;
-            } catch (Exception e) {
+            } else {
                 failedCount++;
-                log.warn("Failed to reconcile geocoding result {} in job {}: {}", id, jobId, e.getMessage());
             }
 
             // Update progress after each item
@@ -349,6 +363,68 @@ public class ReverseGeocodingManagementService {
         // Mark complete
         reconciliationProgressService.completeJob(jobId);
         log.info("Reconciliation job {} completed: {} success, {} failed", jobId, successCount, failedCount);
+    }
+
+    /**
+     * Job-level retry wrapper for reconciliation.
+     * Provider-level @Retry/@CircuitBreaker remains on provider methods; this loop controls
+     * per-item retry budget and circuit-open cooldown between attempts within bulk jobs.
+     */
+    private boolean reconcileWithRetry(UUID userId, Long geocodingId, String providerName, UUID jobId) {
+        int maxAttempts = Math.max(1, reconcileItemMaxAttempts);
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                reconcileWithProvider(userId, geocodingId, providerName);
+                return true;
+            } catch (Exception e) {
+                boolean circuitOpen = isCircuitBreakerOpenFailure(e);
+                if (attempt >= maxAttempts) {
+                    log.warn("Failed to reconcile geocoding result {} in job {} after {} attempts: {}",
+                            geocodingId, jobId, attempt, e.getMessage());
+                    return false;
+                }
+
+                if (circuitOpen) {
+                    long waitMs = Math.max(0, reconcileCircuitOpenWaitMs);
+                    log.warn("Circuit breaker open while reconciling geocoding result {} in job {}. " +
+                                    "Waiting {}ms before retry {}/{}",
+                            geocodingId, jobId, waitMs, attempt + 1, maxAttempts);
+                    sleepWithInterruptHandling(waitMs, "circuit-breaker cooldown", jobId, geocodingId);
+                } else {
+                    log.warn("Failed to reconcile geocoding result {} in job {} (attempt {}/{}): {}",
+                            geocodingId, jobId, attempt, maxAttempts, e.getMessage());
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isCircuitBreakerOpenFailure(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof CircuitBreakerOpenException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private void sleepWithInterruptHandling(long delayMs, String reason, UUID jobId, Long geocodingId) {
+        if (delayMs <= 0) {
+            return;
+        }
+
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "Reconciliation job " + jobId + " interrupted during " + reason +
+                            " for geocoding " + geocodingId, e);
+        }
     }
 
     /**

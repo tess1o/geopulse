@@ -85,11 +85,21 @@ Notes:
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_MAX_ENTRIES` | `200` | Immich search cache Property: \`immich.photos.search-cache-max-entries\`. | Numeric value; keep positive unless documented otherwise. | Backend restart |
 | `GEOPULSE_IMMICH_PHOTO_SEARCH_CACHE_TTL_SECONDS` | `300` | Immich search cache Property: \`immich.photos.search-cache-ttl-seconds\`. | Non-negative numeric value. | Backend restart |
 
-### Geocoding and GeoNames (27)
+### Geocoding and GeoNames (37)
 
 | Variable | Default | Comment | Restrictions | Restart |
 |---|---|---|---|---|
 | `GEOPULSE_GEOCODING_DELAY_MS` | `1000` | Delay between geocoding requests (milliseconds) Property: \`geocoding.provider.delay.ms\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_RETRY_MAX_RETRIES` | `5` | Maximum retry attempts for geocoding provider calls Property: \`quarkus.fault-tolerance.global.retry.max-retries\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_RETRY_DELAY_MS` | `1250` | Delay between geocoding provider retry attempts (milliseconds) Property: \`quarkus.fault-tolerance.global.retry.delay\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_RETRY_JITTER_MS` | `250` | Retry delay jitter for geocoding provider calls (milliseconds) Property: \`quarkus.fault-tolerance.global.retry.jitter\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_CB_FAILURE_RATIO` | `0.7` | Circuit breaker failure ratio threshold for geocoding provider calls Property: \`quarkus.fault-tolerance.global.circuit-breaker.failure-ratio\`. | Decimal between 0 and 1. | Backend restart |
+| `GEOPULSE_GEOCODING_CB_REQUEST_VOLUME` | `10` | Circuit breaker rolling window size for geocoding provider calls Property: \`quarkus.fault-tolerance.global.circuit-breaker.request-volume-threshold\`. | Positive numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_CB_DELAY_SECONDS` | `20` | Circuit breaker open-state delay before half-open probe (seconds) Property: \`quarkus.fault-tolerance.global.circuit-breaker.delay\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_CB_SUCCESS_THRESHOLD` | `2` | Successful half-open calls required to close geocoding circuit breaker Property: \`quarkus.fault-tolerance.global.circuit-breaker.success-threshold\`. | Positive numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_RECONCILE_ITEM_MAX_ATTEMPTS` | `4` | Maximum attempts per record during geocoding reconciliation jobs Property: \`geocoding.reconcile.item.max-attempts\`. | Positive numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_RECONCILE_CIRCUIT_OPEN_WAIT_MS` | `20000` | Wait before retrying reconciliation when circuit breaker is open (milliseconds) Property: \`geocoding.reconcile.circuit-open-wait.ms\`. | Non-negative numeric value. | Backend restart |
+| `GEOPULSE_GEOCODING_RECONCILE_INTER_ITEM_DELAY_MS` | `1000` | Delay between reconciliation job items (milliseconds) Property: \`geocoding.reconcile.inter-item-delay.ms\`. | Non-negative numeric value. | Backend restart |
 | `GEOPULSE_GEOCODING_FALLBACK_PROVIDER` | `(empty)` | Fallback geocoding provider (optional) Property: \`geocoding.provider.fallback\`. | Empty or one of \`nominatim\`, \`photon\`, \`googlemaps\`, \`mapbox\`. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_API_KEY` | `(empty)` | API Keys (can also be set via encrypted storage in admin panel) Property: \`geocoding.googlemaps.api-key\`. | Sensitive secret. Store in secret manager; do not commit to VCS. | Backend restart |
 | `GEOPULSE_GEOCODING_GOOGLE_MAPS_ENABLED` | `false` | Property: \`geocoding.provider.googlemaps.enabled\`. | \`true\` or \`false\`. | Backend restart |
