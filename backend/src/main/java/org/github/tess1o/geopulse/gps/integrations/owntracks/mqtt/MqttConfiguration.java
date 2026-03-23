@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
+import java.util.Optional;
 
 /**
  * Configuration class for conditional MQTT support.
@@ -55,11 +56,11 @@ public class MqttConfiguration {
 
     @Inject
     @ConfigProperty(name = "geopulse.mqtt.tls.truststore.path")
-    String tlsTruststorePath;
+    Optional<String> tlsTruststorePath;
 
     @Inject
     @ConfigProperty(name = "geopulse.mqtt.tls.truststore.password")
-    String tlsTruststorePassword;
+    Optional<String> tlsTruststorePassword;
 
     @Inject
     @ConfigProperty(name = "geopulse.mqtt.tls.truststore.type")
@@ -67,11 +68,11 @@ public class MqttConfiguration {
 
     @Inject
     @ConfigProperty(name = "geopulse.mqtt.tls.keystore.path")
-    String tlsKeystorePath;
+    Optional<String> tlsKeystorePath;
 
     @Inject
     @ConfigProperty(name = "geopulse.mqtt.tls.keystore.password")
-    String tlsKeystorePassword;
+    Optional<String> tlsKeystorePassword;
 
     @Inject
     @ConfigProperty(name = "geopulse.mqtt.tls.keystore.type")
@@ -129,17 +130,21 @@ public class MqttConfiguration {
     public SSLSocketFactory buildTlsSocketFactory() throws GeneralSecurityException, IOException {
         SSLContext sslContext = SSLContext.getInstance(tlsProtocol);
 
+        String keyStorePath = trimmed(tlsKeystorePath);
+        String keyStorePassword = tlsKeystorePassword.orElse("");
         KeyManager[] keyManagers = null;
-        if (hasText(tlsKeystorePath)) {
-            KeyStore keyStore = loadKeyStore(tlsKeystorePath, tlsKeystoreType, tlsKeystorePassword);
+        if (!keyStorePath.isEmpty()) {
+            KeyStore keyStore = loadKeyStore(keyStorePath, tlsKeystoreType, keyStorePassword);
             KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            keyManagerFactory.init(keyStore, tlsKeystorePassword.toCharArray());
+            keyManagerFactory.init(keyStore, keyStorePassword.toCharArray());
             keyManagers = keyManagerFactory.getKeyManagers();
         }
 
+        String trustStorePath = trimmed(tlsTruststorePath);
+        String trustStorePassword = tlsTruststorePassword.orElse("");
         TrustManager[] trustManagers = null;
-        if (hasText(tlsTruststorePath)) {
-            KeyStore trustStore = loadKeyStore(tlsTruststorePath, tlsTruststoreType, tlsTruststorePassword);
+        if (!trustStorePath.isEmpty()) {
+            KeyStore trustStore = loadKeyStore(trustStorePath, tlsTruststoreType, trustStorePassword);
             TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             trustManagerFactory.init(trustStore);
             trustManagers = trustManagerFactory.getTrustManagers();
@@ -158,12 +163,14 @@ public class MqttConfiguration {
     }
 
     private boolean validateTlsFiles() {
-        if (hasText(tlsTruststorePath) && !isReadableFile(tlsTruststorePath)) {
-            log.error("MQTT TLS truststore file does not exist or is not readable: {}", tlsTruststorePath);
+        String trustStorePath = trimmed(tlsTruststorePath);
+        if (!trustStorePath.isEmpty() && !isReadableFile(trustStorePath)) {
+            log.error("MQTT TLS truststore file does not exist or is not readable: {}", trustStorePath);
             return false;
         }
-        if (hasText(tlsKeystorePath) && !isReadableFile(tlsKeystorePath)) {
-            log.error("MQTT TLS keystore file does not exist or is not readable: {}", tlsKeystorePath);
+        String keyStorePath = trimmed(tlsKeystorePath);
+        if (!keyStorePath.isEmpty() && !isReadableFile(keyStorePath)) {
+            log.error("MQTT TLS keystore file does not exist or is not readable: {}", keyStorePath);
             return false;
         }
         return true;
@@ -181,5 +188,9 @@ public class MqttConfiguration {
 
     private boolean hasText(String value) {
         return value != null && !value.trim().isEmpty();
+    }
+
+    private String trimmed(Optional<String> value) {
+        return value.map(String::trim).orElse("");
     }
 }
