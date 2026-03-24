@@ -10,7 +10,12 @@
     />
     <span v-if="unreadCount > 0" class="gp-bell-badge">{{ unreadBadgeValue }}</span>
 
-    <div v-if="panelOpen" class="gp-notification-panel">
+    <div
+      v-if="panelOpen"
+      ref="panelRef"
+      class="gp-notification-panel"
+      :style="panelInlineStyle"
+    >
       <div class="gp-notification-panel-header">
         <div class="gp-notification-panel-title">Notifications</div>
         <Tag v-if="unreadCount > 0" :value="`${unreadCount} unread`" severity="danger" />
@@ -97,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -112,8 +117,10 @@ const notificationsStore = useNotificationsStore()
 const { items, unreadCount, browserNotificationsEnabled, browserNotificationsSupported } = storeToRefs(notificationsStore)
 
 const rootRef = ref(null)
+const panelRef = ref(null)
 const panelOpen = ref(false)
 const activeFilter = ref('unread')
+const panelInlineStyle = ref({})
 
 const unreadBadgeValue = computed(() => {
   return unreadCount.value > 99 ? '99+' : unreadCount.value
@@ -129,6 +136,42 @@ const visibleItems = computed(() => {
 
 const togglePanel = () => {
   panelOpen.value = !panelOpen.value
+}
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+const updatePanelPosition = () => {
+  if (!panelOpen.value || !rootRef.value || !panelRef.value) {
+    return
+  }
+
+  const rootRect = rootRef.value.getBoundingClientRect()
+  const panelEl = panelRef.value
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const horizontalGap = 8
+  const verticalGap = 8
+
+  const panelWidth = panelEl.offsetWidth
+  const panelHeight = panelEl.offsetHeight
+
+  const preferredLeft = rootRect.right - panelWidth
+  const minLeft = horizontalGap
+  const maxLeft = Math.max(minLeft, viewportWidth - panelWidth - horizontalGap)
+  const clampedLeft = clamp(preferredLeft, minLeft, maxLeft)
+
+  const preferredTop = rootRect.bottom + verticalGap
+  const minTop = verticalGap
+  const maxTop = Math.max(minTop, viewportHeight - panelHeight - verticalGap)
+  const clampedTop = clamp(preferredTop, minTop, maxTop)
+
+  panelInlineStyle.value = {
+    position: 'fixed',
+    left: `${clampedLeft}px`,
+    top: `${clampedTop}px`,
+    right: 'auto',
+    zIndex: 3200
+  }
 }
 
 const closePanel = () => {
@@ -224,11 +267,24 @@ const extractApiErrorMessage = (error, fallback) => (
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside)
   document.addEventListener('keydown', handleKeydown)
+  window.addEventListener('resize', updatePanelPosition)
+  window.addEventListener('scroll', updatePanelPosition, true)
 })
 
 onUnmounted(() => {
   document.removeEventListener('mousedown', handleClickOutside)
   document.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', updatePanelPosition)
+  window.removeEventListener('scroll', updatePanelPosition, true)
+})
+
+watch(panelOpen, async (isOpen) => {
+  if (!isOpen) {
+    panelInlineStyle.value = {}
+    return
+  }
+  await nextTick()
+  updatePanelPosition()
 })
 </script>
 
@@ -536,7 +592,7 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .gp-notification-panel {
-    right: -1rem;
+    width: min(420px, calc(100vw - 1rem));
   }
 }
 </style>

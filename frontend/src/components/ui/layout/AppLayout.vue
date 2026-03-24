@@ -160,8 +160,9 @@ onUnmounted(() => {
 
 /* Navbar */
 .gp-app-navbar {
+  position: relative;
   flex-shrink: 0;
-  z-index: 1000;
+  z-index: 2000;
   height: 60px;
   background: var(--gp-surface-white);
   border-bottom: 1px solid var(--gp-border-light);
@@ -172,6 +173,8 @@ onUnmounted(() => {
 
 /* Main Content */
 .gp-app-main {
+  position: relative;
+  z-index: 1;
   flex: 1;
   display: flex;
   flex-direction: column;
