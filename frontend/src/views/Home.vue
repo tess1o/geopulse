@@ -16,8 +16,8 @@
             />
 
             <p class="hero-eyebrow">Self-hosted location timeline</p>
-            <h1 class="hero-title">Your movement history, on your server.</h1>
-            <p class="hero-subtitle">
+            <h1 class="hero-title">{{ heroTitle }}</h1>
+            <p v-if="!isMobileViewport" class="hero-subtitle">
               GeoPulse turns raw GPS points into stays, trips, maps, and insights while your data stays under your control.
             </p>
 
@@ -89,12 +89,12 @@
             <div v-else class="status-card signed-in-card">
               <p class="card-eyebrow">Welcome back</p>
               <h2 class="card-title">Continue where you left off</h2>
-              <p class="card-subtitle">
+              <p v-if="!isMobileViewport" class="card-subtitle">
                 Jump straight into your preferred view or pick a quick action.
               </p>
 
-              <div class="continue-card">
-                <div class="continue-meta">
+              <div class="continue-card" :class="{ 'continue-card-mobile': isMobileViewport }">
+                <div v-if="!isMobileViewport" class="continue-meta">
                   <p class="continue-label">
                     {{ hasDefaultRedirectUrl ? 'Your default start page' : 'Recommended start page' }}
                   </p>
@@ -102,7 +102,7 @@
                 </div>
                 <Button
                   :label="`Continue to ${continueDestination.label}`"
-                  :icon="continueDestination.icon"
+                  :icon="isMobileViewport ? undefined : continueDestination.icon"
                   as="router-link"
                   :to="continueDestination.path"
                   class="cta-button cta-primary continue-button"
@@ -110,15 +110,17 @@
                 />
               </div>
 
-              <div class="quick-actions">
+              <div class="quick-actions" :class="{ 'quick-actions-mobile': isMobileViewport }">
                 <Button
-                  v-for="action in quickActions"
+                  v-for="action in isMobileViewport ? secondaryQuickActions : quickActions"
                   :key="action.to"
                   :label="action.label"
-                  :icon="action.icon"
+                  :icon="isMobileViewport ? undefined : action.icon"
                   as="router-link"
                   :to="action.to"
                   class="quick-action-button"
+                  :class="{ 'quick-action-link': isMobileViewport }"
+                  :text="isMobileViewport"
                 />
               </div>
             </div>
@@ -155,7 +157,7 @@
         </div>
 
         <Button
-          v-if="!isDesktopViewport && hasHiddenFeatures"
+          v-if="!isDesktopViewport && !isMobileViewport && hasHiddenFeatures"
           :label="showAllFeatures ? 'Show fewer' : 'Show all capabilities'"
           :icon="showAllFeatures ? 'pi pi-angle-up' : 'pi pi-angle-down'"
           severity="secondary"
@@ -242,6 +244,7 @@ const features = ref([
 const initialVisibleFeatureCount = 3
 const showAllFeatures = ref(false)
 const isDesktopViewport = ref(false)
+const isMobileViewport = ref(false)
 
 const authStore = useAuthStore()
 const authStatus = ref({ ...DEFAULT_AUTH_STATUS })
@@ -249,7 +252,7 @@ const oidcProviders = ref([])
 const isResolvingAuth = ref(true)
 
 const visibleFeatures = computed(() => {
-  if (isDesktopViewport.value || showAllFeatures.value) {
+  if (isDesktopViewport.value || isMobileViewport.value || showAllFeatures.value) {
     return features.value
   }
   return features.value.slice(0, initialVisibleFeatureCount)
@@ -286,6 +289,17 @@ const continueDestination = computed(() => {
     ? authStore.defaultRedirectUrl
     : '/app/timeline'
   return buildDestination(preferredPath)
+})
+
+const heroTitle = computed(() => {
+  if (isMobileViewport.value) {
+    return 'Your movement. Your server.'
+  }
+  return 'Your movement history, on your server.'
+})
+
+const secondaryQuickActions = computed(() => {
+  return quickActions.filter((action) => action.to !== continueDestination.value.path)
 })
 
 const normalizeDestinationPath = (path) => {
@@ -341,6 +355,7 @@ const updateViewportState = () => {
   }
 
   isDesktopViewport.value = window.innerWidth >= 1024
+  isMobileViewport.value = window.innerWidth < 768
 }
 
 const toggleFeatureVisibility = () => {
@@ -403,6 +418,22 @@ onBeforeUnmount(() => {
   --home-accent-hover: var(--gp-primary-hover, #0d615a);
   --home-accent-soft: rgba(15, 118, 110, 0.14);
   --home-focus: rgba(13, 148, 136, 0.28);
+  --home-feature-card-bg: #fcfdff;
+  --home-feature-border: #7a879b;
+  --home-feature-icon-blob: linear-gradient(150deg, rgba(15, 118, 110, 0.24) 0%, rgba(14, 165, 233, 0.2) 100%);
+  --home-feature-icon-blob-ring: rgba(15, 118, 110, 0.3);
+  --home-feature-icon-shadow: 0 8px 18px rgba(14, 116, 144, 0.18);
+  --home-feature-icon-color: var(--home-accent);
+  --home-feature-icon-highlight: rgba(255, 255, 255, 0.34);
+  --home-feature-icon-stroke: 0.25px currentColor;
+  --home-feature-icon-glyph-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
+  --home-tag-font-size: 0.78rem;
+  --home-tag-letter-spacing: 0.08em;
+  --home-tag-line-height: 1.2;
+  --home-hero-title-size: clamp(2rem, 7vw, 3.2rem);
+  --home-logo-size: calc(var(--home-hero-title-size) * 1.7);
+  --home-logo-circle-offset: 29.2%;
+  --home-logo-tag-gap: 3.375rem;
   --home-hero-gradient: linear-gradient(145deg, #f8fbff 0%, #edf3ff 52%, #e8f0ff 100%);
   --home-hero-glow: radial-gradient(ellipse at 24% 14%, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0) 58%),
     radial-gradient(ellipse at 80% 88%, rgba(14, 165, 233, 0.16) 0%, rgba(14, 165, 233, 0) 62%);
@@ -441,7 +472,9 @@ onBeforeUnmount(() => {
 .home-container {
   position: relative;
   z-index: 2;
-  width: min(1180px, 100%);
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -485,20 +518,24 @@ onBeforeUnmount(() => {
 
 .hero-copy {
   position: relative;
+  text-align: left;
 }
 
 .hero-logo {
-  width: clamp(8.5rem, 20vw, 12rem);
+  display: block;
+  width: var(--home-logo-size);
   height: auto;
-  margin-bottom: 0.9rem;
+  transform: translateX(calc(-1 * var(--home-logo-circle-offset)));
+  margin-bottom: var(--home-logo-tag-gap);
   filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.1));
 }
 
 .hero-eyebrow {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--home-tag-font-size);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--home-tag-letter-spacing);
+  line-height: var(--home-tag-line-height);
   text-transform: uppercase;
   color: var(--home-accent);
 }
@@ -506,8 +543,8 @@ onBeforeUnmount(() => {
 .hero-title {
   margin: 0.45rem 0 0.65rem;
   max-width: 17ch;
-  font-size: clamp(2rem, 7vw, 3.2rem);
-  line-height: 1.07;
+  font-size: var(--home-hero-title-size);
+  line-height: 1.13;
   letter-spacing: -0.025em;
   color: var(--home-text-primary);
 }
@@ -517,10 +554,11 @@ onBeforeUnmount(() => {
   max-width: 58ch;
   color: var(--home-text-secondary);
   font-size: clamp(1rem, 2.1vw, 1.15rem);
-  line-height: 1.56;
+  line-height: 1.74;
 }
 
 .hero-panel {
+  width: 100%;
   min-width: 0;
 }
 
@@ -561,8 +599,9 @@ onBeforeUnmount(() => {
 
 .card-eyebrow {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  font-size: var(--home-tag-font-size);
+  letter-spacing: var(--home-tag-letter-spacing);
+  line-height: var(--home-tag-line-height);
   text-transform: uppercase;
   font-weight: 700;
   color: var(--home-accent);
@@ -697,9 +736,20 @@ onBeforeUnmount(() => {
   margin-top: 0.2rem;
 }
 
+.continue-card-mobile {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .quick-actions {
   display: grid;
   gap: 0.6rem;
+}
+
+.quick-actions-mobile {
+  gap: 0.22rem;
+  margin-top: 0.2rem;
 }
 
 .quick-action-button.p-button {
@@ -723,6 +773,28 @@ onBeforeUnmount(() => {
 
 .quick-action-button.p-button:focus {
   box-shadow: 0 0 0 3px var(--home-focus);
+}
+
+.quick-action-link.p-button {
+  min-height: auto;
+  padding: 0.38rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--home-accent);
+  font-weight: 600;
+}
+
+.quick-action-link.p-button:not(:disabled):hover {
+  border: 0;
+  background: transparent;
+  color: var(--home-accent-hover);
+  text-decoration: underline;
+}
+
+.quick-action-link.p-button:focus {
+  box-shadow: none;
+  text-decoration: underline;
 }
 
 .features-section {
@@ -757,9 +829,9 @@ onBeforeUnmount(() => {
 
 .feature-card {
   width: 100%;
-  border: 1px solid var(--home-border);
+  border: 1px solid var(--home-feature-border);
   border-radius: 0.95rem;
-  background: var(--home-card-bg);
+  background: var(--home-feature-card-bg);
   box-shadow: var(--home-shadow);
 }
 
@@ -772,7 +844,7 @@ onBeforeUnmount(() => {
 }
 
 .feature-card :deep(.p-card-body) {
-  padding: 1.02rem;
+  padding: 1.02rem 1.08rem 1.06rem;
 }
 
 .feature-card :deep(.p-card-content) {
@@ -781,23 +853,41 @@ onBeforeUnmount(() => {
 
 .feature-content {
   display: flex;
+  align-items: flex-start;
   gap: 0.7rem;
 }
 
 .feature-icon {
+  position: relative;
   width: 2.3rem;
   height: 2.3rem;
   border-radius: 0.7rem;
-  background: var(--home-accent-soft);
+  background: var(--home-feature-icon-blob);
+  border: 1px solid var(--home-feature-icon-blob-ring);
+  box-shadow: var(--home-feature-icon-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.feature-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0.16rem;
+  border-radius: 0.52rem;
+  background: var(--home-feature-icon-highlight);
+  pointer-events: none;
 }
 
 .feature-icon i {
-  font-size: 1.05rem;
-  color: var(--home-accent);
+  position: relative;
+  z-index: 1;
+  font-size: 1.12rem;
+  color: var(--home-feature-icon-color);
+  text-shadow: var(--home-feature-icon-glyph-shadow);
+  -webkit-text-stroke: var(--home-feature-icon-stroke);
 }
 
 .feature-text h3 {
@@ -810,6 +900,79 @@ onBeforeUnmount(() => {
   color: var(--home-text-secondary);
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+@media (max-width: 767px) {
+  .top-bar {
+    padding: 0.85rem 0 0.55rem;
+  }
+
+  .hero-grid {
+    gap: 0.85rem;
+    padding: 0.35rem 0 1.35rem;
+  }
+
+  .hero-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-logo {
+    width: auto;
+    height: 80px;
+    transform: none;
+    margin-bottom: calc(var(--home-logo-tag-gap) - 0.25rem);
+  }
+
+  .hero-eyebrow,
+  .hero-title {
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: calc(var(--home-hero-title-size) * 0.82);
+    max-width: 12.8ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-panel {
+    margin-top: 0.1rem;
+  }
+
+  .status-card {
+    padding: 1.1rem 1rem 1.05rem;
+  }
+
+  .signed-in-card {
+    gap: 0.75rem;
+  }
+
+  .signed-in-card .card-title {
+    margin-bottom: 0.08rem;
+  }
+
+  .signed-in-card .continue-button {
+    margin-top: 0;
+  }
+
+  .features-section {
+    padding: 1.35rem 0 2rem;
+  }
+
+  .section-header {
+    margin-bottom: 0.72rem;
+  }
+
+  .feature-track {
+    gap: 0.72rem;
+  }
+
+  .mobile-feature-toggle {
+    margin-top: 0.75rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -837,18 +1000,19 @@ onBeforeUnmount(() => {
   }
 
   .hero-grid {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
-    align-items: start;
-    gap: 2rem;
+    grid-template-columns: minmax(0, 6.75fr) minmax(26.75rem, 5.25fr);
+    align-items: center;
+    gap: clamp(4rem, 6vw, 5rem);
     padding-bottom: 3.2rem;
   }
 
   .hero-copy {
-    padding-top: 1.2rem;
+    padding-top: 0;
   }
 
   .status-card {
     min-height: 26.5rem;
+    padding: 1.35rem 2rem 1.4rem;
   }
 
   .feature-track {
@@ -864,7 +1028,11 @@ onBeforeUnmount(() => {
 
 @media (max-width: 430px) {
   .hero-title {
-    max-width: 12ch;
+    max-width: 11.8ch;
+  }
+
+  .hero-logo {
+    height: 80px;
   }
 
   .status-card {
@@ -894,6 +1062,15 @@ onBeforeUnmount(() => {
   --home-quick-hover-bg: rgba(30, 64, 175, 0.24);
   --home-quick-border: rgba(148, 163, 184, 0.55);
   --home-quick-hover-border: rgba(96, 165, 250, 0.75);
+  --home-feature-card-bg: rgba(15, 23, 42, 0.72);
+  --home-feature-border: rgba(148, 163, 184, 0.78);
+  --home-feature-icon-blob: linear-gradient(150deg, rgba(30, 64, 175, 0.38) 0%, rgba(30, 64, 175, 0.22) 100%);
+  --home-feature-icon-blob-ring: rgba(147, 197, 253, 0.65);
+  --home-feature-icon-shadow: 0 8px 22px rgba(30, 64, 175, 0.45);
+  --home-feature-icon-color: #e2e8f0;
+  --home-feature-icon-highlight: rgba(15, 23, 42, 0.24);
+  --home-feature-icon-stroke: 0.35px currentColor;
+  --home-feature-icon-glyph-shadow: 0 1px 0 rgba(15, 23, 42, 0.55), 0 0 8px rgba(147, 197, 253, 0.35);
 }
 
 .p-dark .home-page::before {
