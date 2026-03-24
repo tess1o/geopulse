@@ -25,7 +25,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -75,7 +74,7 @@ class UserNotificationServicesIntegrationTest {
                 "eventVerb", "entered"
         ));
 
-        List<UserNotificationDto> list = userNotificationService.listNotifications(owner.getId(), 50, false, null);
+        List<UserNotificationDto> list = userNotificationService.listNotifications(owner.getId(), 50);
         assertThat(list).hasSize(1);
         UserNotificationDto dto = list.getFirst();
         assertThat(dto.getSource()).isEqualTo(NotificationSource.GEOFENCE);
@@ -83,7 +82,7 @@ class UserNotificationServicesIntegrationTest {
         assertThat(dto.getDeliveryStatus()).isEqualTo(GeofenceDeliveryStatus.PENDING);
         assertThat(dto.getMetadata()).containsEntry("ruleName", "Home");
 
-        UnreadCountDto unreadCount = userNotificationService.getUnreadCount(owner.getId(), NotificationSource.GEOFENCE);
+        UnreadCountDto unreadCount = userNotificationService.getUnreadCount(owner.getId());
         assertThat(unreadCount.getCount()).isEqualTo(1L);
         assertThat(unreadCount.getLatestUnreadId()).isNotNull();
     }
@@ -114,16 +113,16 @@ class UserNotificationServicesIntegrationTest {
         projectionService.publishSnapshot(geofenceEvent(1003L, GeofenceEventType.ENTER, GeofenceDeliveryStatus.SKIPPED), Map.of());
         projectionService.publishSnapshot(geofenceEvent(1004L, GeofenceEventType.LEAVE, GeofenceDeliveryStatus.FAILED), Map.of());
 
-        List<UserNotificationDto> before = userNotificationService.listNotifications(owner.getId(), 50, true, NotificationSource.GEOFENCE);
+        List<UserNotificationDto> before = userNotificationService.listNotifications(owner.getId(), 50);
         assertThat(before).hasSize(2);
 
         UserNotificationDto markedOne = userNotificationService.markSeen(owner.getId(), before.getFirst().getId());
         assertThat(markedOne.getSeen()).isTrue();
 
-        long updated = userNotificationService.markAllSeen(owner.getId(), NotificationSource.GEOFENCE);
+        long updated = userNotificationService.markAllSeen(owner.getId());
         assertThat(updated).isEqualTo(1L);
 
-        UnreadCountDto unreadCount = userNotificationService.getUnreadCount(owner.getId(), NotificationSource.GEOFENCE);
+        UnreadCountDto unreadCount = userNotificationService.getUnreadCount(owner.getId());
         assertThat(unreadCount.getCount()).isZero();
         assertThat(unreadCount.getLatestUnreadId()).isNull();
     }

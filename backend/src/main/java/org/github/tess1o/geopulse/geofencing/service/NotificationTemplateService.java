@@ -9,6 +9,8 @@ import org.github.tess1o.geopulse.geofencing.model.dto.CreateNotificationTemplat
 import org.github.tess1o.geopulse.geofencing.model.dto.NotificationTemplateDto;
 import org.github.tess1o.geopulse.geofencing.model.dto.UpdateNotificationTemplateRequest;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
+import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
+import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
 import org.github.tess1o.geopulse.geofencing.util.NotificationDestinationParser;
 import org.github.tess1o.geopulse.user.model.UserEntity;
@@ -38,12 +40,18 @@ public class NotificationTemplateService {
     );
 
     private final NotificationTemplateRepository templateRepository;
+    private final GeofenceRuleRepository ruleRepository;
+    private final GeofenceEventRepository eventRepository;
     private final EntityManager entityManager;
 
     @Inject
     public NotificationTemplateService(NotificationTemplateRepository templateRepository,
+                                       GeofenceRuleRepository ruleRepository,
+                                       GeofenceEventRepository eventRepository,
                                        EntityManager entityManager) {
         this.templateRepository = templateRepository;
+        this.ruleRepository = ruleRepository;
+        this.eventRepository = eventRepository;
         this.entityManager = entityManager;
     }
 
@@ -77,6 +85,13 @@ public class NotificationTemplateService {
     public void deleteTemplate(UUID userId, Long templateId) {
         NotificationTemplateEntity entity = templateRepository.findByIdAndUser(templateId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification template not found"));
+
+        // Defensive detach before delete: prevents accidental cascades if DB constraints differ across environments.
+        ruleRepository.clearEnterTemplate(userId, templateId);
+        ruleRepository.clearLeaveTemplate(userId, templateId);
+        eventRepository.clearTemplateReference(userId, templateId);
+        entityManager.flush();
+
         templateRepository.delete(entity);
     }
 

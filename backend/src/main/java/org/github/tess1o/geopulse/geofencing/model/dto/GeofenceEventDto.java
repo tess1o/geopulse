@@ -24,6 +24,9 @@ public class GeofenceEventDto {
     private Integer deliveryAttempts;
     private String lastDeliveryError;
     private Instant deliveredAt;
+    private Long pointId;
+    private Double pointLat;
+    private Double pointLon;
     private Instant seenAt;
     private Boolean seen;
 }

@@ -5,7 +5,6 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.notifications.model.dto.UnreadCountDto;
 import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationDto;
-import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
 import org.github.tess1o.geopulse.notifications.model.entity.UserNotificationEntity;
 import org.github.tess1o.geopulse.notifications.repository.UserNotificationRepository;
 
@@ -25,20 +24,17 @@ public class UserNotificationService {
         this.notificationRepository = notificationRepository;
     }
 
-    public List<UserNotificationDto> listNotifications(UUID ownerUserId,
-                                                       int limit,
-                                                       boolean unreadOnly,
-                                                       NotificationSource source) {
+    public List<UserNotificationDto> listNotifications(UUID ownerUserId, int limit) {
         int normalizedLimit = Math.min(Math.max(limit, 1), MAX_LIMIT);
-        return notificationRepository.findByOwner(ownerUserId, normalizedLimit, unreadOnly, source)
+        return notificationRepository.findByOwner(ownerUserId, normalizedLimit)
                 .stream()
                 .map(this::toDto)
                 .toList();
     }
 
-    public UnreadCountDto getUnreadCount(UUID ownerUserId, NotificationSource source) {
-        long count = notificationRepository.countUnreadByOwner(ownerUserId, source);
-        Long latestUnreadId = count > 0 ? notificationRepository.findLatestUnreadIdByOwner(ownerUserId, source) : null;
+    public UnreadCountDto getUnreadCount(UUID ownerUserId) {
+        long count = notificationRepository.countUnreadByOwner(ownerUserId);
+        Long latestUnreadId = count > 0 ? notificationRepository.findLatestUnreadIdByOwner(ownerUserId) : null;
         return new UnreadCountDto(count, latestUnreadId);
     }
 
@@ -55,8 +51,8 @@ public class UserNotificationService {
     }
 
     @Transactional
-    public long markAllSeen(UUID ownerUserId, NotificationSource source) {
-        return notificationRepository.markAllSeenByOwner(ownerUserId, Instant.now(), source);
+    public long markAllSeen(UUID ownerUserId) {
+        return notificationRepository.markAllSeenByOwner(ownerUserId, Instant.now());
     }
 
     public UserNotificationDto toDto(UserNotificationEntity entity) {

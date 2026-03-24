@@ -73,14 +73,18 @@
 
         <GeofenceEventsTab
           v-else
-          :events="events"
+          :events="geofenceEvents"
+          :totalRecords="geofenceEventsTotal"
+          :query="geofenceEventsQuery"
+          :subjectFilterOptions="eventSubjectFilterOptions"
           :unreadCount="unreadCount"
-          :unreadOnly="unreadOnly"
+          :loading="refreshingEvents"
           :markingAllSeen="markingAllSeen"
           :markingEventId="markingEventId"
           :formatDate="formatDate"
           :deliverySeverity="deliverySeverity"
-          @toggle-unread-only="handleUnreadOnlyToggle"
+          :userId="authStore.userId"
+          @update-query="handleEventsQueryUpdate"
           @mark-all-events-seen="markAllEventsSeen"
           @refresh-events="refreshEvents"
           @mark-event-seen="markEventSeen"
@@ -97,7 +101,6 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useNotificationsStore } from '@/stores/notifications'
 import { useLocationStore } from '@/stores/location'
 import apiService from '@/utils/apiService'
 import L from 'leaflet'
@@ -117,10 +120,8 @@ const confirm = useConfirm()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const notificationsStore = useNotificationsStore()
 const locationStore = useLocationStore()
 const timezone = useTimezone()
-const GEOFENCE_SOURCE = 'GEOFENCE'
 const FALLBACK_GEOFENCE_CENTER = [50.4501, 30.5234]
 const LAST_KNOWN_MAP_ZOOM = 12
 
@@ -150,12 +151,13 @@ const templateDeliveryCapabilities = ref({
 const savingRule = ref(false)
 const savingTemplate = ref(false)
 const testingTemplateConnection = ref(false)
-const unreadOnly = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
 const geofenceEvents = ref([])
+const geofenceEventsTotal = ref(0)
 const geofenceUnreadCount = ref(0)
 const refreshingEvents = ref(false)
+const geofenceEventsQuery = ref(defaultGeofenceEventsQuery())
 const ruleFormErrors = ref({
   name: '',
   subjectUserIds: '',
@@ -182,14 +184,22 @@ const TEMPLATE_MACRO_PATTERN = /\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*}}/g
 const DESTINATION_URL_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.+$/
 const PREVIEW_TIMESTAMP_UTC = '2026-03-24T00:04:47Z'
 
-const events = computed(() => {
-  if (unreadOnly.value) {
-    return geofenceEvents.value.filter(item => !item.seen)
-  }
-  return geofenceEvents.value
-})
-
 const unreadCount = computed(() => geofenceUnreadCount.value)
+
+function defaultGeofenceEventsQuery() {
+  return {
+    page: 0,
+    pageSize: 25,
+    sortBy: 'occurredAt',
+    sortDir: 'desc',
+    unreadOnly: false,
+    datePreset: 'all',
+    dateFrom: null,
+    dateTo: null,
+    subjectUserIds: [],
+    eventTypes: []
+  }
+}
 
 const editingRuleId = ref(null)
 const editingTemplateId = ref(null)
@@ -264,6 +274,15 @@ const subjectOptions = computed(() => {
   }
 
   return items
+})
+
+const eventSubjectFilterOptions = computed(() => {
+  return subjectOptions.value
+    .filter(option => !option.unavailable)
+    .map(option => ({
+      label: option.label,
+      value: option.value
+    }))
 })
 
 const templateOptionItems = computed(() => {
@@ -1125,17 +1144,43 @@ async function refreshEvents() {
 
   refreshingEvents.value = true
   try {
-    const [items, countInfo] = await Promise.all([
-      notificationsStore.fetchNotifications({
-        limit: 100,
-        unreadOnly: false,
-        source: GEOFENCE_SOURCE
-      }),
-      notificationsStore.fetchUnreadCount({ source: GEOFENCE_SOURCE })
+    const params = {
+      page: geofenceEventsQuery.value.page,
+      pageSize: geofenceEventsQuery.value.pageSize,
+      sortBy: geofenceEventsQuery.value.sortBy,
+      sortDir: geofenceEventsQuery.value.sortDir,
+      unreadOnly: geofenceEventsQuery.value.unreadOnly
+    }
+    if (geofenceEventsQuery.value.dateFrom) {
+      params.dateFrom = geofenceEventsQuery.value.dateFrom
+    }
+    if (geofenceEventsQuery.value.dateTo) {
+      params.dateTo = geofenceEventsQuery.value.dateTo
+    }
+    if (Array.isArray(geofenceEventsQuery.value.subjectUserIds) && geofenceEventsQuery.value.subjectUserIds.length > 0) {
+      params.subjectUserIds = geofenceEventsQuery.value.subjectUserIds.join(',')
+    }
+    if (Array.isArray(geofenceEventsQuery.value.eventTypes) && geofenceEventsQuery.value.eventTypes.length > 0) {
+      params.eventTypes = geofenceEventsQuery.value.eventTypes.join(',')
+    }
+
+    const [eventsPageResponse, unreadResponse] = await Promise.all([
+      apiService.get('/geofences/events', params),
+      apiService.get('/geofences/events/unread-count')
     ])
 
-    geofenceEvents.value = items.map(mapGeofenceNotificationEvent)
-    geofenceUnreadCount.value = Number(countInfo?.count || 0)
+    geofenceEvents.value = Array.isArray(eventsPageResponse?.data?.items)
+      ? eventsPageResponse.data.items
+      : []
+    geofenceEventsTotal.value = Number(eventsPageResponse?.data?.totalCount || 0)
+    geofenceUnreadCount.value = Number(unreadResponse?.data?.count || 0)
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Events Error',
+      detail: extractApiErrorMessage(error, 'Failed to load geofence events'),
+      life: 5000
+    })
   } finally {
     refreshingEvents.value = false
   }
@@ -1379,7 +1424,7 @@ async function markEventSeen(event) {
 
   markingEventId.value = event.id
   try {
-    await notificationsStore.markSeen(event.id)
+    await apiService.post(`/geofences/events/${event.id}/seen`, {})
     await refreshEvents()
   } catch (error) {
     toast.add({
@@ -1396,7 +1441,7 @@ async function markEventSeen(event) {
 async function markAllEventsSeen() {
   markingAllSeen.value = true
   try {
-    await notificationsStore.markAllSeen(GEOFENCE_SOURCE)
+    await apiService.post('/geofences/events/seen-all', {})
     await refreshEvents()
   } catch (error) {
     toast.add({
@@ -1410,8 +1455,11 @@ async function markAllEventsSeen() {
   }
 }
 
-function handleUnreadOnlyToggle(nextValue) {
-  unreadOnly.value = !!nextValue
+function handleEventsQueryUpdate(patch) {
+  geofenceEventsQuery.value = {
+    ...geofenceEventsQuery.value,
+    ...patch
+  }
   void refreshEvents()
 }
 
@@ -1535,30 +1583,6 @@ function deliverySeverity(status) {
   return 'secondary'
 }
 
-function mapGeofenceNotificationEvent(item) {
-  const metadata = item?.metadata || {}
-  const eventCode = metadata.eventCode || inferEventCode(item?.type)
-  return {
-    ...item,
-    ruleName: metadata.ruleName || '-',
-    subjectDisplayName: metadata.subjectDisplayName || '-',
-    eventType: eventCode
-  }
-}
-
-function inferEventCode(type) {
-  if (!type || typeof type !== 'string') {
-    return '-'
-  }
-  if (type.endsWith('_ENTER')) {
-    return 'ENTER'
-  }
-  if (type.endsWith('_LEAVE')) {
-    return 'LEAVE'
-  }
-  return type
-}
-
 function handleDefaultToggleChange(type, enabled) {
   if (!enabled || suppressDefaultToggleWatch.value) {
     return
@@ -1626,13 +1650,6 @@ watch(
     if (activeTab.value === 'events') {
       void refreshEvents()
     }
-  }
-)
-
-watch(
-  () => [notificationsStore.items.length, notificationsStore.unreadCount],
-  () => {
-    void refreshEvents()
   }
 )
 

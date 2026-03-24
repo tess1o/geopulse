@@ -94,7 +94,7 @@ class NotificationResourceIntegrationTest {
     }
 
     @Test
-    void shouldListOnlyOwnerNotificationsAndApplyFilters() {
+    void shouldListOnlyOwnerNotifications() {
         createNotification(ownerUser,
                 NotificationSource.GEOFENCE,
                 NotificationType.GEOFENCE_ENTER,
@@ -130,37 +130,6 @@ class NotificationResourceIntegrationTest {
                 .body("data.size()", equalTo(3))
                 .body("data.title", hasItems("Owner geofence unread", "Owner geofence seen", "Owner import unread"))
                 .body("data.title", not(hasItem("Other user geofence")));
-
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .when()
-                .get("/api/notifications?unreadOnly=true")
-                .then()
-                .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.size()", equalTo(2))
-                .body("data.title", hasItems("Owner geofence unread", "Owner import unread"))
-                .body("data.title", not(hasItem("Owner geofence seen")));
-
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .when()
-                .get("/api/notifications?source=GEOFENCE")
-                .then()
-                .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.size()", equalTo(2))
-                .body("data.source", everyItem(equalTo("GEOFENCE")));
-
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .when()
-                .get("/api/notifications?source=GEOFENCE&unreadOnly=true")
-                .then()
-                .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.size()", equalTo(1))
-                .body("data[0].title", equalTo("Owner geofence unread"));
     }
 
     @Test
@@ -193,16 +162,6 @@ class NotificationResourceIntegrationTest {
                 .body("status", equalTo("success"))
                 .body("data.count", equalTo(2))
                 .body("data.latestUnreadId", equalTo(newestUnread.getId().intValue()));
-
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .when()
-                .get("/api/notifications/unread-count?source=GEOFENCE")
-                .then()
-                .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.count", equalTo(1))
-                .body("data.latestUnreadId", notNullValue());
     }
 
     @Test
@@ -244,7 +203,7 @@ class NotificationResourceIntegrationTest {
     }
 
     @Test
-    void shouldMarkAllSeenBySourceThenGlobally() {
+    void shouldMarkAllSeenGlobally() {
         createNotification(ownerUser,
                 NotificationSource.GEOFENCE,
                 NotificationType.GEOFENCE_ENTER,
@@ -262,29 +221,11 @@ class NotificationResourceIntegrationTest {
                 .header("Authorization", "Bearer " + ownerToken)
                 .contentType(ContentType.JSON)
                 .when()
-                .post("/api/notifications/seen-all?source=GEOFENCE")
-                .then()
-                .statusCode(200)
-                .body("status", equalTo("success"))
-                .body("data.updatedCount", equalTo(1));
-
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .when()
-                .get("/api/notifications/unread-count?source=GEOFENCE")
-                .then()
-                .statusCode(200)
-                .body("data.count", equalTo(0));
-
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .contentType(ContentType.JSON)
-                .when()
                 .post("/api/notifications/seen-all")
                 .then()
                 .statusCode(200)
                 .body("status", equalTo("success"))
-                .body("data.updatedCount", equalTo(1));
+                .body("data.updatedCount", equalTo(2));
 
         given()
                 .header("Authorization", "Bearer " + ownerToken)
@@ -294,18 +235,6 @@ class NotificationResourceIntegrationTest {
                 .statusCode(200)
                 .body("data.count", equalTo(0))
                 .body("data.latestUnreadId", nullValue());
-    }
-
-    @Test
-    void shouldRejectUnknownSourceFilter() {
-        given()
-                .header("Authorization", "Bearer " + ownerToken)
-                .when()
-                .get("/api/notifications?source=UNKNOWN_SOURCE")
-                .then()
-                .statusCode(400)
-                .body("status", equalTo("error"))
-                .body("message", containsString("Unknown notification source"));
     }
 
     UserNotificationEntity createNotification(UserEntity owner,

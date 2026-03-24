@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,7 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
@@ -45,46 +46,46 @@ class UserNotificationServiceTest {
     @Test
     void shouldClampListLimitToMinimumOne() {
         UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.findByOwner(ownerId, 1, false, null)).thenReturn(List.of());
+        when(notificationRepository.findByOwner(ownerId, 1)).thenReturn(List.of());
 
-        service.listNotifications(ownerId, 0, false, null);
+        service.listNotifications(ownerId, 0);
 
-        verify(notificationRepository).findByOwner(ownerId, 1, false, null);
+        verify(notificationRepository).findByOwner(ownerId, 1);
     }
 
     @Test
     void shouldClampListLimitToMaximum() {
         UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.findByOwner(ownerId, 200, true, NotificationSource.GEOFENCE)).thenReturn(List.of());
+        when(notificationRepository.findByOwner(ownerId, 200)).thenReturn(List.of());
 
-        service.listNotifications(ownerId, 999, true, NotificationSource.GEOFENCE);
+        service.listNotifications(ownerId, 999);
 
-        verify(notificationRepository).findByOwner(ownerId, 200, true, NotificationSource.GEOFENCE);
+        verify(notificationRepository).findByOwner(ownerId, 200);
     }
 
     @Test
     void shouldResolveUnreadCountWithoutLatestIdWhenNoUnread() {
         UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.countUnreadByOwner(ownerId, null)).thenReturn(0L);
+        when(notificationRepository.countUnreadByOwner(ownerId)).thenReturn(0L);
 
-        UnreadCountDto result = service.getUnreadCount(ownerId, null);
+        UnreadCountDto result = service.getUnreadCount(ownerId);
 
         assertThat(result.getCount()).isZero();
         assertThat(result.getLatestUnreadId()).isNull();
-        verify(notificationRepository, never()).findLatestUnreadIdByOwner(any(), any());
+        verify(notificationRepository, never()).findLatestUnreadIdByOwner(any());
     }
 
     @Test
     void shouldResolveUnreadCountWithLatestIdWhenUnreadExists() {
         UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.countUnreadByOwner(ownerId, NotificationSource.GEOFENCE)).thenReturn(3L);
-        when(notificationRepository.findLatestUnreadIdByOwner(ownerId, NotificationSource.GEOFENCE)).thenReturn(42L);
+        when(notificationRepository.countUnreadByOwner(ownerId)).thenReturn(3L);
+        when(notificationRepository.findLatestUnreadIdByOwner(ownerId)).thenReturn(42L);
 
-        UnreadCountDto result = service.getUnreadCount(ownerId, NotificationSource.GEOFENCE);
+        UnreadCountDto result = service.getUnreadCount(ownerId);
 
         assertThat(result.getCount()).isEqualTo(3L);
         assertThat(result.getLatestUnreadId()).isEqualTo(42L);
-        verify(notificationRepository).findLatestUnreadIdByOwner(ownerId, NotificationSource.GEOFENCE);
+        verify(notificationRepository).findLatestUnreadIdByOwner(ownerId);
     }
 
     @Test
@@ -124,15 +125,15 @@ class UserNotificationServiceTest {
     }
 
     @Test
-    void shouldMarkAllSeenForOwnerAndSource() {
+    void shouldMarkAllSeenForOwner() {
         UUID ownerId = UUID.randomUUID();
-        when(notificationRepository.markAllSeenByOwner(eq(ownerId), any(Instant.class), eq(NotificationSource.GEOFENCE)))
+        when(notificationRepository.markAllSeenByOwner(eq(ownerId), any(Instant.class)))
                 .thenReturn(5L);
 
-        long updated = service.markAllSeen(ownerId, NotificationSource.GEOFENCE);
+        long updated = service.markAllSeen(ownerId);
 
         assertThat(updated).isEqualTo(5L);
-        verify(notificationRepository).markAllSeenByOwner(eq(ownerId), any(Instant.class), eq(NotificationSource.GEOFENCE));
+        verify(notificationRepository).markAllSeenByOwner(eq(ownerId), any(Instant.class));
     }
 
     @Test
@@ -170,9 +171,9 @@ class UserNotificationServiceTest {
         UserNotificationEntity seen = baseEntity(ownerId, Instant.parse("2026-03-19T12:00:00Z"));
         seen.setId(2L);
         seen.setTitle("B");
-        when(notificationRepository.findByOwner(ownerId, 50, false, null)).thenReturn(List.of(unseen, seen));
+        when(notificationRepository.findByOwner(ownerId, 50)).thenReturn(List.of(unseen, seen));
 
-        List<UserNotificationDto> result = service.listNotifications(ownerId, 50, false, null);
+        List<UserNotificationDto> result = service.listNotifications(ownerId, 50);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getSeen()).isFalse();

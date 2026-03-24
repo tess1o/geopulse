@@ -239,6 +239,7 @@ public class GeofenceEvaluationService {
                 .occurredAt(point.getTimestamp())
                 .title(title)
                 .message(message)
+                .subjectDisplayName(subjectName)
                 .deliveryStatus(deliveryStatus)
                 .deliveryAttempts(0)
                 .createdAt(Instant.now())
