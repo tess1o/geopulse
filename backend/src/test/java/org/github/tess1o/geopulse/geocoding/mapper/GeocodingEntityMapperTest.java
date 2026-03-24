@@ -127,10 +127,10 @@ class GeocodingEntityMapperTest {
             FormattableGeocodingResult result = mapper.toResult(entity);
             // Then
             assertNotNull(result);
-            assertEquals(TEST_LON, result.getRequestCoordinates().getX(), 0.0001);
-            assertEquals(TEST_LAT, result.getRequestCoordinates().getY(), 0.0001);
-            assertEquals(TEST_LON + 0.01, result.getResultCoordinates().getX(), 0.0001);
-            assertEquals(TEST_LAT + 0.01, result.getResultCoordinates().getY(), 0.0001);
+            assertEquals(requestCoords.getX(), result.getRequestCoordinates().getX(), 0.0001);
+            assertEquals(requestCoords.getY(), result.getRequestCoordinates().getY(), 0.0001);
+            assertEquals(resultCoords.getX(), result.getResultCoordinates().getX(), 0.0001);
+            assertEquals(resultCoords.getY(), result.getResultCoordinates().getY(), 0.0001);
         }
     }
     // ==================== Test Suite 2: toEntity() ====================
