@@ -38,6 +38,24 @@ public class UserNotificationRepository implements PanacheRepository<UserNotific
         return update("seenAt = ?1 WHERE ownerUser.id = ?2 AND seenAt IS NULL", seenAt, ownerUserId);
     }
 
+    public long markSeenBySourceAndObjectRefAndOwner(NotificationSource source,
+                                                      String objectRef,
+                                                      UUID ownerUserId,
+                                                      Instant seenAt) {
+        return update("seenAt = ?1 WHERE source = ?2 AND objectRef = ?3 AND ownerUser.id = ?4 AND seenAt IS NULL",
+                seenAt,
+                source,
+                objectRef,
+                ownerUserId);
+    }
+
+    public long markAllSeenBySourceAndOwner(NotificationSource source, UUID ownerUserId, Instant seenAt) {
+        return update("seenAt = ?1 WHERE source = ?2 AND ownerUser.id = ?3 AND seenAt IS NULL",
+                seenAt,
+                source,
+                ownerUserId);
+    }
+
     public Optional<UserNotificationEntity> findByDedupeKey(String dedupeKey) {
         return find("dedupeKey", dedupeKey).firstResultOptional();
     }

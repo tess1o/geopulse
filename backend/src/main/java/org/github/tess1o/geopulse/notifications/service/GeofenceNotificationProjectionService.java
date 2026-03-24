@@ -11,6 +11,7 @@ import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
 import org.github.tess1o.geopulse.notifications.model.entity.UserNotificationEntity;
 import org.github.tess1o.geopulse.notifications.repository.UserNotificationRepository;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
@@ -68,6 +69,27 @@ public class GeofenceNotificationProjectionService {
                         () -> notificationRepository.findByDedupeKey(dedupeKeyForGeofenceEvent(geofenceEventId))
                                 .ifPresent(entity -> entity.setDeliveryStatus(deliveryStatus))
                 );
+    }
+
+    @Transactional
+    public void syncSeen(UUID ownerUserId, Long geofenceEventId, Instant seenAt) {
+        if (ownerUserId == null || geofenceEventId == null || seenAt == null) {
+            return;
+        }
+        notificationRepository.markSeenBySourceAndObjectRefAndOwner(
+                NotificationSource.GEOFENCE,
+                String.valueOf(geofenceEventId),
+                ownerUserId,
+                seenAt
+        );
+    }
+
+    @Transactional
+    public void syncAllSeen(UUID ownerUserId, Instant seenAt) {
+        if (ownerUserId == null || seenAt == null) {
+            return;
+        }
+        notificationRepository.markAllSeenBySourceAndOwner(NotificationSource.GEOFENCE, ownerUserId, seenAt);
     }
 
     private String dedupeKeyForGeofenceEvent(Long geofenceEventId) {

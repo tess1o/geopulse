@@ -82,6 +82,13 @@ public class GeofenceEventRepository implements PanacheRepository<GeofenceEventE
         return find("id = ?1 AND ownerUser.id = ?2", eventId, ownerUserId).firstResultOptional();
     }
 
+    public long markSeenByOwnerAndId(UUID ownerUserId, Long eventId, Instant seenAt) {
+        return update("seenAt = ?1 WHERE ownerUser.id = ?2 AND id = ?3 AND seenAt IS NULL",
+                seenAt,
+                ownerUserId,
+                eventId);
+    }
+
     public long markAllSeenByOwner(UUID ownerUserId, Instant seenAt) {
         return update("seenAt = ?1 WHERE ownerUser.id = ?2 AND seenAt IS NULL", seenAt, ownerUserId);
     }

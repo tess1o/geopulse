@@ -19,6 +19,10 @@ import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEn
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
+import org.github.tess1o.geopulse.notifications.model.entity.NotificationSource;
+import org.github.tess1o.geopulse.notifications.model.entity.NotificationType;
+import org.github.tess1o.geopulse.notifications.model.entity.UserNotificationEntity;
+import org.github.tess1o.geopulse.notifications.repository.UserNotificationRepository;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -57,6 +61,9 @@ class GeofenceEventsResourceIntegrationTest {
     NotificationTemplateRepository templateRepository;
 
     @Inject
+    UserNotificationRepository notificationRepository;
+
+    @Inject
     UserTransaction userTransaction;
 
     private UserEntity ownerUser;
@@ -68,6 +75,7 @@ class GeofenceEventsResourceIntegrationTest {
     @BeforeEach
     @Transactional
     void setUp() {
+        notificationRepository.deleteAll();
         eventRepository.deleteAll();
         ruleRepository.deleteAll();
         templateRepository.deleteAll();
@@ -105,6 +113,7 @@ class GeofenceEventsResourceIntegrationTest {
     @AfterEach
     @Transactional
     void tearDown() {
+        notificationRepository.deleteAll();
         eventRepository.deleteAll();
         ruleRepository.deleteAll();
         templateRepository.deleteAll();
@@ -253,6 +262,18 @@ class GeofenceEventsResourceIntegrationTest {
         GeofenceRuleEntity rule = createRule(ownerUser, "Home");
         GeofenceEventEntity first = createEvent(ownerUser, subjectA, rule, null, GeofenceEventType.ENTER, "First", Instant.parse("2026-03-21T08:00:00Z"), null);
         GeofenceEventEntity second = createEvent(ownerUser, subjectB, rule, null, GeofenceEventType.LEAVE, "Second", Instant.parse("2026-03-21T09:00:00Z"), null);
+        UserNotificationEntity firstNotification = createGeofenceNotification(ownerUser, first, NotificationType.GEOFENCE_ENTER, null);
+        UserNotificationEntity secondNotification = createGeofenceNotification(ownerUser, second, NotificationType.GEOFENCE_LEAVE, null);
+        UserNotificationEntity importNotification = createNotification(
+                ownerUser,
+                NotificationSource.IMPORT,
+                NotificationType.IMPORT_COMPLETED,
+                "Import unread",
+                null,
+                Instant.parse("2026-03-21T09:15:00Z"),
+                "import-1",
+                "import:1"
+        );
         GeofenceEventEntity foreign = createEvent(otherUser, subjectA, createRule(otherUser, "Other"), null, GeofenceEventType.ENTER, "Other", Instant.parse("2026-03-21T10:00:00Z"), null);
 
         given()
@@ -272,6 +293,8 @@ class GeofenceEventsResourceIntegrationTest {
                 .statusCode(200)
                 .body("data.id", equalTo(first.getId().intValue()))
                 .body("data.seen", equalTo(true));
+        assertNotificationSeen(firstNotification.getId(), true);
+        assertNotificationSeen(secondNotification.getId(), false);
 
         given()
                 .header("Authorization", "Bearer " + ownerToken)
@@ -291,6 +314,8 @@ class GeofenceEventsResourceIntegrationTest {
                 .then()
                 .statusCode(200)
                 .body("data.updatedCount", equalTo(1));
+        assertNotificationSeen(secondNotification.getId(), true);
+        assertNotificationSeen(importNotification.getId(), false);
 
         given()
                 .header("Authorization", "Bearer " + ownerToken)
@@ -432,6 +457,60 @@ class GeofenceEventsResourceIntegrationTest {
         }
     }
 
+    private UserNotificationEntity createGeofenceNotification(UserEntity owner,
+                                                              GeofenceEventEntity event,
+                                                              NotificationType type,
+                                                              Instant seenAt) {
+        return createNotification(
+                owner,
+                NotificationSource.GEOFENCE,
+                type,
+                "Notification for event " + event.getId(),
+                seenAt,
+                event.getOccurredAt(),
+                String.valueOf(event.getId()),
+                "geofence-event:" + event.getId()
+        );
+    }
+
+    private UserNotificationEntity createNotification(UserEntity owner,
+                                                      NotificationSource source,
+                                                      NotificationType type,
+                                                      String title,
+                                                      Instant seenAt,
+                                                      Instant occurredAt,
+                                                      String objectRef,
+                                                      String dedupeKey) {
+        try {
+            if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
+                userTransaction.rollback();
+            }
+            userTransaction.begin();
+
+            UserEntity managedOwner = userRepository.findById(owner.getId());
+            UserNotificationEntity entity = UserNotificationEntity.builder()
+                    .ownerUser(managedOwner)
+                    .source(source)
+                    .type(type)
+                    .title(title)
+                    .message("Message for " + title)
+                    .occurredAt(occurredAt)
+                    .seenAt(seenAt)
+                    .deliveryStatus(GeofenceDeliveryStatus.PENDING)
+                    .objectRef(objectRef)
+                    .dedupeKey(dedupeKey)
+                    .build();
+
+            notificationRepository.persist(entity);
+            notificationRepository.flush();
+            userTransaction.commit();
+            return entity;
+        } catch (Exception e) {
+            rollbackQuietly();
+            throw new RuntimeException(e);
+        }
+    }
+
     private NotificationTemplateEntity createTemplate(UserEntity owner, String name) {
         try {
             if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
@@ -485,6 +564,23 @@ class GeofenceEventsResourceIntegrationTest {
             assertThat(managedRule).isNotNull();
             assertThat(managedRule.getEnterTemplate()).isNull();
             assertThat(managedRule.getLeaveTemplate()).isNull();
+            userTransaction.commit();
+        } catch (Exception e) {
+            rollbackQuietly();
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void assertNotificationSeen(Long notificationId, boolean expectedSeen) {
+        try {
+            if (userTransaction.getStatus() == Status.STATUS_ACTIVE) {
+                userTransaction.rollback();
+            }
+            userTransaction.begin();
+            UserNotificationEntity notification = notificationRepository.findById(notificationId);
+
+            assertThat(notification).isNotNull();
+            assertThat(notification.getSeenAt() != null).isEqualTo(expectedSeen);
             userTransaction.commit();
         } catch (Exception e) {
             rollbackQuietly();

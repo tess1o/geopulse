@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.notifications.service;
 
+import jakarta.enterprise.inject.Instance;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceDeliveryStatus;
 import org.github.tess1o.geopulse.notifications.model.dto.UnreadCountDto;
 import org.github.tess1o.geopulse.notifications.model.dto.UserNotificationDto;
@@ -36,11 +37,19 @@ class UserNotificationServiceTest {
     @Mock
     UserNotificationRepository notificationRepository;
 
+    @Mock
+    Instance<NotificationSeenSyncAdapter> syncAdapters;
+
+    @Mock
+    NotificationSeenSyncAdapter geofenceSyncAdapter;
+
     private UserNotificationService service;
 
     @BeforeEach
     void setUp() {
-        service = new UserNotificationService(notificationRepository);
+        when(syncAdapters.iterator()).thenReturn(List.of(geofenceSyncAdapter).iterator());
+        when(geofenceSyncAdapter.source()).thenReturn(NotificationSource.GEOFENCE);
+        service = new UserNotificationService(notificationRepository, syncAdapters);
     }
 
     @Test

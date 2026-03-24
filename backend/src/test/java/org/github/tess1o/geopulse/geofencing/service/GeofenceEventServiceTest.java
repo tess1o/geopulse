@@ -7,6 +7,7 @@ import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
+import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -35,11 +36,14 @@ class GeofenceEventServiceTest {
     @Mock
     GeofenceEventRepository eventRepository;
 
+    @Mock
+    GeofenceNotificationProjectionService notificationProjectionService;
+
     private GeofenceEventService service;
 
     @BeforeEach
     void setUp() {
-        service = new GeofenceEventService(eventRepository);
+        service = new GeofenceEventService(eventRepository, notificationProjectionService);
     }
 
     @Test

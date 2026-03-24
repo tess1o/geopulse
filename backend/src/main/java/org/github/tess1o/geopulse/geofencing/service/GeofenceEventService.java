@@ -9,6 +9,7 @@ import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceEventQueryDto;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
+import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
@@ -22,10 +23,13 @@ public class GeofenceEventService {
     private static final int MAX_PAGE_SIZE = 200;
 
     private final GeofenceEventRepository eventRepository;
+    private final GeofenceNotificationProjectionService notificationProjectionService;
 
     @Inject
-    public GeofenceEventService(GeofenceEventRepository eventRepository) {
+    public GeofenceEventService(GeofenceEventRepository eventRepository,
+                                GeofenceNotificationProjectionService notificationProjectionService) {
         this.eventRepository = eventRepository;
+        this.notificationProjectionService = notificationProjectionService;
     }
 
     public GeofenceEventPageDto listEventsPage(UUID ownerUserId, GeofenceEventQueryDto queryDto) {
@@ -49,15 +53,20 @@ public class GeofenceEventService {
         GeofenceEventEntity event = eventRepository.findByIdAndOwner(eventId, ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Geofence event not found"));
 
+        Instant seenAt = event.getSeenAt() == null ? Instant.now() : event.getSeenAt();
         if (event.getSeenAt() == null) {
-            event.setSeenAt(Instant.now());
+            event.setSeenAt(seenAt);
         }
+        notificationProjectionService.syncSeen(ownerUserId, eventId, seenAt);
         return toDto(event);
     }
 
     @Transactional
     public long markAllSeen(UUID ownerUserId) {
-        return eventRepository.markAllSeenByOwner(ownerUserId, Instant.now());
+        Instant seenAt = Instant.now();
+        long updatedCount = eventRepository.markAllSeenByOwner(ownerUserId, seenAt);
+        notificationProjectionService.syncAllSeen(ownerUserId, seenAt);
+        return updatedCount;
     }
 
     public GeofenceEventDto toDto(GeofenceEventEntity entity) {

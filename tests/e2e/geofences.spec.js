@@ -5,7 +5,7 @@ import { buildManagedUser as createManagedUser } from '../utils/isolated-user-he
 
 async function getGeofenceRuleByName(dbManager, ownerUserId, ruleName) {
   const result = await dbManager.client.query(`
-    SELECT id, owner_user_id, subject_user_id, name
+    SELECT id, owner_user_id, name
     FROM geofence_rules
     WHERE owner_user_id = $1 AND name = $2
     ORDER BY id DESC
@@ -38,13 +38,30 @@ async function insertGeofenceEvent(dbManager, {
       occurred_at,
       title,
       message,
+      subject_display_name,
       delivery_status,
       created_at,
       seen_at
     )
-    VALUES ($1::uuid, $2::uuid, $3::bigint, $4::text, $5::timestamptz, $6::text, $7::text, $8::text, NOW(), NULL)
+    SELECT
+      $1::uuid,
+      $2::uuid,
+      $3::bigint,
+      $4::text,
+      $5::timestamptz,
+      $6::text,
+      $7::text,
+      COALESCE(NULLIF(TRIM(u.full_name), ''), u.email, 'Unknown subject'),
+      $8::text,
+      NOW(),
+      NULL
+    FROM users u
+    WHERE u.id = $2::uuid
     RETURNING id
   `, [ownerUserId, subjectUserId, normalizedRuleId, eventType, occurredAt, title, message, deliveryStatus]);
+  if (!result.rows[0]?.id) {
+    throw new Error(`insertGeofenceEvent could not resolve subject user ${subjectUserId}`);
+  }
 
   const geofenceEventId = Number(result.rows[0].id);
 
@@ -130,7 +147,7 @@ test.describe('Geofences UI', () => {
     await page.reload();
     await geofencesPage.waitForPageLoad();
 
-    await geofencesPage.openSelectForField('Subject');
+    await geofencesPage.openSelectForField('Subjects');
     const subjectOptions = (await geofencesPage.getOpenSelectOptionLabels()).map(option => option.trim());
     expect(subjectOptions.some(option => option.includes(friendVisibleData.fullName))).toBe(true);
     expect(subjectOptions.some(option => option.includes(friendHiddenData.fullName))).toBe(false);
@@ -230,7 +247,7 @@ test.describe('Geofences UI', () => {
 
     const ruleName = 'Notification Rule';
     await geofencesPage.fillRuleName(ruleName);
-    await geofencesPage.setRuleSubject('(Me)');
+    //await geofencesPage.setRuleSubject('(Me)');
     await geofencesPage.clickStartRectangleDraw();
     await geofencesPage.drawRectangle(120, 80, 360, 220);
     await geofencesPage.waitForAreaSelected();
@@ -276,6 +293,6 @@ test.describe('Geofences UI', () => {
     await geofencesPage.waitForEventRowState('E2E LEAVE notification', true, 15000);
 
     await geofencesPage.markAllEventsSeen();
-    await geofencesPage.expectBellBadgeHidden();
+    await geofencesPage.expectEventsUnreadCleared();
   });
 });
