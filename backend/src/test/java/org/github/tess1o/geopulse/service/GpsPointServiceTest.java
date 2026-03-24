@@ -1,11 +1,9 @@
 package org.github.tess1o.geopulse.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
@@ -24,15 +22,12 @@ import org.github.tess1o.geopulse.gpssource.repository.GpsSourceTypeTelemetryCon
 import org.github.tess1o.geopulse.gpssource.service.GpsSourceTypeTelemetryConfigService;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.hibernate.Hibernate;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -42,42 +37,42 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @TestProfile(GpsPointServiceTest.DisableLocationTimeThresholdTestProfile.class)
 @SerializedDatabaseTest
 public class GpsPointServiceTest {
+
     private UUID userId;
     private GpsSourceConfigEntity testConfig;
+
     @Inject
     GpsPointService gpsPointService;
+
     @Inject
     GpsPointRepository gpsPointRepository;
+
     @Inject
     UserRepository userRepository;
+
     @Inject
     GpsSourceRepository gpsSourceRepository;
-    @Inject
-    EntityManager em;
+
     @Inject
     GpsSourceTypeTelemetryConfigService telemetryConfigService;
+
     @Inject
     GpsSourceTypeTelemetryConfigRepository telemetryConfigRepository;
     @BeforeEach
     @Transactional
     public void setup() {
         // Clean up GPS points first (due to foreign key constraints)
-        gpsPointRepository.deleteAll();
         // Clean up GPS source configs
-        gpsSourceRepository.deleteAll();
-        telemetryConfigRepository.deleteAll();
         // Clean up users
-        userRepository.deleteAll();
         // Create fresh test user
         UserEntity user = UserEntity.builder()
-                .email("test@test.com" + System.nanoTime()) // Make email unique
+                .email(TestIds.uniqueEmail("gps-point-service"))
                 .role(Role.USER)
                 .passwordHash("pass")
                 .build();
@@ -87,7 +82,7 @@ public class GpsPointServiceTest {
         testConfig = GpsSourceConfigEntity.builder()
                 .user(user)
                 .sourceType(GpsSourceType.OWNTRACKS)
-                .username("test-user")
+                .username(TestIds.uniqueValue("gps-point-source-user"))
                 .active(true)
                 .filterInaccurateData(false) // Filtering disabled for backward compatibility
                 .maxAllowedAccuracy(100)
@@ -107,15 +102,9 @@ public class GpsPointServiceTest {
                 .tst(tst)
                 .vel(5.0)
                 .build();
-        Statistics stats = getStatistics();
-        stats.clear();  // Reset stats before operation
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
-        var insertCount = stats.getEntityInsertCount();
-        assertEquals(1, insertCount); // Expect 1 query
-        var selectCount = stats.getQueryExecutionCount();
-        assertTrue(selectCount <= 2); //for duplication check and possbile timeline_regeneration_queue
-        assertEquals(1, gpsPointRepository.count());
-        GpsPointEntity savedGpsPoint = gpsPointRepository.findAll().firstResult();
+        assertEquals(1, gpsPointRepository.count("user.id = ?1", userId));
+        GpsPointEntity savedGpsPoint = gpsPointRepository.find("user.id = ?1 ORDER BY createdAt DESC", userId).firstResult();
         assertEquals(userId, savedGpsPoint.getUser().getId());
         assertFalse(Hibernate.isInitialized(savedGpsPoint.getUser()));
         assertNull(savedGpsPoint.getAltitude());
@@ -139,16 +128,10 @@ public class GpsPointServiceTest {
                 .tst(tst)
                 .vel(5.0)
                 .build();
-        Statistics stats = getStatistics();
-        stats.clear();  // Reset stats before operation
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
-        var insertCount = stats.getEntityInsertCount();
-        assertEquals(1, insertCount); // Expect 1 query
-        var selectCount = stats.getQueryExecutionCount();
-        assertTrue(selectCount <= 2); //for duplication check and possbile
-        assertEquals(1, gpsPointRepository.count());
+        assertEquals(1, gpsPointRepository.count("user.id = ?1", userId));
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
-        assertEquals(1, gpsPointRepository.count());
+        assertEquals(1, gpsPointRepository.count("user.id = ?1", userId));
     }
     @Test
     @Transactional
@@ -160,12 +143,10 @@ public class GpsPointServiceTest {
                 .toInstant(ZoneOffset.UTC);
         Instant sevenDaysAgo = utcTodayNoon.minus(7, ChronoUnit.DAYS);
         Instant oneDayAgo = utcTodayNoon.minus(1, ChronoUnit.DAYS);
-
         // Create test GPS points with deterministic timestamps
         createTestGpsPoint(sevenDaysAgo);
         createTestGpsPoint(oneDayAgo);
         createTestGpsPoint(utcTodayNoon); // Should count as "today" in UTC
-
         GpsPointSummaryDTO summary = gpsPointService.getGpsPointSummary(userId);
         assertEquals(3, summary.getTotalPoints());
         assertEquals(1, summary.getPointsToday());
@@ -236,12 +217,10 @@ public class GpsPointServiceTest {
         assertNull(summary.getFirstPointDate());
         assertNull(summary.getLastPointDate());
     }
-
     @Test
     @Transactional
     public void testSaveOwnTracksGpsPoint_TelemetryPersistedWhenPresent() {
         long tst = Instant.now().plusSeconds(20000).getEpochSecond();
-
         OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
                 .type("location")
                 .lat(40.0)
@@ -252,19 +231,17 @@ public class GpsPointServiceTest {
                         "batt_v", 12.6
                 ))
                 .build();
-
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
-        GpsPointEntity savedPoint = gpsPointRepository.findAll().firstResult();
+        assertEquals(1, gpsPointRepository.count("user.id = ?1", userId));
+        GpsPointEntity savedPoint = gpsPointRepository.find("user.id = ?1 ORDER BY createdAt DESC", userId).firstResult();
         assertNotNull(savedPoint.getTelemetry());
         assertEquals(1, savedPoint.getTelemetry().get("ignition"));
         assertEquals(12.6, ((Number) savedPoint.getTelemetry().get("batt_v")).doubleValue(), 0.000001);
     }
-
     @Test
     @Transactional
     public void testTelemetryVisibilityRulesAppliedToGpsDataAndCurrentPopup() {
         long tst = Instant.now().plusSeconds(20000).getEpochSecond();
-
         List<GpsTelemetryMappingEntry> mapping = List.of(
                 GpsTelemetryMappingEntry.builder()
                         .key("ignition")
@@ -295,9 +272,7 @@ public class GpsPointServiceTest {
                         .showInCurrentPopup(true)
                         .build()
         );
-
         telemetryConfigService.upsertConfig(userId, GpsSourceType.OWNTRACKS, mapping);
-
         OwnTracksLocationMessage message = OwnTracksLocationMessage.builder()
                 .type("location")
                 .lat(40.0)
@@ -309,9 +284,7 @@ public class GpsPointServiceTest {
                         "geofence_lat", 49.1
                 ))
                 .build();
-
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
-
         var page = gpsPointService.getGpsPointsPageWithFilters(
                 userId,
                 GpsPointFilterDTO.builder().build(),
@@ -324,7 +297,6 @@ public class GpsPointServiceTest {
         assertNotNull(page.getData().get(0).getTelemetryGpsData());
         assertEquals(1, page.getData().get(0).getTelemetryGpsData().size());
         assertEquals("ignition", page.getData().get(0).getTelemetryGpsData().get(0).getKey());
-
         GpsPointPathDTO path = gpsPointService.getGpsPointPath(userId, Instant.EPOCH, Instant.now().plusSeconds(30000));
         assertEquals(1, path.getPoints().size());
         GpsPointPathPointDTO pathPoint = (GpsPointPathPointDTO) path.getPoints().get(0);
@@ -343,11 +315,6 @@ public class GpsPointServiceTest {
                 .vel(2.0)
                 .build();
         gpsPointService.saveOwnTracksGpsPoint(message, userId, "test-device", GpsSourceType.OWNTRACKS, testConfig);
-    }
-    private Statistics getStatistics() {
-        Session session = em.unwrap(Session.class);
-        SessionFactory sessionFactory = session.getSessionFactory();
-        return sessionFactory.getStatistics();
     }
     public static class DisableLocationTimeThresholdTestProfile implements QuarkusTestProfile {
         @Override

@@ -1,5 +1,5 @@
 package org.github.tess1o.geopulse.exportimport;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -8,7 +8,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -25,11 +24,9 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration test for OwnTracks export/import functionality using real database.
@@ -37,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * import processing, and duplicate detection.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class OwnTracksExportImportUnitTest {
@@ -50,17 +47,14 @@ class OwnTracksExportImportUnitTest {
     UserRepository userRepository;
     @Inject
     GpsPointRepository gpsPointRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     @BeforeEach
     @Transactional
     void setUp() {
         // Clean up any existing test data
-        cleanupTestData();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test-owntracks@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("OwnTracks Test User");
         testUser.setPasswordHash("test-hash");
         testUser.setCreatedAt(Instant.now());
@@ -69,13 +63,9 @@ class OwnTracksExportImportUnitTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupTestData();
     }
     @Transactional
     void cleanupTestData() {
-        cleanupHelper.cleanupTimeline();
-        gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
-        userRepository.delete("email = ?1", "test-owntracks@geopulse.app");
     }
     @Test
     @Transactional
@@ -260,7 +250,6 @@ class OwnTracksExportImportUnitTest {
         testDuplicateScenario(baseTime, -122.4194001, 37.7749001, false,
             "Same timestamp but slightly different coordinates should NOT be duplicate");
     }
-
     private void testDuplicateScenario(Instant newTime, double newLon, double newLat,
                                      boolean shouldBeDuplicate, String description) throws Exception {
         // Get current count of GPS points

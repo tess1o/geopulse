@@ -1,11 +1,10 @@
 package org.github.tess1o.geopulse.statistics.repository;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.statistics.model.*;
@@ -17,18 +16,16 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for StatisticsRepository using real SQL queries against the database.
  * These tests verify that all SQL queries execute correctly and produce expected results.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class StatisticsRepositoryTest {
     @Inject
@@ -37,8 +34,6 @@ class StatisticsRepositoryTest {
     UserRepository userRepository;
     @Inject
     EntityManager entityManager;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     private UUID testUserId;
     private Instant testStart;
@@ -51,7 +46,7 @@ class StatisticsRepositoryTest {
         testEnd = Instant.parse("2024-01-07T23:59:59Z");
         // Create test user using native SQL to set the ID explicitly
         testUser = new UserEntity();
-        testUser.setEmail("test-geojson@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("GeoJSON Test User");
         testUser.setPasswordHash("test-hash");
         testUser.setCreatedAt(Instant.now());
@@ -73,7 +68,6 @@ class StatisticsRepositoryTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupHelper.cleanupAll();
     }
     @Test
     void getTripAggregations_WithValidData_ReturnsCorrectResults() {

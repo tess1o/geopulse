@@ -1,11 +1,10 @@
 package org.github.tess1o.geopulse.streaming.integration;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -28,15 +27,13 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TripMovementTypeOverrideIntegrationTest {
     private static final double HOME_LAT = 40.7589;
@@ -60,17 +57,14 @@ class TripMovementTypeOverrideIntegrationTest {
     @Inject
     GpsPointRepository gpsPointRepository;
     @Inject
-    CleanupHelper cleanupHelper;
-    @Inject
     EntityManager entityManager;
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private UserEntity testUser;
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupAll();
         testUser = new UserEntity();
-        testUser.setEmail("trip-override-test@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Trip Override User");
         testUser.setPasswordHash("test");
         userRepository.persist(testUser);
@@ -310,7 +304,7 @@ class TripMovementTypeOverrideIntegrationTest {
     @Transactional
     void shouldRejectManualUpdateForTripOwnedByAnotherUser() {
         UserEntity otherUser = new UserEntity();
-        otherUser.setEmail("other-owner@geopulse.app");
+        otherUser.setEmail(TestIds.uniqueEmail("it-user"));
         otherUser.setFullName("Other Owner");
         otherUser.setPasswordHash("test");
         userRepository.persist(otherUser);

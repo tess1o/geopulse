@@ -8,34 +8,34 @@ import jakarta.transaction.Transactional;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
-import org.github.tess1o.geopulse.user.repository.UserRepository;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
+
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 public class AuthorizationIntegrationTest {
+
     @Inject
     UserService userService;
     @Inject
-    UserRepository userRepository;
-    @Inject
     AuthenticationService authenticationService;
+
     private String validJwtToken;
+    private String testEmail;
     private String expiredJwtToken;
+
     @BeforeEach
     @Transactional
     public void setup() {
-        // Clean up existing data in proper order to avoid foreign key constraint violations
-        // Delete users
-        userRepository.findAll().stream().forEach(userRepository::delete);
-        // Create test user
-        userService.registerUser("test@example.com", "password123", "Test User", "Europe/Kyiv");
+        testEmail = TestIds.uniqueEmail("auth-it-user");
+        userService.registerUser(testEmail, "password123", "Test User", "Europe/Kyiv");
         // Generate valid JWT token
-        AuthResponse authResponse = authenticationService.authenticate("test@example.com", "password123");
+        AuthResponse authResponse = authenticationService.authenticate(testEmail, "password123");
         validJwtToken = authResponse.getAccessToken();
         // Create an expired token (manually crafted for testing - in real scenarios this would be naturally expired)
         expiredJwtToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2dlb3B1bHNlLnRlc3NpbyIsInN1YiI6IjEyMyIsImV4cCI6MTYwMDAwMDAwMCwiaWF0IjoxNjAwMDAwMDAwfQ.invalid";
@@ -158,16 +158,17 @@ public class AuthorizationIntegrationTest {
      */
     @Test
     public void testPermitAllEndpointsWithoutAuth() {
+        String newUserEmail = TestIds.uniqueEmail("permit-all-register");
         // Test user registration endpoint
         given()
                 .contentType(ContentType.JSON)
                 .body("""
                         {
-                            "email": "newuser@example.com",
+                            "email": "%s",
                             "password": "NewPassword123!",
                             "fullName": "New User"
                         }
-                        """)
+                        """.formatted(newUserEmail))
                 .when()
                 .post("/api/users/register")
                 .then()
@@ -175,16 +176,16 @@ public class AuthorizationIntegrationTest {
                 .body("status", equalTo("success"))
                 .body("data.fullName", equalTo("New User"))
                 .body("data.role", equalTo("USER"))
-                .body("data.email", equalTo("newuser@example.com"));
+                .body("data.email", equalTo(newUserEmail));
         // Test login endpoint
         given()
                 .contentType(ContentType.JSON)
                 .body("""
                         {
-                            "email": "test@example.com",
+                            "email": "%s",
                             "password": "password123"
                         }
-                        """)
+                        """.formatted(testEmail))
                 .when()
                 .post("/api/auth/login")
                 .then()
@@ -234,6 +235,7 @@ public class AuthorizationIntegrationTest {
     }
     @Test
     public void testSecurityEnforcementDemonstration() {
+        String demoEmail = TestIds.uniqueEmail("auth-it-demo");
         given()
                 .contentType(ContentType.JSON)
                 .when()
@@ -245,10 +247,10 @@ public class AuthorizationIntegrationTest {
                 .contentType(ContentType.JSON)
                 .body("""
                         {
-                            "email": "demo@example.com",
+                            "email": "%s",
                             "password": "DemoPassword123!"
                         }
-                        """)
+                        """.formatted(demoEmail))
                 .when()
                 .post("/api/auth/login")
                 .then()

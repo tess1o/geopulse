@@ -1,5 +1,5 @@
 package org.github.tess1o.geopulse.exportimport;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -28,15 +28,13 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class SequenceResetTest {
@@ -58,10 +56,9 @@ class SequenceResetTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupTestData();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test-sequence@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Sequence Test User");
         testUser.setPasswordHash("test-hash");
         testUser.setCreatedAt(Instant.now());
@@ -70,14 +67,10 @@ class SequenceResetTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupTestData();
     }
     @Transactional
     void cleanupTestData() {
-        timelineStayRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
-        favoritesRepository.delete("user.email = ?1", "test-sequence@geopulse.app");
         reverseGeocodingLocationRepository.delete("providerName = ?1", "sequence-test-provider");
-        userRepository.delete("email = ?1", "test-sequence@geopulse.app");
         // Reset sequences to ensure clean state for test
         sequenceResetService.resetAllSequences();
     }

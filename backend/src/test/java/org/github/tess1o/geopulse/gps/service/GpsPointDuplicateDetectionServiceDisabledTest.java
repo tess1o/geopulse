@@ -1,12 +1,9 @@
 package org.github.tess1o.geopulse.gps.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -19,19 +16,15 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 /**
  * Test for GpsPointDuplicateDetectionService with threshold disabled (set to -1).
  * Verifies that duplicate detection is completely bypassed when threshold <= 0.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
-@TestProfile(GpsPointDuplicateDetectionServiceDisabledTest.DisabledThresholdTestProfile.class)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 public class GpsPointDuplicateDetectionServiceDisabledTest {
     @Inject
@@ -40,20 +33,18 @@ public class GpsPointDuplicateDetectionServiceDisabledTest {
     GpsPointRepository gpsPointRepository;
     @Inject
     UserRepository userRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private UserEntity testUser;
     private static final double TEST_LAT = 40.0;
     private static final double TEST_LON = -74.0;
     private static final GpsSourceType TEST_SOURCE = GpsSourceType.OWNTRACKS;
+    private static final int DISABLED_THRESHOLD_MINUTES = -1;
     @BeforeEach
     @Transactional
     public void setup() {
-        cleanupHelper.cleanupAll();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test@example.com");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("hash");
         testUser.setFullName("Test User");
         testUser.setCreatedAt(Instant.now());
@@ -71,7 +62,7 @@ public class GpsPointDuplicateDetectionServiceDisabledTest {
         // When: Try to insert another point at same location A, time T+1 minute
         Instant newTime = baseTime.plus(1, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE, DISABLED_THRESHOLD_MINUTES);
         // Then: Should return false (not a duplicate) because threshold is disabled
         assertFalse(isDuplicate, "Duplicate detection should be disabled when threshold <= 0");
     }
@@ -86,7 +77,7 @@ public class GpsPointDuplicateDetectionServiceDisabledTest {
         createGpsPoint(testUser, TEST_LAT, TEST_LON, baseTime, TEST_SOURCE);
         // When: Try to insert another point at exact same location and time
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, baseTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, baseTime, TEST_SOURCE, DISABLED_THRESHOLD_MINUTES);
         // Then: Should return false because threshold is disabled
         assertFalse(isDuplicate, "Should allow exact duplicates when threshold is disabled");
     }
@@ -102,7 +93,7 @@ public class GpsPointDuplicateDetectionServiceDisabledTest {
         // When: Try to insert historical point at same location A, time T-1 day (yesterday)
         Instant yesterdayTime = todayTime.minus(1, ChronoUnit.DAYS);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, yesterdayTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, yesterdayTime, TEST_SOURCE, DISABLED_THRESHOLD_MINUTES);
         // Then: Should return false
         assertFalse(isDuplicate, "Should allow historical data when threshold is disabled");
     }
@@ -119,15 +110,5 @@ public class GpsPointDuplicateDetectionServiceDisabledTest {
     }
     private Point createPoint(double lon, double lat) {
         return geometryFactory.createPoint(new Coordinate(lon, lat));
-    }
-    // =================== Test Profile ===================
-    /**
-     * Test profile with threshold disabled (set to -1)
-     */
-    public static class DisabledThresholdTestProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("geopulse.gps.duplicate-detection.location-time-threshold-minutes", "-1");
-        }
     }
 }

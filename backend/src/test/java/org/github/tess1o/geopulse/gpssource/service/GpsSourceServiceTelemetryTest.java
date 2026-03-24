@@ -1,5 +1,4 @@
 package org.github.tess1o.geopulse.gpssource.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -16,37 +15,24 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
-
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class GpsSourceServiceTelemetryTest {
-
     @Inject
     GpsSourceTypeTelemetryConfigService telemetryConfigService;
-
     @Inject
     GpsSourceRepository gpsSourceRepository;
-
     @Inject
     GpsSourceTypeTelemetryConfigRepository telemetryConfigRepository;
-
     @Inject
     UserRepository userRepository;
-
     private UserEntity user;
-
     @BeforeEach
     @Transactional
     void setup() {
-        gpsSourceRepository.deleteAll();
-        telemetryConfigRepository.deleteAll();
-        userRepository.deleteAll();
-
         user = UserEntity.builder()
                 .email("gps-source-telemetry-" + System.nanoTime() + "@test.local")
                 .role(Role.USER)
@@ -54,12 +40,10 @@ class GpsSourceServiceTelemetryTest {
                 .build();
         userRepository.persist(user);
     }
-
     @Test
     @Transactional
     void ownTracksSourceUsesDefaultTelemetryMappingWhenNoUserConfig() {
         GpsSourceTypeTelemetryConfigDTO resolved = telemetryConfigService.getResolvedConfig(user.getId(), GpsSourceType.OWNTRACKS);
-
         assertFalse(resolved.isCustomized());
         assertNotNull(resolved.getMapping());
         assertFalse(resolved.getMapping().isEmpty());
@@ -68,7 +52,6 @@ class GpsSourceServiceTelemetryTest {
                 .filter(entry -> entry.getKey().startsWith("geofence_"))
                 .allMatch(entry -> !entry.isEnabled()));
     }
-
     @Test
     @Transactional
     void canUpsertAndResetGlobalTelemetryMappingForSourceType() {
@@ -85,7 +68,6 @@ class GpsSourceServiceTelemetryTest {
                         .falseValues(List.of("0"))
                         .build()
         );
-
         GpsSourceTypeTelemetryConfigDTO saved = telemetryConfigService.upsertConfig(
                 user.getId(),
                 GpsSourceType.OWNTRACKS,
@@ -95,9 +77,7 @@ class GpsSourceServiceTelemetryTest {
         assertEquals(1, saved.getMapping().size());
         assertEquals("Engine", saved.getMapping().get(0).getLabel());
         assertFalse(saved.getMapping().get(0).isShowInGpsData());
-
         telemetryConfigService.resetConfig(user.getId(), GpsSourceType.OWNTRACKS);
-
         GpsSourceTypeTelemetryConfigDTO afterReset = telemetryConfigService.getResolvedConfig(user.getId(), GpsSourceType.OWNTRACKS);
         assertFalse(afterReset.isCustomized());
         assertTrue(afterReset.getMapping().stream().anyMatch(entry -> "ignition".equals(entry.getKey())));

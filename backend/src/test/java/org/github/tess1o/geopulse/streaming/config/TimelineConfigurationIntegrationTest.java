@@ -1,12 +1,11 @@
 package org.github.tess1o.geopulse.streaming.config;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UpdateTimelinePreferencesRequest;
@@ -16,7 +15,6 @@ import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * End-to-end integration test for the complete timeline configuration flow:
@@ -24,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Properties → Global Config → User Preferences → Effective Config
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @TestProfile(TimelineConfigurationIntegrationTest.TestConfigProfile.class)
 @Slf4j
 @SerializedDatabaseTest
@@ -39,14 +37,12 @@ class TimelineConfigurationIntegrationTest {
     UserRepository userRepository;
     @Inject
     jakarta.persistence.EntityManager entityManager;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     @BeforeEach
     @Transactional
     void setUp() {
         testUser = new UserEntity();
-        testUser.setEmail("integration@example.com");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Integration User");
         testUser.setPasswordHash("hashedpassword");
         userRepository.persist(testUser);
@@ -54,7 +50,6 @@ class TimelineConfigurationIntegrationTest {
     @AfterEach
     @Transactional
     void cleanup() {
-        cleanupHelper.cleanupTimeline();
         userRepository.deleteById(testUser.getId());
     }
     @Test
@@ -95,7 +90,7 @@ class TimelineConfigurationIntegrationTest {
     void testUserPreferencesPersistenceAndIsolation() {
         // Create second user
         UserEntity user2 = new UserEntity();
-        user2.setEmail("user2@example.com");
+        user2.setEmail(TestIds.uniqueEmail("it-user"));
         user2.setFullName("User Two");
         user2.setPasswordHash("hashedpassword");
         userRepository.persist(user2);

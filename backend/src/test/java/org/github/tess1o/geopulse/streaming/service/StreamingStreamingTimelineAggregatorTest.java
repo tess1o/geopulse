@@ -1,10 +1,9 @@
 package org.github.tess1o.geopulse.streaming.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -20,14 +19,12 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class StreamingStreamingTimelineAggregatorTest {
     @Inject
@@ -45,23 +42,14 @@ class StreamingStreamingTimelineAggregatorTest {
     @Inject
     GpsSourceRepository gpsSourceRepository;
     private final GeometryFactory geometryFactory = new GeometryFactory();
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     @BeforeEach
     @Transactional
     void setUp() {
         // Clean up previous test data
-        cleanupHelper.cleanupTimeline();
-        timelineDataGapRepository.deleteAll();
-        timelineTripRepository.deleteAll();
-        timelineStayRepository.deleteAll();
-        gpsPointRepository.deleteAll();
-        gpsSourceRepository.deleteAll();
-        userRepository.deleteAll();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("service-test@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Service Test User");
         testUser.setPasswordHash("test");
         userRepository.persist(testUser);

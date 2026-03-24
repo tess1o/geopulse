@@ -1,29 +1,25 @@
 package org.github.tess1o.geopulse.geocoding.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * TEST CASE TO DEMONSTRATE THE BUG IN findByExactCoordinates().
@@ -39,27 +35,34 @@ import static org.junit.jupiter.api.Assertions.*;
  * DO NOT FIX THE CODE - This test demonstrates the bug!
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class CacheGeocodingServiceBugTest {
+
     @Inject
     CacheGeocodingService cacheService;
+
     @Inject
     ReverseGeocodingLocationRepository repository;
+
     @Inject
     EntityManager entityManager;
-    @Inject
-    CleanupHelper cleanupHelper;
+
     @Inject
     jakarta.transaction.UserTransaction userTransaction;
+
     private static UUID USER_A_ID;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+    private static final double TEST_LAT = 15.1519;
+    private static final double TEST_LON = -23.9851;
+    private TestCoordinates.Scope coordinateScope;
+
     @BeforeEach
     @Transactional
     void setupUser() {
+        coordinateScope = TestCoordinates.newScope();
+
         UserEntity userA = UserEntity.builder()
-                .email("user-bug-test@example.com")
+                .email(TestIds.uniqueEmail("it-user"))
                 .fullName("User Bug Test")
                 .timezone("UTC")
                 .isActive(true)
@@ -68,11 +71,7 @@ class CacheGeocodingServiceBugTest {
         entityManager.flush();
         USER_A_ID = userA.getId();
     }
-    @AfterEach
-    @Transactional
-    void cleanup() {
-        cleanupHelper.cleanupAll();
-    }
+
     @Test
     @DisplayName("🐛 BUG TEST: Duplicate originals created when user copy exists at same coordinates")
     void testDuplicateOriginalsCreatedDueToFindByExactCoordinatesBug() throws Exception {
@@ -94,7 +93,7 @@ class CacheGeocodingServiceBugTest {
          * - existing != null && existing.getUser() == null → FALSE
          * - Falls into else block → CREATES DUPLICATE ORIGINAL! 🐛
          */
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         Long originalId;
         Long userCopyId;
         // CRITICAL: Start and commit a transaction for test data setup
@@ -132,7 +131,13 @@ class CacheGeocodingServiceBugTest {
             userCopyId = userCopy.getId();
             System.out.println("Step 2: Created user copy with id=" + userCopyId);
             // Verify we have 2 entities (1 original + 1 user copy)
-            long countBefore = repository.count();
+            long countBefore = entityManager.createQuery(
+                            "SELECT COUNT(r) FROM ReverseGeocodingLocationEntity r " +
+                                    "WHERE r.id = :originalId OR r.id = :userCopyId",
+                            Long.class)
+                    .setParameter("originalId", originalId)
+                    .setParameter("userCopyId", userCopyId)
+                    .getSingleResult();
             assertEquals(2, countBefore, "Should have 2 entities before cacheGeocodingResult()");
             // COMMIT the transaction so data is visible to REQUIRES_NEW transaction
             userTransaction.commit();
@@ -156,19 +161,37 @@ class CacheGeocodingServiceBugTest {
         // Run in new transaction to see committed results
         userTransaction.begin();
         try {
-            long countAfter = repository.count();
+            long countAfter = ((Number) entityManager.createNativeQuery(
+                            "SELECT COUNT(*) FROM reverse_geocoding_location " +
+                                    "WHERE ST_Equals(request_coordinates, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)) " +
+                                    "AND (user_id IS NULL OR user_id = :userId)")
+                    .setParameter("lon", coords.getX())
+                    .setParameter("lat", coords.getY())
+                    .setParameter("userId", USER_A_ID)
+                    .getSingleResult()).longValue();
             System.out.println("📊 Entities after: " + countAfter);
             // Query all originals (user_id IS NULL)
-            List<ReverseGeocodingLocationEntity> originals = entityManager.createQuery(
-                            "SELECT r FROM ReverseGeocodingLocationEntity r WHERE r.user IS NULL",
+            @SuppressWarnings("unchecked")
+            List<ReverseGeocodingLocationEntity> originals = entityManager.createNativeQuery(
+                            "SELECT * FROM reverse_geocoding_location " +
+                                    "WHERE user_id IS NULL " +
+                                    "AND ST_Equals(request_coordinates, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))",
                             ReverseGeocodingLocationEntity.class)
+                    .setParameter("lon", coords.getX())
+                    .setParameter("lat", coords.getY())
                     .getResultList();
             System.out.println("📋 Number of originals (user_id=NULL): " + originals.size());
             originals.forEach(o -> System.out.println("   - id=" + o.getId() + ", displayName=" + o.getDisplayName()));
             // Query all user copies
-            List<ReverseGeocodingLocationEntity> userCopies = entityManager.createQuery(
-                            "SELECT r FROM ReverseGeocodingLocationEntity r WHERE r.user IS NOT NULL",
+            @SuppressWarnings("unchecked")
+            List<ReverseGeocodingLocationEntity> userCopies = entityManager.createNativeQuery(
+                            "SELECT * FROM reverse_geocoding_location " +
+                                    "WHERE user_id = :userId " +
+                                    "AND ST_Equals(request_coordinates, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))",
                             ReverseGeocodingLocationEntity.class)
+                    .setParameter("userId", USER_A_ID)
+                    .setParameter("lon", coords.getX())
+                    .setParameter("lat", coords.getY())
                     .getResultList();
             System.out.println("📋 Number of user copies (user_id!=NULL): " + userCopies.size());
             userCopies.forEach(u -> System.out.println("   - id=" + u.getId() + ", displayName=" + u.getDisplayName()));
@@ -218,7 +241,7 @@ class CacheGeocodingServiceBugTest {
          * originals to accumulate if cacheGeocodingResult() is called
          * repeatedly at the same coordinates where a user copy exists.
          */
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         // Setup test data in a committed transaction
         userTransaction.begin();
         try {
@@ -268,9 +291,14 @@ class CacheGeocodingServiceBugTest {
         // Check originals count in new transaction
         userTransaction.begin();
         try {
-            List<ReverseGeocodingLocationEntity> originals = entityManager.createQuery(
-                            "SELECT r FROM ReverseGeocodingLocationEntity r WHERE r.user IS NULL",
+            @SuppressWarnings("unchecked")
+            List<ReverseGeocodingLocationEntity> originals = entityManager.createNativeQuery(
+                            "SELECT * FROM reverse_geocoding_location " +
+                                    "WHERE user_id IS NULL " +
+                                    "AND ST_Equals(request_coordinates, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326))",
                             ReverseGeocodingLocationEntity.class)
+                    .setParameter("lon", coords.getX())
+                    .setParameter("lat", coords.getY())
                     .getResultList();
             System.out.println("📊 After 3 cache calls: " + originals.size() + " originals found");
             originals.forEach(o -> System.out.println("   - id=" + o.getId() + ", name=" + o.getDisplayName()));
@@ -299,7 +327,7 @@ class CacheGeocodingServiceBugTest {
          *
          * This will verify that the method has proper user_id IS NULL filtering.
          */
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         Long originalId;
         Long userCopyId;
         // Create test data in committed transaction
@@ -375,5 +403,9 @@ class CacheGeocodingServiceBugTest {
             userTransaction.rollback();
             throw e;
         }
+    }
+
+    private Point coord(double lon, double lat) {
+        return coordinateScope.point(lon, lat);
     }
 }

@@ -207,7 +207,7 @@ backend-test-unit:
 .PHONY: backend-test-integration
 backend-test-integration:
 	@echo "Running backend integration tests"
-	./mvnw -pl backend -DskipITs=false failsafe:integration-test failsafe:verify
+	./mvnw -pl backend -DskipITs=false test-compile failsafe:integration-test failsafe:verify
 
 # Full backend test suite (unit + integration)
 .PHONY: backend-test-all

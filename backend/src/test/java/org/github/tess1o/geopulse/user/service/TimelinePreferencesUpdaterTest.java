@@ -1,10 +1,9 @@
 package org.github.tess1o.geopulse.user.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
@@ -14,25 +13,22 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TimelinePreferencesUpdaterTest {
     @Inject
     UserService userService;
     @Inject
     UserRepository userRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     @BeforeEach
     @Transactional
     void setUp() {
         // Create test user with existing timeline preferences
         testUser = new UserEntity();
-        testUser.setEmail("TimelinePreferencesUpdaterTest@example.com");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Test User");
         testUser.setPasswordHash("hashedpassword");
         TimelinePreferences existingPrefs = new TimelinePreferences();
@@ -46,7 +42,6 @@ class TimelinePreferencesUpdaterTest {
     @AfterEach
     @Transactional
     void cleanup() {
-        cleanupHelper.cleanupTimeline();
         userRepository.deleteById(testUser.getId());
     }
     @Test
@@ -121,7 +116,7 @@ class TimelinePreferencesUpdaterTest {
     void testUpdateTimelinePreferences_CreatesPreferencesIfNotExists() {
         // Create user without timeline preferences
         UserEntity userWithoutPrefs = new UserEntity();
-        userWithoutPrefs.setEmail("nopref@example.com");
+        userWithoutPrefs.setEmail(TestIds.uniqueEmail("it-user"));
         userWithoutPrefs.setFullName("No Prefs User");
         userWithoutPrefs.setPasswordHash("hashedpassword");
         userWithoutPrefs.setTimelinePreferences(null);

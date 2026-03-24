@@ -1,12 +1,11 @@
 package org.github.tess1o.geopulse.importdata;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.admin.model.Role;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
@@ -23,13 +22,11 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
@@ -46,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * These tests are CRITICAL for production readiness.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 public class ImportDuplicateDetectionComprehensiveTest {
@@ -60,18 +57,15 @@ public class ImportDuplicateDetectionComprehensiveTest {
     UserRepository userRepository;
     @Inject
     ObjectMapper objectMapper;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     private UUID testUserId;
     @BeforeEach
     @Transactional
     void setUp() {
         // Clean up all existing test data (including timeline data)
-        cleanupHelper.cleanupAll();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test-duplicate-detection@geopulse.test");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);
@@ -86,7 +80,6 @@ public class ImportDuplicateDetectionComprehensiveTest {
     @Transactional
     void tearDown() {
         // Clean up all test data including timeline entities
-        cleanupHelper.cleanupAll();
     }
     /**
      * CRITICAL TEST: Batch with 100% duplicates
@@ -164,9 +157,8 @@ public class ImportDuplicateDetectionComprehensiveTest {
         double lat3 = 37.123466789; // differs by 0.00001 degrees
         double lon2 = -122.987654321;
         // Clear previous data and recreate user
-        cleanupHelper.cleanupAll();
         testUser = new UserEntity();
-        testUser.setEmail("test-duplicate-detection@geopulse.test");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);
@@ -183,9 +175,8 @@ public class ImportDuplicateDetectionComprehensiveTest {
         log.info("✓ Test 2 passed: {} points (both imported)", count2);
         // Test Case 3: Different timestamps, same location (NOT duplicates)
         log.info("Test 3: Same location, different timestamps");
-        cleanupHelper.cleanupAll();
         testUser = new UserEntity();
-        testUser.setEmail("test-duplicate-detection@geopulse.test");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);
@@ -202,9 +193,8 @@ public class ImportDuplicateDetectionComprehensiveTest {
         log.info("✓ Test 3 passed: {} points (different times)", count3);
         // Test Case 4: Verify WKT conversion consistency
         log.info("Test 4: WKT conversion produces consistent coordinates");
-        cleanupHelper.cleanupAll();
         testUser = new UserEntity();
-        testUser.setEmail("test-duplicate-detection@geopulse.test");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);

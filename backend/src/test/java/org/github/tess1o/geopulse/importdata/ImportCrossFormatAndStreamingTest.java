@@ -1,12 +1,11 @@
 package org.github.tess1o.geopulse.importdata;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.integrations.owntracks.model.OwnTracksLocationMessage;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
@@ -22,13 +21,11 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test suite for cross-format duplicate detection and streaming edge cases.
@@ -40,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * - Temp file handling
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 public class ImportCrossFormatAndStreamingTest {
@@ -54,16 +51,13 @@ public class ImportCrossFormatAndStreamingTest {
     UserRepository userRepository;
     @Inject
     ObjectMapper objectMapper;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     private UUID testUserId;
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupAll();
         testUser = new UserEntity();
-        testUser.setEmail("test-cross-format@geopulse.test");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);
@@ -75,7 +69,6 @@ public class ImportCrossFormatAndStreamingTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupHelper.cleanupAll();
     }
     /**
      * CRITICAL TEST: Cross-format duplicate detection

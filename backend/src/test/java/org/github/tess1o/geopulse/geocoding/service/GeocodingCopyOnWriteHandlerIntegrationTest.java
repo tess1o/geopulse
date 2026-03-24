@@ -1,19 +1,18 @@
 package org.github.tess1o.geopulse.geocoding.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.ForbiddenException;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
@@ -24,10 +23,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration tests for GeocodingCopyOnWriteHandler using real database.
@@ -36,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Coverage: End-to-end copy-on-write operations with real database interactions
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @DisplayName("GeocodingCopyOnWriteHandler Integration Tests")
 @SerializedDatabaseTest
 class GeocodingCopyOnWriteHandlerIntegrationTest {
@@ -50,27 +47,31 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
     UserRepository userRepository;
     @Inject
     EntityManager entityManager;
-    @Inject
-    CleanupHelper cleanupHelper;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+
+    private static final double TEST_LAT = 61.7589;
+    private static final double TEST_LON = 15.9851;
+
     private UserEntity testUser;
     private UserEntity otherUser;
     private UUID testUserId;
     private UUID otherUserId;
+    private TestCoordinates.Scope coordinateScope;
+
     @BeforeEach
     @Transactional
     void setUp() {
+        coordinateScope = TestCoordinates.newScope();
+
         // Create test users
         testUser = new UserEntity();
-        testUser.setEmail("test@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Test User");
         testUser.setPasswordHash("test-hash");
         testUser.setCreatedAt(Instant.now());
         userRepository.persist(testUser);
         testUserId = testUser.getId();
         otherUser = new UserEntity();
-        otherUser.setEmail("other@geopulse.app");
+        otherUser.setEmail(TestIds.uniqueEmail("it-user"));
         otherUser.setFullName("Other User");
         otherUser.setPasswordHash("other-hash");
         otherUser.setCreatedAt(Instant.now());
@@ -81,7 +82,6 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupHelper.cleanupAll();
     }
     // ==================== Test Suite 1: handleUserUpdate() ====================
     @Test
@@ -150,9 +150,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertEquals("Custom City", userCopy.getCity());
         assertEquals("Custom Country", userCopy.getCountry());
         assertTrue(userCopy.isOwnedBy(testUserId));
-        // Verify we now have 2 entities in database
-        long count = repository.count();
-        assertEquals(2, count);
+        assertEquals(1, repository.count("user.id = ?1", testUserId));
     }
     @Test
     @DisplayName("Should throw ForbiddenException when modifying another user's entity")
@@ -265,9 +263,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertFalse(result.wasCopied());
         assertNull(result.originalId());
         assertEquals(entity, result.entity());
-        // Verify no new entities created
-        long count = repository.count();
-        assertEquals(1, count);
+        assertEquals(0, repository.count("user.id = ?1", testUserId));
     }
     @Test
     @DisplayName("Should create copy when original data changed")
@@ -306,9 +302,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertEquals("New City", userCopy.getCity());
         assertEquals("New Country", userCopy.getCountry());
         assertTrue(userCopy.isOwnedBy(testUserId));
-        // Verify we now have 2 entities
-        long count = repository.count();
-        assertEquals(2, count);
+        assertEquals(1, repository.count("user.id = ?1", testUserId));
     }
     @Test
     @DisplayName("Should update user copy in-place when data changed")
@@ -345,9 +339,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertEquals("Updated City", reloaded.getCity());
         assertEquals("Updated Country", reloaded.getCountry());
         assertTrue(reloaded.isOwnedBy(testUserId));
-        // Verify no new entities created
-        long count = repository.count();
-        assertEquals(1, count);
+        assertEquals(1, repository.count("user.id = ?1", testUserId));
     }
     @Test
     @DisplayName("Should sync timeline when reconciling creates copy")
@@ -538,9 +530,8 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         assertTrue(copy1.isOwnedBy(testUserId));
         assertEquals("User 2 Custom Name", copy2.getDisplayName());
         assertTrue(copy2.isOwnedBy(otherUserId));
-        // Verify we have 3 total entities
-        long count = repository.count();
-        assertEquals(3, count);
+        assertEquals(1, repository.count("user.id = ?1", testUserId));
+        assertEquals(1, repository.count("user.id = ?1", otherUserId));
     }
     @Test
     @DisplayName("User repeatedly updating their own copy")
@@ -572,13 +563,11 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         ReverseGeocodingLocationEntity reloaded = repository.findById(copyId);
         assertNotNull(reloaded);
         assertEquals("Version 3", reloaded.getDisplayName());
-        // Verify no additional copies were created
-        long count = repository.count();
-        assertEquals(1, count);
+        assertEquals(1, repository.count("user.id = ?1", testUserId));
     }
     // ==================== Helper Methods ====================
     private ReverseGeocodingLocationEntity createOriginalEntity() {
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = point(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity entity = new ReverseGeocodingLocationEntity();
         entity.setRequestCoordinates(coords);
         entity.setResultCoordinates(coords);
@@ -597,7 +586,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         return entity;
     }
     private FormattableGeocodingResult createTestResult(String displayName, String city, String country) {
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = point(TEST_LON, TEST_LAT);
         return SimpleFormattableResult.builder()
                 .requestCoordinates(coords)
                 .resultCoordinates(coords)
@@ -608,7 +597,7 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
                 .build();
     }
     private TimelineStayEntity createTimelineStay(UserEntity user, ReverseGeocodingLocationEntity geocoding) {
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = point(TEST_LON, TEST_LAT);
         TimelineStayEntity stay = new TimelineStayEntity();
         stay.setUser(user);
         stay.setLocation(coords);
@@ -620,5 +609,9 @@ class GeocodingCopyOnWriteHandlerIntegrationTest {
         stay.setCreatedAt(Instant.now());
         stay.setLastUpdated(Instant.now());
         return stay;
+    }
+
+    private Point point(double lon, double lat) {
+        return coordinateScope.point(lon, lat);
     }
 }

@@ -1,5 +1,6 @@
 package org.github.tess1o.geopulse.geocoding.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
+import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -7,13 +8,11 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.NotFoundException;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingDTO;
 import org.github.tess1o.geopulse.geocoding.dto.ReverseGeocodingUpdateDTO;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.AfterEach;
@@ -21,11 +20,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Comprehensive integration tests for ReverseGeocodingManagementService.
@@ -34,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * NO MOCKS - Uses real database with all services integrated.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class ReverseGeocodingManagementServiceTest {
     @Inject
@@ -43,24 +40,28 @@ class ReverseGeocodingManagementServiceTest {
     ReverseGeocodingLocationRepository repository;
     @Inject
     EntityManager entityManager;
-    @Inject
-    CleanupHelper cleanupHelper;
     private static UUID USER_A_ID;
     private static UUID USER_B_ID;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+
+    private static final double TEST_LAT = 41.7589;
+    private static final double TEST_LON = -72.9851;
+
+    private TestCoordinates.Scope coordinateScope;
+
     @BeforeEach
     @Transactional
     void setupUsers() {
+        coordinateScope = TestCoordinates.newScope();
+
         UserEntity userA = UserEntity.builder()
-                .email("user-a-mgmt-test@example.com")
+                .email(TestIds.uniqueEmail("it-user"))
                 .fullName("User A")
                 .timezone("UTC")
                 .isActive(true)
                 .build();
         entityManager.persist(userA);
         UserEntity userB = UserEntity.builder()
-                .email("user-b-mgmt-test@example.com")
+                .email(TestIds.uniqueEmail("it-user"))
                 .fullName("User B")
                 .timezone("UTC")
                 .isActive(true)
@@ -73,7 +74,6 @@ class ReverseGeocodingManagementServiceTest {
     @AfterEach
     @Transactional
     void cleanup() {
-        cleanupHelper.cleanupAll();
     }
     // ==================== Copy-on-Write: User Modifying Original ====================
     @Test
@@ -81,7 +81,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("COW Test 1: Modifying original creates user copy")
     void testModifyingOriginalCreatesUserCopy() {
         // Given: Original entity
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Starbucks");
         repository.persist(original);
         entityManager.flush();
@@ -108,7 +108,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("COW Test 2: Timeline stays remapped to user copy")
     void testTimelineStaysRemappedToUserCopy() {
         // Given: Original with timeline stay
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Starbucks");
         repository.persist(original);
         entityManager.flush();
@@ -132,7 +132,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("COW Test 3: User B's timeline stays unchanged after User A modifies")
     void testUserBTimelineStaysUnchangedWhenUserAModifies() {
         // Given: Original with timeline stays for both users
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Starbucks");
         repository.persist(original);
         entityManager.flush();
@@ -158,7 +158,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("COW Test 4: Modifying own copy updates in-place")
     void testModifyingOwnCopyUpdatesInPlace() {
         // Given: User A's custom copy
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity userCopy = createUserCopy(USER_A_ID, coords, "My Coffee Shop");
         repository.persist(userCopy);
         entityManager.flush();
@@ -174,7 +174,7 @@ class ReverseGeocodingManagementServiceTest {
         assertEquals("My Updated Coffee Shop", result.getDisplayName());
         assertEquals("Brooklyn", result.getCity());
         // And: No new entity created
-        long countAfter = repository.count();
+        long countAfter = repository.count("user.id = ?1", USER_A_ID);
         assertEquals(1, countAfter, "Should still have only 1 entity");
     }
     // ==================== Authorization Tests ====================
@@ -183,7 +183,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Auth Test 1: User cannot modify another user's copy")
     void testUserCannotModifyAnotherUsersCopy() {
         // Given: User A's custom copy
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity userACopy = createUserCopy(USER_A_ID, coords, "My Coffee Shop");
         repository.persist(userACopy);
         entityManager.flush();
@@ -205,7 +205,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Auth Test 2: User cannot access another user's copy")
     void testUserCannotAccessAnotherUsersCopy() {
         // Given: User A's custom copy
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity userACopy = createUserCopy(USER_A_ID, coords, "My Coffee Shop");
         repository.persist(userACopy);
         entityManager.flush();
@@ -220,7 +220,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Auth Test 3: User can access originals")
     void testUserCanAccessOriginals() {
         // Given: Original entity
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Starbucks");
         repository.persist(original);
         entityManager.flush();
@@ -247,9 +247,9 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Management Test 1: User sees only relevant entities")
     void testManagementPageShowsRelevantEntitiesOnly() {
         // Given: Multiple entities
-        Point loc1 = GeoUtils.createPoint(-73.9851, 40.7589);
-        Point loc2 = GeoUtils.createPoint(-73.9654, 40.7829);
-        Point loc3 = GeoUtils.createPoint(-74.0060, 40.7128);
+        Point loc1 = coord(-73.9851, 40.7589);
+        Point loc2 = coord(-73.9654, 40.7829);
+        Point loc3 = coord(-74.0060, 40.7128);
         // Original referenced by User A
         ReverseGeocodingLocationEntity original1 = createOriginal(loc1, "Location 1");
         repository.persist(original1);
@@ -281,7 +281,7 @@ class ReverseGeocodingManagementServiceTest {
     void testCountMatchesResults() {
         // Given: 3 entities for user A
         for (int i = 0; i < 3; i++) {
-            Point coords = GeoUtils.createPoint(-73.9 - i * 0.01, 40.7 + i * 0.01);
+            Point coords = coord(-73.9 - i * 0.01, 40.7 + i * 0.01);
             ReverseGeocodingLocationEntity entity = createUserCopy(USER_A_ID, coords, "Location " + i);
             repository.persist(entity);
         }
@@ -301,7 +301,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Concurrency Test: Two users modifying same original creates separate copies")
     void testTwoUsersModifyingSameOriginalCreatesSeparateCopies() {
         // Given: Original
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Starbucks");
         repository.persist(original);
         entityManager.flush();
@@ -319,7 +319,8 @@ class ReverseGeocodingManagementServiceTest {
         updateB.setCountry("USA");
         ReverseGeocodingDTO resultB = managementService.updateGeocodingResult(USER_B_ID, originalId, updateB);
         // Then: Three entities exist (original + 2 copies)
-        assertEquals(3, repository.count(), "Should have 3 entities");
+        assertEquals(1, repository.count("user.id = ?1", USER_A_ID), "Should have 1 copy for user A");
+        assertEquals(1, repository.count("user.id = ?1", USER_B_ID), "Should have 1 copy for user B");
         // And: Each user has their own copy
         assertNotEquals(resultA.getId(), resultB.getId(), "Should be different copies");
         assertEquals("My Coffee Shop", resultA.getDisplayName());
@@ -385,7 +386,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 1: User cannot reconcile another user's copy")
     void testCannotReconcileAnotherUsersCopy() {
         // Given: User A's custom copy
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity userACopy = createUserCopy(USER_A_ID, coords, "User A Location");
         repository.persist(userACopy);
         entityManager.flush();
@@ -400,7 +401,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 2: User can reconcile original entity")
     void testUserCanReconcileOriginal() {
         // Given: Original entity
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Original Location");
         repository.persist(original);
         entityManager.flush();
@@ -417,7 +418,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 3: User can reconcile their own copy")
     void testUserCanReconcileOwnCopy() {
         // Given: User A's copy
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity userCopy = createUserCopy(USER_A_ID, coords, "My Location");
         repository.persist(userCopy);
         entityManager.flush();
@@ -444,7 +445,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 5: Multiple users can reconcile same original independently")
     void testMultipleUsersReconcileSameOriginal() {
         // Given: Original entity
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Shared Location");
         repository.persist(original);
         entityManager.flush();
@@ -468,7 +469,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 6: Verify reconciliation uses correct provider")
     void testReconciliationUsesCorrectProvider() {
         // Given: Original entity from one provider
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Location");
         original.setProviderName("nominatim");
         repository.persist(original);
@@ -485,9 +486,9 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 7: Verify security on reconciliation")
     void testReconciliationSecurityChecks() {
         // Given: Three entities
-        Point coords1 = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-        Point coords2 = GeoUtils.createPoint(TEST_LON + 0.01, TEST_LAT);
-        Point coords3 = GeoUtils.createPoint(TEST_LON + 0.02, TEST_LAT);
+        Point coords1 = coord(TEST_LON, TEST_LAT);
+        Point coords2 = coord(TEST_LON + 0.01, TEST_LAT);
+        Point coords3 = coord(TEST_LON + 0.02, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords1, "Original");
         ReverseGeocodingLocationEntity userACopy = createUserCopy(USER_A_ID, coords2, "User A Copy");
         ReverseGeocodingLocationEntity userBCopy = createUserCopy(USER_B_ID, coords3, "User B Copy");
@@ -513,7 +514,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 8: Verify reconciliation preserves spatial data")
     void testReconciliationPreservesSpatialData() {
         // Given: Original entity
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Original Name");
         repository.persist(original);
         entityManager.flush();
@@ -535,7 +536,7 @@ class ReverseGeocodingManagementServiceTest {
     @DisplayName("Reconciliation Test 9: Verify reconciliation result is returned")
     void testReconciliationReturnsResult() {
         // Given: Original entity
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity original = createOriginal(coords, "Test Location");
         repository.persist(original);
         entityManager.flush();
@@ -547,7 +548,11 @@ class ReverseGeocodingManagementServiceTest {
         assertNotNull(result.getDisplayName());
         assertNotNull(result.getLongitude());
         assertNotNull(result.getLatitude());
-        assertEquals(TEST_LON, result.getLongitude(), 0.01);
-        assertEquals(TEST_LAT, result.getLatitude(), 0.01);
+        assertEquals(coords.getX(), result.getLongitude(), 0.01);
+        assertEquals(coords.getY(), result.getLatitude(), 0.01);
+    }
+
+    private Point coord(double lon, double lat) {
+        return coordinateScope.point(lon, lat);
     }
 }
