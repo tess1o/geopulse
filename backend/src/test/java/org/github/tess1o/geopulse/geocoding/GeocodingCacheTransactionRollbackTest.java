@@ -1,5 +1,4 @@
 package org.github.tess1o.geopulse.geocoding;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -11,14 +10,12 @@ import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingRes
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
 import org.github.tess1o.geopulse.geocoding.service.CacheGeocodingService;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Point;
-
 import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
@@ -40,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 6. EXPECTED: Cache writes should survive because they used REQUIRES_NEW
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class GeocodingCacheTransactionRollbackTest {
@@ -50,6 +47,7 @@ class GeocodingCacheTransactionRollbackTest {
     ReverseGeocodingLocationRepository geocodingRepository;
     @Inject
     UserTransaction userTransaction;
+    private TestCoordinates.Scope coordinateScope;
     private Point testPoint1;
     private Point testPoint2;
     private Point testPoint3;
@@ -61,16 +59,16 @@ class GeocodingCacheTransactionRollbackTest {
         }
         userTransaction.begin();
         try {
-            geocodingRepository.deleteAll();
             userTransaction.commit();
         } catch (Exception e) {
             userTransaction.rollback();
             throw e;
         }
+        coordinateScope = TestCoordinates.newScope();
         // Create test points
-        testPoint1 = GeoUtils.createPoint(-73.9851, 40.7589); // NYC
-        testPoint2 = GeoUtils.createPoint(-0.1276, 51.5074);  // London
-        testPoint3 = GeoUtils.createPoint(2.3522, 48.8566);   // Paris
+        testPoint1 = coordinateScope.point(-73.9851, 40.7589); // NYC
+        testPoint2 = coordinateScope.point(-0.1276, 51.5074);  // London
+        testPoint3 = coordinateScope.point(2.3522, 48.8566);   // Paris
     }
     /**
      * This test demonstrates the CURRENT BUG where cache writes are lost on transaction rollback.

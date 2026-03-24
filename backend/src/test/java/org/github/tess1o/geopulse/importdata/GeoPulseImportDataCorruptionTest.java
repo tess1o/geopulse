@@ -1,11 +1,10 @@
 package org.github.tess1o.geopulse.importdata;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -24,18 +23,16 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test to ensure the GeoPulse import strategy fix prevents data corruption
  * when multiple users import the same export file.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 public class GeoPulseImportDataCorruptionTest {
@@ -47,8 +44,6 @@ public class GeoPulseImportDataCorruptionTest {
     ExportDataGenerator exportDataGenerator;
     @Inject
     ImportDataService importDataService;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUserA;
     private UserEntity testUserB;
     private GpsPointEntity testGpsPoint;
@@ -59,11 +54,11 @@ public class GeoPulseImportDataCorruptionTest {
         // Create two test users
         testUserA = new UserEntity();
         testUserA.setFullName("Test User A");
-        testUserA.setEmail("testa@example.com");
+        testUserA.setEmail(TestIds.uniqueEmail("it-user"));
         userRepository.persist(testUserA);
         testUserB = new UserEntity();
         testUserB.setFullName("Test User B");
-        testUserB.setEmail("testb@example.com");
+        testUserB.setEmail(TestIds.uniqueEmail("it-user"));
         userRepository.persist(testUserB);
         // Create test GPS data for User A
         testGpsPoint = new GpsPointEntity();
@@ -94,16 +89,8 @@ public class GeoPulseImportDataCorruptionTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        // Clean up test data
-        cleanupHelper.cleanupTimeline();
-        if (testUserA != null) {
-            gpsPointRepository.deleteByUserId(testUserA.getId());
-            userRepository.deleteById(testUserA.getId());
-        }
-        if (testUserB != null) {
-            gpsPointRepository.deleteByUserId(testUserB.getId());
-            userRepository.deleteById(testUserB.getId());
-        }
+        // No cleanup: shared DB integration tests use unique per-test users.
+        // Deleting users here can violate FKs from timeline tables created during import.
     }
     @Test
     @Transactional

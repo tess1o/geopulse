@@ -1,5 +1,5 @@
 package org.github.tess1o.geopulse.importdata;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -16,12 +16,10 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 /**
@@ -45,7 +43,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * - Timeline uses separate @Transactional, cannot rollback GPS data
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class ImportDataPersistenceAcrossTimelineFailureTest {
@@ -60,13 +58,9 @@ class ImportDataPersistenceAcrossTimelineFailureTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        // Clean up any existing test data
-        gpsPointRepository.deleteAll();
-        // Delete test user if exists
-        userRepository.delete("email", "test-import@example.com");
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test-import@example.com");
+        testUser.setEmail(TestIds.uniqueEmail("import-persistence-user"));
         testUser.setPasswordHash("test-hash");
         testUser.setEmailVerified(true);
         testUser.setActive(true);

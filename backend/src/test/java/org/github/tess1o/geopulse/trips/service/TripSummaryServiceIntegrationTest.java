@@ -1,10 +1,8 @@
 package org.github.tess1o.geopulse.trips.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.favorites.model.FavoriteLocationType;
 import org.github.tess1o.geopulse.favorites.model.FavoritesEntity;
@@ -28,17 +26,13 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
-
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TripSummaryServiceIntegrationTest {
-
     @Inject
     TripSummaryService tripSummaryService;
     @Inject
@@ -57,21 +51,14 @@ class TripSummaryServiceIntegrationTest {
     UserRepository userRepository;
     @Inject
     UserService userService;
-    @Inject
-    CleanupHelper cleanupHelper;
-
     private UUID userId;
     private Long tripId;
-
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupTripWorkspaceAndUsers();
-
         String email = "trip-summary-" + UUID.randomUUID() + "@example.com";
         UserEntity user = userService.registerUser(email, "password123", "Trip Summary Tester", "UTC");
         userId = user.getId();
-
         TripEntity trip = TripEntity.builder()
                 .user(user)
                 .name("Summary Trip")
@@ -82,13 +69,11 @@ class TripSummaryServiceIntegrationTest {
         tripRepository.persist(trip);
         tripId = trip.getId();
     }
-
     @Test
     @Transactional
     void getSummary_shouldAggregatePlanTimelineDistanceAndActualPlaces() {
         TripEntity trip = tripRepository.findById(tripId);
         UserEntity user = userRepository.findById(userId);
-
         tripPlanItemRepository.persist(TripPlanItemEntity.builder()
                 .trip(trip)
                 .title("Place 1")
@@ -110,7 +95,6 @@ class TripSummaryServiceIntegrationTest {
                 .orderIndex(2)
                 .isVisited(false)
                 .build());
-
         FavoritesEntity favA = FavoritesEntity.builder()
                 .user(user)
                 .name("Hotel A")
@@ -120,7 +104,6 @@ class TripSummaryServiceIntegrationTest {
                 .geometry(GeoUtils.createPoint(-3.7038, 40.4168))
                 .build();
         favoritesRepository.persist(favA);
-
         FavoritesEntity favB = FavoritesEntity.builder()
                 .user(user)
                 .name("Museum B")
@@ -130,7 +113,6 @@ class TripSummaryServiceIntegrationTest {
                 .geometry(GeoUtils.createPoint(-3.6883, 40.4230))
                 .build();
         favoritesRepository.persist(favB);
-
         timelineStayRepository.persist(TimelineStayEntity.builder()
                 .user(user)
                 .timestamp(Instant.parse("2026-01-01T08:00:00Z"))
@@ -155,7 +137,6 @@ class TripSummaryServiceIntegrationTest {
                 .locationName("Museum B")
                 .favoriteLocation(favB)
                 .build());
-
         timelineTripRepository.persist(TimelineTripEntity.builder()
                 .user(user)
                 .timestamp(Instant.parse("2026-01-01T09:30:00Z"))
@@ -174,9 +155,7 @@ class TripSummaryServiceIntegrationTest {
                 .endPoint(GeoUtils.createPoint(-3.6883, 40.4230))
                 .movementType("CAR")
                 .build());
-
         TripSummaryDto summary = tripSummaryService.getSummary(userId, tripId);
-
         assertThat(summary.getTripId()).isEqualTo(tripId);
         assertThat(summary.getTripName()).isEqualTo("Summary Trip");
         assertThat(summary.getStatus()).isEqualTo(TripStatus.COMPLETED);
@@ -189,5 +168,4 @@ class TripSummaryServiceIntegrationTest {
         assertThat(summary.getTotalTripDurationSeconds()).isEqualTo(900);
         assertThat(summary.getActualPlacesCount()).isEqualTo(2);
     }
-
 }

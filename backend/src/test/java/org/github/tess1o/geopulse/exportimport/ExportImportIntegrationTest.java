@@ -1,11 +1,10 @@
 package org.github.tess1o.geopulse.exportimport;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -41,11 +40,9 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Comprehensive integration test for export/import functionality with
@@ -58,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 5) Verify that data before deletion and after import is identical
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class ExportImportIntegrationTest {
@@ -82,8 +79,6 @@ class ExportImportIntegrationTest {
     ReverseGeocodingLocationRepository reverseGeocodingLocationRepository;
     @Inject
     GpsSourceRepository gpsSourceRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
     private UserEntity testUser;
     private FavoritesEntity testFavorite;
     private ReverseGeocodingLocationEntity testGeocodingLocation;
@@ -97,10 +92,9 @@ class ExportImportIntegrationTest {
     @Transactional
     void setUp() {
         // Clean up any existing test data
-        cleanupTestData();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test-export-import@geopulse.app");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("Export Import Test User");
         testUser.setPasswordHash("test-hash");
         testUser.setCreatedAt(Instant.now());
@@ -191,20 +185,11 @@ class ExportImportIntegrationTest {
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupTestData();
     }
     @Transactional
     void cleanupTestData() {
         // Clean up in dependency order (reverse of creation)
-        cleanupHelper.cleanupTimeline();
-        gpsSourceRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
-        gpsPointRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
-        timelineTripRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
-        timelineStayRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
-        timelineDataGapRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
-        favoritesRepository.delete("user.email = ?1", "test-export-import@geopulse.app");
         reverseGeocodingLocationRepository.delete("providerName = ?1", "test-provider");
-        userRepository.delete("email = ?1", "test-export-import@geopulse.app");
     }
     @Test
     @Transactional

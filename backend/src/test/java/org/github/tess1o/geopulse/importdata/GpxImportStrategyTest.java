@@ -1,12 +1,11 @@
 package org.github.tess1o.geopulse.importdata;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -22,18 +21,16 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration test for GPX import functionality.
  * Tests the complete parsing and import cycle using real database operations.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class GpxImportStrategyTest {
@@ -46,37 +43,25 @@ class GpxImportStrategyTest {
     @Inject
     GpsPointRepository gpsPointRepository;
     @Inject
-    CleanupHelper cleanupHelper;
-    @Inject
     EntityManager entityManager;
     private UserEntity testUser;
     @BeforeEach
     @Transactional
     void setUp() {
-        // Clean up any existing test data
-        cleanupTestData();
-        // Create test user
-        testUser = userRepository.find("email", "test-gpx@geopulse.app").firstResult();
-        if (testUser == null) {
-            testUser = new UserEntity();
-            testUser.setEmail("test-gpx@geopulse.app");
-            testUser.setFullName("GPX Test User");
-            testUser.setPasswordHash("test-hash");
-            testUser.setCreatedAt(Instant.now());
-            userRepository.persist(testUser);
-        }
+        testUser = new UserEntity();
+        testUser.setEmail(TestIds.uniqueEmail("gpx-import-user"));
+        testUser.setFullName("GPX Test User");
+        testUser.setPasswordHash("test-hash");
+        testUser.setCreatedAt(Instant.now());
+        userRepository.persist(testUser);
     }
     @AfterEach
     @Transactional
     void tearDown() {
-        cleanupTestData();
     }
     @Transactional
     void cleanupTestData() {
-        cleanupHelper.cleanupTimeline();
         // Clean up in dependency order: timeline regeneration tasks -> timeline stays -> GPS points -> user
-        gpsPointRepository.delete("user.email = ?1", "test-gpx@geopulse.app");
-        userRepository.delete("email = ?1", "test-gpx@geopulse.app");
     }
     @Test
     @Transactional

@@ -1,5 +1,4 @@
 package org.github.tess1o.geopulse.importdata.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -14,10 +13,8 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Simple test to verify GPS point deduplication using unique index.
@@ -25,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 @QuarkusTest
 @Slf4j
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 public class GpsPointDeduplicationTest {
     @Inject
     GpsPointRepository gpsPointRepository;

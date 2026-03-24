@@ -23,17 +23,19 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("unit")
 class ReverseGeocodingDTOMapperTest {
     private ReverseGeocodingDTOMapper mapper;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+    private static final double TEST_LAT = 55.7689;
+    private static final double TEST_LON = -33.1851;
     private static final String TEST_DISPLAY_NAME = "Times Square";
     private static final String TEST_CITY = "New York";
     private static final String TEST_COUNTRY = "USA";
     private static final String TEST_PROVIDER = "nominatim";
+
     @BeforeEach
     void setUp() {
         mapper = new ReverseGeocodingDTOMapper();
     }
     // ==================== Test Suite 1: toDTO() ====================
+
     @Nested
     @DisplayName("toDTO() - Single Entity to DTO")
     class ToDTOTests {

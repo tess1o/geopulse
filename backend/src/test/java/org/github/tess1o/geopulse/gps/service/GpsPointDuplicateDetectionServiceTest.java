@@ -1,12 +1,9 @@
 package org.github.tess1o.geopulse.gps.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -19,11 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
@@ -31,8 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Tests cover all edge cases including threshold disabling, time windows, historical data, and tolerance checks.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
-@TestProfile(GpsPointDuplicateDetectionServiceTest.DefaultThresholdTestProfile.class)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 public class GpsPointDuplicateDetectionServiceTest {
     @Inject
@@ -41,20 +34,18 @@ public class GpsPointDuplicateDetectionServiceTest {
     GpsPointRepository gpsPointRepository;
     @Inject
     UserRepository userRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private UserEntity testUser;
     private static final double TEST_LAT = 40.0;
     private static final double TEST_LON = -74.0;
     private static final GpsSourceType TEST_SOURCE = GpsSourceType.OWNTRACKS;
+    private static final int DEFAULT_THRESHOLD_MINUTES = 2;
     @BeforeEach
     @Transactional
     public void setup() {
-        cleanupHelper.cleanupAll();
         // Create test user
         testUser = new UserEntity();
-        testUser.setEmail("test@example.com");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setPasswordHash("hash");
         testUser.setFullName("Test User");
         testUser.setCreatedAt(Instant.now());
@@ -71,7 +62,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert first GPS point
         Instant newTime = Instant.now();
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return false (no duplicates possible)
         assertFalse(isDuplicate, "First GPS point should not be detected as duplicate");
     }
@@ -87,7 +78,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert another point at same location A, time T+1 minute (within 2-minute threshold)
         Instant newTime = baseTime.plus(1, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return true (is a duplicate)
         assertTrue(isDuplicate, "Same location within time window should be detected as duplicate");
     }
@@ -103,7 +94,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert another point at same location A, time T+5 minutes (outside 2-minute threshold)
         Instant newTime = baseTime.plus(5, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return false (not a duplicate)
         assertFalse(isDuplicate, "Same location outside time window should not be detected as duplicate");
     }
@@ -119,7 +110,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert historical point at same location A, time T-1 day (yesterday 14:00)
         Instant yesterdayTime = todayTime.minus(1, ChronoUnit.DAYS);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, yesterdayTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, yesterdayTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return false (not a duplicate - outside time window)
         assertFalse(isDuplicate, "Historical data insertion should be allowed when outside time window");
     }
@@ -136,7 +127,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         double differentLat = TEST_LAT + 0.1; // ~11 km away
         Instant newTime = baseTime.plus(1, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), differentLat, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), differentLat, TEST_LON, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return false (different locations)
         assertFalse(isDuplicate, "Different locations should not be detected as duplicate");
     }
@@ -155,7 +146,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         double nearbyLon = TEST_LON + 0.00005;
         Instant newTime = baseTime.plus(1, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), nearbyLat, nearbyLon, newTime, TEST_SOURCE);
+                testUser.getId(), nearbyLat, nearbyLon, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return true (is a duplicate within tolerance)
         assertTrue(isDuplicate, "Nearby location within tolerance should be detected as duplicate");
     }
@@ -171,7 +162,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert Overland point at same location A, time T+1 minute
         Instant newTime = baseTime.plus(1, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, GpsSourceType.OVERLAND);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, GpsSourceType.OVERLAND, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return false (different source types don't interfere)
         assertFalse(isDuplicate, "Different source types should not be detected as duplicates of each other");
     }
@@ -187,7 +178,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert point at same location A, time T+2 minutes (exactly at 2-minute threshold)
         Instant newTime = baseTime.plus(2, ChronoUnit.MINUTES);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return true (within window, includes boundary)
         assertTrue(isDuplicate, "Point exactly at threshold boundary should be detected as duplicate");
     }
@@ -205,7 +196,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert point at location matching the third point, time T+1.5 minutes
         Instant newTime = baseTime.plus(90, ChronoUnit.SECONDS);
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, newTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return true (matches the third point)
         assertTrue(isDuplicate, "Should detect duplicate when matching any point in time window");
     }
@@ -221,7 +212,7 @@ public class GpsPointDuplicateDetectionServiceTest {
         // When: Try to insert future point at same location A, time T+1 day (today)
         Instant todayTime = Instant.now();
         boolean isDuplicate = duplicateDetectionService.isLocationDuplicate(
-                testUser.getId(), TEST_LAT, TEST_LON, todayTime, TEST_SOURCE);
+                testUser.getId(), TEST_LAT, TEST_LON, todayTime, TEST_SOURCE, DEFAULT_THRESHOLD_MINUTES);
         // Then: Should return false (outside time window)
         assertFalse(isDuplicate, "Future point insertion should work correctly when outside time window");
     }
@@ -238,15 +229,5 @@ public class GpsPointDuplicateDetectionServiceTest {
     }
     private Point createPoint(double lon, double lat) {
         return geometryFactory.createPoint(new Coordinate(lon, lat));
-    }
-    // =================== Test Profile ===================
-    /**
-     * Default test profile with threshold = 2 minutes
-     */
-    public static class DefaultThresholdTestProfile implements QuarkusTestProfile {
-        @Override
-        public Map<String, String> getConfigOverrides() {
-            return Map.of("geopulse.gps.duplicate-detection.location-time-threshold-minutes", "2");
-        }
     }
 }

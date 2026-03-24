@@ -1,33 +1,30 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.model.UserOidcConnectionEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
 import org.github.tess1o.geopulse.auth.oidc.repository.UserOidcConnectionRepository;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test class for OIDC auto-link accounts functionality.
  * Tests the behavior when geopulse.oidc.auto-link-accounts is enabled/disabled.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 public class OidcAutoLinkAccountsTest {
     @Inject
@@ -36,15 +33,9 @@ public class OidcAutoLinkAccountsTest {
     OidcSessionStateRepository sessionStateRepository;
     @Inject
     UserOidcConnectionRepository connectionRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
-    // We need to access the private method through reflection or make it package-private
-    // For testing purposes, we'll test the entire flow through handleCallback indirectly
-    // by creating the necessary test data
     @BeforeEach
     @Transactional
     public void setup() {
-        cleanupHelper.cleanupAll();
     }
     /**
      * Test profile that enables auto-link accounts
@@ -78,15 +69,16 @@ public class OidcAutoLinkAccountsTest {
     @Transactional
     public void testUserRegistrationAndOidcSetup() {
         // Create an existing user with password
+        String existingEmail = TestIds.uniqueEmail("oidc-existing-user");
         UserEntity existingUser = userService.registerUser(
-            "existing@test.com",
+            existingEmail,
             "password123",
             "Existing User",
             "UTC"
         );
         // Verify user was created
         assertNotNull(existingUser);
-        assertEquals("existing@test.com", existingUser.getEmail());
+        assertEquals(existingEmail, existingUser.getEmail());
         // Verify no OIDC connections exist for this user
         assertEquals(0, connectionRepository.findByUserId(existingUser.getId()).size());
         // Note: We cannot directly test findOrCreateUser as it's private
@@ -100,8 +92,10 @@ public class OidcAutoLinkAccountsTest {
     @Transactional
     public void testCreateOidcConnectionForNewUser() {
         // Create a user
+        String email = TestIds.uniqueEmail("oidc-new");
+        String externalUserId = TestIds.uniqueValue("google-id");
         UserEntity user = userService.registerUser(
-            "test@example.com",
+            email,
             "password",
             "Test User",
             "UTC"
@@ -110,7 +104,7 @@ public class OidcAutoLinkAccountsTest {
         UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
             .userId(user.getId())
             .providerName("google")
-            .externalUserId("google-123")
+            .externalUserId(externalUserId)
             .displayName("Test User")
             .avatarUrl("https://example.com/avatar.jpg")
             .lastLoginAt(Instant.now())
@@ -120,7 +114,7 @@ public class OidcAutoLinkAccountsTest {
         var connections = connectionRepository.findByUserId(user.getId());
         assertEquals(1, connections.size());
         assertEquals("google", connections.get(0).getProviderName());
-        assertEquals("google-123", connections.get(0).getExternalUserId());
+        assertEquals(externalUserId, connections.get(0).getExternalUserId());
     }
     /**
      * Test: Verify that when OIDC connection already exists, last login is updated
@@ -129,8 +123,10 @@ public class OidcAutoLinkAccountsTest {
     @Transactional
     public void testExistingOidcConnection_UpdatesLastLogin() {
         // Create a user
+        String email = TestIds.uniqueEmail("oidc-existing");
+        String externalUserId = TestIds.uniqueValue("google-id");
         UserEntity user = userService.registerUser(
-            "test@example.com",
+            email,
             "password",
             "Test User",
             "UTC"
@@ -140,21 +136,21 @@ public class OidcAutoLinkAccountsTest {
         UserOidcConnectionEntity connection = UserOidcConnectionEntity.builder()
             .userId(user.getId())
             .providerName("google")
-            .externalUserId("google-123")
+            .externalUserId(externalUserId)
             .displayName("Test User")
             .avatarUrl("https://example.com/avatar.jpg")
             .lastLoginAt(oldTimestamp)
             .build();
         connectionRepository.persist(connection);
         // Find the connection again
-        var foundConnection = connectionRepository.findByProviderNameAndExternalUserId("google", "google-123");
+        var foundConnection = connectionRepository.findByProviderNameAndExternalUserId("google", externalUserId);
         assertTrue(foundConnection.isPresent());
         // Update last login
         Instant newTimestamp = Instant.now();
         foundConnection.get().setLastLoginAt(newTimestamp);
         connectionRepository.persist(foundConnection.get());
         // Verify last login was updated
-        var updatedConnection = connectionRepository.findByProviderNameAndExternalUserId("google", "google-123");
+        var updatedConnection = connectionRepository.findByProviderNameAndExternalUserId("google", externalUserId);
         assertTrue(updatedConnection.isPresent());
         assertTrue(updatedConnection.get().getLastLoginAt().isAfter(oldTimestamp));
     }
@@ -165,19 +161,21 @@ public class OidcAutoLinkAccountsTest {
     @Transactional
     public void testSessionStateCreation() {
         // Create session state
+        String stateToken = TestIds.uniqueValue("oidc-state");
+        String nonce = TestIds.uniqueValue("oidc-nonce");
         OidcSessionStateEntity sessionState = OidcSessionStateEntity.builder()
-            .stateToken("test-state-token")
-            .nonce("test-nonce")
+            .stateToken(stateToken)
+            .nonce(nonce)
             .providerName("google")
             .redirectUri("/app/timeline")
             .expiresAt(Instant.now().plus(10, ChronoUnit.MINUTES))
             .build();
         sessionStateRepository.persist(sessionState);
         // Verify session state was created
-        var foundSession = sessionStateRepository.findByStateToken("test-state-token");
+        var foundSession = sessionStateRepository.findByStateToken(stateToken);
         assertTrue(foundSession.isPresent());
         assertEquals("google", foundSession.get().getProviderName());
-        assertEquals("test-nonce", foundSession.get().getNonce());
+        assertEquals(nonce, foundSession.get().getNonce());
         assertEquals("/app/timeline", foundSession.get().getRedirectUri());
     }
     /**
@@ -187,14 +185,17 @@ public class OidcAutoLinkAccountsTest {
     @Transactional
     public void testOidcAccountCannotBeLinkToMultipleUsers() {
         // Create two users
+        String user1Email = TestIds.uniqueEmail("oidc-u1");
+        String user2Email = TestIds.uniqueEmail("oidc-u2");
+        String sharedExternalId = TestIds.uniqueValue("google-shared");
         UserEntity user1 = userService.registerUser(
-            "user1@test.com",
+            user1Email,
             "password",
             "User 1",
             "UTC"
         );
         UserEntity user2 = userService.registerUser(
-            "user2@test.com",
+            user2Email,
             "password",
             "User 2",
             "UTC"
@@ -203,7 +204,7 @@ public class OidcAutoLinkAccountsTest {
         UserOidcConnectionEntity connection1 = UserOidcConnectionEntity.builder()
             .userId(user1.getId())
             .providerName("google")
-            .externalUserId("same-google-id")
+            .externalUserId(sharedExternalId)
             .displayName("User 1")
             .lastLoginAt(Instant.now())
             .build();
@@ -212,7 +213,7 @@ public class OidcAutoLinkAccountsTest {
         // This should be prevented by unique constraint or business logic
         var existingConnection = connectionRepository.findByProviderNameAndExternalUserId(
             "google",
-            "same-google-id"
+            sharedExternalId
         );
         assertTrue(existingConnection.isPresent());
         assertEquals(user1.getId(), existingConnection.get().getUserId());
@@ -225,8 +226,11 @@ public class OidcAutoLinkAccountsTest {
     @Transactional
     public void testUserCanHaveMultipleOidcConnections() {
         // Create a user
+        String email = TestIds.uniqueEmail("oidc-multi");
+        String googleExternalId = TestIds.uniqueValue("google-id");
+        String microsoftExternalId = TestIds.uniqueValue("microsoft-id");
         UserEntity user = userService.registerUser(
-            "test@example.com",
+            email,
             "password",
             "Test User",
             "UTC"
@@ -235,7 +239,7 @@ public class OidcAutoLinkAccountsTest {
         UserOidcConnectionEntity googleConnection = UserOidcConnectionEntity.builder()
             .userId(user.getId())
             .providerName("google")
-            .externalUserId("google-123")
+            .externalUserId(googleExternalId)
             .displayName("Test User")
             .lastLoginAt(Instant.now())
             .build();
@@ -244,7 +248,7 @@ public class OidcAutoLinkAccountsTest {
         UserOidcConnectionEntity microsoftConnection = UserOidcConnectionEntity.builder()
             .userId(user.getId())
             .providerName("microsoft")
-            .externalUserId("microsoft-456")
+            .externalUserId(microsoftExternalId)
             .displayName("Test User")
             .lastLoginAt(Instant.now())
             .build();

@@ -1,11 +1,9 @@
 package org.github.tess1o.geopulse.trips.rest;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.restassured.http.ContentType;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.auth.model.AuthResponse;
 import org.github.tess1o.geopulse.auth.service.AuthenticationService;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
@@ -27,18 +25,14 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.util.UUID;
-
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
-
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TripVisitMatchingResourceIntegrationTest {
-
     @Inject
     AuthenticationService authenticationService;
     @Inject
@@ -53,27 +47,18 @@ class TripVisitMatchingResourceIntegrationTest {
     TripPlaceVisitMatchRepository tripPlaceVisitMatchRepository;
     @Inject
     TimelineStayRepository timelineStayRepository;
-    @Inject
-    CleanupHelper cleanupHelper;
-
     private String accessToken;
     private Long tripId;
     private Long planItemId;
     private Long stayId;
-
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupTripWorkspaceAndUsers();
-
         String email = "trip-resource-" + UUID.randomUUID() + "@example.com";
         userService.registerUser(email, "password123", "Trip Resource Tester", "UTC");
-
         AuthResponse authResponse = authenticationService.authenticate(email, "password123");
         accessToken = authResponse.getAccessToken();
-
         UserEntity user = userRepository.findByEmail(email).orElseThrow();
-
         TripEntity trip = TripEntity.builder()
                 .user(user)
                 .name("API Trip")
@@ -83,7 +68,6 @@ class TripVisitMatchingResourceIntegrationTest {
                 .build();
         tripRepository.persist(trip);
         tripId = trip.getId();
-
         TripPlanItemEntity item = TripPlanItemEntity.builder()
                 .trip(trip)
                 .title("London Waterloo")
@@ -97,7 +81,6 @@ class TripVisitMatchingResourceIntegrationTest {
         item.setLongitude(-0.1147);
         tripPlanItemRepository.persist(item);
         planItemId = item.getId();
-
         TimelineStayEntity stay = TimelineStayEntity.builder()
                 .user(user)
                 .timestamp(Instant.parse("2026-02-02T10:00:00Z"))
@@ -107,7 +90,6 @@ class TripVisitMatchingResourceIntegrationTest {
                 .build();
         timelineStayRepository.persist(stay);
         stayId = stay.getId();
-
         tripPlaceVisitMatchRepository.persist(TripPlaceVisitMatchEntity.builder()
                 .trip(trip)
                 .planItem(item)
@@ -118,7 +100,6 @@ class TripVisitMatchingResourceIntegrationTest {
                 .decision("AUTO_MATCHED")
                 .build());
     }
-
     @Test
     void getVisitSuggestions_shouldReturnStoredSuggestions() {
         given()
@@ -135,7 +116,6 @@ class TripVisitMatchingResourceIntegrationTest {
                 .body("data[0].decision", equalTo("AUTO_MATCHED"))
                 .body("data[0].applied", equalTo(true));
     }
-
     @Test
     void getVisitSuggestions_shouldReturnNotFoundForUnknownTrip() {
         given()
@@ -148,5 +128,4 @@ class TripVisitMatchingResourceIntegrationTest {
                 .body("status", equalTo("error"))
                 .body("message", equalTo("Trip not found"));
     }
-
 }

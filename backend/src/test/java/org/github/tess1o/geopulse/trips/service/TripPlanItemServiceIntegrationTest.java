@@ -1,10 +1,8 @@
 package org.github.tess1o.geopulse.trips.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
 import org.github.tess1o.geopulse.trips.model.dto.CreateTripPlanItemDto;
@@ -23,18 +21,14 @@ import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
-
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class TripPlanItemServiceIntegrationTest {
-
     @Inject
     TripPlanItemService tripPlanItemService;
     @Inject
@@ -43,21 +37,14 @@ class TripPlanItemServiceIntegrationTest {
     TripRepository tripRepository;
     @Inject
     UserService userService;
-    @Inject
-    CleanupHelper cleanupHelper;
-
     private UUID userId;
     private Long tripId;
-
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupTripWorkspaceAndUsers();
-
         String email = "trip-plan-item-" + UUID.randomUUID() + "@example.com";
         UserEntity user = userService.registerUser(email, "password123", "Trip Plan Item Tester", "UTC");
         userId = user.getId();
-
         TripEntity trip = TripEntity.builder()
                 .user(user)
                 .name("Test Trip")
@@ -68,7 +55,6 @@ class TripPlanItemServiceIntegrationTest {
         tripRepository.persist(trip);
         tripId = trip.getId();
     }
-
     @Test
     @Transactional
     void createTripPlanItem_shouldAssignDefaultOrderAndOptionalPriority() {
@@ -79,7 +65,6 @@ class TripPlanItemServiceIntegrationTest {
                 .orderIndex(7)
                 .build();
         tripPlanItemRepository.persist(existing);
-
         CreateTripPlanItemDto dto = new CreateTripPlanItemDto();
         dto.setTitle("  Sagrada Familia  ");
         dto.setNotes("Must visit");
@@ -88,15 +73,12 @@ class TripPlanItemServiceIntegrationTest {
         dto.setPlannedDay(LocalDate.of(2026, 2, 2));
         dto.setPriority(null);
         dto.setOrderIndex(null);
-
         TripPlanItemDto created = tripPlanItemService.createTripPlanItem(userId, tripId, dto);
-
         assertThat(created.getTitle()).isEqualTo("Sagrada Familia");
         assertThat(created.getPriority()).isEqualTo(TripPlanItemPriority.OPTIONAL);
         assertThat(created.getOrderIndex()).isEqualTo(1);
         assertThat(created.getIsVisited()).isFalse();
     }
-
     @Test
     @Transactional
     void updateTripPlanItem_shouldPersistManualOverrideState() {
@@ -107,9 +89,7 @@ class TripPlanItemServiceIntegrationTest {
                 .orderIndex(0)
                 .build();
         tripPlanItemRepository.persist(item);
-
         Instant visitedAt = Instant.parse("2026-02-02T12:30:00Z");
-
         UpdateTripPlanItemDto updateDto = new UpdateTripPlanItemDto();
         updateDto.setTitle("  New title  ");
         updateDto.setNotes("Updated notes");
@@ -123,9 +103,7 @@ class TripPlanItemServiceIntegrationTest {
         updateDto.setVisitSource(TripPlanItemVisitSource.MANUAL);
         updateDto.setVisitedAt(visitedAt);
         updateDto.setManualOverrideState(TripPlanItemOverrideState.CONFIRMED);
-
         TripPlanItemDto updated = tripPlanItemService.updateTripPlanItem(userId, tripId, item.getId(), updateDto);
-
         assertThat(updated.getTitle()).isEqualTo("New title");
         assertThat(updated.getPriority()).isEqualTo(TripPlanItemPriority.MUST);
         assertThat(updated.getOrderIndex()).isEqualTo(5);
@@ -135,7 +113,6 @@ class TripPlanItemServiceIntegrationTest {
         assertThat(updated.getVisitedAt()).isEqualTo(visitedAt);
         assertThat(updated.getManualOverrideState()).isEqualTo(TripPlanItemOverrideState.CONFIRMED);
     }
-
     @Test
     @Transactional
     void applyVisitOverride_shouldHandleConfirmRejectAndReset() {
@@ -148,7 +125,6 @@ class TripPlanItemServiceIntegrationTest {
                 .visitConfidence(0.4)
                 .build();
         tripPlanItemRepository.persist(item);
-
         Instant manualVisitTime = Instant.parse("2026-02-01T11:15:00Z");
         TripPlanItemDto confirmed = tripPlanItemService.applyVisitOverride(
                 userId,
@@ -156,37 +132,31 @@ class TripPlanItemServiceIntegrationTest {
                 item.getId(),
                 new TripVisitOverrideRequestDto("CONFIRM_VISITED", manualVisitTime)
         );
-
         assertThat(confirmed.getIsVisited()).isTrue();
         assertThat(confirmed.getVisitSource()).isEqualTo(TripPlanItemVisitSource.MANUAL);
         assertThat(confirmed.getManualOverrideState()).isEqualTo(TripPlanItemOverrideState.CONFIRMED);
         assertThat(confirmed.getVisitedAt()).isEqualTo(manualVisitTime);
-
         TripPlanItemDto rejected = tripPlanItemService.applyVisitOverride(
                 userId,
                 tripId,
                 item.getId(),
                 new TripVisitOverrideRequestDto("REJECT_VISIT", null)
         );
-
         assertThat(rejected.getIsVisited()).isFalse();
         assertThat(rejected.getVisitSource()).isEqualTo(TripPlanItemVisitSource.MANUAL);
         assertThat(rejected.getManualOverrideState()).isEqualTo(TripPlanItemOverrideState.REJECTED);
         assertThat(rejected.getVisitedAt()).isNull();
         assertThat(rejected.getVisitConfidence()).isNull();
-
         TripPlanItemDto reset = tripPlanItemService.applyVisitOverride(
                 userId,
                 tripId,
                 item.getId(),
                 new TripVisitOverrideRequestDto("RESET_TO_AUTO", null)
         );
-
         assertThat(reset.getIsVisited()).isFalse();
         assertThat(reset.getVisitSource()).isNull();
         assertThat(reset.getManualOverrideState()).isNull();
         assertThat(reset.getVisitedAt()).isNull();
         assertThat(reset.getVisitConfidence()).isNull();
     }
-
 }

@@ -1,5 +1,5 @@
 package org.github.tess1o.geopulse.ai.service;
-
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -11,16 +11,14 @@ import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration test for UserAISettingsService.
  * Tests the full lifecycle of AI settings: save, retrieve, update, and edge cases.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 public class UserAISettingsServiceTest {
     @Inject
     UserAISettingsService aiSettingsService;
@@ -34,7 +32,7 @@ public class UserAISettingsServiceTest {
         //userRepository.findAll().stream().forEach(user -> userRepository.delete(user));
         // Create a test user
         UserEntity testUser = new UserEntity();
-        testUser.setEmail("ai-test@example.com");
+        testUser.setEmail(TestIds.uniqueEmail("it-user"));
         testUser.setFullName("AI Test User");
         testUser.setPasswordHash("test-hash");
         testUser.setTimezone("UTC");

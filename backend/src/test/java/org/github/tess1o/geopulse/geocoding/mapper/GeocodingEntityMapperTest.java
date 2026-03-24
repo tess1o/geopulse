@@ -5,6 +5,7 @@ import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity
 import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.model.common.SimpleFormattableResult;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
+import org.github.tess1o.geopulse.testsupport.TestCoordinates;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,17 +33,24 @@ class GeocodingEntityMapperTest {
     @Mock
     private EntityManager entityManager;
     private GeocodingEntityMapper mapper;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+
+    private static final double TEST_LAT = 10.7589;
+    private static final double TEST_LON = -23.9851;
+
+    private TestCoordinates.Scope coordinateScope;
+
     private static final String TEST_DISPLAY_NAME = "Times Square";
     private static final String TEST_CITY = "New York";
     private static final String TEST_COUNTRY = "USA";
     private static final String TEST_PROVIDER = "nominatim";
+
     @BeforeEach
     void setUp() {
         mapper = new GeocodingEntityMapper(entityManager);
+        coordinateScope = TestCoordinates.newScope();
     }
     // ==================== Test Suite 1: toResult() ====================
+
     @Nested
     @DisplayName("toResult() - Entity to FormattableGeocodingResult Conversion")
     class ToResultTests {
@@ -50,8 +58,8 @@ class GeocodingEntityMapperTest {
         @DisplayName("Should convert valid entity with all fields to result")
         void testConvertValidEntityWithAllFields() {
             // Given
-            Point requestCoords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-            Point resultCoords = GeoUtils.createPoint(TEST_LON + 0.001, TEST_LAT + 0.001);
+            Point requestCoords = coordinateScope.point(TEST_LON, TEST_LAT);
+            Point resultCoords = coordinateScope.point(TEST_LON + 0.001, TEST_LAT + 0.001);
             Polygon boundingBox = createTestBoundingBox();
             ReverseGeocodingLocationEntity entity = new ReverseGeocodingLocationEntity();
             entity.setRequestCoordinates(requestCoords);
@@ -108,8 +116,8 @@ class GeocodingEntityMapperTest {
         @DisplayName("Should correctly copy coordinates")
         void testCoordinatesAreCopiedCorrectly() {
             // Given
-            Point requestCoords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-            Point resultCoords = GeoUtils.createPoint(TEST_LON + 0.01, TEST_LAT + 0.01);
+            Point requestCoords = coordinateScope.point(TEST_LON, TEST_LAT);
+            Point resultCoords = coordinateScope.point(TEST_LON + 0.001, TEST_LAT + 0.001);
             ReverseGeocodingLocationEntity entity = new ReverseGeocodingLocationEntity();
             entity.setRequestCoordinates(requestCoords);
             entity.setResultCoordinates(resultCoords);
@@ -133,8 +141,8 @@ class GeocodingEntityMapperTest {
         @DisplayName("Should convert valid result to entity")
         void testConvertValidResultToEntity() {
             // Given
-            Point requestCoords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-            Point resultCoords = GeoUtils.createPoint(TEST_LON + 0.001, TEST_LAT + 0.001);
+            Point requestCoords = coordinateScope.point(TEST_LON, TEST_LAT);
+            Point resultCoords = coordinateScope.point(TEST_LON + 0.001, TEST_LAT + 0.001);
             Polygon boundingBox = createTestBoundingBox();
             FormattableGeocodingResult result = SimpleFormattableResult.builder()
                     .requestCoordinates(requestCoords)
@@ -211,8 +219,8 @@ class GeocodingEntityMapperTest {
             UUID userId = UUID.randomUUID();
             UserEntity mockUser = new UserEntity();
             when(entityManager.getReference(UserEntity.class, userId)).thenReturn(mockUser);
-            Point requestCoords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-            Point resultCoords = GeoUtils.createPoint(TEST_LON + 0.001, TEST_LAT + 0.001);
+            Point requestCoords = coordinateScope.point(TEST_LON, TEST_LAT);
+            Point resultCoords = coordinateScope.point(TEST_LON + 0.001, TEST_LAT + 0.001);
             ReverseGeocodingLocationEntity original = new ReverseGeocodingLocationEntity();
             original.setRequestCoordinates(requestCoords);
             original.setResultCoordinates(requestCoords);
@@ -332,8 +340,8 @@ class GeocodingEntityMapperTest {
             UUID userId = UUID.randomUUID();
             UserEntity mockUser = new UserEntity();
             when(entityManager.getReference(UserEntity.class, userId)).thenReturn(mockUser);
-            Point requestCoords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-            Point resultCoords = GeoUtils.createPoint(TEST_LON + 0.001, TEST_LAT + 0.001);
+            Point requestCoords = coordinateScope.point(TEST_LON, TEST_LAT);
+            Point resultCoords = coordinateScope.point(TEST_LON + 0.001, TEST_LAT + 0.001);
             Polygon boundingBox = createTestBoundingBox();
             ReverseGeocodingLocationEntity original = new ReverseGeocodingLocationEntity();
             original.setRequestCoordinates(requestCoords);

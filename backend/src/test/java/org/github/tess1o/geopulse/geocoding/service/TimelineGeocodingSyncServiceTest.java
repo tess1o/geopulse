@@ -5,15 +5,14 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
-import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.streaming.model.domain.LocationSource;
 import org.github.tess1o.geopulse.streaming.model.entity.TimelineStayEntity;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestCoordinates;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UserEntity;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,32 +30,38 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
  * Coverage: 12 test cases across 2 sync methods
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @DisplayName("TimelineGeocodingSyncService Integration Tests")
 @SerializedDatabaseTest
 class TimelineGeocodingSyncServiceTest {
+
     @Inject
     TimelineGeocodingSyncService syncService;
+
     @Inject
     EntityManager entityManager;
-    @Inject
-    CleanupHelper cleanupHelper;
+
     private UUID USER_A_ID;
     private UUID USER_B_ID;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+
+    private static final double TEST_LAT = 45.7589;
+    private static final double TEST_LON = -83.9851;
+    private TestCoordinates.Scope coordinateScope;
+
     @BeforeEach
     @Transactional
     void setupUsers() {
+        coordinateScope = TestCoordinates.newScope();
+
         UserEntity userA = UserEntity.builder()
-                .email("user-a-sync-test@example.com")
+                .email(TestIds.uniqueEmail("it-user"))
                 .fullName("User A")
                 .timezone("UTC")
                 .isActive(true)
                 .build();
         entityManager.persist(userA);
         UserEntity userB = UserEntity.builder()
-                .email("user-b-sync-test@example.com")
+                .email(TestIds.uniqueEmail("it-user"))
                 .fullName("User B")
                 .timezone("UTC")
                 .isActive(true)
@@ -66,18 +71,14 @@ class TimelineGeocodingSyncServiceTest {
         USER_A_ID = userA.getId();
         USER_B_ID = userB.getId();
     }
-    @AfterEach
-    @Transactional
-    void cleanup() {
-        cleanupHelper.cleanupAll();
-    }
+
     // ==================== updateLocationNameForUser() Tests ====================
     @Test
     @Transactional
     @DisplayName("updateLocationNameForUser: Should update location name for user with single stay")
     void testUpdateSingleStay() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity geocoding = createGeocodingEntity(coords, "Original Name");
         entityManager.persist(geocoding);
         entityManager.flush();
@@ -98,7 +99,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("updateLocationNameForUser: Should update multiple stays at same location")
     void testUpdateMultipleStays() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity geocoding = createGeocodingEntity(coords, "Starbucks");
         entityManager.persist(geocoding);
         entityManager.flush();
@@ -127,7 +128,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("updateLocationNameForUser: Should only update current user's stays (user isolation)")
     void testUserIsolationOnUpdate() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity geocoding = createGeocodingEntity(coords, "Shared Location");
         entityManager.persist(geocoding);
         entityManager.flush();
@@ -152,7 +153,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("updateLocationNameForUser: Should verify stays for other users unchanged")
     void testOtherUsersUnaffected() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity geocoding = createGeocodingEntity(coords, "Location");
         entityManager.persist(geocoding);
         entityManager.flush();
@@ -188,7 +189,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("updateLocationNameForUser: Should return 0 for user with no timeline stays")
     void testUserWithNoStays() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON, TEST_LAT);
+        Point coords = coord(TEST_LON, TEST_LAT);
         ReverseGeocodingLocationEntity geocoding = createGeocodingEntity(coords, "Location");
         entityManager.persist(geocoding);
         entityManager.flush();
@@ -203,8 +204,8 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("updateLocationNameForUser: Should return 0 for geocoding ID not referenced by any stays")
     void testGeocodingIdNotReferenced() {
         // Given
-        Point coords1 = GeoUtils.createPoint(TEST_LON, TEST_LAT);
-        Point coords2 = GeoUtils.createPoint(TEST_LON + 0.001, TEST_LAT + 0.001);
+        Point coords1 = coord(TEST_LON, TEST_LAT);
+        Point coords2 = coord(TEST_LON + 0.001, TEST_LAT + 0.001);
         ReverseGeocodingLocationEntity geocoding1 = createGeocodingEntity(coords1, "Location 1");
         ReverseGeocodingLocationEntity geocoding2 = createGeocodingEntity(coords2, "Location 2");
         entityManager.persist(geocoding1);
@@ -228,7 +229,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("switchToNewGeocodingReference: Should switch single stay from original to user copy")
     void testSwitchSingleStay() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON + 0.1, TEST_LAT + 0.1);
+        Point coords = coord(TEST_LON + 0.1, TEST_LAT + 0.1);
         ReverseGeocodingLocationEntity original = createGeocodingEntity(coords, "Original");
         ReverseGeocodingLocationEntity userCopy = createGeocodingEntity(coords, "User Copy", USER_A_ID);
         entityManager.persist(original);
@@ -253,7 +254,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("switchToNewGeocodingReference: Should switch multiple stays from original to user copy")
     void testSwitchMultipleStays() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON + 0.2, TEST_LAT + 0.2);
+        Point coords = coord(TEST_LON + 0.2, TEST_LAT + 0.2);
         ReverseGeocodingLocationEntity original = createGeocodingEntity(coords, "Gym");
         ReverseGeocodingLocationEntity userCopy = createGeocodingEntity(coords, "My Gym", USER_A_ID);
         entityManager.persist(original);
@@ -288,7 +289,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("switchToNewGeocodingReference: Should only switch current user's stays (user isolation)")
     void testUserIsolationOnSwitch() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON + 0.3, TEST_LAT + 0.3);
+        Point coords = coord(TEST_LON + 0.3, TEST_LAT + 0.3);
         ReverseGeocodingLocationEntity original = createGeocodingEntity(coords, "Office");
         ReverseGeocodingLocationEntity userACopy = createGeocodingEntity(coords, "User A Office", USER_A_ID);
         entityManager.persist(original);
@@ -319,7 +320,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("switchToNewGeocodingReference: Should update location name simultaneously")
     void testLocationNameUpdatedSimultaneously() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON + 0.4, TEST_LAT + 0.4);
+        Point coords = coord(TEST_LON + 0.4, TEST_LAT + 0.4);
         ReverseGeocodingLocationEntity original = createGeocodingEntity(coords, "Park");
         ReverseGeocodingLocationEntity userCopy = createGeocodingEntity(coords, "Central Park", USER_A_ID);
         entityManager.persist(original);
@@ -349,7 +350,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("switchToNewGeocodingReference: Should return 0 for user with no stays at old geocoding ID")
     void testNoStaysAtOldGeocodingId() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON + 0.5, TEST_LAT + 0.5);
+        Point coords = coord(TEST_LON + 0.5, TEST_LAT + 0.5);
         ReverseGeocodingLocationEntity original = createGeocodingEntity(coords, "Location 1");
         ReverseGeocodingLocationEntity userCopy = createGeocodingEntity(coords, "Location 2", USER_A_ID);
         entityManager.persist(original);
@@ -367,7 +368,7 @@ class TimelineGeocodingSyncServiceTest {
     @DisplayName("switchToNewGeocodingReference: Should verify both geocoding_id AND location_name updated atomically")
     void testAtomicUpdate() {
         // Given
-        Point coords = GeoUtils.createPoint(TEST_LON + 0.6, TEST_LAT + 0.6);
+        Point coords = coord(TEST_LON + 0.6, TEST_LAT + 0.6);
         ReverseGeocodingLocationEntity original = createGeocodingEntity(coords, "Restaurant");
         ReverseGeocodingLocationEntity userCopy = createGeocodingEntity(coords, "My Restaurant", USER_A_ID);
         entityManager.persist(original);
@@ -429,5 +430,9 @@ class TimelineGeocodingSyncServiceTest {
                 .createdAt(Instant.now())
                 .lastUpdated(Instant.now())
                 .build();
+    }
+
+    private Point coord(double lon, double lat) {
+        return coordinateScope.point(lon, lat);
     }
 }

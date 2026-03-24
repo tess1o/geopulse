@@ -4,22 +4,21 @@ import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UpdateProfileRequest;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.github.tess1o.geopulse.user.service.SecurePasswordUtils;
 import org.github.tess1o.geopulse.user.service.UserService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 public class UserServiceTest {
 
@@ -32,21 +31,14 @@ public class UserServiceTest {
     @Inject
     SecurePasswordUtils passwordUtils;
 
-    @Inject
-    CleanupHelper cleanupHelper;
-
-    @BeforeEach
-    @Transactional
-    public void setup() {
-        cleanupHelper.cleanupAll();
-    }
 
     @Test
     public void testUserRegistration() {
         Instant startOfTheTest = Instant.now();
-        UserEntity user = userService.registerUser("email@test.com", "test", "test", "Europe/Kyiv");
-        assertEquals(1, userRepository.count());
-        assertEquals("email@test.com", user.getEmail());
+        String email = TestIds.uniqueEmail("user-service-registration");
+        UserEntity user = userService.registerUser(email, "test", "test", "Europe/Kyiv");
+        assertEquals(1, userRepository.count("email = ?1", email));
+        assertEquals(email, user.getEmail());
         assertEquals("test", user.getFullName());
         assertTrue(user.getCreatedAt().isBefore(Instant.now()));
         assertTrue(user.getCreatedAt().isAfter(startOfTheTest));
@@ -57,8 +49,8 @@ public class UserServiceTest {
     @Transactional
     public void testValidAvatarPaths() {
         // Create a test user
-        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
-
+        UserEntity user = userService.registerUser(
+                TestIds.uniqueEmail("user-service-avatar-valid"), "password", "Test User", "Europe/Kyiv");
         // Test valid avatar paths
         String[] validPaths = {
                 "/avatars/avatar1.png",
@@ -66,15 +58,12 @@ public class UserServiceTest {
                 "/avatars/avatar10.png",
                 "/avatars/avatar20.png"
         };
-
         for (String validPath : validPaths) {
             UpdateProfileRequest request = new UpdateProfileRequest();
             request.setFullName("Test User");
             request.setAvatar(validPath);
-
             // Should not throw exception
             assertDoesNotThrow(() -> userService.updateProfile(user.getId(), request));
-
             // Verify avatar was set
             UserEntity updatedUser = userRepository.findById(user.getId());
             assertEquals(validPath, updatedUser.getAvatar());
@@ -85,8 +74,8 @@ public class UserServiceTest {
     @Transactional
     public void testInvalidAvatarPaths() {
         // Create a test user
-        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
-
+        UserEntity user = userService.registerUser(
+                TestIds.uniqueEmail("user-service-avatar-invalid"), "password", "Test User", "Europe/Kyiv");
         // Test invalid avatar paths
         String[] invalidPaths = {
                 "/avatars/avatar0.png",        // Below range
@@ -102,12 +91,10 @@ public class UserServiceTest {
                 "avatar1.png",                 // Missing leading slash
                 ""                             // Empty string (should be allowed)
         };
-
         for (String invalidPath : invalidPaths) {
             UpdateProfileRequest request = new UpdateProfileRequest();
             request.setFullName("Test User");
             request.setAvatar(invalidPath);
-
             if (invalidPath.isEmpty()) {
                 // Empty string should be allowed (removes avatar)
                 assertDoesNotThrow(() -> userService.updateProfile(user.getId(),request));
@@ -124,12 +111,11 @@ public class UserServiceTest {
     @Transactional
     public void testNullAvatarPath() {
         // Create a test user
-        UserEntity user = userService.registerUser("test@avatar.com", "password", "Test User", "Europe/Kyiv");
-
+        UserEntity user = userService.registerUser(
+                TestIds.uniqueEmail("user-service-avatar-null"), "password", "Test User", "Europe/Kyiv");
         UpdateProfileRequest request = new UpdateProfileRequest();
         request.setFullName("Test User");
         request.setAvatar(null); // null should be allowed
-
         // Should not throw exception
         assertDoesNotThrow(() -> userService.updateProfile(user.getId(),request));
     }

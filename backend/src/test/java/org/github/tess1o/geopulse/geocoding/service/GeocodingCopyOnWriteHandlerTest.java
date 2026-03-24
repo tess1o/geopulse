@@ -38,10 +38,13 @@ class GeocodingCopyOnWriteHandlerTest {
     @Mock
     private TimelineGeocodingSyncService timelineSyncService;
     private GeocodingCopyOnWriteHandler handler;
-    private static final double TEST_LAT = 40.7589;
-    private static final double TEST_LON = -73.9851;
+
+    private static final double TEST_LAT = 66.7589;
+    private static final double TEST_LON = 34.9851;
+
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID OTHER_USER_ID = UUID.randomUUID();
+
     @BeforeEach
     void setUp() {
         handler = new GeocodingCopyOnWriteHandler(entityMapper, repository, timelineSyncService);

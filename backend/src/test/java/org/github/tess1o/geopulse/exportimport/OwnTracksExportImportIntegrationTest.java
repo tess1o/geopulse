@@ -8,7 +8,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.export.model.ExportDateRange;
 import org.github.tess1o.geopulse.export.model.ExportJob;
@@ -25,6 +24,7 @@ import org.github.tess1o.geopulse.shared.exportimport.ExportImportConstants;
 import org.github.tess1o.geopulse.shared.geo.GeoUtils;
 import org.github.tess1o.geopulse.shared.gps.GpsSourceType;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -48,10 +48,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * 5) Verify duplicate detection and data integrity
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @Slf4j
 @SerializedDatabaseTest
 class OwnTracksExportImportIntegrationTest {
+
         @Inject
         ExportJobManager exportJobManager;
         @Inject
@@ -64,41 +65,31 @@ class OwnTracksExportImportIntegrationTest {
         UserRepository userRepository;
         @Inject
         GpsPointRepository gpsPointRepository;
-        @Inject
-        CleanupHelper cleanupHelper;
+
         private final ObjectMapper objectMapper = JsonMapper.builder()
                         .addModule(new JavaTimeModule())
                         .build();
         private UserEntity testUser;
         private List<GpsPointEntity> testGpsPoints;
+
         @BeforeEach
         @Transactional
         void setUp() {
-                // Clean up any existing test data
-                cleanupTestData();
-                // Create test user - find existing or create new
-                testUser = userRepository.find("email", "test-owntracks@geopulse.app").firstResult();
-                if (testUser == null) {
-                        testUser = new UserEntity();
-                        testUser.setEmail("test-owntracks@geopulse.app");
-                        testUser.setFullName("OwnTracks Test User");
-                        testUser.setPasswordHash("test-hash");
-                        testUser.setCreatedAt(Instant.now());
-                        userRepository.persist(testUser);
-                }
+                testUser = new UserEntity();
+                testUser.setEmail(TestIds.uniqueEmail("test-"));
+                testUser.setFullName("OwnTracks Test User");
+                testUser.setPasswordHash("test-hash");
+                testUser.setCreatedAt(Instant.now());
+                userRepository.persist(testUser);
                 // Create test GPS points with various scenarios
                 createTestGpsData();
         }
         @AfterEach
         @Transactional
         void tearDown() {
-                cleanupTestData();
         }
         @Transactional
         void cleanupTestData() {
-                cleanupHelper.cleanupAll();
-                gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
-                userRepository.delete("email = ?1", "test-owntracks@geopulse.app");
         }
         @Transactional
         void createTestGpsData() {
@@ -368,14 +359,6 @@ class OwnTracksExportImportIntegrationTest {
                 }
                 String largeDatasetJson = objectMapper.writeValueAsString(largeDataset);
                 byte[] largeDatasetData = largeDatasetJson.getBytes();
-                // Clear ALL GPS points to ensure clean test environment
-                long allGpsPointsBefore = gpsPointRepository.count();
-                log.info("Total GPS points in database before cleanup: {}", allGpsPointsBefore);
-                long deletedCount = gpsPointRepository.delete("user.email = ?1", "test-owntracks@geopulse.app");
-                log.info("Deleted {} GPS points before large dataset test", deletedCount);
-                // Verify cleanup worked
-                long allGpsPointsAfter = gpsPointRepository.count();
-                assertEquals(0, allGpsPointsAfter, "Should have no GPS points before large dataset test");
                 ImportOptions importOptions = new ImportOptions();
                 importOptions.setImportFormat("owntracks");
                 ImportJob largeDatasetJob = importJobService.createImportJob(
@@ -388,9 +371,10 @@ class OwnTracksExportImportIntegrationTest {
                 importDataService.processImportData(largeDatasetJob);
                 long endTime = System.currentTimeMillis();
                 // Verify all points were imported (count only this user's points)
-                long importedCount = gpsPointRepository.findAll().stream()
-                                .filter(p -> p.getDeviceId().equals("large-dataset-device"))
-                                .count();
+                long importedCount = gpsPointRepository.count(
+                                "user = ?1 and deviceId = ?2",
+                                testUser,
+                                "large-dataset-device");
                 assertEquals(largeDataset.length, importedCount,
                                 "All points from large dataset should be imported");
                 log.info("Large dataset processing completed: {} points in {} ms ({} points/sec)",
@@ -398,7 +382,10 @@ class OwnTracksExportImportIntegrationTest {
                                 Math.round((double) importedCount / (endTime - startTime) * 1000));
                 // Verify batch processing didn't create duplicates by importing again
                 importDataService.processImportData(largeDatasetJob);
-                long afterDuplicateImportCount = gpsPointRepository.count("user = ?1", testUser);
+                long afterDuplicateImportCount = gpsPointRepository.count(
+                                "user = ?1 and deviceId = ?2",
+                                testUser,
+                                "large-dataset-device");
                 assertEquals(importedCount, afterDuplicateImportCount,
                                 "Re-importing large dataset should not create duplicates");
                 log.info("Batch processing duplicate detection verified");

@@ -1,11 +1,9 @@
 package org.github.tess1o.geopulse.streaming.config;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
@@ -13,12 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * that environment variables properly override default values.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 class TimelineConfigurationPropertiesTest {
-
     @Inject
     TimelineConfigurationProperties properties;
-
     @Test
     void testDefaultValues() {
         // Verify that values from application.properties are loaded correctly

@@ -11,7 +11,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 public class PostgisTestResource implements QuarkusTestResourceLifecycleManager {
 
@@ -19,11 +18,11 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
     private static PostgreSQLContainer<?> postgreSQLContainer;
     private static int startedReferences = 0;
 
-    private String databaseName;
-    private String adminJdbcUrl;
-    private String databaseJdbcUrl;
-    private String adminUsername;
-    private String adminPassword;
+    private static String sharedDatabaseName;
+    private static String adminJdbcUrl;
+    private static String adminUsername;
+    private static String adminPassword;
+    private static Map<String, String> sharedConfig;
 
     @Override
     public Map<String, String> start() {
@@ -31,11 +30,19 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
         String existingUsername = System.getenv("QUARKUS_DATASOURCE_USERNAME");
         String existingPassword = System.getenv("QUARKUS_DATASOURCE_PASSWORD");
 
-        if (isNonBlank(existingDbUrl) && isNonBlank(existingUsername) && isNonBlank(existingPassword)) {
-            return createDatabaseConfig(existingDbUrl, existingUsername, existingPassword);
-        }
-
         synchronized (LOCK) {
+            startedReferences++;
+
+            if (isNonBlank(existingDbUrl) && isNonBlank(existingUsername) && isNonBlank(existingPassword)) {
+                if (sharedConfig == null) {
+                    sharedConfig = new HashMap<>();
+                    sharedConfig.put("quarkus.datasource.jdbc.url", existingDbUrl);
+                    sharedConfig.put("quarkus.datasource.username", existingUsername);
+                    sharedConfig.put("quarkus.datasource.password", existingPassword);
+                }
+                return new HashMap<>(sharedConfig);
+            }
+
             if (postgreSQLContainer == null) {
                 String postgisImage = System.getenv("GEOPULSE_TEST_POSTGIS_IMAGE");
                 if (postgisImage == null || postgisImage.isBlank()) {
@@ -50,61 +57,65 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
                         .withPassword("password");
                 postgreSQLContainer.start();
             }
-            startedReferences++;
-        }
 
-        return createDatabaseConfig(
-                postgreSQLContainer.getJdbcUrl(),
-                postgreSQLContainer.getUsername(),
-                postgreSQLContainer.getPassword()
-        );
+            if (sharedConfig == null) {
+                sharedConfig = createSharedDatabaseConfig(
+                        postgreSQLContainer.getJdbcUrl(),
+                        postgreSQLContainer.getUsername(),
+                        postgreSQLContainer.getPassword()
+                );
+            }
+
+            return new HashMap<>(sharedConfig);
+        }
     }
 
     @Override
     public void stop() {
         synchronized (LOCK) {
-            dropDatabaseIfNeeded();
             if (startedReferences > 0) {
                 startedReferences--;
             }
-            // Keep reusable container alive for the full run to avoid startup cost per class.
+            // Intentionally keep shared test database for full test JVM lifecycle.
+            // Database/container cleanup happens naturally when JVM exits.
         }
     }
 
-    private Map<String, String> createDatabaseConfig(String jdbcUrl, String username, String password) {
-        databaseName = "gp_test_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-        adminJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, "postgres");
-        databaseJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, databaseName);
-        adminUsername = username;
-        adminPassword = password;
+    private static Map<String, String> createSharedDatabaseConfig(String jdbcUrl, String username, String password) {
+        if (sharedDatabaseName == null) {
+            sharedDatabaseName = "gp_test_shared";
+            adminJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, "postgres");
+            adminUsername = username;
+            adminPassword = password;
 
-        try (Connection connection = DriverManager.getConnection(adminJdbcUrl, username, password);
-             Statement statement = connection.createStatement()) {
-            statement.execute("CREATE DATABASE " + quoteIdentifier(databaseName));
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to prepare test database: " + databaseName, e);
-        }
+            try (Connection connection = DriverManager.getConnection(adminJdbcUrl, username, password);
+                 Statement statement = connection.createStatement()) {
+                statement.execute("CREATE DATABASE " + quoteIdentifier(sharedDatabaseName));
+            } catch (Exception ignored) {
+                // Database may already exist if test resource reinitializes in the same environment.
+            }
 
-        try (Connection connection = DriverManager.getConnection(databaseJdbcUrl, username, password)) {
-            ensurePostgisSchema(connection);
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to initialize test database extensions: " + databaseName, e);
+            String databaseJdbcUrl = jdbcUrlWithDatabase(jdbcUrl, sharedDatabaseName);
+            try (Connection connection = DriverManager.getConnection(databaseJdbcUrl, username, password)) {
+                ensurePostgisSchema(connection);
+            } catch (Exception e) {
+                throw new IllegalStateException("Failed to initialize shared test database extensions", e);
+            }
         }
 
         Map<String, String> config = new HashMap<>();
-        config.put("quarkus.datasource.jdbc.url", databaseJdbcUrl);
+        config.put("quarkus.datasource.jdbc.url", jdbcUrlWithDatabase(jdbcUrl, sharedDatabaseName));
         config.put("quarkus.datasource.username", username);
         config.put("quarkus.datasource.password", password);
         return config;
     }
 
-    private static String ensurePostgisSchema(Connection connection) throws Exception {
+    private static void ensurePostgisSchema(Connection connection) throws Exception {
         String schema = findExtensionSchema(connection, "postgis");
         if (schema == null) {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
             }
-            schema = "public";
         }
 
         if (findExtensionSchema(connection, "postgis_topology") == null) {
@@ -113,8 +124,6 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
                 statement.execute("CREATE EXTENSION IF NOT EXISTS postgis_topology SCHEMA topology");
             }
         }
-
-        return schema;
     }
 
     private static String findExtensionSchema(Connection connection, String extensionName) throws Exception {
@@ -132,27 +141,6 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
                 }
                 return null;
             }
-        }
-    }
-
-    private void dropDatabaseIfNeeded() {
-        if (databaseName == null || adminJdbcUrl == null || adminUsername == null || adminPassword == null) {
-            return;
-        }
-
-        try (Connection connection = DriverManager.getConnection(adminJdbcUrl, adminUsername, adminPassword);
-             Statement statement = connection.createStatement()) {
-            statement.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = "
-                    + quoteLiteral(databaseName) + " AND pid <> pg_backend_pid()");
-            statement.execute("DROP DATABASE IF EXISTS " + quoteIdentifier(databaseName));
-        } catch (Exception ignored) {
-            // Ignore cleanup failures to avoid masking test outcomes.
-        } finally {
-            databaseName = null;
-            adminJdbcUrl = null;
-            databaseJdbcUrl = null;
-            adminUsername = null;
-            adminPassword = null;
         }
     }
 
@@ -174,10 +162,6 @@ public class PostgisTestResource implements QuarkusTestResourceLifecycleManager 
 
     private static String quoteIdentifier(String identifier) {
         return '"' + identifier.replace("\"", "\"\"") + '"';
-    }
-
-    private static String quoteLiteral(String value) {
-        return '\'' + value.replace("'", "''") + '\'';
     }
 
     private static boolean isNonBlank(String value) {

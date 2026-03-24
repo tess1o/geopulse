@@ -1,5 +1,4 @@
 package org.github.tess1o.geopulse.auth.oidc.service;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -8,16 +7,14 @@ import org.github.tess1o.geopulse.auth.oidc.model.OidcSessionStateEntity;
 import org.github.tess1o.geopulse.auth.oidc.repository.OidcSessionStateRepository;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.junit.jupiter.api.Test;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-
 import static org.junit.jupiter.api.Assertions.*;
 /**
  * Test class for OidcCleanupService functionality.
  */
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 public class OidcCleanupServiceTest {
     @Inject
     OidcCleanupService cleanupService;

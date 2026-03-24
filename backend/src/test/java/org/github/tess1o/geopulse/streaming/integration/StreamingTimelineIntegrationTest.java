@@ -1,11 +1,9 @@
 package org.github.tess1o.geopulse.streaming.integration;
-
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
-import org.github.tess1o.geopulse.CleanupHelper;
 import org.github.tess1o.geopulse.db.PostgisTestResource;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.gps.repository.GpsPointRepository;
@@ -14,6 +12,7 @@ import org.github.tess1o.geopulse.streaming.repository.TimelineStayRepository;
 import org.github.tess1o.geopulse.streaming.repository.TimelineTripRepository;
 import org.github.tess1o.geopulse.streaming.service.StreamingTimelineGenerationService;
 import org.github.tess1o.geopulse.testsupport.SerializedDatabaseTest;
+import org.github.tess1o.geopulse.testsupport.TestIds;
 import org.github.tess1o.geopulse.user.model.TimelinePreferences;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
@@ -22,16 +21,16 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.concurrent.atomic.AtomicLong;
 import static org.assertj.core.api.Assertions.assertThat;
 @QuarkusTest
-@QuarkusTestResource(value = PostgisTestResource.class, restrictToAnnotatedClass = true)
+@QuarkusTestResource(value = PostgisTestResource.class)
 @SerializedDatabaseTest
 class StreamingTimelineIntegrationTest {
+    private static final AtomicLong COORD_SEED = new AtomicLong(0);
     private static final double HOME_LAT = 40.7589;
     private static final double HOME_LON = -73.9851;
     private static final double OFFICE_LAT = 40.7505;
@@ -49,19 +48,22 @@ class StreamingTimelineIntegrationTest {
     @Inject
     TimelineDataGapRepository timelineDataGapRepository;
     @Inject
-    CleanupHelper cleanupHelper;
-    @Inject
     EntityManager entityManager;
     private final GeometryFactory geometryFactory = new GeometryFactory();
     private UserEntity testUserEnabled;
     private UserEntity testUserDisabled;
+    private double coordOffsetLat;
+    private double coordOffsetLon;
     @BeforeEach
     @Transactional
     void setUp() {
-        cleanupHelper.cleanupAll();
+        long seed = COORD_SEED.incrementAndGet();
+        coordOffsetLat = seed * 0.0002;
+        coordOffsetLon = seed * 0.0001;
+
         // Create test user
-        testUserEnabled = createTestUser("streaming-test-enabled@geopulse.app", true);
-        testUserDisabled = createTestUser("streaming-test-disabled@geopulse.app", false);
+        testUserEnabled = createTestUser(TestIds.uniqueEmail("streaming-enabled-user"), true);
+        testUserDisabled = createTestUser(TestIds.uniqueEmail("streaming-disabled-user"), false);
         userRepository.persist(testUserEnabled);
         userRepository.persist(testUserDisabled);
     }
@@ -96,8 +98,8 @@ class StreamingTimelineIntegrationTest {
         boolean success = streamingTimelineGenerationService.regenerateFullTimeline(testUserEnabled.getId());
         assertThat(success).isTrue();
         // Verify timeline structure
-        var stays = timelineStayRepository.listAll();
-        var trips = timelineTripRepository.listAll();
+        var stays = timelineStayRepository.find("user.id = ?1", testUserEnabled.getId()).list();
+        var trips = timelineTripRepository.findByUser(testUserEnabled.getId());
         assertThat(stays).hasSize(2);
         assertThat(trips).hasSize(1);
     }
@@ -127,8 +129,8 @@ class StreamingTimelineIntegrationTest {
         boolean success = streamingTimelineGenerationService.regenerateFullTimeline(testUserDisabled.getId());
         assertThat(success).isTrue();
         // Then: Should have data gap for the overnight period
-        var stays = timelineStayRepository.listAll();
-        var gaps = timelineDataGapRepository.listAll();
+        var stays = timelineStayRepository.find("user.id = ?1", testUserDisabled.getId()).list();
+        var gaps = timelineDataGapRepository.find("user.id = ?1", testUserDisabled.getId()).list();
         // Should have two separate stays (evening and morning) with a gap between
         assertThat(stays).hasSize(2);
         // Filter gaps that occurred during the overnight period (before morning points)
@@ -173,8 +175,8 @@ class StreamingTimelineIntegrationTest {
         boolean success = streamingTimelineGenerationService.regenerateFullTimeline(testUserEnabled.getId());
         assertThat(success).isTrue();
         // Then: Should have single continuous stay spanning overnight
-        var stays = timelineStayRepository.listAll();
-        var gaps = timelineDataGapRepository.listAll();
+        var stays = timelineStayRepository.find("user.id = ?1", testUserEnabled.getId()).list();
+        var gaps = timelineDataGapRepository.find("user.id = ?1", testUserEnabled.getId()).list();
         // Should have only ONE stay (no gap during overnight, continuous stay inferred)
         assertThat(stays).hasSize(1);
         // There may be an ongoing gap from last point to now, but no gap during overnight period
@@ -221,8 +223,8 @@ class StreamingTimelineIntegrationTest {
         boolean success = streamingTimelineGenerationService.regenerateFullTimeline(testUserEnabled.getId());
         assertThat(success).isTrue();
         // Then: Should create gap because locations are different
-        var stays = timelineStayRepository.listAll();
-        var gaps = timelineDataGapRepository.listAll();
+        var stays = timelineStayRepository.find("user.id = ?1", testUserEnabled.getId()).list();
+        var gaps = timelineDataGapRepository.find("user.id = ?1", testUserEnabled.getId()).list();
         // Should have two stays (home evening, office morning) with gap between them
         assertThat(stays).hasSize(2);
         // Filter gaps that occurred during the overnight period (before morning points)
@@ -290,6 +292,6 @@ class StreamingTimelineIntegrationTest {
         return points;
     }
     private Point createPoint(double lon, double lat) {
-        return geometryFactory.createPoint(new Coordinate(lon, lat));
+        return geometryFactory.createPoint(new Coordinate(lon + coordOffsetLon, lat + coordOffsetLat));
     }
 }
