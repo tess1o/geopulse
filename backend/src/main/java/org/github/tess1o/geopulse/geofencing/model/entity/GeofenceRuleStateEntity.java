@@ -3,6 +3,7 @@ package org.github.tess1o.geopulse.geofencing.model.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
+import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
 
@@ -16,15 +17,20 @@ import java.time.Instant;
 @Builder
 public class GeofenceRuleStateEntity {
 
-    @Id
-    @Column(name = "rule_id")
-    private Long ruleId;
+    @EmbeddedId
+    private GeofenceRuleStateId id;
 
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("ruleId")
     @JoinColumn(name = "rule_id", nullable = false)
     @ToString.Exclude
     private GeofenceRuleEntity rule;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @MapsId("subjectUserId")
+    @JoinColumn(name = "subject_user_id", nullable = false)
+    @ToString.Exclude
+    private UserEntity subjectUser;
 
     @Column(name = "current_inside", nullable = false)
     private Boolean currentInside;

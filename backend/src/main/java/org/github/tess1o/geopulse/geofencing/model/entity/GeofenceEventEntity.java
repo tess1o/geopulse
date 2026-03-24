@@ -59,6 +59,9 @@ public class GeofenceEventEntity {
     @Column(name = "message", nullable = false, columnDefinition = "text")
     private String message;
 
+    @Column(name = "subject_display_name", nullable = false, length = 255)
+    private String subjectDisplayName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "delivery_status", nullable = false, length = 20)
     @Builder.Default

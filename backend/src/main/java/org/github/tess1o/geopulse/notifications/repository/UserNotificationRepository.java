@@ -13,45 +13,18 @@ import java.util.UUID;
 @ApplicationScoped
 public class UserNotificationRepository implements PanacheRepository<UserNotificationEntity> {
 
-    public List<UserNotificationEntity> findByOwner(UUID ownerUserId,
-                                                    int limit,
-                                                    boolean unreadOnly,
-                                                    NotificationSource source) {
-        StringBuilder query = new StringBuilder("ownerUser.id = ?1");
-
-        if (unreadOnly) {
-            query.append(" AND seenAt IS NULL");
-        }
-
-        if (source != null) {
-            query.append(" AND source = ?2 ORDER BY occurredAt DESC");
-            return find(query.toString(), ownerUserId, source)
-                    .page(0, Math.max(1, limit))
-                    .list();
-        }
-
-        query.append(" ORDER BY occurredAt DESC");
-        return find(query.toString(), ownerUserId)
+    public List<UserNotificationEntity> findByOwner(UUID ownerUserId, int limit) {
+        return find("ownerUser.id = ?1 ORDER BY occurredAt DESC", ownerUserId)
                 .page(0, Math.max(1, limit))
                 .list();
     }
 
-    public long countUnreadByOwner(UUID ownerUserId, NotificationSource source) {
-        if (source == null) {
-            return count("ownerUser.id = ?1 AND seenAt IS NULL", ownerUserId);
-        }
-        return count("ownerUser.id = ?1 AND seenAt IS NULL AND source = ?2", ownerUserId, source);
+    public long countUnreadByOwner(UUID ownerUserId) {
+        return count("ownerUser.id = ?1 AND seenAt IS NULL", ownerUserId);
     }
 
-    public Long findLatestUnreadIdByOwner(UUID ownerUserId, NotificationSource source) {
-        if (source == null) {
-            return find("ownerUser.id = ?1 AND seenAt IS NULL ORDER BY id DESC", ownerUserId)
-                    .firstResultOptional()
-                    .map(UserNotificationEntity::getId)
-                    .orElse(null);
-        }
-
-        return find("ownerUser.id = ?1 AND seenAt IS NULL AND source = ?2 ORDER BY id DESC", ownerUserId, source)
+    public Long findLatestUnreadIdByOwner(UUID ownerUserId) {
+        return find("ownerUser.id = ?1 AND seenAt IS NULL ORDER BY id DESC", ownerUserId)
                 .firstResultOptional()
                 .map(UserNotificationEntity::getId)
                 .orElse(null);
@@ -61,12 +34,26 @@ public class UserNotificationRepository implements PanacheRepository<UserNotific
         return find("id = ?1 AND ownerUser.id = ?2", notificationId, ownerUserId).firstResultOptional();
     }
 
-    public long markAllSeenByOwner(UUID ownerUserId, Instant seenAt, NotificationSource source) {
-        if (source == null) {
-            return update("seenAt = ?1 WHERE ownerUser.id = ?2 AND seenAt IS NULL", seenAt, ownerUserId);
-        }
+    public long markAllSeenByOwner(UUID ownerUserId, Instant seenAt) {
+        return update("seenAt = ?1 WHERE ownerUser.id = ?2 AND seenAt IS NULL", seenAt, ownerUserId);
+    }
 
-        return update("seenAt = ?1 WHERE ownerUser.id = ?2 AND source = ?3 AND seenAt IS NULL", seenAt, ownerUserId, source);
+    public long markSeenBySourceAndObjectRefAndOwner(NotificationSource source,
+                                                      String objectRef,
+                                                      UUID ownerUserId,
+                                                      Instant seenAt) {
+        return update("seenAt = ?1 WHERE source = ?2 AND objectRef = ?3 AND ownerUser.id = ?4 AND seenAt IS NULL",
+                seenAt,
+                source,
+                objectRef,
+                ownerUserId);
+    }
+
+    public long markAllSeenBySourceAndOwner(NotificationSource source, UUID ownerUserId, Instant seenAt) {
+        return update("seenAt = ?1 WHERE source = ?2 AND ownerUser.id = ?3 AND seenAt IS NULL",
+                seenAt,
+                source,
+                ownerUserId);
     }
 
     public Optional<UserNotificationEntity> findByDedupeKey(String dedupeKey) {

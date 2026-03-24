@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import {defineConfig, devices} from '@playwright/test';
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -31,6 +31,7 @@ const isolatedSpecs = [
   '**/geocoding-management.spec.js',
   '**/health.spec.js',
   '**/error-handling.spec.js',
+  '**/notifications.spec.js',
 ];
 
 const parallelWorkers = Number.parseInt(

@@ -1,28 +1,42 @@
 package org.github.tess1o.geopulse.geofencing.service;
 
 import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
+import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceEventType;
+import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
 import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceEventRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleStateRepository;
 import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepository;
+import org.github.tess1o.geopulse.gps.model.GpsPointEntity;
 import org.github.tess1o.geopulse.notifications.service.GeofenceNotificationProjectionService;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 
 import java.lang.reflect.Method;
 import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @Tag("unit")
 class GeofenceEvaluationServiceDateFormatTest {
+
+    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
     @Mock
     GeofenceRuleRepository ruleRepository;
@@ -88,6 +102,56 @@ class GeofenceEvaluationServiceDateFormatTest {
         String rendered = invokeFormatTimestampForOwner(Instant.parse("2026-03-26T01:31:27Z"), owner);
 
         assertThat(rendered).isEqualTo("26/03/2026 03:31:27");
+    }
+
+    @Test
+    void shouldPersistSubjectDisplayNameSnapshotOnEventCreation() throws Exception {
+        UUID ownerId = UUID.randomUUID();
+        UserEntity owner = new UserEntity();
+        owner.setId(ownerId);
+        owner.setTimezone("UTC");
+
+        UserEntity subject = new UserEntity();
+        subject.setId(UUID.randomUUID());
+        subject.setFullName(null);
+        subject.setEmail("subject@example.com");
+
+        GeofenceRuleEntity rule = new GeofenceRuleEntity();
+        rule.setId(10L);
+        rule.setName("Home");
+        rule.setOwnerUser(owner);
+
+        GpsPointEntity point = new GpsPointEntity();
+        point.setUser(subject);
+        point.setTimestamp(Instant.parse("2026-03-24T10:00:00Z"));
+        point.setCoordinates(GEOMETRY_FACTORY.createPoint(new Coordinate(30.5234, 50.4501)));
+
+        when(templateRepository.findDefaultEnterByUser(ownerId)).thenReturn(Optional.empty());
+
+        Method method = GeofenceEvaluationService.class.getDeclaredMethod(
+                "emitEvent",
+                GeofenceRuleEntity.class,
+                UserEntity.class,
+                GpsPointEntity.class,
+                GeofenceEventType.class
+        );
+        method.setAccessible(true);
+        method.invoke(service, rule, subject, point, GeofenceEventType.ENTER);
+
+        ArgumentCaptor<GeofenceEventEntity> captor = ArgumentCaptor.forClass(GeofenceEventEntity.class);
+        verify(eventRepository).persist(captor.capture());
+        GeofenceEventEntity persisted = captor.getValue();
+        assertThat(persisted.getSubjectDisplayName()).isEqualTo("subject@example.com");
+        verify(notificationProjectionService).publishSnapshot(persisted, Map.of(
+                "ruleId", 10L,
+                "ruleName", "Home",
+                "subjectUserId", subject.getId(),
+                "subjectDisplayName", "subject@example.com",
+                "eventCode", "ENTER",
+                "eventVerb", "entered",
+                "lat", 50.4501,
+                "lon", 30.5234
+        ));
     }
 
     private String invokeFormatTimestampForOwner(Instant timestamp, UserEntity owner) throws Exception {

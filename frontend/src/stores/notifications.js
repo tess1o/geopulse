@@ -21,13 +21,6 @@ function shouldEmitInAppToasts() {
   return !document.hidden && hasFocus
 }
 
-function normalizeSource(source) {
-  if (typeof source !== 'string' || !source.trim()) {
-    return null
-  }
-  return source.trim().toUpperCase()
-}
-
 export const useNotificationsStore = defineStore('notifications', {
   state: () => ({
     items: [],
@@ -269,28 +262,14 @@ export const useNotificationsStore = defineStore('notifications', {
       this.visibilityListenerAttached = false
     },
 
-    async fetchNotifications({ limit = 100, unreadOnly = false, source = null } = {}) {
-      const params = {
-        limit,
-        unreadOnly: !!unreadOnly
-      }
-      const normalizedSource = normalizeSource(source)
-      if (normalizedSource) {
-        params.source = normalizedSource
-      }
-
+    async fetchNotifications({ limit = 100 } = {}) {
+      const params = { limit }
       const response = await apiService.get('/notifications', params)
       return Array.isArray(response?.data) ? response.data : []
     },
 
-    async fetchUnreadCount({ source = null } = {}) {
-      const params = {}
-      const normalizedSource = normalizeSource(source)
-      if (normalizedSource) {
-        params.source = normalizedSource
-      }
-
-      const response = await apiService.get('/notifications/unread-count', params)
+    async fetchUnreadCount() {
+      const response = await apiService.get('/notifications/unread-count')
       const count = Number(response?.data?.count || 0)
       const latestUnreadIdRaw = response?.data?.latestUnreadId
       const latestUnreadId = Number.isFinite(Number(latestUnreadIdRaw))
@@ -309,7 +288,7 @@ export const useNotificationsStore = defineStore('notifications', {
       emitStartupSummary = false
     } = {}) {
       const [events, countInfo] = await Promise.all([
-        this.fetchNotifications({ limit: 100, unreadOnly: false }),
+        this.fetchNotifications({ limit: 100 }),
         this.fetchUnreadCount()
       ])
 
@@ -409,34 +388,16 @@ export const useNotificationsStore = defineStore('notifications', {
       return updated
     },
 
-    async markAllSeen(source = null) {
-      const normalizedSource = normalizeSource(source)
-      const options = normalizedSource ? { params: { source: normalizedSource } } : {}
-      await apiService.post('/notifications/seen-all', {}, options)
-
-      if (!normalizedSource) {
-        this.items = this.items.map(item => ({
+    async markAllSeen() {
+      await apiService.post('/notifications/seen-all', {})
+      this.items = this.items.map(item => {
+        return {
           ...item,
           seen: true,
           seenAt: item.seenAt || new Date().toISOString()
-        }))
-        this.unreadCount = 0
-        return
-      }
-
-      this.items = this.items.map(item => {
-        if (item.source === normalizedSource) {
-          return {
-            ...item,
-            seen: true,
-            seenAt: item.seenAt || new Date().toISOString()
-          }
         }
-        return item
       })
-
-      const countInfo = await this.fetchUnreadCount()
-      this.unreadCount = Number(countInfo?.count || 0)
+      this.unreadCount = 0
     },
 
     async setBrowserNotificationsEnabled(enabled) {

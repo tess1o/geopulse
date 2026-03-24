@@ -8,8 +8,11 @@ import org.github.tess1o.geopulse.friends.repository.FriendshipRepository;
 import org.github.tess1o.geopulse.friends.repository.UserFriendPermissionRepository;
 import org.github.tess1o.geopulse.geofencing.model.dto.CreateGeofenceRuleRequest;
 import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceRuleDto;
+import org.github.tess1o.geopulse.geofencing.model.dto.GeofenceRuleSubjectDto;
 import org.github.tess1o.geopulse.geofencing.model.dto.UpdateGeofenceRuleRequest;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleSubjectEntity;
+import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleSubjectId;
 import org.github.tess1o.geopulse.geofencing.model.entity.GeofenceRuleStatus;
 import org.github.tess1o.geopulse.geofencing.model.entity.NotificationTemplateEntity;
 import org.github.tess1o.geopulse.geofencing.repository.GeofenceRuleRepository;
@@ -17,7 +20,9 @@ import org.github.tess1o.geopulse.geofencing.repository.NotificationTemplateRepo
 import org.github.tess1o.geopulse.user.model.UserEntity;
 import org.github.tess1o.geopulse.user.repository.UserRepository;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -45,6 +50,7 @@ public class GeofenceRuleService {
         this.entityManager = entityManager;
     }
 
+    @Transactional
     public List<GeofenceRuleDto> listRules(UUID ownerUserId) {
         return ruleRepository.findByOwner(ownerUserId).stream().map(this::toDto).toList();
     }
@@ -53,16 +59,14 @@ public class GeofenceRuleService {
     public GeofenceRuleDto createRule(UUID ownerUserId, CreateGeofenceRuleRequest request) {
         validateCoordinates(request.getNorthEastLat(), request.getNorthEastLon(), request.getSouthWestLat(), request.getSouthWestLon());
         validateEventSelection(request.getMonitorEnter(), request.getMonitorLeave());
-
-        UUID subjectUserId = request.getSubjectUserId();
-        validateSubjectAccess(ownerUserId, subjectUserId);
+        Set<UUID> subjectUserIds = normalizeSubjectUserIds(request.getSubjectUserIds(), true);
+        subjectUserIds.forEach(subjectUserId -> validateSubjectAccess(ownerUserId, subjectUserId));
 
         NotificationTemplateEntity enterTemplate = resolveTemplate(ownerUserId, request.getEnterTemplateId());
         NotificationTemplateEntity leaveTemplate = resolveTemplate(ownerUserId, request.getLeaveTemplateId());
 
         GeofenceRuleEntity entity = GeofenceRuleEntity.builder()
                 .ownerUser(entityManager.getReference(UserEntity.class, ownerUserId))
-                .subjectUser(entityManager.getReference(UserEntity.class, subjectUserId))
                 .name(request.getName().trim())
                 .northEastLat(request.getNorthEastLat())
                 .northEastLon(request.getNorthEastLon())
@@ -76,6 +80,7 @@ public class GeofenceRuleService {
                 .status(GeofenceRuleStatus.ACTIVE)
                 .build();
 
+        applySubjectAssignments(entity, subjectUserIds);
         ruleRepository.persist(entity);
         return toDto(entity);
     }
@@ -84,9 +89,6 @@ public class GeofenceRuleService {
     public GeofenceRuleDto updateRule(UUID ownerUserId, Long ruleId, UpdateGeofenceRuleRequest request) {
         GeofenceRuleEntity entity = ruleRepository.findByIdAndOwner(ruleId, ownerUserId)
                 .orElseThrow(() -> new IllegalArgumentException("Geofence rule not found"));
-
-        UUID subjectUserId = request.getSubjectUserId() != null ? request.getSubjectUserId() : entity.getSubjectUser().getId();
-        validateSubjectAccess(ownerUserId, subjectUserId);
 
         double northEastLat = request.getNorthEastLat() != null ? request.getNorthEastLat() : entity.getNorthEastLat();
         double northEastLon = request.getNorthEastLon() != null ? request.getNorthEastLon() : entity.getNorthEastLon();
@@ -102,8 +104,18 @@ public class GeofenceRuleService {
         if (request.getName() != null) {
             entity.setName(request.getName().trim());
         }
-        if (request.getSubjectUserId() != null) {
-            entity.setSubjectUser(entityManager.getReference(UserEntity.class, request.getSubjectUserId()));
+
+        if (request.getSubjectUserIds() != null) {
+            Set<UUID> nextSubjectIds = normalizeSubjectUserIds(request.getSubjectUserIds(), true);
+            Set<UUID> currentSubjectIds = entity.getSubjectAssignments().stream()
+                    .map(assignment -> assignment.getSubjectUser().getId())
+                    .collect(LinkedHashSet::new, Set::add, Set::addAll);
+
+            Set<UUID> addedSubjectIds = new LinkedHashSet<>(nextSubjectIds);
+            addedSubjectIds.removeAll(currentSubjectIds);
+            addedSubjectIds.forEach(subjectUserId -> validateSubjectAccess(ownerUserId, subjectUserId));
+
+            applySubjectAssignments(entity, nextSubjectIds);
         }
         if (request.getNorthEastLat() != null) {
             entity.setNorthEastLat(request.getNorthEastLat());
@@ -143,17 +155,31 @@ public class GeofenceRuleService {
     }
 
     public GeofenceRuleDto toDto(GeofenceRuleEntity entity) {
-        UserEntity subject = entity.getSubjectUser();
-        String subjectDisplayName = subject.getFullName() != null && !subject.getFullName().isBlank()
-                ? subject.getFullName()
-                : subject.getEmail();
+        List<GeofenceRuleSubjectDto> subjects = entity.getSubjectAssignments().stream()
+                .map(assignment -> {
+                    UserEntity subject = assignment.getSubjectUser();
+                    String subjectDisplayName = subject.getFullName() != null && !subject.getFullName().isBlank()
+                            ? subject.getFullName()
+                            : (subject.getEmail() != null ? subject.getEmail() : "Unknown subject");
+                    return GeofenceRuleSubjectDto.builder()
+                            .userId(subject.getId())
+                            .displayName(subjectDisplayName)
+                            .build();
+                })
+                .sorted((left, right) -> {
+                    int byDisplayName = left.getDisplayName().compareToIgnoreCase(right.getDisplayName());
+                    if (byDisplayName != 0) {
+                        return byDisplayName;
+                    }
+                    return left.getUserId().toString().compareTo(right.getUserId().toString());
+                })
+                .toList();
 
         return GeofenceRuleDto.builder()
                 .id(entity.getId())
                 .name(entity.getName())
                 .ownerUserId(entity.getOwnerUser().getId())
-                .subjectUserId(entity.getSubjectUser().getId())
-                .subjectDisplayName(subjectDisplayName)
+                .subjects(subjects)
                 .northEastLat(entity.getNorthEastLat())
                 .northEastLon(entity.getNorthEastLon())
                 .southWestLat(entity.getSouthWestLat())
@@ -167,6 +193,45 @@ public class GeofenceRuleService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    private void applySubjectAssignments(GeofenceRuleEntity entity, Set<UUID> subjectUserIds) {
+        entity.getSubjectAssignments().removeIf(assignment -> !subjectUserIds.contains(assignment.getSubjectUser().getId()));
+
+        Set<UUID> existingSubjectIds = entity.getSubjectAssignments().stream()
+                .map(assignment -> assignment.getSubjectUser().getId())
+                .collect(LinkedHashSet::new, Set::add, Set::addAll);
+
+        for (UUID subjectUserId : subjectUserIds) {
+            if (existingSubjectIds.contains(subjectUserId)) {
+                continue;
+            }
+            GeofenceRuleSubjectEntity assignment = GeofenceRuleSubjectEntity.builder()
+                    .id(new GeofenceRuleSubjectId(entity.getId(), subjectUserId))
+                    .rule(entity)
+                    .subjectUser(entityManager.getReference(UserEntity.class, subjectUserId))
+                    .build();
+            entity.getSubjectAssignments().add(assignment);
+        }
+    }
+
+    private Set<UUID> normalizeSubjectUserIds(List<UUID> subjectUserIds, boolean required) {
+        if (subjectUserIds == null) {
+            if (required) {
+                throw new IllegalArgumentException("subjectUserIds is required");
+            }
+            return Set.of();
+        }
+
+        Set<UUID> normalized = subjectUserIds.stream()
+                .filter(id -> id != null)
+                .collect(LinkedHashSet::new, Set::add, Set::addAll);
+
+        if (required && normalized.isEmpty()) {
+            throw new IllegalArgumentException("At least one subject must be selected");
+        }
+
+        return normalized;
     }
 
     private NotificationTemplateEntity resolveTemplate(UUID ownerUserId, Long templateId) {

@@ -21,6 +21,17 @@ public class GeofenceRuleRepository implements PanacheRepository<GeofenceRuleEnt
     }
 
     public List<GeofenceRuleEntity> findActiveBySubject(UUID subjectUserId) {
-        return list("subjectUser.id = ?1 AND status = ?2", subjectUserId, GeofenceRuleStatus.ACTIVE);
+        return list("SELECT DISTINCT rule " +
+                "FROM GeofenceRuleEntity rule " +
+                "JOIN rule.subjectAssignments assignment " +
+                "WHERE assignment.subjectUser.id = ?1 AND rule.status = ?2", subjectUserId, GeofenceRuleStatus.ACTIVE);
+    }
+
+    public long clearEnterTemplate(UUID ownerUserId, Long templateId) {
+        return update("enterTemplate = null WHERE ownerUser.id = ?1 AND enterTemplate.id = ?2", ownerUserId, templateId);
+    }
+
+    public long clearLeaveTemplate(UUID ownerUserId, Long templateId) {
+        return update("leaveTemplate = null WHERE ownerUser.id = ?1 AND leaveTemplate.id = ?2", ownerUserId, templateId);
     }
 }

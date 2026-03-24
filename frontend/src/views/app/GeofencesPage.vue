@@ -48,16 +48,22 @@
           :templateDestinationInput="templateDestinationInput"
           :templateTitleInput="templateTitleInput"
           :templateBodyInput="templateBodyInput"
-          :templatePreview="templatePreview"
+          :templatePreviewToasts="templatePreviewToasts"
           :templateMacros="templateMacros"
           :currentDefaultEnterName="currentDefaultEnterName"
           :currentDefaultLeaveName="currentDefaultLeaveName"
+          :appriseEnabled="appriseEnabled"
+          :appriseConfigured="appriseConfigured"
+          :testingTemplateConnection="testingTemplateConnection"
+          :templateConnectionTestResult="templateConnectionTestResult"
           :savingTemplate="savingTemplate"
           :templates="templates"
           :formatDestination="formatDestination"
           :defaultSummary="defaultSummary"
+          @update-template-field="updateTemplateField"
           @focus-template-field="setFocusedTemplateField"
           @insert-macro="insertMacro"
+          @test-template-connection="testTemplateConnection"
           @save-template="saveTemplate"
           @reset-template-form="resetTemplateForm"
           @load-templates="loadTemplates"
@@ -67,14 +73,18 @@
 
         <GeofenceEventsTab
           v-else
-          :events="events"
+          :events="geofenceEvents"
+          :totalRecords="geofenceEventsTotal"
+          :query="geofenceEventsQuery"
+          :subjectFilterOptions="eventSubjectFilterOptions"
           :unreadCount="unreadCount"
-          :unreadOnly="unreadOnly"
+          :loading="refreshingEvents"
           :markingAllSeen="markingAllSeen"
           :markingEventId="markingEventId"
           :formatDate="formatDate"
           :deliverySeverity="deliverySeverity"
-          @toggle-unread-only="handleUnreadOnlyToggle"
+          :userId="authStore.userId"
+          @update-query="handleEventsQueryUpdate"
           @mark-all-events-seen="markAllEventsSeen"
           @refresh-events="refreshEvents"
           @mark-event-seen="markEventSeen"
@@ -91,7 +101,7 @@ import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useNotificationsStore } from '@/stores/notifications'
+import { useLocationStore } from '@/stores/location'
 import apiService from '@/utils/apiService'
 import L from 'leaflet'
 import { useRectangleDrawing } from '@/composables/useRectangleDrawing'
@@ -110,9 +120,10 @@ const confirm = useConfirm()
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const notificationsStore = useNotificationsStore()
+const locationStore = useLocationStore()
 const timezone = useTimezone()
-const GEOFENCE_SOURCE = 'GEOFENCE'
+const FALLBACK_GEOFENCE_CENTER = [50.4501, 30.5234]
+const LAST_KNOWN_MAP_ZOOM = 12
 
 const tabs = computed(() => [
   { label: 'Rules', icon: 'pi pi-map', key: 'rules' },
@@ -132,18 +143,24 @@ const activeTabIndex = computed(() => tabs.value.findIndex(t => t.key === active
 const rules = ref([])
 const templates = ref([])
 const friends = ref([])
+const templateDeliveryCapabilities = ref({
+  appriseEnabled: false,
+  appriseConfigured: false
+})
 
 const savingRule = ref(false)
 const savingTemplate = ref(false)
-const unreadOnly = ref(false)
+const testingTemplateConnection = ref(false)
 const markingAllSeen = ref(false)
 const markingEventId = ref(null)
 const geofenceEvents = ref([])
+const geofenceEventsTotal = ref(0)
 const geofenceUnreadCount = ref(0)
 const refreshingEvents = ref(false)
+const geofenceEventsQuery = ref(defaultGeofenceEventsQuery())
 const ruleFormErrors = ref({
   name: '',
-  subjectUserId: '',
+  subjectUserIds: '',
   area: '',
   monitoring: ''
 })
@@ -160,27 +177,41 @@ const templateNameInput = ref(null)
 const templateDestinationInput = ref(null)
 const templateTitleInput = ref(null)
 const templateBodyInput = ref(null)
+const templateConnectionTestResult = ref(null)
 const focusedTemplateField = ref('bodyTemplate')
 const suppressDefaultToggleWatch = ref(false)
 const TEMPLATE_MACRO_PATTERN = /\{\{\s*([a-zA-Z][a-zA-Z0-9]*)\s*}}/g
 const DESTINATION_URL_PATTERN = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/.+$/
 const PREVIEW_TIMESTAMP_UTC = '2026-03-24T00:04:47Z'
 
-const events = computed(() => {
-  if (unreadOnly.value) {
-    return geofenceEvents.value.filter(item => !item.seen)
-  }
-  return geofenceEvents.value
-})
-
 const unreadCount = computed(() => geofenceUnreadCount.value)
+
+function defaultGeofenceEventsQuery() {
+  return {
+    page: 0,
+    pageSize: 25,
+    sortBy: 'occurredAt',
+    sortDir: 'desc',
+    unreadOnly: false,
+    datePreset: 'all',
+    dateFrom: null,
+    dateTo: null,
+    subjectUserIds: [],
+    eventTypes: []
+  }
+}
 
 const editingRuleId = ref(null)
 const editingTemplateId = ref(null)
 const geofenceMap = ref(null)
 const rectangleLayer = ref(null)
-const mapCenter = ref([50.4501, 30.5234])
+const allRuleAreasLayerGroup = ref(null)
+const mapCenter = ref(FALLBACK_GEOFENCE_CENTER)
 const mapZoom = ref(11)
+const lastKnownMapCenter = ref(null)
+const initialRulesLoaded = ref(false)
+const mapViewportInitialized = ref(false)
+const knownSubjectLabels = ref({})
 
 const statusOptions = [
   { label: 'Active', value: 'ACTIVE' },
@@ -209,18 +240,49 @@ const rectangleDrawing = useRectangleDrawing({
 
 const subjectOptions = computed(() => {
   const items = []
+  const seen = new Set()
+
+  const pushOption = (value, label, unavailable = false) => {
+    const normalizedValue = normalizeSubjectId(value)
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      return
+    }
+    seen.add(normalizedValue)
+    if (label) {
+      rememberSubjectLabel(normalizedValue, label)
+    }
+    items.push({ label, value: normalizedValue, unavailable })
+  }
 
   if (authStore.userId) {
     const meLabel = authStore.userName ? `${authStore.userName} (Me)` : `${authStore.userEmail} (Me)`
-    items.push({ label: meLabel, value: authStore.userId })
+    pushOption(authStore.userId, meLabel)
   }
 
   for (const friend of friends.value) {
     const label = friend.fullName || friend.email
-    items.push({ label, value: friend.friendId || friend.userId })
+    pushOption(friend.friendId || friend.userId, label)
+  }
+
+  for (const selectedId of ruleForm.value.subjectUserIds || []) {
+    const normalizedValue = normalizeSubjectId(selectedId)
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      continue
+    }
+    const label = knownSubjectLabels.value[normalizedValue] || `Unknown subject (${normalizedValue.slice(0, 8)})`
+    pushOption(normalizedValue, `${label} (Unavailable)`, true)
   }
 
   return items
+})
+
+const eventSubjectFilterOptions = computed(() => {
+  return subjectOptions.value
+    .filter(option => !option.unavailable)
+    .map(option => ({
+      label: option.label,
+      value: option.value
+    }))
 })
 
 const templateOptionItems = computed(() => {
@@ -259,6 +321,17 @@ const leaveTemplateOptions = computed(() => {
   }
   return options
 })
+const templateNameById = computed(() => {
+  const map = new Map()
+  for (const template of templates.value) {
+    if (template?.id !== null && template?.id !== undefined) {
+      map.set(String(template.id), template.name || `Template ${template.id}`)
+    }
+  }
+  return map
+})
+const appriseEnabled = computed(() => !!templateDeliveryCapabilities.value.appriseEnabled)
+const appriseConfigured = computed(() => !!templateDeliveryCapabilities.value.appriseConfigured)
 
 function hasValidAreaBounds(form) {
   return ['northEastLat', 'northEastLon', 'southWestLat', 'southWestLon'].every((key) => {
@@ -331,27 +404,55 @@ const currentDefaultEnterTemplate = computed(() => templates.value.find(template
 const currentDefaultLeaveTemplate = computed(() => templates.value.find(template => template.defaultForLeave) || null)
 const currentDefaultEnterName = computed(() => currentDefaultEnterTemplate.value?.name || 'None')
 const currentDefaultLeaveName = computed(() => currentDefaultLeaveTemplate.value?.name || 'None')
-const templatePreviewContext = computed(() => ({
-  subjectName: authStore.userName || authStore.userEmail || 'Peter',
-  eventCode: 'ENTER',
-  eventVerb: 'entered',
-  geofenceName: 'Home',
-  timestamp: formatDate(PREVIEW_TIMESTAMP_UTC),
-  timestampUtc: PREVIEW_TIMESTAMP_UTC,
-  lat: '49.547085',
-  lon: '25.595918'
-}))
-const templatePreview = computed(() => {
-  return {
-    title: renderTemplateWithContext(templateForm.value.titleTemplate, templatePreviewContext.value),
-    body: renderTemplateWithContext(templateForm.value.bodyTemplate, templatePreviewContext.value)
+const templatePreviewContexts = computed(() => {
+  const base = {
+    subjectName: authStore.userName || authStore.userEmail || 'John Doe',
+    geofenceName: 'Home',
+    timestamp: formatDate(PREVIEW_TIMESTAMP_UTC),
+    timestampUtc: PREVIEW_TIMESTAMP_UTC,
+    lat: '49.547085',
+    lon: '25.595918'
   }
+
+  return [
+    {
+      id: 'enter',
+      severity: 'success',
+      eventLabel: 'ENTER',
+      ...base,
+      eventCode: 'ENTER',
+      eventVerb: 'entered'
+    },
+    {
+      id: 'leave',
+      severity: 'warn',
+      eventLabel: 'LEAVE',
+      ...base,
+      eventCode: 'LEAVE',
+      eventVerb: 'left'
+    }
+  ]
+})
+
+const templatePreviewToasts = computed(() => {
+  return templatePreviewContexts.value.map((context) => {
+    const renderedTitle = renderTemplateWithContext(templateForm.value.titleTemplate, context)
+    const renderedBody = renderTemplateWithContext(templateForm.value.bodyTemplate, context)
+
+    return {
+      id: context.id,
+      severity: context.severity,
+      eventLabel: context.eventLabel,
+      title: renderedTitle,
+      body: renderedBody
+    }
+  })
 })
 
 function defaultRuleForm() {
   return {
     name: '',
-    subjectUserId: authStore.userId || null,
+    subjectUserIds: authStore.userId ? [normalizeSubjectId(authStore.userId)] : [],
     northEastLat: null,
     northEastLon: null,
     southWestLat: null,
@@ -371,6 +472,7 @@ function defaultTemplateForm() {
     destination: '',
     titleTemplate: '',
     bodyTemplate: '',
+    sendExternal: false,
     defaultForEnter: false,
     defaultForLeave: false,
     enabled: true
@@ -380,9 +482,47 @@ function defaultTemplateForm() {
 function clearRuleFormErrors() {
   ruleFormErrors.value = {
     name: '',
-    subjectUserId: '',
+    subjectUserIds: '',
     area: '',
     monitoring: ''
+  }
+}
+
+function normalizeSubjectId(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+  return String(value)
+}
+
+function rememberSubjectLabel(subjectId, label) {
+  const normalizedId = normalizeSubjectId(subjectId)
+  if (!normalizedId || !label || knownSubjectLabels.value[normalizedId]) {
+    return
+  }
+  knownSubjectLabels.value = {
+    ...knownSubjectLabels.value,
+    [normalizedId]: label
+  }
+}
+
+function normalizeRule(rule) {
+  const normalizedSubjects = Array.isArray(rule?.subjects)
+    ? rule.subjects
+      .map(subject => ({
+        userId: normalizeSubjectId(subject?.userId),
+        displayName: subject?.displayName || 'Unknown subject'
+      }))
+      .filter(subject => !!subject.userId)
+    : []
+
+  for (const subject of normalizedSubjects) {
+    rememberSubjectLabel(subject.userId, subject.displayName)
+  }
+
+  return {
+    ...rule,
+    subjects: normalizedSubjects
   }
 }
 
@@ -400,6 +540,13 @@ function clearTemplateFormErrors() {
 
 function setFocusedTemplateField(field) {
   focusedTemplateField.value = field
+}
+
+function updateTemplateField({ field, value }) {
+  if (!field || !Object.prototype.hasOwnProperty.call(templateForm.value, field)) {
+    return
+  }
+  templateForm.value[field] = value
 }
 
 function resolveInputElement(field) {
@@ -430,6 +577,20 @@ function splitDestinationLines(destination, allowLegacySeparators = false) {
 
 function normalizeDestination(destination) {
   return splitDestinationLines(destination).join('\n')
+}
+
+function validateDestinationLines(destination) {
+  const destinationLines = splitDestinationLines(destination)
+  for (let index = 0; index < destinationLines.length; index += 1) {
+    const line = destinationLines[index]
+    if (line.includes(',') || line.includes(';')) {
+      return `Line ${index + 1} contains multiple URLs. Use one destination per line.`
+    }
+    if (!DESTINATION_URL_PATTERN.test(line)) {
+      return `Line ${index + 1} must be a valid URL (scheme://...).`
+    }
+  }
+  return ''
 }
 
 function confirmAction({
@@ -526,16 +687,13 @@ function validateTemplateForm() {
     errors.name = 'Template name must be 120 characters or less.'
   }
 
-  const destinationLines = splitDestinationLines(form.destination)
-  for (let index = 0; index < destinationLines.length; index += 1) {
-    const line = destinationLines[index]
-    if (line.includes(',') || line.includes(';')) {
-      errors.destination = `Line ${index + 1} contains multiple URLs. Use one destination per line.`
-      break
-    }
-    if (!DESTINATION_URL_PATTERN.test(line)) {
-      errors.destination = `Line ${index + 1} must be a valid URL (scheme://...).`
-      break
+  const requiresDestination = appriseEnabled.value && form.sendExternal
+  if (requiresDestination) {
+    const destinationError = validateDestinationLines(form.destination)
+    if (destinationError) {
+      errors.destination = destinationError
+    } else if (splitDestinationLines(form.destination).length === 0) {
+      errors.destination = 'Add at least one destination URL or disable external providers.'
     }
   }
 
@@ -612,8 +770,11 @@ function validateRuleForm() {
     errors.name = 'Rule name is required.'
   }
 
-  if (!form.subjectUserId) {
-    errors.subjectUserId = 'Please select who this rule tracks.'
+  const selectedSubjects = Array.isArray(form.subjectUserIds)
+    ? form.subjectUserIds.map(normalizeSubjectId).filter(Boolean)
+    : []
+  if (selectedSubjects.length === 0) {
+    errors.subjectUserIds = 'Please select at least one subject to track.'
   }
 
   if (!hasValidAreaBounds(form)) {
@@ -662,8 +823,13 @@ function onTabChange(event) {
 
 function handleMapReady(map) {
   geofenceMap.value = map
+  mapViewportInitialized.value = false
+  rectangleLayer.value = null
+  allRuleAreasLayerGroup.value = null
   rectangleDrawing.initialize(map)
   syncMapRectangleFromForm()
+  syncAllRuleAreasOnMap()
+  syncInitialRulesMapViewport()
 }
 
 function startRectangleDraw() {
@@ -701,14 +867,274 @@ function syncMapRectangleFromForm(focus = false) {
   }
 }
 
+function isRuleMapVisible() {
+  return activeTab.value === 'rules' && !!geofenceMap.value
+}
+
+function hasRuleArea(rule) {
+  return ['northEastLat', 'northEastLon', 'southWestLat', 'southWestLon'].every((key) => {
+    const value = Number(rule?.[key])
+    return Number.isFinite(value)
+  })
+}
+
+function getRuleBounds(rule) {
+  if (!hasRuleArea(rule)) {
+    return null
+  }
+
+  return L.latLngBounds(
+    [Number(rule.southWestLat), Number(rule.southWestLon)],
+    [Number(rule.northEastLat), Number(rule.northEastLon)]
+  )
+}
+
+function collectRuleBounds() {
+  const boundsList = []
+  for (const rule of rules.value) {
+    if (
+      editingRuleId.value !== null
+      && Number(rule.id) === Number(editingRuleId.value)
+      && hasValidAreaBounds(ruleForm.value)
+    ) {
+      continue
+    }
+    const bounds = getRuleBounds(rule)
+    if (bounds) {
+      boundsList.push(bounds)
+    }
+  }
+  return boundsList
+}
+
+function ensureRuleAreasLayerGroup() {
+  if (!geofenceMap.value) {
+    return null
+  }
+
+  if (!allRuleAreasLayerGroup.value) {
+    allRuleAreasLayerGroup.value = L.layerGroup().addTo(geofenceMap.value)
+  }
+
+  return allRuleAreasLayerGroup.value
+}
+
+function syncAllRuleAreasOnMap() {
+  if (!isRuleMapVisible()) {
+    return
+  }
+
+  const layerGroup = ensureRuleAreasLayerGroup()
+  if (!layerGroup) {
+    return
+  }
+
+  layerGroup.clearLayers()
+
+  for (const rule of rules.value) {
+    if (
+      editingRuleId.value !== null
+      && Number(rule.id) === Number(editingRuleId.value)
+      && hasValidAreaBounds(ruleForm.value)
+    ) {
+      continue
+    }
+
+    const bounds = getRuleBounds(rule)
+    if (!bounds) {
+      continue
+    }
+
+    L.rectangle(bounds, {
+      color: rule.status === 'ACTIVE' ? '#3b82f6' : '#94a3b8',
+      weight: 2,
+      dashArray: '6 4',
+      fill: true,
+      fillOpacity: 0.06,
+      interactive: true
+    })
+      .bindPopup(buildRuleAreaPopupContent(rule), {
+        maxWidth: 360,
+        className: 'geofence-area-popup'
+      })
+      .addTo(layerGroup)
+  }
+}
+
+function fitMapToAllRuleAreas() {
+  if (!isRuleMapVisible()) {
+    return false
+  }
+
+  const boundsList = collectRuleBounds()
+  if (boundsList.length === 0) {
+    return false
+  }
+
+  const combinedBounds = boundsList[0]
+  for (let index = 1; index < boundsList.length; index += 1) {
+    combinedBounds.extend(boundsList[index])
+  }
+
+  geofenceMap.value.fitBounds(combinedBounds, {
+    padding: [24, 24],
+    maxZoom: 14
+  })
+  return true
+}
+
+async function loadLastKnownMapCenter() {
+  try {
+    const lastPoint = await locationStore.getLastKnownPosition()
+    const lat = Number(lastPoint?.lat)
+    const lon = Number(lastPoint?.lon)
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return
+    }
+
+    lastKnownMapCenter.value = [lat, lon]
+
+    const hasAnyRuleAreas = rules.value.some(rule => hasRuleArea(rule))
+    const shouldUseLastKnownAsPrimaryView = !hasValidAreaBounds(ruleForm.value) && !hasAnyRuleAreas
+
+    if (shouldUseLastKnownAsPrimaryView) {
+      mapCenter.value = [lat, lon]
+      mapZoom.value = LAST_KNOWN_MAP_ZOOM
+      if (isRuleMapVisible()) {
+        geofenceMap.value.setView(lastKnownMapCenter.value, LAST_KNOWN_MAP_ZOOM, { animate: false })
+      }
+    }
+
+    syncInitialRulesMapViewport()
+  } catch (error) {
+    console.warn('Failed to load last known position for geofence map:', error)
+  }
+}
+
+function syncInitialRulesMapViewport() {
+  if (!isRuleMapVisible() || mapViewportInitialized.value || !initialRulesLoaded.value) {
+    return
+  }
+
+  if (hasValidAreaBounds(ruleForm.value)) {
+    syncMapRectangleFromForm(true)
+    mapViewportInitialized.value = true
+    return
+  }
+
+  if (fitMapToAllRuleAreas()) {
+    mapViewportInitialized.value = true
+    return
+  }
+
+  if (lastKnownMapCenter.value) {
+    geofenceMap.value.setView(lastKnownMapCenter.value, mapZoom.value, { animate: false })
+  }
+
+  mapViewportInitialized.value = true
+}
+
 async function loadRules() {
   const response = await apiService.get('/geofences/rules')
-  rules.value = response?.data || []
+  const rawRules = response?.data || []
+  rules.value = rawRules.map(normalizeRule)
+  initialRulesLoaded.value = true
+  syncAllRuleAreasOnMap()
+  syncInitialRulesMapViewport()
 }
 
 async function loadTemplates() {
   const response = await apiService.get('/geofences/templates')
   templates.value = response?.data || []
+  syncAllRuleAreasOnMap()
+}
+
+async function loadTemplateDeliveryCapabilities() {
+  const response = await apiService.get('/geofences/templates/capabilities')
+  const data = response?.data || {}
+  templateDeliveryCapabilities.value = {
+    appriseEnabled: !!data.appriseEnabled,
+    appriseConfigured: !!data.appriseConfigured
+  }
+}
+
+async function testTemplateConnection() {
+  if (!appriseEnabled.value) {
+    return
+  }
+
+  if (!templateForm.value.sendExternal) {
+    toast.add({
+      severity: 'warn',
+      summary: 'External providers disabled',
+      detail: 'Enable external delivery first to test connection.',
+      life: 3500
+    })
+    return
+  }
+
+  const destinationError = validateDestinationLines(templateForm.value.destination)
+  const destinationLines = splitDestinationLines(templateForm.value.destination)
+  if (destinationError || destinationLines.length === 0) {
+    const detail = destinationError || 'Add at least one destination URL to test connection.'
+    templateFormErrors.value.destination = detail
+    templateConnectionTestResult.value = null
+    toast.add({
+      severity: 'error',
+      summary: 'Invalid Destination URL',
+      detail,
+      life: 4500
+    })
+    focusFirstTemplateError({ destination: detail })
+    return
+  }
+
+  templateConnectionTestResult.value = null
+  testingTemplateConnection.value = true
+  try {
+    const enterPreview = templatePreviewToasts.value.find(item => item.id === 'enter')
+    const payload = {
+      destination: normalizeDestination(templateForm.value.destination),
+      title: enterPreview?.title?.trim() ? enterPreview.title.trim() : null,
+      body: enterPreview?.body?.trim() ? enterPreview.body.trim() : null
+    }
+
+    const response = await apiService.post('/geofences/templates/test-connection', payload)
+    const detail = response?.message || response?.data?.message || 'Connection test succeeded'
+    const statusCode = response?.data?.statusCode ?? null
+
+    templateConnectionTestResult.value = {
+      severity: 'success',
+      summary: 'Connection test succeeded',
+      detail,
+      statusCode
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Connection OK',
+      detail,
+      life: 4000
+    })
+  } catch (error) {
+    const detail = extractApiErrorMessage(error, 'Connection test failed')
+    const statusCode = error?.response?.data?.data?.statusCode ?? null
+    templateConnectionTestResult.value = {
+      severity: 'error',
+      summary: 'Connection test failed',
+      detail,
+      statusCode
+    }
+    toast.add({
+      severity: 'error',
+      summary: 'Connection Failed',
+      detail,
+      life: 5000
+    })
+  } finally {
+    testingTemplateConnection.value = false
+  }
 }
 
 async function refreshEvents() {
@@ -718,17 +1144,43 @@ async function refreshEvents() {
 
   refreshingEvents.value = true
   try {
-    const [items, countInfo] = await Promise.all([
-      notificationsStore.fetchNotifications({
-        limit: 100,
-        unreadOnly: false,
-        source: GEOFENCE_SOURCE
-      }),
-      notificationsStore.fetchUnreadCount({ source: GEOFENCE_SOURCE })
+    const params = {
+      page: geofenceEventsQuery.value.page,
+      pageSize: geofenceEventsQuery.value.pageSize,
+      sortBy: geofenceEventsQuery.value.sortBy,
+      sortDir: geofenceEventsQuery.value.sortDir,
+      unreadOnly: geofenceEventsQuery.value.unreadOnly
+    }
+    if (geofenceEventsQuery.value.dateFrom) {
+      params.dateFrom = geofenceEventsQuery.value.dateFrom
+    }
+    if (geofenceEventsQuery.value.dateTo) {
+      params.dateTo = geofenceEventsQuery.value.dateTo
+    }
+    if (Array.isArray(geofenceEventsQuery.value.subjectUserIds) && geofenceEventsQuery.value.subjectUserIds.length > 0) {
+      params.subjectUserIds = geofenceEventsQuery.value.subjectUserIds.join(',')
+    }
+    if (Array.isArray(geofenceEventsQuery.value.eventTypes) && geofenceEventsQuery.value.eventTypes.length > 0) {
+      params.eventTypes = geofenceEventsQuery.value.eventTypes.join(',')
+    }
+
+    const [eventsPageResponse, unreadResponse] = await Promise.all([
+      apiService.get('/geofences/events', params),
+      apiService.get('/geofences/events/unread-count')
     ])
 
-    geofenceEvents.value = items.map(mapGeofenceNotificationEvent)
-    geofenceUnreadCount.value = Number(countInfo?.count || 0)
+    geofenceEvents.value = Array.isArray(eventsPageResponse?.data?.items)
+      ? eventsPageResponse.data.items
+      : []
+    geofenceEventsTotal.value = Number(eventsPageResponse?.data?.totalCount || 0)
+    geofenceUnreadCount.value = Number(unreadResponse?.data?.count || 0)
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Events Error',
+      detail: extractApiErrorMessage(error, 'Failed to load geofence events'),
+      life: 5000
+    })
   } finally {
     refreshingEvents.value = false
   }
@@ -753,8 +1205,12 @@ async function saveRule() {
 
   savingRule.value = true
   try {
+    const subjectUserIds = Array.isArray(ruleForm.value.subjectUserIds)
+      ? Array.from(new Set(ruleForm.value.subjectUserIds.map(normalizeSubjectId).filter(Boolean)))
+      : []
     const payload = {
       ...ruleForm.value,
+      subjectUserIds,
       name: ruleForm.value.name.trim()
     }
 
@@ -786,7 +1242,9 @@ function editRule(rule) {
   editingRuleId.value = rule.id
   ruleForm.value = {
     name: rule.name,
-    subjectUserId: rule.subjectUserId,
+    subjectUserIds: Array.isArray(rule.subjects)
+      ? rule.subjects.map(subject => normalizeSubjectId(subject.userId)).filter(Boolean)
+      : [],
     northEastLat: rule.northEastLat,
     northEastLon: rule.northEastLon,
     southWestLat: rule.southWestLat,
@@ -798,6 +1256,7 @@ function editRule(rule) {
     leaveTemplateId: rule.leaveTemplateId,
     status: rule.status
   }
+  syncAllRuleAreasOnMap()
   syncMapRectangleFromForm(true)
 }
 
@@ -835,6 +1294,7 @@ function resetRuleForm() {
     geofenceMap.value.removeLayer(rectangleLayer.value)
     rectangleLayer.value = null
   }
+  syncAllRuleAreasOnMap()
 }
 
 async function saveTemplate() {
@@ -850,13 +1310,28 @@ async function saveTemplate() {
 
   savingTemplate.value = true
   try {
+    const normalizedDestination = normalizeDestination(templateForm.value.destination)
+    let destination = ''
+    if (appriseEnabled.value) {
+      if (templateForm.value.sendExternal) {
+        destination = normalizedDestination
+      } else if (editingTemplateId.value && !appriseConfigured.value) {
+        destination = normalizedDestination
+      } else {
+        destination = ''
+      }
+    } else {
+      destination = editingTemplateId.value ? normalizedDestination : ''
+    }
+
     const payload = {
       ...templateForm.value,
       name: templateForm.value.name.trim(),
-      destination: normalizeDestination(templateForm.value.destination),
+      destination,
       titleTemplate: templateForm.value.titleTemplate?.trim() || '',
       bodyTemplate: templateForm.value.bodyTemplate?.trim() || ''
     }
+    delete payload.sendExternal
 
     if (editingTemplateId.value) {
       await apiService.patch(`/geofences/templates/${editingTemplateId.value}`, payload)
@@ -867,7 +1342,7 @@ async function saveTemplate() {
     }
 
     resetTemplateForm()
-    await loadTemplates()
+    await Promise.all([loadTemplates(), loadTemplateDeliveryCapabilities()])
     await loadRules()
   } catch (error) {
     templateFormErrors.value.general = extractApiErrorMessage(error, 'Failed to save template')
@@ -884,12 +1359,16 @@ async function saveTemplate() {
 
 function editTemplate(template) {
   clearTemplateFormErrors()
+  templateConnectionTestResult.value = null
   editingTemplateId.value = template.id
+  const destination = template.destination || ''
+  const hasExternalDestination = splitDestinationLines(destination, true).length > 0
   templateForm.value = {
     name: template.name,
-    destination: template.destination || '',
+    destination,
     titleTemplate: template.titleTemplate || '',
     bodyTemplate: template.bodyTemplate || '',
+    sendExternal: appriseEnabled.value ? hasExternalDestination : false,
     defaultForEnter: !!template.defaultForEnter,
     defaultForLeave: !!template.defaultForLeave,
     enabled: !!template.enabled
@@ -934,6 +1413,7 @@ function resetTemplateForm() {
   editingTemplateId.value = null
   templateForm.value = defaultTemplateForm()
   clearTemplateFormErrors()
+  templateConnectionTestResult.value = null
   focusedTemplateField.value = 'bodyTemplate'
 }
 
@@ -944,7 +1424,7 @@ async function markEventSeen(event) {
 
   markingEventId.value = event.id
   try {
-    await notificationsStore.markSeen(event.id)
+    await apiService.post(`/geofences/events/${event.id}/seen`, {})
     await refreshEvents()
   } catch (error) {
     toast.add({
@@ -961,7 +1441,7 @@ async function markEventSeen(event) {
 async function markAllEventsSeen() {
   markingAllSeen.value = true
   try {
-    await notificationsStore.markAllSeen(GEOFENCE_SOURCE)
+    await apiService.post('/geofences/events/seen-all', {})
     await refreshEvents()
   } catch (error) {
     toast.add({
@@ -975,8 +1455,11 @@ async function markAllEventsSeen() {
   }
 }
 
-function handleUnreadOnlyToggle(nextValue) {
-  unreadOnly.value = !!nextValue
+function handleEventsQueryUpdate(patch) {
+  geofenceEventsQuery.value = {
+    ...geofenceEventsQuery.value,
+    ...patch
+  }
   void refreshEvents()
 }
 
@@ -1023,35 +1506,81 @@ function formatDate(value) {
   return `${timezone.formatDateDisplay(value)} ${timezone.format(value, 'HH:mm:ss')}`
 }
 
+function resolveRuleTemplateLabel(templateId, type) {
+  if (templateId !== null && templateId !== undefined && templateId !== '') {
+    const resolved = templateNameById.value.get(String(templateId))
+    if (resolved) {
+      return resolved
+    }
+    return `Unknown template (${String(templateId).slice(0, 8)})`
+  }
+
+  if (type === 'enter') {
+    return enabledDefaultEnterTemplate.value
+      ? `Default (${enabledDefaultEnterTemplate.value.name})`
+      : 'Built-in message'
+  }
+
+  return enabledDefaultLeaveTemplate.value
+    ? `Default (${enabledDefaultLeaveTemplate.value.name})`
+    : 'Built-in message'
+}
+
+function formatRuleSubjects(rule) {
+  const subjects = Array.isArray(rule?.subjects)
+    ? rule.subjects
+      .map(subject => subject?.displayName)
+      .filter(name => !!name)
+    : []
+
+  if (subjects.length === 0) {
+    return '-'
+  }
+
+  return subjects.join(', ')
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+}
+
+function buildRuleAreaPopupContent(rule) {
+  const rows = [
+    ['Subjects', formatRuleSubjects(rule)],
+    ['Status', rule?.status || '-'],
+    ['Events', eventSummary(rule) || 'None'],
+    ['Cooldown', `${Number(rule?.cooldownSeconds || 0)} sec`],
+    ['Enter template', resolveRuleTemplateLabel(rule?.enterTemplateId, 'enter')],
+    ['Leave template', resolveRuleTemplateLabel(rule?.leaveTemplateId, 'leave')]
+  ]
+
+  const rowsHtml = rows
+    .map(([label, value]) => (
+      `<div class="geofence-area-tooltip__row">
+        <span class="geofence-area-tooltip__label">${escapeHtml(label)}</span>
+        <span class="geofence-area-tooltip__value">${escapeHtml(value)}</span>
+      </div>`
+    ))
+    .join('')
+
+  return `
+    <div class="geofence-area-tooltip">
+      <div class="geofence-area-tooltip__title">${escapeHtml(rule?.name || 'Geofence')}</div>
+      ${rowsHtml}
+    </div>
+  `
+}
+
 function deliverySeverity(status) {
   if (status === 'SENT') return 'success'
   if (status === 'FAILED') return 'danger'
   if (status === 'PENDING') return 'info'
   return 'secondary'
-}
-
-function mapGeofenceNotificationEvent(item) {
-  const metadata = item?.metadata || {}
-  const eventCode = metadata.eventCode || inferEventCode(item?.type)
-  return {
-    ...item,
-    ruleName: metadata.ruleName || '-',
-    subjectDisplayName: metadata.subjectDisplayName || '-',
-    eventType: eventCode
-  }
-}
-
-function inferEventCode(type) {
-  if (!type || typeof type !== 'string') {
-    return '-'
-  }
-  if (type.endsWith('_ENTER')) {
-    return 'ENTER'
-  }
-  if (type.endsWith('_LEAVE')) {
-    return 'LEAVE'
-  }
-  return type
 }
 
 function handleDefaultToggleChange(type, enabled) {
@@ -1093,9 +1622,16 @@ function handleDefaultToggleChange(type, enabled) {
 onMounted(async () => {
   try {
     syncActiveTabFromRoute(route.query.tab)
-    await Promise.all([loadFriends(), loadTemplates(), loadRules(), refreshEvents()])
-    if (!ruleForm.value.subjectUserId && authStore.userId) {
-      ruleForm.value.subjectUserId = authStore.userId
+    await Promise.all([
+      loadFriends(),
+      loadTemplateDeliveryCapabilities(),
+      loadTemplates(),
+      loadRules(),
+      refreshEvents(),
+      loadLastKnownMapCenter()
+    ])
+    if ((!Array.isArray(ruleForm.value.subjectUserIds) || ruleForm.value.subjectUserIds.length === 0) && authStore.userId) {
+      ruleForm.value.subjectUserIds = [normalizeSubjectId(authStore.userId)]
     }
   } catch (error) {
     toast.add({
@@ -1118,13 +1654,6 @@ watch(
 )
 
 watch(
-  () => [notificationsStore.items.length, notificationsStore.unreadCount],
-  () => {
-    void refreshEvents()
-  }
-)
-
-watch(
   () => ruleForm.value.name,
   (value) => {
     if (ruleFormErrors.value.name && value && value.trim()) {
@@ -1134,12 +1663,14 @@ watch(
 )
 
 watch(
-  () => ruleForm.value.subjectUserId,
+  () => ruleForm.value.subjectUserIds,
   (value) => {
-    if (ruleFormErrors.value.subjectUserId && value) {
-      ruleFormErrors.value.subjectUserId = ''
+    const hasSubjects = Array.isArray(value) && value.some(item => !!normalizeSubjectId(item))
+    if (ruleFormErrors.value.subjectUserIds && hasSubjects) {
+      ruleFormErrors.value.subjectUserIds = ''
     }
-  }
+  },
+  { deep: true }
 )
 
 watch(
@@ -1172,6 +1703,7 @@ watch(
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
     }
+    templateConnectionTestResult.value = null
   }
 )
 
@@ -1184,6 +1716,7 @@ watch(
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
     }
+    templateConnectionTestResult.value = null
   }
 )
 
@@ -1195,6 +1728,47 @@ watch(
     }
     if (templateFormErrors.value.general) {
       templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => templateForm.value.sendExternal,
+  (enabled) => {
+    if (!enabled && templateFormErrors.value.destination) {
+      templateFormErrors.value.destination = ''
+    }
+    if (templateFormErrors.value.general) {
+      templateFormErrors.value.general = ''
+    }
+    templateConnectionTestResult.value = null
+  }
+)
+
+watch(
+  () => appriseEnabled.value,
+  (enabled) => {
+    if (!enabled && templateForm.value.sendExternal) {
+      templateForm.value.sendExternal = false
+    }
+    if (!enabled && templateFormErrors.value.destination) {
+      templateFormErrors.value.destination = ''
+    }
+    if (!enabled) {
+      templateConnectionTestResult.value = null
+    }
+  }
+)
+
+watch(
+  () => appriseConfigured.value,
+  (configured) => {
+    if (!configured && templateForm.value.sendExternal) {
+      templateForm.value.sendExternal = false
+    }
+    if (!configured) {
+      templateConnectionTestResult.value = null
     }
   }
 )
@@ -1225,3 +1799,56 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+:deep(.geofence-area-popup .leaflet-popup-content-wrapper) {
+  border-radius: 10px;
+}
+
+:deep(.geofence-area-popup .leaflet-popup-content) {
+  margin: 0;
+}
+
+:deep(.geofence-area-tooltip) {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 220px;
+  padding: 0.6rem 0.7rem;
+}
+
+:deep(.geofence-area-tooltip__title) {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+:deep(.geofence-area-tooltip__row) {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+:deep(.geofence-area-tooltip__label) {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-color-secondary);
+}
+
+:deep(.geofence-area-tooltip__value) {
+  font-size: 0.83rem;
+  line-height: 1.25;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+
+:deep(.p-dark .geofence-area-popup .leaflet-popup-content-wrapper) {
+  background: #1e293b;
+}
+
+:deep(.p-dark .geofence-area-popup .leaflet-popup-tip) {
+  background: #1e293b;
+}
+</style>
