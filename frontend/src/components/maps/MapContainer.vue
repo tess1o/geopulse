@@ -168,7 +168,7 @@ defineExpose({
   position: absolute;
   top: var(--gp-spacing-lg, 1rem);
   right: var(--gp-spacing-lg, 1rem);
-  z-index: 1000;
+  z-index: 900;
 }
 
 /* Responsive adjustments */

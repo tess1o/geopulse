@@ -10,94 +10,96 @@
     />
     <span v-if="unreadCount > 0" class="gp-bell-badge">{{ unreadBadgeValue }}</span>
 
-    <div
-      v-if="panelOpen"
-      ref="panelRef"
-      class="gp-notification-panel"
-      :style="panelInlineStyle"
-    >
-      <div class="gp-notification-panel-header">
-        <div class="gp-notification-panel-title">Notifications</div>
-        <Tag v-if="unreadCount > 0" :value="`${unreadCount} unread`" severity="danger" />
-      </div>
-
-      <div class="gp-notification-filters">
-        <Button
-          label="Unread"
-          size="small"
-          :severity="activeFilter === 'unread' ? 'primary' : 'secondary'"
-          :outlined="activeFilter !== 'unread'"
-          @click="activeFilter = 'unread'"
-        />
-        <Button
-          label="All"
-          size="small"
-          :severity="activeFilter === 'all' ? 'primary' : 'secondary'"
-          :outlined="activeFilter !== 'all'"
-          @click="activeFilter = 'all'"
-        />
-      </div>
-
-      <div class="gp-notification-browser">
-        <label class="gp-notification-browser-label" for="browserNotificationToggle">Browser alerts</label>
-        <InputSwitch
-          inputId="browserNotificationToggle"
-          :modelValue="browserNotificationsEnabled"
-          :disabled="!browserNotificationsSupported"
-          @update:modelValue="toggleBrowserNotifications"
-        />
-      </div>
-      <small v-if="!browserNotificationsSupported" class="gp-notification-browser-help">
-        Browser notifications are not available in this browser.
-      </small>
-
-      <div class="gp-notification-list">
-        <div v-if="visibleItems.length === 0" class="gp-notification-empty">
-          No {{ activeFilter === 'unread' ? 'unread' : '' }} notifications.
+    <teleport to="body">
+      <div
+        v-if="panelOpen"
+        ref="panelRef"
+        class="gp-notification-panel"
+        :style="panelInlineStyle"
+      >
+        <div class="gp-notification-panel-header">
+          <div class="gp-notification-panel-title">Notifications</div>
+          <Tag v-if="unreadCount > 0" :value="`${unreadCount} unread`" severity="danger" />
         </div>
-        <div
-          v-for="item in visibleItems"
-          :key="item.id"
-          class="gp-notification-item"
-          :class="{ 'gp-notification-item--unread': !item.seen }"
-        >
-          <button type="button" class="gp-notification-item-main" @click="openEventsView">
-            <div class="gp-notification-item-row">
-              <span class="gp-notification-item-title">{{ itemTitle(item) }}</span>
-              <Tag :value="item.deliveryStatus || 'UNKNOWN'" :severity="deliverySeverity(item.deliveryStatus)" />
-            </div>
-            <div class="gp-notification-item-message">{{ item.message || 'New notification.' }}</div>
-            <div class="gp-notification-item-time">{{ formatOccurredAt(item.occurredAt) }}</div>
-          </button>
+
+        <div class="gp-notification-filters">
           <Button
-            v-if="!item.seen"
-            label="Mark seen"
+            label="Unread"
             size="small"
-            text
-            class="gp-notification-item-action"
-            @click.stop="markSeen(item.id)"
+            :severity="activeFilter === 'unread' ? 'primary' : 'secondary'"
+            :outlined="activeFilter !== 'unread'"
+            @click="activeFilter = 'unread'"
+          />
+          <Button
+            label="All"
+            size="small"
+            :severity="activeFilter === 'all' ? 'primary' : 'secondary'"
+            :outlined="activeFilter !== 'all'"
+            @click="activeFilter = 'all'"
+          />
+        </div>
+
+        <div class="gp-notification-browser">
+          <label class="gp-notification-browser-label" for="browserNotificationToggle">Browser alerts</label>
+          <InputSwitch
+            inputId="browserNotificationToggle"
+            :modelValue="browserNotificationsEnabled"
+            :disabled="!browserNotificationsSupported"
+            @update:modelValue="toggleBrowserNotifications"
+          />
+        </div>
+        <small v-if="!browserNotificationsSupported" class="gp-notification-browser-help">
+          Browser notifications are not available in this browser.
+        </small>
+
+        <div class="gp-notification-list">
+          <div v-if="visibleItems.length === 0" class="gp-notification-empty">
+            No {{ activeFilter === 'unread' ? 'unread' : '' }} notifications.
+          </div>
+          <div
+            v-for="item in visibleItems"
+            :key="item.id"
+            class="gp-notification-item"
+            :class="{ 'gp-notification-item--unread': !item.seen }"
+          >
+            <button type="button" class="gp-notification-item-main" @click="openEventsView">
+              <div class="gp-notification-item-row">
+                <span class="gp-notification-item-title">{{ itemTitle(item) }}</span>
+                <Tag :value="item.deliveryStatus || 'UNKNOWN'" :severity="deliverySeverity(item.deliveryStatus)" />
+              </div>
+              <div class="gp-notification-item-message">{{ item.message || 'New notification.' }}</div>
+              <div class="gp-notification-item-time">{{ formatOccurredAt(item.occurredAt) }}</div>
+            </button>
+            <Button
+              v-if="!item.seen"
+              label="Mark seen"
+              size="small"
+              text
+              class="gp-notification-item-action"
+              @click.stop="markSeen(item.id)"
+            />
+          </div>
+        </div>
+
+        <div class="gp-notification-footer">
+          <Button
+            label="Mark all seen"
+            size="small"
+            severity="secondary"
+            outlined
+            :disabled="unreadCount === 0"
+            @click="markAllSeen"
+          />
+          <Button
+            label="Open Events"
+            size="small"
+            severity="secondary"
+            outlined
+            @click="openEventsView"
           />
         </div>
       </div>
-
-      <div class="gp-notification-footer">
-        <Button
-          label="Mark all seen"
-          size="small"
-          severity="secondary"
-          outlined
-          :disabled="unreadCount === 0"
-          @click="markAllSeen"
-        />
-        <Button
-          label="Open Events"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="openEventsView"
-        />
-      </div>
-    </div>
+    </teleport>
   </div>
 </template>
 
@@ -244,7 +246,10 @@ const handleClickOutside = (event) => {
   if (!panelOpen.value) {
     return
   }
-  if (rootRef.value && !rootRef.value.contains(event.target)) {
+  const clickedInsideTrigger = rootRef.value?.contains(event.target)
+  const clickedInsidePanel = panelRef.value?.contains(event.target)
+
+  if (!clickedInsideTrigger && !clickedInsidePanel) {
     closePanel()
   }
 }
