@@ -478,14 +478,20 @@ const getCurrentLocation = () => {
   }
 }
 
-const handleForceLoad = () => {
+const handleForceLoad = async () => {
   forceLoadLargeDataset.value = true
   showLargeDatasetWarning.value = false
-  // Trigger the watcher to run again with force load flag set
+
+  // Re-run the fetch pipeline directly for the same range.
+  // The date range store deduplicates identical values, so simply setting the
+  // same range again will not trigger the watcher.
   const currentRange = dateRange.value
   if (currentRange && currentRange.length === 2) {
-    lastFetchedRange.value = null // Reset to allow refetch
-    dateRangeStore.setDateRange([...currentRange]) // Trigger watcher
+    const [startDate, endDate] = currentRange
+    const normalizedStart = new Date(startDate).toISOString()
+    const normalizedEnd = new Date(endDate).toISOString()
+    const rangeKey = `${normalizedStart}-${normalizedEnd}`
+    await executeFetchForRange(startDate, endDate, rangeKey)
   }
 }
 
