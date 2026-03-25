@@ -83,6 +83,9 @@ export function formatDistanceRounded(meters) {
 }
 
 export function formatDuration(seconds) {
+    if (seconds == 0) {
+        return "0 seconds"
+    }
     if (seconds < 60) {
         return "less than a minute";
     }

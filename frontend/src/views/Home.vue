@@ -1,6 +1,6 @@
 <template>
   <div class="home-page">
-    <section class="hero-shell">
+    <section class="hero-shell" :class="{ 'hero-shell-no-divider': shouldShowQuickStats }">
       <div class="home-container">
         <div class="top-bar">
           <DarkModeSwitcher class="theme-button" />
@@ -123,13 +123,53 @@
                   :text="isMobileViewport"
                 />
               </div>
+
+              <div class="signout-row">
+                <Button
+                  label="Sign out"
+                  icon="pi pi-sign-out"
+                  text
+                  size="small"
+                  class="signout-button"
+                  :loading="isSigningOut"
+                  @click="handleSignOut"
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="features-section">
+    <section v-if="shouldShowQuickStats" class="quick-stats-section">
+      <div class="home-container">
+        <div class="quick-stats-grid">
+          <article class="quick-stat-tile quick-stat-latest">
+            <div class="quick-stat-head">
+              <span class="quick-stat-icon" aria-hidden="true"><i class="pi pi-history"></i></span>
+              <p class="quick-stat-label">Latest GPS update</p>
+            </div>
+            <p class="quick-stat-value">{{ latestGpsUpdateLabel }}</p>
+          </article>
+          <article class="quick-stat-tile quick-stat-distance">
+            <div class="quick-stat-head">
+              <span class="quick-stat-icon" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
+              <p class="quick-stat-label">Distance today</p>
+            </div>
+            <p class="quick-stat-value">{{ distanceTodayLabel }}</p>
+          </article>
+          <article class="quick-stat-tile quick-stat-moving">
+            <div class="quick-stat-head">
+              <span class="quick-stat-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
+              <p class="quick-stat-label">Time moving today</p>
+            </div>
+            <p class="quick-stat-value">{{ timeMovingTodayLabel }}</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!isResolvingAuth && !authStore.isAuthenticated" class="features-section">
       <div class="home-container">
         <div class="section-header">
           <h2>Core capabilities</h2>
@@ -172,8 +212,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
+import apiService from '@/utils/apiService'
+import { useTimezone } from '@/composables/useTimezone'
+import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 
 const DEFAULT_AUTH_STATUS = {
   passwordRegistrationEnabled: false,
@@ -247,9 +291,17 @@ const isDesktopViewport = ref(false)
 const isMobileViewport = ref(false)
 
 const authStore = useAuthStore()
+const router = useRouter()
+const timezone = useTimezone()
 const authStatus = ref({ ...DEFAULT_AUTH_STATUS })
 const oidcProviders = ref([])
 const isResolvingAuth = ref(true)
+const isSigningOut = ref(false)
+const quickStats = ref({
+  latestPointTimestamp: null,
+  totalDistanceMeters: 0,
+  timeMoving: 0
+})
 
 const visibleFeatures = computed(() => {
   if (isDesktopViewport.value || isMobileViewport.value || showAllFeatures.value) {
@@ -301,6 +353,125 @@ const heroTitle = computed(() => {
 const secondaryQuickActions = computed(() => {
   return quickActions.filter((action) => action.to !== continueDestination.value.path)
 })
+
+const hasMeaningfulQuickStats = computed(() => {
+  return Boolean(
+    quickStats.value.latestPointTimestamp ||
+    quickStats.value.totalDistanceMeters > 0 ||
+    quickStats.value.timeMoving > 0
+  )
+})
+
+const shouldShowQuickStats = computed(() => {
+  return !isResolvingAuth.value && authStore.isAuthenticated && hasMeaningfulQuickStats.value
+})
+
+const latestGpsUpdateLabel = computed(() => {
+  if (!quickStats.value.latestPointTimestamp) {
+    return 'No updates yet'
+  }
+  return timezone.timeAgo(quickStats.value.latestPointTimestamp)
+})
+
+const distanceTodayLabel = computed(() => {
+  return formatDistance(quickStats.value.totalDistanceMeters)
+})
+
+const timeMovingTodayLabel = computed(() => {
+  return formatDuration(quickStats.value.timeMoving)
+})
+
+const unwrapPayload = (response) => {
+  if (response && typeof response === 'object' && response.data && typeof response.data === 'object') {
+    return response.data
+  }
+  return response
+}
+
+const toNumberOrZero = (value) => {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+const normalizeTimestamp = (value) => {
+  if (!value) {
+    return null
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value).toISOString()
+  }
+
+  return typeof value === 'string' ? value : null
+}
+
+const fetchLatestGpsUpdate = async () => {
+  try {
+    const response = await apiService.get('/gps/last-known-position')
+    const payload = unwrapPayload(response)
+    const pointPayload = payload?.data && typeof payload.data === 'object'
+      ? payload.data
+      : payload
+
+    return normalizeTimestamp(pointPayload?.timestamp)
+  } catch (error) {
+    console.warn('Failed to load latest GPS update for home quick stats:', error)
+    return null
+  }
+}
+
+const fetchTodayStats = async () => {
+  const todayRange = timezone.getTodayRangeUtc()
+
+  try {
+    const response = await apiService.get('/statistics', {
+      startTime: todayRange.start,
+      endTime: todayRange.end
+    })
+    const payload = unwrapPayload(response)
+
+    return {
+      totalDistanceMeters: toNumberOrZero(payload?.totalDistanceMeters),
+      timeMoving: toNumberOrZero(payload?.timeMoving)
+    }
+  } catch (error) {
+    console.warn('Failed to load today statistics for home quick stats:', error)
+    return {
+      totalDistanceMeters: 0,
+      timeMoving: 0
+    }
+  }
+}
+
+const loadSignedInQuickStats = async () => {
+  const [latestPointTimestamp, todayStats] = await Promise.all([
+    fetchLatestGpsUpdate(),
+    fetchTodayStats()
+  ])
+
+  quickStats.value = {
+    latestPointTimestamp,
+    totalDistanceMeters: todayStats.totalDistanceMeters,
+    timeMoving: todayStats.timeMoving
+  }
+}
+
+const handleSignOut = async () => {
+  if (isSigningOut.value) {
+    return
+  }
+
+  isSigningOut.value = true
+
+  try {
+    await authStore.logout()
+  } catch (error) {
+    console.error('Failed to sign out from home page:', error)
+  } finally {
+    isSigningOut.value = false
+    await router.push('/')
+  }
+}
 
 const normalizeDestinationPath = (path) => {
   if (typeof path !== 'string') {
@@ -395,6 +566,10 @@ onMounted(async () => {
   }
 
   isResolvingAuth.value = false
+
+  if (authStore.isAuthenticated) {
+    await loadSignedInQuickStats()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -446,6 +621,9 @@ onBeforeUnmount(() => {
   --home-quick-hover-bg: rgba(37, 99, 235, 0.08);
   --home-quick-border: rgba(148, 163, 184, 0.38);
   --home-quick-hover-border: rgba(37, 99, 235, 0.5);
+  --home-stats-tile-bg: var(--home-card-bg);
+  --home-stats-tile-border: rgba(148, 163, 184, 0.4);
+  --home-stats-value: var(--home-text-primary);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -482,6 +660,10 @@ onBeforeUnmount(() => {
 .hero-shell {
   position: relative;
   border-bottom: 1px solid var(--home-border);
+}
+
+.hero-shell-no-divider {
+  border-bottom: 0;
 }
 
 .top-bar {
@@ -797,6 +979,95 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
+.signout-row {
+  margin-top: 0.18rem;
+}
+
+.signout-button.p-button {
+  padding: 0.16rem 0;
+  color: var(--home-text-secondary);
+  font-weight: 600;
+}
+
+.signout-button.p-button:not(:disabled):hover {
+  color: var(--home-accent);
+  background: transparent;
+  text-decoration: underline;
+}
+
+.quick-stats-section {
+  position: relative;
+  z-index: 2;
+  padding: 0 0 0.9rem;
+}
+
+.quick-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.46rem;
+}
+
+.quick-stat-tile {
+  border: 1px solid var(--home-stats-tile-border);
+  border-radius: 0.92rem;
+  background: var(--home-stats-tile-bg);
+  box-shadow: none;
+  padding: 0.66rem 0.74rem 0.7rem;
+}
+
+.quick-stat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.quick-stat-icon {
+  width: 1.38rem;
+  height: 1.38rem;
+  border-radius: 0.35rem;
+  border: 1px solid currentColor;
+  color: var(--home-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.quick-stat-icon i {
+  font-size: 0.66rem;
+  -webkit-text-stroke: 0.2px currentColor;
+}
+
+.quick-stat-label {
+  margin: 0;
+  color: var(--home-text-secondary);
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.18;
+}
+
+.quick-stat-value {
+  margin: 0.3rem 0 0;
+  color: var(--home-stats-value);
+  font-size: clamp(1.02rem, 4vw, 1.16rem);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.quick-stat-latest .quick-stat-icon {
+  color: #0ea5e9;
+}
+
+.quick-stat-distance .quick-stat-icon {
+  color: #2563eb;
+}
+
+.quick-stat-moving .quick-stat-icon {
+  color: #0f766e;
+}
+
 .features-section {
   position: relative;
   z-index: 2;
@@ -958,6 +1229,23 @@ onBeforeUnmount(() => {
     margin-top: 0;
   }
 
+  .signout-row {
+    margin-top: 0.04rem;
+  }
+
+  .quick-stats-section {
+    padding: 0 0 0.78rem;
+  }
+
+  .quick-stat-tile {
+    padding: 0.58rem 0.66rem 0.62rem;
+  }
+
+  .quick-stat-value {
+    font-size: 1rem;
+    line-height: 1.16;
+  }
+
   .features-section {
     padding: 1.35rem 0 2rem;
   }
@@ -987,6 +1275,15 @@ onBeforeUnmount(() => {
 
   .status-card {
     padding: 1.35rem;
+  }
+
+  .quick-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.62rem;
+  }
+
+  .quick-stat-value {
+    font-size: 1.08rem;
   }
 
   .quick-actions {
@@ -1062,6 +1359,9 @@ onBeforeUnmount(() => {
   --home-quick-hover-bg: rgba(30, 64, 175, 0.24);
   --home-quick-border: rgba(148, 163, 184, 0.55);
   --home-quick-hover-border: rgba(96, 165, 250, 0.75);
+  --home-stats-tile-bg: rgba(15, 23, 42, 0.9);
+  --home-stats-tile-border: rgba(148, 163, 184, 0.52);
+  --home-stats-value: #e2e8f0;
   --home-feature-card-bg: rgba(15, 23, 42, 0.72);
   --home-feature-border: rgba(148, 163, 184, 0.78);
   --home-feature-icon-blob: linear-gradient(150deg, rgba(30, 64, 175, 0.38) 0%, rgba(30, 64, 175, 0.22) 100%);
@@ -1093,5 +1393,25 @@ onBeforeUnmount(() => {
 
 .p-dark .quick-action-button.p-button:not(:disabled):hover {
   color: #bfdbfe;
+}
+
+.p-dark .signout-button.p-button {
+  color: #94a3b8;
+}
+
+.p-dark .signout-button.p-button:not(:disabled):hover {
+  color: #bfdbfe;
+}
+
+.p-dark .quick-stat-latest .quick-stat-icon {
+  color: #38bdf8;
+}
+
+.p-dark .quick-stat-distance .quick-stat-icon {
+  color: #60a5fa;
+}
+
+.p-dark .quick-stat-moving .quick-stat-icon {
+  color: #2dd4bf;
 }
 </style>
