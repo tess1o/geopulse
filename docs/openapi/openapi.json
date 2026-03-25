@@ -388,7 +388,7 @@
         }
       },
       "CreateGeofenceRuleRequest" : {
-        "required" : [ "name", "subjectUserId", "northEastLat", "northEastLon", "southWestLat", "southWestLon", "monitorEnter", "monitorLeave", "cooldownSeconds" ],
+        "required" : [ "name", "subjectUserIds", "northEastLat", "northEastLon", "southWestLat", "southWestLon", "monitorEnter", "monitorLeave", "cooldownSeconds" ],
         "type" : "object",
         "properties" : {
           "name" : {
@@ -396,8 +396,14 @@
             "pattern" : "\\S",
             "type" : "string"
           },
-          "subjectUserId" : {
-            "$ref" : "#/components/schemas/UUID"
+          "subjectUserIds" : {
+            "minItems" : 1,
+            "type" : "array",
+            "items" : {
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
+              "type" : "string"
+            }
           },
           "northEastLat" : {
             "format" : "double",
@@ -1667,8 +1673,13 @@
             "maxLength" : 120,
             "type" : "string"
           },
-          "subjectUserId" : {
-            "$ref" : "#/components/schemas/UUID"
+          "subjectUserIds" : {
+            "type" : "array",
+            "items" : {
+              "format" : "uuid",
+              "pattern" : "[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}",
+              "type" : "string"
+            }
           },
           "northEastLat" : {
             "format" : "double",
@@ -5698,6 +5709,157 @@
         } ]
       }
     },
+    "/api/geofences/events" : {
+      "get" : {
+        "parameters" : [ {
+          "name" : "dateFrom",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "dateTo",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "eventTypes",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "page",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 0,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "schema" : {
+            "format" : "int32",
+            "default" : 25,
+            "type" : "integer"
+          }
+        }, {
+          "name" : "sortBy",
+          "in" : "query",
+          "schema" : {
+            "default" : "occurredAt",
+            "type" : "string"
+          }
+        }, {
+          "name" : "sortDir",
+          "in" : "query",
+          "schema" : {
+            "default" : "desc",
+            "type" : "string"
+          }
+        }, {
+          "name" : "subjectUserIds",
+          "in" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "unreadOnly",
+          "in" : "query",
+          "schema" : {
+            "default" : false,
+            "type" : "boolean"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Events",
+        "tags" : [ "Geofence Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geofences/events/seen-all" : {
+      "post" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Mark All Events Seen",
+        "tags" : [ "Geofence Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geofences/events/unread-count" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Unread Event Count",
+        "tags" : [ "Geofence Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geofences/events/{eventId}/seen" : {
+      "post" : {
+        "parameters" : [ {
+          "name" : "eventId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Mark Event Seen",
+        "tags" : [ "Geofence Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
     "/api/geofences/rules" : {
       "get" : {
         "responses" : {
@@ -5860,6 +6022,59 @@
           }
         },
         "summary" : "Create Template",
+        "tags" : [ "Geofence Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geofences/templates/capabilities" : {
+      "get" : {
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          }
+        },
+        "summary" : "Get Template Capabilities",
+        "tags" : [ "Geofence Resource" ],
+        "security" : [ {
+          "jwt" : [ ]
+        } ]
+      }
+    },
+    "/api/geofences/templates/test-connection" : {
+      "post" : {
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AppriseTestRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          },
+          "401" : {
+            "description" : "Not Authorized"
+          },
+          "403" : {
+            "description" : "Not Allowed"
+          },
+          "400" : {
+            "description" : "Bad Request"
+          }
+        },
+        "summary" : "Test Template Connection",
         "tags" : [ "Geofence Resource" ],
         "security" : [ {
           "jwt" : [ ]
@@ -7513,19 +7728,6 @@
             "default" : 50,
             "type" : "integer"
           }
-        }, {
-          "name" : "source",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "unreadOnly",
-          "in" : "query",
-          "schema" : {
-            "default" : false,
-            "type" : "boolean"
-          }
         } ],
         "responses" : {
           "200" : {
@@ -7547,13 +7749,6 @@
     },
     "/api/notifications/seen-all" : {
       "post" : {
-        "parameters" : [ {
-          "name" : "source",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "responses" : {
           "200" : {
             "description" : "OK"
@@ -7574,13 +7769,6 @@
     },
     "/api/notifications/unread-count" : {
       "get" : {
-        "parameters" : [ {
-          "name" : "source",
-          "in" : "query",
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
         "responses" : {
           "200" : {
             "description" : "OK"
@@ -10514,7 +10702,7 @@
   },
   "info" : {
     "title" : "GeoPulse API",
-    "version" : "1.23.0",
+    "version" : "1.23.1",
     "description" : "GeoPulse backend REST API documentation.",
     "contact" : {
       "name" : "tess1o",
