@@ -1,6 +1,6 @@
 <template>
   <div class="home-page">
-    <section class="hero-shell">
+    <section class="hero-shell" :class="{ 'hero-shell-no-divider': shouldShowQuickStats }">
       <div class="home-container">
         <div class="top-bar">
           <DarkModeSwitcher class="theme-button" />
@@ -16,8 +16,8 @@
             />
 
             <p class="hero-eyebrow">Self-hosted location timeline</p>
-            <h1 class="hero-title">Your movement history, on your server.</h1>
-            <p class="hero-subtitle">
+            <h1 class="hero-title">{{ heroTitle }}</h1>
+            <p v-if="!isMobileViewport" class="hero-subtitle">
               GeoPulse turns raw GPS points into stays, trips, maps, and insights while your data stays under your control.
             </p>
 
@@ -89,12 +89,12 @@
             <div v-else class="status-card signed-in-card">
               <p class="card-eyebrow">Welcome back</p>
               <h2 class="card-title">Continue where you left off</h2>
-              <p class="card-subtitle">
+              <p v-if="!isMobileViewport" class="card-subtitle">
                 Jump straight into your preferred view or pick a quick action.
               </p>
 
-              <div class="continue-card">
-                <div class="continue-meta">
+              <div class="continue-card" :class="{ 'continue-card-mobile': isMobileViewport }">
+                <div v-if="!isMobileViewport" class="continue-meta">
                   <p class="continue-label">
                     {{ hasDefaultRedirectUrl ? 'Your default start page' : 'Recommended start page' }}
                   </p>
@@ -102,7 +102,7 @@
                 </div>
                 <Button
                   :label="`Continue to ${continueDestination.label}`"
-                  :icon="continueDestination.icon"
+                  :icon="isMobileViewport ? undefined : continueDestination.icon"
                   as="router-link"
                   :to="continueDestination.path"
                   class="cta-button cta-primary continue-button"
@@ -110,15 +110,29 @@
                 />
               </div>
 
-              <div class="quick-actions">
+              <div class="quick-actions" :class="{ 'quick-actions-mobile': isMobileViewport }">
                 <Button
-                  v-for="action in quickActions"
+                  v-for="action in isMobileViewport ? secondaryQuickActions : quickActions"
                   :key="action.to"
                   :label="action.label"
-                  :icon="action.icon"
+                  :icon="isMobileViewport ? undefined : action.icon"
                   as="router-link"
                   :to="action.to"
                   class="quick-action-button"
+                  :class="{ 'quick-action-link': isMobileViewport }"
+                  :text="isMobileViewport"
+                />
+              </div>
+
+              <div class="signout-row">
+                <Button
+                  label="Sign out"
+                  icon="pi pi-sign-out"
+                  text
+                  size="small"
+                  class="signout-button"
+                  :loading="isSigningOut"
+                  @click="handleSignOut"
                 />
               </div>
             </div>
@@ -127,7 +141,35 @@
       </div>
     </section>
 
-    <section class="features-section">
+    <section v-if="shouldShowQuickStats" class="quick-stats-section">
+      <div class="home-container">
+        <div class="quick-stats-grid">
+          <article class="quick-stat-tile quick-stat-latest">
+            <div class="quick-stat-head">
+              <span class="quick-stat-icon" aria-hidden="true"><i class="pi pi-history"></i></span>
+              <p class="quick-stat-label">Latest GPS update</p>
+            </div>
+            <p class="quick-stat-value">{{ latestGpsUpdateLabel }}</p>
+          </article>
+          <article class="quick-stat-tile quick-stat-distance">
+            <div class="quick-stat-head">
+              <span class="quick-stat-icon" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
+              <p class="quick-stat-label">Distance today</p>
+            </div>
+            <p class="quick-stat-value">{{ distanceTodayLabel }}</p>
+          </article>
+          <article class="quick-stat-tile quick-stat-moving">
+            <div class="quick-stat-head">
+              <span class="quick-stat-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
+              <p class="quick-stat-label">Time moving today</p>
+            </div>
+            <p class="quick-stat-value">{{ timeMovingTodayLabel }}</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!isResolvingAuth && !authStore.isAuthenticated" class="features-section">
       <div class="home-container">
         <div class="section-header">
           <h2>Core capabilities</h2>
@@ -155,7 +197,7 @@
         </div>
 
         <Button
-          v-if="!isDesktopViewport && hasHiddenFeatures"
+          v-if="!isDesktopViewport && !isMobileViewport && hasHiddenFeatures"
           :label="showAllFeatures ? 'Show fewer' : 'Show all capabilities'"
           :icon="showAllFeatures ? 'pi pi-angle-up' : 'pi pi-angle-down'"
           severity="secondary"
@@ -170,8 +212,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
+import apiService from '@/utils/apiService'
+import { useTimezone } from '@/composables/useTimezone'
+import { formatDistance, formatDuration } from '@/utils/calculationsHelpers'
 
 const DEFAULT_AUTH_STATUS = {
   passwordRegistrationEnabled: false,
@@ -242,14 +288,23 @@ const features = ref([
 const initialVisibleFeatureCount = 3
 const showAllFeatures = ref(false)
 const isDesktopViewport = ref(false)
+const isMobileViewport = ref(false)
 
 const authStore = useAuthStore()
+const router = useRouter()
+const timezone = useTimezone()
 const authStatus = ref({ ...DEFAULT_AUTH_STATUS })
 const oidcProviders = ref([])
 const isResolvingAuth = ref(true)
+const isSigningOut = ref(false)
+const quickStats = ref({
+  latestPointTimestamp: null,
+  totalDistanceMeters: 0,
+  timeMoving: 0
+})
 
 const visibleFeatures = computed(() => {
-  if (isDesktopViewport.value || showAllFeatures.value) {
+  if (isDesktopViewport.value || isMobileViewport.value || showAllFeatures.value) {
     return features.value
   }
   return features.value.slice(0, initialVisibleFeatureCount)
@@ -287,6 +342,136 @@ const continueDestination = computed(() => {
     : '/app/timeline'
   return buildDestination(preferredPath)
 })
+
+const heroTitle = computed(() => {
+  if (isMobileViewport.value) {
+    return 'Your movement. Your server.'
+  }
+  return 'Your movement history, on your server.'
+})
+
+const secondaryQuickActions = computed(() => {
+  return quickActions.filter((action) => action.to !== continueDestination.value.path)
+})
+
+const hasMeaningfulQuickStats = computed(() => {
+  return Boolean(
+    quickStats.value.latestPointTimestamp ||
+    quickStats.value.totalDistanceMeters > 0 ||
+    quickStats.value.timeMoving > 0
+  )
+})
+
+const shouldShowQuickStats = computed(() => {
+  return !isResolvingAuth.value && authStore.isAuthenticated && hasMeaningfulQuickStats.value
+})
+
+const latestGpsUpdateLabel = computed(() => {
+  if (!quickStats.value.latestPointTimestamp) {
+    return 'No updates yet'
+  }
+  return timezone.timeAgo(quickStats.value.latestPointTimestamp)
+})
+
+const distanceTodayLabel = computed(() => {
+  return formatDistance(quickStats.value.totalDistanceMeters)
+})
+
+const timeMovingTodayLabel = computed(() => {
+  return formatDuration(quickStats.value.timeMoving)
+})
+
+const unwrapPayload = (response) => {
+  if (response && typeof response === 'object' && response.data && typeof response.data === 'object') {
+    return response.data
+  }
+  return response
+}
+
+const toNumberOrZero = (value) => {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+const normalizeTimestamp = (value) => {
+  if (!value) {
+    return null
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value).toISOString()
+  }
+
+  return typeof value === 'string' ? value : null
+}
+
+const fetchLatestGpsUpdate = async () => {
+  try {
+    const response = await apiService.get('/gps/last-known-position')
+    const payload = unwrapPayload(response)
+    const pointPayload = payload?.data && typeof payload.data === 'object'
+      ? payload.data
+      : payload
+
+    return normalizeTimestamp(pointPayload?.timestamp)
+  } catch (error) {
+    console.warn('Failed to load latest GPS update for home quick stats:', error)
+    return null
+  }
+}
+
+const fetchTodayStats = async () => {
+  const todayRange = timezone.getTodayRangeUtc()
+
+  try {
+    const response = await apiService.get('/statistics', {
+      startTime: todayRange.start,
+      endTime: todayRange.end
+    })
+    const payload = unwrapPayload(response)
+
+    return {
+      totalDistanceMeters: toNumberOrZero(payload?.totalDistanceMeters),
+      timeMoving: toNumberOrZero(payload?.timeMoving)
+    }
+  } catch (error) {
+    console.warn('Failed to load today statistics for home quick stats:', error)
+    return {
+      totalDistanceMeters: 0,
+      timeMoving: 0
+    }
+  }
+}
+
+const loadSignedInQuickStats = async () => {
+  const [latestPointTimestamp, todayStats] = await Promise.all([
+    fetchLatestGpsUpdate(),
+    fetchTodayStats()
+  ])
+
+  quickStats.value = {
+    latestPointTimestamp,
+    totalDistanceMeters: todayStats.totalDistanceMeters,
+    timeMoving: todayStats.timeMoving
+  }
+}
+
+const handleSignOut = async () => {
+  if (isSigningOut.value) {
+    return
+  }
+
+  isSigningOut.value = true
+
+  try {
+    await authStore.logout()
+  } catch (error) {
+    console.error('Failed to sign out from home page:', error)
+  } finally {
+    isSigningOut.value = false
+    await router.push('/')
+  }
+}
 
 const normalizeDestinationPath = (path) => {
   if (typeof path !== 'string') {
@@ -341,6 +526,7 @@ const updateViewportState = () => {
   }
 
   isDesktopViewport.value = window.innerWidth >= 1024
+  isMobileViewport.value = window.innerWidth < 768
 }
 
 const toggleFeatureVisibility = () => {
@@ -380,6 +566,10 @@ onMounted(async () => {
   }
 
   isResolvingAuth.value = false
+
+  if (authStore.isAuthenticated) {
+    await loadSignedInQuickStats()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -403,6 +593,22 @@ onBeforeUnmount(() => {
   --home-accent-hover: var(--gp-primary-hover, #0d615a);
   --home-accent-soft: rgba(15, 118, 110, 0.14);
   --home-focus: rgba(13, 148, 136, 0.28);
+  --home-feature-card-bg: #fcfdff;
+  --home-feature-border: #7a879b;
+  --home-feature-icon-blob: linear-gradient(150deg, rgba(15, 118, 110, 0.24) 0%, rgba(14, 165, 233, 0.2) 100%);
+  --home-feature-icon-blob-ring: rgba(15, 118, 110, 0.3);
+  --home-feature-icon-shadow: 0 8px 18px rgba(14, 116, 144, 0.18);
+  --home-feature-icon-color: var(--home-accent);
+  --home-feature-icon-highlight: rgba(255, 255, 255, 0.34);
+  --home-feature-icon-stroke: 0.25px currentColor;
+  --home-feature-icon-glyph-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
+  --home-tag-font-size: 0.78rem;
+  --home-tag-letter-spacing: 0.08em;
+  --home-tag-line-height: 1.2;
+  --home-hero-title-size: clamp(2rem, 7vw, 3.2rem);
+  --home-logo-size: calc(var(--home-hero-title-size) * 1.7);
+  --home-logo-circle-offset: 29.2%;
+  --home-logo-tag-gap: 3.375rem;
   --home-hero-gradient: linear-gradient(145deg, #f8fbff 0%, #edf3ff 52%, #e8f0ff 100%);
   --home-hero-glow: radial-gradient(ellipse at 24% 14%, rgba(37, 99, 235, 0.18) 0%, rgba(37, 99, 235, 0) 58%),
     radial-gradient(ellipse at 80% 88%, rgba(14, 165, 233, 0.16) 0%, rgba(14, 165, 233, 0) 62%);
@@ -415,6 +621,9 @@ onBeforeUnmount(() => {
   --home-quick-hover-bg: rgba(37, 99, 235, 0.08);
   --home-quick-border: rgba(148, 163, 184, 0.38);
   --home-quick-hover-border: rgba(37, 99, 235, 0.5);
+  --home-stats-tile-bg: var(--home-card-bg);
+  --home-stats-tile-border: rgba(148, 163, 184, 0.4);
+  --home-stats-value: var(--home-text-primary);
   min-height: 100vh;
   position: relative;
   overflow: hidden;
@@ -441,7 +650,9 @@ onBeforeUnmount(() => {
 .home-container {
   position: relative;
   z-index: 2;
-  width: min(1180px, 100%);
+  width: 100%;
+  max-width: 1200px;
+  box-sizing: border-box;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -449,6 +660,10 @@ onBeforeUnmount(() => {
 .hero-shell {
   position: relative;
   border-bottom: 1px solid var(--home-border);
+}
+
+.hero-shell-no-divider {
+  border-bottom: 0;
 }
 
 .top-bar {
@@ -485,20 +700,24 @@ onBeforeUnmount(() => {
 
 .hero-copy {
   position: relative;
+  text-align: left;
 }
 
 .hero-logo {
-  width: clamp(8.5rem, 20vw, 12rem);
+  display: block;
+  width: var(--home-logo-size);
   height: auto;
-  margin-bottom: 0.9rem;
+  transform: translateX(calc(-1 * var(--home-logo-circle-offset)));
+  margin-bottom: var(--home-logo-tag-gap);
   filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.1));
 }
 
 .hero-eyebrow {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--home-tag-font-size);
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--home-tag-letter-spacing);
+  line-height: var(--home-tag-line-height);
   text-transform: uppercase;
   color: var(--home-accent);
 }
@@ -506,8 +725,8 @@ onBeforeUnmount(() => {
 .hero-title {
   margin: 0.45rem 0 0.65rem;
   max-width: 17ch;
-  font-size: clamp(2rem, 7vw, 3.2rem);
-  line-height: 1.07;
+  font-size: var(--home-hero-title-size);
+  line-height: 1.13;
   letter-spacing: -0.025em;
   color: var(--home-text-primary);
 }
@@ -517,10 +736,11 @@ onBeforeUnmount(() => {
   max-width: 58ch;
   color: var(--home-text-secondary);
   font-size: clamp(1rem, 2.1vw, 1.15rem);
-  line-height: 1.56;
+  line-height: 1.74;
 }
 
 .hero-panel {
+  width: 100%;
   min-width: 0;
 }
 
@@ -561,8 +781,9 @@ onBeforeUnmount(() => {
 
 .card-eyebrow {
   margin: 0;
-  font-size: 0.72rem;
-  letter-spacing: 0.08em;
+  font-size: var(--home-tag-font-size);
+  letter-spacing: var(--home-tag-letter-spacing);
+  line-height: var(--home-tag-line-height);
   text-transform: uppercase;
   font-weight: 700;
   color: var(--home-accent);
@@ -697,9 +918,20 @@ onBeforeUnmount(() => {
   margin-top: 0.2rem;
 }
 
+.continue-card-mobile {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
 .quick-actions {
   display: grid;
   gap: 0.6rem;
+}
+
+.quick-actions-mobile {
+  gap: 0.22rem;
+  margin-top: 0.2rem;
 }
 
 .quick-action-button.p-button {
@@ -723,6 +955,117 @@ onBeforeUnmount(() => {
 
 .quick-action-button.p-button:focus {
   box-shadow: 0 0 0 3px var(--home-focus);
+}
+
+.quick-action-link.p-button {
+  min-height: auto;
+  padding: 0.38rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--home-accent);
+  font-weight: 600;
+}
+
+.quick-action-link.p-button:not(:disabled):hover {
+  border: 0;
+  background: transparent;
+  color: var(--home-accent-hover);
+  text-decoration: underline;
+}
+
+.quick-action-link.p-button:focus {
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+.signout-row {
+  margin-top: 0.18rem;
+}
+
+.signout-button.p-button {
+  padding: 0.16rem 0;
+  color: var(--home-text-secondary);
+  font-weight: 600;
+}
+
+.signout-button.p-button:not(:disabled):hover {
+  color: var(--home-accent);
+  background: transparent;
+  text-decoration: underline;
+}
+
+.quick-stats-section {
+  position: relative;
+  z-index: 2;
+  padding: 0 0 0.9rem;
+}
+
+.quick-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.46rem;
+}
+
+.quick-stat-tile {
+  border: 1px solid var(--home-stats-tile-border);
+  border-radius: 0.92rem;
+  background: var(--home-stats-tile-bg);
+  box-shadow: none;
+  padding: 0.66rem 0.74rem 0.7rem;
+}
+
+.quick-stat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.quick-stat-icon {
+  width: 1.38rem;
+  height: 1.38rem;
+  border-radius: 0.35rem;
+  border: 1px solid currentColor;
+  color: var(--home-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.quick-stat-icon i {
+  font-size: 0.66rem;
+  -webkit-text-stroke: 0.2px currentColor;
+}
+
+.quick-stat-label {
+  margin: 0;
+  color: var(--home-text-secondary);
+  font-size: 0.66rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-weight: 700;
+  line-height: 1.18;
+}
+
+.quick-stat-value {
+  margin: 0.3rem 0 0;
+  color: var(--home-stats-value);
+  font-size: clamp(1.02rem, 4vw, 1.16rem);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.quick-stat-latest .quick-stat-icon {
+  color: #0ea5e9;
+}
+
+.quick-stat-distance .quick-stat-icon {
+  color: #2563eb;
+}
+
+.quick-stat-moving .quick-stat-icon {
+  color: #0f766e;
 }
 
 .features-section {
@@ -757,9 +1100,9 @@ onBeforeUnmount(() => {
 
 .feature-card {
   width: 100%;
-  border: 1px solid var(--home-border);
+  border: 1px solid var(--home-feature-border);
   border-radius: 0.95rem;
-  background: var(--home-card-bg);
+  background: var(--home-feature-card-bg);
   box-shadow: var(--home-shadow);
 }
 
@@ -772,7 +1115,7 @@ onBeforeUnmount(() => {
 }
 
 .feature-card :deep(.p-card-body) {
-  padding: 1.02rem;
+  padding: 1.02rem 1.08rem 1.06rem;
 }
 
 .feature-card :deep(.p-card-content) {
@@ -781,23 +1124,41 @@ onBeforeUnmount(() => {
 
 .feature-content {
   display: flex;
+  align-items: flex-start;
   gap: 0.7rem;
 }
 
 .feature-icon {
+  position: relative;
   width: 2.3rem;
   height: 2.3rem;
   border-radius: 0.7rem;
-  background: var(--home-accent-soft);
+  background: var(--home-feature-icon-blob);
+  border: 1px solid var(--home-feature-icon-blob-ring);
+  box-shadow: var(--home-feature-icon-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.feature-icon::before {
+  content: '';
+  position: absolute;
+  inset: 0.16rem;
+  border-radius: 0.52rem;
+  background: var(--home-feature-icon-highlight);
+  pointer-events: none;
 }
 
 .feature-icon i {
-  font-size: 1.05rem;
-  color: var(--home-accent);
+  position: relative;
+  z-index: 1;
+  font-size: 1.12rem;
+  color: var(--home-feature-icon-color);
+  text-shadow: var(--home-feature-icon-glyph-shadow);
+  -webkit-text-stroke: var(--home-feature-icon-stroke);
 }
 
 .feature-text h3 {
@@ -810,6 +1171,96 @@ onBeforeUnmount(() => {
   color: var(--home-text-secondary);
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+@media (max-width: 767px) {
+  .top-bar {
+    padding: 0.85rem 0 0.55rem;
+  }
+
+  .hero-grid {
+    gap: 0.85rem;
+    padding: 0.35rem 0 1.35rem;
+  }
+
+  .hero-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .hero-logo {
+    width: auto;
+    height: 80px;
+    transform: none;
+    margin-bottom: calc(var(--home-logo-tag-gap) - 0.25rem);
+  }
+
+  .hero-eyebrow,
+  .hero-title {
+    text-align: center;
+  }
+
+  .hero-title {
+    font-size: calc(var(--home-hero-title-size) * 0.82);
+    max-width: 12.8ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-panel {
+    margin-top: 0.1rem;
+  }
+
+  .status-card {
+    padding: 1.1rem 1rem 1.05rem;
+  }
+
+  .signed-in-card {
+    gap: 0.75rem;
+  }
+
+  .signed-in-card .card-title {
+    margin-bottom: 0.08rem;
+  }
+
+  .signed-in-card .continue-button {
+    margin-top: 0;
+  }
+
+  .signout-row {
+    margin-top: 0.04rem;
+  }
+
+  .quick-stats-section {
+    padding: 0 0 0.78rem;
+  }
+
+  .quick-stat-tile {
+    padding: 0.58rem 0.66rem 0.62rem;
+  }
+
+  .quick-stat-value {
+    font-size: 1rem;
+    line-height: 1.16;
+  }
+
+  .features-section {
+    padding: 1.35rem 0 2rem;
+  }
+
+  .section-header {
+    margin-bottom: 0.72rem;
+  }
+
+  .feature-track {
+    gap: 0.72rem;
+  }
+
+  .mobile-feature-toggle {
+    margin-top: 0.75rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -826,6 +1277,15 @@ onBeforeUnmount(() => {
     padding: 1.35rem;
   }
 
+  .quick-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.62rem;
+  }
+
+  .quick-stat-value {
+    font-size: 1.08rem;
+  }
+
   .quick-actions {
     grid-template-columns: 1fr 1fr;
   }
@@ -837,18 +1297,19 @@ onBeforeUnmount(() => {
   }
 
   .hero-grid {
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
-    align-items: start;
-    gap: 2rem;
+    grid-template-columns: minmax(0, 6.75fr) minmax(26.75rem, 5.25fr);
+    align-items: center;
+    gap: clamp(4rem, 6vw, 5rem);
     padding-bottom: 3.2rem;
   }
 
   .hero-copy {
-    padding-top: 1.2rem;
+    padding-top: 0;
   }
 
   .status-card {
     min-height: 26.5rem;
+    padding: 1.35rem 2rem 1.4rem;
   }
 
   .feature-track {
@@ -864,7 +1325,11 @@ onBeforeUnmount(() => {
 
 @media (max-width: 430px) {
   .hero-title {
-    max-width: 12ch;
+    max-width: 11.8ch;
+  }
+
+  .hero-logo {
+    height: 80px;
   }
 
   .status-card {
@@ -894,6 +1359,18 @@ onBeforeUnmount(() => {
   --home-quick-hover-bg: rgba(30, 64, 175, 0.24);
   --home-quick-border: rgba(148, 163, 184, 0.55);
   --home-quick-hover-border: rgba(96, 165, 250, 0.75);
+  --home-stats-tile-bg: rgba(15, 23, 42, 0.9);
+  --home-stats-tile-border: rgba(148, 163, 184, 0.52);
+  --home-stats-value: #e2e8f0;
+  --home-feature-card-bg: rgba(15, 23, 42, 0.72);
+  --home-feature-border: rgba(148, 163, 184, 0.78);
+  --home-feature-icon-blob: linear-gradient(150deg, rgba(30, 64, 175, 0.38) 0%, rgba(30, 64, 175, 0.22) 100%);
+  --home-feature-icon-blob-ring: rgba(147, 197, 253, 0.65);
+  --home-feature-icon-shadow: 0 8px 22px rgba(30, 64, 175, 0.45);
+  --home-feature-icon-color: #e2e8f0;
+  --home-feature-icon-highlight: rgba(15, 23, 42, 0.24);
+  --home-feature-icon-stroke: 0.35px currentColor;
+  --home-feature-icon-glyph-shadow: 0 1px 0 rgba(15, 23, 42, 0.55), 0 0 8px rgba(147, 197, 253, 0.35);
 }
 
 .p-dark .home-page::before {
@@ -916,5 +1393,25 @@ onBeforeUnmount(() => {
 
 .p-dark .quick-action-button.p-button:not(:disabled):hover {
   color: #bfdbfe;
+}
+
+.p-dark .signout-button.p-button {
+  color: #94a3b8;
+}
+
+.p-dark .signout-button.p-button:not(:disabled):hover {
+  color: #bfdbfe;
+}
+
+.p-dark .quick-stat-latest .quick-stat-icon {
+  color: #38bdf8;
+}
+
+.p-dark .quick-stat-distance .quick-stat-icon {
+  color: #60a5fa;
+}
+
+.p-dark .quick-stat-moving .quick-stat-icon {
+  color: #2dd4bf;
 }
 </style>
