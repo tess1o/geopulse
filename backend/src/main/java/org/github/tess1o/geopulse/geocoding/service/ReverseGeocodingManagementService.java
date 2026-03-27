@@ -14,9 +14,7 @@ import org.github.tess1o.geopulse.geocoding.config.GeocodingConfigurationService
 import org.github.tess1o.geopulse.geocoding.dto.*;
 import org.github.tess1o.geopulse.geocoding.mapper.ReverseGeocodingDTOMapper;
 import org.github.tess1o.geopulse.geocoding.model.ReverseGeocodingLocationEntity;
-import org.github.tess1o.geopulse.geocoding.model.common.FormattableGeocodingResult;
 import org.github.tess1o.geopulse.geocoding.repository.ReverseGeocodingLocationRepository;
-import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.ReconciliationResult;
 import org.github.tess1o.geopulse.geocoding.service.GeocodingCopyOnWriteHandler.UpdateResult;
 
 import java.util.ArrayList;
@@ -47,6 +45,7 @@ public class ReverseGeocodingManagementService {
     private final GeocodingConfigurationService configService;
     private final ReverseGeocodingDTOMapper dtoMapper;
     private final GeocodingCopyOnWriteHandler copyOnWriteHandler;
+    private final GeocodingReconciliationService reconciliationService;
     private final ReconciliationJobProgressService reconciliationProgressService;
     private final ManagedExecutor managedExecutor;
 
@@ -66,6 +65,7 @@ public class ReverseGeocodingManagementService {
             GeocodingConfigurationService configService,
             ReverseGeocodingDTOMapper dtoMapper,
             GeocodingCopyOnWriteHandler copyOnWriteHandler,
+            GeocodingReconciliationService reconciliationService,
             ReconciliationJobProgressService reconciliationProgressService,
             ManagedExecutor managedExecutor) {
         this.geocodingRepository = geocodingRepository;
@@ -73,6 +73,7 @@ public class ReverseGeocodingManagementService {
         this.configService = configService;
         this.dtoMapper = dtoMapper;
         this.copyOnWriteHandler = copyOnWriteHandler;
+        this.reconciliationService = reconciliationService;
         this.reconciliationProgressService = reconciliationProgressService;
         this.managedExecutor = managedExecutor;
     }
@@ -233,38 +234,13 @@ public class ReverseGeocodingManagementService {
      * - User's copy: Update in-place
      * - Another user's copy: Reject (403)
      */
-    @Transactional
     public ReverseGeocodingDTO reconcileWithProvider(UUID currentUserId, Long geocodingId, String providerName) {
-        ReverseGeocodingLocationEntity entity = geocodingRepository.findById(geocodingId);
-        if (entity == null) {
-            throw new NotFoundException("Geocoding result not found: " + geocodingId);
-        }
-
-        // Security check
-        if (entity.getUser() != null && !entity.isOwnedBy(currentUserId)) {
-            throw new ForbiddenException("Cannot reconcile another user's geocoding data");
-        }
-
-        try {
-            // Fetch fresh data from provider
-            FormattableGeocodingResult freshResult = providerFactory
-                    .reconcileWithProvider(providerName, entity.getRequestCoordinates())
-                    .await().indefinitely();
-
-            ReconciliationResult result = copyOnWriteHandler.handleReconciliation(currentUserId, entity, freshResult);
-            return dtoMapper.toDTO(result.entity());
-
-        } catch (Exception e) {
-            log.error("Failed to reconcile geocoding {} with provider {}: {}",
-                    geocodingId, providerName, e.getMessage(), e);
-            throw new RuntimeException("Reconciliation failed: " + e.getMessage(), e);
-        }
+        return reconciliationService.reconcileWithProvider(currentUserId, geocodingId, providerName);
     }
 
     /**
      * Reconcile geocoding results with a specific provider (batch operation).
      */
-    @Transactional
     public ReverseGeocodingReconcileResult reconcileWithProvider(UUID currentUserId, ReverseGeocodingReconcileRequest request) {
         List<Long> idsToReconcile = determineIdsToReconcile(currentUserId, request);
 
@@ -277,9 +253,9 @@ public class ReverseGeocodingManagementService {
         List<ReverseGeocodingReconcileResult.ReconcileError> errors = new ArrayList<>();
 
         for (Long id : idsToReconcile) {
-                totalProcessed++;
+            totalProcessed++;
             try {
-                reconcileWithProvider(currentUserId, id, request.getProviderName());
+                reconciliationService.reconcileWithProvider(currentUserId, id, request.getProviderName());
                 successfulUpdates++;
             } catch (Exception e) {
                 failedUpdates++;
@@ -334,7 +310,6 @@ public class ReverseGeocodingManagementService {
      * Process reconciliation job with progress tracking.
      * This runs asynchronously and updates progress after each item.
      */
-    @Transactional
     @ActivateRequestContext
     void processReconciliationJob(UUID jobId, UUID userId, List<Long> ids, String providerName) {
         int successCount = 0;
@@ -375,7 +350,7 @@ public class ReverseGeocodingManagementService {
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                reconcileWithProvider(userId, geocodingId, providerName);
+                reconciliationService.reconcileWithProvider(userId, geocodingId, providerName);
                 return true;
             } catch (Exception e) {
                 boolean circuitOpen = isCircuitBreakerOpenFailure(e);
