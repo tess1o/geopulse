@@ -6,6 +6,7 @@ import lombok.*;
 import org.github.tess1o.geopulse.user.model.UserEntity;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 @Entity
@@ -93,9 +94,12 @@ public class SharedLinkEntity extends PanacheEntityBase {
             return null;
         }
         Instant now = Instant.now();
+        Instant effectiveEndDate = endDate.equals(startDate)
+                ? endDate.plus(1, ChronoUnit.DAYS).minusMillis(1)
+                : endDate;
         if (now.isBefore(startDate)) {
             return "upcoming";
-        } else if (now.isAfter(endDate)) {
+        } else if (now.isAfter(effectiveEndDate)) {
             return "completed";
         } else {
             return "active";

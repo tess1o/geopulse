@@ -103,12 +103,14 @@ public class SharedLinkService {
             if (request.getStartDate() == null || request.getEndDate() == null) {
                 throw new IllegalArgumentException("Timeline shares must have start and end dates");
             }
-            if (request.getEndDate().isBefore(request.getStartDate())) {
-                throw new IllegalArgumentException("End date must be after start date");
-            }
         }
 
         SharedLinkEntity entity = mapper.toEntity(request, user);
+        if (shareType == ShareType.TIMELINE) {
+            TimelineRange normalizedRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
+            entity.setStartDate(normalizedRange.start());
+            entity.setEndDate(normalizedRange.end());
+        }
 
         if (entity.getPassword() != null) {
             entity.setPassword(passwordUtils.hashPassword(entity.getPassword()));
@@ -165,6 +167,11 @@ public class SharedLinkService {
         }
 
         mapper.updateEntityFromDto(entity, safeDto);
+        if (entity.getShareType() == ShareType.TIMELINE) {
+            TimelineRange normalizedRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
+            entity.setStartDate(normalizedRange.start());
+            entity.setEndDate(normalizedRange.end());
+        }
         sharedLinkRepository.persist(entity);
 
         return mapper.toDto(entity);
@@ -320,9 +327,9 @@ public class SharedLinkService {
         }
 
         // Check if we're within the active timeline period
+        TimelineRange shareRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
         Instant now = Instant.now();
-        if (entity.getStartDate() == null || entity.getEndDate() == null ||
-            now.isBefore(entity.getStartDate()) || now.isAfter(entity.getEndDate())) {
+        if (now.isBefore(shareRange.start()) || now.isAfter(shareRange.end())) {
             throw new NotFoundException("Current location only available during the timeline period");
         }
 
@@ -355,21 +362,7 @@ public class SharedLinkService {
             throw new IllegalArgumentException("This endpoint is only for timeline shares");
         }
 
-        if (entity.getStartDate() == null || entity.getEndDate() == null) {
-            throw new IllegalStateException("Timeline share missing date range");
-        }
-
-        // Determine effective date range
-        Instant effectiveStart = startTime != null ? startTime : entity.getStartDate();
-        Instant effectiveEnd = endTime != null ? endTime : entity.getEndDate();
-
-        // Validate dates are within share boundaries
-        if (effectiveStart.isBefore(entity.getStartDate()) || effectiveEnd.isAfter(entity.getEndDate())) {
-            throw new IllegalArgumentException(
-                    String.format("Requested date range must be within share period: %s to %s",
-                            entity.getStartDate(), entity.getEndDate())
-            );
-        }
+        TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
 
         // Increment view count on first timeline access
         sharedLinkRepository.incrementViewCount(linkId);
@@ -378,12 +371,12 @@ public class SharedLinkService {
         // This automatically includes overnight stays via boundary expansion
         MovementTimelineDTO timeline = timelineAggregator.getTimelineFromDb(
                 entity.getUser().getId(),
-                effectiveStart,
-                effectiveEnd
+                effectiveRange.start(),
+                effectiveRange.end()
         );
 
         log.info("Timeline data accessed successfully for linkId: {}, items: {}, dateRange: {} to {}",
-                linkId, timeline.getStaysCount() + timeline.getTripsCount(), effectiveStart, effectiveEnd);
+                linkId, timeline.getStaysCount() + timeline.getTripsCount(), effectiveRange.start(), effectiveRange.end());
 
         return timeline;
     }
@@ -408,27 +401,13 @@ public class SharedLinkService {
             throw new IllegalArgumentException("This endpoint is only for timeline shares");
         }
 
-        if (entity.getStartDate() == null || entity.getEndDate() == null) {
-            throw new IllegalStateException("Timeline share missing date range");
-        }
-
-        // Determine effective date range
-        Instant effectiveStart = startTime != null ? startTime : entity.getStartDate();
-        Instant effectiveEnd = endTime != null ? endTime : entity.getEndDate();
-
-        // Validate dates are within share boundaries
-        if (effectiveStart.isBefore(entity.getStartDate()) || effectiveEnd.isAfter(entity.getEndDate())) {
-            throw new IllegalArgumentException(
-                    String.format("Requested date range must be within share period: %s to %s",
-                            entity.getStartDate(), entity.getEndDate())
-            );
-        }
+        TimelineRange effectiveRange = resolveRequestedTimelineRange(entity, startTime, endTime);
 
         // Get GPS points for the effective date range
         List<GpsPointEntity> gpsPoints = gpsPointRepository.findByUserIdAndTimePeriod(
                 entity.getUser().getId(),
-                effectiveStart,
-                effectiveEnd
+                effectiveRange.start(),
+                effectiveRange.end()
         );
 
         // Convert to GpsPoint interface for simplification
@@ -457,4 +436,35 @@ public class SharedLinkService {
 
         return new GpsPointPathDTO(entity.getUser().getId(), (List<GpsPointPathPointDTO>) simplifiedPoints);
     }
+
+    private TimelineRange resolveRequestedTimelineRange(SharedLinkEntity entity, Instant startTime, Instant endTime) {
+        TimelineRange shareRange = normalizeTimelineRange(entity.getStartDate(), entity.getEndDate());
+        Instant effectiveStart = startTime != null ? startTime : shareRange.start();
+        Instant effectiveEnd = endTime != null ? endTime : shareRange.end();
+        TimelineRange effectiveRange = normalizeTimelineRange(effectiveStart, effectiveEnd);
+
+        if (effectiveRange.start().isBefore(shareRange.start()) || effectiveRange.end().isAfter(shareRange.end())) {
+            throw new IllegalArgumentException(
+                    String.format("Requested date range must be within share period: %s to %s",
+                            shareRange.start(), shareRange.end())
+            );
+        }
+
+        return effectiveRange;
+    }
+
+    private TimelineRange normalizeTimelineRange(Instant start, Instant end) {
+        if (start == null || end == null) {
+            throw new IllegalStateException("Timeline share missing date range");
+        }
+        if (end.isBefore(start)) {
+            throw new IllegalArgumentException("End date must be after start date");
+        }
+        if (end.equals(start)) {
+            return new TimelineRange(start, end.plus(1, ChronoUnit.DAYS).minusMillis(1));
+        }
+        return new TimelineRange(start, end);
+    }
+
+    private record TimelineRange(Instant start, Instant end) {}
 }

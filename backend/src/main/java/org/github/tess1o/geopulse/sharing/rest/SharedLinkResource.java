@@ -64,6 +64,10 @@ public class SharedLinkResource {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("Unauthorized"))
                     .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
+                    .build();
         } catch (Exception e) {
             log.error("Error creating share link", e);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -87,6 +91,10 @@ public class SharedLinkResource {
         } catch (SecurityException e) {
             return Response.status(Response.Status.UNAUTHORIZED)
                     .entity(ApiResponse.error("Unauthorized"))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(ApiResponse.error(e.getMessage()))
                     .build();
         } catch (Exception e) {
             log.error("Error updating share link", e);

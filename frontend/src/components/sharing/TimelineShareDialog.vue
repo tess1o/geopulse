@@ -133,6 +133,7 @@
 import { ref, computed, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useShareLinksStore } from '@/stores/shareLinks'
+import { useTimezone } from '@/composables/useTimezone'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Calendar from 'primevue/calendar'
@@ -161,6 +162,7 @@ const emit = defineEmits(['update:visible', 'created', 'updated'])
 
 const toast = useToast()
 const shareLinksStore = useShareLinksStore()
+const timezone = useTimezone()
 
 const dialogVisible = computed({
   get: () => props.visible,
@@ -201,11 +203,15 @@ const errors = ref({
 watch(() => props.visible, (visible) => {
   if (visible) {
     if (props.editingShare) {
+      const [calendarStart, calendarEnd] = timezone.convertUtcRangeToCalendarDates(
+        props.editingShare.start_date,
+        props.editingShare.end_date
+      )
       // Edit mode - populate with existing data
       formData.value = {
         name: props.editingShare.name || '',
-        start_date: props.editingShare.start_date ? new Date(props.editingShare.start_date) : null,
-        end_date: props.editingShare.end_date ? new Date(props.editingShare.end_date) : null,
+        start_date: props.editingShare.start_date ? calendarStart : null,
+        end_date: props.editingShare.end_date ? calendarEnd : null,
         expires_at: props.editingShare.expires_at ? new Date(props.editingShare.expires_at) : null,
         show_current_location: props.editingShare.show_current_location ?? true,
         show_photos: props.editingShare.show_photos ?? false,
@@ -216,12 +222,15 @@ watch(() => props.visible, (visible) => {
       }
     } else if (props.prefillDates) {
       // Create mode with prefilled dates from TimelinePage
-      const endDate = props.prefillDates.end ? new Date(props.prefillDates.end) : null
+      const [calendarStart, calendarEnd] = timezone.convertUtcRangeToCalendarDates(
+        props.prefillDates.start,
+        props.prefillDates.end
+      )
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       formData.value = {
         name: '',
-        start_date: props.prefillDates.start ? new Date(props.prefillDates.start) : null,
-        end_date: endDate,
+        start_date: props.prefillDates.start ? calendarStart : null,
+        end_date: props.prefillDates.end ? calendarEnd : null,
         expires_at: expiresAt,
         show_current_location: true,
         show_photos: false,
@@ -315,11 +324,16 @@ async function handleSubmit() {
   loading.value = true
 
   try {
+    const { start: startDateUtc, end: endDateUtc } = timezone.createDateRangeFromPicker(
+      formData.value.start_date,
+      formData.value.end_date
+    )
+
     const payload = {
       share_type: 'TIMELINE',
       name: formData.value.name || 'Timeline Share',
-      start_date: formData.value.start_date.toISOString(),
-      end_date: formData.value.end_date.toISOString(),
+      start_date: startDateUtc,
+      end_date: endDateUtc,
       expires_at: formData.value.expires_at ? formData.value.expires_at.toISOString() : null,
       show_current_location: formData.value.show_current_location,
       show_photos: formData.value.show_photos,
