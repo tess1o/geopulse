@@ -234,6 +234,75 @@ class StreamingTimelineIntegrationTest {
         // Should have exactly 1 gap during overnight (different locations = no inference)
         assertThat(overnightGaps).hasSize(1);
     }
+    @Test
+    @Transactional
+    void shouldInferStayForSparseInTripGap_WhenBoundaryMovementIsVeryLow() {
+        List<GpsPointEntity> allPoints = new ArrayList<>();
+
+        GpsPointEntity p1 = new GpsPointEntity();
+        p1.setUser(testUserEnabled);
+        p1.setTimestamp(Instant.parse("2026-03-27T05:59:58Z"));
+        p1.setCoordinates(createPoint(1.1342692, 51.8582276));
+        p1.setAccuracy(8.0);
+        p1.setVelocity(52.0);
+        allPoints.add(p1);
+
+        GpsPointEntity p2 = new GpsPointEntity();
+        p2.setUser(testUserEnabled);
+        p2.setTimestamp(Instant.parse("2026-03-27T06:05:18Z"));
+        p2.setCoordinates(createPoint(1.1408599, 51.8590565));
+        p2.setAccuracy(8.0);
+        p2.setVelocity(45.0);
+        allPoints.add(p2);
+
+        GpsPointEntity p3 = new GpsPointEntity();
+        p3.setUser(testUserEnabled);
+        p3.setTimestamp(Instant.parse("2026-03-27T08:07:50Z"));
+        p3.setCoordinates(createPoint(1.1451401, 51.85935));
+        p3.setAccuracy(8.0);
+        p3.setVelocity(1.5);
+        allPoints.add(p3);
+
+        // 6h17m gap with ~479m boundary movement (sparse distance-based tracking pattern)
+        GpsPointEntity p4 = new GpsPointEntity();
+        p4.setUser(testUserEnabled);
+        p4.setTimestamp(Instant.parse("2026-03-27T14:25:22Z"));
+        p4.setCoordinates(createPoint(1.1383040, 51.8585587));
+        p4.setAccuracy(8.0);
+        p4.setVelocity(1.2);
+        allPoints.add(p4);
+
+        GpsPointEntity p5 = new GpsPointEntity();
+        p5.setUser(testUserEnabled);
+        p5.setTimestamp(Instant.parse("2026-03-27T14:35:22Z"));
+        p5.setCoordinates(createPoint(1.1385000, 51.8586000));
+        p5.setAccuracy(8.0);
+        p5.setVelocity(0.5);
+        allPoints.add(p5);
+
+        for (GpsPointEntity point : allPoints) {
+            gpsPointRepository.persist(point);
+        }
+        entityManager.flush();
+
+        boolean success = streamingTimelineGenerationService.regenerateFullTimeline(testUserEnabled.getId());
+        assertThat(success).isTrue();
+
+        Instant gapWindowStart = Instant.parse("2026-03-27T08:07:50Z");
+        Instant gapWindowEnd = Instant.parse("2026-03-27T14:25:22Z");
+
+        var gaps = timelineDataGapRepository.find("user.id = ?1", testUserEnabled.getId()).list();
+        var overlapsTargetGapWindow = gaps.stream()
+                .filter(g -> g.getStartTime().isBefore(gapWindowEnd) && g.getEndTime().isAfter(gapWindowStart))
+                .toList();
+        assertThat(overlapsTargetGapWindow).isEmpty();
+
+        var stays = timelineStayRepository.find("user.id = ?1", testUserEnabled.getId()).list();
+        boolean hasStayCoveringGapWindow = stays.stream()
+                .anyMatch(stay -> !stay.getTimestamp().isAfter(gapWindowStart)
+                        && !stay.getTimestamp().plusSeconds(stay.getStayDuration()).isBefore(gapWindowEnd));
+        assertThat(hasStayCoveringGapWindow).isTrue();
+    }
     // Helper methods for creating test data
     private UserEntity createTestUser(String email, boolean enabled) {
         UserEntity user = new UserEntity();
