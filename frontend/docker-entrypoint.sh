@@ -18,7 +18,8 @@ fi
 
 # Generate config.js
 echo "window.VUE_APP_CONFIG = {" > /app/config/config.js
-echo "  API_BASE_URL: '/api'" >> /app/config/config.js
+echo "  API_BASE_URL: '/api'," >> /app/config/config.js
+echo "  VERSION: '${GEOPULSE_VERSION}'" >> /app/config/config.js
 echo "};" >> /app/config/config.js
 
 # Detect Resolver
