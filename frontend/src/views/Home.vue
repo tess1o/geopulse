@@ -93,10 +93,22 @@
 
             <div class="hero-ctas" v-if="!isResolvingAuth">
               <template v-if="!authStore.isAuthenticated">
-                <div class="hero-actions">
-                  <Button label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
-                  <Button label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
+                <div v-if="!isLoginAvailable && !isRegistrationAvailable" class="access-status access-status-warning">
+                  <i class="pi pi-lock"></i>
+                  <span>Login and registration are currently disabled by the administrator.</span>
                 </div>
+
+                <template v-else>
+                  <div v-if="showRegistrationDisabledNotice" class="access-status access-status-info">
+                    <i class="pi pi-info-circle"></i>
+                    <span>Registration is disabled. Existing users can still sign in.</span>
+                  </div>
+
+                  <div class="hero-actions">
+                    <Button v-if="isRegistrationAvailable" label="Start Your Journey" icon="pi pi-arrow-right" iconPos="right" as="router-link" to="/register" size="large" class="btn-hero-primary" />
+                    <Button v-if="isLoginAvailable" label="Sign In" as="router-link" to="/login" size="large" class="btn-hero-secondary" />
+                  </div>
+                </template>
 
                 <div class="social-proof">
                   <a href="https://github.com/tess1o/geopulse" target="_blank" rel="noopener noreferrer" class="github-badge">
@@ -213,7 +225,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import DarkModeSwitcher from '@/components/DarkModeSwitcher.vue'
 import TipOfDayCard from '@/components/common/TipOfDayCard.vue'
@@ -228,10 +240,24 @@ import {
 } from '@/utils/homeContentHelpers'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+const DEFAULT_GITHUB_STARS_LABEL = '700+'
+const DEFAULT_GITHUB_FORKS_LABEL = '28+'
+const GITHUB_STATS_TIMEOUT_MS = 5000
+
+const DEFAULT_AUTH_STATUS = {
+  passwordRegistrationEnabled: false,
+  oidcRegistrationEnabled: false,
+  passwordLoginEnabled: true,
+  oidcLoginEnabled: true,
+  adminLoginBypassEnabled: true,
+  guestRootRedirectToLoginEnabled: false,
+}
 
 const isResolvingAuth = ref(true)
-const isLoginAvailable = ref(false)
+const authStatus = ref({ ...DEFAULT_AUTH_STATUS })
+const oidcProviders = ref([])
 const versionPopover = ref(null)
 const toggleVersionPopover = (event) => versionPopover.value?.toggle(event)
 const isMobileViewport = ref(false)
@@ -247,6 +273,18 @@ const defaultReleaseNotesUrl = 'https://github.com/tess1o/geopulse/releases'
 const filteredTips = computed(() => filterTipsByAudience(homeContent.value?.tips || [], authStore.isAdmin))
 const activeTip = computed(() => filteredTips.value[activeTipIndex.value] || null)
 const showNextTipButton = computed(() => filteredTips.value.length > 1)
+const hasOidcProvidersAvailable = computed(() => authStatus.value.oidcLoginEnabled && oidcProviders.value.length > 0)
+const isRegistrationAvailable = computed(() => {
+  return authStatus.value.passwordRegistrationEnabled || authStatus.value.oidcRegistrationEnabled
+})
+const isLoginAvailable = computed(() => {
+  return authStatus.value.passwordLoginEnabled ||
+    hasOidcProvidersAvailable.value ||
+    authStatus.value.adminLoginBypassEnabled
+})
+const showRegistrationDisabledNotice = computed(() => {
+  return !isRegistrationAvailable.value && isLoginAvailable.value
+})
 
 watch(filteredTips, (tips) => {
   activeTipIndex.value = getRandomTipIndex(tips.length)
@@ -281,8 +319,8 @@ const navVersionBadge = computed(() => {
   return `v${appVersion.value}`
 })
 
-const githubStarsLabel = computed(() => formatSocialCount(githubStars.value) || '700+')
-const githubForksLabel = computed(() => formatSocialCount(githubForks.value) || '28+')
+const githubStarsLabel = computed(() => formatSocialCount(githubStars.value) || DEFAULT_GITHUB_STARS_LABEL)
+const githubForksLabel = computed(() => formatSocialCount(githubForks.value) || DEFAULT_GITHUB_FORKS_LABEL)
 
 const handleSignOut = async () => {
   await authStore.logout()
@@ -307,13 +345,24 @@ const formatSocialCount = (count) => {
   }
 }
 
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 const fetchGithubStats = async () => {
   try {
-    const response = await fetch('https://api.github.com/repos/tess1o/geopulse', {
+    const response = await fetchWithTimeout('https://api.github.com/repos/tess1o/geopulse', {
       headers: {
         Accept: 'application/vnd.github+json',
       },
-    })
+    }, GITHUB_STATS_TIMEOUT_MS)
     if (!response.ok) {
       throw new Error('Failed to fetch repository stats')
     }
@@ -363,16 +412,46 @@ const fetchHomeContent = async () => {
 onMounted(async () => {
   updateViewportState()
   window.addEventListener('resize', updateViewportState)
-  fetchVersion()
-  fetchHomeContent()
-  fetchGithubStats()
+  void fetchVersion()
+  void fetchHomeContent()
+  void fetchGithubStats()
 
-  try {
-    await authStore.resolveAuthentication()
-    isLoginAvailable.value = authStore.loginAvailable
-  } finally {
-    isResolvingAuth.value = false
+  const guardResolvedAuthStatus = route.meta?.homeResolvedAuthStatus
+  const hasGuardResolvedAuthStatus = Boolean(
+    guardResolvedAuthStatus &&
+    typeof guardResolvedAuthStatus === 'object' &&
+    !Array.isArray(guardResolvedAuthStatus),
+  )
+
+  if (hasGuardResolvedAuthStatus) {
+    authStatus.value = {
+      ...DEFAULT_AUTH_STATUS,
+      ...guardResolvedAuthStatus,
+    }
+  } else {
+    const authStatusResult = await Promise.allSettled([authStore.getAuthStatus()])
+    if (authStatusResult[0].status === 'fulfilled' && authStatusResult[0].value) {
+      authStatus.value = {
+        ...DEFAULT_AUTH_STATUS,
+        ...authStatusResult[0].value,
+      }
+    } else {
+      authStatus.value = { ...DEFAULT_AUTH_STATUS }
+    }
   }
+
+  if (!authStore.isAuthenticated) {
+    const oidcProvidersResult = await Promise.allSettled([authStore.getOidcProviders()])
+    if (oidcProvidersResult[0].status === 'fulfilled' && Array.isArray(oidcProvidersResult[0].value)) {
+      oidcProviders.value = oidcProvidersResult[0].value
+    } else {
+      oidcProviders.value = []
+    }
+  } else {
+    oidcProviders.value = []
+  }
+
+  isResolvingAuth.value = false
 })
 
 onBeforeUnmount(() => {
@@ -473,6 +552,10 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 .hero-subtitle { font-size: 1.125rem; line-height: 1.7; color: var(--home-text-secondary); margin-bottom: 2rem; max-width: 500px; }
 .hero-ctas { margin-top: 2.5rem; position: relative; z-index: 10; }
 .hero-actions { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+.access-status { display: flex; align-items: flex-start; gap: 0.55rem; margin-bottom: 0.95rem; padding: 0.7rem 0.85rem; border-radius: 0.85rem; border: 1px solid; font-size: 0.83rem; line-height: 1.45; font-weight: 600; }
+.access-status i { margin-top: 0.06rem; font-size: 0.9rem; flex-shrink: 0; }
+.access-status-warning { background: rgba(245, 158, 11, 0.1); border-color: rgba(245, 158, 11, 0.35); color: #92400e; }
+.access-status-info { background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); color: #1e3a8a; }
 
 :deep(.btn-hero-primary) { padding: 0.875rem 1.75rem; border-radius: 999px; font-weight: 600; font-size: 1.05rem; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); border: none; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25); transition: transform 0.2s ease, box-shadow 0.2s ease; }
 :deep(.btn-hero-primary:hover) { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(37, 99, 235, 0.35); background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
@@ -686,6 +769,8 @@ button.nav-version-badge:hover { background: rgba(245, 243, 255, 0.98); box-shad
 .p-dark .feature-chip { background: rgba(15, 23, 42, 0.62); border-color: rgba(100, 116, 139, 0.62); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18); }
 .p-dark .feature-chip:hover, .p-dark .feature-chip.active { border-color: rgba(59, 130, 246, 0.5); box-shadow: 0 8px 16px rgba(37, 99, 235, 0.2); background: rgba(30, 41, 59, 0.74); }
 .p-dark .orbit-ring { border-color: rgba(255,255,255,0.05); }
+.p-dark .access-status-warning { background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.38); color: #fcd34d; }
+.p-dark .access-status-info { background: rgba(37, 99, 235, 0.16); border-color: rgba(96, 165, 250, 0.38); color: #bfdbfe; }
 
 .p-dark .github-badge { background: rgba(30, 41, 59, 0.4); border-color: rgba(255, 255, 255, 0.08); }
 .p-dark .github-badge:hover { background: rgba(30, 41, 59, 0.8); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
