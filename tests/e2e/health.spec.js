@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+  import { test, expect } from '@playwright/test';
 import {TestConfig} from "../config/test-config.js";
 import {LoginPage} from "../pages/LoginPage.js";
 
@@ -11,15 +11,19 @@ test.describe('Health Check', () => {
     // Wait for the page to load
     await page.waitForLoadState('networkidle');
     
-    const homePage = page.locator('.home-page');
+    const homePage = page.locator('.landing-page');
     await expect(homePage).toBeVisible();
 
     // Should show the updated home hero content
     const logo = page.getByRole('img', { name: 'GeoPulse logo' });
     await expect(logo).toBeVisible();
 
-    const heroTitle = page.getByRole('heading', { level: 1, name: /Your movement history, on your server\./ });
-    await expect(heroTitle).toBeVisible();
+    const heroContent = page.locator('.hero-content');
+    await expect(heroContent).toBeVisible();
+    await expect(heroContent).toContainText('Self-hosted location timeline');
+    await expect(heroContent).toContainText('Self-Host Anywhere');
+    await expect(heroContent).toContainText('Start Your Journey');
+    await expect(heroContent).toContainText('Sign In');
   });
 
   test('should access backend health endpoint', async ({ page }) => {
